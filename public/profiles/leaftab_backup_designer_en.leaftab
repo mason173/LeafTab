@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Design Mode",
+        "color": "#FF4081",
+        "icon": "pen-tool"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "des-01",
+          "title": "Dribbble",
+          "url": "https://dribbble.com",
+          "icon": ""
+        },
+        {
+          "id": "des-02",
+          "title": "Behance",
+          "url": "https://www.behance.net",
+          "icon": ""
+        },
+        {
+          "id": "des-03",
+          "title": "Pinterest",
+          "url": "https://www.pinterest.com",
+          "icon": ""
+        },
+        {
+          "id": "des-04",
+          "title": "Awwwards",
+          "url": "https://www.awwwards.com",
+          "icon": ""
+        },
+        {
+          "id": "des-05",
+          "title": "ArtStation",
+          "url": "https://www.artstation.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "Figma",
+          "url": "https://www.figma.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-02",
+          "title": "Canva",
+          "url": "https://www.canva.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "Adobe Color",
+          "url": "https://color.adobe.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "FontAwesome",
+          "url": "https://fontawesome.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "TinyPNG",
+          "url": "https://tinypng.com",
+          "icon": ""
+        },
+        {
+          "id": "res-01",
+          "title": "Unsplash",
+          "url": "https://unsplash.com",
+          "icon": ""
+        },
+        {
+          "id": "res-02",
+          "title": "Pexels",
+          "url": "https://www.pexels.com",
+          "icon": ""
+        },
+        {
+          "id": "res-03",
+          "title": "Iconfinder",
+          "url": "https://www.iconfinder.com",
+          "icon": ""
+        },
+        {
+          "id": "res-04",
+          "title": "Mobbin",
+          "url": "https://mobbin.com",
+          "icon": ""
+        },
+        {
+          "id": "res-05",
+          "title": "Typewolf",
+          "url": "https://www.typewolf.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

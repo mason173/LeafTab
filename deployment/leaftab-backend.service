@@ -1,0 +1,15 @@
+[Unit]
+Description=LeafTab Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/leaftab-server
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+EnvironmentFile=-/etc/leaftab-backend.env
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

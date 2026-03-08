@@ -1,0 +1,74 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "leaf"
+      }
+    ],
+    "selectedScenarioId": "life-mode-001",
+    "scenarioShortcuts": {
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "哔哩哔哩",
+          "url": "https://www.bilibili.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "少数派",
+          "url": "https://sspai.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "淘宝",
+          "url": "https://www.taobao.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-02",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "read-02",
+          "title": "36Kr",
+          "url": "https://36kr.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "京东",
+          "url": "https://www.jd.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "知乎",
+          "url": "https://www.zhihu.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "什么值得买",
+          "url": "https://www.smzdm.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

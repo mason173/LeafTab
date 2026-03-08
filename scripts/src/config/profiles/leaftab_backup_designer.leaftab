@@ -1,0 +1,244 @@
+{
+  "type": "leaftab_backup",
+  "version": 2,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "工作模式",
+        "color": "#FF4081",
+        "icon": "pen-tool"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioGroups": {
+      "default": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "灵感素材",
+          "shortcuts": [
+            {
+              "id": "des-01",
+              "title": "Dribbble",
+              "url": "https://dribbble.com",
+              "icon": ""
+            },
+            {
+              "id": "des-02",
+              "title": "Behance",
+              "url": "https://www.behance.net",
+              "icon": ""
+            },
+            {
+              "id": "des-03",
+              "title": "Pinterest",
+              "url": "https://www.pinterest.com",
+              "icon": ""
+            },
+            {
+              "id": "des-04",
+              "title": "花瓣网",
+              "url": "https://huaban.com",
+              "icon": ""
+            },
+            {
+              "id": "des-05",
+              "title": "Unsplash",
+              "url": "https://unsplash.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "设计工具",
+          "shortcuts": [
+            {
+              "id": "tool-01",
+              "title": "Figma",
+              "url": "https://www.figma.com",
+              "icon": ""
+            },
+            {
+              "id": "tool-02",
+              "title": "MasterGo",
+              "url": "https://mastergo.com",
+              "icon": ""
+            },
+            {
+              "id": "tool-03",
+              "title": "Adobe Color",
+              "url": "https://color.adobe.com",
+              "icon": ""
+            },
+            {
+              "id": "tool-04",
+              "title": "Iconfont",
+              "url": "https://www.iconfont.cn",
+              "icon": ""
+            },
+            {
+              "id": "tool-05",
+              "title": "TinyPNG",
+              "url": "https://tinypng.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "资源社区",
+          "shortcuts": [
+            {
+              "id": "res-01",
+              "title": "站酷",
+              "url": "https://www.zcool.com.cn",
+              "icon": ""
+            },
+            {
+              "id": "res-02",
+              "title": "UI中国",
+              "url": "https://www.ui.cn",
+              "icon": ""
+            },
+            {
+              "id": "res-03",
+              "title": "Awwwards",
+              "url": "https://www.awwwards.com",
+              "icon": ""
+            },
+            {
+              "id": "res-04",
+              "title": "Mobbin",
+              "url": "https://mobbin.com",
+              "icon": ""
+            },
+            {
+              "id": "res-05",
+              "title": "Typewolf",
+              "url": "https://www.typewolf.com",
+              "icon": ""
+            }
+          ]
+        }
+      },
+      "life-mode-001": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "影音娱乐",
+          "shortcuts": [
+            {
+              "id": "ent-01",
+              "title": "哔哩哔哩",
+              "url": "https://www.bilibili.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-02",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "ent-03",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-04",
+              "title": "网易云音乐",
+              "url": "https://music.163.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-05",
+              "title": "豆瓣",
+              "url": "https://www.douban.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "阅读资讯",
+          "shortcuts": [
+            {
+              "id": "read-01",
+              "title": "少数派",
+              "url": "https://sspai.com",
+              "icon": ""
+            },
+            {
+              "id": "read-02",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "read-03",
+              "title": "知乎",
+              "url": "https://www.zhihu.com",
+              "icon": ""
+            },
+            {
+              "id": "read-04",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            },
+            {
+              "id": "read-05",
+              "title": "Product Hunt",
+              "url": "https://www.producthunt.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "生活消费",
+          "shortcuts": [
+            {
+              "id": "shop-01",
+              "title": "淘宝",
+              "url": "https://www.taobao.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-02",
+              "title": "京东",
+              "url": "https://www.jd.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-03",
+              "title": "什么值得买",
+              "url": "https://www.smzdm.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-04",
+              "title": "Apple",
+              "url": "https://www.apple.com/cn",
+              "icon": ""
+            },
+            {
+              "id": "shop-05",
+              "title": "小红书",
+              "url": "https://www.xiaohongshu.com",
+              "icon": ""
+            }
+          ]
+        }
+      }
+    }
+  }
+}

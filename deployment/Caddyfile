@@ -1,0 +1,25 @@
+example.com {
+    root * /var/www/leaftab
+
+    # Enable HSTS (HTTP Strict Transport Security)
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # API Handler - Exclusive block for /api/*
+    # Use handle_path so the /api prefix is stripped automatically
+    handle_path /api/* {
+        reverse_proxy localhost:3001
+    }
+
+    # Static File Handler - Fallback for everything else
+    handle {
+        # Enable file server
+        file_server
+        
+        # SPA routing: if file doesn't exist, rewrite to index.html
+        try_files {path} /index.html
+    }
+}
+
+www.example.com {
+    redir https://example.com{uri}
+}

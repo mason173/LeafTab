@@ -1,0 +1,244 @@
+{
+  "type": "leaftab_backup",
+  "version": 2,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "工作模式",
+        "color": "#7B1FA2",
+        "icon": "clipboard"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioGroups": {
+      "default": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "协作管理",
+          "shortcuts": [
+            {
+              "id": "col-01",
+              "title": "Jira",
+              "url": "https://www.atlassian.com/software/jira",
+              "icon": ""
+            },
+            {
+              "id": "col-02",
+              "title": "Trello",
+              "url": "https://trello.com",
+              "icon": ""
+            },
+            {
+              "id": "col-03",
+              "title": "飞书",
+              "url": "https://www.feishu.cn",
+              "icon": ""
+            },
+            {
+              "id": "col-04",
+              "title": "Confluence",
+              "url": "https://www.atlassian.com/software/confluence",
+              "icon": ""
+            },
+            {
+              "id": "col-05",
+              "title": "钉钉",
+              "url": "https://www.dingtalk.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "原型工具",
+          "shortcuts": [
+            {
+              "id": "proto-01",
+              "title": "Axure",
+              "url": "https://www.axure.com",
+              "icon": ""
+            },
+            {
+              "id": "proto-02",
+              "title": "墨刀",
+              "url": "https://modao.cc",
+              "icon": ""
+            },
+            {
+              "id": "proto-03",
+              "title": "Figma",
+              "url": "https://www.figma.com",
+              "icon": ""
+            },
+            {
+              "id": "proto-04",
+              "title": "ProcessOn",
+              "url": "https://www.processon.com",
+              "icon": ""
+            },
+            {
+              "id": "proto-05",
+              "title": "XMind",
+              "url": "https://www.xmind.cn",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "行业资讯",
+          "shortcuts": [
+            {
+              "id": "news-01",
+              "title": "人人都是产品经理",
+              "url": "https://www.woshipm.com",
+              "icon": ""
+            },
+            {
+              "id": "news-02",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "news-03",
+              "title": "虎嗅",
+              "url": "https://www.huxiu.com",
+              "icon": ""
+            },
+            {
+              "id": "news-04",
+              "title": "百度指数",
+              "url": "https://index.baidu.com",
+              "icon": ""
+            },
+            {
+              "id": "news-05",
+              "title": "七麦数据",
+              "url": "https://www.qimai.cn",
+              "icon": ""
+            }
+          ]
+        }
+      },
+      "life-mode-001": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "影音娱乐",
+          "shortcuts": [
+            {
+              "id": "ent-01",
+              "title": "哔哩哔哩",
+              "url": "https://www.bilibili.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-02",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "ent-03",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-04",
+              "title": "网易云音乐",
+              "url": "https://music.163.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-05",
+              "title": "豆瓣",
+              "url": "https://www.douban.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "阅读资讯",
+          "shortcuts": [
+            {
+              "id": "read-01",
+              "title": "少数派",
+              "url": "https://sspai.com",
+              "icon": ""
+            },
+            {
+              "id": "read-02",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "read-03",
+              "title": "知乎",
+              "url": "https://www.zhihu.com",
+              "icon": ""
+            },
+            {
+              "id": "read-04",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            },
+            {
+              "id": "read-05",
+              "title": "Product Hunt",
+              "url": "https://www.producthunt.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "生活消费",
+          "shortcuts": [
+            {
+              "id": "shop-01",
+              "title": "淘宝",
+              "url": "https://www.taobao.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-02",
+              "title": "京东",
+              "url": "https://www.jd.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-03",
+              "title": "什么值得买",
+              "url": "https://www.smzdm.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-04",
+              "title": "Apple",
+              "url": "https://www.apple.com/cn",
+              "icon": ""
+            },
+            {
+              "id": "shop-05",
+              "title": "小红书",
+              "url": "https://www.xiaohongshu.com",
+              "icon": ""
+            }
+          ]
+        }
+      }
+    }
+  }
+}

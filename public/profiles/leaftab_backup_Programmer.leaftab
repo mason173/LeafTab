@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "工作模式",
+        "color": "#35B7FF",
+        "icon": "briefcase"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "dev-01",
+          "title": "GitHub",
+          "url": "https://github.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-02",
+          "title": "Stack Overflow",
+          "url": "https://stackoverflow.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-03",
+          "title": "掘金",
+          "url": "https://juejin.cn",
+          "icon": ""
+        },
+        {
+          "id": "dev-04",
+          "title": "V2EX",
+          "url": "https://www.v2ex.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-05",
+          "title": "SegmentFault",
+          "url": "https://segmentfault.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "ChatGPT",
+          "url": "https://chat.openai.com",
+          "icon": "https://api.iowen.cn/favicon/chat.openai.com.png"
+        },
+        {
+          "id": "tool-02",
+          "title": "DeepL",
+          "url": "https://www.deepl.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "Excalidraw",
+          "url": "https://excalidraw.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "JSON Formatter",
+          "url": "https://json.org",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "TinyPNG",
+          "url": "https://tinypng.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-01",
+          "title": "MDN Web Docs",
+          "url": "https://developer.mozilla.org",
+          "icon": ""
+        },
+        {
+          "id": "doc-02",
+          "title": "React",
+          "url": "https://react.dev",
+          "icon": ""
+        },
+        {
+          "id": "doc-03",
+          "title": "Tailwind CSS",
+          "url": "https://tailwindcss.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-04",
+          "title": "TypeScript",
+          "url": "https://www.typescriptlang.org",
+          "icon": ""
+        },
+        {
+          "id": "doc-05",
+          "title": "Next.js",
+          "url": "https://nextjs.org",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "哔哩哔哩",
+          "url": "https://www.bilibili.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-02",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-03",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "网易云音乐",
+          "url": "https://music.163.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "豆瓣",
+          "url": "https://www.douban.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "少数派",
+          "url": "https://sspai.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "36Kr",
+          "url": "https://36kr.com",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "知乎",
+          "url": "https://www.zhihu.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Product Hunt",
+          "url": "https://www.producthunt.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "淘宝",
+          "url": "https://www.taobao.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "京东",
+          "url": "https://www.jd.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "什么值得买",
+          "url": "https://www.smzdm.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Apple",
+          "url": "https://www.apple.com/cn",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "小红书",
+          "url": "https://www.xiaohongshu.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

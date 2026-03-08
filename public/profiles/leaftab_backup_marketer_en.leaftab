@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Marketing Mode",
+        "color": "#FF9800",
+        "icon": "trending-up"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "sns-01",
+          "title": "Facebook Business",
+          "url": "https://business.facebook.com",
+          "icon": ""
+        },
+        {
+          "id": "sns-02",
+          "title": "Twitter Ads",
+          "url": "https://ads.twitter.com",
+          "icon": ""
+        },
+        {
+          "id": "sns-03",
+          "title": "LinkedIn Ads",
+          "url": "https://www.linkedin.com/campaignmanager",
+          "icon": ""
+        },
+        {
+          "id": "sns-04",
+          "title": "Instagram",
+          "url": "https://www.instagram.com",
+          "icon": ""
+        },
+        {
+          "id": "sns-05",
+          "title": "TikTok Business",
+          "url": "https://www.tiktok.com/business",
+          "icon": ""
+        },
+        {
+          "id": "data-01",
+          "title": "Google Analytics",
+          "url": "https://analytics.google.com",
+          "icon": ""
+        },
+        {
+          "id": "data-02",
+          "title": "SEMrush",
+          "url": "https://www.semrush.com",
+          "icon": ""
+        },
+        {
+          "id": "data-03",
+          "title": "Ahrefs",
+          "url": "https://ahrefs.com",
+          "icon": ""
+        },
+        {
+          "id": "data-04",
+          "title": "Google Trends",
+          "url": "https://trends.google.com",
+          "icon": ""
+        },
+        {
+          "id": "data-05",
+          "title": "Sprout Social",
+          "url": "https://sproutsocial.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "Canva",
+          "url": "https://www.canva.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-02",
+          "title": "Mailchimp",
+          "url": "https://mailchimp.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "Buffer",
+          "url": "https://buffer.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "HubSpot",
+          "url": "https://www.hubspot.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "ChatGPT",
+          "url": "https://chat.openai.com",
+          "icon": "https://api.iowen.cn/favicon/chat.openai.com.png"
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

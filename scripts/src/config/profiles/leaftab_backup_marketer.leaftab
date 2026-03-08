@@ -1,0 +1,244 @@
+{
+  "type": "leaftab_backup",
+  "version": 2,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "运营模式",
+        "color": "#FF9800",
+        "icon": "trending-up"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioGroups": {
+      "default": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "社媒平台",
+          "shortcuts": [
+            {
+              "id": "sns-01",
+              "title": "微信公众平台",
+              "url": "https://mp.weixin.qq.com",
+              "icon": ""
+            },
+            {
+              "id": "sns-02",
+              "title": "小红书创作中心",
+              "url": "https://creator.xiaohongshu.com",
+              "icon": ""
+            },
+            {
+              "id": "sns-03",
+              "title": "抖音创作平台",
+              "url": "https://creator.douyin.com",
+              "icon": ""
+            },
+            {
+              "id": "sns-04",
+              "title": "哔哩哔哩创作",
+              "url": "https://member.bilibili.com/platform/home",
+              "icon": ""
+            },
+            {
+              "id": "sns-05",
+              "title": "微博管理中心",
+              "url": "https://weibo.com/manage",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "数据分析",
+          "shortcuts": [
+            {
+              "id": "data-01",
+              "title": "新榜",
+              "url": "https://www.newrank.cn",
+              "icon": ""
+            },
+            {
+              "id": "data-02",
+              "title": "蝉妈妈",
+              "url": "https://www.chanmama.com",
+              "icon": ""
+            },
+            {
+              "id": "data-03",
+              "title": "七麦数据",
+              "url": "https://www.qimai.cn",
+              "icon": ""
+            },
+            {
+              "id": "data-04",
+              "title": "百度指数",
+              "url": "https://index.baidu.com",
+              "icon": ""
+            },
+            {
+              "id": "data-05",
+              "title": "微信指数",
+              "url": "https://zs.weixin.qq.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "创作工具",
+          "shortcuts": [
+            {
+              "id": "tool-01",
+              "title": "秀米编辑器",
+              "url": "https://xiumi.us",
+              "icon": ""
+            },
+            {
+              "id": "tool-02",
+              "title": "Canva可画",
+              "url": "https://www.canva.cn",
+              "icon": ""
+            },
+            {
+              "id": "tool-03",
+              "title": "创客贴",
+              "url": "https://www.chuangkit.com",
+              "icon": ""
+            },
+            {
+              "id": "tool-04",
+              "title": "剪映网页版",
+              "url": "https://www.capcut.cn",
+              "icon": ""
+            },
+            {
+              "id": "tool-05",
+              "title": "ChatGPT",
+              "url": "https://chat.openai.com",
+              "icon": "https://api.iowen.cn/favicon/chat.openai.com.png"
+            }
+          ]
+        }
+      },
+      "life-mode-001": {
+        "p0-0": {
+          "id": "p0-0",
+          "name": "影音娱乐",
+          "shortcuts": [
+            {
+              "id": "ent-01",
+              "title": "哔哩哔哩",
+              "url": "https://www.bilibili.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-02",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "ent-03",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-04",
+              "title": "网易云音乐",
+              "url": "https://music.163.com",
+              "icon": ""
+            },
+            {
+              "id": "ent-05",
+              "title": "豆瓣",
+              "url": "https://www.douban.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-1": {
+          "id": "p0-1",
+          "name": "阅读资讯",
+          "shortcuts": [
+            {
+              "id": "read-01",
+              "title": "少数派",
+              "url": "https://sspai.com",
+              "icon": ""
+            },
+            {
+              "id": "read-02",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "read-03",
+              "title": "知乎",
+              "url": "https://www.zhihu.com",
+              "icon": ""
+            },
+            {
+              "id": "read-04",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            },
+            {
+              "id": "read-05",
+              "title": "Product Hunt",
+              "url": "https://www.producthunt.com",
+              "icon": ""
+            }
+          ]
+        },
+        "p0-2": {
+          "id": "p0-2",
+          "name": "生活消费",
+          "shortcuts": [
+            {
+              "id": "shop-01",
+              "title": "淘宝",
+              "url": "https://www.taobao.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-02",
+              "title": "京东",
+              "url": "https://www.jd.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-03",
+              "title": "什么值得买",
+              "url": "https://www.smzdm.com",
+              "icon": ""
+            },
+            {
+              "id": "shop-04",
+              "title": "Apple",
+              "url": "https://www.apple.com/cn",
+              "icon": ""
+            },
+            {
+              "id": "shop-05",
+              "title": "小红书",
+              "url": "https://www.xiaohongshu.com",
+              "icon": ""
+            }
+          ]
+        }
+      }
+    }
+  }
+}

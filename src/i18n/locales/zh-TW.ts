@@ -1,0 +1,434 @@
+export default {
+  translation: {
+    logoutConfirm: {
+      title: "登出",
+      description: "確定要登出嗎？尚未同步的本地變更可能會遺失。",
+      clearLocalLabel: "清除本地資料並恢復初始",
+      clearLocalDesc: "將本地捷徑恢復為所選角色的初始配置",
+      confirm: "登出",
+      cancel: "取消"
+    },
+    settings: {
+      title: "設定",
+      profile: {
+        loggedInDesc: "已登入",
+        daysActive: "活躍天數",
+        shortcutsCount: "捷徑數量",
+        guest: "訪客",
+        guestDesc: "登入以同步資料"
+      },
+      minimalistMode: {
+        label: "極簡模式",
+        description: "開啟後隱藏時間、桌布和捷徑"
+      },
+      newTabMode: {
+        label: "新分頁開啟",
+        description: "捷徑預設在新分頁中開啟"
+      },
+      timeFormat: {
+        label: "24 小時制",
+        description: "使用 24 小時制顯示時間"
+      },
+      showSeconds: {
+        label: "顯示秒數",
+        description: "在時間組件中顯示秒數"
+      },
+      showTime: {
+        label: "顯示時間",
+        description: "在頁面上顯示時間"
+      },
+      autoFocusSearch: {
+        label: "自動聚焦搜尋框",
+        description: "進入頁面時自動將光標聚焦在搜尋框"
+      },
+      language: {
+        label: "語言",
+        description: "選擇介面顯示語言",
+        selectPlaceholder: "選擇語言"
+      },
+      theme: {
+        label: "主題",
+        description: "切換淺色/深色主題，或跟隨系統自動切換",
+        selectPlaceholder: "選擇主題",
+        system: "跟隨系統",
+        light: "淺色",
+        dark: "深色"
+      },
+      accentColor: {
+        label: "主題色",
+        description: "選擇應用的主色調"
+      },
+      accent: {
+        dynamic: "動態",
+        mono: "黑白",
+        green: "綠色",
+        blue: "藍色",
+        purple: "紫色",
+        orange: "橘色",
+        pink: "粉色",
+        red: "紅色"
+      },
+      displayMode: {
+        title: "版面模式",
+        description: "選擇頁面顯示風格",
+        blank: "留白",
+        blankDesc: "隱藏時間、桌布與捷徑",
+        rhythm: "節奏",
+        rhythmDesc: "僅保留搜尋與捷徑",
+        panoramic: "全景",
+        panoramicDesc: "顯示時間、天氣、桌布與捷徑"
+      },
+      shortcutsLayout: {
+        label: "捷徑密度",
+        description: "調整每列顯示的捷徑數量",
+        set: "設定",
+        select: "選擇"
+      },
+      backup: {
+        label: "資料備份與還原",
+        description: "匯入或匯出本地版面資料 (.leaftab)",
+        cloudTab: "雲端同步",
+        webdavTab: "WebDAV 同步",
+        import: "匯入資料",
+        export: "匯出資料",
+        importSuccess: "資料匯入成功",
+        importError: "資料匯入失敗，請檢查檔案格式",
+        exportSuccess: "資料匯出成功",
+        webdav: {
+          entry: "WebDAV 同步",
+          entryDesc: "設定 WebDAV 遠端備份與還原",
+          configure: "設定",
+          pull: "從雲端拉取",
+          push: "推送至雲端",
+          sync: "立即同步",
+          url: "WebDAV 位址",
+          filePath: "遠端檔案路徑",
+          username: "帳號",
+          password: "密碼",
+          profileName: "設定名稱",
+          profileNamePlaceholder: "例如：家用 NAS",
+          usernamePlaceholder: "可選",
+          passwordPlaceholder: "可選",
+          syncModeLabel: "同步方式（二選一）",
+          syncOnChangeLabel: "有變更就自動同步",
+          syncOnChangeDesc: "每次你變更本地資料後，自動嘗試同步到 WebDAV",
+          syncByScheduleLabel: "定時自動同步",
+          syncByScheduleDesc: "依固定時間間隔自動同步，適合長時間開啟頁面",
+          syncIntervalLabel: "同步間隔",
+          conflictPolicyLabel: "衝突時如何處理",
+          policyMerge: "盡量合併本地與雲端變更（建議）",
+          policyPreferRemote: "優先保留雲端版本（本地會被覆蓋）",
+          policyPreferLocal: "優先保留本地版本（會覆蓋雲端）",
+          download: "從 WebDAV 拉取",
+          upload: "同步到 WebDAV",
+          downloading: "拉取中...",
+          uploading: "同步中...",
+          downloadSuccess: "WebDAV 拉取成功",
+          uploadSuccess: "WebDAV 同步成功",
+          downloadError: "WebDAV 拉取失敗，請檢查設定",
+          uploadError: "WebDAV 同步失敗，請檢查設定",
+          syncSuccess: "同步完成",
+          syncError: "同步失敗，請檢查設定",
+          urlRequired: "請先填寫 WebDAV 位址",
+          defaultProfileName: "預設設定",
+          configured: "已設定，可同步到 WebDAV",
+          notConfigured: "未設定，請先填寫 WebDAV 資訊",
+          disabled: "已關閉，WebDAV 同步已停用",
+          lastSyncAt: "上次同步時間",
+          notSynced: "未同步",
+          justSynced: "剛剛同步",
+          minutesAgo: "{{count}} 分鐘前",
+          hoursAgo: "{{count}} 小時前",
+          lastAttemptFailed: "最近一次同步嘗試失敗",
+          scheduleRunning: "定時同步執行中",
+          syncDisabled: "請先啟用 WebDAV 同步"
+        }
+      },
+      changelog: {
+        title: "更新日誌",
+        description: "查看最近的功能與體驗更新",
+        open: "查看更新日誌"
+      },
+      privacyPolicy: "隱私權政策",
+      copyright: "保留所有權利。",
+      specialThanks: "特別感謝測試人員：yanshuai、Horang、Mling",
+      iconAssistant: {
+        title: "發送匿名使用統計",
+        desc: "幫助我們優化圖標適配（僅發送網域，不含個人資訊）",
+        modalTitle: "幫助改進 LeafTab",
+        modalDesc: "為了提供更好的圖標適配服務，我們希望收集您新增的捷徑的網域（例如 google.com）。數據完全匿名，不包含任何個人隱私或完整網址。",
+        agree: "同意並開啟",
+        disagree: "不同意",
+        adminKeyLabel: "管理員密鑰",
+        adminKeyDesc: "用於匯出全站收集到的網域清單（僅站長/自託管營運者使用）",
+        adminKeyPlaceholder: "輸入管理員密鑰",
+        adminKeySave: "儲存",
+        adminKeyClear: "清除",
+        adminKeySaved: "管理員密鑰已儲存",
+        adminKeyCleared: "管理員密鑰已清除",
+        adminKeyRequired: "需要管理員密鑰",
+        adminKeyInvalid: "管理員密鑰無效或無權限",
+        confirmClose: "關閉後將無法優先獲得圖標適配服務，是否確認關閉？",
+        downloadTitle: "下載已收集的網域清單",
+        downloadDesc: "僅網域、去重、排除已有圖標（同一品牌合併）",
+        downloadButton: "下載清單",
+        reportNow: "立即上報",
+        reportTriggered: "已觸發上報（可能受限頻影響）",
+        queueStatus: "待上報：{{count}}，上次上報：{{last}}",
+        downloadSuccess: "已下載網域清單",
+        downloadFailed: "下載失敗，請稍後重試"
+      },
+      adminMode: {
+        tapRemaining: "再點擊{{count}}次進入管理員模式",
+        enabled: "您已進入管理員模式",
+        alreadyEnabled: "您已處於管理員模式",
+        disabled: "管理員模式已關閉",
+        switchLabel: "管理員模式",
+        switchDesc: "開啟後可設定管理員密鑰並匯出全站網域清單",
+        open: "開啟"
+      },
+      adminPanel: {
+        statsTitle: "平台統計",
+        statsDesc: "僅顯示非敏感彙總資料",
+        refresh: "重新整理",
+        loading: "載入中...",
+        statsLoadFailed: "統計載入失敗",
+        enableHint: "請先在設定中連點版本號開啟管理員模式",
+        usersTotal: "註冊使用者",
+        domainsUnique: "收集網域數",
+        weatherDebugLabel: "天氣除錯",
+        weatherDebugDesc: "顯示天氣除錯面板（僅本次會話）"
+      },
+      about: {
+        label: "關於 LeafTab",
+        desc: "查看版本資訊與外掛簡介",
+        open: "開啟",
+        title: "關於 LeafTab",
+        content: "LeafTab 是一款瀏覽器新分頁外掛。\n提供簡潔美觀的起始頁體驗，支援捷徑管理、桌布/天氣展示，以及雲端同步與 WebDAV 同步等功能。",
+        ackTitle: "致謝與開源聲明",
+        ackDesc: "LeafTab 使用了以下開源函式庫與資源（點擊可開啟）：",
+        frontend: "前端",
+        backend: "後端",
+        resources: "圖示與資源"
+      }
+    },
+    changelog: {
+      title: "更新日誌",
+      description: "最近版本更新",
+      version: "版本",
+      date: "日期",
+      items: {
+        grid: "底部捷徑重寫為扁平網格",
+        carousel: "新增滑動分頁與滑鼠滾輪翻頁",
+        entrance: "桌布、搜尋、捷徑的入場動畫優化",
+        dots: "分頁圓點居中與樣式優化"
+      }
+    },
+    languages: {
+      zh: "簡體中文",
+      "zh-TW": "繁體中文",
+      vi: "Tiếng Việt",
+      en: "English",
+      ja: "日語",
+      ko: "韓語"
+    },
+    weather: {
+      refreshing: "正在重新整理天氣和位置...",
+      unknown: "未知",
+      codes: {
+        0: "晴",
+        1: "晴",
+        2: "多雲",
+        3: "陰",
+        45: "霧",
+        52: "霧",
+        53: "小雨",
+        51: "小雨",
+        54: "中雨",
+        55: "大雨",
+        56: "凍雨",
+        57: "凍雨",
+        58: "小雨",
+        61: "小雨",
+        63: "中雨",
+        65: "大雨",
+        66: "凍雨",
+        67: "凍雨",
+        71: "小雪",
+        73: "中雪",
+        75: "大雪",
+        77: "雪粒",
+        80: "陣雨",
+        81: "陣雨",
+        82: "暴雨",
+        85: "陣雪",
+        86: "陣雪",
+        95: "雷陣雨",
+        96: "雷陣雨伴有冰雹",
+        99: "雷陣雨伴有冰雹"
+      },
+      defaultCity: "杭州",
+      defaultWeather: "多雲",
+      unknownLocation: "未知位置",
+      local: "本地"
+    },
+    lunar: {
+      label: "農曆"
+    },
+    common: {
+      loading: "載入中...",
+      cancel: "取消",
+      confirm: "確定",
+      delete: "刪除",
+      save: "儲存",
+      clear: "清空",
+      back: "返回",
+      more: "更多"
+    },
+    user: {
+      loggedIn: "已登入",
+      logout: "登出",
+      loggedOut: "已登出"
+    },
+    search: {
+      placeholder: "搜尋你想找的內容...",
+      placeholderDynamic: "搜尋你想找的內容或輸入網址...",
+      historyTitle: "搜尋歷史",
+      clearHistory: "清空",
+      noHistory: "暫無搜尋記錄"
+    },
+    groups: {
+      edit: "編輯",
+      addShortcut: "新建快捷方式"
+    },
+    context: {
+      open: "開啟",
+      edit: "編輯",
+      copyLink: "複製連結",
+      delete: "刪除",
+      addShortcut: "新增捷徑",
+      newShortcut: "新建捷徑",
+      pinToTop: "置頂"
+    },
+    sidebar: {
+      toggle: "切換側邊欄",
+      title: "側邊欄",
+      description: "顯示行動版側邊欄。"
+    },
+    shortcutModal: {
+      addTitle: "新增捷徑",
+      editTitle: "編輯捷徑",
+      nameLabel: "名稱",
+      namePlaceholder: "請輸入捷徑標題",
+      urlLabel: "網址",
+      urlPlaceholder: "請輸入網址",
+      errors: {
+        fillAll: "請填寫完整資訊",
+        fillAllDesc: "請輸入捷徑標題和連結地址"
+      }
+    },
+    onboarding: {
+      welcome: "歡迎使用 LeafTab",
+      selectRole: "選擇您的角色，開始個人化體驗",
+      skip: "跳過",
+      start: "開始體驗",
+      stepAppearanceTitle: "設定主題與語言",
+      stepAppearanceDesc: "選擇外觀與介面語言，稍後可在設定中修改",
+      stepRoleTitle: "選擇你的角色",
+      stepRoleDesc: "用於初始化推薦捷徑與版面",
+      stepLayoutTitle: "選擇版面樣式",
+      stepLayoutDesc: "決定首頁呈現的排版方式"
+    },
+    auth: {
+      description: "登入或註冊您的帳號以儲存個人化設定。",
+      tabs: { login: "登入", register: "註冊" },
+      labels: { username: "使用者名稱", password: "密碼", captcha: "驗證碼" },
+      placeholders: {
+        usernameInput: "請輸入使用者名稱",
+        passwordInput: "請輸入密碼",
+        usernameSet: "設定使用者名稱",
+        passwordSet: "設定密碼",
+        captchaInput: "請輸入驗證碼"
+      },
+      tips: {
+        username: "支援英文、數字、信箱格式，長度 2-32 位",
+        password: "密碼長度需為 8-24 位",
+        refreshCaptcha: "點擊刷新"
+      },
+      buttons: {
+        loggingIn: "登入中...",
+        login: "登入",
+        registering: "註冊中...",
+        register: "註冊"
+      },
+      toast: {
+        loginSuccess: "登入成功！歡迎回來，{{username}}",
+        registerSuccess: "註冊成功！請登入，{{username}}"
+      },
+      errors: {
+        usernamePasswordRequired: "請輸入使用者名稱和密碼",
+        captchaRequired: "請輸入驗證碼",
+        usernameFormatInvalid: "使用者名稱格式錯誤",
+        passwordLength: "密碼長度需在 8-24 位之間",
+        loginFailed: "登入失敗",
+        registerFailed: "註冊失敗",
+        loginRequestFailed: "登入請求失敗，請檢查網路或伺服器狀態",
+        registerRequestFailed: "註冊請求失敗，請檢查網路或伺服器狀態",
+        userExists: "使用者名稱已存在",
+        userNotFound: "使用者不存在",
+        invalidPassword: "密碼錯誤",
+        invalidCredentials: "使用者名稱或密碼錯誤",
+        invalidUsernameFormatBackend: "使用者名稱格式錯誤（3-20位英數字底線）",
+        passwordTooShort: "密碼長度不足（至少6位）",
+        credentialsRequired: "請輸入使用者名稱和密碼",
+        invalidCaptcha: "驗證碼錯誤",
+        internalError: "伺服器內部錯誤"
+      }
+    },
+    shortcutDelete: {
+      title: "刪除捷徑",
+      description: "確定要刪除這個捷徑嗎？"
+    },
+    syncConflict: {
+      title: "同步衝突",
+      description: "偵測到本地與雲端捷徑不一致，請選擇使用哪一份。",
+      useCloud: "以雲端為準",
+      useLocal: "以本地為準"
+    },
+    scenario: {
+      title: "情景模式",
+      defaultName: "Working mode",
+      createTitle: "新建情景模式",
+      createDescription: "設定名稱、顏色與圖示",
+      editTitle: "編輯情景模式",
+      editDescription: "修改名稱、顏色與圖示",
+      nameLabel: "模式名稱",
+      namePlaceholder: "請輸入模式名稱",
+      colorLabel: "顏色",
+      iconLabel: "圖示",
+      createButton: "新建情景模式",
+      addButton: "新增",
+      saveButton: "儲存",
+      deleteTitle: "刪除情景模式",
+      deleteConfirm: "確定要刪除該情景模式嗎？刪除後將同時移除該模式下的所有群組和捷徑，且無法恢復，請謹慎操作。",
+      deleteConfirmWithTarget: "確定要刪除「{{name}}」嗎？刪除後將同時移除該模式下的所有群組和捷徑，且無法恢復，請謹慎操作。",
+      deleteButton: "刪除",
+      toast: {
+        created: "已新增情景模式",
+        updated: "已更新情景模式",
+        deleted: "已刪除情景模式"
+      }
+    },
+    toast: {
+      cloudSynced: "已同步雲端配置",
+      cloudSyncFailed: "同步雲端配置失敗",
+      syncFailed: "同步失敗",
+      syncCloudApplied: "已使用雲端配置",
+      syncLocalApplied: "已使用本地配置",
+      linkCopied: "連結已複製",
+      linkCopyFailed: "複製連結失敗",
+      loadedFromCache: "已載入本地快取（離線模式）",
+      sessionExpired: "會話已過期，請重新登入"
+    }
+  }
+};

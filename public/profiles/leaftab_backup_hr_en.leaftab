@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Recruiting",
+        "color": "#9C27B0",
+        "icon": "users"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "rec-01",
+          "title": "LinkedIn",
+          "url": "https://www.linkedin.com",
+          "icon": ""
+        },
+        {
+          "id": "rec-02",
+          "title": "Indeed",
+          "url": "https://www.indeed.com",
+          "icon": ""
+        },
+        {
+          "id": "rec-03",
+          "title": "Glassdoor",
+          "url": "https://www.glassdoor.com",
+          "icon": ""
+        },
+        {
+          "id": "rec-04",
+          "title": "Monster",
+          "url": "https://www.monster.com",
+          "icon": ""
+        },
+        {
+          "id": "rec-05",
+          "title": "ZipRecruiter",
+          "url": "https://www.ziprecruiter.com",
+          "icon": ""
+        },
+        {
+          "id": "hr-01",
+          "title": "Workday",
+          "url": "https://www.workday.com",
+          "icon": ""
+        },
+        {
+          "id": "hr-02",
+          "title": "BambooHR",
+          "url": "https://www.bamboohr.com",
+          "icon": ""
+        },
+        {
+          "id": "hr-03",
+          "title": "Gusto",
+          "url": "https://gusto.com",
+          "icon": ""
+        },
+        {
+          "id": "hr-04",
+          "title": "Slack",
+          "url": "https://slack.com",
+          "icon": ""
+        },
+        {
+          "id": "hr-05",
+          "title": "DocuSign",
+          "url": "https://www.docusign.com",
+          "icon": ""
+        },
+        {
+          "id": "law-01",
+          "title": "SHRM",
+          "url": "https://www.shrm.org",
+          "icon": ""
+        },
+        {
+          "id": "law-02",
+          "title": "DOL.gov",
+          "url": "https://www.dol.gov",
+          "icon": ""
+        },
+        {
+          "id": "law-03",
+          "title": "Payscale",
+          "url": "https://www.payscale.com",
+          "icon": ""
+        },
+        {
+          "id": "law-04",
+          "title": "Salary.com",
+          "url": "https://www.salary.com",
+          "icon": ""
+        },
+        {
+          "id": "law-05",
+          "title": "ADP",
+          "url": "https://www.adp.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}
