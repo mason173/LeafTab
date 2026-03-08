@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Work Mode",
+        "color": "#35B7FF",
+        "icon": "briefcase"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "dev-01",
+          "title": "GitHub",
+          "url": "https://github.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-02",
+          "title": "Stack Overflow",
+          "url": "https://stackoverflow.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-03",
+          "title": "Reddit (Programming)",
+          "url": "https://www.reddit.com/r/programming",
+          "icon": ""
+        },
+        {
+          "id": "dev-04",
+          "title": "Dev.to",
+          "url": "https://dev.to",
+          "icon": ""
+        },
+        {
+          "id": "dev-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "ChatGPT",
+          "url": "https://chat.openai.com",
+          "icon": "https://api.iowen.cn/favicon/chat.openai.com.png"
+        },
+        {
+          "id": "tool-02",
+          "title": "DeepL",
+          "url": "https://www.deepl.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "JSON Formatter",
+          "url": "https://jsonformatter.org",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "Regex101",
+          "url": "https://regex101.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "Vercel",
+          "url": "https://vercel.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-01",
+          "title": "MDN Web Docs",
+          "url": "https://developer.mozilla.org",
+          "icon": ""
+        },
+        {
+          "id": "doc-02",
+          "title": "React",
+          "url": "https://react.dev",
+          "icon": ""
+        },
+        {
+          "id": "doc-03",
+          "title": "Tailwind CSS",
+          "url": "https://tailwindcss.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-04",
+          "title": "TypeScript",
+          "url": "https://www.typescriptlang.org",
+          "icon": ""
+        },
+        {
+          "id": "doc-05",
+          "title": "Next.js",
+          "url": "https://nextjs.org",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

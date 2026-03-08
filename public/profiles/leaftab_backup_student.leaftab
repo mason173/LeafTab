@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "学习模式",
+        "color": "#4CAF50",
+        "icon": "book"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "acad-01",
+          "title": "Google Scholar",
+          "url": "https://scholar.google.com",
+          "icon": ""
+        },
+        {
+          "id": "acad-02",
+          "title": "知网 (CNKI)",
+          "url": "https://www.cnki.net",
+          "icon": ""
+        },
+        {
+          "id": "acad-03",
+          "title": "Web of Science",
+          "url": "https://www.webofscience.com",
+          "icon": ""
+        },
+        {
+          "id": "acad-04",
+          "title": "百度学术",
+          "url": "https://xueshu.baidu.com",
+          "icon": ""
+        },
+        {
+          "id": "acad-05",
+          "title": "PubMed",
+          "url": "https://pubmed.ncbi.nlm.nih.gov",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "Notion",
+          "url": "https://www.notion.so",
+          "icon": ""
+        },
+        {
+          "id": "tool-02",
+          "title": "Grammarly",
+          "url": "https://www.grammarly.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "DeepL",
+          "url": "https://www.deepl.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "Overleaf",
+          "url": "https://www.overleaf.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "Zotero",
+          "url": "https://www.zotero.org",
+          "icon": ""
+        },
+        {
+          "id": "course-01",
+          "title": "Coursera",
+          "url": "https://www.coursera.org",
+          "icon": ""
+        },
+        {
+          "id": "course-02",
+          "title": "Bilibili",
+          "url": "https://www.bilibili.com",
+          "icon": ""
+        },
+        {
+          "id": "course-03",
+          "title": "中国大学MOOC",
+          "url": "https://www.icourse163.org",
+          "icon": ""
+        },
+        {
+          "id": "course-04",
+          "title": "edX",
+          "url": "https://www.edx.org",
+          "icon": ""
+        },
+        {
+          "id": "course-05",
+          "title": "网易公开课",
+          "url": "https://open.163.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "哔哩哔哩",
+          "url": "https://www.bilibili.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-02",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-03",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "网易云音乐",
+          "url": "https://music.163.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "豆瓣",
+          "url": "https://www.douban.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "少数派",
+          "url": "https://sspai.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "36Kr",
+          "url": "https://36kr.com",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "知乎",
+          "url": "https://www.zhihu.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Product Hunt",
+          "url": "https://www.producthunt.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "淘宝",
+          "url": "https://www.taobao.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "京东",
+          "url": "https://www.jd.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "什么值得买",
+          "url": "https://www.smzdm.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Apple",
+          "url": "https://www.apple.com/cn",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "小红书",
+          "url": "https://www.xiaohongshu.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

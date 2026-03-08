@@ -1,0 +1,470 @@
+export default {
+  translation: {
+    logoutConfirm: {
+      title: "ログアウト",
+      description: "ログアウトしますか？未同期のローカル変更が失われる可能性があります。",
+      clearLocalLabel: "ローカルデータを消去して初期状態に戻す",
+      clearLocalDesc: "ローカルのショートカットを選択したロールの初期設定に戻します",
+      confirm: "ログアウト",
+      cancel: "キャンセル"
+    },
+    settings: {
+      title: "設定",
+      profile: {
+        loggedInDesc: "ログイン中",
+        daysActive: "利用日数",
+        shortcutsCount: "ショートカット数",
+        guest: "ゲスト",
+        guestDesc: "ログインしてデータを同期"
+      },
+      minimalistMode: {
+        label: "ミニマリストモード",
+        description: "有効にすると時間、壁紙、ショートカットを非表示にします"
+      },
+      newTabMode: {
+        label: "新しいタブで開く",
+        description: "ショートカットをデフォルトで新しいタブで開く"
+      },
+      timeFormat: {
+        label: "24時間表示",
+        description: "時間を24時間形式で表示する"
+      },
+      showSeconds: {
+        label: "秒を表示",
+        description: "時間コンポーネントに秒を表示します"
+      },
+      showTime: {
+        label: "時間を表示",
+        description: "ページに時間を表示します"
+      },
+      autoFocusSearch: {
+        label: "検索ボックスを自動フォーカス",
+        description: "ページに入ったときに検索ボックスに自動的にフォーカスします"
+      },
+      language: {
+        label: "言語",
+        description: "表示言語を選択",
+        selectPlaceholder: "言語を選択"
+      },
+      theme: {
+        label: "テーマ",
+        description: "ライト/ダークモードの切り替え、またはシステム設定に従う",
+        selectPlaceholder: "テーマを選択",
+        system: "システム",
+        light: "ライト",
+        dark: "ダーク"
+      },
+      accentColor: {
+        label: "アクセントカラー",
+        description: "アプリのメインカラーを選択"
+      },
+      accent: {
+        dynamic: "ダイナミック",
+        mono: "モノ",
+        green: "グリーン",
+        blue: "ブルー",
+        purple: "パープル",
+        orange: "オレンジ",
+        pink: "ピンク",
+        red: "レッド"
+      },
+      displayMode: {
+        title: "表示モード",
+        description: "ページのレイアウトスタイルを選択",
+        blank: "空白",
+        blankDesc: "時間・壁紙・ショートカットを非表示",
+        rhythm: "リズム",
+        rhythmDesc: "検索とショートカットのみ表示",
+        panoramic: "パノラマ",
+        panoramicDesc: "時間・天気・壁紙・ショートカットを表示"
+      },
+      shortcutsLayout: {
+        label: "ショートカット密度",
+        description: "列あたりのショートカット数を調整します",
+        set: "設定",
+        select: "選択"
+      },
+      backup: {
+        label: "データのバックアップと復元",
+        description: "ローカルレイアウトデータをインポート/エクスポート (.leaftab)",
+        cloudTab: "クラウド同期",
+        webdavTab: "WebDAV 同期",
+        import: "データをインポート",
+        export: "データをエクスポート",
+        importSuccess: "データのインポートに成功しました",
+        importError: "データのインポートに失敗しました。ファイル形式を確認してください。",
+        exportSuccess: "データのエクスポートに成功しました",
+        webdav: {
+          entry: "WebDAV 同期",
+          entryDesc: "WebDAV でリモートバックアップと復元を設定",
+          configure: "設定",
+          pull: "クラウドから取得",
+          push: "クラウドへ送信",
+          sync: "今すぐ同期",
+          url: "WebDAV URL",
+          filePath: "リモートファイルパス",
+          username: "ユーザー名",
+          password: "パスワード",
+          profileName: "設定名",
+          profileNamePlaceholder: "例：自宅 NAS",
+          usernamePlaceholder: "任意",
+          passwordPlaceholder: "任意",
+          syncModeLabel: "同期方法（いずれか一つ）",
+          syncOnChangeLabel: "変更時に自動同期",
+          syncOnChangeDesc: "ローカルデータ変更後に自動で WebDAV に同期します",
+          syncByScheduleLabel: "定期的に自動同期",
+          syncByScheduleDesc: "一定間隔で自動同期。長時間開く場合に最適",
+          syncIntervalLabel: "同期間隔",
+          syncIntervalMinutes: "{{count}} 分",
+          enabledLabel: "WebDAV 同期を有効化",
+          enabledDesc: "無効化すると WebDAV の自動/手動同期を停止します",
+          providerCustom: "カスタムサービス",
+          providerLabel: "WebDAV プロバイダー",
+          providerPlaceholder: "プロバイダーを選択",
+          conflictPolicyLabel: "競合時の処理",
+          policyMerge: "可能ならローカルとクラウドの変更を統合（推奨）",
+          policyPreferRemote: "クラウド版を優先（ローカルは上書き）",
+          policyPreferLocal: "ローカル版を優先（クラウドは上書き）",
+          download: "WebDAV から取得",
+          upload: "WebDAV に同期",
+          downloading: "取得中...",
+          uploading: "同期中...",
+          downloadSuccess: "WebDAV の取得に成功しました",
+          uploadSuccess: "WebDAV の同期に成功しました",
+          downloadError: "WebDAV の取得に失敗しました。設定を確認してください。",
+          uploadError: "WebDAV の同期に失敗しました。設定を確認してください。",
+          syncSuccess: "同期完了",
+          syncError: "同期に失敗しました。設定を確認してください。",
+          urlRequired: "まず WebDAV URL を入力してください",
+          defaultProfileName: "デフォルト設定",
+          configured: "設定済み、同期可能",
+          notConfigured: "未設定。WebDAV 情報を入力してください",
+          lastSyncAt: "最終同期",
+          notSynced: "未同期",
+          justSynced: "たった今同期",
+          minutesAgo: "{{count}} 分前",
+          hoursAgo: "{{count}} 時間前",
+          disabled: "無効（WebDAV 同期は停止中）",
+          lastAttemptFailed: "直近の同期に失敗しました",
+          scheduleRunning: "定期同期が実行中",
+          syncDisabled: "まず WebDAV 同期を有効化してください"
+        }
+      },
+      changelog: {
+        title: "更新履歴",
+        description: "最近の機能・体験の更新を表示",
+        open: "更新履歴を見る"
+      },
+      privacyPolicy: "プライバシーポリシー",
+      copyright: "All rights reserved.",
+      specialThanks: "テスターに特別感謝：yanshuai、Horang、Mling",
+      iconAssistant: {
+        title: "匿名の使用統計を送信",
+        desc: "アイコンサポートの最適化にご協力ください（ドメインのみ、個人情報なし）",
+        modalTitle: "LeafTabの改善にご協力ください",
+        modalDesc: "より良いアイコンサポートを提供するために、ショートカットのドメイン（例：google.com）を収集させていただきたいと考えています。データは完全に匿名であり、個人情報や完全なURLは含まれません。",
+        agree: "同意して有効にする",
+        disagree: "同意しない",
+        adminKeyLabel: "管理者キー",
+        adminKeyDesc: "全体で収集したドメイン一覧のエクスポートに必要です（運用者/自ホスト向け）",
+        adminKeyPlaceholder: "管理者キーを入力",
+        adminKeySave: "保存",
+        adminKeyClear: "クリア",
+        adminKeySaved: "管理者キーを保存しました",
+        adminKeyCleared: "管理者キーを削除しました",
+        adminKeyRequired: "管理者キーが必要です",
+        adminKeyInvalid: "管理者キーが無効、または権限がありません",
+        confirmClose: "オフにすると優先アイコンサポートが停止します。無効化しますか？",
+        downloadTitle: "収集したドメイン一覧をダウンロード",
+        downloadDesc: "ドメインのみ、重複排除、既存アイコンは除外",
+        downloadButton: "一覧をダウンロード",
+        reportNow: "今すぐ送信",
+        reportTriggered: "送信をトリガーしました（レート制限の可能性あり）",
+        queueStatus: "未送信: {{count}}、最終送信: {{last}}",
+        downloadSuccess: "ドメイン一覧をダウンロードしました",
+        downloadFailed: "ダウンロードに失敗しました。しばらくしてから再試行してください"
+      },
+      adminMode: {
+        tapRemaining: "あと{{count}}回タップすると管理者モードになります",
+        enabled: "管理者モードに入りました",
+        alreadyEnabled: "すでに管理者モードです",
+        disabled: "管理者モードをオフにしました",
+        switchLabel: "管理者モード",
+        switchDesc: "管理者キーの設定と全体ドメイン一覧のエクスポートが可能になります",
+        open: "開く"
+      },
+      adminPanel: {
+        statsTitle: "プラットフォーム統計",
+        statsDesc: "非機微な集計データのみ",
+        refresh: "更新",
+        loading: "読み込み中...",
+        statsLoadFailed: "統計の取得に失敗しました",
+        enableHint: "先に設定でバージョンをタップして管理者モードを有効化してください",
+        usersTotal: "登録ユーザー数",
+        domainsUnique: "収集ドメイン数",
+        weatherDebugLabel: "天気デバッグ",
+        weatherDebugDesc: "天気デバッグパネルを表示（セッションのみ）"
+      },
+      about: {
+        label: "LeafTab について",
+        desc: "バージョン情報と拡張機能の概要",
+        open: "開く",
+        title: "LeafTab について",
+        content: "LeafTab はブラウザーの新しいタブ拡張です。\nショートカット管理、壁紙/天気表示、クラウド同期や WebDAV 同期などの機能を提供します。",
+        ackTitle: "謝辞",
+        ackDesc: "LeafTab は次のオープンソースライブラリ／リソースを利用しています（タップで開く）：",
+        frontend: "フロントエンド",
+        backend: "バックエンド",
+        resources: "アイコン・リソース"
+      }
+    },
+    changelog: {
+      title: "更新履歴",
+      description: "最近のバージョン更新",
+      version: "バージョン",
+      date: "日付",
+      items: {
+        grid: "下部ショートカットをフラットグリッドに再設計",
+        carousel: "スワイプページングとマウスホイールページングを追加",
+        entrance: "壁紙・検索・ショートカットの登場アニメーションを改善",
+        dots: "ページドットの中央揃えとスタイルを調整"
+      }
+    },
+    languages: {
+      zh: "简体中文",
+      "zh-TW": "繁體中文",
+      en: "English",
+      vi: "Tiếng Việt",
+      ja: "日本語",
+      ko: "한국어"
+    },
+    weather: {
+      refreshing: "天気と位置情報を更新中...",
+      unknown: "不明",
+      wallpaper: {
+        mode: "壁紙モード",
+        modeDesc: "ミニマルモードの背景をカスタマイズ",
+        bing: "Bing 毎日壁紙",
+        weather: "天気壁紙",
+        custom: "カスタム壁紙",
+        uploadTitle: "カスタム壁紙をアップロード",
+        upload: "画像をアップロード",
+        uploadDesc: "クリックしてアップロード、または画像をドラッグ＆ドロップ",
+        download: "ダウンロード",
+        setAsWallpaper: "壁紙に設定",
+        apply: "壁紙に設定",
+        bingDesc: "Bing から毎日自動更新されます。",
+        weatherDesc: "地域の天気に合わせて動的に変化します。",
+        customDesc: "自分の画像を壁紙として使用します。",
+        customUploaded: "アップロードした壁紙。",
+        imageSupport: "JPG、PNG、WEBP に対応"
+      },
+      codes: {
+        0: "晴れ",
+        1: "晴れ",
+        2: "曇り",
+        3: "曇り",
+        45: "霧",
+        52: "霧",
+        51: "霧雨",
+        53: "霧雨",
+        54: "激しい霧雨",
+        55: "激しい霧雨",
+        56: "着氷性の霧雨",
+        57: "着氷性の霧雨",
+        58: "小雨",
+        61: "小雨",
+        63: "雨",
+        65: "激しい雨",
+        66: "着氷性の雨",
+        67: "着氷性の雨",
+        71: "小雪",
+        73: "雪",
+        75: "大雪",
+        77: "霧雪",
+        80: "にわか雨",
+        81: "にわか雨",
+        82: "激しいにわか雨",
+        85: "にわか雪",
+        86: "にわか雪",
+        95: "雷雨",
+        96: "雹を伴う雷雨",
+        99: "雹を伴う雷雨"
+      },
+      defaultCity: "杭州",
+      defaultWeather: "曇り",
+      unknownLocation: "場所不明",
+      local: "現在地"
+    },
+    lunar: {
+      label: "旧暦"
+    },
+    common: {
+      loading: "読み込み中...",
+      cancel: "キャンセル",
+      confirm: "確認",
+      delete: "削除",
+      save: "保存",
+      clear: "クリア",
+      back: "戻る",
+      more: "もっと見る"
+    },
+    user: {
+      loggedIn: "ログイン済み",
+      logout: "ログアウト",
+      loggedOut: "ログアウトしました"
+    },
+    search: {
+      placeholder: "検索したい内容を入力...",
+      placeholderDynamic: "検索したい内容またはURLを入力...",
+      historyTitle: "検索履歴",
+      clearHistory: "クリア",
+      noHistory: "検索履歴はありません"
+    },
+    groups: {
+      edit: "編集",
+      addShortcut: "新規ショートカット"
+    },
+    context: {
+      open: "開く",
+      edit: "編集",
+      copyLink: "リンクをコピー",
+      delete: "削除",
+      addShortcut: "ショートカットを追加",
+      newShortcut: "新しいショートカット",
+      pinToTop: "固定"
+    },
+    sidebar: {
+      toggle: "サイドバーを切り替え",
+      title: "サイドバー",
+      description: "モバイル用サイドバーを表示します。"
+    },
+    shortcutModal: {
+      addTitle: "ショートカットを追加",
+      editTitle: "ショートカットを編集",
+      nameLabel: "名前",
+      namePlaceholder: "ショートカット名を入力",
+      urlLabel: "URL",
+      urlPlaceholder: "URLを入力",
+      errors: {
+        fillAll: "すべての情報を入力してください",
+        fillAllDesc: "ショートカット名とURLを入力してください"
+      }
+    },
+    onboarding: {
+      welcome: "LeafTab へようこそ",
+      selectRole: "ロールを選択して、パーソナライズを開始",
+      skip: "スキップ",
+      start: "開始する",
+      stepAppearanceTitle: "テーマと言語を設定",
+      stepAppearanceDesc: "外観と言語を選択します。後で設定で変更できます",
+      stepRoleTitle: "役割を選択",
+      stepRoleDesc: "おすすめのショートカットとレイアウトを初期化します",
+      stepLayoutTitle: "レイアウトを選択",
+      stepLayoutDesc: "ホーム画面の配置を決定します"
+    },
+    auth: {
+      description: "ログインまたは登録して個人設定を保存します。",
+      tabs: { login: "ログイン", register: "登録" },
+      labels: { username: "ユーザー名", password: "パスワード" },
+      placeholders: {
+        usernameInput: "ユーザー名を入力",
+        passwordInput: "パスワードを入力",
+        usernameSet: "ユーザー名を設定",
+        passwordSet: "パスワードを設定"
+      },
+      tips: {
+        username: "英数字、メール形式、長さ2-32文字",
+        password: "パスワードは8-24文字"
+      },
+      buttons: {
+        loggingIn: "ログイン中...",
+        login: "ログイン",
+        registering: "登録中...",
+        register: "登録"
+      },
+      toast: {
+        loginSuccess: "ログイン成功！おかえりなさい、{{username}}",
+        registerSuccess: "登録成功！ログインしてください、{{username}}"
+      },
+      errors: {
+        usernamePasswordRequired: "ユーザー名とパスワードを入力してください",
+        captchaRequired: "認証コードを入力してください",
+        usernameFormatInvalid: "ユーザー名の形式が無効です",
+        passwordLength: "パスワードは8-24文字である必要があります",
+        loginFailed: "ログイン失敗",
+        registerFailed: "登録失敗",
+        loginRequestFailed: "ログイン要求失敗。ネットワークまたはサーバーを確認してください。",
+        registerRequestFailed: "登録要求失敗。ネットワークまたはサーバーを確認してください。",
+        userExists: "ユーザー名は既に存在します",
+        userNotFound: "ユーザーが見つかりません",
+        invalidPassword: "パスワードが間違っています",
+        invalidCredentials: "ユーザー名またはパスワードが間違っています",
+        invalidUsernameFormatBackend: "ユーザー名の形式が無効です（3-20文字の英数字、アンダースコア）",
+        passwordTooShort: "パスワードが短すぎます（6文字以上）",
+        credentialsRequired: "ユーザー名とパスワードを入力してください",
+        invalidCaptcha: "認証コードが無効です",
+        internalError: "サーバー内部エラー"
+      }
+    },
+    shortcutDelete: {
+      title: "ショートカットを削除",
+      description: "このショートカットを削除してもよろしいですか？"
+    },
+    syncConflict: {
+      title: "同期の競合",
+      description: "ローカルとクラウドのデータが一致しません。どちらを使用するか選択してください。",
+      useCloud: "クラウドを使用",
+      useLocal: "ローカルを使用"
+    },
+    scenario: {
+      title: "シナリオモード",
+      defaultName: "Working mode",
+      unnamed: "無題",
+      createTitle: "新しいシナリオ",
+      createDescription: "名前、色、アイコンを設定",
+      editTitle: "シナリオを編集",
+      editDescription: "名前、色、アイコンを変更",
+      nameLabel: "シナリオ名",
+      namePlaceholder: "シナリオ名を入力",
+      colorLabel: "色",
+      iconLabel: "アイコン",
+      actionEdit: "シナリオを編集",
+      actionDelete: "シナリオを削除",
+      colorPicker: "色を選択",
+      iconPicker: "アイコンを選択",
+      createButton: "シナリオを作成",
+      addButton: "追加",
+      saveButton: "保存",
+      deleteTitle: "シナリオを削除",
+      deleteConfirm: "このシナリオを削除してもよろしいですか？このモードのすべてのグループとショートカットも削除され、復元できません。",
+      deleteConfirmWithTarget: "「{{name}}」を削除してもよろしいですか？このモードのすべてのグループとショートカットも削除され、復元できません。",
+      deleteButton: "削除",
+      toast: {
+        created: "シナリオを作成しました",
+        updated: "シナリオを更新しました",
+        deleted: "シナリオを削除しました"
+      }
+    },
+    toast: {
+      cloudSynced: "クラウド設定を同期しました",
+      cloudSyncFailed: "クラウド設定の同期に失敗しました",
+      syncFailed: "同期に失敗しました",
+      syncCloudApplied: "クラウド設定を適用しました",
+      syncLocalApplied: "ローカル設定を適用しました",
+      linkCopied: "リンクをコピーしました",
+      linkCopyFailed: "リンクのコピーに失敗しました",
+      loadedFromCache: "ローカルキャッシュから読み込みました（オフラインモード）",
+      sessionExpired: "セッションが切れました。もう一度ログインしてください",
+      shortcutCreateFailed: "ショートカットを作成できません",
+      alreadyOnPage: "すでにこのページです"
+    },
+    sync: {
+      cloud: "クラウド",
+      local: "ローカル"
+    },
+    pagination: {
+      page: "{{page}} ページ"
+    }
+  }
+};

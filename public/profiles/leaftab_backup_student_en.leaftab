@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Study Mode",
+        "color": "#4CAF50",
+        "icon": "book"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "acad-01",
+          "title": "Google Scholar",
+          "url": "https://scholar.google.com",
+          "icon": ""
+        },
+        {
+          "id": "acad-02",
+          "title": "JSTOR",
+          "url": "https://www.jstor.org",
+          "icon": ""
+        },
+        {
+          "id": "acad-03",
+          "title": "ResearchGate",
+          "url": "https://www.researchgate.net",
+          "icon": ""
+        },
+        {
+          "id": "acad-04",
+          "title": "WorldCat",
+          "url": "https://www.worldcat.org",
+          "icon": ""
+        },
+        {
+          "id": "acad-05",
+          "title": "PubMed",
+          "url": "https://pubmed.ncbi.nlm.nih.gov",
+          "icon": ""
+        },
+        {
+          "id": "tool-01",
+          "title": "Notion",
+          "url": "https://www.notion.so",
+          "icon": ""
+        },
+        {
+          "id": "tool-02",
+          "title": "Grammarly",
+          "url": "https://www.grammarly.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-03",
+          "title": "Quizlet",
+          "url": "https://quizlet.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-04",
+          "title": "WolframAlpha",
+          "url": "https://www.wolframalpha.com",
+          "icon": ""
+        },
+        {
+          "id": "tool-05",
+          "title": "Zotero",
+          "url": "https://www.zotero.org",
+          "icon": ""
+        },
+        {
+          "id": "course-01",
+          "title": "Coursera",
+          "url": "https://www.coursera.org",
+          "icon": ""
+        },
+        {
+          "id": "course-02",
+          "title": "edX",
+          "url": "https://www.edx.org",
+          "icon": ""
+        },
+        {
+          "id": "course-03",
+          "title": "Khan Academy",
+          "url": "https://www.khanacademy.org",
+          "icon": ""
+        },
+        {
+          "id": "course-04",
+          "title": "Udemy",
+          "url": "https://www.udemy.com",
+          "icon": ""
+        },
+        {
+          "id": "course-05",
+          "title": "YouTube Learning",
+          "url": "https://www.youtube.com/learning",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

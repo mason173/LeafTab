@@ -1,0 +1,10 @@
+{
+  "appTitle": {
+    "message": "LeafTab - Minimalist New Tab Page",
+    "description": "The title of the application"
+  },
+  "appDescription": {
+    "message": "A minimal new tab experience with a calm, clean interface. Open every tab with clarity and focus, free from distractions.",
+    "description": "The description of the application"
+  }
+}

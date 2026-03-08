@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Finance Mode",
+        "color": "#F44336",
+        "icon": "dollar-sign"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "mkt-01",
+          "title": "Yahoo Finance",
+          "url": "https://finance.yahoo.com",
+          "icon": ""
+        },
+        {
+          "id": "mkt-02",
+          "title": "Bloomberg",
+          "url": "https://www.bloomberg.com",
+          "icon": ""
+        },
+        {
+          "id": "mkt-03",
+          "title": "Investing.com",
+          "url": "https://www.investing.com",
+          "icon": ""
+        },
+        {
+          "id": "mkt-04",
+          "title": "TradingView",
+          "url": "https://www.tradingview.com",
+          "icon": ""
+        },
+        {
+          "id": "mkt-05",
+          "title": "Google Finance",
+          "url": "https://www.google.com/finance",
+          "icon": ""
+        },
+        {
+          "id": "news-01",
+          "title": "Wall Street Journal",
+          "url": "https://www.wsj.com",
+          "icon": ""
+        },
+        {
+          "id": "news-02",
+          "title": "Financial Times",
+          "url": "https://www.ft.com",
+          "icon": ""
+        },
+        {
+          "id": "news-03",
+          "title": "CNBC",
+          "url": "https://www.cnbc.com",
+          "icon": ""
+        },
+        {
+          "id": "news-04",
+          "title": "Forbes",
+          "url": "https://www.forbes.com",
+          "icon": ""
+        },
+        {
+          "id": "news-05",
+          "title": "The Economist",
+          "url": "https://www.economist.com",
+          "icon": ""
+        },
+        {
+          "id": "reg-01",
+          "title": "SEC (EDGAR)",
+          "url": "https://www.sec.gov/edgar",
+          "icon": ""
+        },
+        {
+          "id": "reg-02",
+          "title": "IRS",
+          "url": "https://www.irs.gov",
+          "icon": ""
+        },
+        {
+          "id": "reg-03",
+          "title": "Excel Online",
+          "url": "https://www.office.com/launch/excel",
+          "icon": ""
+        },
+        {
+          "id": "reg-04",
+          "title": "Federal Reserve",
+          "url": "https://www.federalreserve.gov",
+          "icon": ""
+        },
+        {
+          "id": "reg-05",
+          "title": "TurboTax",
+          "url": "https://turbotax.intuit.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

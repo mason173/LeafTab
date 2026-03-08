@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Work Mode",
+        "color": "#7B1FA2",
+        "icon": "clipboard"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "col-01",
+          "title": "Jira",
+          "url": "https://www.atlassian.com/software/jira",
+          "icon": ""
+        },
+        {
+          "id": "col-02",
+          "title": "Trello",
+          "url": "https://trello.com",
+          "icon": ""
+        },
+        {
+          "id": "col-03",
+          "title": "Slack",
+          "url": "https://slack.com",
+          "icon": ""
+        },
+        {
+          "id": "col-04",
+          "title": "Confluence",
+          "url": "https://www.atlassian.com/software/confluence",
+          "icon": ""
+        },
+        {
+          "id": "col-05",
+          "title": "Monday.com",
+          "url": "https://monday.com",
+          "icon": ""
+        },
+        {
+          "id": "proto-01",
+          "title": "Figma",
+          "url": "https://www.figma.com",
+          "icon": ""
+        },
+        {
+          "id": "proto-02",
+          "title": "Miro",
+          "url": "https://miro.com",
+          "icon": ""
+        },
+        {
+          "id": "proto-03",
+          "title": "Whimsical",
+          "url": "https://whimsical.com",
+          "icon": ""
+        },
+        {
+          "id": "proto-04",
+          "title": "Balsamiq",
+          "url": "https://balsamiq.com",
+          "icon": ""
+        },
+        {
+          "id": "proto-05",
+          "title": "Lucidchart",
+          "url": "https://www.lucidchart.com",
+          "icon": ""
+        },
+        {
+          "id": "news-01",
+          "title": "Product Hunt",
+          "url": "https://www.producthunt.com",
+          "icon": ""
+        },
+        {
+          "id": "news-02",
+          "title": "TechCrunch",
+          "url": "https://techcrunch.com",
+          "icon": ""
+        },
+        {
+          "id": "news-03",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "news-04",
+          "title": "Medium",
+          "url": "https://medium.com",
+          "icon": ""
+        },
+        {
+          "id": "news-05",
+          "title": "Substack",
+          "url": "https://substack.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}

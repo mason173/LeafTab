@@ -1,0 +1,208 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-02-14T03:00:00.000Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "default",
+        "name": "Office Mode",
+        "color": "#607D8B",
+        "icon": "file-text"
+      },
+      {
+        "id": "life-mode-001",
+        "name": "Life Mode",
+        "color": "#3DD6C5",
+        "icon": "coffee"
+      }
+    ],
+    "selectedScenarioId": "default",
+    "scenarioShortcuts": {
+      "default": [
+        {
+          "id": "doc-01",
+          "title": "Google Docs",
+          "url": "https://docs.google.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-02",
+          "title": "Office 365",
+          "url": "https://www.office.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-03",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
+          "icon": ""
+        },
+        {
+          "id": "doc-04",
+          "title": "Adobe Acrobat",
+          "url": "https://www.adobe.com/acrobat/online.html",
+          "icon": ""
+        },
+        {
+          "id": "doc-05",
+          "title": "Notion",
+          "url": "https://www.notion.so",
+          "icon": ""
+        },
+        {
+          "id": "ast-01",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
+          "icon": ""
+        },
+        {
+          "id": "ast-02",
+          "title": "Slack",
+          "url": "https://slack.com",
+          "icon": ""
+        },
+        {
+          "id": "ast-03",
+          "title": "Zoom",
+          "url": "https://zoom.us",
+          "icon": ""
+        },
+        {
+          "id": "ast-04",
+          "title": "Google Translate",
+          "url": "https://translate.google.com",
+          "icon": ""
+        },
+        {
+          "id": "ast-05",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
+          "icon": ""
+        },
+        {
+          "id": "trv-01",
+          "title": "Expedia",
+          "url": "https://www.expedia.com",
+          "icon": ""
+        },
+        {
+          "id": "trv-02",
+          "title": "Booking.com",
+          "url": "https://www.booking.com",
+          "icon": ""
+        },
+        {
+          "id": "trv-03",
+          "title": "Amazon Business",
+          "url": "https://business.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "trv-04",
+          "title": "LinkedIn",
+          "url": "https://www.linkedin.com",
+          "icon": ""
+        },
+        {
+          "id": "trv-05",
+          "title": "FedEx",
+          "url": "https://www.fedex.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "ent-01",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-02",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-03",
+          "title": "Spotify",
+          "url": "https://open.spotify.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-04",
+          "title": "Twitch",
+          "url": "https://www.twitch.tv",
+          "icon": ""
+        },
+        {
+          "id": "ent-05",
+          "title": "IMDb",
+          "url": "https://www.imdb.com",
+          "icon": ""
+        },
+        {
+          "id": "read-01",
+          "title": "CNN",
+          "url": "https://edition.cnn.com",
+          "icon": ""
+        },
+        {
+          "id": "read-02",
+          "title": "BBC News",
+          "url": "https://www.bbc.com/news",
+          "icon": ""
+        },
+        {
+          "id": "read-03",
+          "title": "The New York Times",
+          "url": "https://www.nytimes.com",
+          "icon": ""
+        },
+        {
+          "id": "read-04",
+          "title": "Reddit",
+          "url": "https://www.reddit.com",
+          "icon": ""
+        },
+        {
+          "id": "read-05",
+          "title": "Hacker News",
+          "url": "https://news.ycombinator.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-01",
+          "title": "Amazon",
+          "url": "https://www.amazon.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-02",
+          "title": "eBay",
+          "url": "https://www.ebay.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-03",
+          "title": "Best Buy",
+          "url": "https://www.bestbuy.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-04",
+          "title": "Walmart",
+          "url": "https://www.walmart.com",
+          "icon": ""
+        },
+        {
+          "id": "shop-05",
+          "title": "Apple",
+          "url": "https://www.apple.com",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}
