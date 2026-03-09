@@ -1,35 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RiMapPin2Line } from '@remixicon/react';
 import { toast } from './ui/sonner';
-
-function Location() {
-  return (
-    <div className="relative shrink-0 size-[16px]" data-name="Location">
-      <div className="absolute inset-[16.67%]" data-name="Group">
-        <div className="absolute inset-[-4.69%]">
-          <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 11.6667 11.6667">
-            <g id="Group">
-              <path 
-                clipRule="evenodd" 
-                d="M5.83333 1.16666C3.90033 1.16666 2.33333 2.73366 2.33333 4.66666C2.33333 7.29166 5.83333 10.5 5.83333 10.5C5.83333 10.5 9.33333 7.29166 9.33333 4.66666C9.33333 2.73366 7.76633 1.16666 5.83333 1.16666ZM5.83333 6.125C5.02833 6.125 4.375 5.47166 4.375 4.66666C4.375 3.86166 5.02833 3.20833 5.83333 3.20833C6.63833 3.20833 7.29166 3.86166 7.29166 4.66666C7.29166 5.47166 6.63833 6.125 5.83333 6.125Z" 
-                fillRule="evenodd" 
-                id="Path" 
-                stroke="currentColor" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-              />
-            </g>
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function WeatherCity({ city, variant }: { city: string; variant: 'inverted' | 'default' }) {
   return (
     <div className={`${variant === 'inverted' ? 'bg-white/10 text-white/90' : 'bg-secondary text-foreground'} content-stretch flex gap-[2px] items-center justify-center p-[6px] relative rounded-[999px] shrink-0`}>
-      <Location />
+      <RiMapPin2Line className="size-4 shrink-0" />
       <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-[13px]">{city}</p>
     </div>
   );

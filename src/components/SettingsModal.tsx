@@ -30,6 +30,7 @@ import type { WebdavConfig } from "@/hooks/useWebdavSync";
 import { toast } from "./ui/sonner";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { parseLeafTabBackup } from "@/utils/backupData";
+import { hasWebdavUrlConfiguredFromStorage, isWebdavSyncEnabledFromStorage, readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from "@/utils/webdavConfig";
 /// <reference types="chrome" />
 import {
   Select,
@@ -85,7 +86,7 @@ interface SettingsModalProps {
   onOpenChange: (open: boolean) => void;
   username?: string | null;
   onLogin?: () => boolean | void;
-  onLogout?: (options?: { clearLocal?: boolean }) => void;
+  onLogout?: (options?: { clearLocal?: boolean }) => Promise<void> | void;
   shortcutsCount?: number;
   minimalistMode: boolean;
   onMinimalistModeChange: (checked: boolean) => void;
@@ -220,9 +221,15 @@ export default function SettingsModal({
 
   useEffect(() => {
     setMounted(true);
-    const savedColor = localStorage.getItem('accentColor') || 'green';
-    setAccentColor(savedColor);
-    document.documentElement.setAttribute('data-accent-color', savedColor);
+    const syncAccent = () => {
+      const savedColor = localStorage.getItem('accentColor') || 'green';
+      setAccentColor(savedColor);
+      document.documentElement.setAttribute('data-accent-color', savedColor);
+      if (savedColor !== 'dynamic') clearDynamicAccentColor();
+    };
+    syncAccent();
+    window.addEventListener('leaftab-accent-color-changed', syncAccent);
+    return () => window.removeEventListener('leaftab-accent-color-changed', syncAccent);
   }, []);
   useEffect(() => {
     let canceled = false;
@@ -269,6 +276,7 @@ export default function SettingsModal({
     setAccentColor(colorName);
     localStorage.setItem('accentColor', colorName);
     document.documentElement.setAttribute('data-accent-color', colorName);
+    window.dispatchEvent(new Event('leaftab-accent-color-changed'));
   };
 
   const handleImportClick = () => {
@@ -302,8 +310,7 @@ export default function SettingsModal({
   const [syncTab, setSyncTab] = useState<'cloud' | 'webdav'>('cloud');
   const [webdavProfileName, setWebdavProfileName] = useState('');
   const [webdavLastSyncAt, setWebdavLastSyncAt] = useState('');
-  const [webdavLastAttemptAt, setWebdavLastAttemptAt] = useState('');
-  const [webdavLastErrorAt, setWebdavLastErrorAt] = useState('');
+  const [webdavNextSyncAt, setWebdavNextSyncAt] = useState('');
   const [relativeNow, setRelativeNow] = useState(() => Date.now());
   const [syncCardAnimSeq, setSyncCardAnimSeq] = useState(0);
 
@@ -328,8 +335,7 @@ export default function SettingsModal({
     if (!isOpen) return;
     setWebdavProfileName((localStorage.getItem('webdav_profile_name') || '').trim());
     setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
-    setWebdavLastAttemptAt(localStorage.getItem('webdav_last_attempt_at') || '');
-    setWebdavLastErrorAt(localStorage.getItem('webdav_last_error_at') || '');
+    setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
     setRelativeNow(Date.now());
   }, [isOpen]);
   useEffect(() => {
@@ -342,8 +348,7 @@ export default function SettingsModal({
     const timer = window.setInterval(() => {
       setRelativeNow(Date.now());
       setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
-      setWebdavLastAttemptAt(localStorage.getItem('webdav_last_attempt_at') || '');
-      setWebdavLastErrorAt(localStorage.getItem('webdav_last_error_at') || '');
+      setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
     }, 30000);
     return () => window.clearInterval(timer);
   }, [isOpen]);
@@ -351,8 +356,7 @@ export default function SettingsModal({
     if (!isOpen) return;
     const onStatusChanged = () => {
       setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
-      setWebdavLastAttemptAt(localStorage.getItem('webdav_last_attempt_at') || '');
-      setWebdavLastErrorAt(localStorage.getItem('webdav_last_error_at') || '');
+      setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
       setRelativeNow(Date.now());
     };
     window.addEventListener('webdav-sync-status-changed', onStatusChanged);
@@ -386,58 +390,31 @@ export default function SettingsModal({
     }
     return formatAbsoluteTime(webdavLastSyncAt);
   }, [relativeNow, t, webdavLastSyncAt]);
-  const webdavSyncHealthLabel = useMemo(() => {
-    const attemptTs = webdavLastAttemptAt ? new Date(webdavLastAttemptAt).getTime() : NaN;
-    const syncTs = webdavLastSyncAt ? new Date(webdavLastSyncAt).getTime() : NaN;
-    const errorTs = webdavLastErrorAt ? new Date(webdavLastErrorAt).getTime() : NaN;
-    const hasAttempt = Number.isFinite(attemptTs);
-    const hasSync = Number.isFinite(syncTs);
-    const hasError = Number.isFinite(errorTs);
-    if (!hasAttempt) return '';
-    if (hasError && (!hasSync || errorTs >= syncTs)) {
-      return t('settings.backup.webdav.lastAttemptFailed');
-    }
-    return t('settings.backup.webdav.scheduleRunning');
-  }, [t, webdavLastAttemptAt, webdavLastErrorAt, webdavLastSyncAt]);
+  const webdavNextSyncLabel = useMemo(() => {
+    if (!webdavNextSyncAt) return '';
+    const ts = new Date(webdavNextSyncAt).getTime();
+    if (Number.isNaN(ts)) return '';
+    return formatAbsoluteTime(webdavNextSyncAt);
+  }, [webdavNextSyncAt]);
+  const webdavLastSyncTitleLabel = useMemo(() => {
+    return `${t('settings.backup.webdav.lastSyncAt')}·${webdavLastSyncLabel}`;
+  }, [t, webdavLastSyncLabel]);
+  const webdavNextSyncBadgeLabel = useMemo(() => {
+    return t('settings.backup.webdav.nextSyncAtLabel', { time: webdavNextSyncLabel || '--' });
+  }, [t, webdavNextSyncLabel]);
 
   const webdavConfigured = useMemo(() => {
-    return Boolean((localStorage.getItem('webdav_url') || '').trim());
+    return hasWebdavUrlConfiguredFromStorage();
   }, [isOpen, webdavProfileName, webdavLastSyncAt]);
   const webdavEnabled = useMemo(() => {
-    return (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
+    return isWebdavSyncEnabledFromStorage();
   }, [isOpen, webdavProfileName, webdavLastSyncAt]);
-
-  const buildWebdavConfigFromStorage = (): WebdavConfig | null => {
-    const enabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
-    if (!enabled) return null;
-    const url = (localStorage.getItem('webdav_url') || '').trim();
-    if (!url) return null;
-    const username = (localStorage.getItem('webdav_username') || '').trim();
-    const password = localStorage.getItem('webdav_password') || '';
-    const filePath = (localStorage.getItem('webdav_file_path') || 'leaftab_sync.leaftab').trim();
-    const syncIntervalMinutes = Number(localStorage.getItem('webdav_sync_interval_minutes') || '15');
-    const syncConflictPolicy = (localStorage.getItem('webdav_sync_conflict_policy') as "merge" | "prefer_remote" | "prefer_local") || 'merge';
-    return {
-      url,
-      username,
-      password,
-      filePath,
-      syncOptions: {
-        enabled,
-        syncOnChange: false,
-        syncBySchedule: true,
-        syncIntervalMinutes,
-        syncConflictPolicy,
-        includeNestedConfigs: true,
-      },
-    };
-  };
 
   const handleWebdavAction = async (action?: (config: WebdavConfig) => Promise<void>, successKey?: string, errorKey?: string) => {
     if (!action) return;
-    const config = buildWebdavConfigFromStorage();
+    const config = readWebdavConfigFromStorage();
     if (!config) {
-      const enabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
+      const enabled = isWebdavSyncEnabledFromStorage();
       toast.error(enabled
         ? t("settings.backup.webdav.urlRequired")
         : t("settings.backup.webdav.syncDisabled"));
@@ -451,13 +428,10 @@ export default function SettingsModal({
       localStorage.removeItem("webdav_last_error_at");
       localStorage.removeItem("webdav_last_error_message");
       setWebdavLastSyncAt(now);
-      setWebdavLastAttemptAt(now);
-      setWebdavLastErrorAt('');
       if (successKey) toast.success(t(successKey));
     } catch {
       const failedAt = new Date().toISOString();
       localStorage.setItem("webdav_last_error_at", failedAt);
-      setWebdavLastErrorAt(failedAt);
       if (errorKey) toast.error(t(errorKey));
     }
   };
@@ -590,9 +564,9 @@ export default function SettingsModal({
                       <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">{t('settings.backup.webdav.lastSyncAt')}</span>
+                      <span className="text-xs text-muted-foreground">{webdavLastSyncTitleLabel}</span>
                       <Badge className="mt-1.5 w-fit rounded-md border border-primary/25 bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/20">
-                        {webdavSyncHealthLabel ? `${webdavLastSyncLabel} · ${webdavSyncHealthLabel}` : webdavLastSyncLabel}
+                        {webdavNextSyncBadgeLabel}
                       </Badge>
                     </div>
                   </div>
@@ -806,23 +780,6 @@ export default function SettingsModal({
             </div>
           )}
 
-          {adminModeEnabled && (
-            <div className="flex items-center justify-between space-x-2 py-4 border-y border-border">
-              <div className="flex flex-col space-y-1 items-start">
-                <span className="text-sm font-medium leading-none">{t('settings.adminMode.switchLabel')}</span>
-                <span className="font-normal text-xs text-muted-foreground">{t('settings.adminMode.switchDesc')}</span>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                onClick={() => onOpenAdminModal?.()}
-              >
-                {t('settings.adminMode.open')}
-              </Button>
-            </div>
-          )}
-
           <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
 
           <div className="flex items-center justify-between space-x-2">
@@ -864,7 +821,7 @@ export default function SettingsModal({
           )}
 
           {!minimalistMode && (
-          <div className="flex flex-col gap-3 py-4 border-y border-border">
+          <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.backup.label')}</span>
               <span className="font-normal text-xs text-muted-foreground">{t('settings.backup.description')}</span>
@@ -922,7 +879,24 @@ export default function SettingsModal({
             </>
           )}
 
-          <div className="flex items-center justify-between space-x-2 py-4 border-y border-border">
+          {adminModeEnabled && (
+            <div className="flex items-center justify-between space-x-2 pt-3">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.adminMode.switchLabel')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.adminMode.switchDesc')}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                onClick={() => onOpenAdminModal?.()}
+              >
+                {t('settings.adminMode.open')}
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between space-x-2 pt-3">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.about.label')}</span>
               <span className="font-normal text-xs text-muted-foreground">{t('settings.about.desc')}</span>
@@ -1020,8 +994,8 @@ export default function SettingsModal({
             <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => { setLogoutConfirmOpen(false); setLogoutClearLocal(false); }}>
               {t('logoutConfirm.cancel')}
             </Button>
-            <Button className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => {
-              onLogout?.({ clearLocal: logoutClearLocal });
+            <Button className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
+              await onLogout?.({ clearLocal: logoutClearLocal });
               setLogoutConfirmOpen(false);
               setLogoutClearLocal(false);
               onOpenChange(false);

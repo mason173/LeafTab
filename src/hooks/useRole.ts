@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/ui/sonner';
 import confetti from 'canvas-confetti';
-import { SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from "@/scenario/scenario";
 import { ScenarioMode, ScenarioShortcuts } from '../types';
+import { persistLocalProfileSnapshot, persistRoleSeedSnapshot } from '@/utils/localProfileStorage';
 
 export function useRole(
   user: string | null,
@@ -35,17 +35,21 @@ export function useRole(
       const data = await response.json();
       
       if (data && data.type === 'leaftab_backup' && data.data) {
-        if (data.data.scenarioModes) {
-          setScenarioModes(data.data.scenarioModes);
-          localStorage.setItem(SCENARIO_MODES_KEY, JSON.stringify(data.data.scenarioModes));
+        const snapshot = {
+          scenarioModes: Array.isArray(data.data.scenarioModes) ? data.data.scenarioModes : [],
+          selectedScenarioId: typeof data.data.selectedScenarioId === 'string' ? data.data.selectedScenarioId : '',
+          scenarioShortcuts: data.data.scenarioShortcuts || {},
+        };
+        if (snapshot.scenarioModes.length) {
+          setScenarioModes(snapshot.scenarioModes);
         }
-        if (data.data.selectedScenarioId) {
-          setSelectedScenarioId(data.data.selectedScenarioId);
-          localStorage.setItem(SCENARIO_SELECTED_KEY, data.data.selectedScenarioId);
+        if (snapshot.selectedScenarioId) {
+          setSelectedScenarioId(snapshot.selectedScenarioId);
         }
-        if (data.data.scenarioShortcuts) {
-          setScenarioShortcuts(data.data.scenarioShortcuts);
-          localStorage.setItem('local_shortcuts_v3', JSON.stringify(data.data.scenarioShortcuts));
+        if (snapshot.scenarioShortcuts) {
+          setScenarioShortcuts(snapshot.scenarioShortcuts);
+          persistLocalProfileSnapshot(snapshot);
+          persistRoleSeedSnapshot(snapshot);
           localDirtyRef.current = true;
         }
 

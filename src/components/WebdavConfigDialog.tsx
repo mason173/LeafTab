@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -12,16 +12,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { RiEyeFill, RiEyeOffFill } from "@remixicon/react";
 import { toast } from "./ui/sonner";
-import type { WebdavConfig } from "@/hooks/useWebdavSync";
+import { readWebdavStorageStateFromStorage, writeWebdavStorageStateToStorage, type WebdavConflictPolicy } from "@/utils/webdavConfig";
 
 interface WebdavConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isCloudLoggedIn?: boolean;
   onClearLocalData?: () => void | Promise<void>;
+  onConflictPolicyChanged?: (policy: WebdavConflictPolicy) => void | Promise<void>;
+  onSyncIntervalChanged?: (minutes: number) => void | Promise<void>;
 }
 
-export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false, onClearLocalData }: WebdavConfigDialogProps) {
+export function WebdavConfigDialog({
+  open,
+  onOpenChange,
+  isCloudLoggedIn = false,
+  onClearLocalData,
+  onConflictPolicyChanged,
+  onSyncIntervalChanged,
+}: WebdavConfigDialogProps) {
   const { t } = useTranslation();
   const syncIntervalOptions = [5, 10, 15, 30, 60];
   const [profileName, setProfileName] = useState("");
@@ -30,10 +39,11 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
   const [webdavPassword, setWebdavPassword] = useState("");
   const [webdavFilePath, setWebdavFilePath] = useState("leaftab_sync.leaftab");
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState(15);
-  const [syncConflictPolicy, setSyncConflictPolicy] = useState<"merge" | "prefer_remote" | "prefer_local">("merge");
+  const [syncConflictPolicy, setSyncConflictPolicy] = useState<WebdavConflictPolicy>("merge");
   const [webdavSyncEnabled, setWebdavSyncEnabled] = useState(false);
   const [webdavProvider, setWebdavProvider] = useState("custom");
   const [showPassword, setShowPassword] = useState(false);
+  const lastCommittedIntervalRef = useRef(15);
   const hasWebdavConfigured = useMemo(() => {
     if (webdavUrl.trim()) return true;
     if (webdavUsername.trim()) return true;
@@ -61,46 +71,34 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
 
   useEffect(() => {
     if (!open) return;
-    setProfileName(localStorage.getItem("webdav_profile_name") || "");
-    const storedUrl = localStorage.getItem("webdav_url") || "";
-    setWebdavUrl(storedUrl);
-    const normalizedUrl = storedUrl.trim();
+    const defaults = readWebdavStorageStateFromStorage(t("settings.backup.webdav.defaultProfileName"));
+    setProfileName(defaults.profileName);
+    setWebdavUrl(defaults.url);
+    const normalizedUrl = defaults.url.trim();
     const matchedProvider = webdavProviders.find((provider) => provider.url === normalizedUrl);
     setWebdavProvider(matchedProvider?.id || "custom");
-    setWebdavUsername(localStorage.getItem("webdav_username") || "");
-    setWebdavPassword(localStorage.getItem("webdav_password") || "");
-    setWebdavFilePath(localStorage.getItem("webdav_file_path") || "leaftab_sync.leaftab");
-    setWebdavSyncEnabled((localStorage.getItem("webdav_sync_enabled") ?? "false") === "true");
-    setSyncIntervalMinutes(normalizeSyncInterval(Number(localStorage.getItem("webdav_sync_interval_minutes") || "15")));
-    setSyncConflictPolicy((localStorage.getItem("webdav_sync_conflict_policy") as "merge" | "prefer_remote" | "prefer_local") || "merge");
-  }, [open, webdavProviders]);
+    setWebdavUsername(defaults.username);
+    setWebdavPassword(defaults.password);
+    setWebdavFilePath(defaults.filePath);
+    setWebdavSyncEnabled(defaults.syncEnabled);
+    const normalizedInterval = normalizeSyncInterval(defaults.syncIntervalMinutes);
+    setSyncIntervalMinutes(normalizedInterval);
+    lastCommittedIntervalRef.current = normalizedInterval;
+    setSyncConflictPolicy(defaults.syncConflictPolicy);
+  }, [open, t, webdavProviders]);
 
   useEffect(() => {
     if (!open) return;
-    const config: WebdavConfig = {
-      url: webdavUrl.trim(),
-      username: webdavUsername.trim(),
+    writeWebdavStorageStateToStorage({
+      profileName,
+      url: webdavUrl,
+      username: webdavUsername,
       password: webdavPassword,
-      filePath: webdavFilePath.trim() || "leaftab_sync.leaftab",
-      syncOptions: {
-        enabled: webdavSyncEnabled,
-        syncOnChange: false,
-        syncBySchedule: true,
-        syncIntervalMinutes,
-        syncConflictPolicy,
-        includeNestedConfigs: true,
-      },
-    };
-    localStorage.setItem("webdav_profile_name", profileName.trim() || t("settings.backup.webdav.defaultProfileName"));
-    localStorage.setItem("webdav_url", config.url);
-    localStorage.setItem("webdav_username", config.username);
-    localStorage.setItem("webdav_password", config.password);
-    localStorage.setItem("webdav_file_path", config.filePath);
-    localStorage.setItem("webdav_sync_enabled", String(webdavSyncEnabled));
-    localStorage.setItem("webdav_sync_by_schedule", "true");
-    localStorage.setItem("webdav_sync_interval_minutes", String(syncIntervalMinutes));
-    localStorage.setItem("webdav_sync_conflict_policy", syncConflictPolicy);
-    localStorage.setItem("webdav_sync_include_nested_configs", "true");
+      filePath: webdavFilePath,
+      syncEnabled: webdavSyncEnabled,
+      syncIntervalMinutes,
+      syncConflictPolicy,
+    }, t("settings.backup.webdav.defaultProfileName"));
     window.dispatchEvent(new CustomEvent('webdav-config-changed'));
   }, [
     open,
@@ -137,6 +135,17 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
     if (selected?.url) {
       setWebdavUrl(selected.url);
     }
+  };
+  const handleConflictPolicyChange = (value: WebdavConflictPolicy) => {
+    if (value === syncConflictPolicy) return;
+    setSyncConflictPolicy(value);
+    void onConflictPolicyChanged?.(value);
+  };
+  const handleSyncIntervalCommit = (v: number[]) => {
+    const value = syncIntervalOptions[v[0]] ?? 15;
+    if (value === lastCommittedIntervalRef.current) return;
+    lastCommittedIntervalRef.current = value;
+    void onSyncIntervalChanged?.(value);
   };
 
   return (
@@ -249,6 +258,7 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
                   step={1}
                   value={[syncIntervalOptions.indexOf(syncIntervalMinutes)]}
                   onValueChange={(v: number[]) => setSyncIntervalMinutes(syncIntervalOptions[v[0]] ?? 15)}
+                  onValueCommit={handleSyncIntervalCommit}
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   {syncIntervalOptions.map((item) => (
@@ -262,12 +272,12 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
                 <Label className="text-xs text-muted-foreground">{t("settings.backup.webdav.conflictPolicyLabel")}</Label>
                 <RadioGroup
                   value={syncConflictPolicy}
-                  onValueChange={(v: string) => setSyncConflictPolicy(v as "merge" | "prefer_remote" | "prefer_local")}
+                  onValueChange={(v: string) => handleConflictPolicyChange(v as WebdavConflictPolicy)}
                   className="gap-2"
                 >
                   <div
                     className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-3"
-                    onClick={() => setSyncConflictPolicy("merge")}
+                    onClick={() => handleConflictPolicyChange("merge")}
                   >
                     <RadioGroupItem value="merge" id="policy-merge" />
                     <Label htmlFor="policy-merge" className="cursor-pointer text-sm leading-5">
@@ -276,7 +286,7 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
                   </div>
                   <div
                     className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-3"
-                    onClick={() => setSyncConflictPolicy("prefer_remote")}
+                    onClick={() => handleConflictPolicyChange("prefer_remote")}
                   >
                     <RadioGroupItem value="prefer_remote" id="policy-remote" />
                     <Label htmlFor="policy-remote" className="cursor-pointer text-sm leading-5">
@@ -285,7 +295,7 @@ export function WebdavConfigDialog({ open, onOpenChange, isCloudLoggedIn = false
                   </div>
                   <div
                     className="flex cursor-pointer items-start gap-2 rounded-lg border border-border p-3"
-                    onClick={() => setSyncConflictPolicy("prefer_local")}
+                    onClick={() => handleConflictPolicyChange("prefer_local")}
                   >
                     <RadioGroupItem value="prefer_local" id="policy-local" />
                     <Label htmlFor="policy-local" className="cursor-pointer text-sm leading-5">

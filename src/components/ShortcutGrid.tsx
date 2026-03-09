@@ -4,7 +4,6 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Shortcut } from '../types';
-import { extractDomainFromUrl } from '../utils';
 import ShortcutIcon from './ShortcutIcon';
 
 // 滚动文本组件
@@ -61,68 +60,15 @@ function ScrollingText({ text, containerClassName, textClassName, allowScroll = 
 
 // 通用的快捷方式项组件
 function ShortcutItem({ shortcut, onOpen, onContextMenu }: { shortcut: Shortcut; onOpen: () => void; onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void }) {
-  const localIcons = React.useMemo(() => {
-    const mods = (import.meta as any).glob('../assets/Shotcuticons/*.svg', { eager: true, as: 'url' }) as Record<string, string>;
-    const map: Record<string, string> = {};
-    for (const [p, u] of Object.entries(mods)) {
-      const name = p.split('/').pop()!;
-      if (name.toLowerCase().endsWith('.svg')) {
-        map[name.toLowerCase().replace(/\.svg$/, '')] = u;
-      }
-    }
-    return map;
-  }, []);
-  const domain = extractDomainFromUrl(shortcut.url);
-  const d = domain.toLowerCase();
-  const withoutWww = d.startsWith('www.') ? d.slice(4) : d;
-  const registrableDomain = (host: string) => {
-    const parts = host.split('.');
-    if (parts.length <= 2) return parts.join('.');
-    const last2 = parts.slice(-2).join('.');
-    const multiSuffixes = new Set([
-      'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn',
-      'co.uk', 'org.uk', 'ac.uk',
-      'co.jp', 'or.jp', 'ne.jp', 'ac.jp', 'go.jp', 'gr.jp', 'ed.jp', 'ad.jp',
-      'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au'
-    ]);
-    if (multiSuffixes.has(last2)) {
-      if (parts.length >= 3) return parts.slice(-3).join('.');
-    }
-    return last2;
-  };
-  const apex = registrableDomain(withoutWww);
-  let localSrc =
-    localIcons[d] ||
-    localIcons[withoutWww] ||
-    localIcons[apex] ||
-    localIcons[`www.${apex}`] ||
-    localIcons[`www.${withoutWww}`] ||
-    localIcons[(d.startsWith('www.') ? d : `www.${d}`)] ||
-    '';
-  if (!localSrc) {
-    const indexKey = `index.${apex}`;
-    if (localIcons[indexKey]) localSrc = localIcons[indexKey];
-    // 不再进行跨域后缀泛匹配，避免误匹配不同二级域（如 *.com.cn）
-  }
-
   return (
     <div 
-      className="relative rounded-xl shrink-0 w-full cursor-pointer transition-[background-color,backdrop-filter] select-none group/shortcut hover:bg-accent/40 hover:backdrop-blur-lg"
+      className="relative rounded-xl shrink-0 w-full cursor-pointer transition-[background-color] select-none group/shortcut hover:bg-accent/40"
       onClick={onOpen}
       onContextMenu={onContextMenu}
     >
       <div className="flex flex-row items-center size-full">
         <div className="content-stretch flex gap-[8px] items-center px-[8px] py-[12px] relative w-full">
-          {localSrc ? (
-            <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
-              <img alt="" src={localSrc} className="absolute inset-0 max-w-none object-contain pointer-events-none" style={{ width: 36, height: 36 }} />
-            </div>
-          ) : (
-            <div className="bg-secondary content-stretch flex items-center p-[6px] relative rounded-lg shrink-0">
-              <div aria-hidden="true" className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none rounded-lg" />
-              <ShortcutIcon icon={shortcut.icon} url={shortcut.url} size={24} />
-            </div>
-          )}
+          <ShortcutIcon icon={shortcut.icon} url={shortcut.url} size={36} frame="auto" />
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText 
               text={shortcut.title} 
@@ -141,14 +87,32 @@ function ShortcutItem({ shortcut, onOpen, onContextMenu }: { shortcut: Shortcut;
 }
 
 // 拖拽排序项
-function SortableShortcut({ sortId, shortcut, onOpen, onContextMenu }: { sortId: string; shortcut: Shortcut; onOpen: () => void; onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: sortId });
+function SortableShortcut({
+  sortId,
+  shortcut,
+  onOpen,
+  onContextMenu,
+}: {
+  sortId: string;
+  shortcut: Shortcut;
+  onOpen: () => void;
+  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortId });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    // Keep slot-shift animation for other cards; only the actively dragged card skips transition.
+    transition: isDragging ? undefined : transition,
   } as React.CSSProperties;
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="w-full">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="w-full will-change-transform"
+      data-shortcut-drag-item="true"
+    >
       <ShortcutItem shortcut={shortcut} onOpen={onOpen} onContextMenu={onContextMenu} />
     </div>
   );

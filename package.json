@@ -1,6 +1,6 @@
 {
       "name": "实时农历显示设计",
-      "version": "0.1.0",
+      "version": "1.2.2",
       "private": true,
       "dependencies": {
             "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",

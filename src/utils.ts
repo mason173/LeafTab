@@ -15,7 +15,6 @@ export const buildFaviconCandidates = (domain: string) => {
   return [
     // Prefer CORS-friendly proxy/icon services first to improve caching success
     `https://icon.horse/icon/${safeDomain}`,
-    `https://api.iowen.cn/favicon/${safeDomain}.png`,
     `https://icons.duckduckgo.com/ip3/${safeDomain}.ico`,
     `https://www.google.com/s2/favicons?domain_url=${safeDomain}&sz=64`,
     `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${safeDomain}&size=64`,
@@ -24,6 +23,8 @@ export const buildFaviconCandidates = (domain: string) => {
     `https://${safeDomain}/favicon.png`,
     `https://${safeDomain}/apple-touch-icon.png`,
     `https://${safeDomain}/apple-touch-icon-precomposed.png`,
+    // Last-resort fallback (often returns 404 for migrated domains, e.g. chat.openai.com)
+    `https://api.iowen.cn/favicon/${safeDomain}.png`,
   ];
 };
 
@@ -38,4 +39,16 @@ export const isUrl = (str: string) => {
   if (/^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(str)) return true;
   // 域名格式 (包含至少一个点，且最后一部分是2个以上字母)
   return /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/.test(str);
+};
+
+export const normalizeApiBase = (input: string) => {
+  const trimmed = (input || '').trim();
+  if (!trimmed) return '';
+  const withProtocol = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
+  try {
+    new URL(withProtocol);
+  } catch {
+    return '';
+  }
+  return withProtocol.replace(/\/+$/, '');
 };

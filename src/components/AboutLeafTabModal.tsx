@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@remixicon/react";
+import aboutIcon from "@/assets/abouticon.svg";
 
 export function AboutLeafTabModal({
   open,
@@ -73,12 +76,13 @@ export function AboutLeafTabModal({
         <DialogHeader>
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
         </DialogHeader>
-        <div className="max-h-[74vh] overflow-auto pr-1">
-          <div className="flex flex-col items-center text-center">
-            <img src="/icons/icon32.png" alt="LeafTab" className="h-8 w-8" />
-            <div className="mt-3 text-lg font-semibold">LeafTab</div>
-            <div className="mt-1 text-xs text-muted-foreground">v{appVersion}</div>
-            <div className="mt-5 text-sm text-muted-foreground whitespace-pre-line">
+        <ScrollArea className="max-h-[74vh]">
+          <div className="pr-6">
+          <div className="flex flex-col items-center">
+            <img src={aboutIcon} alt="LeafTab" className="h-16 w-16" />
+            <div className="mt-3 text-lg font-semibold text-center">LeafTab</div>
+            <div className="mt-1 text-xs text-muted-foreground text-center">v{appVersion}</div>
+            <div className="mt-5 text-sm text-muted-foreground whitespace-pre-line text-left w-full">
               {t("settings.about.content")}
             </div>
           </div>
@@ -138,7 +142,47 @@ export function AboutLeafTabModal({
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="mt-8 pt-6 border-t border-border grid grid-cols-4 gap-2 pb-2">
+            <a
+              href="https://chromewebstore.google.com/detail/leaftab/lfogogokkkpmolbfbklchcbgdiboccdf?hl=zh-CN&gl=DE"
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground whitespace-nowrap"
+            >
+              <RiChromeFill className="w-3.5 h-3.5" />
+              {t("settings.about.chromeStore")}
+            </a>
+            <a
+              href="https://microsoftedge.microsoft.com/addons/detail/leaftab/nfbdmggppgfmfbaddobdhdleppgffphn"
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground whitespace-nowrap"
+            >
+              <RiEdgeFill className="w-3.5 h-3.5" />
+              {t("settings.about.edgeStore")}
+            </a>
+            <a
+              href="https://addons.mozilla.org/zh-CN/firefox/addon/leaftab/"
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground whitespace-nowrap"
+            >
+              <RiFirefoxFill className="w-3.5 h-3.5" />
+              {t("settings.about.firefoxStore")}
+            </a>
+            <a
+              href="https://github.com/mason173/LeafTab"
+              target="_blank"
+              rel="noreferrer"
+              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground whitespace-nowrap"
+            >
+              <RiGithubFill className="w-3.5 h-3.5" />
+              {t("settings.about.github")}
+            </a>
+          </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

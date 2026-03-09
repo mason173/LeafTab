@@ -8,7 +8,6 @@ import {
   RiCloseFill,
   RiCloudFill,
   RiRainyFill,
-  RiShieldCrossFill,
   RiSnowyFill,
   RiSunFill,
   RiThunderstormsFill,
@@ -23,48 +22,32 @@ import { useClock } from './hooks/useClock';
 import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
 import { useRole } from './hooks/useRole';
-import { useWebdavSync, type ApplyImportedDataOptions } from './hooks/useWebdavSync';
+import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
 import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
 import { Shortcut } from './types';
 
 // Components
-import { SearchBar, searchEngines } from './components/SearchBar';
-import InterfaceEssentialArrow from './components/icons/InterfaceEssentialArrow';
-import ShortcutModal from './components/ShortcutModal';
-import AuthModal from './components/AuthModal';
-import SettingsModal from './components/SettingsModal';
-import { AdminModal } from './components/AdminModal';
-import { AboutLeafTabModal } from './components/AboutLeafTabModal';
+import { SearchBar } from './components/SearchBar';
 import { WallpaperClock } from './components/WallpaperClock';
-import { ShortcutGrid } from './components/ShortcutGrid';
 import { ShortcutsCarousel } from './components/ShortcutsCarousel';
 import { TopNavBar } from './components/TopNavBar';
 import { RoleSelector } from './components/RoleSelector';
-import ScenarioModeCreateDialog from './components/ScenarioModeCreateDialog';
-import ConfirmDialog from './components/ConfirmDialog';
 import { LoginBanner } from './components/LoginBanner';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { TimeFontDialog } from './components/TimeFontDialog';
-import { extractDomainFromUrl } from "./utils";
+import { extractDomainFromUrl, normalizeApiBase } from "./utils";
+import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
-import { WebdavConfigDialog } from './components/WebdavConfigDialog';
-import { SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from "@/scenario/scenario";
+import { fetchIconLibraryManifest } from '@/utils/iconLibrary';
+import { readWebdavConfigFromStorage, type WebdavConflictPolicy } from '@/utils/webdavConfig';
+import { AppDialogs } from './components/AppDialogs';
 import {
   buildBackupDataV4,
   clampShortcutsRowsPerColumn,
   mergeWebdavPayload,
   type WebdavPayload,
 } from './utils/backupData';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -80,8 +63,6 @@ const getApiBase = () => {
   return '/api';
 };
 
-const API_URL = getApiBase();
-
 export default function App() {
   const { t, i18n } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -89,12 +70,15 @@ export default function App() {
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmSyncOpen, setConfirmSyncOpen] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | null>(null);
+  const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+  const [importPendingPayload, setImportPendingPayload] = useState<any | null>(null);
+  const [importConfirmBusy, setImportConfirmBusy] = useState(false);
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
-  const [moveDialogData, setMoveDialogData] = useState<{ sourceIndex: number } | null>(null);
+  const [moveDialogData, setMoveDialogData] = useState<{ sourceIndex: number; sourceShortcutId?: string } | null>(null);
   const [moveSubOpen, setMoveSubOpen] = useState(false);
   const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
@@ -152,8 +136,20 @@ export default function App() {
     showTime, setShowTime,
     shortcutsRowsPerColumn, setShortcutsRowsPerColumn,
     privacyConsent, setPrivacyConsent,
+    apiServer, setApiServer,
+    customApiUrl, setCustomApiUrl,
+    customApiName, setCustomApiName,
   } = useSettings();
   // removed auto-focus search feature
+
+  const defaultApiBase = useMemo(() => getApiBase(), []);
+  const API_URL = useMemo(() => {
+    if (apiServer === 'custom') {
+      const normalized = normalizeApiBase(customApiUrl);
+      if (normalized) return normalized;
+    }
+    return defaultApiBase;
+  }, [apiServer, customApiUrl, defaultApiBase]);
 
   const {
     searchValue, setSearchValue,
@@ -198,6 +194,7 @@ export default function App() {
     handleSaveShortcutEdit, handleConfirmDeleteShortcut,
     findOrCreateAvailableIndex, handleDeletePage, getMaxPageIndex, contextMenuRef,
     resolveWithCloud, resolveWithLocal,
+    applyUndoPayload,
     scenarioModeOpen, setScenarioModeOpen,
     scenarioCreateOpen, setScenarioCreateOpen,
     scenarioEditOpen, setScenarioEditOpen,
@@ -205,6 +202,56 @@ export default function App() {
     moveShortcutToPage,
     resetLocalShortcutsByRole
   } = useShortcuts(user, openInNewTab, API_URL, handleLogout, shortcutsRowsPerColumn);
+
+  const downloadBackupPayload = useCallback((payload: any, source: 'cloud' | 'local') => {
+    try {
+      const envelope = buildBackupDataV4({
+        scenarioModes: payload.scenarioModes,
+        selectedScenarioId: payload.selectedScenarioId,
+        scenarioShortcuts: payload.scenarioShortcuts,
+      });
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leaftab_backup_${source}_${ts}.leaftab`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {}
+  }, []);
+
+  const downloadCloudBackupEnvelope = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch(`${API_URL}/user/shortcuts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const shortcutsRaw = data?.shortcuts;
+      if (!shortcutsRaw) return;
+      const shortcutsStr = typeof shortcutsRaw === 'string' ? shortcutsRaw : JSON.stringify(shortcutsRaw);
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const blob = new Blob([shortcutsStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leaftab_backup_cloud_before_import_${ts}.leaftab`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(t('settings.backup.cloudBackupDownloaded'));
+    } catch {}
+  }, [API_URL, t]);
 
   type SuggestionItem = { type: 'history' | 'shortcut'; label: string; value: string; icon?: string };
 
@@ -306,15 +353,6 @@ export default function App() {
 
   const showPrivacyModal = !!user && privacyConsent === null;
 
-  useEffect(() => {
-    // Debug log to check why modal might not be showing
-    console.log('Privacy Modal State:', { 
-      roleSelectorOpen, 
-      privacyConsent, 
-      showPrivacyModal 
-    });
-  }, [roleSelectorOpen, privacyConsent, showPrivacyModal]);
-
   const handlePrivacyConsent = (agreed: boolean) => {
     setPrivacyConsent(agreed);
     try { localStorage.setItem('privacy_consent', JSON.stringify(agreed)); } catch {}
@@ -352,7 +390,7 @@ export default function App() {
 
   useEffect(() => {
     const maxPage = getMaxPageIndex(shortcuts.length);
-    setShortcutsPageIndex((prev) => Math.min(prev, maxPage + 1));
+    setShortcutsPageIndex((prev) => Math.min(Math.max(prev, 0), maxPage));
   }, [shortcuts.length, selectedScenarioId, getMaxPageIndex]);
 
   const handleShortcutsRowsPerColumnChange = useCallback((rows: number) => {
@@ -370,10 +408,32 @@ export default function App() {
     const successKey = options?.successKey || 'settings.backup.importSuccess';
     const silentSuccess = options?.silentSuccess ?? false;
     try {
-      if (data.scenarioModes) setScenarioModes(data.scenarioModes);
-      if (data.selectedScenarioId) setSelectedScenarioId(data.selectedScenarioId);
-      if (data.scenarioShortcuts) {
-        setScenarioShortcuts(data.scenarioShortcuts);
+      const snapshot = {
+        scenarioModes: Array.isArray(data.scenarioModes) ? data.scenarioModes : scenarioModes,
+        selectedScenarioId: typeof data.selectedScenarioId === 'string' ? data.selectedScenarioId : selectedScenarioId,
+        scenarioShortcuts: data.scenarioShortcuts,
+      };
+      if (snapshot.scenarioModes) setScenarioModes(snapshot.scenarioModes);
+      if (snapshot.selectedScenarioId) setSelectedScenarioId(snapshot.selectedScenarioId);
+      if (snapshot.scenarioShortcuts) {
+        setScenarioShortcuts(snapshot.scenarioShortcuts);
+        persistLocalProfileSnapshot(snapshot);
+        if (user) {
+          const payload = {
+            version: 3 as const,
+            scenarioModes: snapshot.scenarioModes,
+            selectedScenarioId: snapshot.selectedScenarioId,
+            scenarioShortcuts: snapshot.scenarioShortcuts,
+          };
+          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
+          localStorage.setItem('leaf_tab_sync_pending', 'true');
+          clearLocalNeedsCloudReconcile();
+        } else {
+          const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
+          if (!hasStoredCloudSession) {
+            markLocalNeedsCloudReconcile('signed_out_edit');
+          }
+        }
       } else {
         throw new Error('invalid_scenario_shortcuts');
       }
@@ -403,8 +463,13 @@ export default function App() {
   }, [buildBackupData, t]);
 
   const handleImportData = useCallback((data: any) => {
+    if (user) {
+      setImportPendingPayload(data);
+      setImportConfirmOpen(true);
+      return;
+    }
     applyImportedData(data, { closeSettings: true });
-  }, [applyImportedData]);
+  }, [applyImportedData, user]);
 
   const applyImportedDataWithoutClose = useCallback((data: any) => {
     applyImportedData(data, { closeSettings: false });
@@ -431,7 +496,6 @@ export default function App() {
   const { resolveWebdavConflict } = useWebdavAutoSync({
     conflictModalOpen,
     isDragging,
-    settingsOpen,
     buildLocalPayload: buildLocalWebdavPayload,
     applyImportedData: applyImportedDataWithoutClose,
     uploadToWebdav: handleWebdavUpload,
@@ -439,6 +503,45 @@ export default function App() {
     fetchWebdavData,
     mergePayload: mergeWebdavPayload,
   });
+  const triggerWebdavSyncAfterConfigChanged = useCallback(async (
+    syncOptionsOverrides: Partial<NonNullable<WebdavConfig['syncOptions']>>,
+    toastKey: string,
+  ) => {
+    const config = readWebdavConfigFromStorage();
+    if (!config) {
+      const enabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
+      toast.error(enabled ? t('settings.backup.webdav.urlRequired') : t('settings.backup.webdav.syncDisabled'));
+      return;
+    }
+    const configWithOverrides: WebdavConfig = {
+      ...config,
+      syncOptions: {
+        ...(config.syncOptions || {
+          enabled: true,
+          syncOnChange: false,
+          syncBySchedule: true,
+          syncIntervalMinutes: 15,
+          syncConflictPolicy: "merge",
+          includeNestedConfigs: true,
+        }),
+        ...syncOptionsOverrides,
+      },
+    };
+    toast.success(t(toastKey));
+    await resolveWebdavConflict(configWithOverrides);
+  }, [resolveWebdavConflict, t]);
+  const handleWebdavConflictPolicyChanged = useCallback(async (policy: WebdavConflictPolicy) => {
+    await triggerWebdavSyncAfterConfigChanged(
+      { syncConflictPolicy: policy },
+      'settings.backup.webdav.policyChangeSyncTriggered',
+    );
+  }, [triggerWebdavSyncAfterConfigChanged]);
+  const handleWebdavSyncIntervalChanged = useCallback(async (minutes: number) => {
+    await triggerWebdavSyncAfterConfigChanged(
+      { syncIntervalMinutes: minutes },
+      'settings.backup.webdav.intervalChangeSyncTriggered',
+    );
+  }, [triggerWebdavSyncAfterConfigChanged]);
 
   const handleRequestCloudLogin = useCallback(() => {
     const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
@@ -452,22 +555,57 @@ export default function App() {
   const handleClearLocalDataToRole = useCallback(async () => {
     await resetLocalShortcutsByRole(localStorage.getItem('role'));
   }, [resetLocalShortcutsByRole]);
+  const syncLocalToCloudBeforeLogout = useCallback(async () => {
+    if (!user) return false;
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    if (!navigator.onLine) return false;
+    try {
+      const envelope = buildBackupDataV4({
+        scenarioModes,
+        selectedScenarioId,
+        scenarioShortcuts,
+      });
+      const response = await fetch(`${API_URL}/user/shortcuts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          shortcuts: envelope,
+          syncMode: 'prefer_local',
+        }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }, [API_URL, scenarioModes, scenarioShortcuts, selectedScenarioId, user]);
   const handleLogoutWithOptions = useCallback(async (options?: { clearLocal?: boolean }) => {
     const shouldClearLocal = options?.clearLocal === true;
+    const syncedBeforeLogout = await syncLocalToCloudBeforeLogout();
     if (!shouldClearLocal) {
       try {
-        localStorage.setItem(SCENARIO_MODES_KEY, JSON.stringify(scenarioModes));
-        localStorage.setItem(SCENARIO_SELECTED_KEY, selectedScenarioId);
-        localStorage.setItem('local_shortcuts_v3', JSON.stringify(scenarioShortcuts));
-        localStorage.setItem('local_shortcuts_updated_at', new Date().toISOString());
-        localDirtyRef.current = true;
+        persistLocalProfileSnapshot({
+          scenarioModes,
+          selectedScenarioId,
+          scenarioShortcuts,
+        });
+        if (syncedBeforeLogout) {
+          clearLocalNeedsCloudReconcile();
+          localDirtyRef.current = false;
+        } else {
+          markLocalNeedsCloudReconcile('logout_keep_local');
+          localDirtyRef.current = true;
+        }
       } catch {}
     }
     handleLogout({ clearLocal: shouldClearLocal });
     if (shouldClearLocal) {
       await resetLocalShortcutsByRole(localStorage.getItem('role'));
     }
-  }, [handleLogout, resetLocalShortcutsByRole, scenarioModes, selectedScenarioId, scenarioShortcuts, localDirtyRef]);
+  }, [clearLocalNeedsCloudReconcile, handleLogout, localDirtyRef, resetLocalShortcutsByRole, scenarioModes, scenarioShortcuts, selectedScenarioId, syncLocalToCloudBeforeLogout]);
   const handleVersionTap = useCallback(() => {
     weatherDebugTapCountRef.current += 1;
     if (weatherDebugTapTimerRef.current) {
@@ -532,26 +670,39 @@ export default function App() {
       }
       const data = await resp.json();
       const list: Array<{ domain: string; count: number; first_seen?: string; last_seen?: string }> = (data?.domains || []);
-      // Build local icon apex set
-      const mods = (import.meta as any).glob('./assets/Shotcuticons/*.svg', { eager: true, as: 'url' }) as Record<string, string>;
       const apexSet = new Set<string>();
-      for (const p of Object.keys(mods)) {
-        const name = p.split('/').pop() || '';
-        const base = name.toLowerCase().replace(/\.svg$/, '');
-        const clean = base.startsWith('index.') ? base.slice(6) : base;
-        const withoutWww = clean.startsWith('www.') ? clean.slice(4) : clean;
-        apexSet.add(registrableDomain(withoutWww));
+      const manifest = await fetchIconLibraryManifest();
+      const manifestKeys = manifest?.icons ? Object.keys(manifest.icons) : [];
+      for (const key of manifestKeys) {
+        const apex = registrableDomain(key);
+        if (apex) apexSet.add(apex);
       }
+      const parseSeenMs = (value?: string) => {
+        if (!value) return Number.NaN;
+        const s = value.trim();
+        if (!s) return Number.NaN;
+        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return new Date(s).getTime();
+        const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?$/);
+        if (m) return new Date(`${m[1]}T${m[2]}${m[3] || ''}Z`).getTime();
+        return new Date(s).getTime();
+      };
+      const formatSeenLocal = (value?: string) => {
+        const ms = parseSeenMs(value);
+        if (!Number.isFinite(ms)) return value || '';
+        const d = new Date(ms);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
       const minIso = (a?: string, b?: string) => {
-        const ta = a ? new Date(a).getTime() : NaN;
-        const tb = b ? new Date(b).getTime() : NaN;
+        const ta = parseSeenMs(a);
+        const tb = parseSeenMs(b);
         if (!Number.isFinite(ta)) return b;
         if (!Number.isFinite(tb)) return a;
         return ta <= tb ? a : b;
       };
       const maxIso = (a?: string, b?: string) => {
-        const ta = a ? new Date(a).getTime() : NaN;
-        const tb = b ? new Date(b).getTime() : NaN;
+        const ta = parseSeenMs(a);
+        const tb = parseSeenMs(b);
         if (!Number.isFinite(ta)) return b;
         if (!Number.isFinite(tb)) return a;
         return ta >= tb ? a : b;
@@ -573,8 +724,8 @@ export default function App() {
       }
       const rows = Array.from(aggregated.values()).sort((a, b) => {
         if (b.count !== a.count) return b.count - a.count;
-        const tb = b.last_seen ? new Date(b.last_seen).getTime() : 0;
-        const ta = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+        const tb = parseSeenMs(b.last_seen);
+        const ta = parseSeenMs(a.last_seen);
         if (tb !== ta) return tb - ta;
         return a.domain.localeCompare(b.domain);
       });
@@ -585,7 +736,7 @@ export default function App() {
       };
       const csv = [
         ['domain', 'count', 'first_seen', 'last_seen'].join(','),
-        ...rows.map((r) => [r.domain, r.count, r.first_seen || '', r.last_seen || ''].map(csvEscape).join(',')),
+        ...rows.map((r) => [r.domain, r.count, formatSeenLocal(r.first_seen), formatSeenLocal(r.last_seen)].map(csvEscape).join(',')),
       ].join('\n');
       const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -652,10 +803,9 @@ export default function App() {
     return idx >= 0 ? idx : 0;
   })();
   const handleCarouselIndexChange = useCallback((index: number) => {
-    if (!pageIndices.includes(shortcutsPageIndex)) return;
     const nextPage = pageIndices[index] ?? pageIndices[0] ?? 0;
     setShortcutsPageIndex(nextPage);
-  }, [pageIndices, shortcutsPageIndex]);
+  }, [pageIndices]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -701,7 +851,11 @@ export default function App() {
   };
   const cloudCount = countPayload(pendingCloudPayload);
   const localCount = countPayload(pendingLocalPayload);
-  const cloudTimeRaw = typeof window !== 'undefined' ? localStorage.getItem('cloud_shortcuts_fetched_at') || '' : '';
+  const cloudTimeRaw = typeof window !== 'undefined'
+    ? (localStorage.getItem('cloud_shortcuts_updated_at')
+      || localStorage.getItem('cloud_shortcuts_fetched_at')
+      || '')
+    : '';
   const localTimeRaw = typeof window !== 'undefined' ? localStorage.getItem('local_shortcuts_updated_at') || '' : '';
   const formatTime = (s: string) => {
     if (!s) return '';
@@ -882,9 +1036,64 @@ export default function App() {
                   <ContextMenuItem label={t('context.move')} onSelect={() => {}} iconRight={<RiArrowRightSLine className="size-4" />} />
                   {moveSubOpen && (
                     <div className="absolute left-full top-0 ml-2 bg-popover rounded-xl border border-border shadow-lg w-[160px] p-[6px]" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
-                      <ContextMenuItem label={t('context.movePrevPage')} onSelect={() => { const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); const target = Math.max(0, page - 1); if (page === 0) { return; } moveShortcutToPage(contextMenu.shortcutIndex, target, { strict: true }); setShortcutsPageIndex(target); setContextMenu(null); setMoveSubOpen(false); }} disabled={(() => { const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); return page <= 0; })()} />
-                      <ContextMenuItem label={t('context.moveNextPage')} onSelect={() => { const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); const target = page + 1; const maxPage = getMaxPageIndex(shortcuts.length); if (target > maxPage) { return; } moveShortcutToPage(contextMenu.shortcutIndex, target, { strict: true }); setShortcutsPageIndex(target); setContextMenu(null); setMoveSubOpen(false); }} disabled={(() => { const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); const maxPage = getMaxPageIndex(shortcuts.length); return page >= maxPage; })()} />
-                      <ContextMenuItem label={t('context.moveToPage')} onSelect={() => { setMoveDialogData({ sourceIndex: contextMenu.shortcutIndex }); setMoveDialogOpen(true); setMoveSubOpen(false); setContextMenu(null); }} />
+                      <ContextMenuItem
+                        label={t('context.movePrevPage')}
+                        onSelect={() => {
+                          const sourceIndexById = shortcuts.findIndex((item) => item.id === contextMenu.shortcut.id);
+                          const sourceIndex = sourceIndexById >= 0 ? sourceIndexById : contextMenu.shortcutIndex;
+                          if (sourceIndex < 0 || sourceIndex >= shortcuts.length) return;
+                          const page = Math.floor(sourceIndex / shortcutsPageCapacity);
+                          const target = Math.max(0, page - 1);
+                          if (page === 0) return;
+                          moveShortcutToPage(sourceIndex, target, {
+                            strict: true,
+                            sourceShortcutId: contextMenu.shortcut.id,
+                          });
+                          setShortcutsPageIndex(target);
+                          setContextMenu(null);
+                          setMoveSubOpen(false);
+                        }}
+                        disabled={(() => {
+                          const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity);
+                          return page <= 0;
+                        })()}
+                      />
+                      <ContextMenuItem
+                        label={t('context.moveNextPage')}
+                        onSelect={() => {
+                          const sourceIndexById = shortcuts.findIndex((item) => item.id === contextMenu.shortcut.id);
+                          const sourceIndex = sourceIndexById >= 0 ? sourceIndexById : contextMenu.shortcutIndex;
+                          if (sourceIndex < 0 || sourceIndex >= shortcuts.length) return;
+                          const page = Math.floor(sourceIndex / shortcutsPageCapacity);
+                          const target = page + 1;
+                          const maxPage = getMaxPageIndex(shortcuts.length);
+                          if (target > maxPage) return;
+                          moveShortcutToPage(sourceIndex, target, {
+                            strict: true,
+                            sourceShortcutId: contextMenu.shortcut.id,
+                          });
+                          setShortcutsPageIndex(target);
+                          setContextMenu(null);
+                          setMoveSubOpen(false);
+                        }}
+                        disabled={(() => {
+                          const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity);
+                          const maxPage = getMaxPageIndex(shortcuts.length);
+                          return page >= maxPage;
+                        })()}
+                      />
+                      <ContextMenuItem
+                        label={t('context.moveToPage')}
+                        onSelect={() => {
+                          setMoveDialogData({
+                            sourceIndex: contextMenu.shortcutIndex,
+                            sourceShortcutId: contextMenu.shortcut.id,
+                          });
+                          setMoveDialogOpen(true);
+                          setMoveSubOpen(false);
+                          setContextMenu(null);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -914,165 +1123,195 @@ export default function App() {
         </div>
       )}
 
-      <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] bg-background border-border text-foreground rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle>{t('context.moveToPage')}</DialogTitle>
-            <DialogDescription>{t('context.moveToPageDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: getMaxPageIndex(shortcuts.length) + 1 }, (_, p) => p).map((p) => {
-              const srcPage = (() => {
-                if (!moveDialogData) return -1;
-                return Math.floor(moveDialogData.sourceIndex / shortcutsPageCapacity);
-              })();
-              const count = (() => {
-                const start = p * shortcutsPageCapacity;
-                const end = Math.min(start + shortcutsPageCapacity, shortcuts.length);
-                return Math.max(0, end - start);
-              })();
-              const disabled = p === srcPage;
-              return (
-                <PageChip
-                  key={p}
-                  page={p}
-                  count={count}
-                  pageCapacity={shortcutsPageCapacity}
-                  disabled={disabled}
-                  onClick={() => {
-                    if (!moveDialogData) return;
-                    if (p === srcPage) {
-                      toast.error(t('toast.alreadyOnPage'));
-                      return;
-                    }
-                    moveShortcutToPage(moveDialogData.sourceIndex, p, { strict: true });
-                    setShortcutsPageIndex(p);
-                    setMoveDialogOpen(false);
-                  }}
-                />
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <ShortcutModal isOpen={shortcutEditOpen} onOpenChange={(open) => { setShortcutEditOpen(open); if (!open) { setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); } }} mode={shortcutModalMode} initialTitle={editingTitle} initialUrl={editingUrl} initialIcon={selectedShortcut?.shortcut.icon || 'chatgpt'} onSave={handleSaveShortcutEdit} />
-      <ConfirmDialog open={shortcutDeleteOpen} onOpenChange={setShortcutDeleteOpen} title={t('shortcutDelete.title')} description={t('shortcutDelete.description')} onConfirm={handleConfirmDeleteShortcut} />
-      <ScenarioModeCreateDialog open={scenarioCreateOpen} onOpenChange={setScenarioCreateOpen} onSubmit={handleCreateScenarioMode} />
-      <ScenarioModeCreateDialog open={scenarioEditOpen} onOpenChange={setScenarioEditOpen} onSubmit={handleUpdateScenarioMode} title={t('scenario.editTitle')} submitText={t('common.save')} mode={scenarioEditMode} />
-      <AuthModal isOpen={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} onLoginSuccess={onLoginSuccess} />
-      <SettingsModal 
-        isOpen={settingsOpen} onOpenChange={setSettingsOpen} 
-        username={user}
-        onLogin={handleRequestCloudLogin}
-        onLogout={handleLogoutWithOptions}
-        shortcutsCount={totalShortcuts}
-        minimalistMode={minimalistMode} onMinimalistModeChange={setMinimalistMode}
-        freshMode={freshMode} onFreshModeChange={setFreshMode}
-        displayMode={displayMode} onDisplayModeChange={setDisplayMode}
-        shortcutsRowsPerColumn={normalizedRowsPerColumn}
-        onShortcutsRowsPerColumnChange={handleShortcutsRowsPerColumnChange}
-        openInNewTab={openInNewTab} onOpenInNewTabChange={setOpenInNewTab}
-        is24Hour={is24Hour} onIs24HourChange={setIs24Hour} showSeconds={showSeconds} onShowSecondsChange={setShowSeconds}
-        showTime={showTime} onShowTimeChange={setShowTime}
-        onExportData={handleExportData} onImportData={handleImportData}
-        wallpaperMode={wallpaperMode} onWallpaperModeChange={setWallpaperMode} bingWallpaper={bingWallpaper} customWallpaper={customWallpaper} onCustomWallpaperChange={setCustomWallpaper} weatherCode={weatherCode}
-        privacyConsent={privacyConsent}
-        onPrivacyConsentChange={handlePrivacySwitchChange}
-        onOpenAdminModal={handleOpenAdminModal}
-        onOpenAboutModal={handleOpenAboutModal}
-        onOpenWebdavConfig={() => setWebdavDialogOpen(true)}
-        onWebdavDownload={handleWebdavDownload}
-        onWebdavUpload={handleWebdavUpload}
-        onWebdavSync={resolveWebdavConflict}
-        onVersionClick={handleVersionTap}
+      <AppDialogs
+        movePageDialog={{
+          open: moveDialogOpen,
+          onOpenChange: setMoveDialogOpen,
+          moveDialogData,
+          getMaxPageIndex,
+          shortcuts,
+          shortcutsPageCapacity,
+          moveShortcutToPage,
+          onTargetPageSelected: setShortcutsPageIndex,
+        }}
+        shortcutModalProps={{
+          isOpen: shortcutEditOpen,
+          onOpenChange: (open) => {
+            setShortcutEditOpen(open);
+            if (!open) {
+              setShortcutModalMode('add');
+              setSelectedShortcut(null);
+              setEditingTitle('');
+              setEditingUrl('');
+            }
+          },
+          mode: shortcutModalMode,
+          initialTitle: editingTitle,
+          initialUrl: editingUrl,
+          initialIcon: selectedShortcut?.shortcut.icon || 'chatgpt',
+          onSave: handleSaveShortcutEdit,
+        }}
+        shortcutDeleteDialogProps={{
+          open: shortcutDeleteOpen,
+          onOpenChange: setShortcutDeleteOpen,
+          title: t('shortcutDelete.title'),
+          description: t('shortcutDelete.description'),
+          onConfirm: handleConfirmDeleteShortcut,
+        }}
+        scenarioCreateDialogProps={{
+          open: scenarioCreateOpen,
+          onOpenChange: setScenarioCreateOpen,
+          onSubmit: handleCreateScenarioMode,
+        }}
+        scenarioEditDialogProps={{
+          open: scenarioEditOpen,
+          onOpenChange: setScenarioEditOpen,
+          onSubmit: handleUpdateScenarioMode,
+          title: t('scenario.editTitle'),
+          submitText: t('common.save'),
+          mode: scenarioEditMode,
+        }}
+        authModalProps={{
+          isOpen: isAuthModalOpen,
+          onOpenChange: setIsAuthModalOpen,
+          onLoginSuccess: onLoginSuccess,
+          apiServer,
+          onApiServerChange: setApiServer,
+          customApiUrl,
+          customApiName,
+          defaultApiBase,
+        }}
+        settingsModalProps={{
+          isOpen: settingsOpen,
+          onOpenChange: setSettingsOpen,
+          username: user,
+          onLogin: handleRequestCloudLogin,
+          onLogout: handleLogoutWithOptions,
+          shortcutsCount: totalShortcuts,
+          minimalistMode,
+          onMinimalistModeChange: setMinimalistMode,
+          freshMode,
+          onFreshModeChange: setFreshMode,
+          displayMode,
+          onDisplayModeChange: setDisplayMode,
+          shortcutsRowsPerColumn: normalizedRowsPerColumn,
+          onShortcutsRowsPerColumnChange: handleShortcutsRowsPerColumnChange,
+          openInNewTab,
+          onOpenInNewTabChange: setOpenInNewTab,
+          is24Hour,
+          onIs24HourChange: setIs24Hour,
+          showSeconds,
+          onShowSecondsChange: setShowSeconds,
+          showTime,
+          onShowTimeChange: setShowTime,
+          onExportData: handleExportData,
+          onImportData: handleImportData,
+          wallpaperMode,
+          onWallpaperModeChange: setWallpaperMode,
+          bingWallpaper,
+          customWallpaper,
+          onCustomWallpaperChange: setCustomWallpaper,
+          weatherCode,
+          privacyConsent,
+          onPrivacyConsentChange: handlePrivacySwitchChange,
+          onOpenAdminModal: handleOpenAdminModal,
+          onOpenAboutModal: handleOpenAboutModal,
+          onOpenWebdavConfig: () => setWebdavDialogOpen(true),
+          onWebdavDownload: handleWebdavDownload,
+          onWebdavUpload: handleWebdavUpload,
+          onWebdavSync: resolveWebdavConflict,
+          onVersionClick: handleVersionTap,
+        }}
+        adminModalProps={{
+          open: adminModalOpen,
+          onOpenChange: setAdminModalOpen,
+          onExportDomains: handleExportDomains,
+          onFetchAdminStats: handleFetchAdminStats,
+          weatherDebugEnabled: weatherDebugVisible,
+          onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
+          customApiUrl,
+          onCustomApiUrlChange: setCustomApiUrl,
+          customApiName,
+          onCustomApiNameChange: setCustomApiName,
+        }}
+        aboutModalProps={{
+          open: aboutModalOpen,
+          onOpenChange: setAboutModalOpen,
+        }}
+        webdavConfigDialogProps={{
+          open: webdavDialogOpen,
+          onOpenChange: setWebdavDialogOpen,
+          isCloudLoggedIn: Boolean(user),
+          onClearLocalData: handleClearLocalDataToRole,
+          onConflictPolicyChanged: handleWebdavConflictPolicyChanged,
+          onSyncIntervalChanged: handleWebdavSyncIntervalChanged,
+        }}
+        conflictChoiceDialog={{
+          open: conflictModalOpen,
+          onUseCloud: () => {
+            setConfirmChoice('cloud');
+            setConfirmSyncOpen(true);
+            setConflictModalOpen(false);
+          },
+          onUseLocal: () => {
+            setConfirmChoice('local');
+            setConfirmSyncOpen(true);
+            setConflictModalOpen(false);
+          },
+        }}
+        confirmSyncDialog={{
+          open: confirmSyncOpen,
+          onOpenChange: setConfirmSyncOpen,
+          confirmChoice,
+          cloudCount,
+          cloudTime,
+          localCount,
+          localTime,
+          pendingLocalPayload,
+          pendingCloudPayload,
+          downloadBackupPayload,
+          resolveWithCloud,
+          resolveWithLocal,
+          onCancel: () => {
+            setConfirmSyncOpen(false);
+            setConflictModalOpen(true);
+          },
+        }}
+        importConfirmDialog={{
+          open: importConfirmOpen,
+          setOpen: setImportConfirmOpen,
+          payload: importPendingPayload,
+          setPayload: setImportPendingPayload,
+          busy: importConfirmBusy,
+          setBusy: setImportConfirmBusy,
+          downloadCloudBackupEnvelope,
+          applyUndoPayload,
+          onSuccess: () => setSettingsOpen(false),
+        }}
+        pageDeleteDialogProps={{
+          open: pageDeleteOpen,
+          onOpenChange: setPageDeleteOpen,
+          title: t('pageDelete.title'),
+          description: t('pageDelete.description'),
+          onConfirm: () => {
+            handleDeletePage(shortcutsPageIndex);
+            setPageDeleteOpen(false);
+            setShortcutsPageIndex(Math.max(0, shortcutsPageIndex - 1));
+          },
+        }}
+        disableConsentDialog={{
+          open: confirmDisableConsentOpen,
+          onOpenChange: setConfirmDisableConsentOpen,
+          onAgree: () => {
+            setConfirmDisableConsentOpen(false);
+            handlePrivacyConsent(true);
+          },
+          onDisagree: () => {
+            setConfirmDisableConsentOpen(false);
+            handlePrivacyConsent(false);
+          },
+        }}
       />
-      <AdminModal
-        open={adminModalOpen}
-        onOpenChange={setAdminModalOpen}
-        onExportDomains={handleExportDomains}
-        onFetchAdminStats={handleFetchAdminStats}
-        weatherDebugEnabled={weatherDebugVisible}
-        onWeatherDebugEnabledChange={handleWeatherDebugEnabledChange}
-      />
-      <AboutLeafTabModal open={aboutModalOpen} onOpenChange={setAboutModalOpen} />
-      <WebdavConfigDialog
-        open={webdavDialogOpen}
-        onOpenChange={setWebdavDialogOpen}
-        isCloudLoggedIn={Boolean(user)}
-        onClearLocalData={handleClearLocalDataToRole}
-      />
-      
-      <Dialog open={conflictModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
-          <DialogHeader><DialogTitle>{t('syncConflict.title')}</DialogTitle><DialogDescription>{t('syncConflict.description')}</DialogDescription></DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => { setConfirmChoice('cloud'); setConfirmSyncOpen(true); setConflictModalOpen(false); }}>{t('syncConflict.useCloud')}</Button>
-            <Button onClick={() => { setConfirmChoice('local'); setConfirmSyncOpen(true); setConflictModalOpen(false); }}>{t('syncConflict.useLocal')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={confirmSyncOpen} onOpenChange={setConfirmSyncOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle>{t('syncConflict.title')}</DialogTitle>
-            <DialogDescription>
-              {t('syncConflict.description')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-foreground">{t('sync.cloud')}</span>
-              <span>{cloudCount} / {cloudTime || '—'}</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-foreground">{t('sync.local')}</span>
-              <span>{localCount} / {localTime || '—'}</span>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => { setConfirmSyncOpen(false); setConflictModalOpen(true); }}>{t('common.cancel')}</Button>
-            <Button onClick={() => { if (confirmChoice === 'cloud') resolveWithCloud(); else resolveWithLocal(); setConfirmSyncOpen(false); }}>{confirmChoice === 'cloud' ? t('syncConflict.useCloud') : t('syncConflict.useLocal')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <ConfirmDialog 
-        open={pageDeleteOpen} 
-        onOpenChange={setPageDeleteOpen} 
-        title={t('pageDelete.title')} 
-        description={t('pageDelete.description')} 
-        onConfirm={() => { handleDeletePage(shortcutsPageIndex); setPageDeleteOpen(false); setShortcutsPageIndex(Math.max(0, shortcutsPageIndex - 1)); }} 
-      />
-      
-      <Dialog open={confirmDisableConsentOpen} onOpenChange={setConfirmDisableConsentOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground [&>button]:hidden">
-          <DialogHeader>
-            <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4">
-              <RiShieldCrossFill className="w-10 h-10 text-destructive" />
-            </div>
-            <DialogTitle className="text-center text-xl font-semibold">
-              {t('settings.iconAssistant.modalTitle')}
-            </DialogTitle>
-            <DialogDescription className="text-center pt-2">
-              {t('settings.iconAssistant.confirmClose')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 mt-6 items-center">
-            <Button 
-              className="w-full py-6 rounded-xl font-medium" 
-              onClick={() => { setConfirmDisableConsentOpen(false); handlePrivacyConsent(true); }}
-            >
-              {t('settings.iconAssistant.agree')}
-            </Button>
-            <span 
-              className="text-sm text-muted-foreground cursor-pointer hover:underline px-4 py-2"
-              onClick={() => { setConfirmDisableConsentOpen(false); handlePrivacyConsent(false); }}
-            >
-              {t('settings.iconAssistant.disagree')}
-            </span>
-          </div>
-        </DialogContent>
-      </Dialog>
       <Toaster />
       <RoleSelector 
         open={roleSelectorOpen} 
@@ -1206,21 +1445,5 @@ function ContextMenuItem({ label, onSelect, variant = 'default', disabled = fals
       <span>{label}</span>
       {iconRight}
     </button>
-  );
-}
-
-function PageChip({ page, count, pageCapacity, onClick, disabled }: { page: number; count: number; pageCapacity: number; onClick: () => void; disabled?: boolean }) {
-  const { t } = useTranslation();
-  return (
-    <Button
-      type="button"
-      variant="secondary"
-      disabled={disabled}
-      className={`justify-between ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-      onClick={onClick}
-    >
-      <span>{t('pagination.page', { page: page + 1 })}</span>
-      <span className="text-xs text-muted-foreground">{count}/{pageCapacity}</span>
-    </Button>
   );
 }

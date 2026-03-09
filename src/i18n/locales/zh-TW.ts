@@ -129,6 +129,8 @@ export default {
           uploadError: "WebDAV 同步失敗，請檢查設定",
           syncSuccess: "同步完成",
           syncError: "同步失敗，請檢查設定",
+          policyChangeSyncTriggered: "衝突策略已切換，已依目前策略同步一次",
+          intervalChangeSyncTriggered: "同步間隔已調整，已立即同步一次",
           urlRequired: "請先填寫 WebDAV 位址",
           defaultProfileName: "預設設定",
           configured: "已設定，可同步到 WebDAV",
@@ -141,6 +143,7 @@ export default {
           hoursAgo: "{{count}} 小時前",
           lastAttemptFailed: "最近一次同步嘗試失敗",
           scheduleRunning: "定時同步執行中",
+          nextSyncAtLabel: "下次同步：{{time}}",
           syncDisabled: "請先啟用 WebDAV 同步"
         }
       },
@@ -218,6 +221,17 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release122Scrollbar: "關於 LeafTab 彈窗捲動條改為與設定彈窗一致",
+        release122WelcomePersist: "首次註冊登入引導彈窗狀態支援本地+雲端持久化，重新整理不再閃爍",
+        release122RateLimitToast: "修復 429 限流提示未顯示問題，並統一提示樣式",
+        release122WebdavSchedule: "WebDAV 定時同步改為系統時間基準，顯示下次同步時間並在關鍵設定變更後立即同步",
+        release122CustomServer: "支援切換自訂雲端同步伺服器",
+        release122CustomIconSource: "支援自訂圖示來源",
+        release122OnlineIconSource: "圖示來源改為線上取得（GitHub Pages）",
+        release122DynamicAccent: "新增動態取色主題色",
+        release121Webdav: "新增 WebDAV 同步功能",
+        release121Ui: "優化 UI 樣式",
+        release121Fixes: "修復了一些 bug",
         grid: "底部捷徑重寫為扁平網格",
         carousel: "新增滑動分頁與滑鼠滾輪翻頁",
         entrance: "桌布、搜尋、捷徑的入場動畫優化",
@@ -421,6 +435,7 @@ export default {
     },
     toast: {
       cloudSynced: "已同步雲端配置",
+      cloudAutoSyncSuccess: "雲端自動同步成功",
       cloudSyncFailed: "同步雲端配置失敗",
       syncFailed: "同步失敗",
       syncCloudApplied: "已使用雲端配置",

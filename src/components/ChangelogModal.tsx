@@ -13,6 +13,20 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.2",
+      date: "2026-03-09",
+      notes: [
+        t("changelog.items.release122Scrollbar"),
+        t("changelog.items.release122WelcomePersist"),
+        t("changelog.items.release122RateLimitToast"),
+        t("changelog.items.release122WebdavSchedule"),
+        t("changelog.items.release122CustomServer"),
+        t("changelog.items.release122CustomIconSource"),
+        t("changelog.items.release122OnlineIconSource"),
+        t("changelog.items.release122DynamicAccent"),
+      ],
+    },
+    {
       version: "1.2.1",
       date: "2026-03-07",
       notes: [
@@ -34,12 +48,13 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[560px] max-h-[78vh] bg-background border-border text-foreground rounded-[24px]">
         <DialogHeader>
           <DialogTitle>{t("changelog.title")}</DialogTitle>
           <DialogDescription>{t("changelog.description")}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="max-h-[66vh]">
+          <div className="pr-6">
           <div className="flex flex-col gap-4">
             {items.map((it) => (
               <div key={it.version} className="flex flex-col gap-2">
@@ -54,6 +69,7 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
                 </ul>
               </div>
             ))}
+          </div>
           </div>
         </ScrollArea>
       </DialogContent>

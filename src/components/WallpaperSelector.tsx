@@ -2,9 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { RiCheckFill, RiDownload2Fill, RiImageFill, RiUpload2Fill } from "@remixicon/react";
+import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckFill, RiDownload2Fill, RiImageFill, RiUpload2Fill } from "@remixicon/react";
 import { useTranslation } from "react-i18next";
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { saveWallpaper } from "../db";
 import imgImage from "../assets/Default_wallpaper.png";
 
@@ -72,6 +72,22 @@ export default function WallpaperSelector({
 }: WallpaperSelectorProps) {
   const { t, i18n } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [weatherPreviewIndex, setWeatherPreviewIndex] = useState(0);
+  const weatherPreviewVideos = useMemo(() => ([
+    { id: "sunny", src: sunnyVideo, label: t('weather.codes.0', { defaultValue: 'Sunny' }) },
+    { id: "cloudy", src: cloudyVideo, label: t('weather.codes.2', { defaultValue: 'Cloudy' }) },
+    { id: "foggy", src: foggyVideo, label: t('weather.codes.45', { defaultValue: 'Foggy' }) },
+    { id: "rainy", src: rainingVideo, label: t('weather.codes.61', { defaultValue: 'Rainy' }) },
+    { id: "snowy", src: snowingVideo, label: t('weather.codes.71', { defaultValue: 'Snowy' }) },
+    { id: "thunderstorm", src: thunderstormVideo, label: t('weather.codes.95', { defaultValue: 'Thunderstorm' }) },
+  ]), [t]);
+  const currentWeatherPreview = weatherPreviewVideos[weatherPreviewIndex] || weatherPreviewVideos[0];
+  const goPrevWeatherPreview = () => {
+    setWeatherPreviewIndex((prev) => (prev - 1 + weatherPreviewVideos.length) % weatherPreviewVideos.length);
+  };
+  const goNextWeatherPreview = () => {
+    setWeatherPreviewIndex((prev) => (prev + 1) % weatherPreviewVideos.length);
+  };
   
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -222,10 +238,41 @@ export default function WallpaperSelector({
                 <TabsContent value="weather" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                   <div className="flex flex-col gap-4">
                     <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm bg-transparent group">
-                      <div className="grid grid-cols-3 h-full gap-0.5 opacity-90 group-hover:opacity-100 transition-opacity">
-                        <video src={sunnyVideo} className="h-full object-cover" muted loop autoPlay />
-                        <video src={rainingVideo} className="h-full object-cover" muted loop autoPlay />
-                        <video src={cloudyVideo} className="h-full object-cover" muted loop autoPlay />
+                      <video
+                        key={currentWeatherPreview.id}
+                        src={currentWeatherPreview.src}
+                        className="h-full w-full object-cover object-center"
+                        muted
+                        autoPlay
+                        playsInline
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                      <div className="absolute inset-y-0 left-2 flex items-center">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 rounded-full bg-black/35 text-white border-white/20 hover:bg-black/55"
+                          onClick={goPrevWeatherPreview}
+                          aria-label={t('common.prev', { defaultValue: 'Previous' })}
+                        >
+                          <RiArrowLeftSLine className="size-5" />
+                        </Button>
+                      </div>
+                      <div className="absolute inset-y-0 right-2 flex items-center">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 rounded-full bg-black/35 text-white border-white/20 hover:bg-black/55"
+                          onClick={goNextWeatherPreview}
+                          aria-label={t('common.next', { defaultValue: 'Next' })}
+                        >
+                          <RiArrowRightSLine className="size-5" />
+                        </Button>
+                      </div>
+                      <div className="absolute left-3 bottom-3 rounded-md border border-white/20 bg-black/35 px-2 py-0.5 text-[11px] text-white">
+                        {currentWeatherPreview.label}
                       </div>
                     </div>
 

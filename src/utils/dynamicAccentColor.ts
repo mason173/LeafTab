@@ -9,14 +9,17 @@ type DynamicAccentInput = {
 
 const imageAccentCache = new Map<string, string>();
 
-const WEATHER_ACCENT_COLORS: Array<{ match: (code: number) => boolean; color: string }> = [
-  { match: (code) => code >= 95, color: '#1e3a8a' },
-  { match: (code) => code >= 80, color: '#374151' },
-  { match: (code) => code >= 71, color: '#0ea5e9' },
-  { match: (code) => code >= 61, color: '#374151' },
-  { match: (code) => code >= 1, color: '#cbd5e1' },
-  { match: (code) => code >= 0, color: '#38bdf8' },
-];
+type WeatherTheme = 'sunny' | 'cloudy' | 'foggy' | 'rainy' | 'snowy' | 'thunderstorm';
+
+// Tuned to match the visual palette of local weather videos in WallpaperSelector.
+const WEATHER_THEME_ACCENT: Record<WeatherTheme, string> = {
+  sunny: '#5AAAF5',
+  cloudy: '#8A98A8',
+  foggy: '#9AA8AE',
+  rainy: '#596E85',
+  snowy: '#8FAFD1',
+  thunderstorm: '#46506F',
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -90,9 +93,18 @@ const resolveForeground = (hex: string) => {
   return luminance > 0.36 ? '#111827' : '#ffffff';
 };
 
+const resolveWeatherTheme = (weatherCode: number): WeatherTheme => {
+  if ([0, 1].includes(weatherCode)) return 'sunny';
+  if ([2, 3].includes(weatherCode)) return 'cloudy';
+  if ([45, 48].includes(weatherCode)) return 'foggy';
+  if ([95, 96, 99].includes(weatherCode)) return 'thunderstorm';
+  if ([71, 73, 75, 77, 85, 86].includes(weatherCode)) return 'snowy';
+  return 'rainy';
+};
+
 const resolveWeatherAccent = (weatherCode: number) => {
-  const found = WEATHER_ACCENT_COLORS.find((item) => item.match(weatherCode));
-  return found?.color || '#3b82f6';
+  const theme = resolveWeatherTheme(weatherCode);
+  return WEATHER_THEME_ACCENT[theme] || '#4f86c6';
 };
 
 const resolveSourceImage = (input: DynamicAccentInput) => {

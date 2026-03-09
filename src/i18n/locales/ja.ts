@@ -135,6 +135,8 @@ export default {
           uploadError: "WebDAV の同期に失敗しました。設定を確認してください。",
           syncSuccess: "同期完了",
           syncError: "同期に失敗しました。設定を確認してください。",
+          policyChangeSyncTriggered: "競合ポリシーを切り替え、現在のポリシーで1回同期しました",
+          intervalChangeSyncTriggered: "同期間隔を変更し、即時に1回同期しました",
           urlRequired: "まず WebDAV URL を入力してください",
           defaultProfileName: "デフォルト設定",
           configured: "設定済み、同期可能",
@@ -147,6 +149,7 @@ export default {
           disabled: "無効（WebDAV 同期は停止中）",
           lastAttemptFailed: "直近の同期に失敗しました",
           scheduleRunning: "定期同期が実行中",
+          nextSyncAtLabel: "次回同期: {{time}}",
           syncDisabled: "まず WebDAV 同期を有効化してください"
         }
       },
@@ -224,6 +227,17 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release122Scrollbar: "「About LeafTab」モーダルのスクロールバーを設定モーダルと統一",
+        release122WelcomePersist: "初回ログイン案内モーダルの状態をローカル＋サーバーに保存し、リロード時のチラつきを解消",
+        release122RateLimitToast: "429 レート制限トーストが表示されない問題を修正し、スタイルを統一",
+        release122WebdavSchedule: "WebDAV 定期同期をシステム時刻基準に変更し、次回同期時刻表示と主要設定変更時の即時同期に対応",
+        release122CustomServer: "カスタムクラウド同期サーバーの切り替えに対応",
+        release122CustomIconSource: "カスタムアイコンソース URL に対応",
+        release122OnlineIconSource: "アイコンソースを GitHub Pages 経由のオンライン取得に変更",
+        release122DynamicAccent: "ダイナミックアクセントカラーに対応",
+        release121Webdav: "WebDAV 同期機能を追加",
+        release121Ui: "UI スタイルを改善",
+        release121Fixes: "いくつかの不具合を修正",
         grid: "下部ショートカットをフラットグリッドに再設計",
         carousel: "スワイプページングとマウスホイールページングを追加",
         entrance: "壁紙・検索・ショートカットの登場アニメーションを改善",
@@ -448,6 +462,7 @@ export default {
     },
     toast: {
       cloudSynced: "クラウド設定を同期しました",
+      cloudAutoSyncSuccess: "クラウドの自動同期が完了しました",
       cloudSyncFailed: "クラウド設定の同期に失敗しました",
       syncFailed: "同期に失敗しました",
       syncCloudApplied: "クラウド設定を適用しました",

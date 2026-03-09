@@ -1,0 +1,620 @@
+{
+  "type": "leaftab_backup",
+  "version": 3,
+  "timestamp": "2026-03-09T11:58:29.451Z",
+  "data": {
+    "scenarioModes": [
+      {
+        "id": "life-mode-001",
+        "name": "生活模式",
+        "color": "#3DD6C5",
+        "icon": "leaf"
+      }
+    ],
+    "selectedScenarioId": "life-mode-001",
+    "scenarioShortcuts": {
+      "life-mode-001": [
+        {
+          "id": "test-001",
+          "title": "1",
+          "url": "1",
+          "icon": ""
+        },
+        {
+          "id": "test-002",
+          "title": "2",
+          "url": "2",
+          "icon": ""
+        },
+        {
+          "id": "test-003",
+          "title": "3",
+          "url": "3",
+          "icon": ""
+        },
+        {
+          "id": "test-004",
+          "title": "4",
+          "url": "4",
+          "icon": ""
+        },
+        {
+          "id": "test-005",
+          "title": "5",
+          "url": "5",
+          "icon": ""
+        },
+        {
+          "id": "test-006",
+          "title": "6",
+          "url": "6",
+          "icon": ""
+        },
+        {
+          "id": "test-007",
+          "title": "7",
+          "url": "7",
+          "icon": ""
+        },
+        {
+          "id": "test-008",
+          "title": "8",
+          "url": "8",
+          "icon": ""
+        },
+        {
+          "id": "test-009",
+          "title": "9",
+          "url": "9",
+          "icon": ""
+        },
+        {
+          "id": "test-010",
+          "title": "10",
+          "url": "10",
+          "icon": ""
+        },
+        {
+          "id": "test-011",
+          "title": "11",
+          "url": "11",
+          "icon": ""
+        },
+        {
+          "id": "test-012",
+          "title": "12",
+          "url": "12",
+          "icon": ""
+        },
+        {
+          "id": "test-013",
+          "title": "13",
+          "url": "13",
+          "icon": ""
+        },
+        {
+          "id": "test-014",
+          "title": "14",
+          "url": "14",
+          "icon": ""
+        },
+        {
+          "id": "test-015",
+          "title": "15",
+          "url": "15",
+          "icon": ""
+        },
+        {
+          "id": "test-016",
+          "title": "16",
+          "url": "16",
+          "icon": ""
+        },
+        {
+          "id": "test-017",
+          "title": "17",
+          "url": "17",
+          "icon": ""
+        },
+        {
+          "id": "test-018",
+          "title": "18",
+          "url": "18",
+          "icon": ""
+        },
+        {
+          "id": "test-019",
+          "title": "19",
+          "url": "19",
+          "icon": ""
+        },
+        {
+          "id": "test-020",
+          "title": "20",
+          "url": "20",
+          "icon": ""
+        },
+        {
+          "id": "test-021",
+          "title": "21",
+          "url": "21",
+          "icon": ""
+        },
+        {
+          "id": "test-022",
+          "title": "22",
+          "url": "22",
+          "icon": ""
+        },
+        {
+          "id": "test-023",
+          "title": "23",
+          "url": "23",
+          "icon": ""
+        },
+        {
+          "id": "test-024",
+          "title": "24",
+          "url": "24",
+          "icon": ""
+        },
+        {
+          "id": "test-025",
+          "title": "25",
+          "url": "25",
+          "icon": ""
+        },
+        {
+          "id": "test-026",
+          "title": "26",
+          "url": "26",
+          "icon": ""
+        },
+        {
+          "id": "test-027",
+          "title": "27",
+          "url": "27",
+          "icon": ""
+        },
+        {
+          "id": "test-028",
+          "title": "28",
+          "url": "28",
+          "icon": ""
+        },
+        {
+          "id": "test-029",
+          "title": "29",
+          "url": "29",
+          "icon": ""
+        },
+        {
+          "id": "test-030",
+          "title": "30",
+          "url": "30",
+          "icon": ""
+        },
+        {
+          "id": "test-031",
+          "title": "31",
+          "url": "31",
+          "icon": ""
+        },
+        {
+          "id": "test-032",
+          "title": "32",
+          "url": "32",
+          "icon": ""
+        },
+        {
+          "id": "test-033",
+          "title": "33",
+          "url": "33",
+          "icon": ""
+        },
+        {
+          "id": "test-034",
+          "title": "34",
+          "url": "34",
+          "icon": ""
+        },
+        {
+          "id": "test-035",
+          "title": "35",
+          "url": "35",
+          "icon": ""
+        },
+        {
+          "id": "test-036",
+          "title": "36",
+          "url": "36",
+          "icon": ""
+        },
+        {
+          "id": "test-037",
+          "title": "37",
+          "url": "37",
+          "icon": ""
+        },
+        {
+          "id": "test-038",
+          "title": "38",
+          "url": "38",
+          "icon": ""
+        },
+        {
+          "id": "test-039",
+          "title": "39",
+          "url": "39",
+          "icon": ""
+        },
+        {
+          "id": "test-040",
+          "title": "40",
+          "url": "40",
+          "icon": ""
+        },
+        {
+          "id": "test-041",
+          "title": "41",
+          "url": "41",
+          "icon": ""
+        },
+        {
+          "id": "test-042",
+          "title": "42",
+          "url": "42",
+          "icon": ""
+        },
+        {
+          "id": "test-043",
+          "title": "43",
+          "url": "43",
+          "icon": ""
+        },
+        {
+          "id": "test-044",
+          "title": "44",
+          "url": "44",
+          "icon": ""
+        },
+        {
+          "id": "test-045",
+          "title": "45",
+          "url": "45",
+          "icon": ""
+        },
+        {
+          "id": "test-046",
+          "title": "46",
+          "url": "46",
+          "icon": ""
+        },
+        {
+          "id": "test-047",
+          "title": "47",
+          "url": "47",
+          "icon": ""
+        },
+        {
+          "id": "test-048",
+          "title": "48",
+          "url": "48",
+          "icon": ""
+        },
+        {
+          "id": "test-049",
+          "title": "49",
+          "url": "49",
+          "icon": ""
+        },
+        {
+          "id": "test-050",
+          "title": "50",
+          "url": "50",
+          "icon": ""
+        },
+        {
+          "id": "test-051",
+          "title": "51",
+          "url": "51",
+          "icon": ""
+        },
+        {
+          "id": "test-052",
+          "title": "52",
+          "url": "52",
+          "icon": ""
+        },
+        {
+          "id": "test-053",
+          "title": "53",
+          "url": "53",
+          "icon": ""
+        },
+        {
+          "id": "test-054",
+          "title": "54",
+          "url": "54",
+          "icon": ""
+        },
+        {
+          "id": "test-055",
+          "title": "55",
+          "url": "55",
+          "icon": ""
+        },
+        {
+          "id": "test-056",
+          "title": "56",
+          "url": "56",
+          "icon": ""
+        },
+        {
+          "id": "test-057",
+          "title": "57",
+          "url": "57",
+          "icon": ""
+        },
+        {
+          "id": "test-058",
+          "title": "58",
+          "url": "58",
+          "icon": ""
+        },
+        {
+          "id": "test-059",
+          "title": "59",
+          "url": "59",
+          "icon": ""
+        },
+        {
+          "id": "test-060",
+          "title": "60",
+          "url": "60",
+          "icon": ""
+        },
+        {
+          "id": "test-061",
+          "title": "61",
+          "url": "61",
+          "icon": ""
+        },
+        {
+          "id": "test-062",
+          "title": "62",
+          "url": "62",
+          "icon": ""
+        },
+        {
+          "id": "test-063",
+          "title": "63",
+          "url": "63",
+          "icon": ""
+        },
+        {
+          "id": "test-064",
+          "title": "64",
+          "url": "64",
+          "icon": ""
+        },
+        {
+          "id": "test-065",
+          "title": "65",
+          "url": "65",
+          "icon": ""
+        },
+        {
+          "id": "test-066",
+          "title": "66",
+          "url": "66",
+          "icon": ""
+        },
+        {
+          "id": "test-067",
+          "title": "67",
+          "url": "67",
+          "icon": ""
+        },
+        {
+          "id": "test-068",
+          "title": "68",
+          "url": "68",
+          "icon": ""
+        },
+        {
+          "id": "test-069",
+          "title": "69",
+          "url": "69",
+          "icon": ""
+        },
+        {
+          "id": "test-070",
+          "title": "70",
+          "url": "70",
+          "icon": ""
+        },
+        {
+          "id": "test-071",
+          "title": "71",
+          "url": "71",
+          "icon": ""
+        },
+        {
+          "id": "test-072",
+          "title": "72",
+          "url": "72",
+          "icon": ""
+        },
+        {
+          "id": "test-073",
+          "title": "73",
+          "url": "73",
+          "icon": ""
+        },
+        {
+          "id": "test-074",
+          "title": "74",
+          "url": "74",
+          "icon": ""
+        },
+        {
+          "id": "test-075",
+          "title": "75",
+          "url": "75",
+          "icon": ""
+        },
+        {
+          "id": "test-076",
+          "title": "76",
+          "url": "76",
+          "icon": ""
+        },
+        {
+          "id": "test-077",
+          "title": "77",
+          "url": "77",
+          "icon": ""
+        },
+        {
+          "id": "test-078",
+          "title": "78",
+          "url": "78",
+          "icon": ""
+        },
+        {
+          "id": "test-079",
+          "title": "79",
+          "url": "79",
+          "icon": ""
+        },
+        {
+          "id": "test-080",
+          "title": "80",
+          "url": "80",
+          "icon": ""
+        },
+        {
+          "id": "test-081",
+          "title": "81",
+          "url": "81",
+          "icon": ""
+        },
+        {
+          "id": "test-082",
+          "title": "82",
+          "url": "82",
+          "icon": ""
+        },
+        {
+          "id": "test-083",
+          "title": "83",
+          "url": "83",
+          "icon": ""
+        },
+        {
+          "id": "test-084",
+          "title": "84",
+          "url": "84",
+          "icon": ""
+        },
+        {
+          "id": "test-085",
+          "title": "85",
+          "url": "85",
+          "icon": ""
+        },
+        {
+          "id": "test-086",
+          "title": "86",
+          "url": "86",
+          "icon": ""
+        },
+        {
+          "id": "test-087",
+          "title": "87",
+          "url": "87",
+          "icon": ""
+        },
+        {
+          "id": "test-088",
+          "title": "88",
+          "url": "88",
+          "icon": ""
+        },
+        {
+          "id": "test-089",
+          "title": "89",
+          "url": "89",
+          "icon": ""
+        },
+        {
+          "id": "test-090",
+          "title": "90",
+          "url": "90",
+          "icon": ""
+        },
+        {
+          "id": "test-091",
+          "title": "91",
+          "url": "91",
+          "icon": ""
+        },
+        {
+          "id": "test-092",
+          "title": "92",
+          "url": "92",
+          "icon": ""
+        },
+        {
+          "id": "test-093",
+          "title": "93",
+          "url": "93",
+          "icon": ""
+        },
+        {
+          "id": "test-094",
+          "title": "94",
+          "url": "94",
+          "icon": ""
+        },
+        {
+          "id": "test-095",
+          "title": "95",
+          "url": "95",
+          "icon": ""
+        },
+        {
+          "id": "test-096",
+          "title": "96",
+          "url": "96",
+          "icon": ""
+        },
+        {
+          "id": "test-097",
+          "title": "97",
+          "url": "97",
+          "icon": ""
+        },
+        {
+          "id": "test-098",
+          "title": "98",
+          "url": "98",
+          "icon": ""
+        },
+        {
+          "id": "test-099",
+          "title": "99",
+          "url": "99",
+          "icon": ""
+        },
+        {
+          "id": "test-100",
+          "title": "100",
+          "url": "100",
+          "icon": ""
+        }
+      ]
+    }
+  }
+}
