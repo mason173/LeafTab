@@ -12,7 +12,7 @@ import ko from './locales/ko';
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
-  .init({
+  .init(({
     resources: {
       zh,
       'zh-TW': zhTW,
@@ -23,6 +23,19 @@ i18n
     },
     fallbackLng: 'en',
     debug: false,
+    logger: {
+      log: (...args: any[]) => {
+        const first = args[0];
+        if (typeof first === 'string' && first.includes('locize.com')) return;
+        if (typeof console !== 'undefined' && typeof console.log === 'function') console.log(...args);
+      },
+      warn: (...args: any[]) => {
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') console.warn(...args);
+      },
+      error: (...args: any[]) => {
+        if (typeof console !== 'undefined' && typeof console.error === 'function') console.error(...args);
+      },
+    },
     interpolation: {
       escapeValue: false
     },
@@ -33,6 +46,6 @@ i18n
     },
     nonExplicitSupportedLngs: true,
     supportedLngs: ['zh', 'zh-TW', 'en', 'vi', 'ja', 'ko']
-  });
+  } as any));
 
 export default i18n;

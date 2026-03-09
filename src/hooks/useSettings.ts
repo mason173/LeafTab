@@ -12,11 +12,27 @@ export function useSettings() {
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
   const [showSeconds, setShowSeconds] = useState(false);
   const [showTime, setShowTime] = useState(true);
+  const [apiServer, setApiServer] = useState<'official' | 'custom'>(() => {
+    const stored = localStorage.getItem('leaftab_api_server');
+    if (stored === 'custom' || stored === 'official') return stored;
+    return 'official';
+  });
+  const [customApiUrl, setCustomApiUrl] = useState(() => localStorage.getItem('leaftab_custom_api_url') || '');
+  const [customApiName, setCustomApiName] = useState(() => localStorage.getItem('leaftab_custom_api_name') || '');
   const [shortcutsRowsPerColumn, setShortcutsRowsPerColumn] = useState(() => {
     const stored = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     return clampShortcutsRowsPerColumn(stored);
   });
-  const [privacyConsent, setPrivacyConsent] = useState<boolean | null>(null);
+  const [privacyConsent, setPrivacyConsent] = useState<boolean | null>(() => {
+    const stored = localStorage.getItem('privacy_consent');
+    if (stored === null) return null;
+    try {
+      const parsed = JSON.parse(stored);
+      return typeof parsed === 'boolean' ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     loadGoogleFont(timeFont);
@@ -52,7 +68,21 @@ export function useSettings() {
     setShortcutsRowsPerColumn(clampShortcutsRowsPerColumn(storedShortcutsRowsPerColumn));
     
     const storedPrivacyConsent = localStorage.getItem('privacy_consent');
-    if (storedPrivacyConsent !== null) setPrivacyConsent(JSON.parse(storedPrivacyConsent));
+    if (storedPrivacyConsent !== null) {
+      try {
+        const parsed = JSON.parse(storedPrivacyConsent);
+        setPrivacyConsent(typeof parsed === 'boolean' ? parsed : null);
+      } catch {
+        setPrivacyConsent(null);
+      }
+    }
+
+    const storedApiServer = localStorage.getItem('leaftab_api_server');
+    if (storedApiServer === 'custom' || storedApiServer === 'official') setApiServer(storedApiServer);
+    const storedCustomApiUrl = localStorage.getItem('leaftab_custom_api_url');
+    if (storedCustomApiUrl !== null) setCustomApiUrl(storedCustomApiUrl);
+    const storedCustomApiName = localStorage.getItem('leaftab_custom_api_name');
+    if (storedCustomApiName !== null) setCustomApiName(storedCustomApiName);
   }, []);
 
   useEffect(() => {
@@ -106,6 +136,22 @@ export function useSettings() {
     }
   }, [privacyConsent]);
 
+  useEffect(() => {
+    localStorage.setItem('leaftab_api_server', apiServer);
+  }, [apiServer]);
+
+  useEffect(() => {
+    const next = customApiUrl.trim();
+    localStorage.setItem('leaftab_custom_api_url', next);
+    if (apiServer === 'custom' && !next) {
+      setApiServer('official');
+    }
+  }, [customApiUrl, apiServer]);
+
+  useEffect(() => {
+    localStorage.setItem('leaftab_custom_api_name', customApiName.trim());
+  }, [customApiName]);
+
   return {
     settingsOpen,
     setSettingsOpen,
@@ -129,5 +175,11 @@ export function useSettings() {
     setShortcutsRowsPerColumn,
     privacyConsent,
     setPrivacyConsent,
+    apiServer,
+    setApiServer,
+    customApiUrl,
+    setCustomApiUrl,
+    customApiName,
+    setCustomApiName,
   };
 }

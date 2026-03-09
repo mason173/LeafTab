@@ -129,6 +129,8 @@ export default {
           uploadError: "Đồng bộ WebDAV thất bại, hãy kiểm tra cấu hình",
           syncSuccess: "Đồng bộ hoàn tất",
           syncError: "Đồng bộ thất bại, hãy kiểm tra cấu hình",
+          policyChangeSyncTriggered: "Đã đổi chính sách xung đột và đồng bộ một lần theo chính sách hiện tại",
+          intervalChangeSyncTriggered: "Đã đổi khoảng thời gian đồng bộ và đồng bộ ngay một lần",
           urlRequired: "Vui lòng nhập URL WebDAV trước",
           defaultProfileName: "Cấu hình mặc định",
           configured: "Đã cấu hình, sẵn sàng đồng bộ",
@@ -141,6 +143,7 @@ export default {
           hoursAgo: "{{count}} giờ trước",
           lastAttemptFailed: "Lần đồng bộ gần nhất thất bại",
           scheduleRunning: "Đang chạy đồng bộ theo lịch",
+          nextSyncAtLabel: "Lần đồng bộ tiếp theo: {{time}}",
           syncDisabled: "Vui lòng bật đồng bộ WebDAV trước"
         }
       },
@@ -218,6 +221,17 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release122Scrollbar: "Đồng bộ kiểu thanh cuộn của modal About LeafTab với modal Cài đặt",
+        release122WelcomePersist: "Lưu trạng thái modal chào mừng lần đăng nhập đầu ở local + server để tránh nháy khi refresh",
+        release122RateLimitToast: "Sửa lỗi không hiển thị toast giới hạn 429 và đồng bộ kiểu hiển thị",
+        release122WebdavSchedule: "Đồng bộ WebDAV theo lịch dựa trên giờ hệ thống, hiển thị lần đồng bộ kế tiếp và đồng bộ ngay khi đổi cấu hình quan trọng",
+        release122CustomServer: "Hỗ trợ chuyển đổi máy chủ đồng bộ đám mây tùy chỉnh",
+        release122CustomIconSource: "Hỗ trợ URL nguồn biểu tượng tùy chỉnh",
+        release122OnlineIconSource: "Nguồn biểu tượng đổi sang lấy trực tuyến qua GitHub Pages",
+        release122DynamicAccent: "Thêm hỗ trợ màu nhấn động",
+        release121Webdav: "Thêm tính năng đồng bộ WebDAV",
+        release121Ui: "Tinh chỉnh giao diện UI",
+        release121Fixes: "Sửa một số lỗi",
         grid: "Khu vực lối tắt chuyển sang lưới phẳng",
         carousel: "Thêm vuốt phân trang và cuộn chuột để chuyển trang",
         entrance: "Tối ưu hiệu ứng vào cho nền, tìm kiếm, lối tắt",
@@ -421,6 +435,7 @@ export default {
     },
     toast: {
       cloudSynced: "Đã đồng bộ cấu hình đám mây",
+      cloudAutoSyncSuccess: "Đã hoàn tất đồng bộ tự động lên đám mây",
       cloudSyncFailed: "Đồng bộ cấu hình đám mây thất bại",
       syncFailed: "Đồng bộ thất bại",
       syncCloudApplied: "Đã áp dụng cấu hình đám mây",

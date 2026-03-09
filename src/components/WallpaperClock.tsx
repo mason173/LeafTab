@@ -141,6 +141,7 @@ export function WallpaperClock({
       <div className="absolute inset-x-6 top-6 z-20 transform-gpu">
         <TopNavBar 
           onSettingsClick={onSettingsClick}
+          settingsRevealOnHover
           showScenarioMode={showScenarioMode}
           scenarioModes={scenarioModes}
           selectedScenarioId={selectedScenarioId}

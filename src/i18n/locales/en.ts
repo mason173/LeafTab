@@ -97,6 +97,10 @@ export default {
         importSuccess: "Data imported successfully",
         importError: "Failed to import data. Please check the file format.",
         exportSuccess: "Data exported successfully",
+        importConfirmTitle: "Import and overwrite cloud?",
+        importConfirmDesc: "The imported file will overwrite your cloud configuration. A cloud backup will be downloaded first.",
+        importConfirmAction: "Import",
+        cloudBackupDownloaded: "Cloud backup downloaded",
         webdav: {
           entry: "WebDAV Sync",
           entryDesc: "Configure remote backup and restore via WebDAV",
@@ -138,6 +142,8 @@ export default {
           uploadError: "WebDAV sync failed. Check your settings.",
           syncSuccess: "Sync completed",
           syncError: "Sync failed. Check your settings.",
+          policyChangeSyncTriggered: "Conflict policy updated. Synced once with the selected policy.",
+          intervalChangeSyncTriggered: "Sync interval updated. Triggered one immediate sync.",
           disableConfirmTitle: "Disable WebDAV Sync",
           disableConfirmDesc: "Disable WebDAV sync? Local data will remain on this device.",
           clearLocalLabel: "Clear local data and restore defaults",
@@ -154,6 +160,7 @@ export default {
           disabled: "Disabled, WebDAV sync paused",
           lastAttemptFailed: "Last sync attempt failed",
           scheduleRunning: "Scheduled sync running",
+          nextSyncAtLabel: "Next sync: {{time}}",
           syncDisabled: "Enable WebDAV sync first"
         }
       },
@@ -212,6 +219,27 @@ export default {
         weatherDebugLabel: "Weather Debug",
         weatherDebugDesc: "Show weather debug panel (session only)"
       },
+      server: {
+        customUrlLabel: "Custom Backend URL",
+        customUrlDesc: "Used for login and sync. Leave empty to use official server only.",
+        customNamePlaceholder: "Name (optional)",
+        customUrlPlaceholder: "URL (e.g. https://example.com/api)",
+        customSave: "Save",
+        customClear: "Clear",
+        customSaved: "Custom backend URL saved",
+        customCleared: "Custom backend URL cleared",
+        customInvalid: "Invalid URL format"
+      },
+      iconLibrary: {
+        label: "Icon Library URL",
+        desc: "Prefer LeafTab-style icons (GitHub Pages)",
+        placeholder: "URL (e.g. https://xxx.github.io/icons)",
+        save: "Save",
+        saved: "Icon library URL saved",
+        restore: "Restore Default",
+        restored: "Default icon library URL restored",
+        invalid: "Invalid icon library URL"
+      },
       about: {
         label: "About LeafTab",
         desc: "Version info and extension overview",
@@ -222,7 +250,11 @@ export default {
         ackDesc: "LeafTab is built with the following open-source libraries and resources (tap to open):",
         frontend: "Frontend",
         backend: "Backend",
-        resources: "Icons & Resources"
+        resources: "Icons & Resources",
+        chromeStore: "Chrome Web Store",
+        edgeStore: "Edge Add-ons",
+        firefoxStore: "Firefox Add-ons",
+        github: "GitHub"
       }
     },
     changelog: {
@@ -231,6 +263,17 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release122Scrollbar: "Unified the About LeafTab modal scrollbar style with the Settings modal",
+        release122WelcomePersist: "Persisted first-login welcome modal state to local and cloud to prevent refresh flicker",
+        release122RateLimitToast: "Fixed missing 429 rate-limit toast and aligned its visual style",
+        release122WebdavSchedule: "WebDAV scheduled sync now follows system time, shows next sync time, and triggers immediate sync after key config changes",
+        release122CustomServer: "Added support for switching custom cloud sync server",
+        release122CustomIconSource: "Added support for custom icon source URL",
+        release122OnlineIconSource: "Icon source now fetches online via GitHub Pages",
+        release122DynamicAccent: "Added dynamic accent color support",
+        release121Webdav: "Added WebDAV sync feature",
+        release121Ui: "Refined UI styles",
+        release121Fixes: "Fixed several bugs",
         grid: "Shortcut area redesigned into a flat grid",
         carousel: "Added swipe pagination and mouse-wheel paging",
         entrance: "Improved entrance animations for wallpaper, search, shortcuts",
@@ -399,6 +442,7 @@ export default {
     auth: {
       description: "Log in or register to save your preferences.",
       tabs: { login: "Login", register: "Register" },
+      server: { label: "Server", official: "Official Server", custom: "Custom Server" },
       labels: { username: "Username", password: "Password", captcha: "Captcha" },
       placeholders: {
         usernameInput: "Enter username",
@@ -455,6 +499,12 @@ export default {
       useCloud: "Use Cloud",
       useLocal: "Use Local"
     },
+    syncUndo: {
+      message: "Using {{chosen}} config. Backed up {{backup}} config. Undo within {{seconds}}s.",
+      undo: "Undo",
+      undone: "Sync choice undone",
+      backupToast: "Auto-backed up {{backup}} config"
+    },
     scenario: {
       title: "Scenario Mode",
       defaultName: "Working mode",
@@ -486,7 +536,9 @@ export default {
     },
     toast: {
       cloudSynced: "Cloud configuration synced",
+      cloudAutoSyncSuccess: "Cloud auto-sync completed",
       cloudSyncFailed: "Failed to sync cloud configuration",
+      cloudSyncRateLimited: "Saved locally. Cloud sync is rate limited and will retry later.",
       syncFailed: "Sync failed",
       syncCloudApplied: "Cloud configuration applied",
       syncLocalApplied: "Local configuration applied",

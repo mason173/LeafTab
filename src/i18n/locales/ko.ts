@@ -129,6 +129,8 @@ export default {
           uploadError: "WebDAV 동기화에 실패했습니다. 설정을 확인하세요.",
           syncSuccess: "동기화 완료",
           syncError: "동기화 실패. 설정을 확인하세요.",
+          policyChangeSyncTriggered: "충돌 정책을 변경해 현재 정책으로 한 번 동기화했습니다",
+          intervalChangeSyncTriggered: "동기화 간격을 변경해 즉시 한 번 동기화했습니다",
           urlRequired: "먼저 WebDAV URL을 입력하세요",
           defaultProfileName: "기본 설정",
           configured: "설정 완료, 동기화 가능",
@@ -141,6 +143,7 @@ export default {
           hoursAgo: "{{count}}시간 전",
           lastAttemptFailed: "최근 동기화 시도가 실패했습니다",
           scheduleRunning: "예약 동기화가 실행 중입니다",
+          nextSyncAtLabel: "다음 동기화: {{time}}",
           syncDisabled: "먼저 WebDAV 동기화를 활성화하세요"
         }
       },
@@ -218,6 +221,17 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release122Scrollbar: "About LeafTab 모달 스크롤바를 설정 모달과 동일한 스타일로 통일",
+        release122WelcomePersist: "최초 로그인 안내 모달 상태를 로컬+서버에 저장해 새로고침 깜빡임 제거",
+        release122RateLimitToast: "429 제한 토스트가 보이지 않던 문제를 수정하고 스타일을 통일",
+        release122WebdavSchedule: "WebDAV 예약 동기화를 시스템 시간 기준으로 변경하고 다음 동기화 시간 표시 및 주요 설정 변경 시 즉시 동기화 지원",
+        release122CustomServer: "커스텀 클라우드 동기화 서버 전환 지원",
+        release122CustomIconSource: "커스텀 아이콘 소스 URL 지원",
+        release122OnlineIconSource: "아이콘 소스를 GitHub Pages 기반 온라인 가져오기 방식으로 변경",
+        release122DynamicAccent: "동적 포인트 컬러 지원 추가",
+        release121Webdav: "WebDAV 동기화 기능 추가",
+        release121Ui: "UI 스타일 개선",
+        release121Fixes: "여러 버그 수정",
         grid: "하단 바로가기 영역을 평면 그리드로 재설계",
         carousel: "스와이프 페이지 및 마우스 휠 페이지 추가",
         entrance: "배경/검색/바로가기의 등장 애니메이션 개선",
@@ -421,6 +435,7 @@ export default {
     },
     toast: {
       cloudSynced: "클라우드 설정 동기화됨",
+      cloudAutoSyncSuccess: "클라우드 자동 동기화 완료",
       cloudSyncFailed: "클라우드 설정 동기화 실패",
       syncFailed: "동기화 실패",
       syncCloudApplied: "클라우드 설정 적용됨",

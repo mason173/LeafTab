@@ -112,6 +112,21 @@ const apiLimiter = rateLimit({
   }
 });
 
+const shortcutsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 50,
+  message: { error: 'Too many shortcut sync requests, please try again shortly.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    if (req.user && req.user.id) return `shortcuts:${req.user.id}`;
+    return ipKeyGenerator(req);
+  },
+  skip: (req) => {
+    return isAdminRequest(req);
+  }
+});
+
 const captchaLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
@@ -500,7 +515,7 @@ app.post('/user/role', authenticateToken, apiLimiter, (req, res) => {
 });
 
 // Get Shortcuts Endpoint
-app.get('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {  
+app.get('/user/shortcuts', authenticateToken, shortcutsLimiter, (req, res) => {  
     const userId = req.user.id;
     const sql = `SELECT shortcuts, role, created_at, shortcuts_updated_at, shortcuts_version FROM users WHERE id = ?`;    
 
@@ -529,6 +544,12 @@ app.get('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {
             }
           } catch {}
         }
+        try {
+            const version = Number(row.shortcuts_version || 0);
+            res.setHeader('ETag', `W/"${version}"`);
+            res.setHeader('X-Shortcuts-Version', String(version));
+            if (row.shortcuts_updated_at) res.setHeader('Last-Modified', new Date(row.shortcuts_updated_at).toUTCString());
+        } catch {}
         res.json({ 
             shortcuts: shortcutsOut,
             role: row.role,
@@ -540,9 +561,9 @@ app.get('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {
 });
 
 // Update Shortcuts Endpoint
-app.post('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => { 
+app.post('/user/shortcuts', authenticateToken, shortcutsLimiter, (req, res) => { 
     const userId = req.user.id;
-    const { shortcuts, expectedUpdatedAt, expectedVersion, force } = req.body; // Expecting JSON string or object
+    const { shortcuts, expectedUpdatedAt, expectedVersion, force, syncMode } = req.body; // Expecting JSON string or object
 
     let shortcutsStr;
     try {
@@ -574,9 +595,9 @@ app.post('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {
     } catch {}
 
     const incomingExpected = expectedUpdatedAt || req.headers['if-unmodified-since'] || null;
-    const incomingVersion = (expectedVersion !== undefined ? expectedVersion : undefined);
+    let incomingVersion = (expectedVersion !== undefined ? expectedVersion : undefined);
     const headerIfMatch = req.headers['if-match'];
-    if (incomingVersion === undefined && headerIfMatch && /^W\/\"(\\d+)\"$|^\"(\\d+)\"$/.test(headerIfMatch)) {
+    if (incomingVersion === undefined && headerIfMatch && /^W\/\"(\d+)\"$|^\"(\d+)\"$/.test(headerIfMatch)) {
         const m = headerIfMatch.match(/^W\/\"(\d+)\"$|^\"(\d+)\"$/);
         const val = m[1] || m[2];
         if (val) incomingVersion = parseInt(val, 10);
@@ -588,7 +609,35 @@ app.post('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
-            return res.json({ message: 'Shortcuts updated successfully' });
+            db.get(`SELECT shortcuts_updated_at, shortcuts_version FROM users WHERE id = ?`, [userId], (e2, row2) => {
+                if (!e2 && row2) {
+                    try {
+                        const v = Number(row2.shortcuts_version || 0);
+                        res.setHeader('ETag', `W/"${v}"`);
+                        res.setHeader('X-Shortcuts-Version', String(v));
+                        if (row2.shortcuts_updated_at) res.setHeader('Last-Modified', new Date(row2.shortcuts_updated_at).toUTCString());
+                    } catch {}
+                }
+                return res.json({ message: 'Shortcuts updated successfully', version: row2?.shortcuts_version, updatedAt: row2?.shortcuts_updated_at });
+            });
+        });
+    } else if (syncMode === 'prefer_local') {
+        const updateSql = `UPDATE users SET shortcuts = ?, shortcuts_updated_at = CURRENT_TIMESTAMP, shortcuts_version = shortcuts_version + 1 WHERE id = ?`;
+        db.run(updateSql, [normalizedShortcutsStr, userId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            db.get(`SELECT shortcuts_updated_at, shortcuts_version FROM users WHERE id = ?`, [userId], (e2, row2) => {
+                if (!e2 && row2) {
+                    try {
+                        const v = Number(row2.shortcuts_version || 0);
+                        res.setHeader('ETag', `W/"${v}"`);
+                        res.setHeader('X-Shortcuts-Version', String(v));
+                        if (row2.shortcuts_updated_at) res.setHeader('Last-Modified', new Date(row2.shortcuts_updated_at).toUTCString());
+                    } catch {}
+                }
+                return res.json({ message: 'Shortcuts updated successfully', version: row2?.shortcuts_version, updatedAt: row2?.shortcuts_updated_at, mode: 'prefer_local' });
+            });
         });
     } else {
         let params;
@@ -613,7 +662,17 @@ app.post('/user/shortcuts', authenticateToken, apiLimiter, (req, res) => {
                     error: 'Conflict: shortcuts have been modified by another update'
                 });
             }
-            return res.json({ message: 'Shortcuts updated successfully' });
+            db.get(`SELECT shortcuts_updated_at, shortcuts_version FROM users WHERE id = ?`, [userId], (e2, row2) => {
+                if (!e2 && row2) {
+                    try {
+                        const v = Number(row2.shortcuts_version || 0);
+                        res.setHeader('ETag', `W/"${v}"`);
+                        res.setHeader('X-Shortcuts-Version', String(v));
+                        if (row2.shortcuts_updated_at) res.setHeader('Last-Modified', new Date(row2.shortcuts_updated_at).toUTCString());
+                    } catch {}
+                }
+                return res.json({ message: 'Shortcuts updated successfully', version: row2?.shortcuts_version, updatedAt: row2?.shortcuts_updated_at });
+            });
         });
     }
 });

@@ -1,0 +1,9 @@
+{
+  "name": "leaftab-icons",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate-manifest.mjs",
+    "publish": "node scripts/publish.mjs"
+  }
+}

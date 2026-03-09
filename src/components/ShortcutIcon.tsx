@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl } from '../utils';
+import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -10,6 +11,8 @@ const normalizeDomain = (domain: string) => {
   if (d.startsWith('www.')) d = d.slice(4);
   return d;
 };
+
+const isIowenFaviconUrl = (value: string) => /^https:\/\/api\.iowen\.cn\/favicon\/.+\.png$/i.test((value || '').trim());
 
 const registrableDomain = (domain: string) => {
   const parts = normalizeDomain(domain).split('.');
@@ -59,6 +62,43 @@ function setCachedFavicon(domain: string, data: string) {
   } catch {}
 }
 
+function clearCachedFavicon(domain: string) {
+  try {
+    const d1 = normalizeDomain(domain);
+    const d2 = registrableDomain(domain);
+    if (d1) localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${d1}`);
+    if (d2) localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${d2}`);
+    const raw = localStorage.getItem(FAVICON_CACHE_INDEX_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    const filtered = list.filter((v) => v !== d1 && v !== d2);
+    localStorage.setItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(filtered));
+  } catch {}
+}
+
+const ICON_META_PREFIX = 'favicon_cache_v2_meta:';
+
+function getCachedIconSignature(domain: string) {
+  try {
+    const d = normalizeDomain(domain);
+    if (!d) return '';
+    return localStorage.getItem(`${ICON_META_PREFIX}${d}`) || '';
+  } catch {
+    return '';
+  }
+}
+
+function setCachedIconSignature(domain: string, signature: string) {
+  try {
+    const d = normalizeDomain(domain);
+    if (!d) return;
+    if (!signature) {
+      localStorage.removeItem(`${ICON_META_PREFIX}${d}`);
+      return;
+    }
+    localStorage.setItem(`${ICON_META_PREFIX}${d}`, signature);
+  } catch {}
+}
+
 // Helper to convert blob to base64
 const blobToBase64 = (blob: Blob): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -98,47 +138,36 @@ async function cacheFaviconData(domain: string, src: string) {
   }
 }
 
-export default function ShortcutIcon({ icon, url, size = 36, exact }: { icon: string; url: string; size?: number; exact?: boolean }) {
+export default function ShortcutIcon({
+  icon,
+  url,
+  size = 36,
+  exact,
+  frame = 'never',
+}: {
+  icon: string;
+  url: string;
+  size?: number;
+  exact?: boolean;
+  frame?: 'auto' | 'always' | 'never';
+}) {
   const domain = extractDomainFromUrl(url);
   const cached = domain ? getCachedFavicon(domain) : '';
-  const localIcons = useMemo(() => {
-    const mods = (import.meta as any).glob('../assets/Shotcuticons/*.svg', { eager: true, as: 'url' }) as Record<string, string>;
-    const map: Record<string, string> = {};
-    for (const [p, u] of Object.entries(mods)) {
-      const name = p.split('/').pop()!;
-      if (name.toLowerCase().endsWith('.svg')) {
-        map[name.toLowerCase().replace(/\.svg$/, '')] = u;
-      }
-    }
-    return map;
-  }, []);
-
-  const localCandidate = useMemo(() => {
+  const [customIconUrl, setCustomIconUrl] = useState<string>(() => {
     if (!domain) return '';
-    const d = normalizeDomain(domain);
-    const withoutWww = d.startsWith('www.') ? d.slice(4) : d;
-    const apex = registrableDomain(d);
-    const candidates = [
-      d,
-      withoutWww,
-      apex,
-      `www.${apex}`,
-    ].map((x) => x.toLowerCase());
-    for (const c of candidates) {
-      if (localIcons[c]) return localIcons[c];
-    }
-    const indexKey = `index.${apex}`;
-    if (localIcons[indexKey]) return localIcons[indexKey];
-    return '';
-  }, [domain, localIcons]);
+    return resolveCustomIconFromCache(domain)?.url || '';
+  });
+  const [libraryTick, setLibraryTick] = useState(0);
 
   const candidates = useMemo(() => {
     const list: string[] = [];
+    if (customIconUrl) list.push(customIconUrl);
     if (cached) list.push(cached);
-    if (icon) list.push(icon);
+    // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
+    if (icon && !isIowenFaviconUrl(icon)) list.push(icon);
     if (domain) list.push(...buildFaviconCandidates(domain));
     return Array.from(new Set(list));
-  }, [cached, icon, domain]);
+  }, [cached, customIconUrl, icon, domain]);
 
   const [index, setIndex] = useState(0);
 
@@ -146,25 +175,67 @@ export default function ShortcutIcon({ icon, url, size = 36, exact }: { icon: st
     setIndex(0);
   }, [candidates.join('|')]);
 
+  useEffect(() => {
+    const onChanged = () => setLibraryTick((v) => v + 1);
+    window.addEventListener('leaftab-icon-library-changed', onChanged);
+    return () => window.removeEventListener('leaftab-icon-library-changed', onChanged);
+  }, []);
+
+  useEffect(() => {
+    if (!domain) {
+      setCustomIconUrl('');
+      return;
+    }
+    const cachedResolved = resolveCustomIconFromCache(domain);
+    setCustomIconUrl(cachedResolved?.url || '');
+  }, [domain, libraryTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!domain) {
+        if (!cancelled) setCustomIconUrl('');
+        return;
+      }
+      const resolved = await resolveCustomIcon(domain);
+      if (cancelled) return;
+      if (!resolved?.url) {
+        setCustomIconUrl('');
+        return;
+      }
+      const prevSig = getCachedIconSignature(domain);
+      if (resolved.signature && prevSig && prevSig !== resolved.signature) {
+        clearCachedFavicon(domain);
+      }
+      if (resolved.signature && prevSig !== resolved.signature) {
+        setCachedIconSignature(domain, resolved.signature);
+      }
+      setCustomIconUrl((prev) => (prev === resolved.url ? prev : resolved.url));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [domain, libraryTick]);
+
   const src = candidates[index];
   const letter = domain ? domain[0]?.toUpperCase() : '?';
-
-  if (localCandidate) {
-    return (
-      <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <img
-          alt=""
-          className="absolute inset-0 max-w-none object-contain pointer-events-none"
-          draggable={false}
-          src={localCandidate}
-          style={{ width: size, height: size }}
-        />
-      </div>
-    );
-  }
+  const isCustomActive = !!customIconUrl && src === customIconUrl;
+  const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
 
   if (!src) {
     const innerSize = exact ? size : Math.max(12, Math.round(size * 2 / 3));
+    if (useFrame) {
+      return (
+        <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
+          <div className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative rounded-lg shrink-0 size-full">
+            <div aria-hidden="true" className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none rounded-lg" />
+            <div className="text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
+              {letter}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 rounded-xl top-1/2 bg-secondary text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
@@ -174,25 +245,40 @@ export default function ShortcutIcon({ icon, url, size = 36, exact }: { icon: st
     );
   }
 
-  const innerSize = exact ? size : Math.max(12, Math.round(size * 2 / 3));
+  const innerSize = isCustomActive ? size : (exact ? size : Math.max(12, Math.round(size * 2 / 3)));
+  const image = (
+    <img
+      alt=""
+      className="absolute inset-0 max-w-none object-contain pointer-events-none"
+      draggable={false}
+      src={src}
+      style={{ width: innerSize, height: innerSize }}
+      onLoad={() => {
+        if (domain && src && src !== cached) {
+          cacheFaviconData(domain, src);
+        }
+      }}
+      onError={() => {
+        setIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : prev));
+      }}
+    />
+  );
+  if (useFrame) {
+    return (
+      <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
+        <div className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative rounded-lg shrink-0 size-full">
+          <div aria-hidden="true" className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none rounded-lg" />
+          <div className="relative select-none" style={{ width: innerSize, height: innerSize }}>
+            {image}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
       <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 select-none" style={{ width: innerSize, height: innerSize }}>
-        <img
-          alt=""
-          className="absolute inset-0 max-w-none object-contain pointer-events-none"
-          draggable={false}
-          src={src}
-          style={{ width: innerSize, height: innerSize }}
-          onLoad={() => {
-            if (domain && src && src !== cached) {
-                cacheFaviconData(domain, src);
-            }
-          }}
-          onError={() => {
-            setIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : prev));
-          }}
-        />
+        {image}
       </div>
     </div>
   );

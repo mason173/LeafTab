@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/components/ui/utils";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Tabs,
   TabsContent,
@@ -17,14 +18,29 @@ import {
 } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
 import { useTranslation } from 'react-i18next';
+import { normalizeApiBase } from "@/utils";
 
 interface AuthModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onLoginSuccess?: (username: string, role?: string | null, privacyConsent?: boolean | null) => void;
+  apiServer: 'official' | 'custom';
+  onApiServerChange: (next: 'official' | 'custom') => void;
+  customApiUrl: string;
+  customApiName: string;
+  defaultApiBase: string;
 }
 
-export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: AuthModalProps) {
+export default function AuthModal({
+  isOpen,
+  onOpenChange,
+  onLoginSuccess,
+  apiServer,
+  onApiServerChange,
+  customApiUrl,
+  customApiName,
+  defaultApiBase,
+}: AuthModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("login");
   const [username, setUsername] = useState("");
@@ -32,22 +48,17 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
   const [captcha, setCaptcha] = useState("");
   const [captchaSvg, setCaptchaSvg] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const getApiBase = () => {
-    const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
-      ? (import.meta as any).env.VITE_API_URL
-      : '';
-    if (envApi) return envApi;
-    if (typeof window !== 'undefined') {
-      const protocol = window.location?.protocol;
-      if (protocol === 'chrome-extension:' || protocol === 'moz-extension:' || protocol === 'edge-extension:') {
-        return 'https://www.leaftab.cc/api';
-      }
-    }
-    return '/api';
-  };
-
-  const API_URL = getApiBase();
+  const customApiBase = useMemo(() => normalizeApiBase(customApiUrl), [customApiUrl]);
+  const customServerLabel = useMemo(() => {
+    const name = (customApiName || '').trim();
+    if (name) return name;
+    if (customApiBase) return customApiBase;
+    return t('auth.server.custom');
+  }, [customApiName, customApiBase, t]);
+  const API_URL = useMemo(() => {
+    if (apiServer === 'custom' && customApiBase) return customApiBase;
+    return defaultApiBase;
+  }, [apiServer, customApiBase, defaultApiBase]);
 
   const fetchCaptcha = async () => {
     try {
@@ -199,6 +210,20 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
             {t('auth.description')}
           </DialogDescription>
         </DialogHeader>
+        <div className="space-y-2 pt-2">
+          <Label className="text-foreground">{t('auth.server.label')}</Label>
+          <Select value={apiServer} onValueChange={(v: string) => onApiServerChange(v as 'official' | 'custom')}>
+            <SelectTrigger className="bg-secondary border-none text-foreground rounded-[16px] focus:ring-0 focus:ring-offset-0">
+              <SelectValue placeholder={t('auth.server.label')} />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border text-popover-foreground w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
+              <SelectItem value="official" className="focus:bg-accent focus:text-accent-foreground">{t('auth.server.official')}</SelectItem>
+              <SelectItem value="custom" disabled={!customApiBase} className="focus:bg-accent focus:text-accent-foreground">
+                {customServerLabel}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
             <TabsTrigger value="login" className="rounded-xl">{t('auth.tabs.login')}</TabsTrigger>
@@ -218,7 +243,7 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base shadow-sm transition-[color,box-shadow] outline-none",
+                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
                     "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
                     "placeholder:text-muted-foreground",
                     "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -239,7 +264,7 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base shadow-sm transition-[color,box-shadow] outline-none",
+                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
                     "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
                     "placeholder:text-muted-foreground",
                     "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -267,7 +292,7 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base shadow-sm transition-[color,box-shadow] outline-none",
+                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
                     "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
                     "placeholder:text-muted-foreground",
                     "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -289,7 +314,7 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base shadow-sm transition-[color,box-shadow] outline-none",
+                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
                     "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
                     "placeholder:text-muted-foreground",
                     "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -312,7 +337,7 @@ export default function AuthModal({ isOpen, onOpenChange, onLoginSuccess }: Auth
                     value={captcha}
                     onChange={(e) => setCaptcha(e.target.value)}
                     className={cn(
-                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base shadow-sm transition-[color,box-shadow] outline-none",
+                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
                       "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
                       "placeholder:text-muted-foreground",
                       "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",

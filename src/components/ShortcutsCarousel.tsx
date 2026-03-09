@@ -29,7 +29,26 @@ export function ShortcutsCarousel({
   onPageContextMenu
 }: ShortcutsCarouselProps) {
   const [isDraggingGrid, setIsDraggingGrid] = React.useState(false);
-  const [emblaRef, embla] = useEmblaCarousel({ axis: 'x', align: 'start', dragFree: false, containScroll: 'trimSnaps' });
+  const isDraggingGridRef = React.useRef(false);
+  useEffect(() => {
+    isDraggingGridRef.current = isDraggingGrid;
+  }, [isDraggingGrid]);
+
+  const emblaOptions = React.useMemo(() => ({
+    axis: 'x' as const,
+    align: 'start' as const,
+    dragFree: false,
+    containScroll: 'trimSnaps' as const,
+    watchDrag: (_api: any, event: MouseEvent | TouchEvent) => {
+      if (isDraggingGridRef.current) return false;
+      const target = event.target as HTMLElement | null;
+      if (!target) return true;
+      return !target.closest('[data-shortcut-drag-item="true"]');
+    },
+  }), []);
+
+  const [emblaRef, embla] = useEmblaCarousel(emblaOptions);
+  const wheelTargetRef = React.useRef<HTMLDivElement | null>(null);
   const wheelAccRef = React.useRef(0);
   const lastWheelAtRef = React.useRef(0);
 
@@ -51,17 +70,12 @@ export function ShortcutsCarousel({
     embla.scrollTo(Math.min(currentIndex, maxIndex), false);
   }, [embla, currentIndex, pageIndices.length]);
 
-  useEffect(() => {
-    if (!embla) return;
-    embla.reInit({ axis: 'x', align: 'start', dragFree: false, containScroll: 'trimSnaps' });
-  }, [isDraggingGrid, embla]);
-
   const scrollTo = useCallback((index: number) => {
     if (!embla) return;
     embla.scrollTo(index);
   }, [embla]);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     if (!embla || isDraggingGrid) return;
     const now = Date.now();
     if (now - lastWheelAtRef.current < 160) {
@@ -83,9 +97,23 @@ export function ShortcutsCarousel({
     }
   }, [embla, isDraggingGrid]);
 
+  useEffect(() => {
+    const node = wheelTargetRef.current;
+    if (!node) return;
+    node.addEventListener('wheel', handleWheel, { passive: false });
+    return () => node.removeEventListener('wheel', handleWheel as any);
+  }, [handleWheel]);
+
   return (
     <div className="relative w-[803px]">
-      <div className="overflow-hidden" ref={emblaRef} onWheel={handleWheel} style={{ minHeight: height, pointerEvents: isDraggingGrid ? 'none' : 'auto' }}>
+      <div
+        className="overflow-hidden"
+        ref={(node) => {
+          wheelTargetRef.current = node;
+          emblaRef(node);
+        }}
+        style={{ minHeight: height }}
+      >
         <div className="flex">
           {pageIndices.map((p) => {
             const pageCapacity = rowsPerColumn * 3;

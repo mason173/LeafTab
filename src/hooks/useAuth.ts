@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/ui/sonner';
 
@@ -9,20 +9,16 @@ type LogoutOptions = {
 
 export function useAuth() {
   const { t } = useTranslation();
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<string | null>(() => {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    return token && username ? username : null;
+  });
   const [loginBannerVisible, setLoginBannerVisible] = useState(() => {
     return !sessionStorage.getItem('loginBannerDismissed');
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const username = localStorage.getItem('username');
-    if (token && username) {
-      setUser(username);
-    }
-  }, []);
 
   const handleLoginSuccess = useCallback((username: string) => {
     setUser(username);
@@ -43,7 +39,9 @@ export function useAuth() {
     localStorage.removeItem('leaf_tab_sync_pending');
     localStorage.removeItem('leaf_tab_shortcuts_cache');
     localStorage.removeItem('cloud_shortcuts_fetched_at');
+    localStorage.removeItem('cloud_shortcuts_updated_at');
     if (options?.clearLocal) {
+      localStorage.removeItem('leaf_tab_local_profile_v1');
       localStorage.removeItem('local_shortcuts_v3');
       localStorage.removeItem('local_shortcuts');
       localStorage.removeItem('local_shortcuts_updated_at');

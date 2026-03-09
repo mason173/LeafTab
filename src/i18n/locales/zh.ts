@@ -97,6 +97,10 @@ export default {
         importSuccess: "数据导入成功",
         importError: "数据导入失败，请检查文件格式",
         exportSuccess: "数据导出成功",
+        importConfirmTitle: "导入并覆盖云端？",
+        importConfirmDesc: "导入后将以导入文件为准并覆盖云端配置。系统会先自动下载一份云端备份。",
+        importConfirmAction: "确认导入",
+        cloudBackupDownloaded: "已下载云端备份",
         webdav: {
           entry: "WebDAV 同步",
           entryDesc: "配置 WebDAV 远程备份与恢复",
@@ -138,6 +142,8 @@ export default {
           uploadError: "WebDAV 同步失败，请检查配置",
           syncSuccess: "数据同步成功",
           syncError: "同步失败，请检查配置",
+          policyChangeSyncTriggered: "冲突策略已切换，已按当前策略同步一次",
+          intervalChangeSyncTriggered: "同步间隔已调整，已立即同步一次",
           disableWebdavBeforeCloudLogin: "当前已开启 WebDAV 同步，请先关闭 WebDAV 同步后再登录云同步",
           logoutRequiredForWebdav: "当前已登录云同步，请先退出登录后再开启 WebDAV 同步",
           disableConfirmTitle: "关闭 WebDAV 同步",
@@ -156,6 +162,7 @@ export default {
           hoursAgo: "{{count}} 小时前",
           lastAttemptFailed: "最近尝试同步失败",
           scheduleRunning: "定时同步运行中",
+          nextSyncAtLabel: "下次同步：{{time}}",
           syncDisabled: "请先开启 WebDAV 同步"
         }
       },
@@ -214,6 +221,27 @@ export default {
         weatherDebugLabel: "天气调试",
         weatherDebugDesc: "显示天气调试面板（仅当前会话）"
       },
+      server: {
+        customUrlLabel: "自定义后端地址",
+        customUrlDesc: "用于登录与同步。留空则仅显示官方服务器。",
+        customNamePlaceholder: "名称（可选）",
+        customUrlPlaceholder: "地址（例如：https://example.com/api）",
+        customSave: "保存",
+        customClear: "清除",
+        customSaved: "自定义后端地址已保存",
+        customCleared: "自定义后端地址已清除",
+        customInvalid: "地址格式不正确"
+      },
+      iconLibrary: {
+        label: "图标库地址",
+        desc: "用于优先加载 LeafTab 风格图标（GitHub Pages）",
+        placeholder: "地址（例如：https://xxx.github.io/icons）",
+        save: "保存",
+        saved: "图标库地址已保存",
+        restore: "恢复默认",
+        restored: "已恢复默认图标库地址",
+        invalid: "图标库地址格式不正确"
+      },
       about: {
         label: "关于 LeafTab",
         desc: "查看版本信息与插件简介",
@@ -224,7 +252,11 @@ export default {
         ackDesc: "LeafTab 使用了以下开源库与资源（点击可跳转）：",
         frontend: "前端",
         backend: "后端",
-        resources: "图标与资源"
+        resources: "图标与资源",
+        chromeStore: "Chrome 商店",
+        edgeStore: "Edge 商店",
+        firefoxStore: "Firefox 商店",
+        github: "GitHub"
       }
     },
     changelog: {
@@ -233,6 +265,14 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release122Scrollbar: "关于 LeafTab 弹窗滚动条改为与设置弹窗一致",
+        release122WelcomePersist: "首次注册登录引导弹窗状态支持本地+云端持久化，刷新不再闪烁",
+        release122RateLimitToast: "修复 429 限流提示不显示的问题，并统一提示样式",
+        release122WebdavSchedule: "WebDAV 定时同步改为系统时间基准，展示下次同步时间并在关键配置变更后立即同步",
+        release122CustomServer: "支持切换自定义云同步服务器",
+        release122CustomIconSource: "支持自定义图标源",
+        release122OnlineIconSource: "图标源更新为在线获取（GitHub Pages）",
+        release122DynamicAccent: "新增动态取色主题色",
         release121Webdav: "新增 WebDAV 同步功能",
         release121Ui: "优化 UI 样式",
         release121Fixes: "修复了一些 bug",
@@ -407,6 +447,7 @@ export default {
     auth: {
       description: "登录或注册您的账号以保存个性化设置。",
       tabs: { login: "登录", register: "注册" },
+      server: { label: "服务器", official: "官方服务器", custom: "自定义服务器" },
       labels: { username: "用户名", password: "密码", captcha: "验证码" },
       placeholders: {
         usernameInput: "请输入用户名",
@@ -463,6 +504,12 @@ export default {
       useCloud: "以云端为准",
       useLocal: "以本地为准"
     },
+    syncUndo: {
+      message: "已使用{{chosen}}配置，已备份{{backup}}配置，可在 {{seconds}} 秒内撤销。",
+      undo: "撤销",
+      undone: "已撤销同步选择",
+      backupToast: "已自动备份{{backup}}配置"
+    },
     scenario: {
       title: "情景模式",
       defaultName: "Working mode",
@@ -494,7 +541,9 @@ export default {
     },
     toast: {
       cloudSynced: "已同步云端配置",
+      cloudAutoSyncSuccess: "云端自动同步成功",
       cloudSyncFailed: "同步云端配置失败",
+      cloudSyncRateLimited: "本地已保存，云端同步过于频繁，将稍后重试",
       syncFailed: "同步失败",
       syncCloudApplied: "已使用云端配置",
       syncLocalApplied: "已使用本地配置",

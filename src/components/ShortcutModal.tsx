@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import ShortcutIcon from './ShortcutIcon';
 import { useTranslation } from 'react-i18next';
-import { extractDomainFromUrl } from '../utils';
 
 interface ShortcutModalProps {
   isOpen: boolean;
@@ -51,25 +50,6 @@ export default function ShortcutModal({
     onSave(title, url);
   };
 
-  const localIcons = (import.meta as any).glob('../assets/Shotcuticons/*.svg', { eager: true, as: 'url' }) as Record<string, string>;
-  const localMap: Record<string, string> = Object.fromEntries(
-    Object.entries(localIcons).map(([p, u]) => {
-      const name = p.split('/').pop()!;
-      return [name.toLowerCase().replace(/\.svg$/, ''), u as string];
-    })
-  );
-  const hostname = extractDomainFromUrl(url).toLowerCase();
-  const withoutWww = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
-  const apex = withoutWww.split('.').slice(-2).join('.');
-  const localSrc =
-    localMap[hostname] ||
-    localMap[withoutWww] ||
-    localMap[apex] ||
-    localMap[`www.${apex}`] ||
-    localMap[`www.${withoutWww}`] ||
-    localMap[(hostname.startsWith('www.') ? hostname : `www.${hostname}`)] ||
-    '';
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
@@ -80,15 +60,7 @@ export default function ShortcutModal({
           <DialogTitle className="text-foreground">{mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-[16px] items-center w-full mt-6">
-          {localSrc ? (
-            <div className="relative shrink-0" style={{ width: 36, height: 36 }}>
-              <img alt="" src={localSrc} className="absolute inset-0 max-w-none object-contain pointer-events-none" style={{ width: 36, height: 36 }} />
-            </div>
-          ) : (
-            <div className="bg-background flex items-center p-[8px] relative rounded-lg shrink-0 border border-border">
-              <ShortcutIcon icon={initialIcon} url={url} />
-            </div>
-          )}
+          <ShortcutIcon icon={initialIcon} url={url} size={36} frame="auto" />
           <div className="flex flex-col gap-[4px] items-start w-full">
             <p className="font-['PingFang_SC:Regular',sans-serif] text-muted-foreground text-[12px] w-full">{t('shortcutModal.nameLabel')}</p>
             <Input

@@ -38,7 +38,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<'panoramic' | 'minimalist' | 'fresh'>('panoramic');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [accentColor, setAccentColor] = useState<string>('green');
+  const [accentColor, setAccentColor] = useState<string>('dynamic');
   const [step, setStep] = useState<StepType>('appearance');
   const [direction, setDirection] = useState(1);
   const { i18n, t } = useTranslation();
@@ -136,22 +136,17 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
       return;
     }
     document.documentElement.setAttribute('data-accent-color', 'dynamic');
-    const wallpaperMode = (localStorage.getItem('wallpaperMode') as 'bing' | 'weather' | 'custom') || 'bing';
-    const bingWallpaper = localStorage.getItem('bingWallpaper') || '';
-    const customWallpaper = localStorage.getItem('customWallpaper');
-    const weatherCode = Number(localStorage.getItem('weatherCode') || '0');
-    const color = await resolveDynamicAccentColor({
-      wallpaperMode,
-      bingWallpaper,
-      customWallpaper,
-      weatherCode,
-    });
-    applyDynamicAccentColor(color);
+    applyDynamicAccentColor('#3b82f6');
   };
 
   useEffect(() => {
-    const savedColor = localStorage.getItem('accentColor') || 'green';
+    const stored = localStorage.getItem('accentColor');
+    const savedColor = stored || 'dynamic';
     setAccentColor(savedColor);
+    if (!stored) {
+      localStorage.setItem('accentColor', savedColor);
+      window.dispatchEvent(new Event('leaftab-accent-color-changed'));
+    }
     applyAccentFromStorage(savedColor);
   }, []);
 
@@ -159,6 +154,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
     setAccentColor(colorName);
     localStorage.setItem('accentColor', colorName);
     applyAccentFromStorage(colorName);
+    window.dispatchEvent(new Event('leaftab-accent-color-changed'));
   };
 
   const LANGUAGES = [

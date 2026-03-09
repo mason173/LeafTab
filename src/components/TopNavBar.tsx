@@ -33,6 +33,7 @@ function SettingsButton({ onClick, variant = 'inverted' }: { onClick: () => void
 interface TopNavBarProps {
   onSettingsClick?: () => void;
   hideWeather?: boolean;
+  settingsRevealOnHover?: boolean;
   showScenarioMode: boolean;
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
@@ -49,6 +50,7 @@ interface TopNavBarProps {
 export function TopNavBar({ 
   onSettingsClick,
   hideWeather = false,
+  settingsRevealOnHover = false,
   showScenarioMode,
   scenarioModes,
   selectedScenarioId,
@@ -66,7 +68,13 @@ export function TopNavBar({
     <div className={`flex items-center justify-between w-full ${className}`} data-name="TopNavBar">
       {!hideWeather && <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />}
       
-      <div className="flex items-center gap-3">
+      <div
+        className={`flex items-center gap-3 transition-opacity duration-300 transform-gpu ${
+          settingsRevealOnHover
+            ? 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+            : 'opacity-100'
+        }`}
+      >
         <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
       </div>
     </div>
