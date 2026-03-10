@@ -233,6 +233,10 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release124UpdateNotice: "コミュニティ版に GitHub 新バージョン検知と更新ダイアログを追加（Release へ直接移動）",
+        release124Snooze24h: "「あとで」に 24 時間のクールダウンを追加し、繰り返し通知を抑制",
+        release124ReleasePackaging: "zip のルートに manifest.json を含める標準リリースパッケージスクリプトを追加",
+        release124FirefoxCompat: "Firefox ストア向けパッケージ構造を修正し、manifest 互換設定を調整",
         release123WebdavAccessDialog: "WebDAV「同期を有効化」を専用接続ダイアログに変更（ログインダイアログと同一スタイル）",
         release123UnifiedSyncSettings: "クラウド/WebDAV の同期設定 UI を統一し、競合処理ドロップダウンを削除",
         release123AutoSyncToggles: "自動同期スイッチと自動同期成功トーストのスイッチを追加し、自動同期オフ時は間隔スライダーを無効化",
@@ -254,6 +258,18 @@ export default {
         entrance: "壁紙・検索・ショートカットの登場アニメーションを改善",
         dots: "ページドットの中央揃えとスタイルを調整"
       }
+    },
+    updateNotice: {
+      title: "新しいバージョン {{version}} が利用可能です",
+      description: "GitHub に新しいコミュニティ版が公開されています。",
+      currentVersion: "現在のバージョン",
+      latestVersion: "最新バージョン",
+      publishedAt: "公開日: {{date}}",
+      changelogTitle: "更新内容",
+      noChangelog: "このバージョンの詳細な更新内容はありません。",
+      later: "あとで",
+      ignoreThisVersion: "このバージョンを無視",
+      downloadFromGithub: "GitHub からダウンロード"
     },
     languages: {
       zh: "简体中文",

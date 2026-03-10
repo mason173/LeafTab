@@ -292,6 +292,10 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release124UpdateNotice: "Added GitHub new-version detection and update prompt dialog for community builds, with direct Release link",
+        release124Snooze24h: "Added a 24-hour snooze policy for “Later” to reduce repetitive prompts",
+        release124ReleasePackaging: "Added a standard release packaging script so zip artifacts contain manifest.json at root",
+        release124FirefoxCompat: "Fixed Firefox store package structure and adjusted manifest compatibility settings",
         release123WebdavAccessDialog: "WebDAV \"Enable Sync\" now opens a dedicated access dialog with the same style as Auth",
         release123UnifiedSyncSettings: "Unified Cloud/WebDAV sync settings UI and removed the conflict policy dropdown",
         release123AutoSyncToggles: "Added auto-sync toggle and auto-sync success toast toggle, and disable interval slider when auto-sync is off",
@@ -313,6 +317,18 @@ export default {
         entrance: "Improved entrance animations for wallpaper, search, shortcuts",
         dots: "Centered pagination dots and refined styling"
       }
+    },
+    updateNotice: {
+      title: "New Version Available {{version}}",
+      description: "A newer community build is available on GitHub.",
+      currentVersion: "Current version",
+      latestVersion: "Latest version",
+      publishedAt: "Published: {{date}}",
+      changelogTitle: "What's new",
+      noChangelog: "No detailed release notes were provided.",
+      later: "Later",
+      ignoreThisVersion: "Ignore this version",
+      downloadFromGithub: "Download from GitHub"
     },
     roles: {
       programmer: "Programmer",

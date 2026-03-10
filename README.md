@@ -117,10 +117,10 @@ flowchart LR
 从 [Releases](https://github.com/mason173/LeafTab/releases) 下载对应压缩包：
 Download the corresponding package from [Releases](https://github.com/mason173/LeafTab/releases):
 
-- **Chrome / Edge**：下载 `LeafTab-chrome-edge-*.zip`，解压后在扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，选择解压后的 `build/` 目录。
-  Download `LeafTab-chrome-edge-*.zip`, extract it, enable "Developer mode" in the extension management page, click "Load unpacked", and select the `build/` directory.
-- **Firefox**：下载 `LeafTab-firefox-*.zip`，解压后在 `about:debugging` → “This Firefox” → “Load Temporary Add-on…” 中选择解压目录里的 `manifest.json`。
-  Download `LeafTab-firefox-*.zip`, extract it, go to `about:debugging` -> "This Firefox" -> "Load Temporary Add-on..." and select the `manifest.json` file.
+- **Chrome / Edge**：下载 `LeafTab-chrome-edge-*.zip`，解压后在扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，选择解压后的根目录（目录内应直接包含 `manifest.json`）。
+  Download `LeafTab-chrome-edge-*.zip`, extract it, enable "Developer mode" in the extension management page, click "Load unpacked", and select the extracted root folder (it should directly contain `manifest.json`).
+- **Firefox**：下载 `LeafTab-firefox-*.zip`，解压后在 `about:debugging` → “This Firefox” → “Load Temporary Add-on…” 中选择解压根目录里的 `manifest.json`。
+  Download `LeafTab-firefox-*.zip`, extract it, go to `about:debugging` -> "This Firefox" -> "Load Temporary Add-on..." and select the `manifest.json` in the extracted root directory.
 
 ## 项目结构 / Project Structure
 

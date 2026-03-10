@@ -29,7 +29,7 @@ copyDir(buildDir, firefoxDir);
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 const filteredPermissions = Array.isArray(manifest.permissions)
-  ? manifest.permissions.filter((p) => !['topSites', 'favicon'].includes(p))
+  ? manifest.permissions.filter((p) => !['topSites', 'favicon', 'search'].includes(p))
   : manifest.permissions;
 
 const firefoxManifest = {
@@ -38,7 +38,7 @@ const firefoxManifest = {
   browser_specific_settings: {
     gecko: {
       id: 'leaftab@cc',
-      strict_min_version: '109.0',
+      strict_min_version: '140.0',
       data_collection_permissions: {
         required: ["none"],
         optional: [

@@ -227,6 +227,10 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release124UpdateNotice: "Thêm phát hiện phiên bản mới từ GitHub cho bản cộng đồng và popup cập nhật (mở thẳng Release)",
+        release124Snooze24h: "Thêm cơ chế hoãn 24 giờ cho nút “Để sau” để tránh làm phiền lặp lại",
+        release124ReleasePackaging: "Thêm script đóng gói phát hành chuẩn, zip có manifest.json ngay thư mục gốc",
+        release124FirefoxCompat: "Sửa cấu trúc gói cho Firefox Store và điều chỉnh cấu hình tương thích manifest",
         release123WebdavAccessDialog: "Nút \"Bật đồng bộ\" WebDAV nay mở hộp thoại kết nối riêng với cùng phong cách như đăng nhập",
         release123UnifiedSyncSettings: "Thống nhất UI cài đặt đồng bộ Cloud/WebDAV và bỏ dropdown xử lý xung đột",
         release123AutoSyncToggles: "Thêm công tắc tự động đồng bộ và công tắc toast thành công; tắt tự động đồng bộ sẽ khóa thanh trượt khoảng thời gian",
@@ -248,6 +252,18 @@ export default {
         entrance: "Tối ưu hiệu ứng vào cho nền, tìm kiếm, lối tắt",
         dots: "Căn giữa và tinh chỉnh chấm phân trang"
       }
+    },
+    updateNotice: {
+      title: "Đã có phiên bản mới {{version}}",
+      description: "Có bản cộng đồng mới hơn trên GitHub.",
+      currentVersion: "Phiên bản hiện tại",
+      latestVersion: "Phiên bản mới nhất",
+      publishedAt: "Phát hành: {{date}}",
+      changelogTitle: "Nội dung cập nhật",
+      noChangelog: "Phiên bản này chưa có ghi chú phát hành chi tiết.",
+      later: "Để sau",
+      ignoreThisVersion: "Bỏ qua phiên bản này",
+      downloadFromGithub: "Tải từ GitHub"
     },
     languages: {
       zh: "简体中文",
