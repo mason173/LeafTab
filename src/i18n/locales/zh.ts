@@ -293,6 +293,10 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release124UpdateNotice: "新增社区版 GitHub 新版本检测与更新提示弹窗，支持直达 Release 下载",
+        release124Snooze24h: "“稍后再说”新增 24 小时冷却策略，避免频繁打扰用户",
+        release124ReleasePackaging: "新增标准发布打包脚本，产物 zip 根目录直接包含 manifest.json",
+        release124FirefoxCompat: "修复 Firefox 商店打包结构问题并调整清单兼容配置",
         release123WebdavAccessDialog: "WebDAV“开启同步”改为专用接入弹窗，样式与登录弹窗统一",
         release123UnifiedSyncSettings: "云同步与 WebDAV 同步设置项统一，移除冲突处理下拉项",
         release123AutoSyncToggles: "新增“自动同步开关”和“自动同步成功提示开关”，并支持关闭后禁用间隔滑块",
@@ -314,6 +318,18 @@ export default {
         entrance: "壁纸、搜索、快捷方式入场动画优化",
         dots: "分页圆点居中与样式优化"
       }
+    },
+    updateNotice: {
+      title: "发现新版本 {{version}}",
+      description: "GitHub 上有新版本可用，建议下载更新。",
+      currentVersion: "当前版本",
+      latestVersion: "最新版本",
+      publishedAt: "发布时间：{{date}}",
+      changelogTitle: "本次更新内容",
+      noChangelog: "该版本暂未提供详细更新日志。",
+      later: "稍后再说",
+      ignoreThisVersion: "忽略此版本",
+      downloadFromGithub: "前往 GitHub 下载"
     },
     roles: {
       programmer: "程序员",

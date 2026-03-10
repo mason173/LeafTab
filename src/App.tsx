@@ -43,6 +43,7 @@ import { fetchIconLibraryManifest } from '@/utils/iconLibrary';
 import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { AppDialogs } from './components/AppDialogs';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
+import { UpdateAvailableDialog } from './components/UpdateAvailableDialog';
 import {
   buildBackupDataV4,
   clampShortcutsRowsPerColumn,
@@ -50,6 +51,7 @@ import {
   type WebdavPayload,
 } from './utils/backupData';
 import { areSyncPayloadsEqual } from '@/sync/core';
+import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -156,6 +158,18 @@ export default function App() {
   // removed auto-focus search feature
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
+  const {
+    open: updateDialogOpen,
+    setOpen: setUpdateDialogOpen,
+    currentVersion,
+    latestVersion,
+    releaseUrl,
+    publishedAt,
+    notes: updateNotes,
+    ignoreCurrentRelease,
+    snoozeCurrentRelease,
+  } = useGithubReleaseUpdate();
+
   const API_URL = useMemo(() => {
     if (ENABLE_CUSTOM_API_SERVER && apiServer === 'custom') {
       const normalized = normalizeApiBase(customApiUrl);
@@ -1542,6 +1556,17 @@ export default function App() {
             handlePrivacyConsent(false);
           },
         }}
+      />
+      <UpdateAvailableDialog
+        open={updateDialogOpen}
+        onOpenChange={setUpdateDialogOpen}
+        currentVersion={currentVersion}
+        latestVersion={latestVersion}
+        releaseUrl={releaseUrl}
+        publishedAt={publishedAt}
+        notes={updateNotes}
+        onIgnoreCurrentVersion={ignoreCurrentRelease}
+        onLater={snoozeCurrentRelease}
       />
       <Toaster />
       <RoleSelector 

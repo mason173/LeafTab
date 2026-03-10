@@ -13,6 +13,16 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.4",
+      date: "2026-03-11",
+      notes: [
+        t("changelog.items.release124UpdateNotice"),
+        t("changelog.items.release124Snooze24h"),
+        t("changelog.items.release124ReleasePackaging"),
+        t("changelog.items.release124FirefoxCompat"),
+      ],
+    },
+    {
       version: "1.2.3",
       date: "2026-03-10",
       notes: [
@@ -65,27 +75,19 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
           <DialogDescription>{t("changelog.description")}</DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[66vh]">
-          <div className="flex flex-col gap-4 pb-1">
+          <div className="pb-1 pr-1">
             {items.map((it) => (
-              <section key={it.version} className="rounded-xl border border-border/60 bg-secondary/20 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col items-start gap-1">
+              <section key={it.version} className="border-b border-border/50 py-4 first:pt-0 last:border-b-0 last:pb-0">
+                <div className="flex items-end justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold leading-none">v{it.version}</span>
                     <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("changelog.version")}</span>
-                    <span className="text-lg font-semibold leading-none">v{it.version}</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{t("changelog.date")}</span>
-                    <div className="mt-1 text-sm text-muted-foreground">{it.date}</div>
-                  </div>
+                  <div className="text-xs text-muted-foreground">{it.date}</div>
                 </div>
-                <ol className="mt-4 space-y-2">
+                <ol className="mt-3 space-y-1.5 pl-5 list-decimal marker:text-muted-foreground">
                   {it.notes.map((n, idx) => (
-                    <li key={idx} className="flex items-start gap-2.5">
-                      <span className="mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-[11px] font-medium text-muted-foreground">
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm leading-6 text-foreground/95">{n}</span>
-                    </li>
+                    <li key={idx} className="text-sm leading-6 text-foreground/95">{n}</li>
                   ))}
                 </ol>
               </section>

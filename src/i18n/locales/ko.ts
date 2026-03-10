@@ -227,6 +227,10 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release124UpdateNotice: "커뮤니티 빌드에 GitHub 새 버전 감지 및 업데이트 안내 팝업 추가 (Release 바로가기 지원)",
+        release124Snooze24h: "“나중에” 선택 시 24시간 쿨다운을 추가해 반복 알림을 줄임",
+        release124ReleasePackaging: "zip 루트에 manifest.json이 포함되도록 표준 릴리스 패키징 스크립트 추가",
+        release124FirefoxCompat: "Firefox 스토어 패키지 구조를 수정하고 manifest 호환 설정을 조정",
         release123WebdavAccessDialog: "WebDAV \"동기화 활성화\"를 로그인과 동일한 스타일의 전용 연결 다이얼로그로 변경",
         release123UnifiedSyncSettings: "클라우드/WebDAV 동기화 설정 UI를 통일하고 충돌 처리 드롭다운을 제거",
         release123AutoSyncToggles: "자동 동기화 스위치와 자동 동기화 성공 토스트 스위치를 추가하고, 자동 동기화 OFF 시 간격 슬라이더를 비활성화",
@@ -248,6 +252,18 @@ export default {
         entrance: "배경/검색/바로가기의 등장 애니메이션 개선",
         dots: "페이지 점 중앙 정렬 및 스타일 개선"
       }
+    },
+    updateNotice: {
+      title: "새 버전 {{version}} 사용 가능",
+      description: "GitHub에 더 새로운 커뮤니티 빌드가 있습니다.",
+      currentVersion: "현재 버전",
+      latestVersion: "최신 버전",
+      publishedAt: "배포일: {{date}}",
+      changelogTitle: "변경 사항",
+      noChangelog: "이 버전에 대한 상세 릴리스 노트가 없습니다.",
+      later: "나중에",
+      ignoreThisVersion: "이 버전 무시",
+      downloadFromGithub: "GitHub에서 다운로드"
     },
     languages: {
       zh: "简体中文",
