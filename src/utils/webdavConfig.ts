@@ -1,6 +1,7 @@
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
+import type { SyncConflictPolicy } from "@/sync/core";
 
-export type WebdavConflictPolicy = "merge" | "prefer_remote" | "prefer_local";
+export type WebdavConflictPolicy = SyncConflictPolicy;
 
 export const WEBDAV_STORAGE_KEYS = {
   profileName: "webdav_profile_name",
@@ -10,6 +11,7 @@ export const WEBDAV_STORAGE_KEYS = {
   filePath: "webdav_file_path",
   syncEnabled: "webdav_sync_enabled",
   syncBySchedule: "webdav_sync_by_schedule",
+  autoSyncToastEnabled: "webdav_auto_sync_toast_enabled",
   syncIntervalMinutes: "webdav_sync_interval_minutes",
   syncConflictPolicy: "webdav_sync_conflict_policy",
   syncIncludeNestedConfigs: "webdav_sync_include_nested_configs",
@@ -17,7 +19,7 @@ export const WEBDAV_STORAGE_KEYS = {
 } as const;
 
 export const WEBDAV_DEFAULT_FILE_PATH = "leaftab_sync.leaftab";
-export const WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES = 15;
+export const WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES = 5;
 export const WEBDAV_DEFAULT_CONFLICT_POLICY: WebdavConflictPolicy = "merge";
 
 const parseConflictPolicy = (raw: string): WebdavConflictPolicy => {
@@ -40,6 +42,8 @@ export type WebdavStorageState = {
   password: string;
   filePath: string;
   syncEnabled: boolean;
+  syncBySchedule: boolean;
+  autoSyncToastEnabled: boolean;
   syncIntervalMinutes: number;
   syncConflictPolicy: WebdavConflictPolicy;
 };
@@ -51,6 +55,8 @@ export const readWebdavStorageStateFromStorage = (defaultProfileName = ""): Webd
   const password = localStorage.getItem(WEBDAV_STORAGE_KEYS.password) || "";
   const filePath = (localStorage.getItem(WEBDAV_STORAGE_KEYS.filePath) || WEBDAV_DEFAULT_FILE_PATH).trim();
   const syncEnabled = isWebdavSyncEnabledFromStorage();
+  const syncBySchedule = (localStorage.getItem(WEBDAV_STORAGE_KEYS.syncBySchedule) ?? "true") === "true";
+  const autoSyncToastEnabled = (localStorage.getItem(WEBDAV_STORAGE_KEYS.autoSyncToastEnabled) ?? "true") === "true";
   const syncIntervalRaw = Number(localStorage.getItem(WEBDAV_STORAGE_KEYS.syncIntervalMinutes) || String(WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES));
   const syncIntervalMinutes = Number.isFinite(syncIntervalRaw) ? syncIntervalRaw : WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES;
   const syncConflictPolicy = parseConflictPolicy(localStorage.getItem(WEBDAV_STORAGE_KEYS.syncConflictPolicy) || WEBDAV_DEFAULT_CONFLICT_POLICY);
@@ -62,6 +68,8 @@ export const readWebdavStorageStateFromStorage = (defaultProfileName = ""): Webd
     password,
     filePath: filePath || WEBDAV_DEFAULT_FILE_PATH,
     syncEnabled,
+    syncBySchedule,
+    autoSyncToastEnabled,
     syncIntervalMinutes,
     syncConflictPolicy,
   };
@@ -75,16 +83,17 @@ export const writeWebdavStorageStateToStorage = (state: WebdavStorageState, defa
   localStorage.setItem(WEBDAV_STORAGE_KEYS.password, state.password || "");
   localStorage.setItem(WEBDAV_STORAGE_KEYS.filePath, (state.filePath || WEBDAV_DEFAULT_FILE_PATH).trim() || WEBDAV_DEFAULT_FILE_PATH);
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncEnabled, String(state.syncEnabled));
-  localStorage.setItem(WEBDAV_STORAGE_KEYS.syncBySchedule, "true");
+  localStorage.setItem(WEBDAV_STORAGE_KEYS.syncBySchedule, String(Boolean(state.syncBySchedule)));
+  localStorage.setItem(WEBDAV_STORAGE_KEYS.autoSyncToastEnabled, String(Boolean(state.autoSyncToastEnabled)));
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncIntervalMinutes, String(state.syncIntervalMinutes));
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncConflictPolicy, state.syncConflictPolicy);
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncIncludeNestedConfigs, "true");
 };
 
-export const readWebdavConfigFromStorage = (): WebdavConfig | null => {
+export const readWebdavConfigFromStorage = (options?: { allowDisabled?: boolean }): WebdavConfig | null => {
   const state = readWebdavStorageStateFromStorage();
   const enabled = state.syncEnabled;
-  if (!enabled) return null;
+  if (!enabled && !options?.allowDisabled) return null;
 
   const url = state.url;
   if (!url) return null;
@@ -92,6 +101,7 @@ export const readWebdavConfigFromStorage = (): WebdavConfig | null => {
   const username = state.username;
   const password = state.password;
   const filePath = state.filePath;
+  const syncBySchedule = state.syncBySchedule;
   const syncIntervalMinutes = state.syncIntervalMinutes;
   const syncConflictPolicy = state.syncConflictPolicy;
 
@@ -101,9 +111,9 @@ export const readWebdavConfigFromStorage = (): WebdavConfig | null => {
     password,
     filePath,
     syncOptions: {
-      enabled,
+      enabled: enabled || Boolean(options?.allowDisabled),
       syncOnChange: false,
-      syncBySchedule: true,
+      syncBySchedule,
       syncIntervalMinutes,
       syncConflictPolicy,
       includeNestedConfigs: true,

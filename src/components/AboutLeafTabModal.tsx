@@ -72,12 +72,14 @@ export function AboutLeafTabModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[520px] overflow-visible bg-background border-border text-foreground rounded-[24px]">
         <DialogHeader>
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[74vh]">
-          <div className="pr-6">
+        <ScrollArea
+          className="max-h-[74vh]"
+          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
+        >
           <div className="flex flex-col items-center">
             <img src={aboutIcon} alt="LeafTab" className="h-16 w-16" />
             <div className="mt-3 text-lg font-semibold text-center">LeafTab</div>
@@ -180,7 +182,6 @@ export function AboutLeafTabModal({
               <RiGithubFill className="w-3.5 h-3.5" />
               {t("settings.about.github")}
             </a>
-          </div>
           </div>
         </ScrollArea>
       </DialogContent>

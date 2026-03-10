@@ -22,13 +22,16 @@ export function TimeFontDialog({ open, onOpenChange, currentFont, previewTime, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-hidden bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[24px]">
         <DialogHeader>
           <DialogTitle>{t("settings.timeFont.title")}</DialogTitle>
           <DialogDescription>{t("settings.timeFont.description")}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[62vh] pr-2">
-          <div className="grid grid-cols-3 gap-3 pr-2">
+        <ScrollArea
+          className="max-h-[62vh]"
+          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
+        >
+          <div className="grid grid-cols-3 gap-3">
             {googleFonts.map((font) => {
               const selected = currentFont === font.family;
               return (

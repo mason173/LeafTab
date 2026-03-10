@@ -40,6 +40,10 @@ export default {
         label: "Show Time",
         description: "Display time on the page"
       },
+      timeFont: {
+        title: "Time Font",
+        description: "Choose the font used for time display"
+      },
       autoFocusSearch: {
         label: "Auto-focus Search Box",
         description: "Automatically focus the search box when entering the page"
@@ -101,6 +105,20 @@ export default {
         importConfirmDesc: "The imported file will overwrite your cloud configuration. A cloud backup will be downloaded first.",
         importConfirmAction: "Import",
         cloudBackupDownloaded: "Cloud backup downloaded",
+        cloud: {
+          configTitle: "Cloud Sync Settings",
+          configDesc: "Configure auto sync options and interval",
+          nicknameLabel: "Sync nickname",
+          nicknamePlaceholder: "Leave empty to show username",
+          enabledLabel: "Enable cloud sync",
+          enabledDesc: "Disable to pause automatic sync; manual sync is still available",
+          autoSyncToastLabel: "Show auto-sync success toast",
+          autoSyncToastDesc: "Show a toast notification after scheduled auto sync succeeds",
+          intervalLabel: "Auto-sync interval",
+          intervalMinutes: "{{count}} minutes",
+          conflictPolicyLabel: "Conflict handling",
+          configSaved: "Cloud sync settings saved",
+        },
         webdav: {
           entry: "WebDAV Sync",
           entryDesc: "Configure remote backup and restore via WebDAV",
@@ -121,6 +139,8 @@ export default {
           syncOnChangeDesc: "Automatically sync to WebDAV after local changes",
           syncByScheduleLabel: "Scheduled auto sync",
           syncByScheduleDesc: "Sync at a fixed interval, good for long sessions",
+          autoSyncToastLabel: "Show auto-sync success toast",
+          autoSyncToastDesc: "Show a toast notification after scheduled auto sync succeeds",
           syncIntervalLabel: "Sync interval",
           syncIntervalMinutes: "{{count}} minutes",
           enabledLabel: "Enable WebDAV Sync",
@@ -142,8 +162,11 @@ export default {
           uploadError: "WebDAV sync failed. Check your settings.",
           syncSuccess: "Sync completed",
           syncError: "Sync failed. Check your settings.",
+          configSaved: "WebDAV settings saved",
           policyChangeSyncTriggered: "Conflict policy updated. Synced once with the selected policy.",
           intervalChangeSyncTriggered: "Sync interval updated. Triggered one immediate sync.",
+          disableWebdavBeforeCloudLogin: "WebDAV sync is currently enabled. Disable WebDAV sync before signing in to cloud sync.",
+          disableCloudBeforeWebdavEnable: "Cloud sync is currently signed in. Sign out from cloud sync before enabling WebDAV sync.",
           disableConfirmTitle: "Disable WebDAV Sync",
           disableConfirmDesc: "Disable WebDAV sync? Local data will remain on this device.",
           clearLocalLabel: "Clear local data and restore defaults",
@@ -158,10 +181,16 @@ export default {
           minutesAgo: "{{count}} minutes ago",
           hoursAgo: "{{count}} hours ago",
           disabled: "Disabled, WebDAV sync paused",
+          syncOffTitle: "WebDAV is off",
+          configureAction: "Configure",
+          enableSyncAction: "Enable Sync",
           lastAttemptFailed: "Last sync attempt failed",
           scheduleRunning: "Scheduled sync running",
           nextSyncAtLabel: "Next sync: {{time}}",
-          syncDisabled: "Enable WebDAV sync first"
+          syncDisabled: "Enable WebDAV sync first",
+          disableFinalSyncFailed: "Final sync before disabling failed. Sync has still been disabled.",
+          enableConflictTitle: "Sync conflict detected",
+          enableConflictDesc: "WebDAV and local data differ. Choose how to resolve."
         }
       },
       changelog: {
@@ -263,6 +292,11 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release123WebdavAccessDialog: "WebDAV \"Enable Sync\" now opens a dedicated access dialog with the same style as Auth",
+        release123UnifiedSyncSettings: "Unified Cloud/WebDAV sync settings UI and removed the conflict policy dropdown",
+        release123AutoSyncToggles: "Added auto-sync toggle and auto-sync success toast toggle, and disable interval slider when auto-sync is off",
+        release123ProviderLabel: "WebDAV card title now shows provider name instead of \"Default Profile\"",
+        release123PasswordToggle: "Added show/hide password toggle to login and register password fields",
         release122Scrollbar: "Unified the About LeafTab modal scrollbar style with the Settings modal",
         release122WelcomePersist: "Persisted first-login welcome modal state to local and cloud to prevent refresh flicker",
         release122RateLimitToast: "Fixed missing 429 rate-limit toast and aligned its visual style",
@@ -496,6 +530,7 @@ export default {
     syncConflict: {
       title: "Sync Conflict",
       description: "Local and cloud shortcuts differ. Please choose which one to use.",
+      merge: "Merge Both",
       useCloud: "Use Cloud",
       useLocal: "Use Local"
     },
@@ -503,7 +538,8 @@ export default {
       message: "Using {{chosen}} config. Backed up {{backup}} config. Undo within {{seconds}}s.",
       undo: "Undo",
       undone: "Sync choice undone",
-      backupToast: "Auto-backed up {{backup}} config"
+      backupToast: "Auto-backed up {{backup}} config",
+      backupToastBoth: "Auto-backed up both cloud and local configs"
     },
     scenario: {
       title: "Scenario Mode",
@@ -542,6 +578,7 @@ export default {
       syncFailed: "Sync failed",
       syncCloudApplied: "Cloud configuration applied",
       syncLocalApplied: "Local configuration applied",
+      syncMergeApplied: "Cloud and local configurations merged",
       linkCopied: "Link copied",
       linkCopyFailed: "Failed to copy link",
       loadedFromCache: "Loaded from local cache (Offline Mode)",

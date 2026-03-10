@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/ui/sonner';
+import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
 
 type LogoutOptions = {
   message?: string;
@@ -40,6 +41,9 @@ export function useAuth() {
     localStorage.removeItem('leaf_tab_shortcuts_cache');
     localStorage.removeItem('cloud_shortcuts_fetched_at');
     localStorage.removeItem('cloud_shortcuts_updated_at');
+    localStorage.removeItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt);
+    localStorage.removeItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt);
+    emitCloudSyncStatusChanged();
     if (options?.clearLocal) {
       localStorage.removeItem('leaf_tab_local_profile_v1');
       localStorage.removeItem('local_shortcuts_v3');

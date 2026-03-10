@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { toast } from '../components/ui/sonner';
 import { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts } from '../types';
 import { defaultScenarioModes } from '@/scenario/scenario';
+import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
+import { useSyncState } from '@/sync/useSyncState';
+import { mergeWebdavPayload, unwrapLeafTabBackupData } from '@/utils/backupData';
+import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged, readCloudSyncConfigFromStorage } from '@/utils/cloudSyncConfig';
 import { clearLocalNeedsCloudReconcile, persistLocalProfileSnapshot, readLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { syncPayloadToCloudWithDeps } from './cloudSync/syncPayloadToCloud';
 import { fetchShortcutsWithDeps } from './cloudSync/fetchShortcuts';
 
 const RATE_LIMIT_TOAST_COOLDOWN_MS = 30 * 1000;
-const CLOUD_PULL_INTERVAL_MS = 5 * 60 * 1000;
-const CLOUD_SYNC_JITTER_MAX_MS = 30 * 1000;
 
 type BuildPayloadArgs = {
   nextScenarioModes?: ScenarioMode[];
@@ -51,6 +53,14 @@ export function useCloudSync({
   localDirtyRef,
 }: UseCloudSyncParams) {
   const { t } = useTranslation();
+  const {
+    syncState,
+    markSyncStart,
+    markSyncSuccess,
+    markSyncConflict,
+    markSyncError,
+    markSyncIdle,
+  } = useSyncState();
 
   const [cloudSyncInitialized, setCloudSyncInitialized] = useState(false);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
@@ -64,7 +74,7 @@ export function useCloudSync({
   const syncInFlightRef = useRef<Promise<boolean> | null>(null);
   const syncInFlightPayloadJsonRef = useRef<string>('');
   const cloudPullDelayTimerRef = useRef<number | null>(null);
-  const fetchShortcutsRef = useRef<(options?: { silent?: boolean; promptOnDiff?: boolean }) => Promise<void>>(async () => {});
+  const fetchShortcutsRef = useRef<(options?: { silent?: boolean; promptOnDiff?: boolean }) => Promise<'success' | 'conflict' | 'error' | 'noop'>>(async () => 'noop');
   const loadLocalProfileSnapshotSafeRef = useRef<() => CloudShortcutsPayloadV3 | null>(() => null);
   const activeCloudSyncUserRef = useRef<string | null>(null);
   const conflictModalOpenRef = useRef(false);
@@ -73,6 +83,7 @@ export function useCloudSync({
   const userLifecycleInitializedRef = useRef(false);
   const previousUserRef = useRef<string | null>(null);
   const syncPayloadToCloudRef = useRef<(payload: CloudShortcutsPayloadV3, options?: { conflictStrategy?: 'modal' | 'prefer_local' }) => Promise<boolean>>(async () => false);
+  const [cloudSyncConfigVersion, setCloudSyncConfigVersion] = useState(0);
 
   const notifyRateLimited = useCallback(() => {
     const now = Date.now();
@@ -99,15 +110,21 @@ export function useCloudSync({
   }, [scenarioModes, scenarioShortcuts, selectedScenarioId]);
 
   const normalizeCloudShortcutsPayload = useCallback((raw: unknown) => {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-    const obj = raw as Record<string, unknown>;
-    const candidate = (obj.type === 'leaftab_backup' && obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data))
-      ? ({ version: 3, ...(obj.data as any) } as Record<string, unknown>)
-      : obj;
-    if (candidate.version !== 3) return null;
-    const modes = normalizeScenarioModesList(candidate.scenarioModes);
-    const shortcutsValue = normalizeScenarioShortcuts(candidate.scenarioShortcuts);
-    const selectedIdCandidate = typeof candidate.selectedScenarioId === 'string' ? candidate.selectedScenarioId : modes[0]?.id ?? defaultScenarioModes[0].id;
+    const isEnvelope = !!(
+      raw &&
+      typeof raw === 'object' &&
+      !Array.isArray(raw) &&
+      (raw as Record<string, unknown>).type === 'leaftab_backup'
+    );
+    const candidate = unwrapLeafTabBackupData(raw);
+    if (!candidate) return null;
+    const normalizedCandidate = (isEnvelope ? { version: 3, ...candidate } : candidate) as Record<string, unknown>;
+    if (normalizedCandidate.version !== 3) return null;
+    const modes = normalizeScenarioModesList(normalizedCandidate.scenarioModes);
+    const shortcutsValue = normalizeScenarioShortcuts(normalizedCandidate.scenarioShortcuts);
+    const selectedIdCandidate = typeof normalizedCandidate.selectedScenarioId === 'string'
+      ? normalizedCandidate.selectedScenarioId
+      : modes[0]?.id ?? defaultScenarioModes[0].id;
     const finalSelectedId = modes.some((m) => m.id === selectedIdCandidate) ? selectedIdCandidate : modes[0]?.id ?? defaultScenarioModes[0].id;
     return {
       version: 3,
@@ -127,9 +144,22 @@ export function useCloudSync({
     } satisfies CloudShortcutsPayloadV3;
   }, [normalizeScenarioModesList, normalizeScenarioShortcuts]);
 
-  const getAlignedNextCloudPullAt = useCallback((nowMs = Date.now()) => {
-    const slot = Math.floor(nowMs / CLOUD_PULL_INTERVAL_MS);
-    return (slot + 1) * CLOUD_PULL_INTERVAL_MS;
+  const getNextScheduledCloudSyncAt = useCallback((intervalMinutes: number, nowMs = Date.now()) => {
+    return getAlignedJitteredNextAt(intervalMinutes, { nowMs });
+  }, []);
+  const setCloudNextSyncAt = useCallback((nextMs: number) => {
+    localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt, new Date(nextMs).toISOString());
+    emitCloudSyncStatusChanged();
+  }, []);
+  const clearCloudNextSyncAt = useCallback(() => {
+    localStorage.removeItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt);
+    emitCloudSyncStatusChanged();
+  }, []);
+
+  useEffect(() => {
+    const onConfigChanged = () => setCloudSyncConfigVersion((v) => v + 1);
+    window.addEventListener('cloud-sync-config-changed', onConfigChanged);
+    return () => window.removeEventListener('cloud-sync-config-changed', onConfigChanged);
   }, []);
 
   useEffect(() => {
@@ -174,7 +204,8 @@ export function useCloudSync({
   }, [syncPayloadToCloud]);
 
   const fetchShortcuts = useCallback(async (options?: { silent?: boolean; promptOnDiff?: boolean }) => {
-    await fetchShortcutsWithDeps({
+    markSyncStart();
+    const result = await fetchShortcutsWithDeps({
       user,
       API_URL,
       handleLogout,
@@ -184,6 +215,8 @@ export function useCloudSync({
       buildCloudShortcutsPayload,
       normalizeCloudShortcutsPayload,
       loadLocalProfileSnapshotSafe,
+      conflictPolicy: readCloudSyncConfigFromStorage().conflictPolicy,
+      mergePayload: (localPayload, remotePayload) => mergeWebdavPayload(localPayload as any, remotePayload as any) as CloudShortcutsPayloadV3,
       notifyRateLimited,
       refs: {
         cloudShortcutsVersionRef,
@@ -202,7 +235,21 @@ export function useCloudSync({
         setConflictModalOpen,
       },
     });
-  }, [API_URL, buildCloudShortcutsPayload, handleLogout, loadLocalProfileSnapshotSafe, normalizeCloudShortcutsPayload, notifyRateLimited, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, setUserRole, t, user]);
+    if (result === 'success') {
+      markSyncSuccess();
+      return result;
+    }
+    if (result === 'conflict') {
+      markSyncConflict();
+      return result;
+    }
+    if (result === 'error') {
+      markSyncError('cloud_sync_failed');
+      return result;
+    }
+    markSyncIdle();
+    return result;
+  }, [API_URL, buildCloudShortcutsPayload, handleLogout, loadLocalProfileSnapshotSafe, markSyncConflict, markSyncError, markSyncIdle, markSyncStart, markSyncSuccess, normalizeCloudShortcutsPayload, notifyRateLimited, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, setUserRole, t, user]);
 
   useEffect(() => {
     fetchShortcutsRef.current = fetchShortcuts;
@@ -229,54 +276,107 @@ export function useCloudSync({
     if (!user) {
       activeCloudSyncUserRef.current = null;
       clearCloudPullTimers();
+      clearCloudNextSyncAt();
       return;
     }
 
-    if (activeCloudSyncUserRef.current === user) {
+    const sameActiveUser = activeCloudSyncUserRef.current === user;
+    if (!sameActiveUser) {
+      activeCloudSyncUserRef.current = user;
+      clearCloudPullTimers();
+      // Keep UI on local state first; only show conflict prompt after explicit login action.
+      void fetchShortcutsRef.current({ silent: false, promptOnDiff: isExplicitLogin });
+    } else {
+      clearCloudPullTimers();
+    }
+    const runtimeConfig = readCloudSyncConfigFromStorage();
+    if (!runtimeConfig.enabled) {
+      clearCloudNextSyncAt();
       return;
     }
-    activeCloudSyncUserRef.current = user;
-    clearCloudPullTimers();
-
-    // Keep UI on local state first; only show conflict prompt after explicit login action.
-    void fetchShortcutsRef.current({ silent: false, promptOnDiff: isExplicitLogin });
 
     let disposed = false;
-    const getJitterMs = () => Math.floor(Math.random() * (CLOUD_SYNC_JITTER_MAX_MS + 1));
     const scheduleNext = (targetMs: number) => {
       if (disposed) return;
       if (cloudPullDelayTimerRef.current) {
         window.clearTimeout(cloudPullDelayTimerRef.current);
       }
       const nextMs = Math.max(Date.now() + 200, targetMs);
+      setCloudNextSyncAt(nextMs);
       const delay = Math.min(nextMs - Date.now(), 2_147_483_647);
       cloudPullDelayTimerRef.current = window.setTimeout(async () => {
         if (disposed) return;
+        const latestConfig = readCloudSyncConfigFromStorage();
+        if (!latestConfig.enabled) {
+          clearCloudPullTimers();
+          clearCloudNextSyncAt();
+          return;
+        }
         if (!conflictModalOpenRef.current) {
           if (localStorage.getItem('leaf_tab_sync_pending') === 'true' && navigator.onLine && !isDraggingRef.current) {
             const snapshot = loadLocalProfileSnapshotSafeRef.current();
             if (snapshot) {
+              markSyncStart();
               const synced = await syncPayloadToCloudRef.current(snapshot, { conflictStrategy: 'prefer_local' });
               if (synced) {
-                toast.success(t('toast.cloudAutoSyncSuccess'));
+                markSyncSuccess();
+                if (latestConfig.autoSyncToastEnabled) {
+                  toast.success(t('toast.cloudAutoSyncSuccess'));
+                }
+              } else if (conflictModalOpenRef.current) {
+                markSyncConflict();
+              } else {
+                markSyncError('cloud_auto_sync_failed');
               }
             }
           }
         }
         if (disposed) return;
-        const nextAligned = getAlignedNextCloudPullAt(Date.now());
-        scheduleNext(nextAligned + getJitterMs());
+        scheduleNext(getNextScheduledCloudSyncAt(latestConfig.intervalMinutes, Date.now()));
       }, delay);
     };
 
-    const alignedNext = getAlignedNextCloudPullAt(Date.now());
-    scheduleNext(alignedNext + getJitterMs());
+    const initialTarget = resolveInitialAlignedJitteredTargetAt({
+      intervalMinutes: runtimeConfig.intervalMinutes,
+      persistedNextAtIso: localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt),
+    });
+    scheduleNext(initialTarget);
 
     return () => {
       disposed = true;
       clearCloudPullTimers();
     };
-  }, [getAlignedNextCloudPullAt, t, user]);
+  }, [clearCloudNextSyncAt, cloudSyncConfigVersion, getNextScheduledCloudSyncAt, markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, setCloudNextSyncAt, t, user]);
+
+  const triggerCloudSyncNow = useCallback(async () => {
+    if (!user) return false;
+    if (!navigator.onLine) {
+      markSyncError('offline');
+      return false;
+    }
+    const config = readCloudSyncConfigFromStorage();
+    if (config.conflictPolicy === 'prefer_remote') {
+      const result = await fetchShortcutsRef.current({ silent: false, promptOnDiff: true });
+      return result === 'success';
+    }
+    if (config.conflictPolicy === 'merge') {
+      await fetchShortcutsRef.current({ silent: true, promptOnDiff: true });
+    }
+    const snapshot = loadLocalProfileSnapshotSafeRef.current();
+    if (!snapshot) return false;
+    markSyncStart();
+    const synced = await syncPayloadToCloudRef.current(snapshot, { conflictStrategy: 'prefer_local' });
+    if (synced) {
+      markSyncSuccess();
+      return true;
+    }
+    if (conflictModalOpenRef.current) {
+      markSyncConflict();
+      return false;
+    }
+    markSyncError('cloud_manual_sync_failed');
+    return false;
+  }, [markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, user]);
 
   const resolveWithCloud = useCallback(() => {
     if (!pendingCloudPayload) {
@@ -300,8 +400,9 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    markSyncSuccess();
     toast.success(t('toast.syncCloudApplied'));
-  }, [localDirtyRef, pendingCloudPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, t]);
+  }, [localDirtyRef, markSyncSuccess, pendingCloudPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, t]);
 
   const resolveWithLocal = useCallback(() => {
     if (!pendingLocalPayload) {
@@ -324,9 +425,41 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    markSyncSuccess();
     void syncPayloadToCloud(pendingLocalPayload, { conflictStrategy: 'prefer_local' });
     toast.success(t('toast.syncLocalApplied'));
-  }, [localDirtyRef, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
+  }, [localDirtyRef, markSyncSuccess, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
+
+  const resolveWithMerge = useCallback(() => {
+    if (!pendingLocalPayload || !pendingCloudPayload) {
+      setConflictModalOpen(false);
+      return;
+    }
+    const mergedPayload = mergeWebdavPayload(
+      pendingLocalPayload as any,
+      pendingCloudPayload as any,
+    ) as CloudShortcutsPayloadV3;
+    const json = JSON.stringify(mergedPayload);
+    lastSavedShortcutsJson.current = '__force_upload__';
+    cloudShortcutsVersionRef.current = pendingCloudVersionRef.current;
+    setScenarioModes(mergedPayload.scenarioModes);
+    setSelectedScenarioId(mergedPayload.selectedScenarioId);
+    setScenarioShortcuts(mergedPayload.scenarioShortcuts);
+    persistLocalProfileSnapshot(mergedPayload);
+    clearLocalNeedsCloudReconcile();
+    localStorage.setItem('leaf_tab_sync_pending', 'true');
+    localStorage.setItem('leaf_tab_shortcuts_cache', json);
+    localDirtyRef.current = false;
+    conflictPreferenceRef.current = 'prefer_local';
+    setCloudSyncInitialized(true);
+    setConflictModalOpen(false);
+    setPendingLocalPayload(null);
+    setPendingCloudPayload(null);
+    pendingCloudVersionRef.current = null;
+    markSyncSuccess();
+    void syncPayloadToCloud(mergedPayload, { conflictStrategy: 'prefer_local' });
+    toast.success(t('toast.syncMergeApplied'));
+  }, [localDirtyRef, markSyncSuccess, pendingCloudPayload, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
 
   const applyUndoPayload = useCallback((payload: CloudShortcutsPayloadV3) => {
     const json = JSON.stringify(payload);
@@ -345,8 +478,9 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    markSyncSuccess();
     void syncPayloadToCloud(payload, { conflictStrategy: 'prefer_local' });
-  }, [localDirtyRef, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
+  }, [localDirtyRef, markSyncSuccess, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
 
   return {
     cloudSyncInitialized,
@@ -358,8 +492,11 @@ export function useCloudSync({
     pendingCloudPayload,
     setPendingCloudPayload,
     lastSavedShortcutsJson,
+    syncState,
     resolveWithCloud,
     resolveWithLocal,
+    resolveWithMerge,
     applyUndoPayload,
+    triggerCloudSyncNow,
   };
 }

@@ -3,9 +3,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { animate, useMotionValue } from "framer-motion";
 import {
   RiCheckFill,
@@ -13,6 +12,7 @@ import {
   RiCloudFill,
   RiDashboardFill,
   RiDownload2Fill,
+  RiCloseCircleFill,
   RiFlashlightFill,
   RiHardDrive3Fill,
   RiLoginBoxFill,
@@ -27,9 +27,12 @@ import WallpaperSelector from "./WallpaperSelector";
 import { ChangelogModal } from "./ChangelogModal";
 import ConfirmDialog from "./ConfirmDialog";
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
+import type { SyncStateStatus } from "@/sync/stateMachine";
+import { SyncStatusBadge } from "./SyncStatusBadge";
 import { toast } from "./ui/sonner";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { parseLeafTabBackup } from "@/utils/backupData";
+import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncConfigChanged, readCloudSyncConfigFromStorage, writeCloudSyncConfigToStorage } from "@/utils/cloudSyncConfig";
 import { hasWebdavUrlConfiguredFromStorage, isWebdavSyncEnabledFromStorage, readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from "@/utils/webdavConfig";
 /// <reference types="chrome" />
 import {
@@ -49,6 +52,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { SyncSettingsDialog } from "./SyncSettingsDialog";
+import {
+  SyncIntervalSliderField,
+  SyncSettingsActionButtons,
+  SyncToggleField,
+} from "./sync/SyncSettingsFields";
 
 function RollingNumber({
   value,
@@ -114,13 +123,15 @@ interface SettingsModalProps {
   weatherCode: number;
   privacyConsent: boolean | null;
   onPrivacyConsentChange: (checked: boolean) => void;
-  onOpenWebdavConfig?: () => void;
-  onWebdavDownload?: (config: WebdavConfig) => Promise<void>;
-  onWebdavUpload?: (config: WebdavConfig) => Promise<void>;
+  onOpenWebdavConfig?: (options?: { enableAfterSave?: boolean }) => void;
   onWebdavSync?: (config: WebdavConfig) => Promise<void>;
+  onWebdavEnable?: () => Promise<void> | void;
+  onWebdavDisable?: (options?: { clearLocal?: boolean }) => Promise<void> | void;
+  onCloudSyncNow?: () => Promise<boolean>;
   onVersionClick?: () => void;
   onOpenAdminModal?: () => void;
   onOpenAboutModal?: () => void;
+  cloudSyncStatus?: SyncStateStatus;
 }
 
 export default function SettingsModal({
@@ -157,12 +168,14 @@ export default function SettingsModal({
   privacyConsent,
   onPrivacyConsentChange,
   onOpenWebdavConfig,
-  onWebdavDownload,
-  onWebdavUpload,
   onWebdavSync,
+  onWebdavEnable,
+  onWebdavDisable,
+  onCloudSyncNow,
   onVersionClick,
   onOpenAdminModal,
   onOpenAboutModal,
+  cloudSyncStatus = 'idle',
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -289,53 +302,99 @@ export default function SettingsModal({
 
     const reader = new FileReader();
     reader.onload = (e) => {
+      let payload: any = null;
       try {
         const content = e.target?.result as string;
         const data = JSON.parse(content);
-        const payload = parseLeafTabBackup(data);
+        payload = parseLeafTabBackup(data);
         if (!payload) throw new Error('Invalid format');
-        onImportData(payload);
-        event.target.value = '';
       } catch (err) {
         console.error('Import failed:', err);
+        toast.error(t('settings.backup.importError'));
+        event.target.value = '';
+        return;
       }
+
+      try {
+        onImportData(payload);
+      } catch (err) {
+        // apply/import flow already reports toast in upper layer.
+        console.error('Apply imported data failed:', err);
+      } finally {
+        event.target.value = '';
+      }
+    };
+    reader.onerror = () => {
+      toast.error(t('settings.backup.importError'));
+      event.target.value = '';
     };
     reader.readAsText(file);
   };
   const shortcutsRowsPreview = hoveredShortcutsRows ?? shortcutsRowsPerColumn;
 
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const changelogOpenTimerRef = useRef<number | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [logoutConfirmTarget, setLogoutConfirmTarget] = useState<'cloud' | 'webdav'>('cloud');
   const [logoutClearLocal, setLogoutClearLocal] = useState(false);
   const [syncTab, setSyncTab] = useState<'cloud' | 'webdav'>('cloud');
   const [webdavProfileName, setWebdavProfileName] = useState('');
   const [webdavLastSyncAt, setWebdavLastSyncAt] = useState('');
   const [webdavNextSyncAt, setWebdavNextSyncAt] = useState('');
+  const [cloudLastSyncAt, setCloudLastSyncAt] = useState('');
+  const [cloudNextSyncAt, setCloudNextSyncAt] = useState('');
   const [relativeNow, setRelativeNow] = useState(() => Date.now());
   const [syncCardAnimSeq, setSyncCardAnimSeq] = useState(0);
-
-  const registrationDays = useMemo(() => {
-    const createdAt = localStorage.getItem('user_created_at');
-    if (!createdAt) return 1;
-    try {
-      const createdDate = new Date(createdAt.replace(' ', 'T'));
-      const startDate = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      const diffTime = Math.abs(today.getTime() - startDate.getTime());
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      return diffDays;
-    } catch (e) {
-      return 1;
-    }
-  }, [username]);
+  const [cloudSyncConfigOpen, setCloudSyncConfigOpen] = useState(false);
+  const cloudSyncIntervalOptions = [5, 10, 15, 30, 60];
+  const normalizeCloudSyncInterval = (value: number) => {
+    if (cloudSyncIntervalOptions.includes(value)) return value;
+    let closest = cloudSyncIntervalOptions[0];
+    let minGap = Number.POSITIVE_INFINITY;
+    cloudSyncIntervalOptions.forEach((candidate) => {
+      const gap = Math.abs(candidate - value);
+      if (gap < minGap) {
+        minGap = gap;
+        closest = candidate;
+      }
+    });
+    return closest;
+  };
+  const [cloudSyncIntervalDraft, setCloudSyncIntervalDraft] = useState<number>(() => readCloudSyncConfigFromStorage().intervalMinutes);
+  const [cloudSyncEnabledDraft, setCloudSyncEnabledDraft] = useState<boolean>(() => readCloudSyncConfigFromStorage().enabled);
+  const [cloudAutoSyncToastEnabledDraft, setCloudAutoSyncToastEnabledDraft] = useState<boolean>(() => readCloudSyncConfigFromStorage().autoSyncToastEnabled);
+  const [webdavToggleBusy, setWebdavToggleBusy] = useState(false);
+  const resolveWebdavProviderLabel = useCallback(() => {
+    const normalizeUrl = (value: string) => value.trim().replace(/\/+$/, '');
+    const savedUrl = normalizeUrl(localStorage.getItem(WEBDAV_STORAGE_KEYS.url) || '');
+    if (!savedUrl) return '';
+    const providers: Array<{ url: string; label: string }> = [
+      { url: 'https://ewebdav.pcloud.com', label: 'pCloud (EU)' },
+      { url: 'https://webdav.pcloud.com', label: 'pCloud (US)' },
+      { url: 'https://webdav.mc.gmx.net', label: 'GMX MediaCenter' },
+      { url: 'https://webdav.icedrive.io', label: 'IceDrive' },
+      { url: 'https://connect.drive.infomaniak.com', label: 'kDrive' },
+      { url: 'https://app.koofr.net/dav/Koofr', label: 'Koofr' },
+      { url: 'https://magentacloud.de/remote.php/webdav', label: 'MagentaCLOUD' },
+      { url: 'https://dav.mailbox.org/servlet/webdav.infostore/', label: 'Mailbox.org' },
+      { url: 'https://webdav.smartdrive.web.de', label: 'WEB.DE Online–Speicher' },
+    ];
+    const matched = providers.find((provider) => normalizeUrl(provider.url) === savedUrl);
+    return matched?.label || t('settings.backup.webdav.providerCustom');
+  }, [t]);
 
   useEffect(() => {
     if (!isOpen) return;
-    setWebdavProfileName((localStorage.getItem('webdav_profile_name') || '').trim());
+    setWebdavProfileName(resolveWebdavProviderLabel());
     setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
     setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
+    setCloudLastSyncAt(
+      localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
+        || localStorage.getItem('cloud_shortcuts_updated_at')
+        || localStorage.getItem('cloud_shortcuts_fetched_at')
+        || ''
+    );
+    setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
     setRelativeNow(Date.now());
   }, [isOpen]);
   useEffect(() => {
@@ -349,19 +408,41 @@ export default function SettingsModal({
       setRelativeNow(Date.now());
       setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
       setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
+      setCloudLastSyncAt(
+        localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
+          || localStorage.getItem('cloud_shortcuts_updated_at')
+          || localStorage.getItem('cloud_shortcuts_fetched_at')
+          || ''
+      );
+      setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
     }, 30000);
     return () => window.clearInterval(timer);
   }, [isOpen]);
   useEffect(() => {
     if (!isOpen) return;
     const onStatusChanged = () => {
+      setWebdavProfileName(resolveWebdavProviderLabel());
       setWebdavLastSyncAt(localStorage.getItem('webdav_last_sync_at') || '');
       setWebdavNextSyncAt(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt) || '');
       setRelativeNow(Date.now());
     };
+    const onCloudStatusChanged = () => {
+      setCloudLastSyncAt(
+        localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
+          || localStorage.getItem('cloud_shortcuts_updated_at')
+          || localStorage.getItem('cloud_shortcuts_fetched_at')
+          || ''
+      );
+      setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
+      setRelativeNow(Date.now());
+    };
     window.addEventListener('webdav-sync-status-changed', onStatusChanged);
-    return () => window.removeEventListener('webdav-sync-status-changed', onStatusChanged);
-  }, [isOpen]);
+    window.addEventListener('cloud-sync-status-changed', onCloudStatusChanged);
+    return () => {
+      window.removeEventListener('webdav-sync-status-changed', onStatusChanged);
+      window.removeEventListener('cloud-sync-status-changed', onCloudStatusChanged);
+    };
+  }, [isOpen, resolveWebdavProviderLabel]);
 
   const formatAbsoluteTime = (iso: string) => {
     const d = new Date(iso);
@@ -402,6 +483,34 @@ export default function SettingsModal({
   const webdavNextSyncBadgeLabel = useMemo(() => {
     return t('settings.backup.webdav.nextSyncAtLabel', { time: webdavNextSyncLabel || '--' });
   }, [t, webdavNextSyncLabel]);
+  const cloudLastSyncLabel = useMemo(() => {
+    if (!cloudLastSyncAt) return t('settings.backup.webdav.notSynced');
+    const ts = new Date(cloudLastSyncAt).getTime();
+    if (Number.isNaN(ts)) return t('settings.backup.webdav.notSynced');
+    const diff = Math.max(0, relativeNow - ts);
+    if (diff < 60 * 1000) return t('settings.backup.webdav.justSynced');
+    if (diff < 60 * 60 * 1000) {
+      const m = Math.floor(diff / (60 * 1000));
+      return t('settings.backup.webdav.minutesAgo', { count: m });
+    }
+    if (diff < 24 * 60 * 60 * 1000) {
+      const h = Math.floor(diff / (60 * 60 * 1000));
+      return t('settings.backup.webdav.hoursAgo', { count: h });
+    }
+    return formatAbsoluteTime(cloudLastSyncAt);
+  }, [cloudLastSyncAt, relativeNow, t]);
+  const cloudNextSyncLabel = useMemo(() => {
+    if (!cloudNextSyncAt) return '';
+    const ts = new Date(cloudNextSyncAt).getTime();
+    if (Number.isNaN(ts)) return '';
+    return formatAbsoluteTime(cloudNextSyncAt);
+  }, [cloudNextSyncAt]);
+  const cloudLastSyncTitleLabel = useMemo(() => {
+    return `${t('settings.backup.webdav.lastSyncAt')}·${cloudLastSyncLabel}`;
+  }, [cloudLastSyncLabel, t]);
+  const cloudNextSyncBadgeLabel = useMemo(() => {
+    return t('settings.backup.webdav.nextSyncAtLabel', { time: cloudNextSyncLabel || '--' });
+  }, [cloudNextSyncLabel, t]);
 
   const webdavConfigured = useMemo(() => {
     return hasWebdavUrlConfiguredFromStorage();
@@ -444,13 +553,106 @@ export default function SettingsModal({
     onOpenChange(false);
   };
 
+  const openCloudSyncConfig = () => {
+    const config = readCloudSyncConfigFromStorage();
+    setCloudSyncEnabledDraft(config.enabled);
+    setCloudAutoSyncToastEnabledDraft(config.autoSyncToastEnabled);
+    setCloudSyncIntervalDraft(normalizeCloudSyncInterval(config.intervalMinutes));
+    setCloudSyncConfigOpen(true);
+    onOpenChange(false);
+  };
+
+  const handleSaveCloudSyncConfig = () => {
+    const currentConfig = readCloudSyncConfigFromStorage();
+    writeCloudSyncConfigToStorage({
+      enabled: cloudSyncEnabledDraft,
+      autoSyncToastEnabled: cloudAutoSyncToastEnabledDraft,
+      intervalMinutes: cloudSyncIntervalDraft,
+      conflictPolicy: currentConfig.conflictPolicy,
+      nickname: currentConfig.nickname,
+    });
+    emitCloudSyncConfigChanged();
+    setCloudSyncConfigOpen(false);
+    toast.success(t('settings.backup.cloud.configSaved'));
+    if (username && onCloudSyncNow) {
+      void onCloudSyncNow();
+    }
+  };
+
+  const handleCloudManualSync = async () => {
+    if (!username || !onCloudSyncNow) {
+      toast.error(t('toast.sessionExpired'));
+      return;
+    }
+    const ok = await onCloudSyncNow();
+    if (ok) {
+      toast.success(t('toast.cloudAutoSyncSuccess'));
+    } else {
+      toast.error(t('toast.cloudSyncFailed'));
+    }
+  };
+
+  const handleToggleWebdavEnabled = async () => {
+    if (webdavToggleBusy) return;
+    if (webdavEnabled) {
+      setLogoutConfirmTarget('webdav');
+      setLogoutConfirmOpen(true);
+      return;
+    }
+    setWebdavToggleBusy(true);
+    try {
+      await onWebdavEnable?.();
+      setRelativeNow(Date.now());
+    } finally {
+      setWebdavToggleBusy(false);
+    }
+  };
+
+  const logoutConfirmTitle = logoutConfirmTarget === 'webdav'
+    ? t('settings.backup.webdav.disableConfirmTitle', { defaultValue: t('logoutConfirm.title') })
+    : t('logoutConfirm.title');
+  const logoutConfirmDescription = logoutConfirmTarget === 'webdav'
+    ? t('settings.backup.webdav.disableConfirmDesc', { defaultValue: t('logoutConfirm.description') })
+    : t('logoutConfirm.description');
+  const logoutConfirmClearLocalLabel = logoutConfirmTarget === 'webdav'
+    ? t('settings.backup.webdav.clearLocalLabel', { defaultValue: t('logoutConfirm.clearLocalLabel') })
+    : t('logoutConfirm.clearLocalLabel');
+  const logoutConfirmActionLabel = logoutConfirmTarget === 'webdav'
+    ? t('common.confirm')
+    : t('logoutConfirm.confirm');
+
+  const handleOpenChangelog = () => {
+    onOpenChange(false);
+    if (changelogOpenTimerRef.current) {
+      window.clearTimeout(changelogOpenTimerRef.current);
+      changelogOpenTimerRef.current = null;
+    }
+    changelogOpenTimerRef.current = window.setTimeout(() => {
+      setChangelogOpen(true);
+      changelogOpenTimerRef.current = null;
+    }, 0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (changelogOpenTimerRef.current) {
+        window.clearTimeout(changelogOpenTimerRef.current);
+        changelogOpenTimerRef.current = null;
+      }
+    };
+  }, []);
+
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[24px] overflow-visible">
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea
+          className="max-h-[60vh]"
+          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
+        >
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-3">
               <Tabs value={syncTab} onValueChange={(value: string) => setSyncTab(value as 'cloud' | 'webdav')} className="w-full">
@@ -474,14 +676,35 @@ export default function SettingsModal({
                             <span className="text-xs text-muted-foreground">{t('settings.profile.loggedInDesc')}</span>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setLogoutConfirmOpen(true)}
-                          className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
-                        >
-                          <RiLogoutBoxRFill className="size-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={openCloudSyncConfig}
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                          >
+                            <RiSettings4Fill className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCloudManualSync}
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                          >
+                            <RiRefreshFill className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setLogoutConfirmTarget('cloud');
+                              setLogoutConfirmOpen(true);
+                            }}
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                          >
+                            <RiLogoutBoxRFill className="size-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
                         <div className="flex flex-col">
@@ -489,8 +712,8 @@ export default function SettingsModal({
                           <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs text-muted-foreground">{t('settings.profile.daysActive')}</span>
-                          <RollingNumber value={registrationDays} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
+                          <span className="text-xs text-muted-foreground">{cloudLastSyncTitleLabel}</span>
+                          <SyncStatusBadge label={cloudNextSyncBadgeLabel} tone='info' className="mt-1.5" />
                         </div>
                       </div>
                     </>
@@ -514,62 +737,101 @@ export default function SettingsModal({
                 </div>
               ) : (
                 <div className="flex h-[132px] flex-col justify-between gap-3 rounded-xl border border-border/50 bg-secondary/30 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`size-9 rounded-full flex items-center justify-center ${
-                          webdavEnabled ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        <RiHardDrive3Fill className="size-4.5" />
+                  {webdavEnabled ? (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                            <RiHardDrive3Fill className="size-4.5" />
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium text-sm">{webdavProfileName || t('settings.backup.webdav.defaultProfileName')}</span>
+                            <span className="text-xs text-muted-foreground">{t('settings.backup.webdav.configured')}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                            onClick={() => {
+                              onOpenWebdavConfig?.();
+                              onOpenChange(false);
+                            }}
+                          >
+                            <RiSettings4Fill className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                            onClick={() => {
+                              handleWebdavAction(onWebdavSync, "settings.backup.webdav.syncSuccess", "settings.backup.webdav.syncError");
+                            }}
+                          >
+                            <RiRefreshFill className="size-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
+                            onClick={() => void handleToggleWebdavEnabled()}
+                            disabled={webdavToggleBusy}
+                          >
+                            <RiCloseCircleFill className="size-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium text-sm">{webdavProfileName || t('settings.backup.webdav.defaultProfileName')}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {!webdavEnabled
-                            ? t('settings.backup.webdav.disabled')
-                            : webdavConfigured
-                            ? t('settings.backup.webdav.configured')
-                            : t('settings.backup.webdav.notConfigured')}
-                        </span>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-xs text-muted-foreground">{t('settings.profile.shortcutsCount')}</span>
+                          <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-muted-foreground">{webdavLastSyncTitleLabel}</span>
+                          <SyncStatusBadge label={webdavNextSyncBadgeLabel} tone='info' className="mt-1.5" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+                    </>
+                  ) : (
+                    <div className="flex h-full flex-1 flex-col justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-9 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+                          <RiHardDrive3Fill className="size-4.5" />
+                        </div>
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-sm">
+                            {webdavConfigured
+                              ? (webdavProfileName || t('settings.backup.webdav.defaultProfileName'))
+                              : t('settings.backup.webdav.syncOffTitle')}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {webdavConfigured
+                              ? t('settings.backup.webdav.disabled')
+                              : t('settings.backup.webdav.notConfigured')}
+                          </span>
+                        </div>
+                      </div>
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
                         onClick={() => {
-                          onOpenWebdavConfig?.();
+                          if (username) {
+                            toast.error(t('settings.backup.webdav.disableCloudBeforeWebdavEnable'));
+                            setSyncTab('cloud');
+                            return;
+                          }
+                          onOpenWebdavConfig?.({ enableAfterSave: true });
                           onOpenChange(false);
                         }}
+                        className="h-8 w-full gap-2 text-xs"
+                        disabled={webdavToggleBusy}
                       >
-                        <RiSettings4Fill className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full border border-border/60 bg-background/70 text-foreground hover:bg-accent"
-                        onClick={() => {
-                          handleWebdavAction(onWebdavSync, "settings.backup.webdav.syncSuccess", "settings.backup.webdav.syncError");
-                        }}
-                      >
-                        <RiRefreshFill className="size-4" />
+                        {webdavConfigured ? <RiLoginBoxFill className="size-4" /> : <RiSettings4Fill className="size-4" />}
+                        {webdavConfigured
+                          ? t('settings.backup.webdav.enableSyncAction')
+                          : t('settings.backup.webdav.configureAction')}
                       </Button>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">{t('settings.profile.shortcutsCount')}</span>
-                      <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">{webdavLastSyncTitleLabel}</span>
-                      <Badge className="mt-1.5 w-fit rounded-md border border-primary/25 bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/20">
-                        {webdavNextSyncBadgeLabel}
-                      </Badge>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -780,8 +1042,6 @@ export default function SettingsModal({
             </div>
           )}
 
-          <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
-
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.language.label')}</span>
@@ -964,7 +1224,7 @@ export default function SettingsModal({
               <button 
                 type="button"
                 className="text-[10px] text-muted-foreground/80 hover:text-primary hover:underline transition-colors"
-                onClick={() => setChangelogOpen(true)}
+                onClick={handleOpenChangelog}
               >
                 {t('settings.changelog.open')}
               </button>
@@ -974,19 +1234,63 @@ export default function SettingsModal({
           </div>
         </ScrollArea>
       </DialogContent>
-      <Dialog open={logoutConfirmOpen} onOpenChange={(open: boolean) => { setLogoutConfirmOpen(open); if (!open) setLogoutClearLocal(false); }}>
+      <SyncSettingsDialog
+        open={cloudSyncConfigOpen}
+        onOpenChange={setCloudSyncConfigOpen}
+        title={t('settings.backup.cloud.configTitle')}
+        description={t('settings.backup.cloud.configDesc')}
+        contentClassName="sm:max-w-[500px]"
+        footer={(
+          <SyncSettingsActionButtons
+            cancelLabel={t('common.cancel')}
+            saveLabel={t('common.save')}
+            onCancel={() => setCloudSyncConfigOpen(false)}
+            onSave={handleSaveCloudSyncConfig}
+          />
+        )}
+      >
+        <div className="flex flex-col gap-4">
+          <SyncToggleField
+            label={t('settings.backup.cloud.enabledLabel')}
+            description={t('settings.backup.cloud.enabledDesc')}
+            checked={cloudSyncEnabledDraft}
+            onCheckedChange={setCloudSyncEnabledDraft}
+          />
+          <SyncToggleField
+            label={t('settings.backup.cloud.autoSyncToastLabel')}
+            description={t('settings.backup.cloud.autoSyncToastDesc')}
+            checked={cloudAutoSyncToastEnabledDraft}
+            onCheckedChange={setCloudAutoSyncToastEnabledDraft}
+          />
+          <SyncIntervalSliderField
+            label={t('settings.backup.cloud.intervalLabel')}
+            options={cloudSyncIntervalOptions}
+            value={cloudSyncIntervalDraft}
+            valueLabel={t('settings.backup.cloud.intervalMinutes', { count: cloudSyncIntervalDraft })}
+            onChange={setCloudSyncIntervalDraft}
+            disabled={!cloudSyncEnabledDraft}
+          />
+          </div>
+      </SyncSettingsDialog>
+      <Dialog open={logoutConfirmOpen} onOpenChange={(open: boolean) => {
+        setLogoutConfirmOpen(open);
+        if (!open) {
+          setLogoutClearLocal(false);
+          setLogoutConfirmTarget('cloud');
+        }
+      }}>
         <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[24px]">
           <DialogHeader>
-            <DialogTitle className="text-foreground">{t('logoutConfirm.title')}</DialogTitle>
+            <DialogTitle className="text-foreground">{logoutConfirmTitle}</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {t('logoutConfirm.description')}
+              {logoutConfirmDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <Checkbox checked={logoutClearLocal} onCheckedChange={(checked: boolean | "indeterminate") => setLogoutClearLocal(checked === true)} />
             <div className="flex flex-col gap-1">
               <span className="text-foreground">
-                {t('logoutConfirm.clearLocalLabel')}
+                {logoutConfirmClearLocalLabel}
               </span>
             </div>
           </div>
@@ -995,16 +1299,29 @@ export default function SettingsModal({
               {t('logoutConfirm.cancel')}
             </Button>
             <Button className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
-              await onLogout?.({ clearLocal: logoutClearLocal });
+              if (logoutConfirmTarget === 'webdav') {
+                setWebdavToggleBusy(true);
+                try {
+                  await onWebdavDisable?.({ clearLocal: logoutClearLocal });
+                  setRelativeNow(Date.now());
+                } finally {
+                  setWebdavToggleBusy(false);
+                }
+              } else {
+                await onLogout?.({ clearLocal: logoutClearLocal });
+              }
               setLogoutConfirmOpen(false);
               setLogoutClearLocal(false);
+              setLogoutConfirmTarget('cloud');
               onOpenChange(false);
             }}>
-              {t('logoutConfirm.confirm')}
+              {logoutConfirmActionLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </Dialog>
+    <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
+    </>
   );
 }

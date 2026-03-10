@@ -37,6 +37,10 @@ export default {
         label: "시간 표시",
         description: "페이지에 시간을 표시합니다"
       },
+      timeFont: {
+        title: "시간 글꼴",
+        description: "시간 표시에 사용할 글꼴을 선택하세요"
+      },
       autoFocusSearch: {
         label: "검색창 자동 포커스",
         description: "페이지에 진입할 때 자동으로 검색창에 포커스를 둡니다"
@@ -114,6 +118,8 @@ export default {
           syncOnChangeDesc: "로컬 데이터 변경 후 자동으로 WebDAV에 동기화합니다",
           syncByScheduleLabel: "예약 자동 동기화",
           syncByScheduleDesc: "고정 간격으로 자동 동기화합니다",
+          autoSyncToastLabel: "자동 동기화 성공 알림",
+          autoSyncToastDesc: "예약 자동 동기화 성공 후 토스트 알림을 표시합니다",
           syncIntervalLabel: "동기화 간격",
           conflictPolicyLabel: "충돌 처리 방식",
           policyMerge: "로컬과 클라우드 변경을 가능한 한 병합(권장)",
@@ -221,6 +227,11 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release123WebdavAccessDialog: "WebDAV \"동기화 활성화\"를 로그인과 동일한 스타일의 전용 연결 다이얼로그로 변경",
+        release123UnifiedSyncSettings: "클라우드/WebDAV 동기화 설정 UI를 통일하고 충돌 처리 드롭다운을 제거",
+        release123AutoSyncToggles: "자동 동기화 스위치와 자동 동기화 성공 토스트 스위치를 추가하고, 자동 동기화 OFF 시 간격 슬라이더를 비활성화",
+        release123ProviderLabel: "WebDAV 카드 제목을 \"기본 설정\" 대신 서비스 제공자 이름으로 표시",
+        release123PasswordToggle: "로그인/회원가입 비밀번호 입력에 표시/숨기기 토글 추가",
         release122Scrollbar: "About LeafTab 모달 스크롤바를 설정 모달과 동일한 스타일로 통일",
         release122WelcomePersist: "최초 로그인 안내 모달 상태를 로컬+서버에 저장해 새로고침 깜빡임 제거",
         release122RateLimitToast: "429 제한 토스트가 보이지 않던 문제를 수정하고 스타일을 통일",

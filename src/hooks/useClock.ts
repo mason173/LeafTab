@@ -16,11 +16,10 @@ export function useClock(is24Hour: boolean, showSeconds: boolean, language: stri
       const seconds = now.getSeconds().toString().padStart(2, '0');
       
       if (!is24Hour) {
-        const period = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
         hours = hours ? hours : 12;
         const timeStr = showSeconds ? `${hours}:${minutes}:${seconds}` : `${hours}:${minutes}`;
-        setTime(`${timeStr} ${period}`);
+        setTime(timeStr);
       } else {
         const hoursStr = hours.toString().padStart(2, '0');
         const timeStr = showSeconds ? `${hoursStr}:${minutes}:${seconds}` : `${hoursStr}:${minutes}`;

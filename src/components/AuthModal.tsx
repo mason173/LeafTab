@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { RiEyeFill, RiEyeOffFill } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +30,7 @@ interface AuthModalProps {
   customApiUrl: string;
   customApiName: string;
   defaultApiBase: string;
+  allowCustomApiServer?: boolean;
 }
 
 export default function AuthModal({
@@ -40,6 +42,7 @@ export default function AuthModal({
   customApiUrl,
   customApiName,
   defaultApiBase,
+  allowCustomApiServer = true,
 }: AuthModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("login");
@@ -47,6 +50,8 @@ export default function AuthModal({
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
   const [captchaSvg, setCaptchaSvg] = useState<string>("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const customApiBase = useMemo(() => normalizeApiBase(customApiUrl), [customApiUrl]);
   const customServerLabel = useMemo(() => {
@@ -56,9 +61,15 @@ export default function AuthModal({
     return t('auth.server.custom');
   }, [customApiName, customApiBase, t]);
   const API_URL = useMemo(() => {
-    if (apiServer === 'custom' && customApiBase) return customApiBase;
+    if (allowCustomApiServer && apiServer === 'custom' && customApiBase) return customApiBase;
     return defaultApiBase;
-  }, [apiServer, customApiBase, defaultApiBase]);
+  }, [allowCustomApiServer, apiServer, customApiBase, defaultApiBase]);
+
+  React.useEffect(() => {
+    if (!allowCustomApiServer && apiServer !== 'official') {
+      onApiServerChange('official');
+    }
+  }, [allowCustomApiServer, apiServer, onApiServerChange]);
 
   const fetchCaptcha = async () => {
     try {
@@ -210,20 +221,22 @@ export default function AuthModal({
             {t('auth.description')}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 pt-2">
-          <Label className="text-foreground">{t('auth.server.label')}</Label>
-          <Select value={apiServer} onValueChange={(v: string) => onApiServerChange(v as 'official' | 'custom')}>
-            <SelectTrigger className="bg-secondary border-none text-foreground rounded-[16px] focus:ring-0 focus:ring-offset-0">
-              <SelectValue placeholder={t('auth.server.label')} />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border text-popover-foreground w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
-              <SelectItem value="official" className="focus:bg-accent focus:text-accent-foreground">{t('auth.server.official')}</SelectItem>
-              <SelectItem value="custom" disabled={!customApiBase} className="focus:bg-accent focus:text-accent-foreground">
-                {customServerLabel}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {allowCustomApiServer ? (
+          <div className="space-y-2 pt-2">
+            <Label className="text-foreground">{t('auth.server.label')}</Label>
+            <Select value={apiServer} onValueChange={(v: string) => onApiServerChange(v as 'official' | 'custom')}>
+              <SelectTrigger className="bg-secondary border-none text-foreground rounded-[16px] focus:ring-0 focus:ring-offset-0">
+                <SelectValue placeholder={t('auth.server.label')} />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border text-popover-foreground w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
+                <SelectItem value="official" className="focus:bg-accent focus:text-accent-foreground">{t('auth.server.official')}</SelectItem>
+                <SelectItem value="custom" disabled={!customApiBase} className="focus:bg-accent focus:text-accent-foreground">
+                  {customServerLabel}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
             <TabsTrigger value="login" className="rounded-xl">{t('auth.tabs.login')}</TabsTrigger>
@@ -254,24 +267,33 @@ export default function AuthModal({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password" className="text-foreground">{t('auth.labels.password')}</Label>
-                <input 
-                  key="login-password"
-                  id="login-password" 
-                  name="password"
-                  type="password" 
-                  autoComplete="current-password"
-                  placeholder={t('auth.placeholders.passwordInput')} 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
-                    "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                    "placeholder:text-muted-foreground",
-                    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                    "bg-secondary border-border text-foreground rounded-[16px]"
-                  )}
-                />
+                <div className="relative">
+                  <input
+                    key="login-password"
+                    id="login-password"
+                    name="password"
+                    type={showLoginPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder={t('auth.placeholders.passwordInput')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={cn(
+                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 pr-10 text-base transition-[color,box-shadow] outline-none",
+                      "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
+                      "placeholder:text-muted-foreground",
+                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                      "bg-secondary border-border text-foreground rounded-[16px]"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    onClick={() => setShowLoginPassword((prev) => !prev)}
+                  >
+                    {showLoginPassword ? <RiEyeOffFill className="size-4" /> : <RiEyeFill className="size-4" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-[16px]" disabled={isLoading}>
                 {isLoading ? t('auth.buttons.loggingIn') : t('auth.buttons.login')}
@@ -304,24 +326,33 @@ export default function AuthModal({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="register-password" className="text-foreground">{t('auth.labels.password')}</Label>
-                <input 
-                  key="register-password"
-                  id="register-password" 
-                  name="password"
-                  type="password" 
-                  autoComplete="new-password"
-                  placeholder={t('auth.placeholders.passwordSet')} 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
-                    "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                    "placeholder:text-muted-foreground",
-                    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                    "bg-secondary border-border text-foreground rounded-[16px]"
-                  )}
-                />
+                <div className="relative">
+                  <input
+                    key="register-password"
+                    id="register-password"
+                    name="password"
+                    type={showRegisterPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder={t('auth.placeholders.passwordSet')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={cn(
+                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 pr-10 text-base transition-[color,box-shadow] outline-none",
+                      "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
+                      "placeholder:text-muted-foreground",
+                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                      "bg-secondary border-border text-foreground rounded-[16px]"
+                    )}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    onClick={() => setShowRegisterPassword((prev) => !prev)}
+                  >
+                    {showRegisterPassword ? <RiEyeOffFill className="size-4" /> : <RiEyeFill className="size-4" />}
+                  </button>
+                </div>
                 <p className="text-[12px] text-muted-foreground">{t('auth.tips.password')}</p>
               </div>
 

@@ -83,7 +83,7 @@ function ScenarioModeMenu({
       <PopoverTrigger asChild>
         <ScenarioModeButton mode={selectedMode} open={open} />
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" sideOffset={8} className="w-[320px] p-[8px] bg-popover border-border text-foreground rounded-[16px] shadow-[0px_8px_24px_rgba(0,0,0,0.2)]">
+      <PopoverContent side="top" align="start" sideOffset={8} className="w-[320px] p-[8px] bg-popover border-border text-foreground rounded-[24px] shadow-[0px_8px_24px_rgba(0,0,0,0.2)]">
         <div className="flex flex-col gap-[6px]">
           <div className="px-[10px] pt-[8px] pb-[6px]">
             <p className="text-[12px] text-muted-foreground leading-none">{t('scenario.title')}</p>
