@@ -37,6 +37,10 @@ export default {
         label: "時間を表示",
         description: "ページに時間を表示します"
       },
+      timeFont: {
+        title: "時刻フォント",
+        description: "時刻表示に使用するフォントを選択"
+      },
       autoFocusSearch: {
         label: "検索ボックスを自動フォーカス",
         description: "ページに入ったときに検索ボックスに自動的にフォーカスします"
@@ -114,6 +118,8 @@ export default {
           syncOnChangeDesc: "ローカルデータ変更後に自動で WebDAV に同期します",
           syncByScheduleLabel: "定期的に自動同期",
           syncByScheduleDesc: "一定間隔で自動同期。長時間開く場合に最適",
+          autoSyncToastLabel: "自動同期成功トーストを表示",
+          autoSyncToastDesc: "定期自動同期が成功した後にトーストを表示します",
           syncIntervalLabel: "同期間隔",
           syncIntervalMinutes: "{{count}} 分",
           enabledLabel: "WebDAV 同期を有効化",
@@ -227,6 +233,11 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release123WebdavAccessDialog: "WebDAV「同期を有効化」を専用接続ダイアログに変更（ログインダイアログと同一スタイル）",
+        release123UnifiedSyncSettings: "クラウド/WebDAV の同期設定 UI を統一し、競合処理ドロップダウンを削除",
+        release123AutoSyncToggles: "自動同期スイッチと自動同期成功トーストのスイッチを追加し、自動同期オフ時は間隔スライダーを無効化",
+        release123ProviderLabel: "WebDAV カードタイトルを「デフォルト設定」からサービスプロバイダー名表示に変更",
+        release123PasswordToggle: "ログイン/登録のパスワード入力に表示/非表示トグルを追加",
         release122Scrollbar: "「About LeafTab」モーダルのスクロールバーを設定モーダルと統一",
         release122WelcomePersist: "初回ログイン案内モーダルの状態をローカル＋サーバーに保存し、リロード時のチラつきを解消",
         release122RateLimitToast: "429 レート制限トーストが表示されない問題を修正し、スタイルを統一",

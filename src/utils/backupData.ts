@@ -96,11 +96,22 @@ const normalizeToPayload = (raw: any): WebdavPayload | null => {
   return null;
 };
 
+export const unwrapLeafTabBackupData = (raw: unknown): Record<string, unknown> | null => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  if (obj.type === 'leaftab_backup') {
+    if (!obj.data || typeof obj.data !== 'object' || Array.isArray(obj.data)) return null;
+    return obj.data as Record<string, unknown>;
+  }
+  return obj;
+};
+
 export const parseLeafTabBackup = (raw: any): WebdavPayload | null => {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const obj = raw as Record<string, any>;
   if (obj.type !== 'leaftab_backup' || !obj.data) return null;
-  return normalizeToPayload(obj.data);
+  const unwrapped = unwrapLeafTabBackupData(raw);
+  return normalizeToPayload(unwrapped);
 };
 
 export const buildBackupDataV3 = (params: {

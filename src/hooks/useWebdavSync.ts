@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { parseLeafTabBackup } from "../utils/backupData";
+import type { SyncConflictPolicy } from "@/sync/core";
 
 export type WebdavConfig = {
   url: string;
@@ -11,7 +12,7 @@ export type WebdavConfig = {
     syncOnChange: boolean;
     syncBySchedule: boolean;
     syncIntervalMinutes: number;
-    syncConflictPolicy: "merge" | "prefer_remote" | "prefer_local";
+    syncConflictPolicy: SyncConflictPolicy;
     includeNestedConfigs: boolean;
   };
 };

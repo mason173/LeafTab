@@ -40,14 +40,16 @@ import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { fetchIconLibraryManifest } from '@/utils/iconLibrary';
-import { readWebdavConfigFromStorage, type WebdavConflictPolicy } from '@/utils/webdavConfig';
+import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { AppDialogs } from './components/AppDialogs';
+import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import {
   buildBackupDataV4,
   clampShortcutsRowsPerColumn,
   mergeWebdavPayload,
   type WebdavPayload,
 } from './utils/backupData';
+import { areSyncPayloadsEqual } from '@/sync/core';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -69,12 +71,18 @@ export default function App() {
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmSyncOpen, setConfirmSyncOpen] = useState(false);
-  const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | null>(null);
+  const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>(null);
+  const [webdavConfirmSyncOpen, setWebdavConfirmSyncOpen] = useState(false);
+  const [webdavConfirmChoice, setWebdavConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>(null);
+  const [webdavPendingLocalPayload, setWebdavPendingLocalPayload] = useState<WebdavPayload | null>(null);
+  const [webdavPendingRemotePayload, setWebdavPendingRemotePayload] = useState<WebdavPayload | null>(null);
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [importPendingPayload, setImportPendingPayload] = useState<any | null>(null);
   const [importConfirmBusy, setImportConfirmBusy] = useState(false);
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
+  const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
+  const [webdavEnableConflictOpen, setWebdavEnableConflictOpen] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
@@ -91,6 +99,11 @@ export default function App() {
   const moveSubTimerRef = useRef<number | null>(null);
   const weatherDebugTapCountRef = useRef(0);
   const weatherDebugTapTimerRef = useRef<number | null>(null);
+  const webdavEnableConflictRef = useRef<{
+    config: WebdavConfig;
+    localPayload: WebdavPayload;
+    remotePayload: WebdavPayload;
+  } | null>(null);
   const openMoveSub = useCallback(() => {
     if (moveSubTimerRef.current) {
       window.clearTimeout(moveSubTimerRef.current);
@@ -144,7 +157,7 @@ export default function App() {
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
   const API_URL = useMemo(() => {
-    if (apiServer === 'custom') {
+    if (ENABLE_CUSTOM_API_SERVER && apiServer === 'custom') {
       const normalized = normalizeApiBase(customApiUrl);
       if (normalized) return normalized;
     }
@@ -177,6 +190,8 @@ export default function App() {
     conflictModalOpen, setConflictModalOpen,
     pendingLocalPayload,
     pendingCloudPayload,
+    cloudSyncState,
+    triggerCloudSyncNow,
     contextMenu, setContextMenu,
     shortcutEditOpen, setShortcutEditOpen,
     shortcutModalMode, setShortcutModalMode,
@@ -193,7 +208,7 @@ export default function App() {
     handleShortcutOpen, handleShortcutContextMenu, handlePageContextMenu,
     handleSaveShortcutEdit, handleConfirmDeleteShortcut,
     findOrCreateAvailableIndex, handleDeletePage, getMaxPageIndex, contextMenuRef,
-    resolveWithCloud, resolveWithLocal,
+    resolveWithCloud, resolveWithLocal, resolveWithMerge,
     applyUndoPayload,
     scenarioModeOpen, setScenarioModeOpen,
     scenarioCreateOpen, setScenarioCreateOpen,
@@ -478,7 +493,6 @@ export default function App() {
   const {
     uploadToWebdav: handleWebdavUpload,
     uploadDataToWebdav,
-    downloadFromWebdav: handleWebdavDownload,
     fetchWebdavData,
   } = useWebdavSync({
     buildBackupData,
@@ -493,6 +507,183 @@ export default function App() {
     };
   }, [scenarioShortcuts, scenarioModes, selectedScenarioId]);
 
+  const emitWebdavSyncStatusChanged = useCallback(() => {
+    window.dispatchEvent(new Event('webdav-config-changed'));
+    window.dispatchEvent(new CustomEvent('webdav-sync-status-changed'));
+  }, []);
+
+  const markWebdavSyncSuccess = useCallback(() => {
+    localStorage.setItem('webdav_last_sync_at', new Date().toISOString());
+    localStorage.removeItem('webdav_last_error_at');
+    localStorage.removeItem('webdav_last_error_message');
+  }, []);
+
+  const markWebdavSyncError = useCallback((error: unknown) => {
+    localStorage.setItem('webdav_last_error_at', new Date().toISOString());
+    localStorage.setItem('webdav_last_error_message', String((error as any)?.message || 'unknown'));
+  }, []);
+
+  const setWebdavSyncEnabledInStorage = useCallback((enabled: boolean) => {
+    localStorage.setItem(WEBDAV_STORAGE_KEYS.syncEnabled, String(enabled));
+    if (enabled && !localStorage.getItem(WEBDAV_STORAGE_KEYS.syncBySchedule)) {
+      localStorage.setItem(WEBDAV_STORAGE_KEYS.syncBySchedule, 'true');
+    }
+    if (!enabled) {
+      localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
+    }
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
+
+  const executeWebdavEnableChoice = useCallback(async (mode: 'merge' | 'prefer_remote' | 'prefer_local') => {
+    const pending = webdavEnableConflictRef.current;
+    if (!pending) return;
+    try {
+      const { config, localPayload, remotePayload } = pending;
+      if (mode === 'prefer_remote') {
+        applyImportedDataWithoutClose(remotePayload, { closeSettings: false, silentSuccess: true });
+      } else if (mode === 'merge') {
+        const mergedPayload = mergeWebdavPayload(localPayload, remotePayload);
+        applyImportedDataWithoutClose(mergedPayload, { closeSettings: false, silentSuccess: true });
+        await uploadDataToWebdav(config, mergedPayload);
+      } else {
+        await uploadDataToWebdav(config, localPayload);
+      }
+      markWebdavSyncSuccess();
+      setWebdavSyncEnabledInStorage(true);
+      toast.success(t('settings.backup.webdav.syncSuccess'));
+    } catch (error) {
+      markWebdavSyncError(error);
+      emitWebdavSyncStatusChanged();
+      toast.error(t('settings.backup.webdav.syncError'));
+    } finally {
+      webdavEnableConflictRef.current = null;
+      setWebdavEnableConflictOpen(false);
+      setWebdavConfirmSyncOpen(false);
+      setWebdavConfirmChoice(null);
+      setWebdavPendingLocalPayload(null);
+      setWebdavPendingRemotePayload(null);
+    }
+  }, [applyImportedDataWithoutClose, emitWebdavSyncStatusChanged, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav]);
+
+  const handleEnableWebdavSync = useCallback(async () => {
+    if (user) {
+      toast.error(t('settings.backup.webdav.disableCloudBeforeWebdavEnable'));
+      return;
+    }
+    const config = readWebdavConfigFromStorage({ allowDisabled: true });
+    if (!config) {
+      toast.error(t('settings.backup.webdav.urlRequired'));
+      return;
+    }
+    try {
+      const remotePayload = await fetchWebdavData(config);
+      const localPayload = buildLocalWebdavPayload();
+      if (!remotePayload) {
+        await uploadDataToWebdav(config, localPayload);
+        markWebdavSyncSuccess();
+        setWebdavSyncEnabledInStorage(true);
+        toast.success(t('settings.backup.webdav.syncSuccess'));
+        return;
+      }
+      if (areSyncPayloadsEqual(localPayload, remotePayload)) {
+        markWebdavSyncSuccess();
+        setWebdavSyncEnabledInStorage(true);
+        toast.success(t('settings.backup.webdav.syncSuccess'));
+        return;
+      }
+      webdavEnableConflictRef.current = { config, localPayload, remotePayload };
+      setWebdavPendingLocalPayload(localPayload);
+      setWebdavPendingRemotePayload(remotePayload);
+      // On every enable action, let user choose conflict strategy explicitly
+      // (same interaction as cloud login conflict handling).
+      setWebdavConfirmChoice(null);
+      setWebdavConfirmSyncOpen(false);
+      setWebdavEnableConflictOpen(true);
+    } catch (error) {
+      markWebdavSyncError(error);
+      emitWebdavSyncStatusChanged();
+      toast.error(t('settings.backup.webdav.syncError'));
+    }
+  }, [buildLocalWebdavPayload, emitWebdavSyncStatusChanged, fetchWebdavData, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, user]);
+
+  const handleDisableWebdavSync = useCallback(async (options?: { clearLocal?: boolean }) => {
+    const currentlyEnabled = (localStorage.getItem(WEBDAV_STORAGE_KEYS.syncEnabled) ?? 'false') === 'true';
+    if (!currentlyEnabled) return;
+    let forceSyncFailed = false;
+    const config = readWebdavConfigFromStorage();
+    if (config) {
+      try {
+        await handleWebdavUpload(config);
+        markWebdavSyncSuccess();
+      } catch (error) {
+        forceSyncFailed = true;
+        markWebdavSyncError(error);
+      }
+    }
+    setWebdavSyncEnabledInStorage(false);
+    if (options?.clearLocal === true) {
+      await resetLocalShortcutsByRole(localStorage.getItem('role'));
+    }
+    if (forceSyncFailed) {
+      toast.error(t('settings.backup.webdav.disableFinalSyncFailed'));
+    }
+    toast.success(t('settings.backup.webdav.syncDisabled'));
+  }, [handleWebdavUpload, markWebdavSyncError, markWebdavSyncSuccess, resetLocalShortcutsByRole, setWebdavSyncEnabledInStorage, t]);
+  const handleOpenWebdavConfig = useCallback((options?: { enableAfterSave?: boolean }) => {
+    setWebdavEnableAfterConfigSave(Boolean(options?.enableAfterSave));
+    setWebdavDialogOpen(true);
+  }, []);
+
+  const handleConfirmCloudSyncChoice = useCallback(() => {
+    const chosen = confirmChoice;
+    if (!chosen) {
+      setConfirmSyncOpen(false);
+      return;
+    }
+    if (chosen === 'merge') {
+      if (pendingLocalPayload) downloadBackupPayload(pendingLocalPayload, 'local');
+      if (pendingCloudPayload) downloadBackupPayload(pendingCloudPayload, 'cloud');
+      toast.success(t('syncUndo.backupToastBoth'));
+      resolveWithMerge();
+      setConfirmSyncOpen(false);
+      return;
+    }
+    const backupTarget = chosen === 'cloud' ? 'local' : 'cloud';
+    const backupPayload = chosen === 'cloud' ? pendingLocalPayload : pendingCloudPayload;
+    if (backupPayload) {
+      downloadBackupPayload(backupPayload, backupTarget);
+      toast.success(t('syncUndo.backupToast', { backup: t(backupTarget === 'cloud' ? 'sync.cloud' : 'sync.local') }));
+    }
+    if (chosen === 'cloud') resolveWithCloud();
+    else resolveWithLocal();
+    setConfirmSyncOpen(false);
+  }, [confirmChoice, downloadBackupPayload, pendingCloudPayload, pendingLocalPayload, resolveWithCloud, resolveWithLocal, resolveWithMerge, t]);
+
+  const handleConfirmWebdavSyncChoice = useCallback(async () => {
+    const chosen = webdavConfirmChoice;
+    const pending = webdavEnableConflictRef.current;
+    if (!chosen || !pending) {
+      setWebdavConfirmSyncOpen(false);
+      return;
+    }
+    if (chosen === 'cloud') {
+      downloadBackupPayload(pending.localPayload, 'local');
+      toast.success(t('syncUndo.backupToast', { backup: t('sync.local') }));
+      await executeWebdavEnableChoice('prefer_remote');
+      return;
+    }
+    if (chosen === 'local') {
+      downloadBackupPayload(pending.remotePayload, 'cloud');
+      toast.success(t('syncUndo.backupToast', { backup: t('sync.cloud') }));
+      await executeWebdavEnableChoice('prefer_local');
+      return;
+    }
+    downloadBackupPayload(pending.localPayload, 'local');
+    downloadBackupPayload(pending.remotePayload, 'cloud');
+    toast.success(t('syncUndo.backupToastBoth'));
+    await executeWebdavEnableChoice('merge');
+  }, [downloadBackupPayload, executeWebdavEnableChoice, t, webdavConfirmChoice]);
+
   const { resolveWebdavConflict } = useWebdavAutoSync({
     conflictModalOpen,
     isDragging,
@@ -503,45 +694,6 @@ export default function App() {
     fetchWebdavData,
     mergePayload: mergeWebdavPayload,
   });
-  const triggerWebdavSyncAfterConfigChanged = useCallback(async (
-    syncOptionsOverrides: Partial<NonNullable<WebdavConfig['syncOptions']>>,
-    toastKey: string,
-  ) => {
-    const config = readWebdavConfigFromStorage();
-    if (!config) {
-      const enabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
-      toast.error(enabled ? t('settings.backup.webdav.urlRequired') : t('settings.backup.webdav.syncDisabled'));
-      return;
-    }
-    const configWithOverrides: WebdavConfig = {
-      ...config,
-      syncOptions: {
-        ...(config.syncOptions || {
-          enabled: true,
-          syncOnChange: false,
-          syncBySchedule: true,
-          syncIntervalMinutes: 15,
-          syncConflictPolicy: "merge",
-          includeNestedConfigs: true,
-        }),
-        ...syncOptionsOverrides,
-      },
-    };
-    toast.success(t(toastKey));
-    await resolveWebdavConflict(configWithOverrides);
-  }, [resolveWebdavConflict, t]);
-  const handleWebdavConflictPolicyChanged = useCallback(async (policy: WebdavConflictPolicy) => {
-    await triggerWebdavSyncAfterConfigChanged(
-      { syncConflictPolicy: policy },
-      'settings.backup.webdav.policyChangeSyncTriggered',
-    );
-  }, [triggerWebdavSyncAfterConfigChanged]);
-  const handleWebdavSyncIntervalChanged = useCallback(async (minutes: number) => {
-    await triggerWebdavSyncAfterConfigChanged(
-      { syncIntervalMinutes: minutes },
-      'settings.backup.webdav.intervalChangeSyncTriggered',
-    );
-  }, [triggerWebdavSyncAfterConfigChanged]);
 
   const handleRequestCloudLogin = useCallback(() => {
     const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
@@ -552,9 +704,6 @@ export default function App() {
     setIsAuthModalOpen(true);
     return true;
   }, [t]);
-  const handleClearLocalDataToRole = useCallback(async () => {
-    await resetLocalShortcutsByRole(localStorage.getItem('role'));
-  }, [resetLocalShortcutsByRole]);
   const syncLocalToCloudBeforeLogout = useCallback(async () => {
     if (!user) return false;
     const token = localStorage.getItem('token');
@@ -851,12 +1000,16 @@ export default function App() {
   };
   const cloudCount = countPayload(pendingCloudPayload);
   const localCount = countPayload(pendingLocalPayload);
+  const webdavCloudCount = countPayload(webdavPendingRemotePayload);
+  const webdavLocalCount = countPayload(webdavPendingLocalPayload);
   const cloudTimeRaw = typeof window !== 'undefined'
     ? (localStorage.getItem('cloud_shortcuts_updated_at')
       || localStorage.getItem('cloud_shortcuts_fetched_at')
       || '')
     : '';
   const localTimeRaw = typeof window !== 'undefined' ? localStorage.getItem('local_shortcuts_updated_at') || '' : '';
+  const webdavCloudTimeRaw = typeof window !== 'undefined' ? (localStorage.getItem('webdav_last_sync_at') || '') : '';
+  const webdavLocalTimeRaw = localTimeRaw;
   const formatTime = (s: string) => {
     if (!s) return '';
     const d = new Date(s);
@@ -865,6 +1018,8 @@ export default function App() {
   };
   const cloudTime = formatTime(cloudTimeRaw);
   const localTime = formatTime(localTimeRaw);
+  const webdavCloudTime = formatTime(webdavCloudTimeRaw);
+  const webdavLocalTime = formatTime(webdavLocalTimeRaw);
 
   return (
     <div className="bg-background relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px]">
@@ -1180,6 +1335,7 @@ export default function App() {
           customApiUrl,
           customApiName,
           defaultApiBase,
+          allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
         }}
         settingsModalProps={{
           isOpen: settingsOpen,
@@ -1216,10 +1372,12 @@ export default function App() {
           onPrivacyConsentChange: handlePrivacySwitchChange,
           onOpenAdminModal: handleOpenAdminModal,
           onOpenAboutModal: handleOpenAboutModal,
-          onOpenWebdavConfig: () => setWebdavDialogOpen(true),
-          onWebdavDownload: handleWebdavDownload,
-          onWebdavUpload: handleWebdavUpload,
+          cloudSyncStatus: cloudSyncState.status,
+          onCloudSyncNow: triggerCloudSyncNow,
+          onOpenWebdavConfig: handleOpenWebdavConfig,
           onWebdavSync: resolveWebdavConflict,
+          onWebdavEnable: handleEnableWebdavSync,
+          onWebdavDisable: handleDisableWebdavSync,
           onVersionClick: handleVersionTap,
         }}
         adminModalProps={{
@@ -1233,6 +1391,7 @@ export default function App() {
           onCustomApiUrlChange: setCustomApiUrl,
           customApiName,
           onCustomApiNameChange: setCustomApiName,
+          allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
         }}
         aboutModalProps={{
           open: aboutModalOpen,
@@ -1240,14 +1399,32 @@ export default function App() {
         }}
         webdavConfigDialogProps={{
           open: webdavDialogOpen,
-          onOpenChange: setWebdavDialogOpen,
-          isCloudLoggedIn: Boolean(user),
-          onClearLocalData: handleClearLocalDataToRole,
-          onConflictPolicyChanged: handleWebdavConflictPolicyChanged,
-          onSyncIntervalChanged: handleWebdavSyncIntervalChanged,
+          onOpenChange: (open: boolean) => {
+            setWebdavDialogOpen(open);
+            if (!open) {
+              setWebdavEnableAfterConfigSave(false);
+            }
+          },
+          enableAfterSave: webdavEnableAfterConfigSave,
+          onEnableAfterSave: async () => {
+            await handleEnableWebdavSync();
+            setWebdavEnableAfterConfigSave(false);
+          },
         }}
         conflictChoiceDialog={{
           open: conflictModalOpen,
+          onOpenChange: (open: boolean) => {
+            setConflictModalOpen(open);
+            if (!open) {
+              setConfirmSyncOpen(false);
+              setConfirmChoice(null);
+            }
+          },
+          onMerge: () => {
+            setConfirmChoice('merge');
+            setConfirmSyncOpen(true);
+            setConflictModalOpen(false);
+          },
           onUseCloud: () => {
             setConfirmChoice('cloud');
             setConfirmSyncOpen(true);
@@ -1259,22 +1436,76 @@ export default function App() {
             setConflictModalOpen(false);
           },
         }}
+        webdavConflictChoiceDialog={{
+          open: webdavEnableConflictOpen,
+          onOpenChange: (open: boolean) => {
+            setWebdavEnableConflictOpen(open);
+            if (!open) {
+              setWebdavConfirmSyncOpen(false);
+              setWebdavConfirmChoice(null);
+              webdavEnableConflictRef.current = null;
+              setWebdavPendingLocalPayload(null);
+              setWebdavPendingRemotePayload(null);
+            }
+          },
+          onMerge: () => {
+            setWebdavConfirmChoice('merge');
+            setWebdavConfirmSyncOpen(true);
+            setWebdavEnableConflictOpen(false);
+          },
+          onUseRemote: () => {
+            setWebdavConfirmChoice('cloud');
+            setWebdavConfirmSyncOpen(true);
+            setWebdavEnableConflictOpen(false);
+          },
+          onUseLocal: () => {
+            setWebdavConfirmChoice('local');
+            setWebdavConfirmSyncOpen(true);
+            setWebdavEnableConflictOpen(false);
+          },
+        }}
         confirmSyncDialog={{
           open: confirmSyncOpen,
           onOpenChange: setConfirmSyncOpen,
           confirmChoice,
+          title: t('syncConflict.title'),
+          description: t('syncConflict.description'),
+          confirmCloudLabel: t('syncConflict.useCloud'),
+          confirmLocalLabel: t('syncConflict.useLocal'),
+          confirmMergeLabel: t('syncConflict.merge'),
           cloudCount,
           cloudTime,
           localCount,
           localTime,
-          pendingLocalPayload,
-          pendingCloudPayload,
-          downloadBackupPayload,
-          resolveWithCloud,
-          resolveWithLocal,
+          onConfirm: handleConfirmCloudSyncChoice,
           onCancel: () => {
             setConfirmSyncOpen(false);
             setConflictModalOpen(true);
+          },
+        }}
+        webdavConfirmSyncDialog={{
+          open: webdavConfirmSyncOpen,
+          onOpenChange: setWebdavConfirmSyncOpen,
+          confirmChoice: webdavConfirmChoice,
+          title: t('syncConflict.title'),
+          description: t('syncConflict.description'),
+          confirmCloudLabel: t('syncConflict.useCloud'),
+          confirmLocalLabel: t('syncConflict.useLocal'),
+          confirmMergeLabel: t('syncConflict.merge'),
+          cloudCount: webdavCloudCount,
+          cloudTime: webdavCloudTime,
+          localCount: webdavLocalCount,
+          localTime: webdavLocalTime,
+          onConfirm: () => {
+            void handleConfirmWebdavSyncChoice();
+          },
+          onCancel: () => {
+            setWebdavConfirmSyncOpen(false);
+            setWebdavConfirmChoice(null);
+            webdavEnableConflictRef.current = null;
+            setWebdavPendingLocalPayload(null);
+            setWebdavPendingRemotePayload(null);
+            setWebdavEnableConflictOpen(false);
           },
         }}
         importConfirmDialog={{

@@ -37,6 +37,10 @@ export default {
         label: "顯示時間",
         description: "在頁面上顯示時間"
       },
+      timeFont: {
+        title: "時間字體",
+        description: "選擇時間顯示使用的字體"
+      },
       autoFocusSearch: {
         label: "自動聚焦搜尋框",
         description: "進入頁面時自動將光標聚焦在搜尋框"
@@ -114,6 +118,8 @@ export default {
           syncOnChangeDesc: "每次你變更本地資料後，自動嘗試同步到 WebDAV",
           syncByScheduleLabel: "定時自動同步",
           syncByScheduleDesc: "依固定時間間隔自動同步，適合長時間開啟頁面",
+          autoSyncToastLabel: "自動同步成功提示",
+          autoSyncToastDesc: "定時自動同步成功後顯示提示",
           syncIntervalLabel: "同步間隔",
           conflictPolicyLabel: "衝突時如何處理",
           policyMerge: "盡量合併本地與雲端變更（建議）",
@@ -221,6 +227,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release123WebdavAccessDialog: "WebDAV「開啟同步」改為專用接入彈窗，樣式與登入彈窗一致",
+        release123UnifiedSyncSettings: "雲端同步與 WebDAV 同步設定項統一，移除衝突處理下拉項",
+        release123AutoSyncToggles: "新增「自動同步開關」與「自動同步成功提示開關」，並支援關閉後禁用間隔滑桿",
+        release123ProviderLabel: "WebDAV 卡片標題改為顯示服務商名稱（不再顯示「預設設定」）",
+        release123PasswordToggle: "登入/註冊密碼輸入框新增顯示/隱藏密碼按鈕",
         release122Scrollbar: "關於 LeafTab 彈窗捲動條改為與設定彈窗一致",
         release122WelcomePersist: "首次註冊登入引導彈窗狀態支援本地+雲端持久化，重新整理不再閃爍",
         release122RateLimitToast: "修復 429 限流提示未顯示問題，並統一提示樣式",

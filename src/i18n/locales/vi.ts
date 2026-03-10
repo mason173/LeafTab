@@ -37,6 +37,10 @@ export default {
         label: "Hiển thị thời gian",
         description: "Hiển thị thời gian trên trang"
       },
+      timeFont: {
+        title: "Phông chữ thời gian",
+        description: "Chọn phông chữ dùng để hiển thị thời gian"
+      },
       autoFocusSearch: {
         label: "Tự động lấy nét hộp tìm kiếm",
         description: "Tự động tập trung vào hộp tìm kiếm khi vào trang"
@@ -114,6 +118,8 @@ export default {
           syncOnChangeDesc: "Mỗi lần bạn thay đổi dữ liệu cục bộ sẽ tự đồng bộ lên WebDAV",
           syncByScheduleLabel: "Tự động đồng bộ theo lịch",
           syncByScheduleDesc: "Đồng bộ theo khoảng thời gian cố định, phù hợp mở trang lâu",
+          autoSyncToastLabel: "Thông báo khi tự động đồng bộ thành công",
+          autoSyncToastDesc: "Hiển thị toast sau khi đồng bộ tự động theo lịch thành công",
           syncIntervalLabel: "Khoảng thời gian đồng bộ",
           conflictPolicyLabel: "Xử lý khi có xung đột",
           policyMerge: "Cố gắng hợp nhất thay đổi cục bộ và đám mây (khuyến nghị)",
@@ -221,6 +227,11 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release123WebdavAccessDialog: "Nút \"Bật đồng bộ\" WebDAV nay mở hộp thoại kết nối riêng với cùng phong cách như đăng nhập",
+        release123UnifiedSyncSettings: "Thống nhất UI cài đặt đồng bộ Cloud/WebDAV và bỏ dropdown xử lý xung đột",
+        release123AutoSyncToggles: "Thêm công tắc tự động đồng bộ và công tắc toast thành công; tắt tự động đồng bộ sẽ khóa thanh trượt khoảng thời gian",
+        release123ProviderLabel: "Tiêu đề thẻ WebDAV giờ hiển thị tên nhà cung cấp thay vì \"Cấu hình mặc định\"",
+        release123PasswordToggle: "Thêm nút hiện/ẩn mật khẩu ở ô mật khẩu đăng nhập/đăng ký",
         release122Scrollbar: "Đồng bộ kiểu thanh cuộn của modal About LeafTab với modal Cài đặt",
         release122WelcomePersist: "Lưu trạng thái modal chào mừng lần đăng nhập đầu ở local + server để tránh nháy khi refresh",
         release122RateLimitToast: "Sửa lỗi không hiển thị toast giới hạn 429 và đồng bộ kiểu hiển thị",

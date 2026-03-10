@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { loadGoogleFont } from '../utils/googleFonts';
 import { clampShortcutsRowsPerColumn } from '../utils/backupData';
+import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -13,6 +14,7 @@ export function useSettings() {
   const [showSeconds, setShowSeconds] = useState(false);
   const [showTime, setShowTime] = useState(true);
   const [apiServer, setApiServer] = useState<'official' | 'custom'>(() => {
+    if (!ENABLE_CUSTOM_API_SERVER) return 'official';
     const stored = localStorage.getItem('leaftab_api_server');
     if (stored === 'custom' || stored === 'official') return stored;
     return 'official';
@@ -77,8 +79,12 @@ export function useSettings() {
       }
     }
 
-    const storedApiServer = localStorage.getItem('leaftab_api_server');
-    if (storedApiServer === 'custom' || storedApiServer === 'official') setApiServer(storedApiServer);
+    if (ENABLE_CUSTOM_API_SERVER) {
+      const storedApiServer = localStorage.getItem('leaftab_api_server');
+      if (storedApiServer === 'custom' || storedApiServer === 'official') setApiServer(storedApiServer);
+    } else {
+      setApiServer('official');
+    }
     const storedCustomApiUrl = localStorage.getItem('leaftab_custom_api_url');
     if (storedCustomApiUrl !== null) setCustomApiUrl(storedCustomApiUrl);
     const storedCustomApiName = localStorage.getItem('leaftab_custom_api_name');
@@ -137,6 +143,14 @@ export function useSettings() {
   }, [privacyConsent]);
 
   useEffect(() => {
+    if (!ENABLE_CUSTOM_API_SERVER) {
+      if (apiServer !== 'official') {
+        setApiServer('official');
+        return;
+      }
+      localStorage.setItem('leaftab_api_server', 'official');
+      return;
+    }
     localStorage.setItem('leaftab_api_server', apiServer);
   }, [apiServer]);
 

@@ -40,6 +40,10 @@ export default {
         label: "显示时间",
         description: "在页面中显示时间组件"
       },
+      timeFont: {
+        title: "时间字体",
+        description: "选择时间显示使用的字体"
+      },
       autoFocusSearch: {
         label: "自动聚焦搜索框",
         description: "进入页面时自动将光标聚焦在搜索框"
@@ -101,6 +105,20 @@ export default {
         importConfirmDesc: "导入后将以导入文件为准并覆盖云端配置。系统会先自动下载一份云端备份。",
         importConfirmAction: "确认导入",
         cloudBackupDownloaded: "已下载云端备份",
+        cloud: {
+          configTitle: "云同步设置",
+          configDesc: "设置自动同步开关、提示与间隔",
+          nicknameLabel: "同步昵称",
+          nicknamePlaceholder: "留空则显示用户名",
+          enabledLabel: "开启云同步",
+          enabledDesc: "关闭后将暂停自动同步，仍可手动同步",
+          autoSyncToastLabel: "自动同步成功提示",
+          autoSyncToastDesc: "定时自动同步成功后显示提示",
+          intervalLabel: "自动同步间隔",
+          intervalMinutes: "{{count}} 分钟",
+          conflictPolicyLabel: "冲突时怎么处理",
+          configSaved: "云同步设置已保存",
+        },
         webdav: {
           entry: "WebDAV 同步",
           entryDesc: "配置 WebDAV 远程备份与恢复",
@@ -121,6 +139,8 @@ export default {
           syncOnChangeDesc: "每次你改动本地数据后，自动尝试同步到 WebDAV",
           syncByScheduleLabel: "定时自动同步",
           syncByScheduleDesc: "按固定时间间隔自动同步，适合长期开着页面",
+          autoSyncToastLabel: "自动同步成功提示",
+          autoSyncToastDesc: "定时自动同步成功后显示提示",
           syncIntervalLabel: "同步间隔",
           syncIntervalMinutes: "{{count}} 分钟",
           enabledLabel: "开启 WebDAV 同步",
@@ -142,9 +162,11 @@ export default {
           uploadError: "WebDAV 同步失败，请检查配置",
           syncSuccess: "数据同步成功",
           syncError: "同步失败，请检查配置",
+          configSaved: "WebDAV 设置已保存",
           policyChangeSyncTriggered: "冲突策略已切换，已按当前策略同步一次",
           intervalChangeSyncTriggered: "同步间隔已调整，已立即同步一次",
           disableWebdavBeforeCloudLogin: "当前已开启 WebDAV 同步，请先关闭 WebDAV 同步后再登录云同步",
+          disableCloudBeforeWebdavEnable: "当前已登录云同步，请先退出云同步后再开启 WebDAV 同步",
           logoutRequiredForWebdav: "当前已登录云同步，请先退出登录后再开启 WebDAV 同步",
           disableConfirmTitle: "关闭 WebDAV 同步",
           disableConfirmDesc: "确定要关闭 WebDAV 同步吗？关闭后仅保留本地数据。",
@@ -154,6 +176,9 @@ export default {
           defaultProfileName: "默认配置",
           configured: "已配置，可同步到 WebDAV",
           disabled: "已关闭，WebDAV 同步已停用",
+          syncOffTitle: "WebDAV 未开启",
+          configureAction: "去配置",
+          enableSyncAction: "开启同步",
           notConfigured: "未配置，请先填写 WebDAV 信息",
           lastSyncAt: "上次同步时间",
           notSynced: "未同步",
@@ -163,7 +188,10 @@ export default {
           lastAttemptFailed: "最近尝试同步失败",
           scheduleRunning: "定时同步运行中",
           nextSyncAtLabel: "下次同步：{{time}}",
-          syncDisabled: "请先开启 WebDAV 同步"
+          syncDisabled: "请先开启 WebDAV 同步",
+          disableFinalSyncFailed: "关闭前最后一次同步失败，已按你的操作关闭同步",
+          enableConflictTitle: "检测到同步冲突",
+          enableConflictDesc: "WebDAV 与本地数据不一致，请选择处理方式。"
         }
       },
       changelog: {
@@ -265,6 +293,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release123WebdavAccessDialog: "WebDAV“开启同步”改为专用接入弹窗，样式与登录弹窗统一",
+        release123UnifiedSyncSettings: "云同步与 WebDAV 同步设置项统一，移除冲突处理下拉项",
+        release123AutoSyncToggles: "新增“自动同步开关”和“自动同步成功提示开关”，并支持关闭后禁用间隔滑块",
+        release123ProviderLabel: "WebDAV 卡片标题改为显示服务商名称（不再显示“默认配置”）",
+        release123PasswordToggle: "登录/注册密码输入框新增显示/隐藏密码按钮",
         release122Scrollbar: "关于 LeafTab 弹窗滚动条改为与设置弹窗一致",
         release122WelcomePersist: "首次注册登录引导弹窗状态支持本地+云端持久化，刷新不再闪烁",
         release122RateLimitToast: "修复 429 限流提示不显示的问题，并统一提示样式",
@@ -501,6 +534,7 @@ export default {
     syncConflict: {
       title: "同步冲突",
       description: "检测到本地与云端快捷方式不一致，请选择使用哪一份。",
+      merge: "合并两者",
       useCloud: "以云端为准",
       useLocal: "以本地为准"
     },
@@ -508,7 +542,8 @@ export default {
       message: "已使用{{chosen}}配置，已备份{{backup}}配置，可在 {{seconds}} 秒内撤销。",
       undo: "撤销",
       undone: "已撤销同步选择",
-      backupToast: "已自动备份{{backup}}配置"
+      backupToast: "已自动备份{{backup}}配置",
+      backupToastBoth: "已自动备份云端与本地配置"
     },
     scenario: {
       title: "情景模式",
@@ -547,6 +582,7 @@ export default {
       syncFailed: "同步失败",
       syncCloudApplied: "已使用云端配置",
       syncLocalApplied: "已使用本地配置",
+      syncMergeApplied: "已合并云端与本地配置",
       linkCopied: "链接已复制",
       linkCopyFailed: "复制链接失败",
       loadedFromCache: "已加载本地缓存（离线模式）",

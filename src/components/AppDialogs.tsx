@@ -8,6 +8,7 @@ import ConfirmDialog from './ConfirmDialog';
 import ScenarioModeCreateDialog from './ScenarioModeCreateDialog';
 import SettingsModal from './SettingsModal';
 import ShortcutModal from './ShortcutModal';
+import { SyncConflictDialog } from './SyncConflictDialog';
 import { WebdavConfigDialog } from './WebdavConfigDialog';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +31,7 @@ type AdminModalProps = ComponentProps<typeof AdminModal>;
 type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
 
-type SyncChoice = 'cloud' | 'local' | null;
+type SyncChoice = 'cloud' | 'local' | 'merge' | null;
 
 type MovePageDialogProps = {
   open: boolean;
@@ -45,7 +46,17 @@ type MovePageDialogProps = {
 
 type ConflictChoiceDialogProps = {
   open: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onMerge?: () => void;
   onUseCloud: () => void;
+  onUseLocal: () => void;
+};
+
+type WebdavConflictChoiceDialogProps = {
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onMerge: () => void;
+  onUseRemote: () => void;
   onUseLocal: () => void;
 };
 
@@ -53,15 +64,16 @@ type ConfirmSyncDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   confirmChoice: SyncChoice;
+  title: string;
+  description: string;
+  confirmCloudLabel: string;
+  confirmLocalLabel: string;
+  confirmMergeLabel?: string;
   cloudCount: number;
   cloudTime: string;
   localCount: number;
   localTime: string;
-  pendingLocalPayload: any;
-  pendingCloudPayload: any;
-  downloadBackupPayload: (payload: any, source: 'cloud' | 'local') => void;
-  resolveWithCloud: () => void;
-  resolveWithLocal: () => void;
+  onConfirm: () => void;
   onCancel: () => void;
 };
 
@@ -96,7 +108,9 @@ interface AppDialogsProps {
   aboutModalProps: AboutLeafTabModalProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
   conflictChoiceDialog: ConflictChoiceDialogProps;
+  webdavConflictChoiceDialog: WebdavConflictChoiceDialogProps;
   confirmSyncDialog: ConfirmSyncDialogProps;
+  webdavConfirmSyncDialog: ConfirmSyncDialogProps;
   importConfirmDialog: ImportConfirmDialogProps;
   pageDeleteDialogProps: ConfirmDialogProps;
   disableConsentDialog: DisableConsentDialogProps;
@@ -114,12 +128,54 @@ export function AppDialogs({
   aboutModalProps,
   webdavConfigDialogProps,
   conflictChoiceDialog,
+  webdavConflictChoiceDialog,
   confirmSyncDialog,
+  webdavConfirmSyncDialog,
   importConfirmDialog,
   pageDeleteDialogProps,
   disableConsentDialog,
 }: AppDialogsProps) {
   const { t } = useTranslation();
+  const renderConfirmSyncDialog = (dialogProps: ConfirmSyncDialogProps) => (
+    <Dialog open={dialogProps.open} onOpenChange={dialogProps.onOpenChange}>
+      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
+        <DialogHeader>
+          <DialogTitle>{dialogProps.title}</DialogTitle>
+          <DialogDescription>{dialogProps.description}</DialogDescription>
+        </DialogHeader>
+        <div className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between py-2">
+            <span className="text-foreground">{t('sync.cloud')}</span>
+            <span>{dialogProps.cloudCount} / {dialogProps.cloudTime || '—'}</span>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-foreground">{t('sync.local')}</span>
+            <span>{dialogProps.localCount} / {dialogProps.localTime || '—'}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={dialogProps.onCancel}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              if (!dialogProps.confirmChoice) {
+                dialogProps.onOpenChange(false);
+                return;
+              }
+              dialogProps.onConfirm();
+            }}
+          >
+            {dialogProps.confirmChoice === 'cloud'
+              ? dialogProps.confirmCloudLabel
+              : dialogProps.confirmChoice === 'merge'
+                ? (dialogProps.confirmMergeLabel || dialogProps.confirmCloudLabel)
+                : dialogProps.confirmLocalLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   return (
     <>
@@ -189,64 +245,32 @@ export function AppDialogs({
       <AboutLeafTabModal {...aboutModalProps} />
       <WebdavConfigDialog {...webdavConfigDialogProps} />
 
-      <Dialog open={conflictChoiceDialog.open}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle>{t('syncConflict.title')}</DialogTitle>
-            <DialogDescription>{t('syncConflict.description')}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={conflictChoiceDialog.onUseCloud}>{t('syncConflict.useCloud')}</Button>
-            <Button onClick={conflictChoiceDialog.onUseLocal}>{t('syncConflict.useLocal')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={confirmSyncDialog.open} onOpenChange={confirmSyncDialog.onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle>{t('syncConflict.title')}</DialogTitle>
-            <DialogDescription>{t('syncConflict.description')}</DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-foreground">{t('sync.cloud')}</span>
-              <span>{confirmSyncDialog.cloudCount} / {confirmSyncDialog.cloudTime || '—'}</span>
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <span className="text-foreground">{t('sync.local')}</span>
-              <span>{confirmSyncDialog.localCount} / {confirmSyncDialog.localTime || '—'}</span>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={confirmSyncDialog.onCancel}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                const chosen = confirmSyncDialog.confirmChoice;
-                if (!chosen) {
-                  confirmSyncDialog.onOpenChange(false);
-                  return;
-                }
-                const backupTarget = chosen === 'cloud' ? 'local' : 'cloud';
-                const backupPayload = chosen === 'cloud'
-                  ? confirmSyncDialog.pendingLocalPayload
-                  : confirmSyncDialog.pendingCloudPayload;
-                if (backupPayload) {
-                  confirmSyncDialog.downloadBackupPayload(backupPayload, backupTarget);
-                  toast.success(t('syncUndo.backupToast', { backup: t(backupTarget === 'cloud' ? 'sync.cloud' : 'sync.local') }));
-                }
-                if (chosen === 'cloud') confirmSyncDialog.resolveWithCloud();
-                else confirmSyncDialog.resolveWithLocal();
-                confirmSyncDialog.onOpenChange(false);
-              }}
-            >
-              {confirmSyncDialog.confirmChoice === 'cloud' ? t('syncConflict.useCloud') : t('syncConflict.useLocal')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SyncConflictDialog
+        open={conflictChoiceDialog.open}
+        onOpenChange={conflictChoiceDialog.onOpenChange}
+        title={t('syncConflict.title')}
+        description={t('syncConflict.description')}
+        tertiaryLabel={t('syncConflict.merge')}
+        primaryLabel={t('syncConflict.useCloud')}
+        secondaryLabel={t('syncConflict.useLocal')}
+        onTertiary={conflictChoiceDialog.onMerge}
+        onPrimary={conflictChoiceDialog.onUseCloud}
+        onSecondary={conflictChoiceDialog.onUseLocal}
+      />
+      <SyncConflictDialog
+        open={webdavConflictChoiceDialog.open}
+        onOpenChange={webdavConflictChoiceDialog.onOpenChange}
+        title={t('syncConflict.title')}
+        description={t('syncConflict.description')}
+        tertiaryLabel={t('syncConflict.merge')}
+        primaryLabel={t('syncConflict.useCloud')}
+        secondaryLabel={t('syncConflict.useLocal')}
+        onTertiary={webdavConflictChoiceDialog.onMerge}
+        onPrimary={webdavConflictChoiceDialog.onUseRemote}
+        onSecondary={webdavConflictChoiceDialog.onUseLocal}
+      />
+      {renderConfirmSyncDialog(confirmSyncDialog)}
+      {renderConfirmSyncDialog(webdavConfirmSyncDialog)}
 
       <Dialog
         open={importConfirmDialog.open}

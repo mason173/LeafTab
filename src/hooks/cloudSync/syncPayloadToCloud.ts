@@ -1,7 +1,9 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { CloudShortcutsPayloadV3 } from '../../types';
-import { buildBackupDataV4 } from '@/utils/backupData';
 import { clearLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
+import { areSyncPayloadsEqual, toSyncPayloadJson } from '@/sync/core';
+import { createCloudSyncAdapter } from './cloudSyncAdapter';
+import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
 
 type SyncOptions = { conflictStrategy?: 'modal' | 'prefer_local' };
 
@@ -45,7 +47,7 @@ export const syncPayloadToCloudWithDeps = async ({
   refs,
   stateSetters,
 }: SyncDeps): Promise<boolean> => {
-  const payloadJson = JSON.stringify(payload);
+  const payloadJson = toSyncPayloadJson(payload);
   const {
     lastSavedShortcutsJson,
     cloudShortcutsVersionRef,
@@ -77,44 +79,26 @@ export const syncPayloadToCloudWithDeps = async ({
 
     const token = localStorage.getItem('token');
     if (!token) return false;
+    const adapter = createCloudSyncAdapter({
+      API_URL,
+      token,
+      normalizeCloudShortcutsPayload,
+    });
 
     const uploadWithVersion = async (expectedVersion: number) => {
-      const envelope = buildBackupDataV4({
-        scenarioModes: payload.scenarioModes,
-        selectedScenarioId: payload.selectedScenarioId,
-        scenarioShortcuts: payload.scenarioShortcuts,
-      });
-      const syncMode = options?.conflictStrategy === 'prefer_local' ? 'prefer_local' : 'strict';
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'If-Match': `W/"${expectedVersion}"`,
-      };
-      return fetch(`${API_URL}/user/shortcuts`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ shortcuts: envelope, syncMode }),
+      return adapter.push(payload, {
+        expectedVersion,
+        mode: options?.conflictStrategy === 'prefer_local' ? 'prefer_local' : 'strict',
       });
     };
 
     const loadLatestCloudState = async () => {
-      const latest = await fetch(`${API_URL}/user/shortcuts`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!latest.ok) {
+      const latest = await adapter.pull();
+      if (latest.status !== 200) {
         return { latestPayload: null as CloudShortcutsPayloadV3 | null, latestVersion: null as number | null };
       }
-      const latestJson = await latest.json();
-      const latestVersion = Number(latestJson?.version);
-      cloudShortcutsVersionRef.current = Number.isFinite(latestVersion) ? latestVersion : null;
-      let latestPayload: CloudShortcutsPayloadV3 | null = null;
-      if (latestJson?.shortcuts) {
-        try {
-          latestPayload = normalizeCloudShortcutsPayload(JSON.parse(latestJson.shortcuts));
-        } catch {
-          latestPayload = null;
-        }
-      }
+      cloudShortcutsVersionRef.current = latest.version;
+      const latestPayload = latest.payload;
       return { latestPayload, latestVersion: cloudShortcutsVersionRef.current };
     };
 
@@ -125,15 +109,15 @@ export const syncPayloadToCloudWithDeps = async ({
       localStorage.setItem('leaf_tab_shortcuts_cache', payloadJson);
       persistLocalProfileSnapshot(payload);
       conflictPreferenceRef.current = '';
+      localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
+      emitCloudSyncStatusChanged();
       return true;
     };
 
-    const finishSuccess = async (response: Response) => {
-      try {
-        const respJson = await response.json();
-        const nextVersion = Number(respJson?.version);
-        if (Number.isFinite(nextVersion)) cloudShortcutsVersionRef.current = nextVersion;
-      } catch {}
+    const finishSuccess = async (response: { version: number | null }) => {
+      if (Number.isFinite(response.version as number)) {
+        cloudShortcutsVersionRef.current = Number(response.version);
+      }
       return markPayloadAsSynced();
     };
 
@@ -151,9 +135,9 @@ export const syncPayloadToCloudWithDeps = async ({
         for (let attempt = 0; attempt < 3; attempt += 1) {
           try {
             const { latestPayload, latestVersion } = await loadLatestCloudState();
-            if (latestPayload && JSON.stringify(latestPayload) === payloadJson) {
-              return markPayloadAsSynced();
-            }
+          if (latestPayload && areSyncPayloadsEqual(latestPayload, payload)) {
+            return markPayloadAsSynced();
+          }
             if (!Number.isFinite(latestVersion as any)) break;
             response = await uploadWithVersion(Number(latestVersion));
             if (response.ok) return finishSuccess(response);
@@ -170,7 +154,7 @@ export const syncPayloadToCloudWithDeps = async ({
       try {
         const { latestPayload } = await loadLatestCloudState();
         if (latestPayload) {
-          if (JSON.stringify(latestPayload) === payloadJson) {
+          if (areSyncPayloadsEqual(latestPayload, payload)) {
             return markPayloadAsSynced();
           }
           setPendingLocalPayload(payload);
@@ -186,7 +170,7 @@ export const syncPayloadToCloudWithDeps = async ({
     }
 
     if (response.status === 401 || response.status === 403) {
-      const contentType = response.headers.get('content-type');
+      const contentType = response.contentType;
       if (contentType && contentType.includes('application/json')) {
         handleLogout(t('toast.sessionExpired'));
       } else {

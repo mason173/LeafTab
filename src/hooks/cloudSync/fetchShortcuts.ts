@@ -2,6 +2,9 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts } from '../../types';
 import { clearLocalNeedsCloudReconcile, LOCAL_NEEDS_CLOUD_RECONCILE_KEY, persistLocalProfileSnapshot, readLocalNeedsCloudReconcileReason } from '@/utils/localProfileStorage';
 import { toast } from '@/components/ui/sonner';
+import { areSyncPayloadsEqual, toSyncPayloadJson, type SyncConflictPolicy } from '@/sync/core';
+import { createCloudSyncAdapter } from './cloudSyncAdapter';
+import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
 
 type FetchRefs = {
   cloudShortcutsVersionRef: MutableRefObject<number | null>;
@@ -37,6 +40,8 @@ type FetchDeps = {
   buildCloudShortcutsPayload: (args?: BuildPayloadArgs) => CloudShortcutsPayloadV3;
   normalizeCloudShortcutsPayload: (raw: unknown) => CloudShortcutsPayloadV3 | null;
   loadLocalProfileSnapshotSafe: () => CloudShortcutsPayloadV3 | null;
+  conflictPolicy: SyncConflictPolicy;
+  mergePayload: (localPayload: CloudShortcutsPayloadV3, remotePayload: CloudShortcutsPayloadV3) => CloudShortcutsPayloadV3;
   notifyRateLimited: () => void;
   refs: FetchRefs;
   setters: FetchSetters;
@@ -52,11 +57,15 @@ export const fetchShortcutsWithDeps = async ({
   buildCloudShortcutsPayload,
   normalizeCloudShortcutsPayload,
   loadLocalProfileSnapshotSafe,
+  conflictPolicy,
+  mergePayload,
   notifyRateLimited,
   refs,
   setters,
-}: FetchDeps): Promise<void> => {
-  if (!user) return;
+}: FetchDeps): Promise<'success' | 'conflict' | 'error' | 'noop'> => {
+  void conflictPolicy;
+  void mergePayload;
+  if (!user) return 'noop';
 
   const {
     cloudShortcutsVersionRef,
@@ -104,23 +113,28 @@ export const fetchShortcutsWithDeps = async ({
   try {
     if (!navigator.onLine) throw new Error('Offline detected');
     const token = localStorage.getItem('token');
-    if (!token) return;
-
-    const response = await fetch(`${API_URL}/user/shortcuts`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+    if (!token) return 'noop';
+    const adapter = createCloudSyncAdapter({
+      API_URL,
+      token,
+      normalizeCloudShortcutsPayload,
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.createdAt) localStorage.setItem('user_created_at', data.createdAt);
-      if (data.updatedAt) {
+    const response = await adapter.pull();
+
+    if (response.status === 200) {
+      localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
+      emitCloudSyncStatusChanged();
+      const meta = response.meta || {};
+      if (meta.createdAt) localStorage.setItem('user_created_at', meta.createdAt);
+      if (meta.updatedAt) {
         try {
-          localStorage.setItem('cloud_shortcuts_updated_at', String(data.updatedAt));
+          localStorage.setItem('cloud_shortcuts_updated_at', String(meta.updatedAt));
         } catch {}
       }
-      if (data.role) {
-        setUserRole(data.role);
-        localStorage.setItem('role', data.role);
+      if (meta.role) {
+        setUserRole(meta.role);
+        localStorage.setItem('role', meta.role);
       }
 
       const persistedLocalPayload = loadLocalProfileSnapshotSafe();
@@ -130,38 +144,30 @@ export const fetchShortcutsWithDeps = async ({
         nextScenarioShortcuts: persistedLocalPayload.scenarioShortcuts,
       }) : null;
       const localPayload = pendingPayloadFromCache || computedLocalPayload;
-      let cloudPayload: CloudShortcutsPayloadV3 | null = null;
-      const cloudVersion = Number(data?.version);
-      cloudShortcutsVersionRef.current = Number.isFinite(cloudVersion) ? cloudVersion : null;
+      const cloudPayload = response.payload;
+      cloudShortcutsVersionRef.current = response.version;
 
-      if (data.shortcuts) {
-        try {
-          cloudPayload = normalizeCloudShortcutsPayload(JSON.parse(data.shortcuts));
-        } catch {
-          cloudPayload = null;
-        }
-      }
-
-      const localJson = localPayload ? JSON.stringify(localPayload) : '';
-      const cloudJson = cloudPayload ? JSON.stringify(cloudPayload) : '';
+      const localJson = localPayload ? toSyncPayloadJson(localPayload) : '';
+      const cloudJson = cloudPayload ? toSyncPayloadJson(cloudPayload) : '';
       if (pendingPayloadFromCache && !promptOnDiff) {
         clearLocalNeedsCloudReconcile();
         conflictPreferenceRef.current = '';
         setCloudSyncInitialized(true);
-        return;
+        return 'success';
       }
 
       const shouldPromptConflict = promptOnDiff;
-      if (shouldPromptConflict && localPayload && cloudPayload && localJson !== cloudJson) {
+      if (shouldPromptConflict && localPayload && cloudPayload && !areSyncPayloadsEqual(localPayload, cloudPayload)) {
         setPendingLocalPayload(localPayload);
         setPendingCloudPayload(cloudPayload);
-        pendingCloudVersionRef.current = cloudShortcutsVersionRef.current;
+        pendingCloudVersionRef.current = response.version;
         setConflictModalOpen(true);
-        return;
+        setCloudSyncInitialized(true);
+        return 'conflict';
       }
 
       // Outside explicit login conflict flow, always keep local state first.
-      if (!promptOnDiff && localPayload && cloudPayload && localJson !== cloudJson) {
+      if (!promptOnDiff && localPayload && cloudPayload && !areSyncPayloadsEqual(localPayload, cloudPayload)) {
         setScenarioModes(localPayload.scenarioModes);
         setSelectedScenarioId(localPayload.selectedScenarioId);
         setScenarioShortcuts(localPayload.scenarioShortcuts);
@@ -172,7 +178,7 @@ export const fetchShortcutsWithDeps = async ({
         conflictPreferenceRef.current = '';
         setCloudSyncInitialized(true);
         lastSavedShortcutsJson.current = '__force_upload__';
-        return;
+        return 'success';
       }
 
       if (needsCloudReconcile && localPayload && !cloudPayload) {
@@ -194,7 +200,7 @@ export const fetchShortcutsWithDeps = async ({
         setTimeout(() => {
           lastSavedShortcutsJson.current = '';
         }, 100);
-        return;
+        return 'success';
       }
 
       if (cloudPayload) {
@@ -207,19 +213,19 @@ export const fetchShortcutsWithDeps = async ({
         localStorage.setItem('leaf_tab_shortcuts_cache', cloudJson);
         try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
         if (!silent) toast.success(t('toast.cloudSynced'));
+        setCloudSyncInitialized(true);
+        return 'success';
       }
     } else if (response.status === 401 || response.status === 403) {
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        handleLogout(t('toast.sessionExpired'));
-        return;
-      }
+      handleLogout(t('toast.sessionExpired'));
+      return 'error';
     } else if (response.status === 429) {
       if (!silent) notifyRateLimited();
       setCloudSyncInitialized(true);
-      return;
+      return 'error';
     }
     setCloudSyncInitialized(true);
+    return 'noop';
   } catch (error) {
     console.error('Failed to fetch shortcuts:', error);
     try {
@@ -236,12 +242,13 @@ export const fetchShortcutsWithDeps = async ({
             if (!silent) toast.success(t('toast.loadedFromCache'));
           }
           setCloudSyncInitialized(true);
-          lastSavedShortcutsJson.current = JSON.stringify(payload);
+          lastSavedShortcutsJson.current = toSyncPayloadJson(payload);
           try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
-          return;
+          return 'success';
         }
       }
     } catch {}
     if (!silent) toast.error(t('toast.cloudSyncFailed'));
+    return 'error';
   }
 };

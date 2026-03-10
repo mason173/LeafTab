@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ApplyImportedDataOptions, WebdavConfig } from './useWebdavSync';
 import type { WebdavPayload } from '@/utils/backupData';
-import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
+import { areSyncPayloadsEqual, resolveSyncConflictPayload, toSyncPayloadJson, type SyncConflictPolicy } from '@/sync/core';
+import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
+import { useSyncState } from '@/sync/useSyncState';
+import { readWebdavConfigFromStorage, readWebdavStorageStateFromStorage, WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
+import { createWebdavSyncAdapter } from './webdavSyncAdapter';
 import { toast } from '@/components/ui/sonner';
 
 type UseWebdavAutoSyncParams = {
@@ -27,28 +31,22 @@ export function useWebdavAutoSync({
   mergePayload,
 }: UseWebdavAutoSyncParams) {
   const { t } = useTranslation();
+  const {
+    syncState,
+    markSyncStart,
+    markSyncSuccess,
+    markSyncError,
+  } = useSyncState();
   const webdavScheduleTimerRef = useRef<number | null>(null);
   const webdavAutoSyncInFlightRef = useRef(false);
   const webdavLastPayloadRef = useRef<string>('');
   const [configVersion, setConfigVersion] = useState(0);
   const getIntervalMinutes = useCallback((config: WebdavConfig) => {
-    const raw = Number(config.syncOptions?.syncIntervalMinutes || 15);
-    return Math.max(1, Number.isFinite(raw) ? raw : 15);
+    const raw = Number(config.syncOptions?.syncIntervalMinutes ?? WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES);
+    return Math.max(1, Number.isFinite(raw) ? raw : WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES);
   }, []);
-  const getAlignedNextSyncAt = useCallback((intervalMinutes: number, nowMs = Date.now()) => {
-    const intervalMs = intervalMinutes * 60 * 1000;
-    const slot = Math.floor(nowMs / intervalMs);
-    return (slot + 1) * intervalMs;
-  }, []);
-  const formatDisplayTime = useCallback((ts: number) => {
-    const d = new Date(ts);
-    if (Number.isNaN(d.getTime())) return '';
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+  const getNextScheduledSyncAt = useCallback((intervalMinutes: number, nowMs = Date.now()) => {
+    return getAlignedJitteredNextAt(intervalMinutes, { nowMs });
   }, []);
   const emitSyncStatusChanged = useCallback(() => {
     window.dispatchEvent(new CustomEvent('webdav-sync-status-changed'));
@@ -61,73 +59,93 @@ export function useWebdavAutoSync({
   }, [emitSyncStatusChanged]);
   const refreshNextSyncAtAfterSuccess = useCallback((config: WebdavConfig) => {
     if (config.syncOptions?.syncBySchedule) {
-      const nextAligned = getAlignedNextSyncAt(getIntervalMinutes(config));
-      localStorage.setItem(WEBDAV_STORAGE_KEYS.nextSyncAt, new Date(nextAligned).toISOString());
+      const nextScheduled = getNextScheduledSyncAt(getIntervalMinutes(config));
+      localStorage.setItem(WEBDAV_STORAGE_KEYS.nextSyncAt, new Date(nextScheduled).toISOString());
     } else {
       localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
     }
     setConfigVersion((prev) => prev + 1);
-  }, [getAlignedNextSyncAt, getIntervalMinutes]);
+  }, [getIntervalMinutes, getNextScheduledSyncAt]);
 
-  const resolveWebdavConflict = useCallback(async (config: WebdavConfig) => {
-    if (webdavAutoSyncInFlightRef.current) return;
+  const resolveWebdavConflictInternal = useCallback(async (config: WebdavConfig) => {
+    if (webdavAutoSyncInFlightRef.current) return false;
     webdavAutoSyncInFlightRef.current = true;
+    markSyncStart();
     localStorage.setItem('webdav_last_attempt_at', new Date().toISOString());
     emitSyncStatusChanged();
     try {
-      const remotePayload = await fetchWebdavData(config);
+      const adapter = createWebdavSyncAdapter({
+        config,
+        fetchWebdavData,
+        uploadToWebdav,
+        uploadDataToWebdav,
+      });
+      const pulled = await adapter.pull();
+      const remotePayload = pulled.payload;
       const localPayload = buildLocalPayload();
-      const localJson = JSON.stringify(localPayload);
+      const localJson = toSyncPayloadJson(localPayload);
       if (!remotePayload) {
-        await uploadToWebdav(config);
+        await adapter.push(localPayload, { mode: 'prefer_local' });
         webdavLastPayloadRef.current = localJson;
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        return;
+        markSyncSuccess();
+        return true;
       }
-      const remoteJson = JSON.stringify(remotePayload);
-      if (remoteJson === localJson) {
+      if (areSyncPayloadsEqual(remotePayload, localPayload)) {
         webdavLastPayloadRef.current = localJson;
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        return;
+        markSyncSuccess();
+        return true;
       }
-      const policy = config.syncOptions?.syncConflictPolicy || "merge";
-      if (policy === "prefer_remote") {
-        applyImportedData(remotePayload, {
+      const policy = (config.syncOptions?.syncConflictPolicy || 'merge') as SyncConflictPolicy;
+      const resolution = resolveSyncConflictPayload(localPayload, remotePayload, policy, mergePayload);
+
+      if (resolution.source === 'remote') {
+        applyImportedData(resolution.resolvedPayload, {
           closeSettings: false,
           successKey: 'settings.backup.webdav.syncSuccess',
         });
-        webdavLastPayloadRef.current = remoteJson;
+        webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        return;
+        markSyncSuccess();
+        return true;
       }
-      if (policy === "merge") {
-        const merged = mergePayload(localPayload, remotePayload);
-        const mergedJson = JSON.stringify(merged);
-        applyImportedData(merged, {
+
+      if (resolution.source === 'merged') {
+        applyImportedData(resolution.resolvedPayload, {
           closeSettings: false,
           successKey: 'settings.backup.webdav.syncSuccess',
         });
-        await uploadDataToWebdav(config, merged);
-        webdavLastPayloadRef.current = mergedJson;
+        await adapter.push(resolution.resolvedPayload, { mode: 'strict' });
+        webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        return;
+        markSyncSuccess();
+        return true;
       }
-      await uploadToWebdav(config);
-      webdavLastPayloadRef.current = localJson;
+
+      await adapter.push(resolution.resolvedPayload, { mode: 'prefer_local' });
+      webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
       refreshNextSyncAtAfterSuccess(config);
       markLastSync();
+      markSyncSuccess();
+      return true;
     } catch (error: any) {
       localStorage.setItem('webdav_last_error_at', new Date().toISOString());
       localStorage.setItem('webdav_last_error_message', String(error?.message || 'unknown'));
+      markSyncError(String(error?.message || 'unknown'));
       emitSyncStatusChanged();
+      return false;
     } finally {
       webdavAutoSyncInFlightRef.current = false;
     }
-  }, [applyImportedData, buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, mergePayload, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
+  }, [applyImportedData, buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, markSyncError, markSyncStart, markSyncSuccess, mergePayload, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
+  const resolveWebdavConflict = useCallback(async (config: WebdavConfig) => {
+    void await resolveWebdavConflictInternal(config);
+  }, [resolveWebdavConflictInternal]);
 
   useEffect(() => {
     const handleConfigChanged = () => {
@@ -169,30 +187,25 @@ export function useWebdavAutoSync({
           emitSyncStatusChanged();
           return;
         }
-        const nextAligned = getAlignedNextSyncAt(getIntervalMinutes(latestConfig));
+        const nextScheduled = getNextScheduledSyncAt(getIntervalMinutes(latestConfig));
         if (!webdavAutoSyncInFlightRef.current && !conflictModalOpen && !isDragging) {
-          toast(t('settings.backup.webdav.nextSyncAtLabel', {
-            time: formatDisplayTime(nextAligned),
-          }));
-          await resolveWebdavConflict(latestConfig);
+          const synced = await resolveWebdavConflictInternal(latestConfig);
+          if (synced) {
+            if (readWebdavStorageStateFromStorage().autoSyncToastEnabled) {
+              toast.success(t('settings.backup.webdav.syncSuccess'));
+            }
+          }
         }
         if (disposed) return;
-        scheduleNext(nextAligned);
+        scheduleNext(nextScheduled);
       }, delay);
     };
 
     const intervalMinutes = getIntervalMinutes(config);
-    const alignedNext = getAlignedNextSyncAt(intervalMinutes);
-    const persistedNextRaw = localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
-    const persistedNextAt = persistedNextRaw ? new Date(persistedNextRaw).getTime() : Number.NaN;
-    const intervalMs = intervalMinutes * 60 * 1000;
-    const initialTarget = Number.isFinite(persistedNextAt)
-      ? persistedNextAt <= Date.now()
-        ? Date.now() + 500
-        : persistedNextAt - Date.now() > intervalMs
-          ? alignedNext
-          : persistedNextAt
-      : alignedNext;
+    const initialTarget = resolveInitialAlignedJitteredTargetAt({
+      intervalMinutes,
+      persistedNextAtIso: localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt),
+    });
 
     scheduleNext(initialTarget);
 
@@ -201,9 +214,10 @@ export function useWebdavAutoSync({
       if (webdavScheduleTimerRef.current) window.clearTimeout(webdavScheduleTimerRef.current);
       webdavScheduleTimerRef.current = null;
     };
-  }, [configVersion, resolveWebdavConflict, conflictModalOpen, emitSyncStatusChanged, formatDisplayTime, getAlignedNextSyncAt, getIntervalMinutes, isDragging, t]);
+  }, [configVersion, resolveWebdavConflictInternal, conflictModalOpen, emitSyncStatusChanged, getNextScheduledSyncAt, getIntervalMinutes, isDragging, t]);
 
   return {
     resolveWebdavConflict,
+    syncState,
   };
 }

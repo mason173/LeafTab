@@ -12,8 +12,17 @@
   ],
   "host_permissions": [
     "https://www.leaftab.cc/*",
-    "https://*/*",
-    "http://*/*"
+    "https://api.iowen.cn/*",
+    "https://icon.horse/*",
+    "https://ipapi.co/*",
+    "https://api.bigdatacloud.net/*",
+    "https://nominatim.openstreetmap.org/*",
+    "https://api.open-meteo.com/*",
+    "https://bing.biturl.top/*",
+    "https://mason173.github.io/*",
+    "https://raw.githubusercontent.com/*",
+    "https://fonts.googleapis.com/*",
+    "https://fonts.gstatic.com/*"
   ],
   "offline_enabled": true,
   "icons": {

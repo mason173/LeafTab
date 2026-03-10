@@ -21,6 +21,7 @@ export function AdminModal({
   onCustomApiUrlChange,
   customApiName,
   onCustomApiNameChange,
+  allowCustomApiServer = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +33,7 @@ export function AdminModal({
   onCustomApiUrlChange: (url: string) => void;
   customApiName: string;
   onCustomApiNameChange: (name: string) => void;
+  allowCustomApiServer?: boolean;
 }) {
   const { t } = useTranslation();
   const [adminModeEnabled, setAdminModeEnabled] = useState(false);
@@ -200,13 +202,16 @@ export function AdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[85%] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible bg-background border-border text-foreground rounded-[24px]">
         <DialogHeader>
           <DialogTitle>{t("settings.adminMode.switchLabel")}</DialogTitle>
           <DialogDescription>{t("settings.adminMode.switchDesc")}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea
+          className="max-h-[60vh]"
+          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
+        >
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
@@ -303,35 +308,37 @@ export function AdminModal({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 py-1">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t("settings.server.customUrlLabel")}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t("settings.server.customUrlDesc")}</span>
+                {allowCustomApiServer ? (
+                  <div className="flex flex-col gap-3 py-1">
+                    <div className="flex flex-col space-y-1 items-start">
+                      <span className="text-sm font-medium leading-none">{t("settings.server.customUrlLabel")}</span>
+                      <span className="font-normal text-xs text-muted-foreground">{t("settings.server.customUrlDesc")}</span>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        value={customApiNameDraft}
+                        maxLength={10}
+                        onChange={(e) => setCustomApiNameDraft(e.target.value.slice(0, 10))}
+                        placeholder={t("settings.server.customNamePlaceholder")}
+                        className="w-[120px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0"
+                      />
+                      <Input
+                        value={customApiUrlDraft}
+                        onChange={(e) => setCustomApiUrlDraft(e.target.value)}
+                        placeholder={t("settings.server.customUrlPlaceholder")}
+                        className="flex-1 bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                        onClick={handleSaveCustomApiUrl}
+                      >
+                        {customApiUrlDraft.trim() ? t("settings.server.customSave") : t("settings.server.customClear")}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      value={customApiNameDraft}
-                      maxLength={10}
-                      onChange={(e) => setCustomApiNameDraft(e.target.value.slice(0, 10))}
-                      placeholder={t("settings.server.customNamePlaceholder")}
-                      className="w-[120px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0"
-                    />
-                    <Input
-                      value={customApiUrlDraft}
-                      onChange={(e) => setCustomApiUrlDraft(e.target.value)}
-                      placeholder={t("settings.server.customUrlPlaceholder")}
-                      className="flex-1 bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                      onClick={handleSaveCustomApiUrl}
-                    >
-                      {customApiUrlDraft.trim() ? t("settings.server.customSave") : t("settings.server.customClear")}
-                    </Button>
-                  </div>
-                </div>
+                ) : null}
 
                 <div className="flex flex-col gap-3 py-1">
                   <div className="flex flex-col space-y-1 items-start">
