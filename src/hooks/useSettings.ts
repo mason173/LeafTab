@@ -3,12 +3,11 @@ import { loadGoogleFont } from '../utils/googleFonts';
 import { clampShortcutsRowsPerColumn } from '../utils/backupData';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import { parseShortcutCardVariant, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
+import { type DisplayMode } from '@/displayMode/config';
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [minimalistMode, setMinimalistMode] = useState(false);
-  const [freshMode, setFreshMode] = useState(false);
-  const [displayMode, setDisplayMode] = useState<'panoramic' | 'minimalist' | 'fresh'>('panoramic');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('panoramic');
   const [openInNewTab, setOpenInNewTab] = useState(true);
   const [is24Hour, setIs24Hour] = useState(true);
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
@@ -52,18 +51,29 @@ export function useSettings() {
   }, [timeFont]);
 
   useEffect(() => {
-    const storedMinimalistMode = localStorage.getItem('minimalistMode');
-    if (storedMinimalistMode !== null) setMinimalistMode(JSON.parse(storedMinimalistMode));
-    const storedFreshMode = localStorage.getItem('freshMode');
-    if (storedFreshMode !== null) setFreshMode(JSON.parse(storedFreshMode));
     const storedDisplayMode = localStorage.getItem('displayMode');
     if (storedDisplayMode === 'panoramic' || storedDisplayMode === 'minimalist' || storedDisplayMode === 'fresh') {
-      setDisplayMode(storedDisplayMode as any);
+      setDisplayMode(storedDisplayMode);
     } else {
-      if (JSON.parse(storedMinimalistMode || 'false')) setDisplayMode('minimalist');
-      else if (JSON.parse(storedFreshMode || 'false')) setDisplayMode('fresh');
+      const parseStoredBoolean = (value: string | null): boolean => {
+        if (value === null) return false;
+        try {
+          return JSON.parse(value) === true;
+        } catch {
+          return value === 'true';
+        }
+      };
+      const storedMinimalistMode = parseStoredBoolean(localStorage.getItem('minimalistMode'));
+      const storedFreshMode = parseStoredBoolean(localStorage.getItem('freshMode'));
+      if (storedMinimalistMode) setDisplayMode('minimalist');
+      else if (storedFreshMode) setDisplayMode('fresh');
       else setDisplayMode('panoramic');
     }
+    try {
+      // Legacy keys were replaced by a single displayMode source.
+      localStorage.removeItem('minimalistMode');
+      localStorage.removeItem('freshMode');
+    } catch {}
     
     const storedOpenInNewTab = localStorage.getItem('openInNewTab');
     if (storedOpenInNewTab !== null) setOpenInNewTab(JSON.parse(storedOpenInNewTab));
@@ -107,23 +117,7 @@ export function useSettings() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('minimalistMode', JSON.stringify(minimalistMode));
-  }, [minimalistMode]);
-  useEffect(() => {
-    localStorage.setItem('freshMode', JSON.stringify(freshMode));
-  }, [freshMode]);
-  useEffect(() => {
     localStorage.setItem('displayMode', displayMode);
-    if (displayMode === 'minimalist') {
-      setMinimalistMode(true);
-      setFreshMode(false);
-    } else if (displayMode === 'fresh') {
-      setMinimalistMode(false);
-      setFreshMode(true);
-    } else {
-      setMinimalistMode(false);
-      setFreshMode(false);
-    }
   }, [displayMode]);
 
   useEffect(() => {
@@ -192,10 +186,6 @@ export function useSettings() {
   return {
     settingsOpen,
     setSettingsOpen,
-    minimalistMode,
-    setMinimalistMode,
-    freshMode,
-    setFreshMode,
     displayMode,
     setDisplayMode,
     openInNewTab,

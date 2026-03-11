@@ -10,7 +10,7 @@ import { useShortcutDomainReporting } from './useShortcutDomainReporting';
 import { useShortcutActions } from './useShortcutActions';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
 import { loadRoleProfileDataForReset } from '@/utils/roleProfile';
-import { getShortcutColumns, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
+import { getShortcutColumns, type ShortcutCardVariant, type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 
 const LEGACY_SHORTCUTS_KEY = 'local_shortcuts';
 
@@ -20,7 +20,8 @@ export function useShortcuts(
   API_URL: string,
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void,
   shortcutsRowsPerColumn: number,
-  shortcutCardVariant: ShortcutCardVariant
+  shortcutCardVariant: ShortcutCardVariant,
+  layoutDensity: ShortcutLayoutDensity = 'regular',
 ) {
   const { t, i18n } = useTranslation();
 
@@ -121,7 +122,7 @@ export function useShortcuts(
 
   const shortcuts = scenarioShortcuts[selectedScenarioId] ?? [];
   const maxShortcutsPerColumn = useMemo(() => clampShortcutsRowsPerColumn(shortcutsRowsPerColumn), [shortcutsRowsPerColumn]);
-  const shortcutColumns = useMemo(() => getShortcutColumns(shortcutCardVariant), [shortcutCardVariant]);
+  const shortcutColumns = useMemo(() => getShortcutColumns(shortcutCardVariant, layoutDensity), [shortcutCardVariant, layoutDensity]);
   const shortcutsPageCapacity = maxShortcutsPerColumn * shortcutColumns;
 
   const totalShortcuts = useMemo(() => {

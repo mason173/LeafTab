@@ -1,14 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React from 'react';
 import { RiSettings4Fill } from '@remixicon/react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./ui/popover";
-import { Button } from "./ui/button";
-import ScenarioModeMenu from './ScenarioModeMenu';
-import { ScenarioMode } from "@/scenario/scenario";
 import { WeatherCard } from './WeatherCard';
 
 function SettingsButton({ onClick, variant = 'inverted' }: { onClick: () => void; variant?: 'inverted' | 'default' }) {
@@ -34,48 +25,39 @@ interface TopNavBarProps {
   onSettingsClick?: () => void;
   hideWeather?: boolean;
   settingsRevealOnHover?: boolean;
-  showScenarioMode: boolean;
-  scenarioModes: ScenarioMode[];
-  selectedScenarioId: string;
-  scenarioModeOpen: boolean;
-  onScenarioModeOpenChange: (open: boolean) => void;
-  onScenarioModeSelect: (id: string) => void;
-  onScenarioModeCreate: () => void;
-  onScenarioModeEdit: (id: string) => void;
-  onScenarioModeDelete: (id: string) => void;
+  fadeOnIdle?: boolean;
   onWeatherUpdate?: (code: number) => void;
   variant?: 'inverted' | 'default';
+  className?: string;
 }
 
 export function TopNavBar({ 
   onSettingsClick,
   hideWeather = false,
   settingsRevealOnHover = false,
-  showScenarioMode,
-  scenarioModes,
-  selectedScenarioId,
-  scenarioModeOpen,
-  onScenarioModeOpenChange,
-  onScenarioModeSelect,
-  onScenarioModeCreate,
-  onScenarioModeEdit,
-  onScenarioModeDelete,
+  fadeOnIdle = false,
   onWeatherUpdate,
   className = "",
   variant = 'inverted'
-}: TopNavBarProps & { className?: string }) {
+}: TopNavBarProps) {
   return (
     <div className={`flex items-center justify-between w-full ${className}`} data-name="TopNavBar">
-      {!hideWeather && <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />}
+      {!hideWeather && (
+        <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
+          <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />
+        </div>
+      )}
       
-      <div
-        className={`flex items-center gap-3 transition-opacity duration-300 transform-gpu ${
-          settingsRevealOnHover
-            ? 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
-            : 'opacity-100'
-        }`}
-      >
-        <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
+      <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
+        <div
+          className={`flex items-center gap-3 transition-opacity duration-300 transform-gpu ${
+            settingsRevealOnHover
+              ? 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+              : 'opacity-100'
+          }`}
+        >
+          <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
+        </div>
       </div>
     </div>
   );

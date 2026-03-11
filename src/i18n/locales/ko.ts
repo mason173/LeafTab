@@ -17,10 +17,6 @@ export default {
         guest: "게스트",
         guestDesc: "로그인하여 데이터 동기화"
       },
-      minimalistMode: {
-        label: "미니멀리스트 모드",
-        description: "활성화 시 시간, 배경화면 및 바로가기 숨김"
-      },
       newTabMode: {
         label: "새 탭에서 열기",
         description: "바로가기를 기본적으로 새 탭에서 열기"
@@ -224,6 +220,11 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release129ModeUiRefactor: "파노라마 / 리듬 / 여백 3가지 모드 UI를 재구성하고 공용 컴포넌트로 분리해 중복 레거시 코드를 정리",
+        release129WallpaperModalRefine: "배경화면 설정 팝업을 Bing / 날씨 / 색상 / 사용자 지정 4개 탭으로 재구성해 인터랙션과 레이아웃을 통일",
+        release129ColorWallpaperGradients: "색상 배경화면(12개 그라데이션 프리셋)을 추가하고 그라데이션 강도, 색상 카드 모서리, 미리보기 시각 품질을 개선",
+        release129MaskSliderByMode: "배경화면 마스크 투명도 슬라이더(0-100)를 추가하고, 현재 활성화된 배경 타입에서만 hover 시 표시",
+        release129ContrastAndOpacityTune: "리듬/여백 모드 가독성 개선: 네 모서리 모듈 기본 50% 투명도, 바로가기 텍스트 그림자 강화, 라이트 모드 핵심 텍스트를 흰색으로 고정",
         release127CaptchaSessionFix: "온라인 회원가입에서 CAPTCHA가 자주 오판되던 문제를 수정(생성/검증을 동일 세션으로 처리)",
         release127ProxyCookieDefaults: "운영 환경 세션 기본값(프록시 신뢰 + 쿠키 정책)을 최적화해 확장 프로그램-백엔드 세션 안정성 향상",
         release127FirstLoginLocalFirst: "신규 사용자 첫 로그인 시 동기화 충돌 팝업 없이 로컬 우선으로 클라우드에 즉시 동기화",

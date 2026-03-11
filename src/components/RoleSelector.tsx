@@ -25,10 +25,11 @@ import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
+import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 
 interface RoleSelectorProps {
   open: boolean;
-  onSelect: (roleFile: string, roleId: string, displayMode?: 'panoramic' | 'minimalist' | 'fresh') => void;
+  onSelect: (roleFile: string, roleId: string, displayMode?: DisplayMode) => void;
 }
 
 const STEP_ORDER = ['appearance', 'role', 'layout'] as const;
@@ -36,7 +37,7 @@ type StepType = (typeof STEP_ORDER)[number];
 
 export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [selectedLayout, setSelectedLayout] = useState<'panoramic' | 'minimalist' | 'fresh'>('panoramic');
+  const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('panoramic');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [accentColor, setAccentColor] = useState<string>('dynamic');
   const [step, setStep] = useState<StepType>('appearance');
@@ -178,6 +179,31 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
     setDirection(nextIndex > currentStepIndex ? 1 : -1);
     setStep(nextStep);
   };
+  const renderLayoutPreview = (mode: DisplayMode) => {
+    if (mode === 'panoramic') {
+      return (
+        <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
+          <RiDashboardFill className="w-9 h-9 text-foreground/50" />
+          <div className="w-full h-full border-2 border-foreground/10 rounded absolute inset-0 m-2"></div>
+        </div>
+      );
+    }
+    if (mode === 'fresh') {
+      return (
+        <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
+          <RiFlashlightFill className="w-9 h-9 text-foreground/50" />
+          <div className="w-3/4 h-2 bg-foreground/10 rounded-full"></div>
+          <div className="w-1/2 h-2 bg-foreground/10 rounded-full"></div>
+        </div>
+      );
+    }
+    return (
+      <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4">
+        <RiCheckboxBlankFill className="w-9 h-9 text-foreground/50 mb-2" />
+        <div className="w-1/2 h-2 bg-foreground/10 rounded-full"></div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-[200] bg-background text-foreground overflow-y-auto">
@@ -203,7 +229,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 <button
                   type="button"
                   className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
                     selectedTheme === 'system' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('system')}
@@ -220,7 +246,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 <button
                   type="button"
                   className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
                     selectedTheme === 'dark' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('dark')}
@@ -237,7 +263,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 <button
                   type="button"
                   className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
                     selectedTheme === 'light' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('light')}
@@ -397,66 +423,25 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 <p className="text-muted-foreground text-base">{t('onboarding.stepLayoutDesc')}</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                <button
-                  type="button"
-                  className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2",
-                    selectedLayout === 'panoramic' ? "border-primary bg-card" : "border-muted bg-card"
-                  )}
-                  onClick={() => setSelectedLayout('panoramic')}
-                >
-                  <div className="w-full aspect-[16/9] bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
-                    <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
-                      <RiDashboardFill className="w-9 h-9 text-foreground/50" />
-                      <div className="w-full h-full border-2 border-foreground/10 rounded absolute inset-0 m-2"></div>
+                {DISPLAY_MODE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={cn(
+                      "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2",
+                      selectedLayout === option.value ? "border-primary bg-card" : "border-muted bg-card"
+                    )}
+                    onClick={() => setSelectedLayout(option.value)}
+                  >
+                    <div className="w-full aspect-[16/9] bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
+                      {renderLayoutPreview(option.value)}
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-[16px]">{t('settings.displayMode.panoramic')}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">{t('settings.displayMode.panoramicDesc')}</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2",
-                    selectedLayout === 'fresh' ? "border-primary bg-card" : "border-muted bg-card"
-                  )}
-                  onClick={() => setSelectedLayout('fresh')}
-                >
-                  <div className="w-full aspect-[16/9] bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
-                    <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
-                      <RiFlashlightFill className="w-9 h-9 text-foreground/50" />
-                      <div className="w-3/4 h-2 bg-foreground/10 rounded-full"></div>
-                      <div className="w-1/2 h-2 bg-foreground/10 rounded-full"></div>
+                    <div className="text-center">
+                      <div className="font-semibold text-[16px]">{t(option.labelKey)}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1">{t(option.descriptionKey)}</div>
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-[16px]">{t('settings.displayMode.rhythm')}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">{t('settings.displayMode.rhythmDesc')}</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className={cn(
-                    "cursor-pointer rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2",
-                    selectedLayout === 'minimalist' ? "border-primary bg-card" : "border-muted bg-card"
-                  )}
-                  onClick={() => setSelectedLayout('minimalist')}
-                >
-                  <div className="w-full aspect-[16/9] bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
-                    <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4">
-                      <RiCheckboxBlankFill className="w-9 h-9 text-foreground/50 mb-2" />
-                      <div className="w-1/2 h-2 bg-foreground/10 rounded-full"></div>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-[16px]">{t('settings.displayMode.blank')}</div>
-                    <div className="text-[11px] text-muted-foreground mt-1">{t('settings.displayMode.blankDesc')}</div>
-                  </div>
-                </button>
+                  </button>
+                ))}
               </div>
               <div className="text-center text-sm text-muted-foreground">
                 {t('onboarding.layoutTip')}

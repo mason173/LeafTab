@@ -1,7 +1,6 @@
 /// <reference types="chrome" />
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import {
   RiArrowRightSLine,
@@ -22,20 +21,19 @@ import { useClock } from './hooks/useClock';
 import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
 import { useRole } from './hooks/useRole';
+import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
 import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
 import { Shortcut } from './types';
 
 // Components
-import { SearchBar } from './components/SearchBar';
-import { WallpaperClock } from './components/WallpaperClock';
-import { ShortcutsCarousel } from './components/ShortcutsCarousel';
 import { TopNavBar } from './components/TopNavBar';
+import ScenarioModeMenu from './components/ScenarioModeMenu';
+import WallpaperSelector, { weatherVideoMap, sunnyVideo } from './components/WallpaperSelector';
 import { RoleSelector } from './components/RoleSelector';
-import { LoginBanner } from './components/LoginBanner';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
-import { TimeFontDialog } from './components/TimeFontDialog';
+import { HomeMainContent } from './components/home/HomeMainContent';
 import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
@@ -54,6 +52,9 @@ import {
 import { areSyncPayloadsEqual } from '@/sync/core';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { getShortcutColumns } from '@/components/shortcuts/shortcutCardVariant';
+import { getDisplayModeLayoutFlags } from '@/displayMode/config';
+import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
+import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -107,6 +108,46 @@ const clearPersistedWebdavConflict = () => {
     localStorage.removeItem(WEBDAV_CONFLICT_CACHE_KEY);
   } catch {}
 };
+
+function WeatherBackgroundVideo({
+  src,
+  className,
+}: {
+  src: string;
+  className?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.playbackRate = 0.7;
+    const handleTimeUpdate = () => {
+      const timeLeft = video.duration - video.currentTime;
+      if (timeLeft > 0 && timeLeft < 1.5) {
+        const newRate = Math.max(0.1, 0.7 * (timeLeft / 1.5));
+        video.playbackRate = newRate;
+      }
+    };
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [src]);
+
+  return (
+    <video
+      key={src}
+      ref={videoRef}
+      src={src}
+      className={className || "absolute w-full h-full object-cover"}
+      autoPlay
+      muted
+      playsInline
+    />
+  );
+}
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -203,8 +244,6 @@ export default function App() {
 
   const {
     settingsOpen, setSettingsOpen,
-    minimalistMode, setMinimalistMode,
-    freshMode, setFreshMode,
     displayMode, setDisplayMode,
     openInNewTab, setOpenInNewTab,
     is24Hour, setIs24Hour,
@@ -219,6 +258,8 @@ export default function App() {
     customApiUrl, setCustomApiUrl,
     customApiName, setCustomApiName,
   } = useSettings();
+  const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
+  const responsiveLayout = useResponsiveLayout();
   // removed auto-focus search feature
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
@@ -259,6 +300,28 @@ export default function App() {
     openSearchWithQuery,
   } = useSearch(searchInputRef as React.RefObject<HTMLInputElement>, openInNewTab);
 
+  const adaptiveShortcutRowHeight = shortcutCardVariant === 'compact'
+    ? (shortcutCompactShowTitle ? responsiveLayout.compactShortcutSize + 24 : responsiveLayout.compactShortcutSize)
+    : (responsiveLayout.defaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
+  const adaptiveShortcutRowGap = shortcutCardVariant === 'compact'
+    ? responsiveLayout.compactRowGap
+    : responsiveLayout.defaultRowGap;
+  const adaptiveHeaderHeight = responsiveLayout.mainTopMargin
+    + (displayMode === 'panoramic'
+      ? responsiveLayout.wallpaperHeight
+      : (showTime ? responsiveLayout.clockFontSize + 56 : 96))
+    + responsiveLayout.searchHeight
+    + (responsiveLayout.density === 'large' ? 184 : 160);
+  const adaptiveRowsViewportCap = clampShortcutsRowsPerColumn(
+    Math.floor((Math.max(adaptiveShortcutRowHeight, responsiveLayout.viewportHeight - adaptiveHeaderHeight) + adaptiveShortcutRowGap) / (adaptiveShortcutRowHeight + adaptiveShortcutRowGap)),
+  );
+  const adaptiveRowsPerColumn = clampShortcutsRowsPerColumn(
+    Math.min(
+      Math.max(clampShortcutsRowsPerColumn(shortcutsRowsPerColumn), responsiveLayout.baseRows),
+      adaptiveRowsViewportCap,
+    ),
+  );
+
   const {
     scenarioModes, setScenarioModes,
     selectedScenarioId, setSelectedScenarioId,
@@ -295,7 +358,15 @@ export default function App() {
     handlePageReorder,
     moveShortcutToPage,
     resetLocalShortcutsByRole
-  } = useShortcuts(user, openInNewTab, API_URL, handleLogout, shortcutsRowsPerColumn, shortcutCardVariant);
+  } = useShortcuts(
+    user,
+    openInNewTab,
+    API_URL,
+    handleLogout,
+    adaptiveRowsPerColumn,
+    shortcutCardVariant,
+    responsiveLayout.density,
+  );
 
   useEffect(() => {
     if (conflictModalOpen && !confirmChoice) {
@@ -444,8 +515,14 @@ export default function App() {
     customWallpaper, setCustomWallpaper,
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
-    isWallpaperExpanded, setIsWallpaperExpanded,
+    colorWallpaperId, setColorWallpaperId,
+    wallpaperMaskOpacity, setWallpaperMaskOpacity,
   } = useWallpaper();
+  const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
+  const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
+  const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
+    ? customWallpaper
+    : (bingWallpaper || imgImage);
 
   const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
     user, setUserRole, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, API_URL
@@ -1018,8 +1095,8 @@ export default function App() {
     try { sessionStorage.setItem('leaftab_weather_debug_visible', enabled ? 'true' : 'false'); } catch {}
   }, []);
 
-  const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
-  const shortcutsColumns = getShortcutColumns(shortcutCardVariant);
+  const normalizedRowsPerColumn = adaptiveRowsPerColumn;
+  const shortcutsColumns = getShortcutColumns(shortcutCardVariant, responsiveLayout.density);
   const shortcutsPageCapacity = normalizedRowsPerColumn * shortcutsColumns;
   const maxShortcutsPageIndex = getMaxPageIndex(shortcuts.length);
   const maxShortcutsOnCurrentPage = (() => {
@@ -1031,10 +1108,11 @@ export default function App() {
   })();
   const displayRows = Math.max(maxShortcutsOnCurrentPage, normalizedRowsPerColumn);
   const shortcutRowHeight = shortcutCardVariant === 'compact'
-    ? (shortcutCompactShowTitle ? 96 : 72)
-    : 52;
-  const shortcutRowGap = shortcutCardVariant === 'compact' ? 20 : 4;
-  const shortcutsAreaHeight = 32 + 4 + displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
+    ? (shortcutCompactShowTitle ? responsiveLayout.compactShortcutSize + 24 : responsiveLayout.compactShortcutSize)
+    : (responsiveLayout.defaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
+  const shortcutRowGap = shortcutCardVariant === 'compact' ? responsiveLayout.compactRowGap : responsiveLayout.defaultRowGap;
+  const shortcutsAreaTopPadding = responsiveLayout.density === 'large' ? 36 : responsiveLayout.density === 'compact' ? 24 : 32;
+  const shortcutsAreaHeight = shortcutsAreaTopPadding + 4 + displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
   const pageIndices = (() => {
     const pageCount = Math.max(1, Math.ceil(shortcuts.length / shortcutsPageCapacity));
     return Array.from({ length: pageCount }, (_, i) => i);
@@ -1112,168 +1190,171 @@ export default function App() {
   const localTime = formatTime(localTimeRaw);
   const webdavCloudTime = formatTime(webdavCloudTimeRaw);
   const webdavLocalTime = formatTime(webdavLocalTimeRaw);
+  const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
+  const overlayBackgroundImageSrc = displayMode === 'fresh'
+    ? freshWallpaperSrc
+    : (wallpaperMode === 'custom' && customWallpaper ? customWallpaper : (bingWallpaper || imgImage));
+  const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
+  const topNavModeProps = {
+    onSettingsClick: () => setSettingsOpen(true),
+    fadeOnIdle: true,
+    onWeatherUpdate: setWeatherCode,
+  };
+  const scenarioMenuLayerProps = {
+    scenarioModes,
+    selectedScenarioId,
+    open: scenarioModeOpen,
+    onOpenChange: setScenarioModeOpen,
+    onSelect: setSelectedScenarioId,
+    onCreate: () => setScenarioCreateOpen(true),
+    onEdit: handleOpenEditScenarioMode,
+    onDelete: handleDeleteScenarioMode,
+  };
+  const wallpaperSelectorLayerProps = {
+    mode: wallpaperMode,
+    onModeChange: setWallpaperMode,
+    bingWallpaper,
+    weatherCode,
+    customWallpaper,
+    onCustomWallpaperChange: setCustomWallpaper,
+    colorWallpaperId,
+    onColorWallpaperIdChange: setColorWallpaperId,
+    wallpaperMaskOpacity,
+    onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+  };
+  const wallpaperClockProps = {
+    time,
+    date,
+    lunar,
+    wallpaperUrl: bingWallpaper,
+    onSettingsClick: () => setSettingsOpen(true),
+    showScenarioMode: true,
+    scenarioModes,
+    selectedScenarioId,
+    scenarioModeOpen,
+    onScenarioModeOpenChange: setScenarioModeOpen,
+    onScenarioModeSelect: setSelectedScenarioId,
+    onScenarioModeCreate: () => setScenarioCreateOpen(true),
+    onScenarioModeEdit: handleOpenEditScenarioMode,
+    onScenarioModeDelete: handleDeleteScenarioMode,
+    wallpaperMode,
+    onWallpaperModeChange: setWallpaperMode,
+    weatherCode,
+    onWeatherUpdate: setWeatherCode,
+    bingWallpaper,
+    customWallpaper,
+    onCustomWallpaperChange: setCustomWallpaper,
+    colorWallpaperId,
+    onColorWallpaperIdChange: setColorWallpaperId,
+    wallpaperMaskOpacity,
+    onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+    timeFont,
+    onTimeFontChange: setTimeFont,
+    layout: responsiveLayout,
+  };
+  const searchBarProps = {
+    value: searchValue,
+    onChange: handleSearchChange,
+    onSubmit: handleSearch,
+    searchEngine,
+    onEngineClick: handleEngineClick,
+    dropdownOpen,
+    onEngineSelect: handleEngineSelect,
+    dropdownRef: searchDropdownRef,
+    suggestionItems: mergedSuggestionItems,
+    historyOpen,
+    onHistoryOpen: () => setHistoryOpen(true),
+    onSuggestionSelect: (item: SuggestionItem) => {
+      setSearchValue(item.label);
+      openSearchWithQuery(item.value);
+      setHistoryOpen(false);
+    },
+    onHistoryClear: () => setSearchHistory([]),
+    onClear: () => setSearchValue(''),
+    historyRef: searchAreaRef,
+    placeholder: t('search.placeholderDynamic'),
+    onKeyDown: handleSuggestionKeyDown,
+    historySelectedIndex,
+    inputRef: searchInputRef,
+    searchHeight: responsiveLayout.searchHeight,
+    searchInputFontSize: responsiveLayout.searchInputFontSize,
+    searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
+    searchActionSize: responsiveLayout.searchActionSize,
+  };
+  const shortcutsCarouselProps = {
+    currentIndex: currentCarouselIndex,
+    onIndexChange: handleCarouselIndexChange,
+    pageIndices,
+    height: shortcutsAreaHeight,
+    shortcuts,
+    rowsPerColumn: normalizedRowsPerColumn,
+    cardVariant: shortcutCardVariant,
+    layoutDensity: responsiveLayout.density,
+    compactIconSize: responsiveLayout.compactShortcutSize,
+    compactTitleFontSize: responsiveLayout.compactShortcutTitleSize,
+    defaultIconSize: responsiveLayout.defaultShortcutIconSize,
+    defaultTitleFontSize: responsiveLayout.defaultShortcutTitleSize,
+    defaultUrlFontSize: responsiveLayout.defaultShortcutUrlSize,
+    defaultVerticalPadding: responsiveLayout.defaultShortcutVerticalPadding,
+    compactShowTitle: shortcutCompactShowTitle,
+    onShortcutOpen: handleShortcutOpen,
+    onShortcutContextMenu: handleShortcutContextMenu,
+    onPageReorder: handlePageReorder,
+    onPageContextMenu: handlePageContextMenu,
+  };
 
   return (
     <div className="bg-background relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px]">
-      
-      {/* 极简模式下的顶部状态栏 */}
-      {!roleSelectorOpen && minimalistMode && !freshMode && (
-        <div className="fixed top-6 left-6 right-6 z-50 animate-in fade-in zoom-in duration-300">
-          <TopNavBar 
-              onSettingsClick={() => setSettingsOpen(true)}
-              showScenarioMode={!minimalistMode}
-              scenarioModes={scenarioModes}
-              selectedScenarioId={selectedScenarioId}
-              scenarioModeOpen={scenarioModeOpen}
-              onScenarioModeOpenChange={setScenarioModeOpen}
-              onScenarioModeSelect={setSelectedScenarioId}
-              onScenarioModeCreate={() => setScenarioCreateOpen(true)}
-              onScenarioModeEdit={handleOpenEditScenarioMode}
-              onScenarioModeDelete={handleDeleteScenarioMode}
-              onWeatherUpdate={setWeatherCode}
-            />
-        </div>
-      )}
-      {!roleSelectorOpen && freshMode && (
-        <div className="fixed top-6 left-6 right-6 z-50 animate-in fade-in zoom-in duration-300">
-          <TopNavBar 
-            className=""
-            hideWeather={false}
-            variant="default"
-            onSettingsClick={() => setSettingsOpen(true)}
-            showScenarioMode={false}
-            scenarioModes={scenarioModes}
-            selectedScenarioId={selectedScenarioId}
-            scenarioModeOpen={false}
-            onScenarioModeOpenChange={() => {}}
-            onScenarioModeSelect={() => {}}
-            onScenarioModeCreate={() => {}}
-            onScenarioModeEdit={() => {}}
-            onScenarioModeDelete={() => {}}
-          />
-        </div>
-      )}
-
-      {/* Minimalist Mode Background */}
-      {!roleSelectorOpen && minimalistMode && !freshMode && (
+      {modeLayersVisible && displayModeFlags.showOverlayBackground && (
         <div className="fixed inset-0 z-0 pointer-events-none">
-          <img 
-            src={wallpaperMode === 'custom' && customWallpaper ? customWallpaper : (bingWallpaper || imgImage)} 
-            alt="Background" 
-            className="w-full h-full object-cover" 
-          />
-          <div className="absolute inset-0 bg-black/20" />
-        </div>
-      )}
-
-      {/* Full Screen Wallpaper Overlay */}
-      {!roleSelectorOpen && isWallpaperExpanded && (
-        <div className="fixed inset-0 z-0 cursor-pointer" onClick={() => setIsWallpaperExpanded(false)}>
-          <img src={bingWallpaper || imgImage} alt="Fullscreen Wallpaper" className="absolute w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/10" />
-        </div>
-      )}
-
-      {/* 主要内容区域 */}
-      {!roleSelectorOpen && (
-        <div className="flex flex-col items-center mt-[32px] flex-1 w-full">
-          <div className="w-[1000px] max-w-full flex flex-col items-stretch gap-[16px]">
-          {!user && loginBannerVisible && (
-            <motion.div className="w-full" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-              <LoginBanner 
-                onLogin={handleRequestCloudLogin}
-                onClose={() => { setLoginBannerVisible(false); sessionStorage.setItem('loginBannerDismissed', 'true'); }} 
-              />
-            </motion.div>
-          )}
-
-          {!minimalistMode && !freshMode ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98, y: 12 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full transform-gpu will-change-transform"
-            >
-              <WallpaperClock 
-                time={time} date={date} lunar={lunar} wallpaperUrl={bingWallpaper}
-                onSettingsClick={() => setSettingsOpen(true)}
-                showScenarioMode={!minimalistMode} scenarioModes={scenarioModes}
-                selectedScenarioId={selectedScenarioId} scenarioModeOpen={scenarioModeOpen}
-                onScenarioModeOpenChange={setScenarioModeOpen} onScenarioModeSelect={setSelectedScenarioId}
-                onScenarioModeCreate={() => setScenarioCreateOpen(true)} onScenarioModeEdit={handleOpenEditScenarioMode}
-                onScenarioModeDelete={handleDeleteScenarioMode}
-                wallpaperMode={wallpaperMode} onWallpaperModeChange={setWallpaperMode}
-                weatherCode={weatherCode} onWeatherUpdate={setWeatherCode}
-                bingWallpaper={bingWallpaper} customWallpaper={customWallpaper}
-                onCustomWallpaperChange={setCustomWallpaper} timeFont={timeFont}
-                onTimeFontChange={setTimeFont}
-              />
-            </motion.div>
+          {wallpaperMode === 'weather' ? (
+            <WeatherBackgroundVideo src={freshWeatherVideo} />
+          ) : wallpaperMode === 'color' ? (
+            <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : (
-            showTime && (
-              <motion.div 
-                initial={{ opacity: 0, y: 16 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ duration: 0.45, ease: 'easeOut' }}
-                className="w-full transform-gpu will-change-transform"
-              >
-                <InlineTime 
-                  time={time} 
-                  date={date} 
-                  lunar={lunar} 
-                  timeFont={timeFont} 
-                  onTimeFontChange={setTimeFont}
-                  isMinimalistMode={minimalistMode}
-                  isFreshMode={freshMode}
-                />
-              </motion.div>
-            )
+            <img src={overlayBackgroundImageSrc} alt={overlayBackgroundAlt} className="absolute w-full h-full object-cover" />
           )}
-
-          <motion.div 
-            className="relative w-full z-20 transform-gpu will-change-transform" 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.5, ease: 'easeOut', delay: 0.12 }}
-          >
-            <SearchBar 
-              value={searchValue} onChange={handleSearchChange} onSubmit={handleSearch}
-              searchEngine={searchEngine} onEngineClick={handleEngineClick} dropdownOpen={dropdownOpen}
-              onEngineSelect={handleEngineSelect} dropdownRef={searchDropdownRef} suggestionItems={mergedSuggestionItems}
-              historyOpen={historyOpen} onHistoryOpen={() => setHistoryOpen(true)}
-              onSuggestionSelect={(item) => { setSearchValue(item.label); openSearchWithQuery(item.value); setHistoryOpen(false); }}
-              onHistoryClear={() => setSearchHistory([])} onClear={() => setSearchValue('')}
-              historyRef={searchAreaRef} placeholder={t('search.placeholderDynamic')}
-              onKeyDown={handleSuggestionKeyDown} historySelectedIndex={historySelectedIndex} inputRef={searchInputRef} minimalistMode={minimalistMode}
-            />
-          </motion.div>
-
-          {!minimalistMode && (
-            <motion.div 
-              className="relative w-full z-10 transform-gpu will-change-transform" 
-              initial={{ opacity: 0, y: 24 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.24 }}
-            >
-              <ShortcutsCarousel 
-                currentIndex={currentCarouselIndex}
-                onIndexChange={handleCarouselIndexChange}
-                pageIndices={pageIndices}
-                height={shortcutsAreaHeight}
-                shortcuts={shortcuts}
-                rowsPerColumn={normalizedRowsPerColumn}
-                cardVariant={shortcutCardVariant}
-                compactShowTitle={shortcutCompactShowTitle}
-                onShortcutOpen={handleShortcutOpen}
-                onShortcutContextMenu={handleShortcutContextMenu}
-                onPageReorder={handlePageReorder}
-                onPageContextMenu={handlePageContextMenu}
-              />
-            </motion.div>
-          )}
-          </div>
+          <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
         </div>
       )}
+      {modeLayersVisible && displayModeFlags.showInlineTopNav && (
+        <div className="fixed top-6 left-6 right-6 z-50 animate-in fade-in zoom-in duration-300">
+          <TopNavBar {...topNavModeProps} />
+        </div>
+      )}
+      {modeLayersVisible && displayModeFlags.showFloatingScenarioMenu && (
+        <div className="fixed left-6 bottom-6 z-50 opacity-50 hover:opacity-100 transition-opacity">
+          <ScenarioModeMenu {...scenarioMenuLayerProps} />
+        </div>
+      )}
+      {modeLayersVisible && displayModeFlags.showFloatingWallpaperSelector && (
+        <div className="fixed right-6 bottom-6 z-50 opacity-50 hover:opacity-100 transition-opacity">
+          <WallpaperSelector {...wallpaperSelectorLayerProps} />
+        </div>
+      )}
+
+      <HomeMainContent
+        visible={!roleSelectorOpen}
+        user={user}
+        loginBannerVisible={loginBannerVisible}
+        onLoginRequest={handleRequestCloudLogin}
+        onDismissLoginBanner={() => {
+          setLoginBannerVisible(false);
+          sessionStorage.setItem('loginBannerDismissed', 'true');
+        }}
+        modeFlags={displayModeFlags}
+        showTime={showTime}
+        displayMode={displayMode}
+        time={time}
+        date={date}
+        lunar={lunar}
+        timeFont={timeFont}
+        onTimeFontChange={setTimeFont}
+        layout={responsiveLayout}
+        wallpaperClockProps={wallpaperClockProps}
+        searchBarProps={searchBarProps}
+        shortcutsCarouselProps={shortcutsCarouselProps}
+      />
 
       {contextMenu && (
         <div ref={contextMenuRef} className="fixed z-50" style={{ top: contextMenu.y, left: contextMenu.x }}>
@@ -1440,10 +1521,6 @@ export default function App() {
           onLogin: handleRequestCloudLogin,
           onLogout: handleLogoutWithOptions,
           shortcutsCount: totalShortcuts,
-          minimalistMode,
-          onMinimalistModeChange: setMinimalistMode,
-          freshMode,
-          onFreshModeChange: setFreshMode,
           displayMode,
           onDisplayModeChange: setDisplayMode,
           shortcutCardVariant,
@@ -1468,6 +1545,10 @@ export default function App() {
           customWallpaper,
           onCustomWallpaperChange: setCustomWallpaper,
           weatherCode,
+          colorWallpaperId,
+          onColorWallpaperIdChange: setColorWallpaperId,
+          wallpaperMaskOpacity,
+          onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
           privacyConsent,
           onPrivacyConsentChange: handlePrivacySwitchChange,
           onOpenAdminModal: handleOpenAdminModal,
@@ -1688,39 +1769,6 @@ export default function App() {
   );
 }
 
-function InlineTime({ time, date, lunar, timeFont, onTimeFontChange, isMinimalistMode, isFreshMode }: { time: string; date: Date; lunar: string; timeFont: string; onTimeFontChange: (font: string) => void; isMinimalistMode: boolean; isFreshMode: boolean }) {
-  const { i18n } = useTranslation();
-  const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-  const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
-  return (
-    <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
-      <div className="absolute inset-0 pointer-events-none opacity-0" />
-      <div className="relative z-10 pointer-events-none transform-gpu flex flex-col items-center justify-center py-6">
-        <button
-          type="button"
-          className={`${isMinimalistMode ? 'text-white text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} text-[100px] font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
-          style={{ fontFamily: timeFont }}
-          onClick={() => setTimeFontDialogOpen(true)}
-        >
-          {time}
-        </button>
-        <TimeFontDialog
-          open={timeFontDialogOpen}
-          onOpenChange={setTimeFontDialogOpen}
-          currentFont={timeFont}
-          previewTime={time}
-          onSelect={onTimeFontChange}
-        />
-        <div className={`flex items-center gap-3 text-base mt-2 font-['PingFang_SC',sans-serif] ${isMinimalistMode ? 'text-white/80' : 'text-muted-foreground'}`}>
-          <span>{dateString} {weekday}</span>
-          {lunar && <span>{lunar}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
 function ContextMenuItem({ label, onSelect, variant = 'default', disabled = false, iconRight }: { label: string; onSelect: () => void; variant?: 'default' | 'destructive'; disabled?: boolean; iconRight?: React.ReactNode }) {
   return (
     <button

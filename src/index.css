@@ -9,6 +9,21 @@
   button {
     cursor: pointer;
   }
+
+  :where(
+    [data-slot="button"],
+    [data-slot="input"],
+    [data-slot="textarea"],
+    [data-slot="tabs-list"],
+    [data-slot="tabs-trigger"],
+    [role="tablist"],
+    [role="tab"],
+    button:not([data-slot="checkbox"]):not([data-slot="switch"]):not([data-slot="radio-group-item"]):not([role="checkbox"]):not([role="switch"]):not([role="radio"]):not(.no-pill-radius),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    textarea
+  ) {
+    border-radius: 9999px !important;
+  }
 }
 
 @keyframes scroll-text {

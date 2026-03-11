@@ -17,10 +17,6 @@ export default {
         guest: "Khách",
         guestDesc: "Đăng nhập để đồng bộ dữ liệu"
       },
-      minimalistMode: {
-        label: "Chế độ tối giản",
-        description: "Ẩn thời gian, hình nền và lối tắt khi bật"
-      },
       newTabMode: {
         label: "Mở trong tab mới",
         description: "Các lối tắt mở trong tab mới theo mặc định"
@@ -224,6 +220,11 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release129ModeUiRefactor: "Tái cấu trúc UI cho 3 chế độ Toàn cảnh / Nhịp điệu / Khoảng trắng, tách component dùng chung và dọn mã trùng lặp cũ",
+        release129WallpaperModalRefine: "Thiết kế lại popup cài đặt hình nền thành 4 tab thống nhất: Bing / Thời tiết / Màu sắc / Tùy chỉnh",
+        release129ColorWallpaperGradients: "Thêm hình nền màu (12 preset gradient) và tối ưu độ chuyển màu, bo góc ô màu, cùng chất lượng phần xem trước",
+        release129MaskSliderByMode: "Thêm thanh trượt độ mờ lớp phủ nền (0-100), chỉ hiện khi hover và chỉ cho loại hình nền đang được áp dụng",
+        release129ContrastAndOpacityTune: "Cải thiện khả năng đọc ở chế độ Nhịp điệu/Khoảng trắng: module bốn góc mặc định 50% opacity, tăng bóng chữ lối tắt, và giữ chữ chính màu trắng ở giao diện sáng",
         release127CaptchaSessionFix: "Sửa lỗi captcha bị báo sai thường xuyên khi đăng ký online bằng cách đảm bảo tạo captcha và kiểm tra đăng ký dùng cùng một session",
         release127ProxyCookieDefaults: "Tối ưu mặc định session ở production (trust proxy + chính sách cookie) để ổn định phiên từ extension tới backend",
         release127FirstLoginLocalFirst: "Người dùng mới đăng nhập lần đầu sẽ không còn popup xung đột, dữ liệu local được đồng bộ lên cloud theo ưu tiên local",

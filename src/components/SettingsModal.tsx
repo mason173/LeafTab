@@ -53,6 +53,7 @@ import {
 } from "./sync/SyncSettingsFields";
 import { ShortcutStyleSettingsDialog } from "./ShortcutStyleSettingsDialog";
 import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
+import { DISPLAY_MODE_OPTIONS, type DisplayMode, shouldShowTimeDetailControls } from "@/displayMode/config";
 
 function RollingNumber({
   value,
@@ -92,12 +93,8 @@ interface SettingsModalProps {
   onLogin?: () => boolean | void;
   onLogout?: (options?: { clearLocal?: boolean }) => Promise<void> | void;
   shortcutsCount?: number;
-  minimalistMode: boolean;
-  onMinimalistModeChange: (checked: boolean) => void;
-  freshMode: boolean;
-  onFreshModeChange: (checked: boolean) => void;
-  displayMode: 'panoramic' | 'minimalist' | 'fresh';
-  onDisplayModeChange: (mode: 'panoramic' | 'minimalist' | 'fresh') => void;
+  displayMode: DisplayMode;
+  onDisplayModeChange: (mode: DisplayMode) => void;
   shortcutCardVariant: ShortcutCardVariant;
   onShortcutCardVariantChange: (variant: ShortcutCardVariant) => void;
   shortcutCompactShowTitle: boolean;
@@ -114,12 +111,16 @@ interface SettingsModalProps {
   onShowTimeChange: (checked: boolean) => void;
   onExportData: () => void;
   onImportData: (data: any) => void;
-  wallpaperMode: 'bing' | 'weather' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'custom') => void;
+  wallpaperMode: 'bing' | 'weather' | 'color' | 'custom';
+  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'custom') => void;
   bingWallpaper: string;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
   weatherCode: number;
+  colorWallpaperId: string;
+  onColorWallpaperIdChange: (id: string) => void;
+  wallpaperMaskOpacity: number;
+  onWallpaperMaskOpacityChange: (value: number) => void;
   privacyConsent: boolean | null;
   onPrivacyConsentChange: (checked: boolean) => void;
   onOpenWebdavConfig?: (options?: { enableAfterSave?: boolean }) => void;
@@ -139,10 +140,6 @@ export default function SettingsModal({
   onLogin,
   onLogout,
   shortcutsCount = 0,
-  minimalistMode,
-  onMinimalistModeChange,
-  freshMode,
-  onFreshModeChange,
   displayMode,
   onDisplayModeChange,
   shortcutCardVariant,
@@ -167,6 +164,10 @@ export default function SettingsModal({
   customWallpaper,
   onCustomWallpaperChange,
   weatherCode,
+  colorWallpaperId,
+  onColorWallpaperIdChange,
+  wallpaperMaskOpacity,
+  onWallpaperMaskOpacityChange,
   privacyConsent,
   onPrivacyConsentChange,
   onOpenWebdavConfig,
@@ -215,6 +216,11 @@ export default function SettingsModal({
   ];
   const [shortcutStyleDialogOpen, setShortcutStyleDialogOpen] = useState(false);
   const shortcutStyleDialogTimerRef = useRef<number | null>(null);
+  const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
+    if (mode === 'panoramic') return <RiDashboardFill className={className} />;
+    if (mode === 'fresh') return <RiFlashlightFill className={className} />;
+    return <RiCheckboxBlankFill className={className} />;
+  };
 
   const changeLanguage = (value: string) => {
     i18n.changeLanguage(value);
@@ -257,6 +263,7 @@ export default function SettingsModal({
       bingWallpaper,
       customWallpaper,
       weatherCode,
+      colorWallpaperId,
     }).then((hex) => {
       if (canceled) return;
       applyDynamicAccentColor(hex);
@@ -267,7 +274,7 @@ export default function SettingsModal({
     return () => {
       canceled = true;
     };
-  }, [accentColor, wallpaperMode, bingWallpaper, customWallpaper, weatherCode]);
+  }, [accentColor, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
@@ -862,36 +869,19 @@ export default function SettingsModal({
                 <span className="font-normal text-xs text-muted-foreground">{t('settings.displayMode.description')}</span>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center border transition-all ${displayMode === 'panoramic' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
-                  onClick={() => { onDisplayModeChange('panoramic'); onOpenChange(false); }}
-                >
-                  <RiDashboardFill className="size-5 mb-0.5" />
-                  <div className="text-xs font-medium">
-                    {t('settings.displayMode.panoramic')}
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center border transition-all ${displayMode === 'fresh' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
-                  onClick={() => { onDisplayModeChange('fresh'); onOpenChange(false); }}
-                >
-                  <RiFlashlightFill className="size-5 mb-0.5" />
-                  <div className="text-xs font-medium">
-                    {t('settings.displayMode.rhythm')}
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center border transition-all ${displayMode === 'minimalist' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
-                  onClick={() => { onDisplayModeChange('minimalist'); onOpenChange(false); }}
-                >
-                  <RiCheckboxBlankFill className="size-5 mb-0.5" />
-                  <div className="text-xs font-medium">
-                    {t('settings.displayMode.blank')}
-                  </div>
-                </button>
+                {DISPLAY_MODE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center border transition-all ${displayMode === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
+                    onClick={() => { onDisplayModeChange(option.value); onOpenChange(false); }}
+                  >
+                    {renderDisplayModeIcon(option.value, "size-5 mb-0.5")}
+                    <div className="text-xs font-medium">
+                      {t(option.labelKey)}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
             {displayMode !== 'minimalist' && (
@@ -912,7 +902,7 @@ export default function SettingsModal({
               </div>
             )}
             {/* Theme Color Selection */}
-            {!minimalistMode && (
+            {displayMode !== 'minimalist' && (
             <div className="flex flex-col gap-3">
              <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.accentColor.label')}</span>
@@ -953,7 +943,7 @@ export default function SettingsModal({
               />
             </div>
 
-            {(displayMode === 'minimalist' || displayMode === 'fresh') && (
+            {displayMode !== 'panoramic' && (
               <div className="flex items-center justify-between space-x-2">
                 <div className="flex flex-col space-y-1 items-start">
                   <span className="text-sm font-medium leading-none">{t('settings.showTime.label')}</span>
@@ -968,7 +958,7 @@ export default function SettingsModal({
               </div>
             )}
 
-            {(displayMode === 'panoramic' || ((displayMode === 'minimalist' || displayMode === 'fresh') && showTime)) && (
+            {shouldShowTimeDetailControls(displayMode, showTime) && (
               <>
                 <div className="flex items-center justify-between space-x-2">
                   <div className="flex flex-col space-y-1 items-start">
@@ -1031,7 +1021,7 @@ export default function SettingsModal({
               </SelectContent>
             </Select>
           </div>
-          {!minimalistMode && (
+          {displayMode !== 'minimalist' && (
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.theme.label')}</span>
@@ -1050,7 +1040,7 @@ export default function SettingsModal({
           </div>
           )}
 
-          {!minimalistMode && (
+          {displayMode !== 'minimalist' && (
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.backup.label')}</span>
@@ -1086,27 +1076,29 @@ export default function SettingsModal({
           </div>
           )}
 
-          {minimalistMode && (
-            <>
-              <div className="flex items-center justify-between space-x-2 py-2">
-                <div className="flex flex-col space-y-1 items-start">
-                  <span className="text-sm font-medium leading-none">{t('weather.wallpaper.mode')}</span>
-                  <span className="font-normal text-xs text-muted-foreground">{t('weather.wallpaper.modeDesc')}</span>
-                </div>
-                <WallpaperSelector 
-                  mode={wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
-                  onModeChange={onWallpaperModeChange}
-                  bingWallpaper={bingWallpaper}
-                  weatherCode={weatherCode}
-                  customWallpaper={customWallpaper}
-                  onCustomWallpaperChange={onCustomWallpaperChange}
-                  hideWeather={true}
-                  trigger={
-                    <Button variant="secondary" size="sm" className="bg-secondary/50 hover:bg-secondary">{t('settings.shortcutsLayout.set')}</Button>
-                  }
-                />
+          {displayMode === 'minimalist' && (
+            <div className="flex items-center justify-between space-x-2 py-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('weather.wallpaper.mode')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('weather.wallpaper.modeDesc')}</span>
               </div>
-            </>
+              <WallpaperSelector
+                mode={wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
+                onModeChange={onWallpaperModeChange}
+                bingWallpaper={bingWallpaper}
+                weatherCode={weatherCode}
+                customWallpaper={customWallpaper}
+                onCustomWallpaperChange={onCustomWallpaperChange}
+                colorWallpaperId={colorWallpaperId}
+                onColorWallpaperIdChange={onColorWallpaperIdChange}
+                wallpaperMaskOpacity={wallpaperMaskOpacity}
+                onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
+                hideWeather={true}
+                trigger={
+                  <Button variant="secondary" size="sm" className="bg-secondary/50 hover:bg-secondary">{t('settings.shortcutsLayout.set')}</Button>
+                }
+              />
+            </div>
           )}
 
           {adminModeEnabled && (

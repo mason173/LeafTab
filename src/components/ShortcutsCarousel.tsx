@@ -2,7 +2,11 @@ import React, { useCallback, useEffect } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Shortcut } from '../types';
 import { ShortcutGrid } from './ShortcutGrid';
-import { getShortcutColumns, type ShortcutCardVariant } from './shortcuts/shortcutCardVariant';
+import {
+  getShortcutColumns,
+  type ShortcutCardVariant,
+  type ShortcutLayoutDensity,
+} from './shortcuts/shortcutCardVariant';
 
 interface ShortcutsCarouselProps {
   currentIndex: number;
@@ -12,6 +16,14 @@ interface ShortcutsCarouselProps {
   shortcuts: Shortcut[];
   rowsPerColumn: number;
   cardVariant: ShortcutCardVariant;
+  layoutDensity?: ShortcutLayoutDensity;
+  compactIconSize?: number;
+  compactTitleFontSize?: number;
+  defaultIconSize?: number;
+  defaultTitleFontSize?: number;
+  defaultUrlFontSize?: number;
+  defaultVerticalPadding?: number;
+  forceTextWhite?: boolean;
   compactShowTitle: boolean;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, shortcutIndex: number, shortcut: Shortcut) => void;
@@ -27,13 +39,21 @@ export function ShortcutsCarousel({
   shortcuts,
   rowsPerColumn,
   cardVariant,
+  layoutDensity = 'regular',
+  compactIconSize = 72,
+  compactTitleFontSize = 12,
+  defaultIconSize = 36,
+  defaultTitleFontSize = 14,
+  defaultUrlFontSize = 10,
+  defaultVerticalPadding = 8,
+  forceTextWhite = false,
   compactShowTitle,
   onShortcutOpen,
   onShortcutContextMenu,
   onPageReorder,
   onPageContextMenu
 }: ShortcutsCarouselProps) {
-  const columns = getShortcutColumns(cardVariant);
+  const columns = getShortcutColumns(cardVariant, layoutDensity);
   const [isDraggingGrid, setIsDraggingGrid] = React.useState(false);
   const isDraggingGridRef = React.useRef(false);
   useEffect(() => {
@@ -134,6 +154,14 @@ export function ShortcutsCarousel({
                 pageShortcuts={pageShortcuts}
                 pageStartIndex={start}
                 cardVariant={cardVariant}
+                layoutDensity={layoutDensity}
+                compactIconSize={compactIconSize}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
                 compactShowTitle={compactShowTitle}
                 onShortcutOpen={onShortcutOpen}
                 onShortcutContextMenu={onShortcutContextMenu}
