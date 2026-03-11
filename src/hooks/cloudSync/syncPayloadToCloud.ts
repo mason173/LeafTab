@@ -30,6 +30,8 @@ type SyncDeps = {
   t: (key: string) => string;
   normalizeCloudShortcutsPayload: (raw: unknown) => CloudShortcutsPayloadV3 | null;
   notifyRateLimited: () => void;
+  persistPendingConflict: (localPayload: CloudShortcutsPayloadV3, cloudPayload: CloudShortcutsPayloadV3, cloudVersion: number | null) => void;
+  clearPendingConflict: () => void;
   refs: SyncRefs;
   stateSetters: SyncStateSetters;
 };
@@ -43,6 +45,8 @@ export const syncPayloadToCloudWithDeps = async ({
   t,
   normalizeCloudShortcutsPayload,
   notifyRateLimited,
+  persistPendingConflict,
+  clearPendingConflict,
   refs,
   stateSetters,
 }: SyncDeps): Promise<boolean> => {
@@ -108,6 +112,7 @@ export const syncPayloadToCloudWithDeps = async ({
       persistLocalProfileSnapshot(payload);
       localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
       emitCloudSyncStatusChanged();
+      clearPendingConflict();
       return true;
     };
 
@@ -157,6 +162,7 @@ export const syncPayloadToCloudWithDeps = async ({
           setPendingLocalPayload(payload);
           setPendingCloudPayload(latestPayload);
           pendingCloudVersionRef.current = cloudShortcutsVersionRef.current;
+          persistPendingConflict(payload, latestPayload, cloudShortcutsVersionRef.current);
           setConflictModalOpen(true);
           return false;
         }

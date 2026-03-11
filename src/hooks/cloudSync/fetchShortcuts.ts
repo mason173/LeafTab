@@ -40,6 +40,8 @@ type FetchDeps = {
   normalizeCloudShortcutsPayload: (raw: unknown) => CloudShortcutsPayloadV3 | null;
   loadLocalProfileSnapshotSafe: () => CloudShortcutsPayloadV3 | null;
   notifyRateLimited: () => void;
+  persistPendingConflict: (localPayload: CloudShortcutsPayloadV3, cloudPayload: CloudShortcutsPayloadV3, cloudVersion: number | null) => void;
+  clearPendingConflict: () => void;
   refs: FetchRefs;
   setters: FetchSetters;
 };
@@ -55,6 +57,8 @@ export const fetchShortcutsWithDeps = async ({
   normalizeCloudShortcutsPayload,
   loadLocalProfileSnapshotSafe,
   notifyRateLimited,
+  persistPendingConflict,
+  clearPendingConflict,
   refs,
   setters,
 }: FetchDeps): Promise<'success' | 'conflict' | 'error' | 'noop'> => {
@@ -152,6 +156,7 @@ export const fetchShortcutsWithDeps = async ({
         setPendingLocalPayload(localPayload);
         setPendingCloudPayload(cloudPayload);
         pendingCloudVersionRef.current = response.version;
+        persistPendingConflict(localPayload, cloudPayload, response.version);
         setConflictModalOpen(true);
         setCloudSyncInitialized(true);
         return 'conflict';
@@ -168,6 +173,7 @@ export const fetchShortcutsWithDeps = async ({
         localStorage.setItem('leaf_tab_shortcuts_cache', localJson);
         setCloudSyncInitialized(true);
         lastSavedShortcutsJson.current = '__force_upload__';
+        clearPendingConflict();
         return 'success';
       }
 
@@ -190,6 +196,7 @@ export const fetchShortcutsWithDeps = async ({
         setTimeout(() => {
           lastSavedShortcutsJson.current = '';
         }, 100);
+        clearPendingConflict();
         return 'success';
       }
 
@@ -204,6 +211,7 @@ export const fetchShortcutsWithDeps = async ({
         try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
         if (!silent) toast.success(t('toast.cloudSynced'));
         setCloudSyncInitialized(true);
+        clearPendingConflict();
         return 'success';
       }
     } else if (response.status === 401 || response.status === 403) {
@@ -214,8 +222,9 @@ export const fetchShortcutsWithDeps = async ({
       setCloudSyncInitialized(true);
       return 'error';
     }
-    setCloudSyncInitialized(true);
-    return 'noop';
+      setCloudSyncInitialized(true);
+      clearPendingConflict();
+      return 'noop';
   } catch (error) {
     console.error('Failed to fetch shortcuts:', error);
     try {
@@ -234,6 +243,7 @@ export const fetchShortcutsWithDeps = async ({
           setCloudSyncInitialized(true);
           lastSavedShortcutsJson.current = toSyncPayloadJson(payload);
           try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
+          clearPendingConflict();
           return 'success';
         }
       }

@@ -224,6 +224,11 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release126UnifiedCompareDialog: "Thống nhất luồng xử lý xung đột khi đăng nhập cloud với WebDAV, mở thẳng popup so sánh lớn",
+        release126ConflictStrategyTabs: "Thêm Tabs phía trên để chuyển nhanh chiến lược: Ưu tiên cloud / Ưu tiên local / Gộp",
+        release126ConflictPendingPersist: "Khi đóng popup hoặc tải lại trang, xung đột chưa xử lý sẽ được giữ lại và khôi phục",
+        release126ConflictFreezeAutoSync: "Tự động đồng bộ sẽ tạm dừng khi còn xung đột và tự khôi phục sau khi xác nhận",
+        release126CompareUiRefine: "Tinh gọn UI danh sách so sánh: bỏ container bao ngoài từng mục và dùng style Tabs giống trang Cài đặt",
         release125ImportLocalFirstSync: "Khi đã đăng nhập, nhập dữ liệu cục bộ sẽ đồng bộ lên cloud ngay sau khi xác nhận (ưu tiên dữ liệu cục bộ)",
         release125ManualCloudLocalFirst: "Khi bật cloud sync, bấm đồng bộ thủ công sẽ bỏ qua popup xung đột và đẩy dữ liệu cục bộ lên cloud trực tiếp",
         release125SyncSettingsUi: "Tinh gọn UI cài đặt đồng bộ Cloud/WebDAV: bỏ lớp bọc thừa của hai công tắc và đổi thứ tự hiển thị",

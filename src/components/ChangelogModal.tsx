@@ -13,6 +13,17 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.6",
+      date: "2026-03-11",
+      notes: [
+        t("changelog.items.release126UnifiedCompareDialog"),
+        t("changelog.items.release126ConflictStrategyTabs"),
+        t("changelog.items.release126ConflictPendingPersist"),
+        t("changelog.items.release126ConflictFreezeAutoSync"),
+        t("changelog.items.release126CompareUiRefine"),
+      ],
+    },
+    {
       version: "1.2.5",
       date: "2026-03-11",
       notes: [

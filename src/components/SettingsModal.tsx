@@ -581,10 +581,15 @@ export default function SettingsModal({
       toast.error(t('toast.sessionExpired'));
       return;
     }
+    const hadPendingConflict = Boolean(localStorage.getItem('leaftab_cloud_conflict_cache_v1'));
     const ok = await onCloudSyncNow();
     if (ok) {
       toast.success(t('toast.cloudAutoSyncSuccess'));
     } else {
+      const hasPendingConflictNow = Boolean(localStorage.getItem('leaftab_cloud_conflict_cache_v1'));
+      if (hadPendingConflict || hasPendingConflictNow) {
+        return;
+      }
       toast.error(t('toast.cloudSyncFailed'));
     }
   };

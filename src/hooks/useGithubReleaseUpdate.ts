@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { IS_STORE_BUILD } from '@/config/distribution';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/mason173/LeafTab/releases/latest';
+const LATEST_RELEASE_WEB = 'https://github.com/mason173/LeafTab/releases/latest';
+const RELEASE_TAG_FALLBACK_URL = 'https://github.com/mason173/LeafTab/releases/tag/v';
 const UPDATE_IGNORE_VERSION_KEY = 'leaftab_update_ignore_version';
 const UPDATE_CACHE_KEY = 'leaftab_update_release_cache_v1';
 const UPDATE_SNOOZE_UNTIL_KEY = 'leaftab_update_snooze_until';
@@ -31,7 +33,40 @@ type GithubReleasePayload = {
   prerelease?: unknown;
 };
 
+type BackendReleasePayload = {
+  version?: unknown;
+  url?: unknown;
+  publishedAt?: unknown;
+  notes?: unknown;
+};
+
 const normalizeVersion = (raw: string): string => raw.trim().replace(/^v/i, '');
+
+const extractVersionFromReleaseUrl = (url: string): string => {
+  const match = String(url || '').match(/\/releases\/tag\/([^/?#]+)/i);
+  if (!match) return '';
+  try {
+    return normalizeVersion(decodeURIComponent(match[1]));
+  } catch {
+    return normalizeVersion(match[1]);
+  }
+};
+
+const normalizeApiBase = (raw: string): string => {
+  const trimmed = String(raw || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return trimmed;
+  } catch {}
+  return '';
+};
+
+const resolveBackendUpdateUrl = (apiBase: string): string => {
+  const base = normalizeApiBase(apiBase);
+  if (!base) return '';
+  return `${base}/update/latest`;
+};
 
 const toVersionParts = (raw: string): number[] => {
   const core = normalizeVersion(raw).split('-')[0];
@@ -63,6 +98,19 @@ const parseNotes = (body: string): string[] =>
     .map((line) => line.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '').trim())
     .filter((line) => line.length > 0)
     .slice(0, 20);
+
+const parseNotesInput = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => String(item || '').trim())
+      .filter((line) => line.length > 0)
+      .slice(0, 20);
+  }
+  if (typeof raw === 'string') {
+    return parseNotes(raw);
+  }
+  return [];
+};
 
 const getCurrentVersion = async (): Promise<string> => {
   try {
@@ -108,7 +156,54 @@ const writeCachedRelease = (release: ReleaseInfo) => {
   } catch {}
 };
 
-const fetchLatestRelease = async (): Promise<ReleaseInfo | null> => {
+const fetchLatestReleaseFromBackend = async (apiBase: string): Promise<ReleaseInfo | null> => {
+  const endpoint = resolveBackendUpdateUrl(apiBase);
+  if (!endpoint) return null;
+  try {
+    const resp = await fetch(endpoint, {
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    if (!resp.ok) return null;
+    const data = (await resp.json()) as BackendReleasePayload;
+    const versionRaw = typeof data.version === 'string' ? data.version : '';
+    const version = normalizeVersion(versionRaw);
+    if (!version) return null;
+    const url = typeof data.url === 'string' && data.url.trim()
+      ? data.url
+      : `${RELEASE_TAG_FALLBACK_URL}${version}`;
+    const publishedAt = typeof data.publishedAt === 'string' ? data.publishedAt : '';
+    const notes = parseNotesInput(data.notes);
+    return { version, url, publishedAt, notes };
+  } catch {
+    return null;
+  }
+};
+
+const fetchLatestReleaseFromGithub = async (): Promise<ReleaseInfo | null> => {
+  // Prefer the web "latest" redirect endpoint to avoid GitHub API 403/rate-limit issues.
+  try {
+    const resp = await fetch(LATEST_RELEASE_WEB, {
+      cache: 'no-store',
+      redirect: 'follow',
+    });
+    if (resp.ok) {
+      const redirected = typeof resp.url === 'string' ? resp.url : '';
+      const version = extractVersionFromReleaseUrl(redirected);
+      if (version) {
+        return {
+          version,
+          url: redirected || `${RELEASE_TAG_FALLBACK_URL}${version}`,
+          publishedAt: '',
+          notes: [],
+        };
+      }
+    }
+  } catch {}
+
+  // Fallback to API if redirect parsing is unavailable.
   try {
     const resp = await fetch(LATEST_RELEASE_API, {
       headers: {
@@ -131,7 +226,7 @@ const fetchLatestRelease = async (): Promise<ReleaseInfo | null> => {
   }
 };
 
-export function useGithubReleaseUpdate() {
+export function useGithubReleaseUpdate(apiBase: string) {
   const [open, setOpen] = useState(false);
   const [currentVersion, setCurrentVersion] = useState('0.0.0');
   const [release, setRelease] = useState<ReleaseInfo | null>(null);
@@ -146,6 +241,7 @@ export function useGithubReleaseUpdate() {
     let canceled = false;
 
     const run = async () => {
+      setLoading(true);
       const localVersion = await getCurrentVersion();
       if (canceled) return;
       setCurrentVersion(localVersion);
@@ -170,7 +266,11 @@ export function useGithubReleaseUpdate() {
 
       const cached = readCachedRelease();
       const cacheFresh = !!cached && Date.now() - cached.checkedAt <= UPDATE_CACHE_TTL_MS;
-      const latest = cacheFresh ? cached : (await fetchLatestRelease()) || cached;
+      const latest = cacheFresh
+        ? cached
+        : (await fetchLatestReleaseFromBackend(apiBase))
+          || (await fetchLatestReleaseFromGithub())
+          || cached;
       if (!cacheFresh && latest) writeCachedRelease(latest);
 
       if (canceled) return;
@@ -192,7 +292,7 @@ export function useGithubReleaseUpdate() {
     return () => {
       canceled = true;
     };
-  }, []);
+  }, [apiBase]);
 
   const ignoreCurrentRelease = () => {
     if (!release) return;

@@ -224,6 +224,11 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release126UnifiedCompareDialog: "클라우드 로그인 충돌 처리를 WebDAV와 통일하고, 대형 비교 팝업을 바로 표시",
+        release126ConflictStrategyTabs: "상단 탭에서 \"클라우드 우선 / 로컬 우선 / 병합\" 전략을 전환 가능",
+        release126ConflictPendingPersist: "팝업을 닫거나 페이지를 새로고침해도 미해결 충돌 상태를 보존하고 복원",
+        release126ConflictFreezeAutoSync: "미해결 충돌이 있는 동안 자동 동기화를 일시 중지하고, 확인 후 재개",
+        release126CompareUiRefine: "비교 상세 UI를 간결화(항목 외곽 컨테이너 제거, 설정과 동일한 탭 스타일 적용)",
         release125ImportLocalFirstSync: "로그인 상태에서 로컬 데이터를 가져오면 확인 즉시 클라우드에 동기화됩니다(로컬 우선)",
         release125ManualCloudLocalFirst: "클라우드 동기화 활성화 시 수동 \"지금 동기화\"는 충돌 팝업 없이 로컬 데이터를 바로 클라우드에 반영합니다",
         release125SyncSettingsUi: "클라우드/WebDAV 동기화 설정 UI 개선: 두 스위치의 래퍼를 제거하고 순서를 조정",

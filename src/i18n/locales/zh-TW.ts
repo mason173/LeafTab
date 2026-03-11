@@ -224,6 +224,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release126UnifiedCompareDialog: "雲端登入衝突檢測流程與 WebDAV 統一，直接進入大型對比彈窗。",
+        release126ConflictStrategyTabs: "衝突處理改為頂部 Tab 切換「以雲端為準 / 以本地為準 / 合併」。",
+        release126ConflictPendingPersist: "關閉衝突彈窗或重新整理頁面後，未處理衝突會保留並自動恢復。",
+        release126ConflictFreezeAutoSync: "存在未處理衝突時自動同步會暫停，確認處理後自動恢復。",
+        release126CompareUiRefine: "大型對比彈窗明細區視覺精簡：移除每項外層容器，並採用與設定頁一致的 Tab 樣式。",
         release125ImportLocalFirstSync: "登入狀態下匯入本地資料後，確認匯入即立即同步到雲端（本地優先）。",
         release125ManualCloudLocalFirst: "雲端同步開啟時，手動「立即同步」不再彈出衝突檢測，直接以本地資料覆蓋雲端。",
         release125SyncSettingsUi: "雲端同步與 WebDAV 同步設定彈窗優化：兩個開關移除容器包裹並調整順序。",
