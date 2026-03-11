@@ -17,6 +17,7 @@ const {
   parseIntEnv,
   parseBoolEnv,
   resolveTrustProxy,
+  parseSameSiteEnv,
 } = require('./lib/env');
 const { parseAllowlist, createCorsOriginValidator } = require('./lib/corsPolicy');
 const { createReleaseUpdateService } = require('./lib/releaseUpdateService');
@@ -42,8 +43,22 @@ const UPDATE_LIMIT_WINDOW_MS = parseIntEnv('UPDATE_LIMIT_WINDOW_MS', 60 * 1000, 
 const UPDATE_LIMIT_MAX = parseIntEnv('UPDATE_LIMIT_MAX', 20, 1);
 const BCRYPT_ROUNDS = parseIntEnv('BCRYPT_ROUNDS', 10, 8, 14);
 const REQUEST_LOG_ENABLED = parseBoolEnv('REQUEST_LOG_ENABLED', process.env.NODE_ENV !== 'production');
-const TRUST_PROXY = resolveTrustProxy(process.env.TRUST_PROXY);
+const TRUST_PROXY = resolveTrustProxy(
+  process.env.TRUST_PROXY ?? (process.env.NODE_ENV === 'production' ? '1' : 'false')
+);
 const ALLOW_EXTENSION_ORIGINS = parseBoolEnv('ALLOW_EXTENSION_ORIGINS', true);
+const SESSION_COOKIE_SECURE_DEFAULT = process.env.NODE_ENV === 'production';
+const SESSION_COOKIE_SECURE = parseBoolEnv('SESSION_COOKIE_SECURE', SESSION_COOKIE_SECURE_DEFAULT);
+const SESSION_COOKIE_SAME_SITE_DEFAULT = (
+  process.env.NODE_ENV === 'production' && ALLOW_EXTENSION_ORIGINS
+) ? 'none' : 'lax';
+const SESSION_COOKIE_SAME_SITE = parseSameSiteEnv(
+  'SESSION_COOKIE_SAME_SITE',
+  SESSION_COOKIE_SAME_SITE_DEFAULT
+);
+const EFFECTIVE_SESSION_COOKIE_SECURE = SESSION_COOKIE_SAME_SITE === 'none'
+  ? true
+  : SESSION_COOKIE_SECURE;
 const { getLatestReleaseCached } = createReleaseUpdateService({
   githubToken: GITHUB_TOKEN,
   cacheTtlMs: UPDATE_RELEASE_CACHE_TTL_MS,
@@ -65,8 +80,8 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: EFFECTIVE_SESSION_COOKIE_SECURE,
+    sameSite: SESSION_COOKIE_SAME_SITE,
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60 * 1000
   }

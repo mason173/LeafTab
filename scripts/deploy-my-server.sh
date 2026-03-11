@@ -5,9 +5,29 @@ set -e
 # Ensure this script runs from project root.
 cd "$(dirname "$0")/.."
 
-# Personal defaults for this server. Can still be overridden by env vars.
-export LEAFTAB_SERVER_IP="${LEAFTAB_SERVER_IP:-83.229.123.206}"
-export LEAFTAB_PUBLIC_ORIGIN="${LEAFTAB_PUBLIC_ORIGIN:-https://www.leaftab.cc}"
+# NOTE:
+# This file is intended to be safe for public repos.
+# Do NOT hardcode server IP/domain/secrets here.
+#
+# Example:
+#   LEAFTAB_SERVER_IP="1.2.3.4" \
+#   LEAFTAB_PUBLIC_ORIGIN="https://example.com" \
+#   bash scripts/deploy-my-server.sh
+#
+# Optional:
+#   LEAFTAB_SERVER_USER (default: root)
+#   LEAFTAB_BACKEND_REMOTE_DIR (default: /var/www/leaftab-server)
+
+require_env() {
+  local key="$1"
+  if [ -z "${!key:-}" ]; then
+    echo "Missing required env: ${key}"
+    exit 1
+  fi
+}
+
+require_env "LEAFTAB_SERVER_IP"
+require_env "LEAFTAB_PUBLIC_ORIGIN"
 
 # Optional defaults you can override when needed:
 # export LEAFTAB_SERVER_USER="${LEAFTAB_SERVER_USER:-root}"

@@ -6,6 +6,8 @@ import { areSyncPayloadsEqual, toSyncPayloadJson } from '@/sync/core';
 import { createCloudSyncAdapter } from './cloudSyncAdapter';
 import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
 
+const FIRST_LOGIN_LOCAL_FIRST_KEY = 'leaftab_force_local_sync_after_first_login_user';
+
 type FetchRefs = {
   cloudShortcutsVersionRef: MutableRefObject<number | null>;
   pendingCloudVersionRef: MutableRefObject<number | null>;
@@ -148,6 +150,43 @@ export const fetchShortcutsWithDeps = async ({
       if (pendingPayloadFromCache && !promptOnDiff) {
         clearLocalNeedsCloudReconcile();
         setCloudSyncInitialized(true);
+        return 'success';
+      }
+
+      const forceLocalFirstOnFirstLogin = promptOnDiff
+        && localPayload
+        && localStorage.getItem(FIRST_LOGIN_LOCAL_FIRST_KEY) === user;
+      if (forceLocalFirstOnFirstLogin && localPayload) {
+        setScenarioModes(localPayload.scenarioModes);
+        setSelectedScenarioId(localPayload.selectedScenarioId);
+        setScenarioShortcuts(localPayload.scenarioShortcuts);
+        persistLocalProfileSnapshot(localPayload);
+        clearLocalNeedsCloudReconcile();
+        localStorage.setItem('leaf_tab_shortcuts_cache', localJson);
+        lastSavedShortcutsJson.current = '__force_upload__';
+        setCloudSyncInitialized(true);
+        clearPendingConflict();
+        localStorage.removeItem(FIRST_LOGIN_LOCAL_FIRST_KEY);
+        try {
+          const expectedVersion = Number.isFinite(response.version as number) ? Number(response.version) : undefined;
+          const pushResult = await adapter.push(localPayload, {
+            expectedVersion,
+            mode: 'prefer_local',
+          });
+          if (pushResult.ok) {
+            if (Number.isFinite(pushResult.version as number)) {
+              cloudShortcutsVersionRef.current = Number(pushResult.version);
+            }
+            lastSavedShortcutsJson.current = localJson;
+            localStorage.removeItem('leaf_tab_sync_pending');
+            localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
+            emitCloudSyncStatusChanged();
+          } else {
+            localStorage.setItem('leaf_tab_sync_pending', 'true');
+          }
+        } catch {
+          localStorage.setItem('leaf_tab_sync_pending', 'true');
+        }
         return 'success';
       }
 

@@ -224,6 +224,10 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release127CaptchaSessionFix: "修復線上註冊驗證碼頻繁誤判：確保驗證碼產生與註冊校驗使用同一會話。",
+        release127ProxyCookieDefaults: "優化生產環境會話預設（代理信任 + Cookie 策略），提升擴充到後端的會話穩定性。",
+        release127FirstLoginLocalFirst: "新使用者首次登入不再彈出同步衝突視窗，直接以本地資料優先同步到雲端。",
+        release127DeployScriptLibUpload: "修復後端部署腳本未上傳 server/lib 的問題，並強化部署環境變數預設補齊。",
         release126UnifiedCompareDialog: "雲端登入衝突檢測流程與 WebDAV 統一，直接進入大型對比彈窗。",
         release126ConflictStrategyTabs: "衝突處理改為頂部 Tab 切換「以雲端為準 / 以本地為準 / 合併」。",
         release126ConflictPendingPersist: "關閉衝突彈窗或重新整理頁面後，未處理衝突會保留並自動恢復。",

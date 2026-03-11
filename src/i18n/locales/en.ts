@@ -286,6 +286,10 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release127CaptchaSessionFix: "Fixed frequent false captcha failures during online registration by keeping captcha generation and register validation in the same session",
+        release127ProxyCookieDefaults: "Improved production session defaults (trusted proxy + cookie policy) for more stable extension-to-backend sessions",
+        release127FirstLoginLocalFirst: "New users no longer see a sync conflict dialog on first login; local data is pushed to cloud with local-first priority",
+        release127DeployScriptLibUpload: "Fixed backend deploy script to upload server/lib and hardened default env patching during deployment",
         release126UnifiedCompareDialog: "Unified cloud-login conflict handling with WebDAV and now open the large compare dialog directly",
         release126ConflictStrategyTabs: "Added top Tabs to switch strategy: Use Cloud / Use Local / Merge",
         release126ConflictPendingPersist: "Unresolved conflicts are preserved when closing the dialog or refreshing the page",

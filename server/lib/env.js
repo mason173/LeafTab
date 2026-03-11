@@ -56,9 +56,17 @@ function resolveTrustProxy(raw) {
   return false;
 }
 
+function parseSameSiteEnv(key, fallback = 'lax') {
+  const value = String(process.env[key] ?? '').trim().toLowerCase();
+  if (!value) return fallback;
+  if (value === 'lax' || value === 'strict' || value === 'none') return value;
+  return fallback;
+}
+
 module.exports = {
   initializeBackendEnv,
   parseIntEnv,
   parseBoolEnv,
   resolveTrustProxy,
+  parseSameSiteEnv,
 };

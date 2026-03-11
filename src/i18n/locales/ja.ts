@@ -230,6 +230,10 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release127CaptchaSessionFix: "オンライン登録で CAPTCHA が誤判定される問題を修正（生成と検証を同一セッションで処理）",
+        release127ProxyCookieDefaults: "本番環境のセッション既定値（プロキシ信頼 + Cookie ポリシー）を最適化し、拡張機能からバックエンドへのセッション安定性を向上",
+        release127FirstLoginLocalFirst: "新規ユーザーの初回ログイン時は競合ダイアログを表示せず、ローカル優先でクラウド同期を実行",
+        release127DeployScriptLibUpload: "バックエンド配備スクリプトで server/lib が未アップロードになる問題を修正し、環境変数の既定補完を強化",
         release126UnifiedCompareDialog: "クラウドログイン時の競合処理を WebDAV と統一し、大きな比較ダイアログを直接表示",
         release126ConflictStrategyTabs: "上部タブで「クラウド優先 / ローカル優先 / マージ」を切り替え可能に",
         release126ConflictPendingPersist: "ダイアログを閉じる／ページを再読み込みしても未解決競合を保持して復元",

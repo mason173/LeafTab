@@ -21,6 +21,8 @@ import { toast } from "@/components/ui/sonner";
 import { useTranslation } from 'react-i18next';
 import { normalizeApiBase } from "@/utils";
 
+const FIRST_LOGIN_LOCAL_FIRST_KEY = 'leaftab_force_local_sync_after_first_login_user';
+
 interface AuthModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -203,6 +205,9 @@ export default function AuthModal({
       }
       
       toast.success(t('auth.toast.registerSuccess', { username }));
+      try {
+        localStorage.setItem(FIRST_LOGIN_LOCAL_FIRST_KEY, username);
+      } catch {}
       setActiveTab("login");
       // Don't clear username so they can just type password
       setPassword("");

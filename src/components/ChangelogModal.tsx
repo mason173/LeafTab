@@ -13,6 +13,16 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.7",
+      date: "2026-03-11",
+      notes: [
+        t("changelog.items.release127CaptchaSessionFix"),
+        t("changelog.items.release127ProxyCookieDefaults"),
+        t("changelog.items.release127FirstLoginLocalFirst"),
+        t("changelog.items.release127DeployScriptLibUpload"),
+      ],
+    },
+    {
       version: "1.2.6",
       date: "2026-03-11",
       notes: [

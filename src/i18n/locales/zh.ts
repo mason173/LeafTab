@@ -287,6 +287,10 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release127CaptchaSessionFix: "修复线上注册验证码频繁误判：确保验证码生成与注册校验使用同一会话。",
+        release127ProxyCookieDefaults: "优化生产环境会话默认配置（代理信任 + Cookie 策略），提升扩展到后端的会话稳定性。",
+        release127FirstLoginLocalFirst: "新用户首次登录不再弹同步冲突窗口，直接以本地数据优先同步到云端。",
+        release127DeployScriptLibUpload: "修复后端部署脚本未上传 server/lib 的问题，并强化部署环境变量默认补全。",
         release126UnifiedCompareDialog: "云端登录冲突检测流程与 WebDAV 统一，直接进入大对比弹窗。",
         release126ConflictStrategyTabs: "冲突处理改为顶部 Tab 切换“以云端为准 / 以本地为准 / 合并”。",
         release126ConflictPendingPersist: "关闭冲突弹窗或刷新页面后，未处理冲突会保留并自动恢复。",
