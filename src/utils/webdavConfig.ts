@@ -14,7 +14,6 @@ export const WEBDAV_STORAGE_KEYS = {
   autoSyncToastEnabled: "webdav_auto_sync_toast_enabled",
   syncIntervalMinutes: "webdav_sync_interval_minutes",
   syncConflictPolicy: "webdav_sync_conflict_policy",
-  syncIncludeNestedConfigs: "webdav_sync_include_nested_configs",
   nextSyncAt: "webdav_next_sync_at",
 } as const;
 
@@ -87,7 +86,6 @@ export const writeWebdavStorageStateToStorage = (state: WebdavStorageState, defa
   localStorage.setItem(WEBDAV_STORAGE_KEYS.autoSyncToastEnabled, String(Boolean(state.autoSyncToastEnabled)));
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncIntervalMinutes, String(state.syncIntervalMinutes));
   localStorage.setItem(WEBDAV_STORAGE_KEYS.syncConflictPolicy, state.syncConflictPolicy);
-  localStorage.setItem(WEBDAV_STORAGE_KEYS.syncIncludeNestedConfigs, "true");
 };
 
 export const readWebdavConfigFromStorage = (options?: { allowDisabled?: boolean }): WebdavConfig | null => {
@@ -112,11 +110,9 @@ export const readWebdavConfigFromStorage = (options?: { allowDisabled?: boolean 
     filePath,
     syncOptions: {
       enabled: enabled || Boolean(options?.allowDisabled),
-      syncOnChange: false,
       syncBySchedule,
       syncIntervalMinutes,
       syncConflictPolicy,
-      includeNestedConfigs: true,
     },
   };
 };

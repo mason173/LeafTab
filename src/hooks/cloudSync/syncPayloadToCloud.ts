@@ -11,7 +11,6 @@ type SyncRefs = {
   lastSavedShortcutsJson: MutableRefObject<string>;
   cloudShortcutsVersionRef: MutableRefObject<number | null>;
   pendingCloudVersionRef: MutableRefObject<number | null>;
-  conflictPreferenceRef: MutableRefObject<'prefer_local' | ''>;
   syncInFlightRef: MutableRefObject<Promise<boolean> | null>;
   syncInFlightPayloadJsonRef: MutableRefObject<string>;
 };
@@ -52,7 +51,6 @@ export const syncPayloadToCloudWithDeps = async ({
     lastSavedShortcutsJson,
     cloudShortcutsVersionRef,
     pendingCloudVersionRef,
-    conflictPreferenceRef,
     syncInFlightRef,
     syncInFlightPayloadJsonRef,
   } = refs;
@@ -108,7 +106,6 @@ export const syncPayloadToCloudWithDeps = async ({
       clearLocalNeedsCloudReconcile();
       localStorage.setItem('leaf_tab_shortcuts_cache', payloadJson);
       persistLocalProfileSnapshot(payload);
-      conflictPreferenceRef.current = '';
       localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
       emitCloudSyncStatusChanged();
       return true;

@@ -70,7 +70,6 @@ export function useCloudSync({
   const lastSavedShortcutsJson = useRef<string>('');
   const cloudShortcutsVersionRef = useRef<number | null>(null);
   const pendingCloudVersionRef = useRef<number | null>(null);
-  const conflictPreferenceRef = useRef<'prefer_local' | ''>('');
   const syncInFlightRef = useRef<Promise<boolean> | null>(null);
   const syncInFlightPayloadJsonRef = useRef<string>('');
   const cloudPullDelayTimerRef = useRef<number | null>(null);
@@ -187,7 +186,6 @@ export function useCloudSync({
         lastSavedShortcutsJson,
         cloudShortcutsVersionRef,
         pendingCloudVersionRef,
-        conflictPreferenceRef,
         syncInFlightRef,
         syncInFlightPayloadJsonRef,
       },
@@ -215,13 +213,10 @@ export function useCloudSync({
       buildCloudShortcutsPayload,
       normalizeCloudShortcutsPayload,
       loadLocalProfileSnapshotSafe,
-      conflictPolicy: readCloudSyncConfigFromStorage().conflictPolicy,
-      mergePayload: (localPayload, remotePayload) => mergeWebdavPayload(localPayload as any, remotePayload as any) as CloudShortcutsPayloadV3,
       notifyRateLimited,
       refs: {
         cloudShortcutsVersionRef,
         pendingCloudVersionRef,
-        conflictPreferenceRef,
         lastSavedShortcutsJson,
       },
       setters: {
@@ -354,14 +349,6 @@ export function useCloudSync({
       markSyncError('offline');
       return false;
     }
-    const config = readCloudSyncConfigFromStorage();
-    if (config.conflictPolicy === 'prefer_remote') {
-      const result = await fetchShortcutsRef.current({ silent: false, promptOnDiff: true });
-      return result === 'success';
-    }
-    if (config.conflictPolicy === 'merge') {
-      await fetchShortcutsRef.current({ silent: true, promptOnDiff: true });
-    }
     const snapshot = loadLocalProfileSnapshotSafeRef.current();
     if (!snapshot) return false;
     markSyncStart();
@@ -370,13 +357,9 @@ export function useCloudSync({
       markSyncSuccess();
       return true;
     }
-    if (conflictModalOpenRef.current) {
-      markSyncConflict();
-      return false;
-    }
     markSyncError('cloud_manual_sync_failed');
     return false;
-  }, [markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, user]);
+  }, [markSyncError, markSyncStart, markSyncSuccess, user]);
 
   const resolveWithCloud = useCallback(() => {
     if (!pendingCloudPayload) {
@@ -394,7 +377,6 @@ export function useCloudSync({
     localStorage.removeItem('leaf_tab_sync_pending');
     localStorage.setItem('leaf_tab_shortcuts_cache', cloudJson);
     localDirtyRef.current = false;
-    conflictPreferenceRef.current = '';
     setCloudSyncInitialized(true);
     setConflictModalOpen(false);
     setPendingLocalPayload(null);
@@ -419,7 +401,6 @@ export function useCloudSync({
     localStorage.setItem('leaf_tab_sync_pending', 'true');
     localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(pendingLocalPayload));
     localDirtyRef.current = false;
-    conflictPreferenceRef.current = 'prefer_local';
     setCloudSyncInitialized(true);
     setConflictModalOpen(false);
     setPendingLocalPayload(null);
@@ -450,7 +431,6 @@ export function useCloudSync({
     localStorage.setItem('leaf_tab_sync_pending', 'true');
     localStorage.setItem('leaf_tab_shortcuts_cache', json);
     localDirtyRef.current = false;
-    conflictPreferenceRef.current = 'prefer_local';
     setCloudSyncInitialized(true);
     setConflictModalOpen(false);
     setPendingLocalPayload(null);
@@ -461,7 +441,7 @@ export function useCloudSync({
     toast.success(t('toast.syncMergeApplied'));
   }, [localDirtyRef, markSyncSuccess, pendingCloudPayload, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
 
-  const applyUndoPayload = useCallback((payload: CloudShortcutsPayloadV3) => {
+  const applyUndoPayload = useCallback(async (payload: CloudShortcutsPayloadV3) => {
     const json = JSON.stringify(payload);
     lastSavedShortcutsJson.current = '__force_upload__';
     setScenarioModes(payload.scenarioModes);
@@ -472,15 +452,20 @@ export function useCloudSync({
     localStorage.setItem('leaf_tab_sync_pending', 'true');
     localStorage.setItem('leaf_tab_shortcuts_cache', json);
     localDirtyRef.current = false;
-    conflictPreferenceRef.current = 'prefer_local';
     setCloudSyncInitialized(true);
     setConflictModalOpen(false);
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
-    markSyncSuccess();
-    void syncPayloadToCloud(payload, { conflictStrategy: 'prefer_local' });
-  }, [localDirtyRef, markSyncSuccess, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
+    markSyncStart();
+    const synced = await syncPayloadToCloud(payload, { conflictStrategy: 'prefer_local' });
+    if (synced) {
+      markSyncSuccess();
+      return true;
+    }
+    markSyncError('cloud_manual_sync_failed');
+    return false;
+  }, [localDirtyRef, markSyncError, markSyncStart, markSyncSuccess, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
 
   return {
     cloudSyncInitialized,

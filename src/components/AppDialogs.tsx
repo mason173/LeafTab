@@ -85,7 +85,7 @@ type ImportConfirmDialogProps = {
   busy: boolean;
   setBusy: (busy: boolean) => void;
   downloadCloudBackupEnvelope: () => Promise<void>;
-  applyUndoPayload: (payload: any) => void;
+  applyUndoPayload: (payload: any) => Promise<boolean>;
   onSuccess: () => void;
 };
 
@@ -304,13 +304,21 @@ export function AppDialogs({
               onClick={async () => {
                 if (!importConfirmDialog.payload) return;
                 importConfirmDialog.setBusy(true);
-                await importConfirmDialog.downloadCloudBackupEnvelope();
-                importConfirmDialog.applyUndoPayload(importConfirmDialog.payload);
-                toast.success(t('settings.backup.importSuccess'));
-                importConfirmDialog.onSuccess();
-                importConfirmDialog.setOpen(false);
-                importConfirmDialog.setPayload(null);
-                importConfirmDialog.setBusy(false);
+                try {
+                  await importConfirmDialog.downloadCloudBackupEnvelope();
+                  const synced = await importConfirmDialog.applyUndoPayload(importConfirmDialog.payload);
+                  toast.success(t('settings.backup.importSuccess'));
+                  if (!synced) {
+                    toast.error(t('toast.cloudSyncFailed'));
+                  }
+                  importConfirmDialog.onSuccess();
+                  importConfirmDialog.setOpen(false);
+                  importConfirmDialog.setPayload(null);
+                } catch {
+                  toast.error(t('settings.backup.importError'));
+                } finally {
+                  importConfirmDialog.setBusy(false);
+                }
               }}
             >
               {t('settings.backup.importConfirmAction')}

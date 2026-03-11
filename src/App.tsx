@@ -41,6 +41,7 @@ import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLoc
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { fetchIconLibraryManifest } from '@/utils/iconLibrary';
 import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
+import { isWebdavAuthError } from '@/utils/webdavError';
 import { AppDialogs } from './components/AppDialogs';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import { UpdateAvailableDialog } from './components/UpdateAvailableDialog';
@@ -204,7 +205,6 @@ export default function App() {
     conflictModalOpen, setConflictModalOpen,
     pendingLocalPayload,
     pendingCloudPayload,
-    cloudSyncState,
     triggerCloudSyncNow,
     contextMenu, setContextMenu,
     shortcutEditOpen, setShortcutEditOpen,
@@ -568,7 +568,7 @@ export default function App() {
     } catch (error) {
       markWebdavSyncError(error);
       emitWebdavSyncStatusChanged();
-      toast.error(t('settings.backup.webdav.syncError'));
+      toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t('settings.backup.webdav.syncError'));
     } finally {
       webdavEnableConflictRef.current = null;
       setWebdavEnableConflictOpen(false);
@@ -616,7 +616,7 @@ export default function App() {
     } catch (error) {
       markWebdavSyncError(error);
       emitWebdavSyncStatusChanged();
-      toast.error(t('settings.backup.webdav.syncError'));
+      toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t('settings.backup.webdav.syncError'));
     }
   }, [buildLocalWebdavPayload, emitWebdavSyncStatusChanged, fetchWebdavData, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, user]);
 
@@ -1386,7 +1386,6 @@ export default function App() {
           onPrivacyConsentChange: handlePrivacySwitchChange,
           onOpenAdminModal: handleOpenAdminModal,
           onOpenAboutModal: handleOpenAboutModal,
-          cloudSyncStatus: cloudSyncState.status,
           onCloudSyncNow: triggerCloudSyncNow,
           onOpenWebdavConfig: handleOpenWebdavConfig,
           onWebdavSync: resolveWebdavConflict,

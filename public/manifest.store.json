@@ -1,14 +1,22 @@
 {
   "manifest_version": 3,
   "name": "LeafTab",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "permissions": [
-    "search"
+    "search",
+    "permissions"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
   ],
   "host_permissions": [
     "https://www.leaftab.cc/*",
@@ -22,7 +30,15 @@
     "https://mason173.github.io/*",
     "https://raw.githubusercontent.com/*",
     "https://fonts.googleapis.com/*",
-    "https://fonts.gstatic.com/*"
+    "https://fonts.gstatic.com/*",
+    "https://ewebdav.pcloud.com/*",
+    "https://webdav.pcloud.com/*",
+    "https://webdav.mc.gmx.net/*",
+    "https://webdav.icedrive.io/*",
+    "https://webdav.yandex.com/*",
+    "https://magentacloud.de/*",
+    "https://dav.mailbox.org/*",
+    "https://webdav.smartdrive.web.de/*"
   ],
   "offline_enabled": true,
   "icons": {
