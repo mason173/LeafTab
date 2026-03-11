@@ -31,7 +31,7 @@ export function UpdateAvailableDialog({
 }: UpdateAvailableDialogProps) {
   const { t, i18n } = useTranslation();
 
-  const resolvedLatestVersion = latestVersion || (debugSample ? '1.2.4' : '');
+  const resolvedLatestVersion = latestVersion || (debugSample ? '1.2.5' : '');
   const resolvedPublishedAt = publishedAt || (debugSample ? new Date().toISOString() : '');
   const resolvedNotes = useMemo(() => {
     if (notes.length > 0) return notes;

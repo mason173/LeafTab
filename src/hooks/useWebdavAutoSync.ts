@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ApplyImportedDataOptions, WebdavConfig } from './useWebdavSync';
 import type { WebdavPayload } from '@/utils/backupData';
-import { areSyncPayloadsEqual, resolveSyncConflictPayload, toSyncPayloadJson, type SyncConflictPolicy } from '@/sync/core';
+import { areSyncPayloadsEqual, resolveSyncConflictPayload, type SyncConflictPolicy } from '@/sync/core';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
-import { useSyncState } from '@/sync/useSyncState';
 import { readWebdavConfigFromStorage, readWebdavStorageStateFromStorage, WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { createWebdavSyncAdapter } from './webdavSyncAdapter';
 import { toast } from '@/components/ui/sonner';
@@ -31,15 +30,8 @@ export function useWebdavAutoSync({
   mergePayload,
 }: UseWebdavAutoSyncParams) {
   const { t } = useTranslation();
-  const {
-    syncState,
-    markSyncStart,
-    markSyncSuccess,
-    markSyncError,
-  } = useSyncState();
   const webdavScheduleTimerRef = useRef<number | null>(null);
   const webdavAutoSyncInFlightRef = useRef(false);
-  const webdavLastPayloadRef = useRef<string>('');
   const [configVersion, setConfigVersion] = useState(0);
   const getIntervalMinutes = useCallback((config: WebdavConfig) => {
     const raw = Number(config.syncOptions?.syncIntervalMinutes ?? WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES);
@@ -70,7 +62,6 @@ export function useWebdavAutoSync({
   const resolveWebdavConflictInternal = useCallback(async (config: WebdavConfig) => {
     if (webdavAutoSyncInFlightRef.current) return false;
     webdavAutoSyncInFlightRef.current = true;
-    markSyncStart();
     localStorage.setItem('webdav_last_attempt_at', new Date().toISOString());
     emitSyncStatusChanged();
     try {
@@ -83,20 +74,15 @@ export function useWebdavAutoSync({
       const pulled = await adapter.pull();
       const remotePayload = pulled.payload;
       const localPayload = buildLocalPayload();
-      const localJson = toSyncPayloadJson(localPayload);
       if (!remotePayload) {
         await adapter.push(localPayload, { mode: 'prefer_local' });
-        webdavLastPayloadRef.current = localJson;
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        markSyncSuccess();
         return true;
       }
       if (areSyncPayloadsEqual(remotePayload, localPayload)) {
-        webdavLastPayloadRef.current = localJson;
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        markSyncSuccess();
         return true;
       }
       const policy = (config.syncOptions?.syncConflictPolicy || 'merge') as SyncConflictPolicy;
@@ -107,10 +93,8 @@ export function useWebdavAutoSync({
           closeSettings: false,
           successKey: 'settings.backup.webdav.syncSuccess',
         });
-        webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        markSyncSuccess();
         return true;
       }
 
@@ -120,29 +104,24 @@ export function useWebdavAutoSync({
           successKey: 'settings.backup.webdav.syncSuccess',
         });
         await adapter.push(resolution.resolvedPayload, { mode: 'strict' });
-        webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
         refreshNextSyncAtAfterSuccess(config);
         markLastSync();
-        markSyncSuccess();
         return true;
       }
 
       await adapter.push(resolution.resolvedPayload, { mode: 'prefer_local' });
-      webdavLastPayloadRef.current = toSyncPayloadJson(resolution.resolvedPayload);
       refreshNextSyncAtAfterSuccess(config);
       markLastSync();
-      markSyncSuccess();
       return true;
     } catch (error: any) {
       localStorage.setItem('webdav_last_error_at', new Date().toISOString());
       localStorage.setItem('webdav_last_error_message', String(error?.message || 'unknown'));
-      markSyncError(String(error?.message || 'unknown'));
       emitSyncStatusChanged();
       return false;
     } finally {
       webdavAutoSyncInFlightRef.current = false;
     }
-  }, [applyImportedData, buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, markSyncError, markSyncStart, markSyncSuccess, mergePayload, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
+  }, [applyImportedData, buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, mergePayload, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
   const resolveWebdavConflict = useCallback(async (config: WebdavConfig) => {
     void await resolveWebdavConflictInternal(config);
   }, [resolveWebdavConflictInternal]);
@@ -218,6 +197,5 @@ export function useWebdavAutoSync({
 
   return {
     resolveWebdavConflict,
-    syncState,
   };
 }

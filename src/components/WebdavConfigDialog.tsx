@@ -261,16 +261,16 @@ export function WebdavConfigDialog({
     >
       <div className="grid gap-3">
         <SyncToggleField
-          label={t("settings.backup.webdav.syncByScheduleLabel")}
-          description={t("settings.backup.webdav.syncByScheduleDesc")}
-          checked={syncBySchedule}
-          onCheckedChange={setSyncBySchedule}
-        />
-        <SyncToggleField
           label={t("settings.backup.webdav.autoSyncToastLabel")}
           description={t("settings.backup.webdav.autoSyncToastDesc")}
           checked={autoSyncToastEnabled}
           onCheckedChange={setAutoSyncToastEnabled}
+        />
+        <SyncToggleField
+          label={t("settings.backup.webdav.syncByScheduleLabel")}
+          description={t("settings.backup.webdav.syncByScheduleDesc")}
+          checked={syncBySchedule}
+          onCheckedChange={setSyncBySchedule}
         />
         <SyncIntervalSliderField
           label={t("settings.backup.webdav.syncIntervalLabel")}

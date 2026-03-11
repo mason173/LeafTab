@@ -2,14 +2,13 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts } from '../../types';
 import { clearLocalNeedsCloudReconcile, LOCAL_NEEDS_CLOUD_RECONCILE_KEY, persistLocalProfileSnapshot, readLocalNeedsCloudReconcileReason } from '@/utils/localProfileStorage';
 import { toast } from '@/components/ui/sonner';
-import { areSyncPayloadsEqual, toSyncPayloadJson, type SyncConflictPolicy } from '@/sync/core';
+import { areSyncPayloadsEqual, toSyncPayloadJson } from '@/sync/core';
 import { createCloudSyncAdapter } from './cloudSyncAdapter';
 import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
 
 type FetchRefs = {
   cloudShortcutsVersionRef: MutableRefObject<number | null>;
   pendingCloudVersionRef: MutableRefObject<number | null>;
-  conflictPreferenceRef: MutableRefObject<'prefer_local' | ''>;
   lastSavedShortcutsJson: MutableRefObject<string>;
 };
 
@@ -40,8 +39,6 @@ type FetchDeps = {
   buildCloudShortcutsPayload: (args?: BuildPayloadArgs) => CloudShortcutsPayloadV3;
   normalizeCloudShortcutsPayload: (raw: unknown) => CloudShortcutsPayloadV3 | null;
   loadLocalProfileSnapshotSafe: () => CloudShortcutsPayloadV3 | null;
-  conflictPolicy: SyncConflictPolicy;
-  mergePayload: (localPayload: CloudShortcutsPayloadV3, remotePayload: CloudShortcutsPayloadV3) => CloudShortcutsPayloadV3;
   notifyRateLimited: () => void;
   refs: FetchRefs;
   setters: FetchSetters;
@@ -57,20 +54,15 @@ export const fetchShortcutsWithDeps = async ({
   buildCloudShortcutsPayload,
   normalizeCloudShortcutsPayload,
   loadLocalProfileSnapshotSafe,
-  conflictPolicy,
-  mergePayload,
   notifyRateLimited,
   refs,
   setters,
 }: FetchDeps): Promise<'success' | 'conflict' | 'error' | 'noop'> => {
-  void conflictPolicy;
-  void mergePayload;
   if (!user) return 'noop';
 
   const {
     cloudShortcutsVersionRef,
     pendingCloudVersionRef,
-    conflictPreferenceRef,
     lastSavedShortcutsJson,
   } = refs;
   const {
@@ -151,7 +143,6 @@ export const fetchShortcutsWithDeps = async ({
       const cloudJson = cloudPayload ? toSyncPayloadJson(cloudPayload) : '';
       if (pendingPayloadFromCache && !promptOnDiff) {
         clearLocalNeedsCloudReconcile();
-        conflictPreferenceRef.current = '';
         setCloudSyncInitialized(true);
         return 'success';
       }
@@ -175,7 +166,6 @@ export const fetchShortcutsWithDeps = async ({
         clearLocalNeedsCloudReconcile();
         localStorage.setItem('leaf_tab_sync_pending', 'true');
         localStorage.setItem('leaf_tab_shortcuts_cache', localJson);
-        conflictPreferenceRef.current = '';
         setCloudSyncInitialized(true);
         lastSavedShortcutsJson.current = '__force_upload__';
         return 'success';

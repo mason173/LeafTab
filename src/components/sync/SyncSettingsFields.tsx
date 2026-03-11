@@ -1,8 +1,6 @@
-import type { SyncConflictPolicy } from '@/sync/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 
@@ -90,7 +88,7 @@ export function SyncToggleField({
   onCheckedChange,
 }: SyncToggleFieldProps) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-secondary/25 px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 py-1">
       <div className="flex flex-col items-start">
         <span className="text-sm font-medium leading-none">{label}</span>
         {description ? (
@@ -102,40 +100,6 @@ export function SyncToggleField({
         onCheckedChange={onCheckedChange}
         className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
       />
-    </div>
-  );
-}
-
-type SyncConflictPolicySelectFieldProps = {
-  label: string;
-  value: SyncConflictPolicy;
-  mergeLabel: string;
-  preferRemoteLabel: string;
-  preferLocalLabel: string;
-  onChange: (value: SyncConflictPolicy) => void;
-};
-
-export function SyncConflictPolicySelectField({
-  label,
-  value,
-  mergeLabel,
-  preferRemoteLabel,
-  preferLocalLabel,
-  onChange,
-}: SyncConflictPolicySelectFieldProps) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium leading-none">{label}</span>
-      <Select value={value} onValueChange={(v: string) => onChange(v as SyncConflictPolicy)}>
-        <SelectTrigger className="bg-secondary border-none text-foreground rounded-[12px] focus:ring-0 focus:ring-offset-0">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="bg-popover border-border text-popover-foreground">
-          <SelectItem value="merge" className="focus:bg-accent focus:text-accent-foreground">{mergeLabel}</SelectItem>
-          <SelectItem value="prefer_remote" className="focus:bg-accent focus:text-accent-foreground">{preferRemoteLabel}</SelectItem>
-          <SelectItem value="prefer_local" className="focus:bg-accent focus:text-accent-foreground">{preferLocalLabel}</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   );
 }

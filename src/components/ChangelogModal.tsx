@@ -13,11 +13,23 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.5",
+      date: "2026-03-11",
+      notes: [
+        t("changelog.items.release125ImportLocalFirstSync"),
+        t("changelog.items.release125ManualCloudLocalFirst"),
+        t("changelog.items.release125SyncSettingsUi"),
+        t("changelog.items.release125WebdavCorsPermission"),
+        t("changelog.items.release125WebdavAuthHint"),
+      ],
+    },
+    {
       version: "1.2.4",
       date: "2026-03-11",
       notes: [
         t("changelog.items.release124UpdateNotice"),
         t("changelog.items.release124Snooze24h"),
+        t("changelog.items.release124ChangelogEntry"),
         t("changelog.items.release124ReleasePackaging"),
         t("changelog.items.release124FirefoxCompat"),
       ],
@@ -74,7 +86,10 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
           <DialogTitle>{t("changelog.title")}</DialogTitle>
           <DialogDescription>{t("changelog.description")}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[66vh]">
+        <ScrollArea
+          className="max-h-[66vh]"
+          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
+        >
           <div className="pb-1 pr-1">
             {items.map((it) => (
               <section key={it.version} className="border-b border-border/50 py-4 first:pt-0 last:border-b-0 last:pb-0">

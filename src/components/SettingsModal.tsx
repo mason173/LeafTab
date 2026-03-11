@@ -27,13 +27,13 @@ import WallpaperSelector from "./WallpaperSelector";
 import { ChangelogModal } from "./ChangelogModal";
 import ConfirmDialog from "./ConfirmDialog";
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
-import type { SyncStateStatus } from "@/sync/stateMachine";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { toast } from "./ui/sonner";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { parseLeafTabBackup } from "@/utils/backupData";
 import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncConfigChanged, readCloudSyncConfigFromStorage, writeCloudSyncConfigToStorage } from "@/utils/cloudSyncConfig";
 import { hasWebdavUrlConfiguredFromStorage, isWebdavSyncEnabledFromStorage, readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from "@/utils/webdavConfig";
+import { isWebdavAuthError } from "@/utils/webdavError";
 /// <reference types="chrome" />
 import {
   Select,
@@ -131,7 +131,6 @@ interface SettingsModalProps {
   onVersionClick?: () => void;
   onOpenAdminModal?: () => void;
   onOpenAboutModal?: () => void;
-  cloudSyncStatus?: SyncStateStatus;
 }
 
 export default function SettingsModal({
@@ -175,7 +174,6 @@ export default function SettingsModal({
   onVersionClick,
   onOpenAdminModal,
   onOpenAboutModal,
-  cloudSyncStatus = 'idle',
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -538,10 +536,12 @@ export default function SettingsModal({
       localStorage.removeItem("webdav_last_error_message");
       setWebdavLastSyncAt(now);
       if (successKey) toast.success(t(successKey));
-    } catch {
+    } catch (error) {
       const failedAt = new Date().toISOString();
       localStorage.setItem("webdav_last_error_at", failedAt);
-      if (errorKey) toast.error(t(errorKey));
+      if (errorKey) {
+        toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t(errorKey));
+      }
     }
   };
   const handleCloudLogin = () => {
@@ -563,13 +563,10 @@ export default function SettingsModal({
   };
 
   const handleSaveCloudSyncConfig = () => {
-    const currentConfig = readCloudSyncConfigFromStorage();
     writeCloudSyncConfigToStorage({
       enabled: cloudSyncEnabledDraft,
       autoSyncToastEnabled: cloudAutoSyncToastEnabledDraft,
       intervalMinutes: cloudSyncIntervalDraft,
-      conflictPolicy: currentConfig.conflictPolicy,
-      nickname: currentConfig.nickname,
     });
     emitCloudSyncConfigChanged();
     setCloudSyncConfigOpen(false);
@@ -1251,16 +1248,16 @@ export default function SettingsModal({
       >
         <div className="flex flex-col gap-4">
           <SyncToggleField
-            label={t('settings.backup.cloud.enabledLabel')}
-            description={t('settings.backup.cloud.enabledDesc')}
-            checked={cloudSyncEnabledDraft}
-            onCheckedChange={setCloudSyncEnabledDraft}
-          />
-          <SyncToggleField
             label={t('settings.backup.cloud.autoSyncToastLabel')}
             description={t('settings.backup.cloud.autoSyncToastDesc')}
             checked={cloudAutoSyncToastEnabledDraft}
             onCheckedChange={setCloudAutoSyncToastEnabledDraft}
+          />
+          <SyncToggleField
+            label={t('settings.backup.cloud.enabledLabel')}
+            description={t('settings.backup.cloud.enabledDesc')}
+            checked={cloudSyncEnabledDraft}
+            onCheckedChange={setCloudSyncEnabledDraft}
           />
           <SyncIntervalSliderField
             label={t('settings.backup.cloud.intervalLabel')}
@@ -1270,7 +1267,7 @@ export default function SettingsModal({
             onChange={setCloudSyncIntervalDraft}
             disabled={!cloudSyncEnabledDraft}
           />
-          </div>
+        </div>
       </SyncSettingsDialog>
       <Dialog open={logoutConfirmOpen} onOpenChange={(open: boolean) => {
         setLogoutConfirmOpen(open);

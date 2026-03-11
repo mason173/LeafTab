@@ -39,9 +39,9 @@
   </p>
 </div>
 
-LeafTab 是一款纯VibeCoding编写的浏览器新标签页扩展，主要使用的AI模型是Chatgpt 5.2与Gemini 3 ，提供简洁美观的起始页体验，支持快捷方式管理、壁纸/天气展示，以及云同步与 WebDAV 同步等能力。
+LeafTab，一个由 AI 协助开发的、极简主义的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是回归“新标签页”这一动作的本质——一个高效的起点。它不追求花哨，而是追求稳定、顺手、可控。
 
-LeafTab is a browser new-tab extension built entirely via Vibe Coding, mainly using ChatGPT 5.2 and Gemini 3. It provides a clean and beautiful start-page experience with shortcut management, wallpaper/weather widgets, and cloud sync plus WebDAV sync.
+LeafTab is a minimalist new-tab extension built with AI assistance. It does not try to become a bloated browser operating system. Instead, it returns to the essence of opening a new tab: an efficient starting point. It does not chase flashy effects; it focuses on stability, smoothness, and control.
 
 ## 功能亮点 / Features
 
@@ -93,6 +93,9 @@ flowchart LR
 - WebDAV 存储（可选）/ WebDAV storage (optional):
   仅在用户开启 WebDAV 后，将备份写入你指定的 WebDAV 路径。  
   Backup is written only when WebDAV sync is enabled by the user.
+- WebDAV 域名权限（按需申请）/ WebDAV host permission (requested on demand):
+  仅在用户配置并触发 WebDAV 同步时，才会对该目标域名请求扩展权限（支持 HTTP/HTTPS）。  
+  Extension host permission is requested only for the configured WebDAV domain when the user triggers WebDAV sync (HTTP/HTTPS supported).
 - 不上传本地敏感文件 / No upload of local sensitive files:
   LeafTab 不会扫描或上传你设备中的任意本地文件。  
   LeafTab does not scan or upload arbitrary local files from your device.
