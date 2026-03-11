@@ -9,7 +9,7 @@ interface LoginBannerProps {
 export function LoginBanner({ onLogin, onClose }: LoginBannerProps) {
   const { t } = useTranslation();
   return (
-    <div className="w-[803px] max-w-full bg-background/80 text-muted-foreground px-4 py-2 flex items-center justify-between relative backdrop-blur-sm z-60 transition-all rounded-full border border-border mb-2">
+    <div className="w-full max-w-full bg-background/80 text-muted-foreground px-4 py-2 flex items-center justify-between relative backdrop-blur-sm z-60 transition-all rounded-full border border-border mb-2">
        <div className="flex items-center gap-2 text-xs">
           <span>{t('banner.syncPrompt')}</span>
           <button 

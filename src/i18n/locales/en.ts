@@ -91,6 +91,18 @@ export default {
         set: "Set",
         select: "Select"
       },
+      shortcutsStyle: {
+        label: "Shortcut Style",
+        entryDescription: "Switch shortcut style and density",
+        open: "Open",
+        title: "Shortcut Style Settings",
+        description: "Choose a shortcut style and adjust grid density",
+        rich: "Rich",
+        compact: "Minimal",
+        showName: "Show Name",
+        showNameDesc: "Display shortcut title below icon",
+        density: "Shortcut Density"
+      },
       backup: {
         label: "Data Backup & Recovery",
         description: "Import or export local layout data (.leaftab)",
@@ -286,6 +298,11 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release128ShortcutStyleDialog: "Added a dedicated shortcut style dialog with two card variants: Rich and Compact",
+        release128CompactLayoutRefine: "Refined compact shortcut layout to a 9-column edge-aligned grid with consistent spacing",
+        release128CompactHoverOnlyIcon: "Changed compact hover interaction to icon-only scale, removing background highlight and layout jitter",
+        release128EmptyIconFallback: "Added emptyicon fallback for shortcut icons: show title initial when missing, and align Add/Edit preview with the same style",
+        release128IgnoreFakeFavicons: "Filtered unreliable fallback favicon sources (DuckDuckGo / Google / gstatic favicon) to avoid false placeholder icons",
         release127CaptchaSessionFix: "Fixed frequent false captcha failures during online registration by keeping captcha generation and register validation in the same session",
         release127ProxyCookieDefaults: "Improved production session defaults (trusted proxy + cookie policy) for more stable extension-to-backend sessions",
         release127FirstLoginLocalFirst: "New users no longer see a sync conflict dialog on first login; local data is pushed to cloud with local-first priority",

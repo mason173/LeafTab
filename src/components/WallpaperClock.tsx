@@ -93,7 +93,7 @@ export function WallpaperClock({
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
 
   return (
-    <div className="relative w-[803px] h-[220px] rounded-[28px] overflow-hidden group select-none shadow-sm">
+    <div className="relative w-full h-[220px] rounded-[28px] overflow-hidden group select-none shadow-sm">
       <div className="absolute inset-0 bg-muted">
         <div className="w-full h-full transition-transform duration-[3000ms] ease-out transform-gpu group-hover:scale-[1.1]">
           {wallpaperMode === 'custom' && customWallpaper ? (

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { loadGoogleFont } from '../utils/googleFonts';
 import { clampShortcutsRowsPerColumn } from '../utils/backupData';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
+import { parseShortcutCardVariant, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -21,6 +22,15 @@ export function useSettings() {
   });
   const [customApiUrl, setCustomApiUrl] = useState(() => localStorage.getItem('leaftab_custom_api_url') || '');
   const [customApiName, setCustomApiName] = useState(() => localStorage.getItem('leaftab_custom_api_name') || '');
+  const [shortcutCardVariant, setShortcutCardVariant] = useState<ShortcutCardVariant>(() => {
+    const stored = localStorage.getItem('shortcutCardVariant');
+    return parseShortcutCardVariant(stored);
+  });
+  const [shortcutCompactShowTitle, setShortcutCompactShowTitle] = useState<boolean>(() => {
+    const stored = localStorage.getItem('shortcutCompactShowTitle');
+    if (stored === null) return true;
+    return stored === 'true';
+  });
   const [shortcutsRowsPerColumn, setShortcutsRowsPerColumn] = useState(() => {
     const stored = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     return clampShortcutsRowsPerColumn(stored);
@@ -66,6 +76,11 @@ export function useSettings() {
 
     const storedShowTime = localStorage.getItem('showTime');
     if (storedShowTime !== null) setShowTime(JSON.parse(storedShowTime));
+    setShortcutCardVariant(parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')));
+    const storedShortcutCompactShowTitle = localStorage.getItem('shortcutCompactShowTitle');
+    if (storedShortcutCompactShowTitle !== null) {
+      setShortcutCompactShowTitle(storedShortcutCompactShowTitle === 'true');
+    }
     const storedShortcutsRowsPerColumn = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     setShortcutsRowsPerColumn(clampShortcutsRowsPerColumn(storedShortcutsRowsPerColumn));
     
@@ -128,6 +143,14 @@ export function useSettings() {
   }, [showTime]);
 
   useEffect(() => {
+    localStorage.setItem('shortcutCardVariant', shortcutCardVariant);
+  }, [shortcutCardVariant]);
+
+  useEffect(() => {
+    localStorage.setItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
+  }, [shortcutCompactShowTitle]);
+
+  useEffect(() => {
     const normalized = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
     if (normalized !== shortcutsRowsPerColumn) {
       setShortcutsRowsPerColumn(normalized);
@@ -185,6 +208,10 @@ export function useSettings() {
     setShowSeconds,
     showTime,
     setShowTime,
+    shortcutCardVariant,
+    setShortcutCardVariant,
+    shortcutCompactShowTitle,
+    setShortcutCompactShowTitle,
     shortcutsRowsPerColumn,
     setShortcutsRowsPerColumn,
     privacyConsent,

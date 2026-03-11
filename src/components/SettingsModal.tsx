@@ -1,13 +1,11 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { animate, useMotionValue } from "framer-motion";
 import {
-  RiCheckFill,
   RiCheckboxBlankFill,
   RiCloudFill,
   RiDashboardFill,
@@ -47,17 +45,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { SyncSettingsDialog } from "./SyncSettingsDialog";
 import {
   SyncIntervalSliderField,
   SyncSettingsActionButtons,
   SyncToggleField,
 } from "./sync/SyncSettingsFields";
+import { ShortcutStyleSettingsDialog } from "./ShortcutStyleSettingsDialog";
+import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 
 function RollingNumber({
   value,
@@ -103,6 +98,10 @@ interface SettingsModalProps {
   onFreshModeChange: (checked: boolean) => void;
   displayMode: 'panoramic' | 'minimalist' | 'fresh';
   onDisplayModeChange: (mode: 'panoramic' | 'minimalist' | 'fresh') => void;
+  shortcutCardVariant: ShortcutCardVariant;
+  onShortcutCardVariantChange: (variant: ShortcutCardVariant) => void;
+  shortcutCompactShowTitle: boolean;
+  onShortcutCompactShowTitleChange: (show: boolean) => void;
   shortcutsRowsPerColumn: number;
   onShortcutsRowsPerColumnChange: (rows: number) => void;
   openInNewTab: boolean;
@@ -146,6 +145,10 @@ export default function SettingsModal({
   onFreshModeChange,
   displayMode,
   onDisplayModeChange,
+  shortcutCardVariant,
+  onShortcutCardVariantChange,
+  shortcutCompactShowTitle,
+  onShortcutCompactShowTitleChange,
   shortcutsRowsPerColumn,
   onShortcutsRowsPerColumnChange,
   openInNewTab,
@@ -210,8 +213,8 @@ export default function SettingsModal({
     { name: 'pink', value: '#ec4899', label: t('settings.accent.pink') },
     { name: 'red', value: '#ef4444', label: t('settings.accent.red') },
   ];
-  const [shortcutsLayoutPickerOpen, setShortcutsLayoutPickerOpen] = useState(false);
-  const [hoveredShortcutsRows, setHoveredShortcutsRows] = useState<number | null>(null);
+  const [shortcutStyleDialogOpen, setShortcutStyleDialogOpen] = useState(false);
+  const shortcutStyleDialogTimerRef = useRef<number | null>(null);
 
   const changeLanguage = (value: string) => {
     i18n.changeLanguage(value);
@@ -328,8 +331,6 @@ export default function SettingsModal({
     };
     reader.readAsText(file);
   };
-  const shortcutsRowsPreview = hoveredShortcutsRows ?? shortcutsRowsPerColumn;
-
   const [changelogOpen, setChangelogOpen] = useState(false);
   const changelogOpenTimerRef = useRef<number | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -635,11 +636,27 @@ export default function SettingsModal({
     }, 0);
   };
 
+  const handleOpenShortcutStyleSettings = () => {
+    onOpenChange(false);
+    if (shortcutStyleDialogTimerRef.current) {
+      window.clearTimeout(shortcutStyleDialogTimerRef.current);
+      shortcutStyleDialogTimerRef.current = null;
+    }
+    shortcutStyleDialogTimerRef.current = window.setTimeout(() => {
+      setShortcutStyleDialogOpen(true);
+      shortcutStyleDialogTimerRef.current = null;
+    }, 0);
+  };
+
   useEffect(() => {
     return () => {
       if (changelogOpenTimerRef.current) {
         window.clearTimeout(changelogOpenTimerRef.current);
         changelogOpenTimerRef.current = null;
+      }
+      if (shortcutStyleDialogTimerRef.current) {
+        window.clearTimeout(shortcutStyleDialogTimerRef.current);
+        shortcutStyleDialogTimerRef.current = null;
       }
     };
   }, []);
@@ -880,67 +897,18 @@ export default function SettingsModal({
             {displayMode !== 'minimalist' && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col space-y-1 items-start">
-                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsLayout.label')}</span>
-                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsLayout.description')}</span>
+                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.label')}</span>
+                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsStyle.entryDescription')}</span>
                 </div>
-                <Popover
-                  open={shortcutsLayoutPickerOpen}
-                  onOpenChange={(open: boolean) => {
-                    setShortcutsLayoutPickerOpen(open);
-                    if (!open) setHoveredShortcutsRows(null);
-                  }}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                  onClick={handleOpenShortcutStyleSettings}
                 >
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex h-9 min-w-[118px] items-center justify-center rounded-xl border border-border bg-secondary/40 px-3 text-sm text-foreground transition-colors hover:bg-secondary/70"
-                    >
-                      <span>{`3*${shortcutsRowsPerColumn}`}</span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={8} className="w-[176px] rounded-2xl border-border bg-popover/95 p-3 shadow-[0_16px_36px_rgba(0,0,0,0.22)]">
-                    <div className="mb-2.5 flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-center">
-                      <span className="inline-flex min-w-[56px] items-center justify-center text-base font-semibold leading-none text-primary tabular-nums">{`3*${shortcutsRowsPreview}`}</span>
-                      <span className="text-xs text-muted-foreground">{t('settings.shortcutsLayout.select')}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5" onMouseLeave={() => setHoveredShortcutsRows(null)}>
-                      {Array.from({ length: 11 }, (_, index) => index + 1).flatMap((rows) =>
-                        Array.from({ length: 3 }, (_, columnIndex) => {
-                          const selectable = rows >= 1;
-                          const active = selectable && rows <= shortcutsRowsPreview;
-                          const selected = rows === shortcutsRowsPerColumn;
-                          return (
-                            <button
-                              key={`${rows}-${columnIndex}`}
-                              type="button"
-                              aria-label={selectable ? `3*${rows}` : `3*${rows} unavailable`}
-                              disabled={!selectable}
-                              onMouseEnter={() => selectable && setHoveredShortcutsRows(rows)}
-                              onFocus={() => selectable && setHoveredShortcutsRows(rows)}
-                              onClick={() => {
-                                if (!selectable) return;
-                                onShortcutsRowsPerColumnChange(rows);
-                                setShortcutsLayoutPickerOpen(false);
-                                setHoveredShortcutsRows(null);
-                              }}
-                              className={`relative h-3.5 w-full rounded-md border transition-all duration-150 ${
-                                selectable
-                                  ? active
-                                    ? 'border-primary/75 bg-primary/35 shadow-[0_0_0_1px_rgba(99,102,241,0.28)]'
-                                    : 'border-border bg-secondary/60 hover:border-primary/40 hover:bg-primary/15'
-                                  : 'cursor-not-allowed border-border/50 bg-secondary/20 opacity-35'
-                              } ${selected ? 'ring-1 ring-primary/60 ring-offset-1 ring-offset-popover' : ''}`}
-                            >
-                              {selected && columnIndex === 2 && rows === shortcutsRowsPerColumn && (
-                                <RiCheckFill className="absolute -right-1 -top-1 size-3 rounded-full bg-primary text-primary-foreground" />
-                              )}
-                            </button>
-                          );
-                        }),
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  <RiLayoutGridFill className="size-4" />
+                  {t('settings.shortcutsStyle.open')}
+                </Button>
               </div>
             )}
             {/* Theme Color Selection */}
@@ -1236,6 +1204,18 @@ export default function SettingsModal({
           </div>
         </ScrollArea>
       </DialogContent>
+      <ShortcutStyleSettingsDialog
+        open={shortcutStyleDialogOpen}
+        onOpenChange={setShortcutStyleDialogOpen}
+        variant={shortcutCardVariant}
+        compactShowTitle={shortcutCompactShowTitle}
+        rowsPerColumn={shortcutsRowsPerColumn}
+        onSave={({ variant, compactShowTitle, rowsPerColumn }) => {
+          onShortcutCardVariantChange(variant);
+          onShortcutCompactShowTitleChange(compactShowTitle);
+          onShortcutsRowsPerColumnChange(rowsPerColumn);
+        }}
+      />
       <SyncSettingsDialog
         open={cloudSyncConfigOpen}
         onOpenChange={setCloudSyncConfigOpen}

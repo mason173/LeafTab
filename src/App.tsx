@@ -53,6 +53,7 @@ import {
 } from './utils/backupData';
 import { areSyncPayloadsEqual } from '@/sync/core';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
+import { getShortcutColumns } from '@/components/shortcuts/shortcutCardVariant';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -210,6 +211,8 @@ export default function App() {
     timeFont, setTimeFont,
     showSeconds, setShowSeconds,
     showTime, setShowTime,
+    shortcutCardVariant, setShortcutCardVariant,
+    shortcutCompactShowTitle, setShortcutCompactShowTitle,
     shortcutsRowsPerColumn, setShortcutsRowsPerColumn,
     privacyConsent, setPrivacyConsent,
     apiServer, setApiServer,
@@ -292,7 +295,7 @@ export default function App() {
     handlePageReorder,
     moveShortcutToPage,
     resetLocalShortcutsByRole
-  } = useShortcuts(user, openInNewTab, API_URL, handleLogout, shortcutsRowsPerColumn);
+  } = useShortcuts(user, openInNewTab, API_URL, handleLogout, shortcutsRowsPerColumn, shortcutCardVariant);
 
   useEffect(() => {
     if (conflictModalOpen && !confirmChoice) {
@@ -1016,17 +1019,22 @@ export default function App() {
   }, []);
 
   const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
-  const shortcutsPageCapacity = normalizedRowsPerColumn * 3;
+  const shortcutsColumns = getShortcutColumns(shortcutCardVariant);
+  const shortcutsPageCapacity = normalizedRowsPerColumn * shortcutsColumns;
   const maxShortcutsPageIndex = getMaxPageIndex(shortcuts.length);
   const maxShortcutsOnCurrentPage = (() => {
     const start = shortcutsPageIndex * shortcutsPageCapacity;
     const end = Math.min(start + shortcutsPageCapacity, shortcuts.length);
     const total = Math.max(0, end - start);
-    const rows = Math.ceil(total / 3);
+    const rows = Math.ceil(total / shortcutsColumns);
     return Math.min(rows, normalizedRowsPerColumn);
   })();
   const displayRows = Math.max(maxShortcutsOnCurrentPage, normalizedRowsPerColumn);
-  const shortcutsAreaHeight = 32 + 4 + displayRows * 52 + Math.max(0, displayRows - 1) * 1;
+  const shortcutRowHeight = shortcutCardVariant === 'compact'
+    ? (shortcutCompactShowTitle ? 96 : 72)
+    : 52;
+  const shortcutRowGap = shortcutCardVariant === 'compact' ? 20 : 4;
+  const shortcutsAreaHeight = 32 + 4 + displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
   const pageIndices = (() => {
     const pageCount = Math.max(1, Math.ceil(shortcuts.length / shortcutsPageCapacity));
     return Array.from({ length: pageCount }, (_, i) => i);
@@ -1168,9 +1176,10 @@ export default function App() {
 
       {/* 主要内容区域 */}
       {!roleSelectorOpen && (
-        <div className="flex flex-col items-center gap-[16px] mt-[32px] flex-1 w-full">
+        <div className="flex flex-col items-center mt-[32px] flex-1 w-full">
+          <div className="w-[1000px] max-w-full flex flex-col items-stretch gap-[16px]">
           {!user && loginBannerVisible && (
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+            <motion.div className="w-full" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
               <LoginBanner 
                 onLogin={handleRequestCloudLogin}
                 onClose={() => { setLoginBannerVisible(false); sessionStorage.setItem('loginBannerDismissed', 'true'); }} 
@@ -1183,7 +1192,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.98, y: 12 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="transform-gpu will-change-transform"
+              className="w-full transform-gpu will-change-transform"
             >
               <WallpaperClock 
                 time={time} date={date} lunar={lunar} wallpaperUrl={bingWallpaper}
@@ -1206,7 +1215,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 16 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.45, ease: 'easeOut' }}
-                className="transform-gpu will-change-transform"
+                className="w-full transform-gpu will-change-transform"
               >
                 <InlineTime 
                   time={time} 
@@ -1222,7 +1231,7 @@ export default function App() {
           )}
 
           <motion.div 
-            className="relative z-20 transform-gpu will-change-transform" 
+            className="relative w-full z-20 transform-gpu will-change-transform" 
             initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
             transition={{ duration: 0.5, ease: 'easeOut', delay: 0.12 }}
@@ -1241,7 +1250,7 @@ export default function App() {
 
           {!minimalistMode && (
             <motion.div 
-              className="relative z-10 transform-gpu will-change-transform" 
+              className="relative w-full z-10 transform-gpu will-change-transform" 
               initial={{ opacity: 0, y: 24 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ duration: 0.6, ease: 'easeOut', delay: 0.24 }}
@@ -1253,6 +1262,8 @@ export default function App() {
                 height={shortcutsAreaHeight}
                 shortcuts={shortcuts}
                 rowsPerColumn={normalizedRowsPerColumn}
+                cardVariant={shortcutCardVariant}
+                compactShowTitle={shortcutCompactShowTitle}
                 onShortcutOpen={handleShortcutOpen}
                 onShortcutContextMenu={handleShortcutContextMenu}
                 onPageReorder={handlePageReorder}
@@ -1260,6 +1271,7 @@ export default function App() {
               />
             </motion.div>
           )}
+          </div>
         </div>
       )}
 
@@ -1434,6 +1446,10 @@ export default function App() {
           onFreshModeChange: setFreshMode,
           displayMode,
           onDisplayModeChange: setDisplayMode,
+          shortcutCardVariant,
+          onShortcutCardVariantChange: setShortcutCardVariant,
+          shortcutCompactShowTitle,
+          onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
           shortcutsRowsPerColumn: normalizedRowsPerColumn,
           onShortcutsRowsPerColumnChange: handleShortcutsRowsPerColumnChange,
           openInNewTab,
@@ -1679,7 +1695,7 @@ function InlineTime({ time, date, lunar, timeFont, onTimeFontChange, isMinimalis
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
   const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
   return (
-    <div className="relative w-[803px] rounded-[28px] overflow-hidden group select-none">
+    <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
       <div className="absolute inset-0 pointer-events-none opacity-0" />
       <div className="relative z-10 pointer-events-none transform-gpu flex flex-col items-center justify-center py-6">
         <button

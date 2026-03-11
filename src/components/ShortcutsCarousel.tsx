@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Shortcut } from '../types';
 import { ShortcutGrid } from './ShortcutGrid';
+import { getShortcutColumns, type ShortcutCardVariant } from './shortcuts/shortcutCardVariant';
 
 interface ShortcutsCarouselProps {
   currentIndex: number;
@@ -10,6 +11,8 @@ interface ShortcutsCarouselProps {
   height: number;
   shortcuts: Shortcut[];
   rowsPerColumn: number;
+  cardVariant: ShortcutCardVariant;
+  compactShowTitle: boolean;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, shortcutIndex: number, shortcut: Shortcut) => void;
   onPageReorder: (pageIndex: number, nextShortcuts: Shortcut[]) => void;
@@ -23,11 +26,14 @@ export function ShortcutsCarousel({
   height,
   shortcuts,
   rowsPerColumn,
+  cardVariant,
+  compactShowTitle,
   onShortcutOpen,
   onShortcutContextMenu,
   onPageReorder,
   onPageContextMenu
 }: ShortcutsCarouselProps) {
+  const columns = getShortcutColumns(cardVariant);
   const [isDraggingGrid, setIsDraggingGrid] = React.useState(false);
   const isDraggingGridRef = React.useRef(false);
   useEffect(() => {
@@ -105,7 +111,7 @@ export function ShortcutsCarousel({
   }, [handleWheel]);
 
   return (
-    <div className="relative w-[803px]">
+    <div className="relative w-full">
       <div
         className="overflow-hidden"
         ref={(node) => {
@@ -116,17 +122,19 @@ export function ShortcutsCarousel({
       >
         <div className="flex">
           {pageIndices.map((p) => {
-            const pageCapacity = rowsPerColumn * 3;
+            const pageCapacity = rowsPerColumn * columns;
             const start = p * pageCapacity;
             const end = Math.min(start + pageCapacity, shortcuts.length);
             const pageShortcuts = shortcuts.slice(start, end);
             return (
-            <div key={p} className="shrink-0 w-[803px]">
+            <div key={p} className="shrink-0 w-full">
               <ShortcutGrid
                 pageIndex={p}
                 containerHeight={height}
                 pageShortcuts={pageShortcuts}
                 pageStartIndex={start}
+                cardVariant={cardVariant}
+                compactShowTitle={compactShowTitle}
                 onShortcutOpen={onShortcutOpen}
                 onShortcutContextMenu={onShortcutContextMenu}
                 onPageReorder={onPageReorder}
