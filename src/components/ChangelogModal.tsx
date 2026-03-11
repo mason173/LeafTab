@@ -13,6 +13,17 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.2.8",
+      date: "2026-03-11",
+      notes: [
+        t("changelog.items.release128ShortcutStyleDialog"),
+        t("changelog.items.release128CompactLayoutRefine"),
+        t("changelog.items.release128CompactHoverOnlyIcon"),
+        t("changelog.items.release128EmptyIconFallback"),
+        t("changelog.items.release128IgnoreFakeFavicons"),
+      ],
+    },
+    {
       version: "1.2.7",
       date: "2026-03-11",
       notes: [

@@ -520,7 +520,7 @@ export function SearchBar({
   };
 
   return (
-    <div className="relative content-stretch flex items-start w-[803px]" onKeyDown={handleKeyDown}>
+    <div className="relative content-stretch flex items-start w-full" onKeyDown={handleKeyDown}>
       {/* <div className="relative" ref={dropdownRef}>
         <SearchEngineButton engine={searchEngine} onClick={undefined} minimalistMode={minimalistMode} />
         <SearchEngineDropdown currentEngine={searchEngine} onSelect={onEngineSelect} isOpen={dropdownOpen} />

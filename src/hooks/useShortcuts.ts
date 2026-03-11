@@ -10,6 +10,7 @@ import { useShortcutDomainReporting } from './useShortcutDomainReporting';
 import { useShortcutActions } from './useShortcutActions';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
 import { loadRoleProfileDataForReset } from '@/utils/roleProfile';
+import { getShortcutColumns, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
 
 const LEGACY_SHORTCUTS_KEY = 'local_shortcuts';
 
@@ -18,7 +19,8 @@ export function useShortcuts(
   openInNewTab: boolean,
   API_URL: string,
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void,
-  shortcutsRowsPerColumn: number
+  shortcutsRowsPerColumn: number,
+  shortcutCardVariant: ShortcutCardVariant
 ) {
   const { t, i18n } = useTranslation();
 
@@ -119,7 +121,8 @@ export function useShortcuts(
 
   const shortcuts = scenarioShortcuts[selectedScenarioId] ?? [];
   const maxShortcutsPerColumn = useMemo(() => clampShortcutsRowsPerColumn(shortcutsRowsPerColumn), [shortcutsRowsPerColumn]);
-  const shortcutsPageCapacity = maxShortcutsPerColumn * 3;
+  const shortcutColumns = useMemo(() => getShortcutColumns(shortcutCardVariant), [shortcutCardVariant]);
+  const shortcutsPageCapacity = maxShortcutsPerColumn * shortcutColumns;
 
   const totalShortcuts = useMemo(() => {
     let count = 0;

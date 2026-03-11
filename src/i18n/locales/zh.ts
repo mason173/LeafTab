@@ -91,6 +91,18 @@ export default {
         set: "设置",
         select: "选择"
       },
+      shortcutsStyle: {
+        label: "快捷方式样式",
+        entryDescription: "切换快捷方式展示样式与密度",
+        open: "打开",
+        title: "快捷方式样式设置",
+        description: "选择快捷方式样式并调整网格密度",
+        rich: "丰富",
+        compact: "简约",
+        showName: "显示名称",
+        showNameDesc: "开启后在图标下显示快捷方式标题",
+        density: "快捷方式密度"
+      },
       backup: {
         label: "数据备份与恢复",
         description: "导入或导出本地布局数据 (.leaftab)",
@@ -287,6 +299,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release128ShortcutStyleDialog: "新增快捷方式样式设置弹窗：支持“丰富 / 简约”两种卡片样式切换。",
+        release128CompactLayoutRefine: "简约快捷方式布局优化为 9 列贴边排布，并统一网格间距表现。",
+        release128CompactHoverOnlyIcon: "简约卡片悬停交互改为仅图标放大，不再出现背景高亮或挤占抖动。",
+        release128EmptyIconFallback: "快捷方式图标新增 emptyicon 兜底：无图标显示标题首字；添加/编辑弹窗预览同步该样式。",
+        release128IgnoreFakeFavicons: "图标解析新增无效兜底源过滤（DuckDuckGo / Google / gstatic favicon），避免错误占位图标。",
         release127CaptchaSessionFix: "修复线上注册验证码频繁误判：确保验证码生成与注册校验使用同一会话。",
         release127ProxyCookieDefaults: "优化生产环境会话默认配置（代理信任 + Cookie 策略），提升扩展到后端的会话稳定性。",
         release127FirstLoginLocalFirst: "新用户首次登录不再弹同步冲突窗口，直接以本地数据优先同步到云端。",

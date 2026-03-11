@@ -88,6 +88,18 @@ export default {
         set: "設定",
         select: "選擇"
       },
+      shortcutsStyle: {
+        label: "捷徑樣式",
+        entryDescription: "切換捷徑展示樣式與密度",
+        open: "開啟",
+        title: "捷徑樣式設定",
+        description: "選擇捷徑樣式並調整網格密度",
+        rich: "豐富",
+        compact: "簡約",
+        showName: "顯示名稱",
+        showNameDesc: "開啟後在圖示下顯示捷徑標題",
+        density: "捷徑密度"
+      },
       backup: {
         label: "資料備份與還原",
         description: "匯入或匯出本地版面資料 (.leaftab)",
@@ -224,6 +236,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release128ShortcutStyleDialog: "新增捷徑樣式設定彈窗：支援「豐富 / 簡約」兩種卡片樣式切換。",
+        release128CompactLayoutRefine: "簡約捷徑布局優化為 9 欄貼邊排列，並統一網格間距表現。",
+        release128CompactHoverOnlyIcon: "簡約卡片懸停互動改為僅圖示放大，不再出現背景高亮或擠壓抖動。",
+        release128EmptyIconFallback: "捷徑圖示新增 emptyicon 兜底：無圖示時顯示標題首字；新增/編輯彈窗預覽同步該樣式。",
+        release128IgnoreFakeFavicons: "圖示解析新增無效兜底來源過濾（DuckDuckGo / Google / gstatic favicon），避免錯誤占位圖示。",
         release127CaptchaSessionFix: "修復線上註冊驗證碼頻繁誤判：確保驗證碼產生與註冊校驗使用同一會話。",
         release127ProxyCookieDefaults: "優化生產環境會話預設（代理信任 + Cookie 策略），提升擴充到後端的會話穩定性。",
         release127FirstLoginLocalFirst: "新使用者首次登入不再彈出同步衝突視窗，直接以本地資料優先同步到雲端。",

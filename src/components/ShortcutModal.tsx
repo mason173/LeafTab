@@ -60,7 +60,14 @@ export default function ShortcutModal({
           <DialogTitle className="text-foreground">{mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle')}</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-[16px] items-center w-full mt-6">
-          <ShortcutIcon icon={initialIcon} url={url} size={36} frame="auto" />
+          <ShortcutIcon
+            icon={initialIcon}
+            url={url}
+            size={36}
+            frame="never"
+            fallbackStyle="emptyicon"
+            fallbackLabel={title}
+          />
           <div className="flex flex-col gap-[4px] items-start w-full">
             <p className="font-['PingFang_SC:Regular',sans-serif] text-muted-foreground text-[12px] w-full">{t('shortcutModal.nameLabel')}</p>
             <Input

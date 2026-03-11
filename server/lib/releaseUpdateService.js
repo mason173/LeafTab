@@ -21,6 +21,8 @@ const parseReleaseNotes = (body) => {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .filter((line) => !line.startsWith('#'))
+    .filter((line) => !/^更新内容[:：]?$/i.test(line))
+    .filter((line) => !/^changelog[:：]?$/i.test(line))
     .map((line) => line.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '').trim())
     .filter((line) => line.length > 0)
     .slice(0, 20);
@@ -40,7 +42,33 @@ function createReleaseUpdateService(options = {}) {
   const fetchLatestReleaseInfo = async () => {
     if (typeof fetchImpl !== 'function') return null;
 
-    // Prefer web latest redirect to avoid API 403/rate-limit.
+    // Prefer API first to get release notes. Fall back to web redirect if unavailable.
+    try {
+      const headers = { Accept: 'application/vnd.github+json' };
+      if (githubToken) {
+        headers.Authorization = `Bearer ${githubToken}`;
+      }
+      const resp = await fetchImpl(GITHUB_RELEASE_LATEST_API, {
+        headers,
+        cache: 'no-store',
+      });
+      if (resp.ok) {
+        const payload = await resp.json();
+        if (payload?.draft === true || payload?.prerelease === true) return null;
+        const version = normalizeVersion(payload?.tag_name || '');
+        if (version) {
+          return {
+            version,
+            url: typeof payload?.html_url === 'string' && payload.html_url.trim()
+              ? payload.html_url
+              : `${GITHUB_RELEASE_TAG_PREFIX}${version}`,
+            publishedAt: typeof payload?.published_at === 'string' ? payload.published_at : '',
+            notes: parseReleaseNotes(payload?.body),
+          };
+        }
+      }
+    } catch (_) {}
+
     try {
       const resp = await fetchImpl(GITHUB_RELEASE_LATEST_WEB, {
         cache: 'no-store',
@@ -58,30 +86,7 @@ function createReleaseUpdateService(options = {}) {
           };
         }
       }
-    } catch (_) {}
-
-    try {
-      const headers = { Accept: 'application/vnd.github+json' };
-      if (githubToken) {
-        headers.Authorization = `Bearer ${githubToken}`;
-      }
-      const resp = await fetchImpl(GITHUB_RELEASE_LATEST_API, {
-        headers,
-        cache: 'no-store',
-      });
-      if (!resp.ok) return null;
-      const payload = await resp.json();
-      if (payload?.draft === true || payload?.prerelease === true) return null;
-      const version = normalizeVersion(payload?.tag_name || '');
-      if (!version) return null;
-      return {
-        version,
-        url: typeof payload?.html_url === 'string' && payload.html_url.trim()
-          ? payload.html_url
-          : `${GITHUB_RELEASE_TAG_PREFIX}${version}`,
-        publishedAt: typeof payload?.published_at === 'string' ? payload.published_at : '',
-        notes: parseReleaseNotes(payload?.body),
-      };
+      return null;
     } catch (_) {
       return null;
     }

@@ -95,6 +95,8 @@ const parseNotes = (body: string): string[] =>
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .filter((line) => !line.startsWith('#'))
+    .filter((line) => !/^更新内容[:：]?$/i.test(line))
+    .filter((line) => !/^changelog[:：]?$/i.test(line))
     .map((line) => line.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '').trim())
     .filter((line) => line.length > 0)
     .slice(0, 20);
@@ -183,7 +185,28 @@ const fetchLatestReleaseFromBackend = async (apiBase: string): Promise<ReleaseIn
 };
 
 const fetchLatestReleaseFromGithub = async (): Promise<ReleaseInfo | null> => {
-  // Prefer the web "latest" redirect endpoint to avoid GitHub API 403/rate-limit issues.
+  // Prefer API first to get release notes. Fall back to web redirect if unavailable.
+  try {
+    const resp = await fetch(LATEST_RELEASE_API, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+      },
+      cache: 'no-store',
+    });
+    if (resp.ok) {
+      const data = (await resp.json()) as GithubReleasePayload;
+      if (data.draft === true || data.prerelease === true) return null;
+      const tag = typeof data.tag_name === 'string' ? data.tag_name : '';
+      const url = typeof data.html_url === 'string' ? data.html_url : '';
+      if (!tag || !url) return null;
+      const version = normalizeVersion(tag);
+      const publishedAt = typeof data.published_at === 'string' ? data.published_at : '';
+      const notes = typeof data.body === 'string' ? parseNotes(data.body) : [];
+      return { version, url, publishedAt, notes };
+    }
+  } catch {}
+
+  // Fallback to "latest" redirect (version only, no notes).
   try {
     const resp = await fetch(LATEST_RELEASE_WEB, {
       cache: 'no-store',
@@ -201,26 +224,7 @@ const fetchLatestReleaseFromGithub = async (): Promise<ReleaseInfo | null> => {
         };
       }
     }
-  } catch {}
-
-  // Fallback to API if redirect parsing is unavailable.
-  try {
-    const resp = await fetch(LATEST_RELEASE_API, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-      },
-      cache: 'no-store',
-    });
-    if (!resp.ok) return null;
-    const data = (await resp.json()) as GithubReleasePayload;
-    if (data.draft === true || data.prerelease === true) return null;
-    const tag = typeof data.tag_name === 'string' ? data.tag_name : '';
-    const url = typeof data.html_url === 'string' ? data.html_url : '';
-    if (!tag || !url) return null;
-    const version = normalizeVersion(tag);
-    const publishedAt = typeof data.published_at === 'string' ? data.published_at : '';
-    const notes = typeof data.body === 'string' ? parseNotes(data.body) : [];
-    return { version, url, publishedAt, notes };
+    return null;
   } catch {
     return null;
   }

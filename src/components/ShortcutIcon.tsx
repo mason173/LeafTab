@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
+import emptyIconBg from '@/assets/emptyicon.svg?url';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -13,6 +14,9 @@ const normalizeDomain = (domain: string) => {
 };
 
 const isIowenFaviconUrl = (value: string) => /^https:\/\/api\.iowen\.cn\/favicon\/.+\.png$/i.test((value || '').trim());
+const isDuckDuckGoIp3Url = (value: string) => /^https:\/\/icons\.duckduckgo\.com\/ip3\/.+\.ico$/i.test((value || '').trim());
+const isGoogleS2FaviconUrl = (value: string) => /^https:\/\/www\.google\.com\/s2\/favicons\?.+$/i.test((value || '').trim());
+const isGoogleGstaticFaviconV2Url = (value: string) => /^https:\/\/t\d*\.gstatic\.com\/faviconV2\?.+$/i.test((value || '').trim());
 
 const registrableDomain = (domain: string) => {
   const parts = normalizeDomain(domain).split('.');
@@ -144,12 +148,18 @@ export default function ShortcutIcon({
   size = 36,
   exact,
   frame = 'never',
+  fallbackStyle = 'default',
+  fallbackLabel,
+  fallbackLetterSize = 24,
 }: {
   icon: string;
   url: string;
   size?: number;
   exact?: boolean;
   frame?: 'auto' | 'always' | 'never';
+  fallbackStyle?: 'default' | 'emptyicon';
+  fallbackLabel?: string;
+  fallbackLetterSize?: number;
 }) {
   const domain = extractDomainFromUrl(url);
   const cached = domain ? getCachedFavicon(domain) : '';
@@ -162,12 +172,16 @@ export default function ShortcutIcon({
   const candidates = useMemo(() => {
     const list: string[] = [];
     if (customIconUrl) list.push(customIconUrl);
-    if (cached) list.push(cached);
+    if (cached && fallbackStyle !== 'emptyicon') list.push(cached);
     // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
     if (icon && !isIowenFaviconUrl(icon)) list.push(icon);
     if (domain) list.push(...buildFaviconCandidates(domain));
-    return Array.from(new Set(list));
-  }, [cached, customIconUrl, icon, domain]);
+    const unique = Array.from(new Set(list));
+    if (fallbackStyle === 'emptyicon') {
+      return unique.filter((src) => !isDuckDuckGoIp3Url(src) && !isGoogleS2FaviconUrl(src) && !isGoogleGstaticFaviconV2Url(src));
+    }
+    return unique;
+  }, [cached, customIconUrl, icon, domain, fallbackStyle]);
 
   const [index, setIndex] = useState(0);
 
@@ -217,10 +231,60 @@ export default function ShortcutIcon({
     };
   }, [domain, libraryTick]);
 
-  const src = candidates[index];
-  const letter = domain ? domain[0]?.toUpperCase() : '?';
+  const src = candidates[index] || '';
+  const labelSeed = (fallbackLabel || domain || '').trim();
+  const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
   const isCustomActive = !!customIconUrl && src === customIconUrl;
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
+  const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
+  const overlaySize = 24;
+
+  const handleImageLoad = () => {
+    if (domain && src && src !== cached) {
+      cacheFaviconData(domain, src);
+    }
+  };
+
+  const handleImageError = () => {
+    setIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length));
+  };
+
+  if (useEmptyFallback) {
+    return (
+      <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
+        <img
+          alt=""
+          className="absolute inset-0 size-full max-w-none object-contain pointer-events-none select-none"
+          draggable={false}
+          src={emptyIconBg}
+        />
+        {src ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>
+              <img
+                alt=""
+                className="absolute inset-0 max-w-none object-contain pointer-events-none"
+                draggable={false}
+                src={src}
+                style={{ width: overlaySize, height: overlaySize }}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span
+              className="select-none leading-none font-['PingFang_SC:Medium',sans-serif] text-foreground"
+              style={{ fontSize: fallbackLetterSize }}
+            >
+              {letter}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (!src) {
     const innerSize = exact ? size : Math.max(12, Math.round(size * 2 / 3));
@@ -253,14 +317,8 @@ export default function ShortcutIcon({
       draggable={false}
       src={src}
       style={{ width: innerSize, height: innerSize }}
-      onLoad={() => {
-        if (domain && src && src !== cached) {
-          cacheFaviconData(domain, src);
-        }
-      }}
-      onError={() => {
-        setIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : prev));
-      }}
+      onLoad={handleImageLoad}
+      onError={handleImageError}
     />
   );
   if (useFrame) {
