@@ -5,23 +5,41 @@ import ShortcutIcon from '@/components/ShortcutIcon';
 interface ShortcutCardCompactProps {
   shortcut: Shortcut;
   showTitle: boolean;
+  iconSize?: number;
+  titleFontSize?: number;
+  forceTextWhite?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export function ShortcutCardCompact({ shortcut, showTitle, onOpen, onContextMenu }: ShortcutCardCompactProps) {
+export function ShortcutCardCompact({
+  shortcut,
+  showTitle,
+  iconSize = 72,
+  titleFontSize = 12,
+  forceTextWhite = false,
+  onOpen,
+  onContextMenu,
+}: ShortcutCardCompactProps) {
+  const titleBlockHeight = 24;
+  const totalHeight = showTitle ? iconSize + titleBlockHeight : iconSize;
+  const subtleTextShadow = '0 1px 4px rgba(0, 0, 0, 0.24)';
   return (
     <div
-      className="relative rounded-xl w-[72px] cursor-pointer select-none group/shortcut"
+      className="relative rounded-xl cursor-pointer select-none group/shortcut"
+      style={{ width: iconSize }}
       onClick={onOpen}
       onContextMenu={onContextMenu}
     >
-      <div className={`flex w-[72px] flex-col items-center justify-start gap-[4px] ${showTitle ? 'h-[96px]' : 'h-[72px]'}`}>
-        <div className="h-[72px] w-[72px] shrink-0 transform-gpu origin-center transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]">
+      <div className="flex flex-col items-center justify-start gap-[4px]" style={{ width: iconSize, height: totalHeight }}>
+        <div
+          className="shrink-0 transform-gpu origin-center transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]"
+          style={{ height: iconSize, width: iconSize }}
+        >
           <ShortcutIcon
             icon={shortcut.icon}
             url={shortcut.url}
-            size={72}
+            size={iconSize}
             exact
             frame="never"
             fallbackStyle="emptyicon"
@@ -29,7 +47,10 @@ export function ShortcutCardCompact({ shortcut, showTitle, onOpen, onContextMenu
           />
         </div>
         {showTitle ? (
-          <p className="w-[72px] truncate text-center text-[12px] leading-4 text-foreground">
+          <p
+            className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+            style={{ width: iconSize, fontSize: titleFontSize, textShadow: subtleTextShadow }}
+          >
             {shortcut.title}
           </p>
         ) : null}

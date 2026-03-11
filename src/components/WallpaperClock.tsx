@@ -7,6 +7,9 @@ import ScenarioModeMenu from './ScenarioModeMenu';
 import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
 import imgImage from "../assets/Default_wallpaper.png";
+import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
+import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
 
 interface WallpaperClockProps {
   time: string; 
@@ -23,15 +26,20 @@ interface WallpaperClockProps {
   onScenarioModeCreate: () => void;
   onScenarioModeEdit: (id: string) => void;
   onScenarioModeDelete: (id: string) => void;
-  wallpaperMode: 'bing' | 'weather' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'custom') => void;
+  wallpaperMode: 'bing' | 'weather' | 'color' | 'custom';
+  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'custom') => void;
   weatherCode: number;
   onWeatherUpdate?: (code: number) => void;
   bingWallpaper: string;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
+  colorWallpaperId: string;
+  onColorWallpaperIdChange: (id: string) => void;
+  wallpaperMaskOpacity: number;
+  onWallpaperMaskOpacityChange: (value: number) => void;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
+  layout?: ResponsiveLayout;
 }
 
 export function WallpaperClock({ 
@@ -56,8 +64,13 @@ export function WallpaperClock({
   bingWallpaper,
   customWallpaper,
   onCustomWallpaperChange,
+  colorWallpaperId,
+  onColorWallpaperIdChange,
+  wallpaperMaskOpacity,
+  onWallpaperMaskOpacityChange,
   timeFont,
-  onTimeFontChange
+  onTimeFontChange,
+  layout,
 }: WallpaperClockProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -89,11 +102,19 @@ export function WallpaperClock({
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
   const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+  const edgeInset = layout ? Math.max(16, Math.round((layout.wallpaperHeight / 220) * 24)) : 24;
 
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
+  const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
 
   return (
-    <div className="relative w-full h-[220px] rounded-[28px] overflow-hidden group select-none shadow-sm">
+    <div
+      className="relative w-full overflow-hidden group select-none"
+      style={{
+        height: layout?.wallpaperHeight ?? 220,
+        borderRadius: layout?.wallpaperRadius ?? 28,
+      }}
+    >
       <div className="absolute inset-0 bg-muted">
         <div className="w-full h-full transition-transform duration-[3000ms] ease-out transform-gpu group-hover:scale-[1.1]">
           {wallpaperMode === 'custom' && customWallpaper ? (
@@ -102,6 +123,8 @@ export function WallpaperClock({
               className="w-full h-full object-cover" 
               src={customWallpaper} 
             />
+          ) : wallpaperMode === 'color' ? (
+            <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
             <>
               <img 
@@ -136,21 +159,12 @@ export function WallpaperClock({
         </div>
       </div>
 
-      <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+      <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
 
-      <div className="absolute inset-x-6 top-6 z-20 transform-gpu">
+      <div className="absolute z-20 transform-gpu" style={{ left: edgeInset, right: edgeInset, top: edgeInset }}>
         <TopNavBar 
           onSettingsClick={onSettingsClick}
           settingsRevealOnHover
-          showScenarioMode={showScenarioMode}
-          scenarioModes={scenarioModes}
-          selectedScenarioId={selectedScenarioId}
-          scenarioModeOpen={scenarioModeOpen}
-          onScenarioModeOpenChange={onScenarioModeOpenChange}
-          onScenarioModeSelect={onScenarioModeSelect}
-          onScenarioModeCreate={onScenarioModeCreate}
-          onScenarioModeEdit={onScenarioModeEdit}
-          onScenarioModeDelete={onScenarioModeDelete}
           onWeatherUpdate={onWeatherUpdate}
         />
       </div>
@@ -158,8 +172,8 @@ export function WallpaperClock({
       <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 pointer-events-none transform-gpu">
         <button
           type="button"
-          className="text-[100px] font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
-          style={{ fontFamily: timeFont }}
+          className="font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
+          style={{ fontFamily: timeFont, fontSize: layout?.clockFontSize ?? 100 }}
           onClick={() => setTimeFontDialogOpen(true)}
         >
           {time}
@@ -171,7 +185,10 @@ export function WallpaperClock({
           previewTime={time}
           onSelect={onTimeFontChange}
         />
-        <div className="flex items-center gap-3 text-base mt-2 font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]">
+        <div
+          className="flex items-center gap-3 mt-2 font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]"
+          style={{ fontSize: layout?.clockMetaFontSize ?? 16 }}
+        >
           <span>{dateString} {weekday}</span>
           {(i18n.language.startsWith('zh') || i18n.language.startsWith('ja') || i18n.language.startsWith('ko') || i18n.language.startsWith('vi')) && (
             <span>{lunar}</span>
@@ -179,7 +196,10 @@ export function WallpaperClock({
         </div>
       </div>
 
-      <div className="absolute left-6 bottom-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu">
+      <div
+        className="absolute z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu"
+        style={{ left: edgeInset, bottom: edgeInset }}
+      >
         {showScenarioMode && (
           <ScenarioModeMenu
             scenarioModes={scenarioModes}
@@ -194,7 +214,10 @@ export function WallpaperClock({
         )}
       </div>
 
-      <div className="absolute right-6 bottom-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu">
+      <div
+        className="absolute z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu"
+        style={{ right: edgeInset, bottom: edgeInset }}
+      >
         <WallpaperSelector 
           mode={wallpaperMode} 
           onModeChange={onWallpaperModeChange} 
@@ -202,6 +225,10 @@ export function WallpaperClock({
           weatherCode={weatherCode}
           customWallpaper={customWallpaper}
           onCustomWallpaperChange={onCustomWallpaperChange}
+          colorWallpaperId={colorWallpaperId}
+          onColorWallpaperIdChange={onColorWallpaperIdChange}
+          wallpaperMaskOpacity={wallpaperMaskOpacity}
+          onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
         />
       </div>
     </div>

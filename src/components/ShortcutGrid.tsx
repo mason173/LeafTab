@@ -4,12 +4,24 @@ import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { Shortcut } from '../types';
 import { ShortcutCardRenderer } from './shortcuts/ShortcutCardRenderer';
-import { DEFAULT_SHORTCUT_CARD_VARIANT, ShortcutCardVariant, getShortcutColumns } from './shortcuts/shortcutCardVariant';
+import {
+  DEFAULT_SHORTCUT_CARD_VARIANT,
+  ShortcutCardVariant,
+  getShortcutColumns,
+  type ShortcutLayoutDensity,
+} from './shortcuts/shortcutCardVariant';
 
 function SortableShortcut({
   sortId,
   cardVariant,
   compactShowTitle,
+  compactIconSize,
+  compactTitleFontSize,
+  defaultIconSize,
+  defaultTitleFontSize,
+  defaultUrlFontSize,
+  defaultVerticalPadding,
+  forceTextWhite,
   shortcut,
   onOpen,
   onContextMenu,
@@ -17,28 +29,43 @@ function SortableShortcut({
   sortId: string;
   cardVariant: ShortcutCardVariant;
   compactShowTitle: boolean;
+  compactIconSize: number;
+  compactTitleFontSize: number;
+  defaultIconSize: number;
+  defaultTitleFontSize: number;
+  defaultUrlFontSize: number;
+  defaultVerticalPadding: number;
+  forceTextWhite: boolean;
   shortcut: Shortcut;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortId });
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     // Keep slot-shift animation for other cards; only the actively dragged card skips transition.
     transition: isDragging ? undefined : transition,
-  } as React.CSSProperties;
+    ...(cardVariant === 'compact' ? { width: compactIconSize } : {}),
+  };
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`${cardVariant === 'compact' ? 'w-[72px]' : 'w-full'} will-change-transform`}
+      className={`${cardVariant === 'compact' ? '' : 'w-full'} will-change-transform`}
       data-shortcut-drag-item="true"
     >
       <ShortcutCardRenderer
         variant={cardVariant}
         compactShowTitle={compactShowTitle}
+        compactIconSize={compactIconSize}
+        compactTitleFontSize={compactTitleFontSize}
+        defaultIconSize={defaultIconSize}
+        defaultTitleFontSize={defaultTitleFontSize}
+        defaultUrlFontSize={defaultUrlFontSize}
+        defaultVerticalPadding={defaultVerticalPadding}
+        forceTextWhite={forceTextWhite}
         shortcut={shortcut}
         onOpen={onOpen}
         onContextMenu={onContextMenu}
@@ -57,6 +84,14 @@ interface ShortcutGridProps {
   onPageContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   cardVariant?: ShortcutCardVariant;
   compactShowTitle?: boolean;
+  layoutDensity?: ShortcutLayoutDensity;
+  compactIconSize?: number;
+  compactTitleFontSize?: number;
+  defaultIconSize?: number;
+  defaultTitleFontSize?: number;
+  defaultUrlFontSize?: number;
+  defaultVerticalPadding?: number;
+  forceTextWhite?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
 }
@@ -72,12 +107,28 @@ export function ShortcutGrid({
   onPageContextMenu,
   cardVariant = DEFAULT_SHORTCUT_CARD_VARIANT,
   compactShowTitle = true,
+  layoutDensity = 'regular',
+  compactIconSize = 72,
+  compactTitleFontSize = 12,
+  defaultIconSize = 36,
+  defaultTitleFontSize = 14,
+  defaultUrlFontSize = 10,
+  defaultVerticalPadding = 8,
+  forceTextWhite = false,
   onDragStart,
   onDragEnd,
 }: ShortcutGridProps) {
-  const columns = getShortcutColumns(cardVariant);
-  const rowGap = cardVariant === 'compact' ? 20 : 4;
+  const columns = getShortcutColumns(cardVariant, layoutDensity);
   const compactLayout = cardVariant === 'compact';
+  const rowGap = cardVariant === 'compact'
+    ? (layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20)
+    : 8;
+  const columnGap = compactLayout ? undefined : '8px';
+  const defaultColumnMinWidth = layoutDensity === 'compact'
+    ? 150
+    : layoutDensity === 'large'
+      ? 190
+      : 170;
   const items = useMemo(() => {
     return pageShortcuts.map((shortcut, index) => {
       const shortcutIndex = pageStartIndex + index;
@@ -126,9 +177,9 @@ export function ShortcutGrid({
             className="grid"
             style={{
               gridTemplateColumns: compactLayout
-                ? `repeat(${columns}, 72px)`
-                : `repeat(${columns}, minmax(0, 1fr))`,
-              columnGap: compactLayout ? undefined : '4px',
+                ? `repeat(${columns}, ${compactIconSize}px)`
+                : `repeat(${columns}, minmax(${defaultColumnMinWidth}px, 1fr))`,
+              columnGap,
               justifyContent: compactLayout ? 'space-between' : undefined,
               rowGap: `${rowGap}px`,
               touchAction: 'pan-y',
@@ -140,6 +191,13 @@ export function ShortcutGrid({
                 sortId={item.sortId}
                 cardVariant={cardVariant}
                 compactShowTitle={compactShowTitle}
+                compactIconSize={compactIconSize}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
                 shortcut={item.shortcut}
                 onOpen={() => { if (!ignoreClickRef.current) onShortcutOpen(item.shortcut); }}
                 onContextMenu={(event) => { if (!ignoreClickRef.current) onShortcutContextMenu(event, item.shortcutIndex, item.shortcut); }}

@@ -16,14 +16,6 @@ export default {
         guestDesc: "登录以同步数据"
       },
       title: "设置",
-      minimalistMode: {
-        label: "极简模式",
-        description: "开启后隐藏时间、壁纸和快捷方式"
-      },
-      freshMode: {
-        label: "清爽模式",
-        description: "将设置与我的图标移至右上角，隐藏时间/天气/壁纸，仅保留搜索和快捷方式"
-      },
       newTabMode: {
         label: "新标签页打开",
         description: "快捷方式默认在新标签页中打开"
@@ -299,6 +291,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release129ModeUiRefactor: "重构“全景 / 节奏 / 留白”三种模式主界面，拆分复用组件并清理历史冗余代码。",
+        release129WallpaperModalRefine: "壁纸设置弹窗重构为 Bing / 天气 / 颜色 / 自定义四标签，交互与布局统一。",
+        release129ColorWallpaperGradients: "新增颜色壁纸（12 组可选渐变），并优化渐变强度、色卡圆角与预览视觉。",
+        release129MaskSliderByMode: "新增壁纸遮罩透明度滑块（0-100），仅当前启用壁纸类型显示且悬停出现。",
+        release129ContrastAndOpacityTune: "优化节奏/留白模式可读性：四角模块默认半透明、快捷方式文字阴影增强、浅色下关键文字保持白色。",
         release128ShortcutStyleDialog: "新增快捷方式样式设置弹窗：支持“丰富 / 简约”两种卡片样式切换。",
         release128CompactLayoutRefine: "简约快捷方式布局优化为 9 列贴边排布，并统一网格间距表现。",
         release128CompactHoverOnlyIcon: "简约卡片悬停交互改为仅图标放大，不再出现背景高亮或挤占抖动。",
@@ -399,7 +396,8 @@ export default {
         weatherDesc: "根据当地天气情况动态变化。",
         customDesc: "上传您自己的图片作为壁纸。",
         customUploaded: "您上传的壁纸。",
-        imageSupport: "支持 JPG, PNG, WEBP 格式"
+        imageSupport: "支持 JPG, PNG, WEBP 格式",
+        maskOpacity: "黑色遮罩"
       },
       codes: {
         0: "晴",

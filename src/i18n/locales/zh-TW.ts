@@ -17,10 +17,6 @@ export default {
         guest: "訪客",
         guestDesc: "登入以同步資料"
       },
-      minimalistMode: {
-        label: "極簡模式",
-        description: "開啟後隱藏時間、桌布和捷徑"
-      },
       newTabMode: {
         label: "新分頁開啟",
         description: "捷徑預設在新分頁中開啟"
@@ -236,6 +232,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release129ModeUiRefactor: "重構「全景 / 節奏 / 留白」三種模式主介面，拆分共用元件並清理歷史冗餘程式碼。",
+        release129WallpaperModalRefine: "桌布設定彈窗重構為 Bing / 天氣 / 顏色 / 自訂四分頁，互動與布局統一。",
+        release129ColorWallpaperGradients: "新增顏色桌布（12 組可選漸層），並優化漸層強度、色卡圓角與預覽視覺。",
+        release129MaskSliderByMode: "新增桌布遮罩透明度滑桿（0-100），僅在目前啟用的桌布類型顯示且懸停出現。",
+        release129ContrastAndOpacityTune: "優化節奏/留白模式可讀性：四角模組預設半透明、捷徑文字陰影增強、淺色下關鍵文字固定白色。",
         release128ShortcutStyleDialog: "新增捷徑樣式設定彈窗：支援「豐富 / 簡約」兩種卡片樣式切換。",
         release128CompactLayoutRefine: "簡約捷徑布局優化為 9 欄貼邊排列，並統一網格間距表現。",
         release128CompactHoverOnlyIcon: "簡約卡片懸停互動改為僅圖示放大，不再出現背景高亮或擠壓抖動。",

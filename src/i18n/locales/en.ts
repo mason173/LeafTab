@@ -16,14 +16,6 @@ export default {
         guestDesc: "Login to sync data"
       },
       title: "Settings",
-      minimalistMode: {
-        label: "Minimalist Mode",
-        description: "Hide time, wallpaper, and shortcuts when enabled"
-      },
-      freshMode: {
-        label: "Fresh Mode",
-        description: "Move Settings and User icons to top-right, hide time/weather/wallpaper, keep search and shortcuts only"
-      },
       newTabMode: {
         label: "Open in New Tab",
         description: "Shortcuts open in a new tab by default"
@@ -298,6 +290,11 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release129ModeUiRefactor: "Refactored the Panorama / Rhythm / Blank mode UI with shared components and removed legacy duplicate code",
+        release129WallpaperModalRefine: "Reworked the wallpaper settings dialog into four unified tabs: Bing / Weather / Color / Custom",
+        release129ColorWallpaperGradients: "Added Color Wallpaper presets (12 gradients) and tuned gradient intensity, swatch radius, and preview visuals",
+        release129MaskSliderByMode: "Added a wallpaper mask opacity slider (0-100) that appears only for the currently active wallpaper type on hover",
+        release129ContrastAndOpacityTune: "Improved readability in Rhythm/Blank modes: default 50% corner-module opacity, stronger shortcut text shadow, and fixed white key text in light theme",
         release128ShortcutStyleDialog: "Added a dedicated shortcut style dialog with two card variants: Rich and Compact",
         release128CompactLayoutRefine: "Refined compact shortcut layout to a 9-column edge-aligned grid with consistent spacing",
         release128CompactHoverOnlyIcon: "Changed compact hover interaction to icon-only scale, removing background highlight and layout jitter",
@@ -398,7 +395,8 @@ export default {
         weatherDesc: "Dynamically changes based on local weather conditions.",
         customDesc: "Upload your own image to use as wallpaper.",
         customUploaded: "Your uploaded wallpaper.",
-        imageSupport: "Supports JPG, PNG, WEBP"
+        imageSupport: "Supports JPG, PNG, WEBP",
+        maskOpacity: "Black Overlay"
       },
       codes: {
         0: "Sunny",

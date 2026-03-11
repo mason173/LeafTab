@@ -17,10 +17,6 @@ export default {
         guest: "ゲスト",
         guestDesc: "ログインしてデータを同期"
       },
-      minimalistMode: {
-        label: "ミニマリストモード",
-        description: "有効にすると時間、壁紙、ショートカットを非表示にします"
-      },
       newTabMode: {
         label: "新しいタブで開く",
         description: "ショートカットをデフォルトで新しいタブで開く"
@@ -230,6 +226,11 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release129ModeUiRefactor: "「パノラマ / リズム / 余白」の3モードUIを再構成し、共通コンポーネント化と旧重複コードの整理を実施",
+        release129WallpaperModalRefine: "壁紙設定ダイアログを Bing / 天気 / カラー / カスタム の4タブ構成に再設計し、操作とレイアウトを統一",
+        release129ColorWallpaperGradients: "カラー壁紙（12種のグラデーション）を追加し、グラデーション強度・スウォッチ角丸・プレビュー表現を最適化",
+        release129MaskSliderByMode: "壁紙マスク不透明度スライダー（0-100）を追加。現在有効な壁紙タイプのみ、ホバー時に表示",
+        release129ContrastAndOpacityTune: "リズム/余白モードの可読性を改善：四隅モジュールを既定50%透明にし、ショートカット文字影を強化、ライトテーマ時の主要文字を白で固定",
         release127CaptchaSessionFix: "オンライン登録で CAPTCHA が誤判定される問題を修正（生成と検証を同一セッションで処理）",
         release127ProxyCookieDefaults: "本番環境のセッション既定値（プロキシ信頼 + Cookie ポリシー）を最適化し、拡張機能からバックエンドへのセッション安定性を向上",
         release127FirstLoginLocalFirst: "新規ユーザーの初回ログイン時は競合ダイアログを表示せず、ローカル優先でクラウド同期を実行",
@@ -310,7 +311,8 @@ export default {
         weatherDesc: "地域の天気に合わせて動的に変化します。",
         customDesc: "自分の画像を壁紙として使用します。",
         customUploaded: "アップロードした壁紙。",
-        imageSupport: "JPG、PNG、WEBP に対応"
+        imageSupport: "JPG、PNG、WEBP に対応",
+        maskOpacity: "黒いオーバーレイ"
       },
       codes: {
         0: "晴れ",

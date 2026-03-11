@@ -7,6 +7,9 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useRef, useState } from "react";
 import { saveWallpaper } from "../db";
 import imgImage from "../assets/Default_wallpaper.png";
+import { WallpaperMaskOverlay } from "./wallpaper/WallpaperMaskOverlay";
+import { WallpaperMaskOpacitySlider } from "./wallpaper/WallpaperMaskOpacitySlider";
+import { COLOR_WALLPAPER_PRESETS, getColorWallpaperGradient } from "./wallpaper/colorWallpapers";
 
 // Weather Wallpaper Assets
 import cloudyVideo from "../assets/weather/Cloudy.mp4";
@@ -50,12 +53,16 @@ export const weatherVideoMap: Record<number, string> = {
 export { sunnyVideo };
 
 interface WallpaperSelectorProps {
-  mode: 'bing' | 'weather' | 'custom';
-  onModeChange: (mode: 'bing' | 'weather' | 'custom') => void;
+  mode: 'bing' | 'weather' | 'color' | 'custom';
+  onModeChange: (mode: 'bing' | 'weather' | 'color' | 'custom') => void;
   bingWallpaper: string;
   weatherCode: number;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
+  colorWallpaperId: string;
+  onColorWallpaperIdChange: (id: string) => void;
+  wallpaperMaskOpacity: number;
+  onWallpaperMaskOpacityChange: (value: number) => void;
   hideWeather?: boolean;
   trigger?: React.ReactNode;
 }
@@ -67,6 +74,10 @@ export default function WallpaperSelector({
   weatherCode,
   customWallpaper,
   onCustomWallpaperChange,
+  colorWallpaperId,
+  onColorWallpaperIdChange,
+  wallpaperMaskOpacity,
+  onWallpaperMaskOpacityChange,
   hideWeather = false,
   trigger
 }: WallpaperSelectorProps) {
@@ -82,6 +93,10 @@ export default function WallpaperSelector({
     { id: "thunderstorm", src: thunderstormVideo, label: t('weather.codes.95', { defaultValue: 'Thunderstorm' }) },
   ]), [t]);
   const currentWeatherPreview = weatherPreviewVideos[weatherPreviewIndex] || weatherPreviewVideos[0];
+  const showBingMaskSlider = mode === 'bing';
+  const showWeatherMaskSlider = mode === 'weather';
+  const showCustomMaskSlider = mode === 'custom' && !!customWallpaper;
+  const colorPreviewGradient = getColorWallpaperGradient(colorWallpaperId);
   const goPrevWeatherPreview = () => {
     setWeatherPreviewIndex((prev) => (prev - 1 + weatherPreviewVideos.length) % weatherPreviewVideos.length);
   };
@@ -174,16 +189,19 @@ export default function WallpaperSelector({
 
           <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">
             <div className="px-6 pb-4">
-              <TabsList className={`grid w-full ${hideWeather ? 'grid-cols-2' : 'grid-cols-3'} bg-muted/50 p-1 rounded-xl h-auto`}>
-                <TabsTrigger value="bing" className="rounded-lg py-2 text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+              <TabsList className={`grid w-full ${hideWeather ? 'grid-cols-3' : 'grid-cols-4'} rounded-[16px]`}>
+                <TabsTrigger value="bing" className="rounded-xl">
                   {t('weather.wallpaper.bing')}
                 </TabsTrigger>
                 {!hideWeather && (
-                  <TabsTrigger value="weather" className="rounded-lg py-2 text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                  <TabsTrigger value="weather" className="rounded-xl">
                     {t('weather.wallpaper.weather')}
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="custom" className="rounded-lg py-2 text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                <TabsTrigger value="color" className="rounded-xl">
+                  {t('weather.wallpaper.color', { defaultValue: '颜色' })}
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="rounded-xl">
                   {t('weather.wallpaper.custom')}
                 </TabsTrigger>
               </TabsList>
@@ -194,8 +212,17 @@ export default function WallpaperSelector({
             <div className="p-4">
               <TabsContent value="bing" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                 <div className="flex flex-col gap-4">
-                  <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm group bg-muted/20">
+                  <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 group bg-muted/20">
                     <img src={bingWallpaper || imgImage} alt="Bing" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+                    {showBingMaskSlider ? (
+                      <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                        <WallpaperMaskOpacitySlider
+                          value={wallpaperMaskOpacity}
+                          onChange={onWallpaperMaskOpacityChange}
+                        />
+                      </div>
+                    ) : null}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     
                     <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
@@ -237,7 +264,7 @@ export default function WallpaperSelector({
               {!hideWeather && (
                 <TabsContent value="weather" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                   <div className="flex flex-col gap-4">
-                    <div className="relative aspect-video rounded-xl overflow-hidden border border-border/50 shadow-sm bg-transparent group">
+                    <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 bg-transparent group">
                       <video
                         key={currentWeatherPreview.id}
                         src={currentWeatherPreview.src}
@@ -246,6 +273,15 @@ export default function WallpaperSelector({
                         autoPlay
                         playsInline
                       />
+                      <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+                      {showWeatherMaskSlider ? (
+                        <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                          <WallpaperMaskOpacitySlider
+                            value={wallpaperMaskOpacity}
+                            onChange={onWallpaperMaskOpacityChange}
+                          />
+                        </div>
+                      ) : null}
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                       <div className="absolute inset-y-0 left-2 flex items-center">
                         <Button
@@ -300,20 +336,86 @@ export default function WallpaperSelector({
                 </TabsContent>
               )}
 
+              <TabsContent value="color" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                <div className="flex flex-col gap-4">
+                  <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 group p-3" style={{ backgroundImage: colorPreviewGradient }}>
+                    <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+                    <div className="relative z-20 grid h-full grid-cols-4 gap-2">
+                      {COLOR_WALLPAPER_PRESETS.map((preset) => {
+                        const selected = colorWallpaperId === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`relative no-pill-radius rounded-[20px] border transition-transform duration-200 ${
+                              selected
+                                ? 'border-white ring-2 ring-white/90'
+                                : 'border-white/40 hover:scale-[1.03]'
+                            }`}
+                            style={{ backgroundImage: preset.gradient }}
+                            onClick={() => {
+                              onColorWallpaperIdChange(preset.id);
+                              onModeChange('color');
+                            }}
+                            title={preset.name}
+                          >
+                            {selected ? (
+                              <span className="absolute right-1 top-1 rounded-full bg-black/35 p-0.5 text-white">
+                                <RiCheckFill className="size-3" />
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium leading-none">{t('weather.wallpaper.color', { defaultValue: '颜色' })}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {t('weather.wallpaper.colorDesc', { defaultValue: '从 12 组淡雅渐变中选择你喜欢的颜色壁纸。' })}
+                      </p>
+                    </div>
+                    <div className="flex justify-center">
+                      {mode === 'color' ? (
+                        <Button disabled variant="secondary" className="h-9 gap-2 min-w-[160px] bg-primary/10 text-primary hover:bg-primary/20 text-sm">
+                          <RiCheckFill className="size-3.5" />
+                          {t('common.current')}
+                        </Button>
+                      ) : (
+                        <Button onClick={() => onModeChange('color')} className="h-9 gap-2 min-w-[160px] text-sm">
+                          {t('weather.wallpaper.apply')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
               <TabsContent value="custom" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                 <div className="flex flex-col gap-4">
                   <div 
                     onClick={() => !customWallpaper && fileInputRef.current?.click()}
-                    className={`relative aspect-video rounded-xl overflow-hidden border transition-all group ${
+                    className={`relative aspect-video rounded-[24px] overflow-hidden border transition-all group ${
                       !customWallpaper 
                         ? 'border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50 cursor-pointer flex flex-col items-center justify-center gap-3' 
-                        : 'border-border/50 shadow-sm'
+                        : 'border-border/50'
                     }`}
                   >
                     {customWallpaper ? (
                       <>
                         <img src={customWallpaper} alt="Custom" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+                        {showCustomMaskSlider ? (
+                          <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                            <WallpaperMaskOpacitySlider
+                              value={wallpaperMaskOpacity}
+                              onChange={onWallpaperMaskOpacityChange}
+                            />
+                          </div>
+                        ) : null}
+                        <div className="absolute inset-0 z-10 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                           <Button 
                             variant="secondary" 
                             className="h-9 gap-2 bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-none text-sm"

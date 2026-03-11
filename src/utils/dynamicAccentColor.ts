@@ -1,10 +1,13 @@
-type WallpaperMode = 'bing' | 'weather' | 'custom';
+import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+
+type WallpaperMode = 'bing' | 'weather' | 'color' | 'custom';
 
 type DynamicAccentInput = {
   wallpaperMode: WallpaperMode;
   bingWallpaper: string;
   customWallpaper: string | null;
   weatherCode: number;
+  colorWallpaperId?: string;
 };
 
 const imageAccentCache = new Map<string, string>();
@@ -113,6 +116,13 @@ const resolveSourceImage = (input: DynamicAccentInput) => {
   return '';
 };
 
+const resolveColorAccent = (colorWallpaperId?: string) => {
+  const gradient = getColorWallpaperGradient(colorWallpaperId || DEFAULT_COLOR_WALLPAPER_ID);
+  const matches = gradient.match(/#[0-9a-fA-F]{6}/g);
+  if (!matches || matches.length === 0) return '#8fa3c7';
+  return matches[Math.floor(matches.length / 2)];
+};
+
 const resolveImageAccent = (imageUrl: string): Promise<string> => {
   if (!imageUrl) return Promise.resolve('#3b82f6');
   if (imageAccentCache.has(imageUrl)) return Promise.resolve(imageAccentCache.get(imageUrl)!);
@@ -163,6 +173,7 @@ const resolveImageAccent = (imageUrl: string): Promise<string> => {
 
 export const resolveDynamicAccentColor = async (input: DynamicAccentInput) => {
   if (input.wallpaperMode === 'weather') return resolveWeatherAccent(input.weatherCode);
+  if (input.wallpaperMode === 'color') return resolveColorAccent(input.colorWallpaperId);
   const source = resolveSourceImage(input);
   return resolveImageAccent(source);
 };

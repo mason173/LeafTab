@@ -4,6 +4,11 @@ import ShortcutIcon from '@/components/ShortcutIcon';
 
 interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
+  iconSize?: number;
+  titleFontSize?: number;
+  urlFontSize?: number;
+  verticalPadding?: number;
+  forceTextWhite?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -12,11 +17,13 @@ function ScrollingText({
   text,
   containerClassName,
   textClassName,
+  textStyle,
   allowScroll = true,
 }: {
   text: string;
   containerClassName?: string;
   textClassName?: string;
+  textStyle?: React.CSSProperties;
   allowScroll?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,18 +51,19 @@ function ScrollingText({
 
   return (
     <div ref={containerRef} className={`relative overflow-hidden w-full shrink-0 select-none ${containerClassName || ''}`}>
-      <p ref={textRef} className={`absolute opacity-0 pointer-events-none whitespace-nowrap ${textClassName || ''}`}>{text}</p>
+      <p ref={textRef} className={`absolute opacity-0 pointer-events-none whitespace-nowrap ${textClassName || ''}`} style={textStyle}>{text}</p>
 
       {!allowScroll || !isOverflow ? (
-        <p className={`whitespace-nowrap truncate w-full ${textClassName || ''}`}>{text}</p>
+        <p className={`whitespace-nowrap truncate w-full ${textClassName || ''}`} style={textStyle}>{text}</p>
       ) : (
         <>
-          <p className={`whitespace-nowrap truncate w-full transition-opacity group-hover/shortcut:opacity-0 ${textClassName || ''}`}>{text}</p>
+          <p className={`whitespace-nowrap truncate w-full transition-opacity group-hover/shortcut:opacity-0 ${textClassName || ''}`} style={textStyle}>{text}</p>
           <p
             className={`whitespace-nowrap w-max absolute inset-0 opacity-0 group-hover/shortcut:opacity-100 transition-opacity [animation-play-state:paused] group-hover/shortcut:[animation-play-state:running] ${textClassName || ''}`}
             style={{
               animation: `scroll-text ${duration}s linear infinite`,
               '--scroll-distance': `-${scrollDistance}px`,
+              ...textStyle,
             } as React.CSSProperties}
           >
             {text}
@@ -66,7 +74,18 @@ function ScrollingText({
   );
 }
 
-export function ShortcutCardDefault({ shortcut, onOpen, onContextMenu }: ShortcutCardDefaultProps) {
+export function ShortcutCardDefault({
+  shortcut,
+  iconSize = 36,
+  titleFontSize = 14,
+  urlFontSize = 10,
+  verticalPadding = 8,
+  forceTextWhite = false,
+  onOpen,
+  onContextMenu,
+}: ShortcutCardDefaultProps) {
+  const subtleTextShadow = '0 1px 4px rgba(0, 0, 0, 0.24)';
+
   return (
     <div
       className="relative rounded-xl shrink-0 w-full cursor-pointer transition-[background-color] select-none group/shortcut hover:bg-accent/40"
@@ -74,11 +93,14 @@ export function ShortcutCardDefault({ shortcut, onOpen, onContextMenu }: Shortcu
       onContextMenu={onContextMenu}
     >
       <div className="flex flex-row items-center size-full">
-        <div className="content-stretch flex gap-[8px] items-center px-[8px] py-[12px] relative w-full">
+        <div
+          className="content-stretch flex gap-[8px] items-center px-[8px] relative w-full"
+          style={{ paddingTop: verticalPadding, paddingBottom: verticalPadding }}
+        >
           <ShortcutIcon
             icon={shortcut.icon}
             url={shortcut.url}
-            size={36}
+            size={iconSize}
             frame="auto"
             fallbackStyle="emptyicon"
             fallbackLabel={shortcut.title}
@@ -87,11 +109,13 @@ export function ShortcutCardDefault({ shortcut, onOpen, onContextMenu }: Shortcu
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText
               text={shortcut.title}
-              textClassName="font-['PingFang_SC:Medium',sans-serif] text-foreground text-[14px]"
+              textClassName={`font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+              textStyle={{ fontSize: titleFontSize, textShadow: subtleTextShadow }}
             />
             <ScrollingText
               text={shortcut.url}
-              textClassName="font-['PingFang_SC:Regular',sans-serif] text-muted-foreground text-[10px] leading-[14px]"
+              textClassName={`font-['PingFang_SC:Regular',sans-serif] leading-[14px] ${forceTextWhite ? 'text-white' : 'text-muted-foreground'}`}
+              textStyle={{ fontSize: urlFontSize, textShadow: subtleTextShadow }}
               allowScroll={false}
             />
           </div>
