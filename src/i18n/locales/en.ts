@@ -286,6 +286,11 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release126UnifiedCompareDialog: "Unified cloud-login conflict handling with WebDAV and now open the large compare dialog directly",
+        release126ConflictStrategyTabs: "Added top Tabs to switch strategy: Use Cloud / Use Local / Merge",
+        release126ConflictPendingPersist: "Unresolved conflicts are preserved when closing the dialog or refreshing the page",
+        release126ConflictFreezeAutoSync: "Auto-sync pauses while a conflict is pending and resumes after confirmation",
+        release126CompareUiRefine: "Refined compare-detail UI by removing per-item wrappers and matching Settings-tab style",
         release125ImportLocalFirstSync: "When signed in, importing local data now syncs to cloud immediately with local-first priority",
         release125ManualCloudLocalFirst: "Manual Cloud Sync now skips conflict prompts and directly pushes local data to cloud",
         release125SyncSettingsUi: "Refined Cloud/WebDAV sync settings UI: removed extra wrappers around toggles and reordered them",

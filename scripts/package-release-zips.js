@@ -11,6 +11,7 @@ const firefoxDir = path.join(root, 'build-firefox');
 
 const chromeZip = path.join(root, `LeafTab-chrome-edge-v${version}.zip`);
 const firefoxZip = path.join(root, `LeafTab-firefox-v${version}.zip`);
+const verifyScript = path.join(root, 'scripts', 'verify-release-channel.js');
 
 function assertBuild(dir, label) {
   const manifestPath = path.join(dir, 'manifest.json');
@@ -32,7 +33,8 @@ assertBuild(firefoxDir, 'Firefox');
 console.log('[pack] Creating release zip files...');
 packZip(buildDir, chromeZip);
 packZip(firefoxDir, firefoxZip);
+console.log('[pack] Verifying zip channel/version...');
+execSync(`node "${verifyScript}" community "${chromeZip}" "${firefoxZip}"`, { cwd: root, stdio: 'inherit' });
 console.log(`[pack] Done:
 - ${path.basename(chromeZip)}
 - ${path.basename(firefoxZip)}`);
-

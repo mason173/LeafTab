@@ -12,6 +12,30 @@ import { syncPayloadToCloudWithDeps } from './cloudSync/syncPayloadToCloud';
 import { fetchShortcutsWithDeps } from './cloudSync/fetchShortcuts';
 
 const RATE_LIMIT_TOAST_COOLDOWN_MS = 30 * 1000;
+const CLOUD_CONFLICT_CACHE_KEY = 'leaftab_cloud_conflict_cache_v1';
+
+type PersistedCloudConflict = {
+  localPayload: CloudShortcutsPayloadV3;
+  cloudPayload: CloudShortcutsPayloadV3;
+  cloudVersion: number | null;
+};
+
+const readPersistedCloudConflict = (): PersistedCloudConflict | null => {
+  try {
+    const raw = localStorage.getItem(CLOUD_CONFLICT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedCloudConflict;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (!parsed.localPayload || !parsed.cloudPayload) return null;
+    return {
+      localPayload: parsed.localPayload,
+      cloudPayload: parsed.cloudPayload,
+      cloudVersion: Number.isFinite(parsed.cloudVersion as number) ? Number(parsed.cloudVersion) : null,
+    };
+  } catch {
+    return null;
+  }
+};
 
 type BuildPayloadArgs = {
   nextScenarioModes?: ScenarioMode[];
@@ -52,6 +76,7 @@ export function useCloudSync({
   normalizeScenarioShortcuts,
   localDirtyRef,
 }: UseCloudSyncParams) {
+  const initialPersistedConflictRef = useRef<PersistedCloudConflict | null>(user ? readPersistedCloudConflict() : null);
   const { t } = useTranslation();
   const {
     syncState,
@@ -63,13 +88,13 @@ export function useCloudSync({
   } = useSyncState();
 
   const [cloudSyncInitialized, setCloudSyncInitialized] = useState(false);
-  const [conflictModalOpen, setConflictModalOpen] = useState(false);
-  const [pendingLocalPayload, setPendingLocalPayload] = useState<CloudShortcutsPayloadV3 | null>(null);
-  const [pendingCloudPayload, setPendingCloudPayload] = useState<CloudShortcutsPayloadV3 | null>(null);
+  const [conflictModalOpen, setConflictModalOpen] = useState(Boolean(initialPersistedConflictRef.current && user));
+  const [pendingLocalPayload, setPendingLocalPayload] = useState<CloudShortcutsPayloadV3 | null>(initialPersistedConflictRef.current?.localPayload ?? null);
+  const [pendingCloudPayload, setPendingCloudPayload] = useState<CloudShortcutsPayloadV3 | null>(initialPersistedConflictRef.current?.cloudPayload ?? null);
 
   const lastSavedShortcutsJson = useRef<string>('');
   const cloudShortcutsVersionRef = useRef<number | null>(null);
-  const pendingCloudVersionRef = useRef<number | null>(null);
+  const pendingCloudVersionRef = useRef<number | null>(initialPersistedConflictRef.current?.cloudVersion ?? null);
   const syncInFlightRef = useRef<Promise<boolean> | null>(null);
   const syncInFlightPayloadJsonRef = useRef<string>('');
   const cloudPullDelayTimerRef = useRef<number | null>(null);
@@ -83,6 +108,22 @@ export function useCloudSync({
   const previousUserRef = useRef<string | null>(null);
   const syncPayloadToCloudRef = useRef<(payload: CloudShortcutsPayloadV3, options?: { conflictStrategy?: 'modal' | 'prefer_local' }) => Promise<boolean>>(async () => false);
   const [cloudSyncConfigVersion, setCloudSyncConfigVersion] = useState(0);
+  const hasPendingCloudConflictRef = useRef(Boolean(initialPersistedConflictRef.current));
+
+  const persistPendingCloudConflict = useCallback((localPayload: CloudShortcutsPayloadV3, cloudPayload: CloudShortcutsPayloadV3, cloudVersion: number | null) => {
+    try {
+      const payload: PersistedCloudConflict = { localPayload, cloudPayload, cloudVersion };
+      localStorage.setItem(CLOUD_CONFLICT_CACHE_KEY, JSON.stringify(payload));
+    } catch {}
+    hasPendingCloudConflictRef.current = true;
+  }, []);
+
+  const clearPendingCloudConflict = useCallback(() => {
+    try {
+      localStorage.removeItem(CLOUD_CONFLICT_CACHE_KEY);
+    } catch {}
+    hasPendingCloudConflictRef.current = false;
+  }, []);
 
   const notifyRateLimited = useCallback(() => {
     const now = Date.now();
@@ -166,8 +207,53 @@ export function useCloudSync({
   }, [conflictModalOpen]);
 
   useEffect(() => {
+    hasPendingCloudConflictRef.current = Boolean(pendingLocalPayload && pendingCloudPayload);
+  }, [pendingCloudPayload, pendingLocalPayload]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!pendingLocalPayload || !pendingCloudPayload) return;
+    setCloudSyncInitialized(true);
+    markSyncConflict();
+  }, [markSyncConflict, pendingCloudPayload, pendingLocalPayload, setCloudSyncInitialized, user]);
+
+  useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
+
+  useEffect(() => {
+    if (!user) {
+      clearPendingCloudConflict();
+      if (pendingLocalPayload || pendingCloudPayload) {
+        setPendingLocalPayload(null);
+        setPendingCloudPayload(null);
+        pendingCloudVersionRef.current = null;
+      }
+      return;
+    }
+    if (pendingLocalPayload || pendingCloudPayload) return;
+    const restored = readPersistedCloudConflict();
+    if (!restored) return;
+    const normalizedLocal = normalizeCloudShortcutsPayload(restored.localPayload);
+    const normalizedCloud = normalizeCloudShortcutsPayload(restored.cloudPayload);
+    if (!normalizedLocal || !normalizedCloud) {
+      clearPendingCloudConflict();
+      return;
+    }
+    setPendingLocalPayload(normalizedLocal);
+    setPendingCloudPayload(normalizedCloud);
+    pendingCloudVersionRef.current = Number.isFinite(restored.cloudVersion as number) ? Number(restored.cloudVersion) : null;
+    setConflictModalOpen(true);
+    setCloudSyncInitialized(true);
+    markSyncConflict();
+  }, [
+    clearPendingCloudConflict,
+    markSyncConflict,
+    normalizeCloudShortcutsPayload,
+    pendingCloudPayload,
+    pendingLocalPayload,
+    user,
+  ]);
 
   const syncPayloadToCloud = useCallback(async (
     payload: CloudShortcutsPayloadV3,
@@ -182,6 +268,8 @@ export function useCloudSync({
       t,
       normalizeCloudShortcutsPayload,
       notifyRateLimited,
+      persistPendingConflict: persistPendingCloudConflict,
+      clearPendingConflict: clearPendingCloudConflict,
       refs: {
         lastSavedShortcutsJson,
         cloudShortcutsVersionRef,
@@ -195,7 +283,7 @@ export function useCloudSync({
         setConflictModalOpen,
       },
     });
-  }, [API_URL, handleLogout, normalizeCloudShortcutsPayload, notifyRateLimited, t, user]);
+  }, [API_URL, clearPendingCloudConflict, handleLogout, normalizeCloudShortcutsPayload, notifyRateLimited, persistPendingCloudConflict, t, user]);
 
   useEffect(() => {
     syncPayloadToCloudRef.current = syncPayloadToCloud;
@@ -214,6 +302,8 @@ export function useCloudSync({
       normalizeCloudShortcutsPayload,
       loadLocalProfileSnapshotSafe,
       notifyRateLimited,
+      persistPendingConflict: persistPendingCloudConflict,
+      clearPendingConflict: clearPendingCloudConflict,
       refs: {
         cloudShortcutsVersionRef,
         pendingCloudVersionRef,
@@ -244,7 +334,7 @@ export function useCloudSync({
     }
     markSyncIdle();
     return result;
-  }, [API_URL, buildCloudShortcutsPayload, handleLogout, loadLocalProfileSnapshotSafe, markSyncConflict, markSyncError, markSyncIdle, markSyncStart, markSyncSuccess, normalizeCloudShortcutsPayload, notifyRateLimited, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, setUserRole, t, user]);
+  }, [API_URL, buildCloudShortcutsPayload, clearPendingCloudConflict, handleLogout, loadLocalProfileSnapshotSafe, markSyncConflict, markSyncError, markSyncIdle, markSyncStart, markSyncSuccess, normalizeCloudShortcutsPayload, notifyRateLimited, persistPendingCloudConflict, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, setUserRole, t, user]);
 
   useEffect(() => {
     fetchShortcutsRef.current = fetchShortcuts;
@@ -280,7 +370,11 @@ export function useCloudSync({
       activeCloudSyncUserRef.current = user;
       clearCloudPullTimers();
       // Keep UI on local state first; only show conflict prompt after explicit login action.
-      void fetchShortcutsRef.current({ silent: false, promptOnDiff: isExplicitLogin });
+      if (!hasPendingCloudConflictRef.current) {
+        void fetchShortcutsRef.current({ silent: false, promptOnDiff: isExplicitLogin });
+      } else {
+        setConflictModalOpen(true);
+      }
     } else {
       clearCloudPullTimers();
     }
@@ -307,7 +401,7 @@ export function useCloudSync({
           clearCloudNextSyncAt();
           return;
         }
-        if (!conflictModalOpenRef.current) {
+        if (!conflictModalOpenRef.current && !hasPendingCloudConflictRef.current) {
           if (localStorage.getItem('leaf_tab_sync_pending') === 'true' && navigator.onLine && !isDraggingRef.current) {
             const snapshot = loadLocalProfileSnapshotSafeRef.current();
             if (snapshot) {
@@ -345,6 +439,11 @@ export function useCloudSync({
 
   const triggerCloudSyncNow = useCallback(async () => {
     if (!user) return false;
+    if (hasPendingCloudConflictRef.current) {
+      setConflictModalOpen(true);
+      markSyncConflict();
+      return false;
+    }
     if (!navigator.onLine) {
       markSyncError('offline');
       return false;
@@ -359,7 +458,7 @@ export function useCloudSync({
     }
     markSyncError('cloud_manual_sync_failed');
     return false;
-  }, [markSyncError, markSyncStart, markSyncSuccess, user]);
+  }, [markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, user]);
 
   const resolveWithCloud = useCallback(() => {
     if (!pendingCloudPayload) {
@@ -382,9 +481,10 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    clearPendingCloudConflict();
     markSyncSuccess();
     toast.success(t('toast.syncCloudApplied'));
-  }, [localDirtyRef, markSyncSuccess, pendingCloudPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, t]);
+  }, [clearPendingCloudConflict, localDirtyRef, markSyncSuccess, pendingCloudPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, t]);
 
   const resolveWithLocal = useCallback(() => {
     if (!pendingLocalPayload) {
@@ -406,10 +506,11 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    clearPendingCloudConflict();
     markSyncSuccess();
     void syncPayloadToCloud(pendingLocalPayload, { conflictStrategy: 'prefer_local' });
     toast.success(t('toast.syncLocalApplied'));
-  }, [localDirtyRef, markSyncSuccess, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
+  }, [clearPendingCloudConflict, localDirtyRef, markSyncSuccess, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
 
   const resolveWithMerge = useCallback(() => {
     if (!pendingLocalPayload || !pendingCloudPayload) {
@@ -436,10 +537,11 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    clearPendingCloudConflict();
     markSyncSuccess();
     void syncPayloadToCloud(mergedPayload, { conflictStrategy: 'prefer_local' });
     toast.success(t('toast.syncMergeApplied'));
-  }, [localDirtyRef, markSyncSuccess, pendingCloudPayload, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
+  }, [clearPendingCloudConflict, localDirtyRef, markSyncSuccess, pendingCloudPayload, pendingLocalPayload, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud, t]);
 
   const applyUndoPayload = useCallback(async (payload: CloudShortcutsPayloadV3) => {
     const json = JSON.stringify(payload);
@@ -457,6 +559,7 @@ export function useCloudSync({
     setPendingLocalPayload(null);
     setPendingCloudPayload(null);
     pendingCloudVersionRef.current = null;
+    clearPendingCloudConflict();
     markSyncStart();
     const synced = await syncPayloadToCloud(payload, { conflictStrategy: 'prefer_local' });
     if (synced) {
@@ -465,7 +568,7 @@ export function useCloudSync({
     }
     markSyncError('cloud_manual_sync_failed');
     return false;
-  }, [localDirtyRef, markSyncError, markSyncStart, markSyncSuccess, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
+  }, [clearPendingCloudConflict, localDirtyRef, markSyncError, markSyncStart, markSyncSuccess, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, syncPayloadToCloud]);
 
   return {
     cloudSyncInitialized,
@@ -476,6 +579,7 @@ export function useCloudSync({
     setPendingLocalPayload,
     pendingCloudPayload,
     setPendingCloudPayload,
+    cloudConflictPending: Boolean(pendingLocalPayload && pendingCloudPayload),
     lastSavedShortcutsJson,
     syncState,
     resolveWithCloud,

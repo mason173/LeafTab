@@ -12,14 +12,46 @@ const session = require('express-session');
 const helmet = require('helmet');
 const SQLiteStore = require('connect-sqlite3')(session);
 const cookieParser = require('cookie-parser');
+const {
+  initializeBackendEnv,
+  parseIntEnv,
+  parseBoolEnv,
+  resolveTrustProxy,
+} = require('./lib/env');
+const { parseAllowlist, createCorsOriginValidator } = require('./lib/corsPolicy');
+const { createReleaseUpdateService } = require('./lib/releaseUpdateService');
+
+initializeBackendEnv();
 
 const app = express();
 const PORT = 3001; // We'll run this on port 3001
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 const SESSION_SECRET = process.env.SESSION_SECRET || SECRET_KEY;
+const UPDATE_RELEASE_CACHE_TTL_MS = parseIntEnv('UPDATE_RELEASE_CACHE_TTL_MS', 10 * 60 * 1000, 60 * 1000);
+const GITHUB_TOKEN = (process.env.GITHUB_TOKEN || '').trim();
+
+const AUTH_LIMIT_WINDOW_MS = parseIntEnv('AUTH_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
+const AUTH_LIMIT_MAX = parseIntEnv('AUTH_LIMIT_MAX', 8, 1);
+const API_LIMIT_WINDOW_MS = parseIntEnv('API_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
+const API_LIMIT_MAX = parseIntEnv('API_LIMIT_MAX', 100, 1);
+const SHORTCUTS_LIMIT_WINDOW_MS = parseIntEnv('SHORTCUTS_LIMIT_WINDOW_MS', 60 * 1000, 1000);
+const SHORTCUTS_LIMIT_MAX = parseIntEnv('SHORTCUTS_LIMIT_MAX', 50, 1);
+const CAPTCHA_LIMIT_WINDOW_MS = parseIntEnv('CAPTCHA_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
+const CAPTCHA_LIMIT_MAX = parseIntEnv('CAPTCHA_LIMIT_MAX', 30, 1);
+const UPDATE_LIMIT_WINDOW_MS = parseIntEnv('UPDATE_LIMIT_WINDOW_MS', 60 * 1000, 1000);
+const UPDATE_LIMIT_MAX = parseIntEnv('UPDATE_LIMIT_MAX', 20, 1);
+const BCRYPT_ROUNDS = parseIntEnv('BCRYPT_ROUNDS', 10, 8, 14);
+const REQUEST_LOG_ENABLED = parseBoolEnv('REQUEST_LOG_ENABLED', process.env.NODE_ENV !== 'production');
+const TRUST_PROXY = resolveTrustProxy(process.env.TRUST_PROXY);
+const ALLOW_EXTENSION_ORIGINS = parseBoolEnv('ALLOW_EXTENSION_ORIGINS', true);
+const { getLatestReleaseCached } = createReleaseUpdateService({
+  githubToken: GITHUB_TOKEN,
+  cacheTtlMs: UPDATE_RELEASE_CACHE_TTL_MS,
+  fetchImpl: globalThis.fetch,
+});
 
 app.use(cookieParser());
-app.set('trust proxy', 1);
+app.set('trust proxy', TRUST_PROXY);
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
@@ -88,8 +120,8 @@ const isAdminRequest = (req) => {
 };
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 requests per windowMs
+  windowMs: AUTH_LIMIT_WINDOW_MS,
+  max: AUTH_LIMIT_MAX,
   message: { error: 'Too many login/register attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -97,8 +129,8 @@ const authLimiter = rateLimit({
 });
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: API_LIMIT_WINDOW_MS,
+  max: API_LIMIT_MAX,
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -113,8 +145,8 @@ const apiLimiter = rateLimit({
 });
 
 const shortcutsLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 50,
+  windowMs: SHORTCUTS_LIMIT_WINDOW_MS,
+  max: SHORTCUTS_LIMIT_MAX,
   message: { error: 'Too many shortcut sync requests, please try again shortly.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -128,10 +160,20 @@ const shortcutsLimiter = rateLimit({
 });
 
 const captchaLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
+  windowMs: CAPTCHA_LIMIT_WINDOW_MS,
+  max: CAPTCHA_LIMIT_MAX,
+  message: { error: 'Too many captcha requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
+});
+
+const updateLimiter = rateLimit({
+  windowMs: UPDATE_LIMIT_WINDOW_MS,
+  max: UPDATE_LIMIT_MAX,
+  message: { error: 'Too many update checks, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req),
 });
 
 
@@ -148,29 +190,31 @@ const validatePassword = (password) => {
     return typeof password === 'string' && password.length >= 6; 
 };
 
-const allowlist = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+const allowlist = parseAllowlist(process.env.CLIENT_URLS || process.env.CLIENT_URL || '');
+const corsOrigin = createCorsOriginValidator({
+  allowlist,
+  allowExtensionOrigins: ALLOW_EXTENSION_ORIGINS,
+  allowLocalhost: true,
+});
+
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowlist.length === 0) return callback(null, true);
-    if (allowlist.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: corsOrigin,
   credentials: true
 }));
 app.use(bodyParser.json());
 
-// Debug Middleware: Log incoming requests
-app.use((req, res, next) => {
+if (REQUEST_LOG_ENABLED) {
+  app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
-});
+  });
+}
 
 // Error Handling for JSON parsing
 app.use((err, req, res, next) => {
+  if (err && err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'Origin is not allowed by CORS' });
+  }
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     console.error('JSON Parsing Error:', err.message);
     return res.status(400).json({ error: 'Invalid JSON format' });
@@ -191,7 +235,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             shortcuts TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP      
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            role TEXT DEFAULT 'user',
+            shortcuts_updated_at DATETIME,
+            shortcuts_version INTEGER DEFAULT 0,
+            privacy_consent INTEGER DEFAULT 0,
+            privacy_consent_ts DATETIME
         )`, (err) => {
             if (err) {
                 console.error('Error creating table', err.message);
@@ -301,6 +350,13 @@ app.get('/captcha', captchaLimiter, (req, res) => {
   res.status(200).send(captcha.data);
 });
 
+// Public: latest release info for extension update checks.
+app.get('/update/latest', updateLimiter, async (_req, res) => {
+  const latest = await getLatestReleaseCached();
+  if (latest) return res.json(latest);
+  return res.status(503).json({ error: 'Unable to resolve latest release' });
+});
+
 
 // Register Endpoint
 app.post('/register', authLimiter, (req, res) => {
@@ -311,11 +367,16 @@ app.post('/register', authLimiter, (req, res) => {
   }
 
   // Validate Captcha
-  if (!captcha) {
+  const captchaInput = typeof captcha === 'string' ? captcha : '';
+  if (!captchaInput) {
     return res.status(400).json({ error: 'Captcha is required' });
   }
-  
-  if (!req.session.captcha || captcha.toLowerCase() !== req.session.captcha) {
+
+  if (!req.session) {
+    return res.status(503).json({ error: 'Session unavailable, please retry.' });
+  }
+
+  if (!req.session.captcha || captchaInput.toLowerCase() !== req.session.captcha) {
     return res.status(400).json({ error: 'Invalid captcha' });
   }
 
@@ -330,17 +391,26 @@ app.post('/register', authLimiter, (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
   }
 
-  const hashedPassword = bcrypt.hashSync(password, 10);
+  bcrypt.hash(password, BCRYPT_ROUNDS, (hashErr, hashedPassword) => {
+    if (hashErr) {
+      console.error('bcrypt hash failed:', hashErr.message);
+      return res.status(500).json({ error: 'Failed to process password' });
+    }
 
-  const sql = `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
-  db.run(sql, [username, hashedPassword, 'user'], function(err) {      
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {  
+    const sql = `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
+    db.run(sql, [username, hashedPassword, 'user'], function(err) {
+      if (!err) {
+        return res.json({ message: 'User registered successfully', userId: this.lastID });
+      }
+
+      if (err.message.includes('UNIQUE constraint failed')) {
         return res.status(400).json({ error: 'Username already exists' });
       }
-      return res.status(500).json({ error: err.message });     
-    }
-    res.json({ message: 'User registered successfully', userId: this.lastID });
+      if (err.message.includes('database is locked')) {
+        return res.status(503).json({ error: 'Database is busy, please retry in a moment.' });
+      }
+      return res.status(500).json({ error: err.message });
+    });
   });
 });
 
@@ -361,38 +431,43 @@ app.post('/login', authLimiter, (req, res) => {
       return res.status(400).json({ error: 'Invalid username or password' });
     }
 
-    const passwordIsValid = bcrypt.compareSync(password, row.password);
-    if (!passwordIsValid) {
-      return res.status(400).json({ error: 'Invalid username or password' });
-    }
+    bcrypt.compare(password, row.password, (compareErr, passwordIsValid) => {
+      if (compareErr) {
+        console.error('bcrypt compare failed:', compareErr.message);
+        return res.status(500).json({ error: 'Failed to verify password' });
+      }
+      if (!passwordIsValid) {
+        return res.status(400).json({ error: 'Invalid username or password' });
+      }
 
-    const token = jwt.sign({ id: row.id, username: row.username }, SECRET_KEY, {       
-      expiresIn: '30d' // 30 days
-    });
+      const token = jwt.sign({ id: row.id, username: row.username }, SECRET_KEY, {       
+        expiresIn: '30d' // 30 days
+      });
 
-    let shortcutsOut = row.shortcuts;
-    if (typeof shortcutsOut === 'string' && shortcutsOut) {
-      try {
-        const parsed = JSON.parse(shortcutsOut);
-        if (!parsed || parsed.type !== 'leaftab_backup') {
-          shortcutsOut = JSON.stringify({
-            type: 'leaftab_backup',
-            version: 4,
-            timestamp: new Date().toISOString(),
-            meta: { platform: 'cloud' },
-            data: parsed,
-          });
-        }
-      } catch {}
-    }
-    res.json({ 
-      auth: true, 
-      token: token, 
-      username: row.username, 
-      shortcuts: shortcutsOut,
-      role: row.role,
-      createdAt: row.created_at,
-      privacyConsent: row.privacy_consent_ts ? !!row.privacy_consent : null
+      let shortcutsOut = row.shortcuts;
+      if (typeof shortcutsOut === 'string' && shortcutsOut) {
+        try {
+          const parsed = JSON.parse(shortcutsOut);
+          if (!parsed || parsed.type !== 'leaftab_backup') {
+            shortcutsOut = JSON.stringify({
+              type: 'leaftab_backup',
+              version: 4,
+              timestamp: new Date().toISOString(),
+              meta: { platform: 'cloud' },
+              data: parsed,
+            });
+          }
+        } catch {}
+      }
+      res.json({ 
+        auth: true, 
+        token: token, 
+        username: row.username, 
+        shortcuts: shortcutsOut,
+        role: row.role || 'user',
+        createdAt: row.created_at,
+        privacyConsent: row.privacy_consent_ts ? !!row.privacy_consent : null
+      });
     });
   });
 });

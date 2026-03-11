@@ -230,6 +230,11 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release126UnifiedCompareDialog: "クラウドログイン時の競合処理を WebDAV と統一し、大きな比較ダイアログを直接表示",
+        release126ConflictStrategyTabs: "上部タブで「クラウド優先 / ローカル優先 / マージ」を切り替え可能に",
+        release126ConflictPendingPersist: "ダイアログを閉じる／ページを再読み込みしても未解決競合を保持して復元",
+        release126ConflictFreezeAutoSync: "未解決競合がある間は自動同期を停止し、確定後に再開",
+        release126CompareUiRefine: "比較明細 UI を簡素化（各項目の外枠を削除し、設定画面と同じタブスタイルに統一）",
         release125ImportLocalFirstSync: "ログイン状態でローカルデータをインポート後、確定すると即時にクラウドへ同期（ローカル優先）",
         release125ManualCloudLocalFirst: "クラウド同期有効時、手動「今すぐ同期」で競合ダイアログを表示せずローカルデータを直接クラウドへ反映",
         release125SyncSettingsUi: "クラウド/WebDAV 同期設定 UI を調整（2つのスイッチのラッパーを削除し順序を最適化）",

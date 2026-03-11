@@ -287,6 +287,11 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release126UnifiedCompareDialog: "云端登录冲突检测流程与 WebDAV 统一，直接进入大对比弹窗。",
+        release126ConflictStrategyTabs: "冲突处理改为顶部 Tab 切换“以云端为准 / 以本地为准 / 合并”。",
+        release126ConflictPendingPersist: "关闭冲突弹窗或刷新页面后，未处理冲突会保留并自动恢复。",
+        release126ConflictFreezeAutoSync: "存在未处理冲突时自动同步会暂停，确认处理后自动恢复。",
+        release126CompareUiRefine: "大对比弹窗明细区视觉精简：去掉每项外层容器，并采用与设置页一致的 Tab 样式。",
         release125ImportLocalFirstSync: "登录状态下导入本地数据后，确认导入即立即同步到云端（本地优先）。",
         release125ManualCloudLocalFirst: "云同步开启时，手动“立即同步”不再弹冲突检测，直接以本地数据覆盖云端。",
         release125SyncSettingsUi: "云同步与 WebDAV 同步设置弹窗优化：两个开关去掉容器包裹并调整顺序。",

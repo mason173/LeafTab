@@ -73,7 +73,9 @@ export default function AuthModal({
 
   const fetchCaptcha = async () => {
     try {
-      const response = await fetch(`${API_URL}/captcha`);
+      const response = await fetch(`${API_URL}/captcha`, {
+        credentials: 'include',
+      });
       if (response.ok) {
         const svg = await response.text();
         setCaptchaSvg(svg);
@@ -127,6 +129,7 @@ export default function AuthModal({
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
       
@@ -186,6 +189,7 @@ export default function AuthModal({
       const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password, captcha }),
       });
       
