@@ -224,6 +224,10 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release127CaptchaSessionFix: "Sửa lỗi captcha bị báo sai thường xuyên khi đăng ký online bằng cách đảm bảo tạo captcha và kiểm tra đăng ký dùng cùng một session",
+        release127ProxyCookieDefaults: "Tối ưu mặc định session ở production (trust proxy + chính sách cookie) để ổn định phiên từ extension tới backend",
+        release127FirstLoginLocalFirst: "Người dùng mới đăng nhập lần đầu sẽ không còn popup xung đột, dữ liệu local được đồng bộ lên cloud theo ưu tiên local",
+        release127DeployScriptLibUpload: "Sửa script deploy backend chưa upload server/lib và tăng cường bổ sung biến môi trường mặc định khi triển khai",
         release126UnifiedCompareDialog: "Thống nhất luồng xử lý xung đột khi đăng nhập cloud với WebDAV, mở thẳng popup so sánh lớn",
         release126ConflictStrategyTabs: "Thêm Tabs phía trên để chuyển nhanh chiến lược: Ưu tiên cloud / Ưu tiên local / Gộp",
         release126ConflictPendingPersist: "Khi đóng popup hoặc tải lại trang, xung đột chưa xử lý sẽ được giữ lại và khôi phục",

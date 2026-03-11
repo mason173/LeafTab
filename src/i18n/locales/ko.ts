@@ -224,6 +224,10 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release127CaptchaSessionFix: "온라인 회원가입에서 CAPTCHA가 자주 오판되던 문제를 수정(생성/검증을 동일 세션으로 처리)",
+        release127ProxyCookieDefaults: "운영 환경 세션 기본값(프록시 신뢰 + 쿠키 정책)을 최적화해 확장 프로그램-백엔드 세션 안정성 향상",
+        release127FirstLoginLocalFirst: "신규 사용자 첫 로그인 시 동기화 충돌 팝업 없이 로컬 우선으로 클라우드에 즉시 동기화",
+        release127DeployScriptLibUpload: "백엔드 배포 스크립트의 server/lib 미업로드 문제를 수정하고 배포 시 환경변수 기본 보강을 추가",
         release126UnifiedCompareDialog: "클라우드 로그인 충돌 처리를 WebDAV와 통일하고, 대형 비교 팝업을 바로 표시",
         release126ConflictStrategyTabs: "상단 탭에서 \"클라우드 우선 / 로컬 우선 / 병합\" 전략을 전환 가능",
         release126ConflictPendingPersist: "팝업을 닫거나 페이지를 새로고침해도 미해결 충돌 상태를 보존하고 복원",

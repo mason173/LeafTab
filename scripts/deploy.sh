@@ -175,9 +175,19 @@ print_info "Uploading server files..."
 TEMP_DIR=$(mktemp -d)
 mkdir -p "${TEMP_DIR}/server"
 cp server/package.json server/package-lock.json server/index.js server/clear_users.js "${TEMP_DIR}/server/"
+if [ -d "server/lib" ]; then
+    mkdir -p "${TEMP_DIR}/server/lib"
+    cp -R server/lib/. "${TEMP_DIR}/server/lib/"
+fi
 
 # Copy files from temp to server
-copy_to_remote "${TEMP_DIR}/server/"* "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+copy_to_remote "${TEMP_DIR}/server/clear_users.js" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+copy_to_remote "${TEMP_DIR}/server/index.js" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+copy_to_remote "${TEMP_DIR}/server/package.json" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+copy_to_remote "${TEMP_DIR}/server/package-lock.json" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+if [ -d "${TEMP_DIR}/server/lib" ]; then
+    scp -r "${SSH_OPTS[@]}" "${TEMP_DIR}/server/lib" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
+fi
 rm -rf "${TEMP_DIR}"
 
 # Install Backend Dependencies
@@ -244,6 +254,9 @@ NODE_ENV=production
 JWT_SECRET=change-this-in-production
 SESSION_SECRET=change-this-in-production
 CLIENT_URLS=${PUBLIC_ORIGIN}
+TRUST_PROXY=1
+SESSION_COOKIE_SAME_SITE=none
+SESSION_COOKIE_SECURE=true
 ADMIN_API_KEY=${ADMIN_KEY}
 EOF
         copy_to_remote "${ENV_TMP}" "${USER}@${SERVER_IP}:/etc/leaftab-backend.env"
@@ -254,6 +267,12 @@ EOF
         print_warning "Please save this key. You will paste it into Settings -> Admin Mode -> Admin Key."
     fi
 fi
+
+# Ensure reverse-proxy/session defaults required by captcha flow.
+run_remote "grep -q '^TRUST_PROXY=' /etc/leaftab-backend.env || echo 'TRUST_PROXY=1' >> /etc/leaftab-backend.env"
+run_remote "grep -q '^SESSION_COOKIE_SAME_SITE=' /etc/leaftab-backend.env || echo 'SESSION_COOKIE_SAME_SITE=none' >> /etc/leaftab-backend.env"
+run_remote "grep -q '^SESSION_COOKIE_SECURE=' /etc/leaftab-backend.env || echo 'SESSION_COOKIE_SECURE=true' >> /etc/leaftab-backend.env"
+run_remote "chmod 600 /etc/leaftab-backend.env"
 
 # Setup Systemd Service
 print_info "Configuring Backend Service..."
