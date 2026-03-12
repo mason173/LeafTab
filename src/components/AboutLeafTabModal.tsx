@@ -72,7 +72,7 @@ export function AboutLeafTabModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] overflow-visible bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[520px] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
         </DialogHeader>

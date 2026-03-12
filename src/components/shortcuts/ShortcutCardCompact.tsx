@@ -23,7 +23,6 @@ export function ShortcutCardCompact({
 }: ShortcutCardCompactProps) {
   const titleBlockHeight = 24;
   const totalHeight = showTitle ? iconSize + titleBlockHeight : iconSize;
-  const subtleTextShadow = '0 1px 4px rgba(0, 0, 0, 0.24)';
   return (
     <div
       className="relative rounded-xl cursor-pointer select-none group/shortcut"
@@ -49,7 +48,7 @@ export function ShortcutCardCompact({
         {showTitle ? (
           <p
             className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-            style={{ width: iconSize, fontSize: titleFontSize, textShadow: subtleTextShadow }}
+            style={{ width: iconSize, fontSize: titleFontSize }}
           >
             {shortcut.title}
           </p>

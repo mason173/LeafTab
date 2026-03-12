@@ -1358,7 +1358,7 @@ export default function App() {
 
       {contextMenu && (
         <div ref={contextMenuRef} className="fixed z-50" style={{ top: contextMenu.y, left: contextMenu.x }}>
-          <div className="bg-popover rounded-xl border border-border shadow-lg w-[160px] p-[6px]">
+          <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
             {contextMenu.kind === 'shortcut' ? (
               <>
                 <ContextMenuItem label={t('context.newShortcut')} onSelect={() => { const startPage = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); const result = findOrCreateAvailableIndex(startPage); if (result && result.targetIndex >= 0) { setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); setCurrentInsertIndex(result.targetIndex); setShortcutEditOpen(true); if (pageIndices.includes(result.targetPage)) setShortcutsPageIndex(result.targetPage); } else { toast.error(t('toast.shortcutCreateFailed')); } setContextMenu(null); }} />
@@ -1367,7 +1367,7 @@ export default function App() {
                 <div className="relative" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
                   <ContextMenuItem label={t('context.move')} onSelect={() => {}} iconRight={<RiArrowRightSLine className="size-4" />} />
                   {moveSubOpen && (
-                    <div className="absolute left-full top-0 ml-2 bg-popover rounded-xl border border-border shadow-lg w-[160px] p-[6px]" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
+                    <div className="absolute left-full top-0 ml-2 bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
                       <ContextMenuItem
                         label={t('context.movePrevPage')}
                         onSelect={() => {

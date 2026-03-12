@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from 'react-i18next';
@@ -671,7 +671,7 @@ export default function SettingsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[24px] overflow-visible">
+      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>
@@ -689,7 +689,7 @@ export default function SettingsModal({
               </Tabs>
 
               {syncTab === 'cloud' ? (
-                <div className="flex h-[132px] flex-col justify-between gap-3 rounded-xl border border-border/50 bg-secondary/30 p-3">
+                <div className="flex h-[132px] flex-col justify-between gap-3 rounded-[20px] border border-border/50 bg-secondary/30 p-3">
                   {username ? (
                     <>
                       <div className="flex items-center justify-between gap-2">
@@ -762,7 +762,7 @@ export default function SettingsModal({
                   )}
                 </div>
               ) : (
-                <div className="flex h-[132px] flex-col justify-between gap-3 rounded-xl border border-border/50 bg-secondary/30 p-3">
+                <div className="flex h-[132px] flex-col justify-between gap-3 rounded-[20px] border border-border/50 bg-secondary/30 p-3">
                   {webdavEnabled ? (
                     <>
                       <div className="flex items-center justify-between gap-2">
@@ -939,8 +939,10 @@ export default function SettingsModal({
                 id="new-tab-mode"
                 checked={openInNewTab}
                 onCheckedChange={onOpenInNewTabChange}
-                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-              />
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              >
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+              </Switch>
             </div>
 
             {displayMode !== 'panoramic' && (
@@ -953,8 +955,10 @@ export default function SettingsModal({
                   id="show-time"
                   checked={showTime}
                   onCheckedChange={onShowTimeChange}
-                  className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-                />
+                  className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                >
+                  <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+                </Switch>
               </div>
             )}
 
@@ -969,8 +973,10 @@ export default function SettingsModal({
                     id="time-format"
                     checked={is24Hour}
                     onCheckedChange={onIs24HourChange}
-                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-                  />
+                    className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                  >
+                    <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+                  </Switch>
                 </div>
                 <div className="flex items-center justify-between space-x-2">
                   <div className="flex flex-col space-y-1 items-start">
@@ -981,8 +987,10 @@ export default function SettingsModal({
                     id="show-seconds"
                     checked={showSeconds}
                     onCheckedChange={onShowSecondsChange}
-                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-                  />
+                    className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                  >
+                    <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+                  </Switch>
                 </div>
               </>
             )}
@@ -997,8 +1005,10 @@ export default function SettingsModal({
                 id="privacy-consent"
                 checked={!!privacyConsent}
                 onCheckedChange={onPrivacyConsentChange}
-                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-              />
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              >
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+              </Switch>
             </div>
           )}
 
@@ -1253,7 +1263,7 @@ export default function SettingsModal({
           setLogoutConfirmTarget('cloud');
         }
       }}>
-        <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[24px]">
+        <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px]">
           <DialogHeader>
             <DialogTitle className="text-foreground">{logoutConfirmTitle}</DialogTitle>
             <DialogDescription className="text-muted-foreground">

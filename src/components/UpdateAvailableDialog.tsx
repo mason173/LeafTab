@@ -66,7 +66,7 @@ export function UpdateAvailableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t('updateNotice.title', { version: resolvedLatestVersion ? `v${resolvedLatestVersion}` : '' })}</DialogTitle>
           <DialogDescription>{t('updateNotice.description')}</DialogDescription>

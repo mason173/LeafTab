@@ -2,6 +2,8 @@
 const DB_NAME = 'LeafTabDB';
 const STORE_NAME = 'wallpapers';
 const DB_VERSION = 1;
+const CUSTOM_WALLPAPER_KEY = 'customWallpaper';
+const BING_WALLPAPER_BLOB_KEY = 'bingWallpaperBlob';
 
 export const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -24,7 +26,7 @@ export const saveWallpaper = async (wallpaper: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(wallpaper, 'customWallpaper');
+    const request = store.put(wallpaper, CUSTOM_WALLPAPER_KEY);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();
@@ -36,7 +38,7 @@ export const getWallpaper = async (): Promise<string | null> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.get('customWallpaper');
+    const request = store.get(CUSTOM_WALLPAPER_KEY);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result || null);
@@ -48,7 +50,50 @@ export const deleteWallpaper = async (): Promise<void> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete('customWallpaper');
+    const request = store.delete(CUSTOM_WALLPAPER_KEY);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+export const saveBingWallpaperBlob = async (blob: Blob): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(blob, BING_WALLPAPER_BLOB_KEY);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+export const getBingWallpaperBlob = async (): Promise<Blob | null> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(BING_WALLPAPER_BLOB_KEY);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const value = request.result;
+      if (value instanceof Blob) {
+        resolve(value);
+        return;
+      }
+      resolve(null);
+    };
+  });
+};
+
+export const deleteBingWallpaperBlob = async (): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(BING_WALLPAPER_BLOB_KEY);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();

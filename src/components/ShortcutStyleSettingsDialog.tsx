@@ -4,7 +4,7 @@ import { RiAddLine, RiSubtractLine } from '@remixicon/react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import { Slider } from '@/components/ui/slider';
 import {
   DEFAULT_SHORTCUT_CARD_VARIANT,
@@ -45,7 +45,7 @@ export function ShortcutStyleSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] bg-background border-border text-foreground rounded-[24px] flex flex-col">
+      <DialogContent className="sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] bg-background border-border text-foreground rounded-[32px] flex flex-col">
         <DialogHeader>
           <DialogTitle>{t('settings.shortcutsStyle.title')}</DialogTitle>
           <DialogDescription>{t('settings.shortcutsStyle.description')}</DialogDescription>
@@ -69,8 +69,10 @@ export function ShortcutStyleSettingsDialog({
                 <Switch
                   checked={draftCompactShowTitle}
                   onCheckedChange={setDraftCompactShowTitle}
-                  className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-                />
+                  className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                >
+                  <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+                </Switch>
               </div>
             </div>
           ) : null}

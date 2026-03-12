@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckFill, RiDownload2Fill, RiImageFill, RiUpload2Fill } from "@remixicon/react";
 import { useTranslation } from "react-i18next";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { saveWallpaper } from "../db";
 import imgImage from "../assets/Default_wallpaper.png";
 import { WallpaperMaskOverlay } from "./wallpaper/WallpaperMaskOverlay";
@@ -83,7 +83,9 @@ export default function WallpaperSelector({
 }: WallpaperSelectorProps) {
   const { t, i18n } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const maskValueHideTimerRef = useRef<number | null>(null);
   const [weatherPreviewIndex, setWeatherPreviewIndex] = useState(0);
+  const [maskValueVisible, setMaskValueVisible] = useState(false);
   const weatherPreviewVideos = useMemo(() => ([
     { id: "sunny", src: sunnyVideo, label: t('weather.codes.0', { defaultValue: 'Sunny' }) },
     { id: "cloudy", src: cloudyVideo, label: t('weather.codes.2', { defaultValue: 'Cloudy' }) },
@@ -168,6 +170,27 @@ export default function WallpaperSelector({
     fileInputRef.current?.click();
   };
 
+  const handleMaskOpacityChange = (value: number) => {
+    onWallpaperMaskOpacityChange(value);
+    setMaskValueVisible(true);
+    if (maskValueHideTimerRef.current) {
+      window.clearTimeout(maskValueHideTimerRef.current);
+    }
+    maskValueHideTimerRef.current = window.setTimeout(() => {
+      setMaskValueVisible(false);
+      maskValueHideTimerRef.current = null;
+    }, 700);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (maskValueHideTimerRef.current) {
+        window.clearTimeout(maskValueHideTimerRef.current);
+        maskValueHideTimerRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -181,7 +204,7 @@ export default function WallpaperSelector({
           </div>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-[480px] bg-popover/95 backdrop-blur-xl border-white/10 rounded-[24px] overflow-hidden p-0 shadow-2xl [&>button]:text-foreground [&>button]:opacity-70 [&>button:hover]:opacity-100">
+      <DialogContent className="max-w-[480px] bg-popover/95 backdrop-blur-xl border-white/10 rounded-[32px] overflow-hidden p-0 shadow-2xl [&>button]:text-foreground [&>button]:opacity-70 [&>button:hover]:opacity-100">
         <div className="flex flex-col h-full">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">{t('weather.wallpaper.mode')}</DialogTitle>
@@ -213,14 +236,21 @@ export default function WallpaperSelector({
               <TabsContent value="bing" className="mt-0 outline-none animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
                 <div className="flex flex-col gap-4">
                   <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 group bg-muted/20">
-                    <img src={bingWallpaper || imgImage} alt="Bing" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <img src={bingWallpaper || imgImage} alt="Bing" className="w-full h-full object-cover" />
                     <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
                     {showBingMaskSlider ? (
                       <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
                         <WallpaperMaskOpacitySlider
                           value={wallpaperMaskOpacity}
-                          onChange={onWallpaperMaskOpacityChange}
+                          onChange={handleMaskOpacityChange}
                         />
+                      </div>
+                    ) : null}
+                    {maskValueVisible ? (
+                      <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                        <div className="rounded-lg bg-black/45 px-3 py-1 text-white text-sm font-medium backdrop-blur-sm">
+                          {wallpaperMaskOpacity}
+                        </div>
                       </div>
                     ) : null}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -278,12 +308,19 @@ export default function WallpaperSelector({
                         <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
                           <WallpaperMaskOpacitySlider
                             value={wallpaperMaskOpacity}
-                            onChange={onWallpaperMaskOpacityChange}
+                            onChange={handleMaskOpacityChange}
                           />
                         </div>
                       ) : null}
+                      {maskValueVisible ? (
+                        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                          <div className="rounded-lg bg-black/45 px-3 py-1 text-white text-sm font-medium backdrop-blur-sm">
+                            {wallpaperMaskOpacity}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-                      <div className="absolute inset-y-0 left-2 flex items-center">
+                      <div className="absolute inset-y-0 left-2 flex items-center opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
                         <Button
                           type="button"
                           variant="secondary"
@@ -295,7 +332,7 @@ export default function WallpaperSelector({
                           <RiArrowLeftSLine className="size-5" />
                         </Button>
                       </div>
-                      <div className="absolute inset-y-0 right-2 flex items-center">
+                      <div className="absolute inset-y-0 right-2 flex items-center opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
                         <Button
                           type="button"
                           variant="secondary"
@@ -411,8 +448,15 @@ export default function WallpaperSelector({
                           <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2 opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
                             <WallpaperMaskOpacitySlider
                               value={wallpaperMaskOpacity}
-                              onChange={onWallpaperMaskOpacityChange}
+                              onChange={handleMaskOpacityChange}
                             />
+                          </div>
+                        ) : null}
+                        {maskValueVisible ? (
+                          <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+                            <div className="rounded-lg bg-black/45 px-3 py-1 text-white text-sm font-medium backdrop-blur-sm">
+                              {wallpaperMaskOpacity}
+                            </div>
                           </div>
                         ) : null}
                         <div className="absolute inset-0 z-10 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">

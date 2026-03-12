@@ -84,8 +84,6 @@ export function ShortcutCardDefault({
   onOpen,
   onContextMenu,
 }: ShortcutCardDefaultProps) {
-  const subtleTextShadow = '0 1px 4px rgba(0, 0, 0, 0.24)';
-
   return (
     <div
       className="relative rounded-xl shrink-0 w-full cursor-pointer transition-[background-color] select-none group/shortcut hover:bg-accent/40"
@@ -110,12 +108,12 @@ export function ShortcutCardDefault({
             <ScrollingText
               text={shortcut.title}
               textClassName={`font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-              textStyle={{ fontSize: titleFontSize, textShadow: subtleTextShadow }}
+              textStyle={{ fontSize: titleFontSize }}
             />
             <ScrollingText
               text={shortcut.url}
               textClassName={`font-['PingFang_SC:Regular',sans-serif] leading-[14px] ${forceTextWhite ? 'text-white' : 'text-muted-foreground'}`}
-              textStyle={{ fontSize: urlFontSize, textShadow: subtleTextShadow }}
+              textStyle={{ fontSize: urlFontSize }}
               allowScroll={false}
             />
           </div>
