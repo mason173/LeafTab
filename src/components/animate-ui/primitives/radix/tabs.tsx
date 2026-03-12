@@ -86,16 +86,35 @@ function TabsTrigger(props: TabsTriggerProps) {
 }
 
 type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content> &
-  HTMLMotionProps<"div">;
+  HTMLMotionProps<"div"> & {
+    disableAnimation?: boolean;
+  };
 
 function TabsContent({
   value,
   forceMount,
+  disableAnimation = false,
   transition = { duration: 0.5, ease: "easeInOut" },
   ...props
 }: TabsContentProps) {
   const { value: activeValue } = useTabs();
   const isActive = activeValue === value;
+
+  if (disableAnimation) {
+    if (forceMount) {
+      return (
+        <TabsPrimitive.Content asChild forceMount value={value}>
+          <div data-slot="tabs-content" {...props} />
+        </TabsPrimitive.Content>
+      );
+    }
+
+    return isActive ? (
+      <TabsPrimitive.Content asChild forceMount value={value}>
+        <div data-slot="tabs-content" {...props} />
+      </TabsPrimitive.Content>
+    ) : null;
+  }
 
   if (forceMount) {
     return (

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
-import { Slider } from '@/components/ui/slider';
+import Scrubber from '@/components/ui/smoothui/scrubber';
 import {
   DEFAULT_SHORTCUT_CARD_VARIANT,
   getShortcutColumns,
@@ -59,30 +59,30 @@ export function ShortcutStyleSettingsDialog({
             </TabsList>
           </Tabs>
 
-          {draftVariant === 'compact' ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.showName')}</span>
-                  <span className="text-xs text-muted-foreground">{t('settings.shortcutsStyle.showNameDesc')}</span>
-                </div>
-                <Switch
-                  checked={draftCompactShowTitle}
-                  onCheckedChange={setDraftCompactShowTitle}
-                  className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                >
-                  <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
-                </Switch>
+          <div className="min-h-[40px]">
+            <div className={`flex items-center justify-between gap-3 rounded-xl px-1 py-1 ${draftVariant !== 'compact' ? 'opacity-55' : ''}`}>
+              <div className="flex flex-col">
+                <span className={`text-sm font-medium leading-none ${draftVariant !== 'compact' ? 'text-muted-foreground' : ''}`}>{t('settings.shortcutsStyle.showName')}</span>
+                <span className="text-xs text-muted-foreground">{t('settings.shortcutsStyle.showNameDesc')}</span>
               </div>
+              <Switch
+                checked={draftVariant === 'compact' ? draftCompactShowTitle : true}
+                onCheckedChange={draftVariant === 'compact' ? setDraftCompactShowTitle : undefined}
+                disabled={draftVariant !== 'compact'}
+                className={`relative flex h-6 w-10 items-center justify-start rounded-full border p-0.5 transition-colors data-[state=checked]:justify-end ${
+                  draftVariant !== 'compact'
+                    ? 'cursor-not-allowed border-border/70 data-[state=checked]:bg-secondary data-[state=unchecked]:bg-secondary'
+                    : 'border-border data-[state=checked]:bg-primary data-[state=unchecked]:bg-input'
+                }`}
+              >
+                <SwitchThumb
+                  className={`h-full aspect-square rounded-full ${draftVariant !== 'compact' ? '!bg-muted-foreground/55' : ''}`}
+                  pressedAnimation={{ width: 22 }}
+                />
+              </Switch>
             </div>
-          ) : null}
+          </div>
 
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium">{t('settings.shortcutsStyle.density')}</span>
-          <div className="inline-flex h-9 min-w-[118px] items-center justify-center rounded-xl border border-border bg-secondary/40 px-3 text-sm text-foreground">
-            <span>{`${gridColumns}*${draftRowsPerColumn}`}</span>
-          </div>
-          </div>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -94,15 +94,23 @@ export function ShortcutStyleSettingsDialog({
             >
               <RiSubtractLine className="size-4" />
             </Button>
-            <Slider
+            <Scrubber
+              className="flex-1"
+              label={t('settings.shortcutsStyle.density')}
               min={1}
               max={11}
               step={1}
-              value={[draftRowsPerColumn]}
-              onValueChange={(values) => {
-                const next = Math.max(1, Math.min(11, Math.round(values[0] ?? draftRowsPerColumn)));
+              value={draftRowsPerColumn}
+              onValueChange={(nextRawValue) => {
+                const next = Math.max(1, Math.min(11, Math.round(nextRawValue)));
                 setDraftRowsPerColumn(next);
               }}
+              ticks={9}
+              decimals={0}
+              showLabel
+              showValue
+              valueText={`${gridColumns}*${draftRowsPerColumn}`}
+              trackHeight={40}
             />
             <Button
               type="button"

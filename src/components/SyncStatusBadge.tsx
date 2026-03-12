@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/components/ui/utils';
+import type { ReactNode } from 'react';
 
 type SyncStatusBadgeTone = 'info' | 'success' | 'warning' | 'danger' | 'neutral';
 
@@ -16,7 +17,7 @@ export function SyncStatusBadge({
   tone = 'info',
   className,
 }: {
-  label: string;
+  label: ReactNode;
   tone?: SyncStatusBadgeTone;
   className?: string;
 }) {

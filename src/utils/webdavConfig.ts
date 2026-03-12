@@ -18,7 +18,7 @@ export const WEBDAV_STORAGE_KEYS = {
 } as const;
 
 export const WEBDAV_DEFAULT_FILE_PATH = "leaftab_sync.leaftab";
-export const WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES = 5;
+export const WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES = 10;
 export const WEBDAV_DEFAULT_CONFLICT_POLICY: WebdavConflictPolicy = "merge";
 
 const parseConflictPolicy = (raw: string): WebdavConflictPolicy => {

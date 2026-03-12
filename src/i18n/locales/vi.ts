@@ -220,6 +220,9 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release130DynamicEffectsOptimize: "Tối ưu trải nghiệm hiệu ứng động toàn cục với công tắc Giảm hiệu ứng động và cơ chế giảm chuyển động thống nhất",
+        release130DynamicWallpaperTab: "Thêm tab hình nền Động mới, hỗ trợ xem trước và áp dụng Prism, Silk, Light Rays, Beams, Galaxy, Iridescence",
+        release130ManualWeatherCity: "Tính năng thời tiết nay hỗ trợ chọn thủ công thành phố và lưu lại để hiển thị vị trí ổn định hơn",
         release129ModeUiRefactor: "Tái cấu trúc UI cho 3 chế độ Toàn cảnh / Nhịp điệu / Khoảng trắng, tách component dùng chung và dọn mã trùng lặp cũ",
         release129WallpaperModalRefine: "Thiết kế lại popup cài đặt hình nền thành 4 tab thống nhất: Bing / Thời tiết / Màu sắc / Tùy chỉnh",
         release129ColorWallpaperGradients: "Thêm hình nền màu (12 preset gradient) và tối ưu độ chuyển màu, bo góc ô màu, cùng chất lượng phần xem trước",
@@ -391,7 +394,8 @@ export default {
       stepRoleTitle: "Chọn vai trò",
       stepRoleDesc: "Dùng để khởi tạo lối tắt và bố cục gợi ý",
       stepLayoutTitle: "Chọn kiểu bố cục",
-      stepLayoutDesc: "Xác định cách sắp xếp trang chủ"
+      stepLayoutDesc: "Xác định cách sắp xếp trang chủ",
+      enterHome: "Vào LeafTab"
     },
     auth: {
       description: "Đăng nhập hoặc đăng ký để lưu cài đặt cá nhân của bạn.",

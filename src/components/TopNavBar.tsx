@@ -1,6 +1,7 @@
 import React from 'react';
 import { RiSettings4Fill } from '@remixicon/react';
 import { WeatherCard } from './WeatherCard';
+import { Magnetic } from '@/components/motion-primitives/magnetic';
 
 function SettingsButton({ onClick, variant = 'inverted' }: { onClick: () => void; variant?: 'inverted' | 'default' }) {
   return (
@@ -44,7 +45,9 @@ export function TopNavBar({
     <div className={`flex items-center justify-between w-full ${className}`} data-name="TopNavBar">
       {!hideWeather && (
         <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
-          <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />
+          <Magnetic intensity={0.32} range={110}>
+            <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />
+          </Magnetic>
         </div>
       )}
       
@@ -56,7 +59,9 @@ export function TopNavBar({
               : 'opacity-100'
           }`}
         >
-          <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
+          <Magnetic intensity={0.32} range={110}>
+            <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
+          </Magnetic>
         </div>
       </div>
     </div>

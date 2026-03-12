@@ -273,6 +273,9 @@ export default {
         open: "Open",
         title: "About LeafTab",
         content: "LeafTab is a browser new-tab extension.\nIt provides a clean start page with shortcuts, wallpaper/weather, and sync features including Cloud Sync and WebDAV.",
+        openSourceNoticePrefix: "LeafTab Community Edition is open source under ",
+        openSourceNoticeSuffix: ". Issues and PRs are welcome on GitHub.",
+        thirdPartyLicenseNotice: "Some third-party components follow their own licenses (for example, react-bits under MIT + Commons Clause).",
         ackTitle: "Acknowledgements",
         ackDesc: "LeafTab is built with the following open-source libraries and resources (tap to open):",
         frontend: "Frontend",
@@ -290,6 +293,9 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release130DynamicEffectsOptimize: "Optimized global motion experience with a new Reduce Dynamic Effects toggle and unified motion-reduction behavior",
+        release130DynamicWallpaperTab: "Added the new Dynamic wallpaper category with Prism, Silk, Light Rays, Beams, Galaxy, and Iridescence previews",
+        release130ManualWeatherCity: "Weather now supports manual city selection with persistent storage for more predictable location display",
         release129ModeUiRefactor: "Refactored the Panorama / Rhythm / Blank mode UI with shared components and removed legacy duplicate code",
         release129WallpaperModalRefine: "Reworked the wallpaper settings dialog into four unified tabs: Bing / Weather / Color / Custom",
         release129ColorWallpaperGradients: "Added Color Wallpaper presets (12 gradients) and tuned gradient intensity, swatch radius, and preview visuals",
@@ -541,7 +547,8 @@ export default {
       stepRoleTitle: "Choose your role",
       stepRoleDesc: "Used to initialize recommended shortcuts and layout",
       stepLayoutTitle: "Choose layout style",
-      stepLayoutDesc: "Decide how the home page is arranged"
+      stepLayoutDesc: "Decide how the home page is arranged",
+      enterHome: "Enter LeafTab"
     },
     auth: {
       description: "Log in or register to save your preferences.",

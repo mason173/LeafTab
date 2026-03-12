@@ -55,6 +55,7 @@ import { getShortcutColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+import { Beams, Galaxy, Iridescence, LightRays, Prism, Silk } from '@/components/react-bits';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -516,6 +517,7 @@ export default function App() {
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
     colorWallpaperId, setColorWallpaperId,
+    dynamicWallpaperEffect, setDynamicWallpaperEffect,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
   } = useWallpaper();
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
@@ -1213,6 +1215,8 @@ export default function App() {
   const wallpaperSelectorLayerProps = {
     mode: wallpaperMode,
     onModeChange: setWallpaperMode,
+    dynamicWallpaperEffect,
+    onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
     bingWallpaper,
     weatherCode,
     customWallpaper,
@@ -1239,6 +1243,8 @@ export default function App() {
     onScenarioModeDelete: handleDeleteScenarioMode,
     wallpaperMode,
     onWallpaperModeChange: setWallpaperMode,
+    dynamicWallpaperEffect,
+    onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
     weatherCode,
     onWeatherUpdate: setWeatherCode,
     bingWallpaper,
@@ -1309,6 +1315,66 @@ export default function App() {
         <div className="fixed inset-0 z-0 pointer-events-none">
           {wallpaperMode === 'weather' ? (
             <WeatherBackgroundVideo src={freshWeatherVideo} />
+          ) : wallpaperMode === 'dynamic' ? (
+            dynamicWallpaperEffect === 'silk' ? (
+              <Silk
+                speed={4.2}
+                scale={0.95}
+                color="#7B7481"
+                noiseIntensity={1.15}
+                rotation={0}
+              />
+            ) : dynamicWallpaperEffect === 'light-rays' ? (
+              <LightRays
+                raysOrigin="top-center"
+                raysColor="#ffffff"
+                raysSpeed={1.15}
+                lightSpread={0.95}
+                rayLength={1.6}
+                fadeDistance={1}
+                saturation={1}
+                followMouse
+                mouseInfluence={0.08}
+                noiseAmount={0.04}
+                distortion={0.04}
+              />
+            ) : dynamicWallpaperEffect === 'beams' ? (
+              <Beams
+                beamWidth={2}
+                beamHeight={15}
+                beamNumber={12}
+                lightColor="#ffffff"
+                speed={2}
+                noiseIntensity={1.75}
+                scale={0.2}
+                rotation={0}
+              />
+            ) : dynamicWallpaperEffect === 'galaxy' ? (
+              <Galaxy
+                density={1.2}
+                glowIntensity={0.35}
+                saturation={0.5}
+                hueShift={165}
+                mouseRepulsion
+                mouseInteraction
+              />
+            ) : dynamicWallpaperEffect === 'iridescence' ? (
+              <Iridescence
+                color={[1, 1, 1]}
+                mouseReact
+                amplitude={0.08}
+                speed={1.0}
+              />
+            ) : (
+              <Prism
+                animationType="rotate"
+                timeScale={0.35}
+                scale={3.8}
+                noise={0.35}
+                glow={1}
+                suspendWhenOffscreen
+              />
+            )
           ) : wallpaperMode === 'color' ? (
             <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : (
@@ -1541,6 +1607,8 @@ export default function App() {
           onImportData: handleImportData,
           wallpaperMode,
           onWallpaperModeChange: setWallpaperMode,
+          dynamicWallpaperEffect,
+          onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
           bingWallpaper,
           customWallpaper,
           onCustomWallpaperChange: setCustomWallpaper,

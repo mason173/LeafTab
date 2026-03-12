@@ -220,6 +220,9 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release130DynamicEffectsOptimize: "전역 동적 효과 경험을 최적화하고 \"동적 효과 줄이기\" 토글 및 통합 모션 축소 동작을 추가",
+        release130DynamicWallpaperTab: "새로운 \"다이내믹\" 배경 카테고리를 추가하고 Prism, Silk, Light Rays, Beams, Galaxy, Iridescence 미리보기/적용을 지원",
+        release130ManualWeatherCity: "날씨 기능에서 도시를 수동으로 선택해 저장할 수 있어 위치 표시를 더 안정적으로 제어 가능",
         release129ModeUiRefactor: "파노라마 / 리듬 / 여백 3가지 모드 UI를 재구성하고 공용 컴포넌트로 분리해 중복 레거시 코드를 정리",
         release129WallpaperModalRefine: "배경화면 설정 팝업을 Bing / 날씨 / 색상 / 사용자 지정 4개 탭으로 재구성해 인터랙션과 레이아웃을 통일",
         release129ColorWallpaperGradients: "색상 배경화면(12개 그라데이션 프리셋)을 추가하고 그라데이션 강도, 색상 카드 모서리, 미리보기 시각 품질을 개선",
@@ -391,7 +394,8 @@ export default {
       stepRoleTitle: "역할 선택",
       stepRoleDesc: "추천 바로가기와 레이아웃을 초기화합니다",
       stepLayoutTitle: "레이아웃 선택",
-      stepLayoutDesc: "홈 화면의 배치를 결정합니다"
+      stepLayoutDesc: "홈 화면의 배치를 결정합니다",
+      enterHome: "LeafTab 시작하기"
     },
     auth: {
       description: "로그인하거나 가입하여 개인 설정을 저장하세요.",

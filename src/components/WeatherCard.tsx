@@ -174,7 +174,7 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-[520px]">
+        <DialogContent className="max-w-[520px] bg-background border-border text-foreground rounded-[32px] backdrop-blur-none">
           <DialogHeader>
             <DialogTitle>
               {t("weather.locationSettingsTitle", {

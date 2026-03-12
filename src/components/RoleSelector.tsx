@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,7 @@ import {
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
+import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 
@@ -33,6 +34,8 @@ interface RoleSelectorProps {
 
 const STEP_ORDER = ['appearance', 'role', 'layout'] as const;
 type StepType = (typeof STEP_ORDER)[number];
+const STAGED_REVEAL_HIDDEN = { opacity: 0, y: 20, filter: "blur(12px)" };
+const STAGED_REVEAL_SHOWN = { opacity: 1, y: 0, filter: "blur(0px)" };
 
 export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -41,6 +44,9 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const [accentColor, setAccentColor] = useState<string>('dynamic');
   const [step, setStep] = useState<StepType>('appearance');
   const [direction, setDirection] = useState(1);
+  const [appearanceRevealReady, setAppearanceRevealReady] = useState(false);
+  const previousStepRef = useRef<StepType | null>(null);
+  const stepRevealTimerRef = useRef<number | null>(null);
   const { i18n, t } = useTranslation();
   const { setTheme } = useTheme();
   const roleOptions = [
@@ -157,6 +163,42 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
     window.dispatchEvent(new Event('leaftab-accent-color-changed'));
   };
 
+  useEffect(() => {
+    if (stepRevealTimerRef.current) {
+      window.clearTimeout(stepRevealTimerRef.current);
+      stepRevealTimerRef.current = null;
+    }
+
+    if (!open) {
+      setAppearanceRevealReady(false);
+      previousStepRef.current = null;
+      return;
+    }
+
+    const previousStep = previousStepRef.current;
+    const switchedStep = previousStep !== null && previousStep !== step;
+    const revealDelay = switchedStep ? 340 : 40;
+
+    if (step === 'appearance') {
+      setAppearanceRevealReady(false);
+      stepRevealTimerRef.current = window.setTimeout(() => {
+        setAppearanceRevealReady(true);
+        stepRevealTimerRef.current = null;
+      }, revealDelay);
+    } else {
+      setAppearanceRevealReady(false);
+    }
+
+    previousStepRef.current = step;
+
+    return () => {
+      if (stepRevealTimerRef.current) {
+        window.clearTimeout(stepRevealTimerRef.current);
+        stepRevealTimerRef.current = null;
+      }
+    };
+  }, [open, step]);
+
   const LANGUAGES = [
     { code: 'zh', label: t('languages.zh') },
     { code: 'en', label: t('languages.en') },
@@ -183,7 +225,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
       return (
         <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
           <RiDashboardFill className="w-9 h-9 text-foreground/50" />
-          <div className="w-full h-full border-2 border-foreground/10 rounded absolute inset-0 m-2"></div>
+          <div className="w-full h-full rounded absolute inset-0 m-2"></div>
         </div>
       );
     }
@@ -213,68 +255,98 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               {step === 'appearance' && (
                 <motion.div
                   key="appearance"
-                  custom={direction}
-                  initial={{ opacity: 0, x: direction > 0 ? 120 : -120 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction > 0 ? -120 : 120 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.28, ease: "easeInOut" }}
                   className="space-y-10"
                 >
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold">{t('onboarding.stepAppearanceTitle')}</h1>
-                <p className="text-muted-foreground text-base">{t('onboarding.stepAppearanceDesc')}</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+              <motion.div
+                className="text-center space-y-2"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.32, ease: "easeOut", delay: 0.02 }}
+              >
+                <TextEffect
+                  as="h1"
+                  className="text-4xl font-bold"
+                  per="char"
+                  preset="fade-in-blur"
+                  speedReveal={1.15}
+                >
+                  {t('onboarding.stepAppearanceTitle')}
+                </TextEffect>
+                <TextEffect
+                  className="text-muted-foreground text-base"
+                  per="word"
+                  preset="fade-in-blur"
+                  delay={0.16}
+                  speedReveal={1.1}
+                >
+                  {t('onboarding.stepAppearanceDesc')}
+                </TextEffect>
+              </motion.div>
+              <motion.div
+                className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.34, ease: "easeOut", delay: 0.14 }}
+              >
                 <button
                   type="button"
                   className={cn(
-                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-[28px] border-2 p-3 transition-all flex flex-col items-center gap-2 text-center",
                     selectedTheme === 'system' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('system')}
                 >
-                  <div className="w-full aspect-[16/8] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="w-full aspect-[16/8] bg-muted rounded-[22px] flex items-center justify-center overflow-hidden">
                     <RiComputerFill className="w-7 h-7 text-foreground/70" />
                   </div>
-                  <div className="w-full flex items-center justify-between">
-                    <div className="font-semibold text-base">{t('settings.theme.system')}</div>
+                  <div className="w-full flex items-center justify-center">
+                    <div className="w-full text-center font-semibold text-base">{t('settings.theme.system')}</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   className={cn(
-                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-[28px] border-2 p-3 transition-all flex flex-col items-center gap-2 text-center",
                     selectedTheme === 'dark' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('dark')}
                 >
-                  <div className="w-full aspect-[16/8] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="w-full aspect-[16/8] bg-muted rounded-[22px] flex items-center justify-center overflow-hidden">
                     <RiMoonFill className="w-7 h-7 text-foreground/70" />
                   </div>
-                  <div className="w-full flex items-center justify-between">
-                    <div className="font-semibold text-base">{t('settings.theme.dark')}</div>
+                  <div className="w-full flex items-center justify-center">
+                    <div className="w-full text-center font-semibold text-base">{t('settings.theme.dark')}</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
                   className={cn(
-                    "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2 text-left",
+                    "no-pill-radius cursor-pointer !rounded-[28px] border-2 p-3 transition-all flex flex-col items-center gap-2 text-center",
                     selectedTheme === 'light' ? "border-primary bg-card" : "border-muted bg-card"
                   )}
                   onClick={() => handleThemeSelect('light')}
                 >
-                  <div className="w-full aspect-[16/8] bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="w-full aspect-[16/8] bg-muted rounded-[22px] flex items-center justify-center overflow-hidden">
                     <RiSunFill className="w-7 h-7 text-foreground/70" />
                   </div>
-                  <div className="w-full flex items-center justify-between">
-                    <div className="font-semibold text-base">{t('settings.theme.light')}</div>
+                  <div className="w-full flex items-center justify-center">
+                    <div className="w-full text-center font-semibold text-base">{t('settings.theme.light')}</div>
                   </div>
                 </button>
-              </div>
+              </motion.div>
 
-              <div className="w-full">
+              <motion.div
+                className="w-full"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.3, ease: "easeOut", delay: 0.26 }}
+              >
                 <div className="flex items-center justify-center w-full px-[6px] gap-3 flex-wrap">
                   {colorOptions.map((option) => (
                     <button
@@ -290,9 +362,14 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     />
                   ))}
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="w-full space-y-2">
+              <motion.div
+                className="w-full space-y-2"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.3, ease: "easeOut", delay: 0.38 }}
+              >
                 <div className="text-left text-xs text-muted-foreground">{t('settings.language.label')}</div>
                 <Select value={normalizedLanguage} onValueChange={handleLanguageSelect}>
                   <SelectTrigger className="w-full h-12 rounded-xl bg-card border-border text-base">
@@ -306,9 +383,14 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </motion.div>
 
-              <div className="flex items-center justify-center gap-2">
+              <motion.div
+                className="flex items-center justify-center gap-2"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.26, ease: "easeOut", delay: 0.5 }}
+              >
                 {STEP_ORDER.map((item, index) => (
                   <button
                     key={item}
@@ -321,38 +403,75 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     aria-label={`step-${index + 1}`}
                   />
                 ))}
-              </div>
+              </motion.div>
 
-              <div className="w-full">
+              <motion.div
+                className="w-full"
+                initial={false}
+                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                transition={{ duration: 0.28, ease: "easeOut", delay: 0.58 }}
+              >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={() => goToStep('role')}>
                   {t('onboarding.next')}
                 </Button>
-              </div>
+              </motion.div>
                 </motion.div>
               )}
               {step === 'role' && (
                 <motion.div
                   key="role"
-                  custom={direction}
-                  initial={{ opacity: 0, x: direction > 0 ? 120 : -120 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction > 0 ? -120 : 120 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.28, ease: "easeInOut" }}
                   className="relative space-y-8 pt-8"
                 >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-0 top-0 h-10 w-10 rounded-full"
-                onClick={() => goToStep('appearance')}
+              <motion.div
+                className="absolute left-0 top-0"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.24, ease: "easeOut", delay: 0.02 }}
               >
-                <RiArrowLeftSLine className="h-5 w-5" />
-              </Button>
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold">{t('onboarding.stepRoleTitle')}</h1>
-                <p className="text-muted-foreground text-base">{t('onboarding.stepRoleDesc')}</p>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => goToStep('appearance')}
+                >
+                  <RiArrowLeftSLine className="h-5 w-5" />
+                </Button>
+              </motion.div>
+              <motion.div
+                className="text-center space-y-2"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.32, ease: "easeOut", delay: 0.08 }}
+              >
+                <TextEffect
+                  as="h1"
+                  className="text-4xl font-bold"
+                  per="char"
+                  preset="fade-in-blur"
+                  speedReveal={1.15}
+                >
+                  {t('onboarding.stepRoleTitle')}
+                </TextEffect>
+                <TextEffect
+                  className="text-muted-foreground text-base"
+                  per="word"
+                  preset="fade-in-blur"
+                  delay={0.14}
+                  speedReveal={1.1}
+                >
+                  {t('onboarding.stepRoleDesc')}
+                </TextEffect>
+              </motion.div>
+              <motion.div
+                className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.34, ease: "easeOut", delay: 0.2 }}
+              >
                 {roleOptions.map((role) => {
                   const isSelected = selectedRole === role.id;
                   const RoleIcon = role.icon;
@@ -373,8 +492,13 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     </button>
                   );
                 })}
-              </div>
-              <div className="flex items-center justify-center gap-2">
+              </motion.div>
+              <motion.div
+                className="flex items-center justify-center gap-2"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.26, ease: "easeOut", delay: 0.34 }}
+              >
                 {STEP_ORDER.map((item, index) => (
                   <button
                     key={item}
@@ -387,48 +511,85 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     aria-label={`step-${index + 1}`}
                   />
                 ))}
-              </div>
-              <div className="w-full">
+              </motion.div>
+              <motion.div
+                className="w-full"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.28, ease: "easeOut", delay: 0.42 }}
+              >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={() => goToStep('layout')} disabled={!selectedRole}>
                   {t('onboarding.next')}
                 </Button>
-              </div>
+              </motion.div>
                 </motion.div>
               )}
               {step === 'layout' && (
                 <motion.div
                   key="layout"
-                  custom={direction}
-                  initial={{ opacity: 0, x: direction > 0 ? 120 : -120 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: direction > 0 ? -120 : 120 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={{ duration: 0.28, ease: "easeInOut" }}
                   className="relative space-y-8 pt-8"
                 >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-0 top-0 h-10 w-10 rounded-full"
-                onClick={() => goToStep('role')}
+              <motion.div
+                className="absolute left-0 top-0"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.24, ease: "easeOut", delay: 0.02 }}
               >
-                <RiArrowLeftSLine className="h-5 w-5" />
-              </Button>
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold">{t('onboarding.stepLayoutTitle')}</h1>
-                <p className="text-muted-foreground text-base">{t('onboarding.stepLayoutDesc')}</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => goToStep('role')}
+                >
+                  <RiArrowLeftSLine className="h-5 w-5" />
+                </Button>
+              </motion.div>
+              <motion.div
+                className="text-center space-y-2"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.32, ease: "easeOut", delay: 0.08 }}
+              >
+                <TextEffect
+                  as="h1"
+                  className="text-4xl font-bold"
+                  per="char"
+                  preset="fade-in-blur"
+                  speedReveal={1.15}
+                >
+                  {t('onboarding.stepLayoutTitle')}
+                </TextEffect>
+                <TextEffect
+                  className="text-muted-foreground text-base"
+                  per="word"
+                  preset="fade-in-blur"
+                  delay={0.14}
+                  speedReveal={1.1}
+                >
+                  {t('onboarding.stepLayoutDesc')}
+                </TextEffect>
+              </motion.div>
+              <motion.div
+                className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.34, ease: "easeOut", delay: 0.2 }}
+              >
                 {DISPLAY_MODE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type="button"
                     className={cn(
-                      "no-pill-radius cursor-pointer !rounded-xl border-2 p-3 transition-all flex flex-col items-center gap-2",
+                      "no-pill-radius cursor-pointer !rounded-[28px] border-2 p-3 transition-all flex flex-col items-center gap-2",
                       selectedLayout === option.value ? "border-primary bg-card" : "border-muted bg-card"
                     )}
                     onClick={() => setSelectedLayout(option.value)}
                   >
-                    <div className="w-full aspect-[16/9] bg-muted rounded-lg flex items-center justify-center overflow-hidden relative">
+                    <div className="w-full aspect-[16/9] bg-muted rounded-[22px] flex items-center justify-center overflow-hidden relative">
                       {renderLayoutPreview(option.value)}
                     </div>
                     <div className="text-center">
@@ -437,11 +598,21 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     </div>
                   </button>
                 ))}
-              </div>
-              <div className="text-center text-sm text-muted-foreground">
+              </motion.div>
+              <motion.div
+                className="text-center text-sm text-muted-foreground"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.26, ease: "easeOut", delay: 0.34 }}
+              >
                 {t('onboarding.layoutTip')}
-              </div>
-              <div className="flex items-center justify-center gap-2">
+              </motion.div>
+              <motion.div
+                className="flex items-center justify-center gap-2"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.26, ease: "easeOut", delay: 0.42 }}
+              >
                 {STEP_ORDER.map((item, index) => (
                   <button
                     key={item}
@@ -454,12 +625,17 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     aria-label={`step-${index + 1}`}
                   />
                 ))}
-              </div>
-              <div className="w-full">
+              </motion.div>
+              <motion.div
+                className="w-full"
+                initial={STAGED_REVEAL_HIDDEN}
+                animate={STAGED_REVEAL_SHOWN}
+                transition={{ duration: 0.28, ease: "easeOut", delay: 0.5 }}
+              >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={handleLayoutConfirm}>
                   {t('onboarding.enterHome')}
                 </Button>
-              </div>
+              </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
