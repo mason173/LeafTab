@@ -2,30 +2,52 @@
 
 import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch@1.1.3";
+import { motion } from "framer-motion";
 
 import { cn } from "./utils";
 
+type SwitchThumbProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Thumb> & {
+  pressedAnimation?: {
+    width?: number;
+    height?: number;
+    scale?: number;
+  };
+};
+
+const SwitchThumb = React.forwardRef<React.ElementRef<typeof SwitchPrimitive.Thumb>, SwitchThumbProps>(
+  ({ className, pressedAnimation = { width: 22 }, ...props }, ref) => {
+    return (
+      <SwitchPrimitive.Thumb ref={ref} asChild {...props}>
+        <motion.span
+          data-slot="switch-thumb"
+          className={cn("block h-full aspect-square rounded-full bg-background", className)}
+          whileTap={pressedAnimation}
+          transition={{ type: "spring", stiffness: 520, damping: 34 }}
+        />
+      </SwitchPrimitive.Thumb>
+    );
+  },
+);
+
+SwitchThumb.displayName = SwitchPrimitive.Thumb.displayName;
+
 function Switch({
   className,
+  children,
   ...props
-}: React.ComponentProps<typeof SwitchPrimitive.Root>) {
+}: React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-switch-background focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex h-6 w-10 shrink-0 items-center justify-start rounded-full border border-border p-0.5 transition-colors outline-none data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb
-        data-slot="switch-thumb"
-        className={cn(
-          "bg-card dark:data-[state=unchecked]:bg-card-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0",
-        )}
-      />
+      {children ?? <SwitchThumb />}
     </SwitchPrimitive.Root>
   );
 }
 
-export { Switch };
+export { Switch, SwitchThumb };

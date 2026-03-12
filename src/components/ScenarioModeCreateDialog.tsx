@@ -52,7 +52,7 @@ function ScenarioModeCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[20px] p-0 max-h-[80vh] overflow-visible">
+      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px] p-0 max-h-[80vh] overflow-visible">
         <ScrollArea
           className="max-h-[80vh]"
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"

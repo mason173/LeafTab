@@ -202,7 +202,7 @@ export function AdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t("settings.adminMode.switchLabel")}</DialogTitle>
           <DialogDescription>{t("settings.adminMode.switchDesc")}</DialogDescription>

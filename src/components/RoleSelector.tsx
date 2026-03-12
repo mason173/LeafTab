@@ -8,7 +8,6 @@ import {
   RiBankFill,
   RiBriefcase4Fill,
   RiCheckboxBlankFill,
-  RiCheckFill,
   RiCodeSSlashFill,
   RiComputerFill,
   RiDashboardFill,
@@ -239,7 +238,6 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                   </div>
                   <div className="w-full flex items-center justify-between">
                     <div className="font-semibold text-base">{t('settings.theme.system')}</div>
-                    {selectedTheme === 'system' && <RiCheckFill className="h-4 w-4 text-primary" />}
                   </div>
                 </button>
 
@@ -256,7 +254,6 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                   </div>
                   <div className="w-full flex items-center justify-between">
                     <div className="font-semibold text-base">{t('settings.theme.dark')}</div>
-                    {selectedTheme === 'dark' && <RiCheckFill className="h-4 w-4 text-primary" />}
                   </div>
                 </button>
 
@@ -273,7 +270,6 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                   </div>
                   <div className="w-full flex items-center justify-between">
                     <div className="font-semibold text-base">{t('settings.theme.light')}</div>
-                    {selectedTheme === 'light' && <RiCheckFill className="h-4 w-4 text-primary" />}
                   </div>
                 </button>
               </div>
@@ -374,7 +370,6 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                         <RoleIcon className="w-5 h-5 text-foreground/80" />
                       </div>
                       <span className="font-medium text-center text-sm">{t(`roles.${role.id}`)}</span>
-                      {isSelected && <RiCheckFill className="absolute right-3 top-3 h-4 w-4 text-primary" />}
                     </button>
                   );
                 })}

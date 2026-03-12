@@ -39,6 +39,7 @@
             "@tailwindcss/vite": "^4.1.18",
             "@types/canvas-confetti": "^1.9.0",
             "canvas-confetti": "^1.9.4",
+            "china-division": "^2.7.0",
             "class-variance-authority": "^0.7.1",
             "clsx": "*",
             "cmdk": "^1.1.1",

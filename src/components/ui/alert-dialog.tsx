@@ -2,14 +2,41 @@
 
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog@1.1.6";
+import { AnimatePresence, motion, type HTMLMotionProps } from "framer-motion";
+
+import { useControlledState } from "@/hooks/use-controlled-state";
+import { getStrictContext } from "@/lib/get-strict-context";
 
 import { cn } from "./utils";
 import { buttonVariants } from "./button";
 
-function AlertDialog({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
+type AlertDialogContextType = {
+  isOpen: boolean;
+  setIsOpen: AlertDialogProps["onOpenChange"];
+};
+
+const [AlertDialogProvider, useAlertDialog] =
+  getStrictContext<AlertDialogContextType>("AlertDialogContext");
+
+type AlertDialogProps = React.ComponentProps<typeof AlertDialogPrimitive.Root>;
+
+function AlertDialog(props: AlertDialogProps) {
+  const [isOpen, setIsOpen] = useControlledState({
+    value: props.open,
+    defaultValue: props.defaultOpen,
+    onChange: props.onOpenChange,
+  });
+
+  return (
+    <AlertDialogProvider value={{ isOpen, setIsOpen }}>
+      <AlertDialogPrimitive.Root
+        data-slot="alert-dialog"
+        {...props}
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      />
+    </AlertDialogProvider>
+  );
 }
 
 function AlertDialogTrigger({
@@ -20,45 +47,120 @@ function AlertDialogTrigger({
   );
 }
 
-function AlertDialogPortal({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
+type AlertDialogPortalProps = Omit<
+  React.ComponentProps<typeof AlertDialogPrimitive.Portal>,
+  "forceMount"
+>;
+
+function AlertDialogPortal({ children, ...props }: AlertDialogPortalProps) {
+  const { isOpen } = useAlertDialog();
+
   return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
+    <AnimatePresence>
+      {isOpen ? (
+        <AlertDialogPrimitive.Portal
+          data-slot="alert-dialog-portal"
+          forceMount
+          {...props}
+        >
+          {children}
+        </AlertDialogPrimitive.Portal>
+      ) : null}
+    </AnimatePresence>
   );
 }
+
+type AlertDialogOverlayProps = Omit<
+  React.ComponentProps<typeof AlertDialogPrimitive.Overlay>,
+  "forceMount" | "asChild"
+> &
+  HTMLMotionProps<"div">;
 
 function AlertDialogOverlay({
   className,
+  transition = { duration: 0.2, ease: "easeInOut" },
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
+}: AlertDialogOverlayProps) {
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
-      className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
-        className,
-      )}
-      {...props}
-    />
+      asChild
+      forceMount
+    >
+      <motion.div
+        key="alert-dialog-overlay"
+        className={cn("fixed inset-0 z-50 bg-black/50", className)}
+        initial={{ opacity: 0, filter: "blur(4px)" }}
+        animate={{ opacity: 1, filter: "blur(0px)" }}
+        exit={{ opacity: 0, filter: "blur(4px)" }}
+        transition={transition}
+        {...props}
+      />
+    </AlertDialogPrimitive.Overlay>
   );
 }
 
+type AlertDialogFlipDirection = "top" | "bottom" | "left" | "right";
+
+type AlertDialogContentProps = Omit<
+  React.ComponentProps<typeof AlertDialogPrimitive.Content>,
+  "forceMount" | "asChild"
+> &
+  HTMLMotionProps<"div"> & {
+    from?: AlertDialogFlipDirection;
+  };
+
 function AlertDialogContent({
   className,
+  from = "top",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
+  transition = { type: "spring", stiffness: 150, damping: 25 },
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: AlertDialogContentProps) {
+  const initialRotation =
+    from === "bottom" || from === "left" ? "20deg" : "-20deg";
+  const isVertical = from === "top" || from === "bottom";
+  const rotateAxis = isVertical ? "rotateX" : "rotateY";
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
-        className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
-          className,
-        )}
-        {...props}
-      />
+        asChild
+        forceMount
+        onOpenAutoFocus={onOpenAutoFocus}
+        onCloseAutoFocus={onCloseAutoFocus}
+        onEscapeKeyDown={onEscapeKeyDown}
+      >
+        <motion.div
+          key="alert-dialog-content"
+          data-slot="alert-dialog-content"
+          initial={{
+            opacity: 0,
+            filter: "blur(4px)",
+            transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
+          }}
+          animate={{
+            opacity: 1,
+            filter: "blur(0px)",
+            transform: `perspective(500px) ${rotateAxis}(0deg) scale(1)`,
+          }}
+          exit={{
+            opacity: 0,
+            filter: "blur(4px)",
+            transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
+          }}
+          transition={transition}
+          className={cn(
+            "bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[32px] border p-6 shadow-lg sm:max-w-lg",
+            className,
+          )}
+          {...props}
+        />
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
@@ -99,7 +201,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("text-lg font-semibold", className)}
+      className={cn("!text-lg leading-none font-semibold", className)}
       {...props}
     />
   );
@@ -112,7 +214,7 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("sr-only", className)}
       {...props}
     />
   );

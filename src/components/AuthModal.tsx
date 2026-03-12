@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/components/ui/utils";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -223,7 +223,7 @@ export default function AuthModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle className="text-foreground">LeafTab</DialogTitle>
           <DialogDescription className="text-muted-foreground">
@@ -256,7 +256,8 @@ export default function AuthModal({
             <form onSubmit={handleLogin} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="login-username" className="text-foreground">{t('auth.labels.username')}</Label>
-                <input 
+                <Input
+                  variant="auth"
                   key="login-username"
                   id="login-username" 
                   name="username"
@@ -264,20 +265,13 @@ export default function AuthModal({
                   placeholder={t('auth.placeholders.usernameInput')} 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
-                    "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                    "placeholder:text-muted-foreground",
-                    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                    "bg-secondary border-border text-foreground rounded-[16px]"
-                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password" className="text-foreground">{t('auth.labels.password')}</Label>
                 <div className="relative">
-                  <input
+                  <Input
+                    variant="auth"
                     key="login-password"
                     id="login-password"
                     name="password"
@@ -286,14 +280,7 @@ export default function AuthModal({
                     placeholder={t('auth.placeholders.passwordInput')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={cn(
-                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 pr-10 text-base transition-[color,box-shadow] outline-none",
-                      "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                      "placeholder:text-muted-foreground",
-                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                      "bg-secondary border-border text-foreground rounded-[16px]"
-                    )}
+                    className="pr-10"
                   />
                   <button
                     type="button"
@@ -314,7 +301,8 @@ export default function AuthModal({
             <form onSubmit={handleRegister} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="register-username" className="text-foreground">{t('auth.labels.username')}</Label>
-                <input 
+                <Input
+                  variant="auth"
                   key="register-username"
                   id="register-username" 
                   name="username"
@@ -322,21 +310,14 @@ export default function AuthModal({
                   placeholder={t('auth.placeholders.usernameSet')} 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className={cn(
-                    "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
-                    "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                    "placeholder:text-muted-foreground",
-                    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                    "bg-secondary border-border text-foreground rounded-[16px]"
-                  )}
                 />
                 <p className="text-[12px] text-muted-foreground">{t('auth.tips.username')}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="register-password" className="text-foreground">{t('auth.labels.password')}</Label>
                 <div className="relative">
-                  <input
+                  <Input
+                    variant="auth"
                     key="register-password"
                     id="register-password"
                     name="password"
@@ -345,14 +326,7 @@ export default function AuthModal({
                     placeholder={t('auth.placeholders.passwordSet')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={cn(
-                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 pr-10 text-base transition-[color,box-shadow] outline-none",
-                      "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                      "placeholder:text-muted-foreground",
-                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                      "bg-secondary border-border text-foreground rounded-[16px]"
-                    )}
+                    className="pr-10"
                   />
                   <button
                     type="button"
@@ -368,7 +342,8 @@ export default function AuthModal({
               <div className="space-y-2">
                 <Label htmlFor="captcha" className="text-foreground">{t('auth.labels.captcha')}</Label>
                 <div className="flex gap-2">
-                  <input 
+                  <Input
+                    variant="auth"
                     key="captcha"
                     id="captcha" 
                     name="captcha"
@@ -376,14 +351,6 @@ export default function AuthModal({
                     placeholder={t('auth.placeholders.captchaInput')} 
                     value={captcha}
                     onChange={(e) => setCaptcha(e.target.value)}
-                    className={cn(
-                      "flex h-9 w-full min-w-0 rounded-xl border border-input px-3 py-1 text-base transition-[color,box-shadow] outline-none",
-                      "file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium",
-                      "placeholder:text-muted-foreground",
-                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-                      "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-                      "bg-secondary border-border text-foreground rounded-[16px]"
-                    )}
                   />
                   <div 
                     className="cursor-pointer rounded-[8px] overflow-hidden min-w-[120px] h-[40px] bg-white flex items-center justify-center"

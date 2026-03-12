@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import ShortcutIcon from './ShortcutIcon';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +55,7 @@ export default function ShortcutModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         style={{ width: 'min(420px, calc(100vw - 32px))', maxWidth: 'min(420px, calc(100vw - 32px))' }}
-        className="w-full sm:max-w-[420px] max-w-[calc(100vw-32px)] bg-background border-border text-foreground rounded-[24px] overflow-hidden p-6 block"
+        className="w-full sm:max-w-[420px] max-w-[calc(100vw-32px)] bg-background border-border text-foreground rounded-[32px] overflow-hidden p-6 block"
       >
         <DialogHeader>
           <DialogTitle className="text-foreground">{mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle')}</DialogTitle>
@@ -68,18 +69,22 @@ export default function ShortcutModal({
             fallbackStyle="emptyicon"
             fallbackLabel={title}
           />
-          <div className="flex flex-col gap-[4px] items-start w-full">
-            <p className="font-['PingFang_SC:Regular',sans-serif] text-muted-foreground text-[12px] w-full">{t('shortcutModal.nameLabel')}</p>
+          <div className="flex flex-col gap-2 items-start w-full">
+            <Label htmlFor="shortcut-title" className="text-foreground">{t('shortcutModal.nameLabel')}</Label>
             <Input
+              variant="auth"
+              id="shortcut-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('shortcutModal.namePlaceholder')}
             />
           </div>
-          <div className="flex flex-col gap-[4px] items-start w-full">
-            <p className="font-['PingFang_SC:Regular',sans-serif] text-muted-foreground text-[12px] w-full">{t('shortcutModal.urlLabel')}</p>
+          <div className="flex flex-col gap-2 items-start w-full">
+            <Label htmlFor="shortcut-url" className="text-foreground">{t('shortcutModal.urlLabel')}</Label>
             <Input
+              variant="auth"
+              id="shortcut-url"
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}

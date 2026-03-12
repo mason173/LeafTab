@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
+import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 
 type SyncNameInputFieldProps = {
   label: string;
@@ -98,8 +98,10 @@ export function SyncToggleField({
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
-      />
+        className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+      >
+        <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+      </Switch>
     </div>
   );
 }

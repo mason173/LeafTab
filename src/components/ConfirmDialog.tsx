@@ -29,7 +29,7 @@ function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle className="text-foreground">{title}</DialogTitle>
           <DialogDescription className="text-muted-foreground">{description}</DialogDescription>

@@ -477,7 +477,7 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
   if (!isOpen) return null;
 
   return (
-    <div className={`absolute left-0 right-0 p-[8px] rounded-[16px] top-[calc(100%+8px)] z-[500] border ${
+    <div className={`absolute left-0 right-0 p-[8px] rounded-[20px] top-[calc(100%+8px)] z-[500] border ${
       forceWhiteTheme
         ? 'bg-white text-black/85 border-black/10 shadow-lg'
         : (minimalistMode

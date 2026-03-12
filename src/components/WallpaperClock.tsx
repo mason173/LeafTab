@@ -73,12 +73,14 @@ export function WallpaperClock({
   layout,
 }: WallpaperClockProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [overlayFailed, setOverlayFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
   const { t, i18n } = useTranslation();
 
   useEffect(() => {
     setIsLoaded(false);
+    setOverlayFailed(false);
   }, [wallpaperUrl]);
 
   useEffect(() => {
@@ -139,9 +141,13 @@ export function WallpaperClock({
                   className="absolute inset-0 w-full h-full object-cover" 
                   src={wallpaperUrl} 
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: isLoaded ? 1 : 0 }}
+                  animate={{ opacity: isLoaded || overlayFailed ? 1 : 0 }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
                   onLoad={() => setIsLoaded(true)}
+                  onError={() => {
+                    setOverlayFailed(true);
+                    setIsLoaded(false);
+                  }}
                 />
               )}
             </>

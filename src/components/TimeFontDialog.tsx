@@ -22,7 +22,7 @@ export function TimeFontDialog({ open, onOpenChange, currentFont, previewTime, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[24px]">
+      <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t("settings.timeFont.title")}</DialogTitle>
           <DialogDescription>{t("settings.timeFont.description")}</DialogDescription>
@@ -38,16 +38,16 @@ export function TimeFontDialog({ open, onOpenChange, currentFont, previewTime, o
                 <button
                   key={font.family}
                   type="button"
-                  className={`rounded-xl border p-3 text-left transition-all ${selected ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:bg-secondary/70"}`}
+                  className={`rounded-xl border p-3 transition-all flex flex-col items-center justify-center gap-2 text-center ${selected ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:bg-secondary/70"}`}
                   onClick={() => {
                     onSelect(font.family);
                     onOpenChange(false);
                   }}
                 >
-                  <div style={{ fontFamily: font.family }} className="text-[36px] leading-none">
+                  <div style={{ fontFamily: font.family }} className="text-[36px] leading-none text-center w-full">
                     {previewTime}
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground truncate">{font.name}</div>
+                  <div className="text-xs text-muted-foreground truncate w-full text-center">{font.name}</div>
                 </button>
               );
             })}

@@ -124,7 +124,7 @@ export function AppDialogs({
   return (
     <>
       <Dialog open={movePageDialog.open} onOpenChange={movePageDialog.onOpenChange}>
-        <DialogContent className="sm:max-w-[480px] bg-background border-border text-foreground rounded-[24px]">
+        <DialogContent className="sm:max-w-[480px] bg-background border-border text-foreground rounded-[32px]">
           <DialogHeader>
             <DialogTitle>{t('context.moveToPage')}</DialogTitle>
             <DialogDescription>{t('context.moveToPageDesc')}</DialogDescription>
@@ -202,7 +202,7 @@ export function AppDialogs({
           }
         }}
       >
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[24px]">
+        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
           <DialogHeader>
             <DialogTitle>{t('settings.backup.importConfirmTitle')}</DialogTitle>
             <DialogDescription>{t('settings.backup.importConfirmDesc')}</DialogDescription>
