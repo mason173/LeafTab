@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { RiAddLine, RiSubtractLine } from '@remixicon/react';
+import Scrubber from '@/components/ui/smoothui/scrubber';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 
 type SyncNameInputFieldProps = {
@@ -50,26 +51,54 @@ export function SyncIntervalSliderField({
   disabled = false,
 }: SyncIntervalSliderFieldProps) {
   const safeIndex = Math.max(0, options.indexOf(value));
+  const setByIndex = (nextIndex: number) => {
+    if (disabled) return;
+    const clampedIndex = Math.max(0, Math.min(options.length - 1, nextIndex));
+    onChange(options[clampedIndex] ?? options[0]);
+  };
+
   return (
     <div className={`grid gap-2 ${disabled ? 'opacity-55' : ''}`}>
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Slider
-        min={0}
-        max={options.length - 1}
-        step={1}
-        value={[safeIndex]}
-        onValueChange={(v: number[]) => {
-          if (disabled) return;
-          onChange(options[v[0]] ?? options[0]);
-        }}
-        disabled={disabled}
-      />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        {options.map((item) => (
-          <span key={item}>{item}m</span>
-        ))}
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-8 w-8 rounded-full"
+          onClick={() => setByIndex(safeIndex - 1)}
+          disabled={disabled || safeIndex <= 0}
+        >
+          <RiSubtractLine className="size-4" />
+        </Button>
+        <Scrubber
+          className="flex-1"
+          label={label}
+          min={0}
+          max={options.length - 1}
+          step={1}
+          decimals={0}
+          ticks={Math.max(0, options.length - 2)}
+          value={safeIndex}
+          onValueChange={(nextRawValue: number) => {
+            setByIndex(Math.round(nextRawValue));
+          }}
+          showLabel
+          showValue
+          valueText={valueLabel}
+          trackHeight={40}
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className="h-8 w-8 rounded-full"
+          onClick={() => setByIndex(safeIndex + 1)}
+          disabled={disabled || safeIndex >= options.length - 1}
+        >
+          <RiAddLine className="size-4" />
+        </Button>
       </div>
-      <div className="text-sm font-medium">{valueLabel}</div>
     </div>
   );
 }

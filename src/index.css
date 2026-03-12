@@ -31,6 +31,15 @@
   100% { transform: translateX(var(--scroll-distance)); }
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 :root {
   --font-size: 16px;
   --tint-rgb: 59 130 246;

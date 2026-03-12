@@ -13,6 +13,15 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   const { t } = useTranslation();
   const items: ChangelogItem[] = [
     {
+      version: "1.3.0",
+      date: "2026-03-13",
+      notes: [
+        t("changelog.items.release130DynamicEffectsOptimize"),
+        t("changelog.items.release130DynamicWallpaperTab"),
+        t("changelog.items.release130ManualWeatherCity"),
+      ],
+    },
+    {
       version: "1.2.9",
       date: "2026-03-12",
       notes: [

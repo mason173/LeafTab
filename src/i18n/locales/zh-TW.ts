@@ -232,6 +232,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release130DynamicEffectsOptimize: "優化全域動態效果體驗，新增「減弱動態效果」開關並統一動畫降級策略。",
+        release130DynamicWallpaperTab: "新增「靈動」動態桌布分類，支援 Prism、Silk、Light Rays、Beams、Galaxy、Iridescence 預覽與套用。",
+        release130ManualWeatherCity: "天氣功能支援手動選擇城市並持久保存，定位與顯示更可控。",
         release129ModeUiRefactor: "重構「全景 / 節奏 / 留白」三種模式主介面，拆分共用元件並清理歷史冗餘程式碼。",
         release129WallpaperModalRefine: "桌布設定彈窗重構為 Bing / 天氣 / 顏色 / 自訂四分頁，互動與布局統一。",
         release129ColorWallpaperGradients: "新增顏色桌布（12 組可選漸層），並優化漸層強度、色卡圓角與預覽視覺。",
@@ -408,7 +411,8 @@ export default {
       stepRoleTitle: "選擇你的角色",
       stepRoleDesc: "用於初始化推薦捷徑與版面",
       stepLayoutTitle: "選擇版面樣式",
-      stepLayoutDesc: "決定首頁呈現的排版方式"
+      stepLayoutDesc: "決定首頁呈現的排版方式",
+      enterHome: "進入首頁"
     },
     auth: {
       description: "登入或註冊您的帳號以儲存個人化設定。",

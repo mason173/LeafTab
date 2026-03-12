@@ -10,6 +10,8 @@ import imgImage from "../assets/Default_wallpaper.png";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
+import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
+import { Beams, Galaxy, Iridescence, LightRays, Prism, Silk } from '@/components/react-bits';
 
 interface WallpaperClockProps {
   time: string; 
@@ -26,8 +28,12 @@ interface WallpaperClockProps {
   onScenarioModeCreate: () => void;
   onScenarioModeEdit: (id: string) => void;
   onScenarioModeDelete: (id: string) => void;
-  wallpaperMode: 'bing' | 'weather' | 'color' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'custom') => void;
+  wallpaperMode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom';
+  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom') => void;
+  dynamicWallpaperEffect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence';
+  onDynamicWallpaperEffectChange: (
+    effect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
+  ) => void;
   weatherCode: number;
   onWeatherUpdate?: (code: number) => void;
   bingWallpaper: string;
@@ -59,6 +65,8 @@ export function WallpaperClock({
   onScenarioModeDelete,
   wallpaperMode,
   onWallpaperModeChange,
+  dynamicWallpaperEffect,
+  onDynamicWallpaperEffectChange,
   weatherCode,
   onWeatherUpdate,
   bingWallpaper,
@@ -125,6 +133,65 @@ export function WallpaperClock({
               className="w-full h-full object-cover" 
               src={customWallpaper} 
             />
+          ) : wallpaperMode === 'dynamic' ? (
+            dynamicWallpaperEffect === 'silk' ? (
+              <Silk
+                speed={4.4}
+                scale={0.95}
+                color="#7B7481"
+                noiseIntensity={1.2}
+                rotation={0}
+              />
+            ) : dynamicWallpaperEffect === 'light-rays' ? (
+              <LightRays
+                raysOrigin="top-center"
+                raysColor="#ffffff"
+                raysSpeed={1.15}
+                lightSpread={0.95}
+                rayLength={1.6}
+                fadeDistance={1}
+                saturation={1}
+                followMouse
+                mouseInfluence={0.08}
+                noiseAmount={0.04}
+                distortion={0.04}
+              />
+            ) : dynamicWallpaperEffect === 'beams' ? (
+              <Beams
+                beamWidth={2}
+                beamHeight={15}
+                beamNumber={12}
+                lightColor="#ffffff"
+                speed={2}
+                noiseIntensity={1.75}
+                scale={0.2}
+                rotation={0}
+              />
+            ) : dynamicWallpaperEffect === 'galaxy' ? (
+              <Galaxy
+                density={1.2}
+                glowIntensity={0.35}
+                saturation={0.5}
+                hueShift={165}
+                mouseRepulsion
+                mouseInteraction
+              />
+            ) : dynamicWallpaperEffect === 'iridescence' ? (
+              <Iridescence
+                color={[1, 1, 1]}
+                mouseReact
+                amplitude={0.08}
+                speed={1.0}
+              />
+            ) : (
+              <Prism
+                animationType="rotate"
+                timeScale={0.35}
+                scale={3.4}
+                noise={0.35}
+                glow={1}
+              />
+            )
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
@@ -181,8 +248,9 @@ export function WallpaperClock({
           className="font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
           style={{ fontFamily: timeFont, fontSize: layout?.clockFontSize ?? 100 }}
           onClick={() => setTimeFontDialogOpen(true)}
+          aria-label={time}
         >
-          {time}
+          <SlidingClockTime time={time} />
         </button>
         <TimeFontDialog
           open={timeFontDialogOpen}
@@ -227,6 +295,8 @@ export function WallpaperClock({
         <WallpaperSelector 
           mode={wallpaperMode} 
           onModeChange={onWallpaperModeChange} 
+          dynamicWallpaperEffect={dynamicWallpaperEffect}
+          onDynamicWallpaperEffectChange={onDynamicWallpaperEffectChange}
           bingWallpaper={bingWallpaper}
           weatherCode={weatherCode}
           customWallpaper={customWallpaper}

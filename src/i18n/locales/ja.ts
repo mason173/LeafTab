@@ -226,6 +226,9 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release130DynamicEffectsOptimize: "全体の動的エフェクト体験を最適化し、「動的効果を抑える」トグルと統一されたモーション低減挙動を追加",
+        release130DynamicWallpaperTab: "新しい「動的」壁紙カテゴリを追加し、Prism / Silk / Light Rays / Beams / Galaxy / Iridescence のプレビューと適用に対応",
+        release130ManualWeatherCity: "天気機能で都市を手動選択して保存できるようになり、位置表示をより安定して制御可能に",
         release129ModeUiRefactor: "「パノラマ / リズム / 余白」の3モードUIを再構成し、共通コンポーネント化と旧重複コードの整理を実施",
         release129WallpaperModalRefine: "壁紙設定ダイアログを Bing / 天気 / カラー / カスタム の4タブ構成に再設計し、操作とレイアウトを統一",
         release129ColorWallpaperGradients: "カラー壁紙（12種のグラデーション）を追加し、グラデーション強度・スウォッチ角丸・プレビュー表現を最適化",
@@ -416,7 +419,8 @@ export default {
       stepRoleTitle: "役割を選択",
       stepRoleDesc: "おすすめのショートカットとレイアウトを初期化します",
       stepLayoutTitle: "レイアウトを選択",
-      stepLayoutDesc: "ホーム画面の配置を決定します"
+      stepLayoutDesc: "ホーム画面の配置を決定します",
+      enterHome: "LeafTab を開始"
     },
     auth: {
       description: "ログインまたは登録して個人設定を保存します。",

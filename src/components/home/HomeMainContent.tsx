@@ -6,6 +6,7 @@ import { SearchBar } from '@/components/SearchBar';
 import { ShortcutsCarousel } from '@/components/ShortcutsCarousel';
 import { TimeFontDialog } from '@/components/TimeFontDialog';
 import { WallpaperClock } from '@/components/WallpaperClock';
+import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
 
@@ -33,6 +34,9 @@ interface HomeMainContentProps {
   searchBarProps: ComponentProps<typeof SearchBar>;
   shortcutsCarouselProps: ComponentProps<typeof ShortcutsCarousel>;
 }
+
+const HOME_REVEAL_HIDDEN = { opacity: 0, y: 20, filter: 'blur(12px)' };
+const HOME_REVEAL_SHOWN = { opacity: 1, y: 0, filter: 'blur(0px)' };
 
 export function HomeMainContent({
   visible,
@@ -62,7 +66,12 @@ export function HomeMainContent({
         style={{ width: layout.contentWidth, gap: layout.mainGap + 12 }}
       >
         {!user && loginBannerVisible && (
-          <motion.div className="w-full" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.div
+            className="w-full transform-gpu will-change-transform"
+            initial={HOME_REVEAL_HIDDEN}
+            animate={HOME_REVEAL_SHOWN}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.02 }}
+          >
             <LoginBanner
               onLogin={onLoginRequest}
               onClose={onDismissLoginBanner}
@@ -72,9 +81,9 @@ export function HomeMainContent({
 
         {modeFlags.showHeroWallpaperClock ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            initial={HOME_REVEAL_HIDDEN}
+            animate={HOME_REVEAL_SHOWN}
+            transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             className="w-full transform-gpu will-change-transform"
           >
             <WallpaperClock {...wallpaperClockProps} />
@@ -82,9 +91,9 @@ export function HomeMainContent({
         ) : (
           showTime && (
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: 'easeOut' }}
+              initial={HOME_REVEAL_HIDDEN}
+              animate={HOME_REVEAL_SHOWN}
+              transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
               className="w-full transform-gpu will-change-transform"
             >
               <InlineTime
@@ -102,9 +111,9 @@ export function HomeMainContent({
 
         <motion.div
           className="relative w-full z-20 transform-gpu will-change-transform"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut', delay: 0.12 }}
+          initial={HOME_REVEAL_HIDDEN}
+          animate={HOME_REVEAL_SHOWN}
+          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1], delay: 0.22 }}
         >
           <SearchBar
             {...searchBarProps}
@@ -116,9 +125,9 @@ export function HomeMainContent({
         {modeFlags.showShortcuts && (
           <motion.div
             className="relative w-full z-10 transform-gpu will-change-transform"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.24 }}
+            initial={HOME_REVEAL_HIDDEN}
+            animate={HOME_REVEAL_SHOWN}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.34 }}
           >
             <ShortcutsCarousel {...shortcutsCarouselProps} forceTextWhite={displayMode === 'fresh'} />
           </motion.div>
@@ -159,8 +168,9 @@ function InlineTime({
           className={`${forceWhiteText ? 'text-white text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
           style={{ fontFamily: timeFont, fontSize: layout.clockFontSize }}
           onClick={() => setTimeFontDialogOpen(true)}
+          aria-label={time}
         >
-          {time}
+          <SlidingClockTime time={time} />
         </button>
         <TimeFontDialog
           open={timeFontDialogOpen}

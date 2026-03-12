@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { Magnetic } from "@/components/motion-primitives/magnetic";
 import { getScenarioIconByKey, type ScenarioMode } from "@/scenario/scenario";
 
 function ScenarioModeChevronDown({ open }: { open: boolean }) {
@@ -23,31 +24,33 @@ const ScenarioModeButton = forwardRef<
   const Icon = getScenarioIconByKey(mode.icon);
   const displayName = mode.name;
   return (
-    <button
-      ref={ref}
-      type="button"
-      {...buttonProps}
-      className="content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/10 backdrop-blur-md transition-colors text-white/90 transform-gpu"
-      data-name="ScenarioMode"
-    >
-      <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
-      <div className="relative shrink-0 size-[24px]">
-        <div
-          className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 rounded-[999px] size-[24px] flex items-center justify-center text-white"
-          style={{ backgroundColor: mode.color }}
-        >
-          <Icon className="size-[14px]" />
+    <Magnetic intensity={0.34} range={116}>
+      <button
+        ref={ref}
+        type="button"
+        {...buttonProps}
+        className="content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/10 backdrop-blur-md transition-colors text-white/90 transform-gpu"
+        data-name="ScenarioMode"
+      >
+        <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
+        <div className="relative shrink-0 size-[24px]">
+          <div
+            className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 rounded-[999px] size-[24px] flex items-center justify-center text-white"
+            style={{ backgroundColor: mode.color }}
+          >
+            <Icon className="size-[14px]" />
+          </div>
         </div>
-      </div>
-      <div className="content-stretch flex gap-[4px] items-center justify-center pr-[6px] relative shrink-0">
-        <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-inherit text-[13px]">
-          {displayName}
-        </p>
-        <div className="relative shrink-0 size-[10px] text-white/60">
-          <ScenarioModeChevronDown open={open} />
+        <div className="content-stretch flex gap-[4px] items-center justify-center pr-[6px] relative shrink-0">
+          <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-inherit text-[13px]">
+            {displayName}
+          </p>
+          <div className="relative shrink-0 size-[10px] text-white/60">
+            <ScenarioModeChevronDown open={open} />
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </Magnetic>
   );
 });
 

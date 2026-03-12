@@ -274,6 +274,9 @@ export default {
         open: "打开",
         title: "关于 LeafTab",
         content: "LeafTab，一个由 AI 协助开发的、极简主义的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是回归“新标签页”这一动作的本质——一个高效的起点。它不追求花哨，而是追求稳定、顺手、可控。",
+        openSourceNoticePrefix: "LeafTab 社区版已开源（",
+        openSourceNoticeSuffix: "），欢迎在 GitHub 提交 Issue / PR。",
+        thirdPartyLicenseNotice: "部分第三方组件遵循其各自许可证（如 react-bits 的 MIT + Commons Clause）。",
         ackTitle: "致谢与开源声明",
         ackDesc: "LeafTab 使用了以下开源库与资源（点击可跳转）：",
         frontend: "前端",
@@ -291,6 +294,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release130DynamicEffectsOptimize: "优化全局动态效果体验，新增“减弱动态效果”开关并统一动画降级策略。",
+        release130DynamicWallpaperTab: "新增“灵动”动态壁纸分类，支持 Prism、Silk、Light Rays、Beams、Galaxy、Iridescence 预览与应用。",
+        release130ManualWeatherCity: "天气功能支持手动选择城市并持久保存，定位与展示更可控。",
         release129ModeUiRefactor: "重构“全景 / 节奏 / 留白”三种模式主界面，拆分复用组件并清理历史冗余代码。",
         release129WallpaperModalRefine: "壁纸设置弹窗重构为 Bing / 天气 / 颜色 / 自定义四标签，交互与布局统一。",
         release129ColorWallpaperGradients: "新增颜色壁纸（12 组可选渐变），并优化渐变强度、色卡圆角与预览视觉。",
@@ -412,9 +418,10 @@ export default {
       wallpaper: {
         mode: "壁纸模式",
         modeDesc: "自定义极简模式背景",
-        bing: "每日Bing壁纸",
-        weather: "天气壁纸",
-        custom: "自定义壁纸",
+        bing: "bing",
+        weather: "天气",
+        custom: "自定义",
+        dynamic: "灵动",
         uploadTitle: "上传自定义壁纸",
         upload: "上传图片",
         uploadDesc: "点击上传或者拖动图像到此区域都可以",
@@ -545,7 +552,8 @@ export default {
       stepRoleTitle: "选择你的角色",
       stepRoleDesc: "用于初始化推荐快捷方式与布局",
       stepLayoutTitle: "选择布局样式",
-      stepLayoutDesc: "确定首页展示的排布方式"
+      stepLayoutDesc: "确定首页展示的排布方式",
+      enterHome: "进入首页"
     },
     auth: {
       description: "登录或注册您的账号以保存个性化设置。",

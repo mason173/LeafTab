@@ -154,9 +154,11 @@ export function useWallpaper() {
   const [bingWallpaper, setBingWallpaper] = useState('');
   const hasBingWallpaperRef = useRef(false);
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
-  const [wallpaperMode, setWallpaperMode] = useState<'bing' | 'weather' | 'color' | 'custom'>(() => {
+  const [wallpaperMode, setWallpaperMode] = useState<'bing' | 'weather' | 'color' | 'dynamic' | 'custom'>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    return (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') ? saved : 'bing';
+    return (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'dynamic' || saved === 'custom')
+      ? saved
+      : 'bing';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -167,6 +169,14 @@ export function useWallpaper() {
     if (!saved) return DEFAULT_COLOR_WALLPAPER_ID;
     const exists = COLOR_WALLPAPER_PRESETS.some((preset) => preset.id === saved);
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
+  });
+  const [dynamicWallpaperEffect, setDynamicWallpaperEffect] = useState<
+    'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
+  >(() => {
+    const saved = localStorage.getItem('dynamicWallpaperEffect');
+    return saved === 'silk' || saved === 'light-rays' || saved === 'beams' || saved === 'galaxy' || saved === 'iridescence'
+      ? saved
+      : 'prism';
   });
 
   useEffect(() => {
@@ -180,6 +190,10 @@ export function useWallpaper() {
   useEffect(() => {
     localStorage.setItem('colorWallpaperId', colorWallpaperId);
   }, [colorWallpaperId]);
+
+  useEffect(() => {
+    localStorage.setItem('dynamicWallpaperEffect', dynamicWallpaperEffect);
+  }, [dynamicWallpaperEffect]);
 
   useEffect(() => {
     getWallpaper().then((wallpaper) => {
@@ -324,5 +338,6 @@ export function useWallpaper() {
     weatherCode, setWeatherCode,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
     colorWallpaperId, setColorWallpaperId,
+    dynamicWallpaperEffect, setDynamicWallpaperEffect,
   };
 }

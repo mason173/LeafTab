@@ -6,7 +6,7 @@ export const CLOUD_SYNC_STORAGE_KEYS = {
   nextSyncAt: 'cloud_next_sync_at',
 } as const;
 
-export const CLOUD_SYNC_DEFAULT_INTERVAL_MINUTES = 5;
+export const CLOUD_SYNC_DEFAULT_INTERVAL_MINUTES = 10;
 
 export type CloudSyncConfig = {
   enabled: boolean;

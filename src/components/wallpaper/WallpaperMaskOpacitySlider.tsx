@@ -1,5 +1,5 @@
-import React from 'react';
-import { Slider } from '@/components/ui/slider';
+import Scrubber from '@/components/ui/smoothui/scrubber';
+import { useTranslation } from 'react-i18next';
 
 interface WallpaperMaskOpacitySliderProps {
   value: number;
@@ -17,17 +17,25 @@ export function WallpaperMaskOpacitySlider({
   onChange,
   className = '',
 }: WallpaperMaskOpacitySliderProps) {
+  const { t } = useTranslation();
   const safeValue = clampOpacity(value);
 
   return (
-    <Slider
+    <Scrubber
       min={0}
       max={100}
       step={1}
-      value={[safeValue]}
-      className={`w-full [&_[data-slot=slider-track]]:h-1.5 [&_[data-slot=slider-track]]:bg-white/45 [&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-3.5 [&_[data-slot=slider-thumb]]:border-white [&_[data-slot=slider-thumb]]:bg-white ${className}`}
-      onValueChange={(values) => {
-        const next = clampOpacity(values[0] ?? safeValue);
+      value={safeValue}
+      label={t('weather.wallpaper.maskOpacity')}
+      valueText={(safeValue / 100).toFixed(2)}
+      ticks={7}
+      decimals={0}
+      showLabel
+      showValue
+      trackHeight={48}
+      className={`w-full ${className} [&_[data-slot=scrubber-track]]:bg-black/40 [&_[data-slot=scrubber-track]]:backdrop-blur-md [&_[data-slot=scrubber-fill]]:bg-white/14 [&_[data-slot=scrubber-tick]]:bg-white/30 [&_[data-slot=scrubber-thumb]]:bg-white/70 [&_[data-slot=scrubber-thumb]]:shadow-none [&_[data-slot=scrubber-label]]:text-white [&_[data-slot=scrubber-label]]:text-[13px] [&_[data-slot=scrubber-value]]:text-white [&_[data-slot=scrubber-value]]:text-[13px]`}
+      onValueChange={(nextRawValue) => {
+        const next = clampOpacity(nextRawValue);
         onChange(next);
       }}
     />

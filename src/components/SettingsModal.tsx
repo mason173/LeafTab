@@ -26,6 +26,7 @@ import { ChangelogModal } from "./ChangelogModal";
 import ConfirmDialog from "./ConfirmDialog";
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
 import { SyncStatusBadge } from "./SyncStatusBadge";
+import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
 import { toast } from "./ui/sonner";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { parseLeafTabBackup } from "@/utils/backupData";
@@ -111,8 +112,12 @@ interface SettingsModalProps {
   onShowTimeChange: (checked: boolean) => void;
   onExportData: () => void;
   onImportData: (data: any) => void;
-  wallpaperMode: 'bing' | 'weather' | 'color' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'custom') => void;
+  wallpaperMode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom';
+  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom') => void;
+  dynamicWallpaperEffect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence';
+  onDynamicWallpaperEffectChange: (
+    effect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
+  ) => void;
   bingWallpaper: string;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
@@ -160,6 +165,8 @@ export default function SettingsModal({
   onImportData,
   wallpaperMode,
   onWallpaperModeChange,
+  dynamicWallpaperEffect,
+  onDynamicWallpaperEffectChange,
   bingWallpaper,
   customWallpaper,
   onCustomWallpaperChange,
@@ -264,6 +271,7 @@ export default function SettingsModal({
       customWallpaper,
       weatherCode,
       colorWallpaperId,
+      dynamicWallpaperEffect,
     }).then((hex) => {
       if (canceled) return;
       applyDynamicAccentColor(hex);
@@ -274,7 +282,7 @@ export default function SettingsModal({
     return () => {
       canceled = true;
     };
-  }, [accentColor, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
+  }, [accentColor, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId, dynamicWallpaperEffect]);
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
@@ -461,6 +469,14 @@ export default function SettingsModal({
     return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
   };
 
+  const formatHourMinuteTime = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mi}`;
+  };
+
   const webdavLastSyncLabel = useMemo(() => {
     if (!webdavLastSyncAt) return t('settings.backup.webdav.notSynced');
     const ts = new Date(webdavLastSyncAt).getTime();
@@ -481,11 +497,11 @@ export default function SettingsModal({
     if (!webdavNextSyncAt) return '';
     const ts = new Date(webdavNextSyncAt).getTime();
     if (Number.isNaN(ts)) return '';
-    return formatAbsoluteTime(webdavNextSyncAt);
+    return formatHourMinuteTime(webdavNextSyncAt);
   }, [webdavNextSyncAt]);
   const webdavLastSyncTitleLabel = useMemo(() => {
-    return `${t('settings.backup.webdav.lastSyncAt')}·${webdavLastSyncLabel}`;
-  }, [t, webdavLastSyncLabel]);
+    return webdavLastSyncLabel;
+  }, [webdavLastSyncLabel]);
   const webdavNextSyncBadgeLabel = useMemo(() => {
     return t('settings.backup.webdav.nextSyncAtLabel', { time: webdavNextSyncLabel || '--' });
   }, [t, webdavNextSyncLabel]);
@@ -509,11 +525,11 @@ export default function SettingsModal({
     if (!cloudNextSyncAt) return '';
     const ts = new Date(cloudNextSyncAt).getTime();
     if (Number.isNaN(ts)) return '';
-    return formatAbsoluteTime(cloudNextSyncAt);
+    return formatHourMinuteTime(cloudNextSyncAt);
   }, [cloudNextSyncAt]);
   const cloudLastSyncTitleLabel = useMemo(() => {
-    return `${t('settings.backup.webdav.lastSyncAt')}·${cloudLastSyncLabel}`;
-  }, [cloudLastSyncLabel, t]);
+    return cloudLastSyncLabel;
+  }, [cloudLastSyncLabel]);
   const cloudNextSyncBadgeLabel = useMemo(() => {
     return t('settings.backup.webdav.nextSyncAtLabel', { time: cloudNextSyncLabel || '--' });
   }, [cloudNextSyncLabel, t]);
@@ -739,7 +755,15 @@ export default function SettingsModal({
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{cloudLastSyncTitleLabel}</span>
-                          <SyncStatusBadge label={cloudNextSyncBadgeLabel} tone='info' className="mt-1.5" />
+                          <SyncStatusBadge
+                            label={
+                              <TextShimmer as="span">
+                                {cloudNextSyncBadgeLabel}
+                              </TextShimmer>
+                            }
+                            tone='info'
+                            className="mt-1.5"
+                          />
                         </div>
                       </div>
                     </>
@@ -815,7 +839,15 @@ export default function SettingsModal({
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{webdavLastSyncTitleLabel}</span>
-                          <SyncStatusBadge label={webdavNextSyncBadgeLabel} tone='info' className="mt-1.5" />
+                          <SyncStatusBadge
+                            label={
+                              <TextShimmer as="span">
+                                {webdavNextSyncBadgeLabel}
+                              </TextShimmer>
+                            }
+                            tone='info'
+                            className="mt-1.5"
+                          />
                         </div>
                       </div>
                     </>
@@ -1095,6 +1127,8 @@ export default function SettingsModal({
               <WallpaperSelector
                 mode={wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
                 onModeChange={onWallpaperModeChange}
+                dynamicWallpaperEffect={dynamicWallpaperEffect}
+                onDynamicWallpaperEffectChange={onDynamicWallpaperEffectChange}
                 bingWallpaper={bingWallpaper}
                 weatherCode={weatherCode}
                 customWallpaper={customWallpaper}
