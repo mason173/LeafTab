@@ -83,6 +83,9 @@
             "build:community": "node scripts/build-channel.js community",
             "build:store": "node scripts/build-channel.js store",
             "pack:release": "node scripts/package-release-zips.js",
+            "pack:release:community": "npm run build:community && node scripts/package-release-zips.js community",
+            "pack:release:store": "npm run build:store && node scripts/package-release-zips.js store",
+            "pack:release:all": "npm run pack:release:community && npm run pack:release:store",
             "verify:release:community": "node scripts/verify-release-channel.js community"
       }
 }

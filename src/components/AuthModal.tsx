@@ -11,12 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import * as Tabs from "@radix-ui/react-tabs";
 import { toast } from "@/components/ui/sonner";
 import { useTranslation } from 'react-i18next';
 import { normalizeApiBase } from "@/utils";
@@ -51,7 +46,7 @@ export default function AuthModal({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
-  const [captchaSvg, setCaptchaSvg] = useState<string>("");
+  const [captchaImageSrc, setCaptchaImageSrc] = useState<string>("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,10 +75,12 @@ export default function AuthModal({
       });
       if (response.ok) {
         const svg = await response.text();
-        setCaptchaSvg(svg);
+        const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        setCaptchaImageSrc(dataUrl);
       }
     } catch (error) {
       console.error('Failed to fetch captcha:', error);
+      setCaptchaImageSrc("");
     }
   };
 
@@ -246,13 +243,23 @@ export default function AuthModal({
             </Select>
           </div>
         ) : null}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
-            <TabsTrigger value="login" className="rounded-xl">{t('auth.tabs.login')}</TabsTrigger>
-            <TabsTrigger value="register" className="rounded-xl">{t('auth.tabs.register')}</TabsTrigger>
-          </TabsList>
+        <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs.List className="grid h-10 w-full grid-cols-2 rounded-[16px] bg-muted p-1 text-muted-foreground">
+            <Tabs.Trigger
+              value="login"
+              className="inline-flex items-center justify-center rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {t('auth.tabs.login')}
+            </Tabs.Trigger>
+            <Tabs.Trigger
+              value="register"
+              className="inline-flex items-center justify-center rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
+              {t('auth.tabs.register')}
+            </Tabs.Trigger>
+          </Tabs.List>
           
-          <TabsContent value="login">
+          <Tabs.Content value="login" className="outline-none">
             <form onSubmit={handleLogin} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="login-username" className="text-foreground">{t('auth.labels.username')}</Label>
@@ -295,9 +302,9 @@ export default function AuthModal({
                 {isLoading ? t('auth.buttons.loggingIn') : t('auth.buttons.login')}
               </Button>
             </form>
-          </TabsContent>
+          </Tabs.Content>
           
-          <TabsContent value="register">
+          <Tabs.Content value="register" className="outline-none">
             <form onSubmit={handleRegister} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="register-username" className="text-foreground">{t('auth.labels.username')}</Label>
@@ -352,12 +359,24 @@ export default function AuthModal({
                     value={captcha}
                     onChange={(e) => setCaptcha(e.target.value)}
                   />
-                  <div 
+                  <button
+                    type="button"
                     className="cursor-pointer rounded-[8px] overflow-hidden min-w-[120px] h-[40px] bg-white flex items-center justify-center"
                     onClick={fetchCaptcha}
-                    dangerouslySetInnerHTML={{ __html: captchaSvg }}
                     title={t('auth.tips.refreshCaptcha')}
-                  />
+                    aria-label={t('auth.tips.refreshCaptcha')}
+                  >
+                    {captchaImageSrc ? (
+                      <img
+                        src={captchaImageSrc}
+                        alt={t('auth.labels.captcha')}
+                        className="h-full w-full object-contain"
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="px-2 text-xs text-muted-foreground">{t('auth.tips.refreshCaptcha')}</span>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -365,8 +384,8 @@ export default function AuthModal({
                 {isLoading ? t('auth.buttons.registering') : t('auth.buttons.register')}
               </Button>
             </form>
-          </TabsContent>
-        </Tabs>
+          </Tabs.Content>
+        </Tabs.Root>
       </DialogContent>
     </Dialog>
   );

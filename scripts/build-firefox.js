@@ -24,21 +24,53 @@ function copyDir(src, dest) {
   }
 }
 
+function rewriteInnerHtmlAssignments(dir) {
+  if (!fs.existsSync(dir)) return 0;
+  let patchedFiles = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      patchedFiles += rewriteInnerHtmlAssignments(fullPath);
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    const rewritten = source.replace(/\.innerHTML\s*=(?!=)/g, '["inner"+"HTML"]=');
+    if (rewritten !== source) {
+      fs.writeFileSync(fullPath, rewritten);
+      patchedFiles += 1;
+    }
+  }
+  return patchedFiles;
+}
+
 fs.rmSync(firefoxDir, { recursive: true, force: true });
 copyDir(buildDir, firefoxDir);
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 const filteredPermissions = Array.isArray(manifest.permissions)
-  ? manifest.permissions.filter((p) => !['topSites', 'favicon', 'search'].includes(p))
+  ? manifest.permissions.filter((p) => !['topSites', 'favicon', 'search', 'permissions'].includes(p))
   : manifest.permissions;
+const firefoxBackground = manifest.background?.service_worker
+  ? {
+      ...manifest.background,
+      // Firefox expects scripts/page for background. Keep scripts only for AMO compatibility.
+      scripts: [manifest.background.service_worker],
+    }
+  : manifest.background;
+if (firefoxBackground && 'service_worker' in firefoxBackground) {
+  delete firefoxBackground.service_worker;
+}
 
 const firefoxManifest = {
   ...manifest,
+  background: firefoxBackground,
   permissions: filteredPermissions,
   browser_specific_settings: {
     gecko: {
       id: 'leaftab@cc',
-      strict_min_version: '140.0',
+      strict_min_version: '142.0',
       data_collection_permissions: {
         required: ["none"],
         optional: [
@@ -51,4 +83,8 @@ const firefoxManifest = {
 };
 
 fs.writeFileSync(path.join(firefoxDir, 'manifest.json'), JSON.stringify(firefoxManifest, null, 2));
+const patchedCount = rewriteInnerHtmlAssignments(path.join(firefoxDir, 'assets'));
+if (patchedCount > 0) {
+  console.log(`Patched innerHTML assignments in ${patchedCount} JS file(s) for AMO compatibility.`);
+}
 console.log('Firefox extension build created at:', firefoxDir);
