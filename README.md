@@ -49,7 +49,7 @@ LeafTab is a minimalist new-tab extension built with AI assistance. It does not 
 - **壁纸与天气组件 / Wallpaper and weather widgets**
 - **登录同步（后端可自托管）/ Cloud sync (Self-hostable backend)**
 - **WebDAV 同步 / WebDAV sync support**
-- **管理员模式：导出缺失图标域名清单，支持自托管服务器 / Admin mode: Export missing icon domain list, supports self-hosted backend**
+- **管理员模式：域名后台管理页（搜索/排序/分页/复制/CSV），支持自托管服务器 / Admin mode: Domains admin board (search/sort/paging/copy/CSV), supports self-hosted backend**
 - **自定义后端地址（登录/同步/统计）/ Custom backend URL (Auth/Sync/Stats)**
 
 ## 为什么选 LeafTab / Why LeafTab
@@ -129,7 +129,9 @@ Download the corresponding package from [Releases](https://github.com/mason173/L
 
 - `src/`：前端（扩展新标签页）/ Frontend (Extension page)
 - `public/`：扩展静态资源与 `manifest.json` / Static assets and manifest.json
-- `server/`：后端（登录/同步/统计/管理员导出）/ Backend (Auth/Sync/Stats/Admin export)
+- `server/`：后端（登录/同步/统计/管理员能力）/ Backend (Auth/Sync/Stats/Admin capabilities)
+  - `server/routes/`：按领域拆分的接口路由 / Route modules by domain
+  - `server/lib/`：环境、鉴权、限流、数据库初始化等基础模块 / Shared infra modules (env/auth/rate-limit/db init)
 - `deployment/`：部署示例 / Deployment examples (Caddy/systemd/env)
 
 ## 本地开发（前端）/ Local Development (Frontend)
@@ -153,7 +155,7 @@ npm i
 JWT_SECRET=change-me SESSION_SECRET=change-me ADMIN_API_KEY=change-me node index.js
 ```
 
-## 自托管后端（用于登录同步/管理员导出）/ Self-Hosted Backend (Auth/Sync/Admin)
+## 自托管后端（用于登录同步/管理员面板）/ Self-Hosted Backend (Auth/Sync/Admin)
 
 后端服务在 `server/` 目录，可独立部署到你的服务器上。前端支持在管理员模式里配置“自定义后端地址”，用于登录/同步/统计等请求转发到你自己的后端。
 The backend lives in `server/` and can be deployed independently. In admin mode, you can set a "Custom Backend URL" so auth/sync/stats requests go to your own server.
@@ -170,21 +172,45 @@ JWT_SECRET=change-me SESSION_SECRET=change-me ADMIN_API_KEY=change-me node index
 
 - 进入管理员模式：设置底部版本号连点 6 次 / Tap settings version 6 times to enter admin mode
 - 在管理员面板填写“自定义后端地址”（例如 `http://localhost:3001` 或 `https://your-domain.com`）
-- 如需管理员导出：同时填写管理员密钥（与后端 `ADMIN_API_KEY` 保持一致）
+- 如需使用管理员面板：同时填写管理员密钥（与后端 `ADMIN_API_KEY` 保持一致）
 
 部署参考 / Deployment references:
 
 - 示例文件：`deployment/`（Caddy/systemd/env）
 - HTTPS 指南：`docs/HTTPS_GUIDE.md`
+- 一键部署脚本：`scripts/deploy.sh`（交互输入服务器地址；密码由 SSH/SCP 原生提示）
 
-## 管理员导出 / Admin Export
+部署脚本示例 / Deploy script examples:
 
-说明：域名清单用于“图标助手”统计缺失图标的域名。导出需要管理员密钥（`ADMIN_API_KEY`）。
-Note: Domain list is used for "Icon Assistant" stats. Exporting requires an admin key (`ADMIN_API_KEY`).
+```bash
+# 交互模式（会提示输入服务器地址）
+bash scripts/deploy.sh
+
+# 自定义你的线上域名（自托管强烈建议显式传入）
+LEAFTAB_PUBLIC_ORIGIN=https://your-domain.com bash scripts/deploy.sh
+
+# 自定义后端部署目录
+LEAFTAB_BACKEND_REMOTE_DIR=/root/browser-start-page-server bash scripts/deploy.sh
+```
+
+## 管理员域名后台 / Admin Domains Board
+
+说明：域名后台用于“图标助手”统计缺失图标域名。访问需要管理员密钥（`ADMIN_API_KEY`）。
+Note: The domains admin board is used by "Icon Assistant" to track missing icon domains. Access requires an admin key (`ADMIN_API_KEY`).
 
 - 进入管理员模式：设置底部版本号连点 6 次 / Enter admin mode: Tap the version number 6 times in settings.
 - 在设置里填写管理员密钥 / Fill in the admin key in settings.
-- 使用管理员面板下载导出 / Use the admin panel to download the export.
+- 在管理员面板点击“打开管理页” / Click "Open Admin Page" in admin panel.
+- `Count/Users` 语义：同一域名的**唯一用户数**（同一用户重复上报不会累计） / `Count/Users` means unique users per domain.
+- 管理页支持“隐藏已适配域名”，会结合图标库 `manifest.json` 做主域匹配（如 `index.baidu.com` 视为 `baidu.com` 同品牌） / Supports hiding already-supported domains via icon-library manifest with registrable-domain matching.
+
+## 维护脚本 / Maintenance Scripts
+
+```bash
+# 清空域名统计历史（保留用户账号数据）
+cd server
+npm run clear:domain-stats
+```
 
 ## 安全说明 / Security
 

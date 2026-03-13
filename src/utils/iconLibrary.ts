@@ -261,6 +261,21 @@ const resolveEntry = (manifest: IconLibraryManifest, domain: string): { entry: I
     if (!v) continue;
     return { entry: v, key };
   }
+  // Fallback: treat subdomain icon keys under the same registrable domain as supported.
+  // Example: index.baidu.com entry can satisfy baidu.com matching.
+  if (manifest.icons && apex) {
+    let fallbackKey = '';
+    for (const key of Object.keys(manifest.icons)) {
+      if (registrableDomain(key) !== apex) continue;
+      if (!fallbackKey || key.length < fallbackKey.length || (key.length === fallbackKey.length && key < fallbackKey)) {
+        fallbackKey = key;
+      }
+    }
+    if (fallbackKey) {
+      const entry = manifest.icons[fallbackKey];
+      if (entry) return { entry, key: fallbackKey };
+    }
+  }
   return null;
 };
 

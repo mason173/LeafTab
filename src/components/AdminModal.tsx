@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RiDownload2Fill } from "@remixicon/react";
+import { RiExternalLinkFill } from "@remixicon/react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -376,8 +376,12 @@ export function AdminModal({
 
                 <div className="flex flex-col gap-3 py-1">
                   <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t("settings.iconAssistant.downloadTitle")}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t("settings.iconAssistant.downloadDesc")}</span>
+                    <span className="text-sm font-medium leading-none">
+                      {t("settings.iconAssistant.viewerTitle", { defaultValue: t("settings.iconAssistant.downloadTitle") })}
+                    </span>
+                    <span className="font-normal text-xs text-muted-foreground">
+                      {t("settings.iconAssistant.viewerDesc", { defaultValue: t("settings.iconAssistant.downloadDesc") })}
+                    </span>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -392,8 +396,8 @@ export function AdminModal({
                         onExportDomains();
                       }}
                     >
-                      <RiDownload2Fill className="size-4" />
-                      {t("settings.iconAssistant.downloadButton")}
+                      <RiExternalLinkFill className="size-4" />
+                      {t("settings.iconAssistant.viewerButton", { defaultValue: t("settings.iconAssistant.downloadButton") })}
                     </Button>
                     <Button
                       variant="secondary"

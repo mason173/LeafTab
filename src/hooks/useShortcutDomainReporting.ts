@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { ScenarioShortcuts } from '../types';
 import { extractDomainFromUrl } from '../utils';
+import { fetchIconLibraryManifest, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 
 const DOMAIN_QUEUE_KEY = 'leaftab_domain_queue_v1';
 const DOMAIN_LAST_FLUSH_AT_KEY = 'leaftab_domain_last_flush_at';
@@ -105,7 +106,27 @@ export function useShortcutDomainReporting({
     const backoffUntil = backoffUntilRaw ? Number(backoffUntilRaw) : 0;
     if (Number.isFinite(backoffUntil) && backoffUntil > Date.now()) return;
 
-    const queue = readDomainQueue();
+    await fetchIconLibraryManifest();
+
+    const filterUnsupportedDomains = (list: string[]) => {
+      const seen = new Set<string>();
+      const kept: string[] = [];
+      for (const value of list) {
+        if (typeof value !== 'string') continue;
+        const apex = registrableDomain(value);
+        if (!apex || seen.has(apex)) continue;
+        seen.add(apex);
+        if (resolveCustomIconFromCache(apex)?.url) continue;
+        kept.push(apex);
+      }
+      return kept;
+    };
+
+    const queueRaw = readDomainQueue();
+    const queue = filterUnsupportedDomains(queueRaw);
+    if (queue.length !== queueRaw.length) {
+      writeDomainQueue(queue);
+    }
     if (queue.length === 0) return;
 
     const lastFlushRaw = localStorage.getItem(DOMAIN_LAST_FLUSH_AT_KEY) || '';
@@ -145,7 +166,7 @@ export function useShortcutDomainReporting({
     } finally {
       domainInFlightRef.current = false;
     }
-  }, [API_URL, isPrivacyConsentEnabled, readDomainQueue, scheduleFlushDomains, user, writeDomainQueue]);
+  }, [API_URL, isPrivacyConsentEnabled, readDomainQueue, registrableDomain, scheduleFlushDomains, user, writeDomainQueue]);
 
   useEffect(() => {
     flushDomainQueueRef.current = () => {
@@ -176,25 +197,40 @@ export function useShortcutDomainReporting({
     if (!user) return;
     if (!isPrivacyConsentEnabled()) return;
     if (!cloudSyncInitialized) return;
-    const seededRaw = localStorage.getItem(DOMAIN_SEEDED_KEY) || '';
-    if (seededRaw === user) return;
-    const queue = readDomainQueue();
-    const set = new Set(queue);
-    Object.values(scenarioShortcuts).forEach((list) => {
-      if (!Array.isArray(list)) return;
-      for (const item of list) {
-        const url = item && typeof (item as any).url === 'string' ? (item as any).url : '';
-        if (!url) continue;
-        const host = extractDomainFromUrl(url);
-        const apex = registrableDomain(host);
-        if (!apex) continue;
-        set.add(apex);
-        if (set.size >= 500) break;
-      }
-    });
-    writeDomainQueue(Array.from(set));
-    try { localStorage.setItem(DOMAIN_SEEDED_KEY, user); } catch {}
-    scheduleFlushDomains(10 * 1000);
+    let cancelled = false;
+    (async () => {
+      const seededRaw = localStorage.getItem(DOMAIN_SEEDED_KEY) || '';
+      if (seededRaw === user) return;
+
+      // Best effort: warm icon manifest cache before seeding, to avoid reporting already-supported domains.
+      await fetchIconLibraryManifest();
+      if (cancelled) return;
+
+      const queue = readDomainQueue();
+      const set = new Set(
+        queue.filter((d) => d && !resolveCustomIconFromCache(d)?.url).map((d) => registrableDomain(d)).filter(Boolean)
+      );
+      Object.values(scenarioShortcuts).forEach((list) => {
+        if (!Array.isArray(list)) return;
+        for (const item of list) {
+          const url = item && typeof (item as any).url === 'string' ? (item as any).url : '';
+          if (!url) continue;
+          const host = extractDomainFromUrl(url);
+          const apex = registrableDomain(host);
+          if (!apex) continue;
+          if (resolveCustomIconFromCache(apex)?.url) continue;
+          set.add(apex);
+          if (set.size >= 500) break;
+        }
+      });
+      if (cancelled) return;
+      writeDomainQueue(Array.from(set));
+      try { localStorage.setItem(DOMAIN_SEEDED_KEY, user); } catch {}
+      scheduleFlushDomains(10 * 1000);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [cloudSyncInitialized, isPrivacyConsentEnabled, readDomainQueue, registrableDomain, scheduleFlushDomains, scenarioShortcuts, user, writeDomainQueue]);
 
   useEffect(() => {
@@ -218,6 +254,7 @@ export function useShortcutDomainReporting({
     const host = extractDomainFromUrl(url);
     const apex = registrableDomain(host);
     if (!apex) return;
+    if (resolveCustomIconFromCache(apex)?.url) return;
     const queue = readDomainQueue();
     if (!queue.includes(apex)) {
       queue.push(apex);

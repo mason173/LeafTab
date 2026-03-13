@@ -209,6 +209,8 @@ export default function Galaxy({
   transparent = true,
   ...rest
 }: GalaxyProps) {
+  const [focalX, focalY] = focal;
+  const [rotationX, rotationY] = rotation;
   const ctnDom = useRef<HTMLDivElement>(null);
   const targetMousePos = useRef({ x: 0.5, y: 0.5 });
   const smoothMousePos = useRef({ x: 0.5, y: 0.5 });
@@ -257,8 +259,8 @@ export default function Galaxy({
         uResolution: {
           value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height)
         },
-        uFocal: { value: new Float32Array(focal) },
-        uRotation: { value: new Float32Array(rotation) },
+        uFocal: { value: new Float32Array([focalX, focalY]) },
+        uRotation: { value: new Float32Array([rotationX, rotationY]) },
         uStarSpeed: { value: starSpeed },
         uDensity: { value: density },
         uHueShift: { value: hueShift },
@@ -339,8 +341,10 @@ export default function Galaxy({
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [
-    focal,
-    rotation,
+    focalX,
+    focalY,
+    rotationX,
+    rotationY,
     starSpeed,
     density,
     hueShift,

@@ -62,6 +62,7 @@ export default function Iridescence({
   staticFrame = false,
   ...rest
 }: IridescenceProps) {
+  const [colorR, colorG, colorB] = color;
   const ctnDom = useRef<HTMLDivElement>(null);
   const mousePos = useRef({ x: 0.5, y: 0.5 });
 
@@ -94,7 +95,7 @@ export default function Iridescence({
       fragment: fragmentShader,
       uniforms: {
         uTime: { value: 0 },
-        uColor: { value: new Color(...color) },
+        uColor: { value: new Color(colorR, colorG, colorB) },
         uResolution: {
           value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height)
         },
@@ -144,7 +145,7 @@ export default function Iridescence({
       ctn.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [color, speed, amplitude, mouseReact, staticFrame]);
+  }, [colorR, colorG, colorB, speed, amplitude, mouseReact, staticFrame]);
 
   return <div ref={ctnDom} className="w-full h-full" {...rest} />;
 }

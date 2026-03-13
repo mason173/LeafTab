@@ -1,6 +1,6 @@
 {
-      "name": "实时农历显示设计",
-      "version": "1.3.0",
+      "name": "leaftab",
+      "version": "1.3.1",
       "private": true,
       "dependencies": {
             "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
