@@ -3,18 +3,25 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@remixicon/react";
 import { InfiniteSlider } from "@/components/motion-primitives/infinite-slider";
-import { ShinyText } from "@/components/react-bits";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { buildChangelogItems } from "@/components/changelog/changelog-data";
+import { ChangelogTimeline } from "@/components/changelog/ChangelogTimeline";
 import aboutIcon from "@/assets/abouticon.svg";
+
+export type AboutLeafTabModalTab = "about" | "changelog";
 
 export function AboutLeafTabModal({
   open,
   onOpenChange,
+  defaultTab = "about",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: AboutLeafTabModalTab;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [appVersion, setAppVersion] = useState<string>("—");
+  const [activeTab, setActiveTab] = useState<AboutLeafTabModalTab>(defaultTab);
 
   const acknowledgements = {
     frontend: [
@@ -56,20 +63,26 @@ export function AboutLeafTabModal({
     if (!open) return;
     try {
       if (typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
-        const v = chrome.runtime.getManifest().version || "—";
-        setAppVersion(v);
+        const version = chrome.runtime.getManifest().version || "—";
+        setAppVersion(version);
         return;
       }
     } catch {}
+
     try {
       fetch("/manifest.json")
-        .then((r) => r.json())
-        .then((m) => setAppVersion(m?.version || "—"))
+        .then((resp) => resp.json())
+        .then((manifest) => setAppVersion(manifest?.version || "—"))
         .catch(() => setAppVersion("—"));
     } catch {
       setAppVersion("—");
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setActiveTab(defaultTab);
+  }, [defaultTab, open]);
 
   const acknowledgementItems = useMemo(
     () => [...acknowledgements.frontend, ...acknowledgements.backend, ...acknowledgements.resources],
@@ -84,119 +97,167 @@ export function AboutLeafTabModal({
     [acknowledgementItems],
   );
 
+  const changelogItems = useMemo(() => buildChangelogItems(t), [t]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] overflow-visible bg-background border-border text-foreground rounded-[32px]">
+      <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[610px] max-h-[610px] overflow-hidden bg-background border-border text-foreground rounded-[32px] flex flex-col">
         <DialogHeader>
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
         </DialogHeader>
-        <div className="max-h-[74vh] overflow-y-auto overflow-x-hidden pr-1">
-          <div className="flex flex-col items-center">
-            <img src={aboutIcon} alt="LeafTab" className="h-16 w-16" />
-            <div className="mt-3 text-lg font-semibold text-center">LeafTab</div>
-            <div className="mt-1 text-xs text-muted-foreground text-center">
-              <ShinyText text={`v${appVersion}`} className="text-xs" speed={2.2} spread={95} />
-            </div>
-            <div className="mt-5 text-sm text-muted-foreground whitespace-pre-line text-left w-full">
-              {t("settings.about.content")}
-            </div>
-            <div className="mt-3 w-full rounded-xl border border-border/70 bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
-              <p>
-                {t("settings.about.openSourceNoticePrefix", { defaultValue: "LeafTab Community Edition is open source under " })}
+
+        <div className="w-full h-9 rounded-[16px] bg-muted p-[3px] grid grid-cols-2 gap-0.5 shrink-0">
+          <button
+            type="button"
+            className={`rounded-[12px] text-sm font-medium ${
+              activeTab === "about" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+            onClick={() => setActiveTab("about")}
+          >
+            {t("settings.about.title", { defaultValue: "About" })}
+          </button>
+          <button
+            type="button"
+            className={`rounded-[12px] text-sm font-medium ${
+              activeTab === "changelog" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+            onClick={() => setActiveTab("changelog")}
+          >
+            {t("changelog.title", { defaultValue: "Changelog" })}
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 pt-3">
+          {activeTab === "about" ? (
+            <div className="h-full min-h-0 flex flex-col">
+              <div className="shrink-0 flex flex-col items-center">
+                <img src={aboutIcon} alt="LeafTab" className="h-14 w-14 rounded-xl bg-secondary/40 p-1.5 object-contain" />
+                <div className="mt-2 text-lg font-semibold text-foreground text-center">LeafTab</div>
+                <div className="mt-0.5 text-xs text-foreground/80 text-center">版本 v{appVersion}</div>
+              </div>
+
+              <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-left w-full">
+                  {t("settings.about.content")}
+                </p>
+
+                <div className="mt-3 w-full rounded-xl border border-border/70 bg-secondary/30 px-3 py-2 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                  <p>
+                    {t("settings.about.openSourceNoticePrefix", { defaultValue: "LeafTab Community Edition is open source under " })}
+                    <a
+                      href="https://github.com/mason173/LeafTab/blob/main/LICENSE"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground/90 underline-offset-2 hover:underline"
+                    >
+                      MIT License
+                    </a>
+                    {t("settings.about.openSourceNoticeSuffix", { defaultValue: ". Issues and PRs are welcome on GitHub." })}
+                  </p>
+                  <p className="mt-1">
+                    {t("settings.about.thirdPartyLicenseNotice", {
+                      defaultValue: "Some third-party components follow their own licenses (for example, react-bits under MIT + Commons Clause).",
+                    })}
+                  </p>
+                </div>
+
+                <div className="mt-5">
+                  <div className="text-sm font-semibold">{t("settings.about.ackTitle")}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{t("settings.about.ackDesc")}</div>
+                  <div className="mt-3 space-y-2 overflow-x-hidden">
+                    <InfiniteSlider
+                      speed={58}
+                      speedOnHover={24}
+                      gap={8}
+                      className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+                    >
+                      <div className="flex w-max items-center gap-2">
+                        {acknowledgementRow1.map((item) => (
+                          <a
+                            key={item.url}
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
+                          >
+                            {item.name}
+                          </a>
+                        ))}
+                      </div>
+                    </InfiniteSlider>
+
+                    <InfiniteSlider
+                      reverse
+                      speed={52}
+                      speedOnHover={22}
+                      gap={8}
+                      className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+                    >
+                      <div className="flex w-max items-center gap-2">
+                        {acknowledgementRow2.map((item) => (
+                          <a
+                            key={item.url}
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
+                          >
+                            {item.name}
+                          </a>
+                        ))}
+                      </div>
+                    </InfiniteSlider>
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0 mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2 pb-1">
                 <a
-                  href="https://github.com/mason173/LeafTab/blob/main/LICENSE"
+                  href="https://chromewebstore.google.com/detail/leaftab/lfogogokkkpmolbfbklchcbgdiboccdf?hl=zh-CN&gl=DE"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-foreground/90 underline-offset-2 hover:underline"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
                 >
-                  MIT License
+                  <RiChromeFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
+                  <span className="truncate">{t("settings.about.chromeStore")}</span>
                 </a>
-                {t("settings.about.openSourceNoticeSuffix", { defaultValue: ". Issues and PRs are welcome on GitHub." })}
-              </p>
-              <p className="mt-1">
-                {t("settings.about.thirdPartyLicenseNotice", {
-                  defaultValue: "Some third-party components follow their own licenses (for example, react-bits under MIT + Commons Clause).",
-                })}
-              </p>
+                <a
+                  href="https://microsoftedge.microsoft.com/addons/detail/leaftab/nfbdmggppgfmfbaddobdhdleppgffphn"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                >
+                  <RiEdgeFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
+                  <span className="truncate">{t("settings.about.edgeStore")}</span>
+                </a>
+                <a
+                  href="https://addons.mozilla.org/zh-CN/firefox/addon/leaftab/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                >
+                  <RiFirefoxFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
+                  <span className="truncate">{t("settings.about.firefoxStore")}</span>
+                </a>
+                <a
+                  href="https://github.com/mason173/LeafTab"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                >
+                  <RiGithubFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
+                  <span className="truncate">{t("settings.about.github")}</span>
+                </a>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="text-sm font-semibold">{t("settings.about.ackTitle")}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{t("settings.about.ackDesc")}</div>
-
-            <div className="mt-4 space-y-2">
-              <InfiniteSlider speed={72} speedOnHover={24} gap={8} className="[mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
-                <div className="flex w-max items-center gap-2">
-                  {acknowledgementRow1.map((item) => (
-                    <a
-                      key={item.url}
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
-                    >
-                      {item.name}
-                    </a>
-                  ))}
-                </div>
-              </InfiniteSlider>
-              <InfiniteSlider reverse speed={66} speedOnHover={22} gap={8} className="[mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
-                <div className="flex w-max items-center gap-2">
-                  {acknowledgementRow2.map((item) => (
-                    <a
-                      key={item.url}
-                      href={item.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
-                    >
-                      {item.name}
-                    </a>
-                  ))}
-                </div>
-              </InfiniteSlider>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-2 pb-2">
-            <a
-              href="https://chromewebstore.google.com/detail/leaftab/lfogogokkkpmolbfbklchcbgdiboccdf?hl=zh-CN&gl=DE"
-              target="_blank"
-              rel="noreferrer"
-              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground"
+          ) : (
+            <ScrollArea
+              className="h-full min-h-0"
+              scrollBarClassName="data-[orientation=vertical]:translate-x-4"
             >
-              <RiChromeFill className="w-3.5 h-3.5" />
-              {t("settings.about.chromeStore")}
-            </a>
-            <a
-              href="https://microsoftedge.microsoft.com/addons/detail/leaftab/nfbdmggppgfmfbaddobdhdleppgffphn"
-              target="_blank"
-              rel="noreferrer"
-              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground"
-            >
-              <RiEdgeFill className="w-3.5 h-3.5" />
-              {t("settings.about.edgeStore")}
-            </a>
-            <a
-              href="https://addons.mozilla.org/zh-CN/firefox/addon/leaftab/"
-              target="_blank"
-              rel="noreferrer"
-              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground"
-            >
-              <RiFirefoxFill className="w-3.5 h-3.5" />
-              {t("settings.about.firefoxStore")}
-            </a>
-            <a
-              href="https://github.com/mason173/LeafTab"
-              target="_blank"
-              rel="noreferrer"
-              className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground/80 hover:text-foreground"
-            >
-              <RiGithubFill className="w-3.5 h-3.5" />
-              {t("settings.about.github")}
-            </a>
-          </div>
+              <ChangelogTimeline items={changelogItems} language={i18n.language} />
+            </ScrollArea>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -11,7 +11,15 @@ export function useSettings() {
   const [openInNewTab, setOpenInNewTab] = useState(true);
   const [is24Hour, setIs24Hour] = useState(true);
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
-  const [showSeconds, setShowSeconds] = useState(false);
+  const [showSeconds, setShowSeconds] = useState(() => {
+    const storedShowSeconds = localStorage.getItem('showSeconds');
+    if (storedShowSeconds === null) return true;
+    try {
+      return JSON.parse(storedShowSeconds) === true;
+    } catch {
+      return storedShowSeconds === 'true';
+    }
+  });
   const [showTime, setShowTime] = useState(true);
   const [apiServer, setApiServer] = useState<'official' | 'custom'>(() => {
     if (!ENABLE_CUSTOM_API_SERVER) return 'official';
@@ -81,9 +89,6 @@ export function useSettings() {
     const storedIs24Hour = localStorage.getItem('is24Hour');
     if (storedIs24Hour !== null) setIs24Hour(JSON.parse(storedIs24Hour));
     
-    const storedShowSeconds = localStorage.getItem('showSeconds');
-    if (storedShowSeconds !== null) setShowSeconds(JSON.parse(storedShowSeconds));
-
     const storedShowTime = localStorage.getItem('showTime');
     if (storedShowTime !== null) setShowTime(JSON.parse(storedShowTime));
     setShortcutCardVariant(parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')));

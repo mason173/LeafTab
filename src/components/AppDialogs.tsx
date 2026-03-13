@@ -258,7 +258,7 @@ export function AppDialogs({
             <DialogTitle className="text-center text-xl font-semibold">
               {t('settings.iconAssistant.modalTitle')}
             </DialogTitle>
-            <DialogDescription className="text-center pt-2">
+            <DialogDescription className="not-sr-only whitespace-pre-line text-left text-sm leading-6 text-muted-foreground pt-2">
               {t('settings.iconAssistant.confirmClose')}
             </DialogDescription>
           </DialogHeader>

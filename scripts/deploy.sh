@@ -7,14 +7,17 @@ set -e
 cd "$(dirname "$0")/.."
 
 # Server Configuration
-SERVER_IP="${LEAFTAB_SERVER_IP:-YOUR_SERVER_IP}"
+SERVER_IP="${LEAFTAB_SERVER_IP:-}"
 USER="${LEAFTAB_SERVER_USER:-root}"
 REMOTE_DIR="${LEAFTAB_REMOTE_DIR:-/var/www/leaftab}"
 BACKEND_REMOTE_DIR="${LEAFTAB_BACKEND_REMOTE_DIR:-/var/www/leaftab-server}"
-PUBLIC_ORIGIN="${LEAFTAB_PUBLIC_ORIGIN:-https://example.com}"
+DEFAULT_PUBLIC_ORIGIN="https://www.leaftab.cc"
+PUBLIC_ORIGIN="${LEAFTAB_PUBLIC_ORIGIN:-${DEFAULT_PUBLIC_ORIGIN}}"
 SSH_MULTIPLEX="${LEAFTAB_SSH_MULTIPLEX:-true}"
 SSH_CONTROL_PATH="${LEAFTAB_SSH_CONTROL_PATH:-/tmp/leaftab-ssh-%C}"
 SSH_CONTROL_PERSIST="${LEAFTAB_SSH_CONTROL_PERSIST:-15m}"
+BACKEND_ENV_REMOTE_PATH="${LEAFTAB_BACKEND_ENV_REMOTE_PATH:-/etc/leaftab-backend.env}"
+FORCE_UPLOAD_BACKEND_ENV="${LEAFTAB_FORCE_UPLOAD_BACKEND_ENV:-false}"
 
 SSH_OPTS=(
     -o StrictHostKeyChecking=no
@@ -39,6 +42,38 @@ print_warning() {
 
 print_error() {
     echo -e "\033[1;31m>>> ERROR: $1\033[0m"
+}
+
+# Interactive fallback: prompt for target server when not provided by env.
+if [ -z "${SERVER_IP}" ] || [ "${SERVER_IP}" = "YOUR_SERVER_IP" ]; then
+    read -r -p "Enter server IP or host: " SERVER_IP
+fi
+
+if [ -z "${SERVER_IP}" ]; then
+    print_error "Server IP is required."
+    exit 1
+fi
+
+if [ -z "${PUBLIC_ORIGIN}" ]; then
+    print_error "Public origin is required."
+    exit 1
+fi
+
+if [[ ! "${PUBLIC_ORIGIN}" =~ ^https?:// ]]; then
+    print_error "Public origin must start with http:// or https://"
+    exit 1
+fi
+
+print_info "Deploy target: ${USER}@${SERVER_IP}"
+print_info "Public origin: ${PUBLIC_ORIGIN}"
+
+get_env_value_from_file() {
+    local file="$1"
+    local key="$2"
+    if [ ! -f "${file}" ]; then
+        return 1
+    fi
+    grep -E "^[[:space:]]*${key}[[:space:]]*=" "${file}" | tail -n 1 | sed -E "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*//" | sed -E "s/^[\"']|[\"']$//g"
 }
 
 extract_host_from_origin() {
@@ -174,20 +209,19 @@ print_info "Uploading server files..."
 # Create a temporary directory for clean upload
 TEMP_DIR=$(mktemp -d)
 mkdir -p "${TEMP_DIR}/server"
-cp server/package.json server/package-lock.json server/index.js server/clear_users.js "${TEMP_DIR}/server/"
+cp server/package.json server/package-lock.json "${TEMP_DIR}/server/"
+cp server/*.js "${TEMP_DIR}/server/"
 if [ -d "server/lib" ]; then
     mkdir -p "${TEMP_DIR}/server/lib"
     cp -R server/lib/. "${TEMP_DIR}/server/lib/"
 fi
+if [ -d "server/routes" ]; then
+    mkdir -p "${TEMP_DIR}/server/routes"
+    cp -R server/routes/. "${TEMP_DIR}/server/routes/"
+fi
 
 # Copy files from temp to server
-copy_to_remote "${TEMP_DIR}/server/clear_users.js" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
-copy_to_remote "${TEMP_DIR}/server/index.js" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
-copy_to_remote "${TEMP_DIR}/server/package.json" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
-copy_to_remote "${TEMP_DIR}/server/package-lock.json" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
-if [ -d "${TEMP_DIR}/server/lib" ]; then
-    scp -r "${SSH_OPTS[@]}" "${TEMP_DIR}/server/lib" "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
-fi
+scp -r "${SSH_OPTS[@]}" "${TEMP_DIR}/server/." "${USER}@${SERVER_IP}:${BACKEND_REMOTE_DIR}/"
 rm -rf "${TEMP_DIR}"
 
 # Install Backend Dependencies
@@ -214,42 +248,58 @@ PY
     echo "change-this-admin-key"
 }
 
-# Upload backend env file (optional)
+# Upload backend env file (safe-by-default: preserve remote secrets)
 print_info "Configuring backend environment..."
-if [ -f "deployment/leaftab-backend.env" ]; then
-    print_info "Uploading deployment/leaftab-backend.env to /etc/leaftab-backend.env"
-    copy_to_remote deployment/leaftab-backend.env "${USER}@${SERVER_IP}:/etc/leaftab-backend.env"
-    run_remote "chmod 600 /etc/leaftab-backend.env"
-    if run_remote "grep -q '^ADMIN_API_KEY=' /etc/leaftab-backend.env"; then
-        print_info "ADMIN_API_KEY found in /etc/leaftab-backend.env"
+LOCAL_BACKEND_ENV_FILE="deployment/leaftab-backend.env"
+UPLOADED_LOCAL_ENV="false"
+
+if [ -f "${LOCAL_BACKEND_ENV_FILE}" ]; then
+    LOCAL_ADMIN_KEY="$(get_env_value_from_file "${LOCAL_BACKEND_ENV_FILE}" "ADMIN_API_KEY" || true)"
+    if [ "${LOCAL_ADMIN_KEY}" = "change-this-admin-key" ]; then
+        print_warning "${LOCAL_BACKEND_ENV_FILE} uses placeholder ADMIN_API_KEY."
+    fi
+
+    if run_remote "test -f ${BACKEND_ENV_REMOTE_PATH}"; then
+        if [ "${FORCE_UPLOAD_BACKEND_ENV}" = "true" ]; then
+            print_warning "LEAFTAB_FORCE_UPLOAD_BACKEND_ENV=true, overwriting ${BACKEND_ENV_REMOTE_PATH} from ${LOCAL_BACKEND_ENV_FILE}."
+            copy_to_remote "${LOCAL_BACKEND_ENV_FILE}" "${USER}@${SERVER_IP}:${BACKEND_ENV_REMOTE_PATH}"
+            run_remote "chmod 600 ${BACKEND_ENV_REMOTE_PATH}"
+            UPLOADED_LOCAL_ENV="true"
+        else
+            print_warning "${BACKEND_ENV_REMOTE_PATH} already exists; keeping existing server env to avoid overriding secrets."
+            print_warning "Set LEAFTAB_FORCE_UPLOAD_BACKEND_ENV=true only when you intentionally want to overwrite server env."
+        fi
     else
-        print_warning "ADMIN_API_KEY missing in uploaded env file. Generating and appending one..."
+        print_info "${BACKEND_ENV_REMOTE_PATH} not found on server; uploading ${LOCAL_BACKEND_ENV_FILE}."
+        copy_to_remote "${LOCAL_BACKEND_ENV_FILE}" "${USER}@${SERVER_IP}:${BACKEND_ENV_REMOTE_PATH}"
+        run_remote "chmod 600 ${BACKEND_ENV_REMOTE_PATH}"
+        UPLOADED_LOCAL_ENV="true"
+    fi
+else
+    print_warning "${LOCAL_BACKEND_ENV_FILE} not found."
+fi
+
+if run_remote "test -f ${BACKEND_ENV_REMOTE_PATH}"; then
+    if run_remote "grep -q '^ADMIN_API_KEY=' ${BACKEND_ENV_REMOTE_PATH}"; then
+        if [ "${UPLOADED_LOCAL_ENV}" = "true" ]; then
+            print_info "ADMIN_API_KEY found in ${BACKEND_ENV_REMOTE_PATH}"
+        else
+            print_warning "Keeping existing ${BACKEND_ENV_REMOTE_PATH} (ADMIN_API_KEY preserved)."
+        fi
+    else
+        print_warning "${BACKEND_ENV_REMOTE_PATH} exists, but ADMIN_API_KEY is missing."
+        print_info "Generating and appending ADMIN_API_KEY..."
         ADMIN_KEY=$(generate_admin_key)
-        run_remote "umask 077 && echo 'ADMIN_API_KEY=${ADMIN_KEY}' >> /etc/leaftab-backend.env && chmod 600 /etc/leaftab-backend.env"
+        run_remote "umask 077 && echo 'ADMIN_API_KEY=${ADMIN_KEY}' >> ${BACKEND_ENV_REMOTE_PATH} && chmod 600 ${BACKEND_ENV_REMOTE_PATH}"
         print_info "ADMIN_API_KEY generated:"
         echo "${ADMIN_KEY}"
         print_warning "Please save this key. You will paste it into Settings -> Admin Mode -> Admin Key."
     fi
 else
-    print_warning "deployment/leaftab-backend.env not found."
-    if run_remote "test -f /etc/leaftab-backend.env"; then
-        if run_remote "grep -q '^ADMIN_API_KEY=' /etc/leaftab-backend.env"; then
-            print_warning "/etc/leaftab-backend.env already exists on server; keeping existing config."
-            print_warning "If you forgot ADMIN_API_KEY, open /etc/leaftab-backend.env on server to view it."
-        else
-            print_warning "/etc/leaftab-backend.env exists, but ADMIN_API_KEY is missing."
-            print_info "Generating and appending ADMIN_API_KEY..."
-            ADMIN_KEY=$(generate_admin_key)
-            run_remote "umask 077 && echo 'ADMIN_API_KEY=${ADMIN_KEY}' >> /etc/leaftab-backend.env && chmod 600 /etc/leaftab-backend.env"
-            print_info "ADMIN_API_KEY generated:"
-            echo "${ADMIN_KEY}"
-            print_warning "Please save this key. You will paste it into Settings -> Admin Mode -> Admin Key."
-        fi
-    else
-        print_info "Creating /etc/leaftab-backend.env on server with a generated ADMIN_API_KEY..."
-        ADMIN_KEY=$(generate_admin_key)
-        ENV_TMP=$(mktemp)
-        cat > "${ENV_TMP}" <<EOF
+    print_info "Creating ${BACKEND_ENV_REMOTE_PATH} on server with a generated ADMIN_API_KEY..."
+    ADMIN_KEY=$(generate_admin_key)
+    ENV_TMP=$(mktemp)
+    cat > "${ENV_TMP}" <<EOF
 NODE_ENV=production
 JWT_SECRET=change-this-in-production
 SESSION_SECRET=change-this-in-production
@@ -259,20 +309,19 @@ SESSION_COOKIE_SAME_SITE=none
 SESSION_COOKIE_SECURE=true
 ADMIN_API_KEY=${ADMIN_KEY}
 EOF
-        copy_to_remote "${ENV_TMP}" "${USER}@${SERVER_IP}:/etc/leaftab-backend.env"
-        rm -f "${ENV_TMP}"
-        run_remote "chmod 600 /etc/leaftab-backend.env"
-        print_info "ADMIN_API_KEY generated:"
-        echo "${ADMIN_KEY}"
-        print_warning "Please save this key. You will paste it into Settings -> Admin Mode -> Admin Key."
-    fi
+    copy_to_remote "${ENV_TMP}" "${USER}@${SERVER_IP}:${BACKEND_ENV_REMOTE_PATH}"
+    rm -f "${ENV_TMP}"
+    run_remote "chmod 600 ${BACKEND_ENV_REMOTE_PATH}"
+    print_info "ADMIN_API_KEY generated:"
+    echo "${ADMIN_KEY}"
+    print_warning "Please save this key. You will paste it into Settings -> Admin Mode -> Admin Key."
 fi
 
 # Ensure reverse-proxy/session defaults required by captcha flow.
-run_remote "grep -q '^TRUST_PROXY=' /etc/leaftab-backend.env || echo 'TRUST_PROXY=1' >> /etc/leaftab-backend.env"
-run_remote "grep -q '^SESSION_COOKIE_SAME_SITE=' /etc/leaftab-backend.env || echo 'SESSION_COOKIE_SAME_SITE=none' >> /etc/leaftab-backend.env"
-run_remote "grep -q '^SESSION_COOKIE_SECURE=' /etc/leaftab-backend.env || echo 'SESSION_COOKIE_SECURE=true' >> /etc/leaftab-backend.env"
-run_remote "chmod 600 /etc/leaftab-backend.env"
+run_remote "grep -q '^TRUST_PROXY=' ${BACKEND_ENV_REMOTE_PATH} || echo 'TRUST_PROXY=1' >> ${BACKEND_ENV_REMOTE_PATH}"
+run_remote "grep -q '^SESSION_COOKIE_SAME_SITE=' ${BACKEND_ENV_REMOTE_PATH} || echo 'SESSION_COOKIE_SAME_SITE=none' >> ${BACKEND_ENV_REMOTE_PATH}"
+run_remote "grep -q '^SESSION_COOKIE_SECURE=' ${BACKEND_ENV_REMOTE_PATH} || echo 'SESSION_COOKIE_SECURE=true' >> ${BACKEND_ENV_REMOTE_PATH}"
+run_remote "chmod 600 ${BACKEND_ENV_REMOTE_PATH}"
 
 # Setup Systemd Service
 print_info "Configuring Backend Service..."
@@ -319,15 +368,15 @@ run_remote "set -e; \
 
 # 8. Fetch admin key for domain export (best-effort)
 print_info "Fetching ADMIN_API_KEY from server..."
-REMOTE_ADMIN_KEY="$(run_remote "grep -E '^ADMIN_API_KEY=' /etc/leaftab-backend.env | tail -n 1 | cut -d'=' -f2-" 2>/dev/null || true)"
+REMOTE_ADMIN_KEY="$(run_remote "grep -E '^ADMIN_API_KEY=' ${BACKEND_ENV_REMOTE_PATH} | tail -n 1 | cut -d'=' -f2-" 2>/dev/null || true)"
 if [ -n "${REMOTE_ADMIN_KEY}" ]; then
     print_info "ADMIN_API_KEY:"
     echo "${REMOTE_ADMIN_KEY}"
     print_warning "Keep this key safe. It can export collected domain stats."
 else
-    print_warning "Could not read ADMIN_API_KEY from /etc/leaftab-backend.env"
+    print_warning "Could not read ADMIN_API_KEY from ${BACKEND_ENV_REMOTE_PATH}"
     print_warning "You can fetch it manually with:"
-    echo "ssh ${USER}@${SERVER_IP} \"grep -E '^ADMIN_API_KEY=' /etc/leaftab-backend.env | tail -n 1 | cut -d'=' -f2-\""
+    echo "ssh ${USER}@${SERVER_IP} \"grep -E '^ADMIN_API_KEY=' ${BACKEND_ENV_REMOTE_PATH} | tail -n 1 | cut -d'=' -f2-\""
 fi
 
 print_info "Backend Deployment Complete!"

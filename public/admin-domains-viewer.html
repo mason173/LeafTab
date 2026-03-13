@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeafTab Domain Admin</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #13233b;
+      --muted: #5a6a81;
+      --line: #d8e1ee;
+      --accent: #0f6fff;
+      --accent-strong: #0a56c5;
+      --warn: #b54708;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 0 0, #e7f0ff 0, rgba(231, 240, 255, 0) 40%), var(--bg);
+    }
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px 18px 28px;
+    }
+    .head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .head h1 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0.2px;
+    }
+    .head .sub {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 10px;
+      padding: 8px 10px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .card .k {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+    .card .v {
+      font-size: 23px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.2px;
+    }
+    .toolbar {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1.4fr auto 1fr 1fr auto auto auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .toolbar-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      padding: 0 2px;
+    }
+    .toolbar-check input {
+      margin: 0;
+      width: 15px;
+      height: 15px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    input, select, button {
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      font-size: 14px;
+      line-height: 1.2;
+      background: #fff;
+      color: var(--text);
+    }
+    input:focus, select:focus {
+      outline: 2px solid rgba(15, 111, 255, 0.2);
+      border-color: #95beff;
+    }
+    button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .btn-ghost:hover { background: #f1f5fb; }
+    .status {
+      margin: 6px 0 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff8ef;
+      border: 1px solid #f3d6a8;
+      color: var(--warn);
+      font-size: 13px;
+      display: none;
+    }
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      color: var(--muted);
+      background: #f7faff;
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+    tbody td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 12px;
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: #f8fbff; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .domain {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+    .empty {
+      text-align: center;
+      padding: 26px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pager {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .pager .info {
+      margin-right: auto;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .small-btn {
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+    @media (max-width: 1040px) {
+      .grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 680px) {
+      .page { padding: 16px 10px 20px; }
+      .head h1 { font-size: 21px; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .table-wrap { overflow-x: auto; }
+      table { min-width: 920px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="head">
+      <div>
+        <h1 id="titleText">Domain Admin Board</h1>
+        <div class="sub" id="subtitleText">Browse collected domains with search, sorting, paging, and quick actions.</div>
+      </div>
+      <div class="meta" id="apiMeta">API: --</div>
+    </div>
+
+    <div class="grid">
+      <div class="card"><span class="k" id="labelUsersTotal">Total Users</span><div class="v" id="usersTotal">--</div></div>
+      <div class="card"><span class="k" id="labelDomainsUnique">Unique Domains</span><div class="v" id="domainsUnique">--</div></div>
+      <div class="card"><span class="k" id="labelDomainsFiltered">Filtered Domains</span><div class="v" id="domainsFiltered">--</div></div>
+      <div class="card"><span class="k" id="labelUsersFiltered">Total Users (Filtered Domains)</span><div class="v" id="usersFiltered">--</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input id="searchInput" type="text" placeholder="Search domain..." />
+      <label class="toolbar-check">
+        <input id="hideSupportedToggle" type="checkbox" checked />
+        <span id="hideSupportedLabel">Hide already-supported domains</span>
+      </label>
+      <select id="sortSelect">
+        <option id="sortCountDesc" value="count_desc">Sort: Users (high to low)</option>
+        <option id="sortCountAsc" value="count_asc">Sort: Users (low to high)</option>
+        <option id="sortLastDesc" value="last_desc">Sort: Last Seen (newest)</option>
+        <option id="sortLastAsc" value="last_asc">Sort: Last Seen (oldest)</option>
+        <option id="sortDomainAsc" value="domain_asc">Sort: Domain (A-Z)</option>
+        <option id="sortDomainDesc" value="domain_desc">Sort: Domain (Z-A)</option>
+      </select>
+      <select id="pageSizeSelect">
+        <option id="pageSize50" value="50">50 / page</option>
+        <option id="pageSize100" value="100" selected>100 / page</option>
+        <option id="pageSize200" value="200">200 / page</option>
+      </select>
+      <button id="refreshBtn" class="btn-primary">Refresh</button>
+      <button id="copyBtn" class="btn-ghost">Copy Domains</button>
+      <button id="csvBtn" class="btn-ghost">Export CSV</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th id="thIndex" style="width:64px;">#</th>
+            <th id="thDomain">Domain</th>
+            <th id="thUsers" style="width:124px;" class="num">Users</th>
+            <th id="thFirstSeen" style="width:190px;">First Seen</th>
+            <th id="thLastSeen" style="width:190px;">Last Seen</th>
+            <th id="thAction" style="width:96px;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none;">No data</div>
+    </div>
+
+    <div class="pager">
+      <div class="info" id="pagerInfo">--</div>
+      <button id="prevBtn" class="small-btn">Prev</button>
+      <button id="nextBtn" class="small-btn">Next</button>
+    </div>
+  </div>
+
+  <script src="./admin-domains-viewer.js"></script>
+</body>
+</html>

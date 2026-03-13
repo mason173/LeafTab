@@ -22,7 +22,7 @@ import {
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
 import WallpaperSelector from "./WallpaperSelector";
-import { ChangelogModal } from "./ChangelogModal";
+import type { AboutLeafTabModalTab } from "./AboutLeafTabModal";
 import ConfirmDialog from "./ConfirmDialog";
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
 import { SyncStatusBadge } from "./SyncStatusBadge";
@@ -135,7 +135,7 @@ interface SettingsModalProps {
   onCloudSyncNow?: () => Promise<boolean>;
   onVersionClick?: () => void;
   onOpenAdminModal?: () => void;
-  onOpenAboutModal?: () => void;
+  onOpenAboutModal?: (tab?: AboutLeafTabModalTab) => void;
 }
 
 export default function SettingsModal({
@@ -346,8 +346,6 @@ export default function SettingsModal({
     };
     reader.readAsText(file);
   };
-  const [changelogOpen, setChangelogOpen] = useState(false);
-  const changelogOpenTimerRef = useRef<number | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutConfirmTarget, setLogoutConfirmTarget] = useState<'cloud' | 'webdav'>('cloud');
   const [logoutClearLocal, setLogoutClearLocal] = useState(false);
@@ -647,18 +645,6 @@ export default function SettingsModal({
     ? t('common.confirm')
     : t('logoutConfirm.confirm');
 
-  const handleOpenChangelog = () => {
-    onOpenChange(false);
-    if (changelogOpenTimerRef.current) {
-      window.clearTimeout(changelogOpenTimerRef.current);
-      changelogOpenTimerRef.current = null;
-    }
-    changelogOpenTimerRef.current = window.setTimeout(() => {
-      setChangelogOpen(true);
-      changelogOpenTimerRef.current = null;
-    }, 0);
-  };
-
   const handleOpenShortcutStyleSettings = () => {
     onOpenChange(false);
     if (shortcutStyleDialogTimerRef.current) {
@@ -673,10 +659,6 @@ export default function SettingsModal({
 
   useEffect(() => {
     return () => {
-      if (changelogOpenTimerRef.current) {
-        window.clearTimeout(changelogOpenTimerRef.current);
-        changelogOpenTimerRef.current = null;
-      }
       if (shortcutStyleDialogTimerRef.current) {
         window.clearTimeout(shortcutStyleDialogTimerRef.current);
         shortcutStyleDialogTimerRef.current = null;
@@ -1171,7 +1153,7 @@ export default function SettingsModal({
               variant="secondary"
               size="sm"
               className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-              onClick={() => onOpenAboutModal?.()}
+              onClick={() => onOpenAboutModal?.('about')}
             >
               {t('settings.about.open')}
             </Button>
@@ -1226,13 +1208,6 @@ export default function SettingsModal({
                 }}
               >
                 v{appVersion}
-              </button>
-              <button 
-                type="button"
-                className="text-[10px] text-muted-foreground/80 hover:text-primary hover:underline transition-colors"
-                onClick={handleOpenChangelog}
-              >
-                {t('settings.changelog.open')}
               </button>
             </div>
           </div>
@@ -1339,7 +1314,6 @@ export default function SettingsModal({
         </DialogContent>
       </Dialog>
     </Dialog>
-    <ChangelogModal open={changelogOpen} onOpenChange={setChangelogOpen} />
     </>
   );
 }

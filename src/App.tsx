@@ -37,7 +37,6 @@ import { HomeMainContent } from './components/home/HomeMainContent';
 import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
-import { fetchIconLibraryManifest } from '@/utils/iconLibrary';
 import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { isWebdavAuthError } from '@/utils/webdavError';
 import { AppDialogs } from './components/AppDialogs';
@@ -56,6 +55,7 @@ import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import { Beams, Galaxy, Iridescence, LightRays, Prism, Silk } from '@/components/react-bits';
+import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -169,6 +169,7 @@ export default function App() {
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [moveDialogData, setMoveDialogData] = useState<{ sourceIndex: number; sourceShortcutId?: string } | null>(null);
   const [moveSubOpen, setMoveSubOpen] = useState(false);
   const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
@@ -276,12 +277,9 @@ export default function App() {
   const {
     open: updateDialogOpen,
     setOpen: setUpdateDialogOpen,
-    currentVersion,
     latestVersion,
     releaseUrl,
-    publishedAt,
     notes: updateNotes,
-    ignoreCurrentRelease,
     snoozeCurrentRelease,
   } = useGithubReleaseUpdate(API_URL);
 
@@ -941,25 +939,6 @@ export default function App() {
     }
   }, []);
 
-  const registrableDomain = (domain: string) => {
-    let d = (domain || '').trim().toLowerCase();
-    if (d.startsWith('www.')) d = d.slice(4);
-    const parts = d.split('.');
-    if (parts.length <= 2) return parts.join('.');
-    const last2 = parts.slice(-2).join('.');
-    const multiSuffixes = new Set([
-      'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'edu.cn',
-      'co.uk', 'org.uk', 'ac.uk',
-      'co.jp', 'or.jp', 'ne.jp', 'ac.jp', 'go.jp', 'gr.jp', 'ed.jp', 'ad.jp',
-      'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au',
-      'com.hk', 'com.tw'
-    ]);
-    if (multiSuffixes.has(last2)) {
-      if (parts.length >= 3) return parts.slice(-3).join('.');
-    }
-    return last2;
-  };
-
   const handleExportDomains = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -972,101 +951,17 @@ export default function App() {
         toast.error(t('settings.iconAssistant.adminKeyRequired'));
         return;
       }
-      const resp = await fetch(`${API_URL}/admin/domains/export`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'X-Admin-Key': adminKey }
-      });
-      if (!resp.ok) {
-        if (resp.status === 401 || resp.status === 403) {
-          toast.error(t('settings.iconAssistant.adminKeyInvalid'));
-          return;
-        }
-        toast.error(t('settings.iconAssistant.downloadFailed'));
-        return;
+      const viewerUrl = new URL('admin-domains-viewer.html', `${window.location.origin}/`);
+      viewerUrl.searchParams.set('api', API_URL);
+      viewerUrl.searchParams.set('lang', i18n.language || 'en');
+      const opened = window.open(viewerUrl.toString(), '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        toast.error(t('settings.iconAssistant.viewerOpenFailed', { defaultValue: t('settings.iconAssistant.downloadFailed') }));
       }
-      const data = await resp.json();
-      const list: Array<{ domain: string; count: number; first_seen?: string; last_seen?: string }> = (data?.domains || []);
-      const apexSet = new Set<string>();
-      const manifest = await fetchIconLibraryManifest();
-      const manifestKeys = manifest?.icons ? Object.keys(manifest.icons) : [];
-      for (const key of manifestKeys) {
-        const apex = registrableDomain(key);
-        if (apex) apexSet.add(apex);
-      }
-      const parseSeenMs = (value?: string) => {
-        if (!value) return Number.NaN;
-        const s = value.trim();
-        if (!s) return Number.NaN;
-        if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return new Date(s).getTime();
-        const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?$/);
-        if (m) return new Date(`${m[1]}T${m[2]}${m[3] || ''}Z`).getTime();
-        return new Date(s).getTime();
-      };
-      const formatSeenLocal = (value?: string) => {
-        const ms = parseSeenMs(value);
-        if (!Number.isFinite(ms)) return value || '';
-        const d = new Date(ms);
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      };
-      const minIso = (a?: string, b?: string) => {
-        const ta = parseSeenMs(a);
-        const tb = parseSeenMs(b);
-        if (!Number.isFinite(ta)) return b;
-        if (!Number.isFinite(tb)) return a;
-        return ta <= tb ? a : b;
-      };
-      const maxIso = (a?: string, b?: string) => {
-        const ta = parseSeenMs(a);
-        const tb = parseSeenMs(b);
-        if (!Number.isFinite(ta)) return b;
-        if (!Number.isFinite(tb)) return a;
-        return ta >= tb ? a : b;
-      };
-      const aggregated = new Map<string, { domain: string; count: number; first_seen?: string; last_seen?: string }>();
-      for (const item of list) {
-        const apex = registrableDomain(item.domain);
-        if (!apex) continue;
-        if (apexSet.has(apex)) continue;
-        const prev = aggregated.get(apex);
-        const c = Number(item.count) || 0;
-        if (!prev) {
-          aggregated.set(apex, { domain: apex, count: c, first_seen: item.first_seen, last_seen: item.last_seen });
-        } else {
-          prev.count += c;
-          prev.first_seen = minIso(prev.first_seen, item.first_seen);
-          prev.last_seen = maxIso(prev.last_seen, item.last_seen);
-        }
-      }
-      const rows = Array.from(aggregated.values()).sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        const tb = parseSeenMs(b.last_seen);
-        const ta = parseSeenMs(a.last_seen);
-        if (tb !== ta) return tb - ta;
-        return a.domain.localeCompare(b.domain);
-      });
-      const csvEscape = (value: unknown) => {
-        const s = value === null || value === undefined ? '' : String(value);
-        if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-        return s;
-      };
-      const csv = [
-        ['domain', 'count', 'first_seen', 'last_seen'].join(','),
-        ...rows.map((r) => [r.domain, r.count, formatSeenLocal(r.first_seen), formatSeenLocal(r.last_seen)].map(csvEscape).join(',')),
-      ].join('\n');
-      const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `leaftab_domains_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success(t('settings.iconAssistant.downloadSuccess'));
     } catch (e) {
-      toast.error(t('settings.iconAssistant.downloadFailed'));
+      toast.error(t('settings.iconAssistant.viewerOpenFailed', { defaultValue: t('settings.iconAssistant.downloadFailed') }));
     }
-  }, [API_URL, t]);
+  }, [API_URL, i18n.language, t]);
 
   const handleFetchAdminStats = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -1087,8 +982,9 @@ export default function App() {
     setAdminModalOpen(true);
   }, [setSettingsOpen]);
 
-  const handleOpenAboutModal = useCallback(() => {
+  const handleOpenAboutModal = useCallback((tab: AboutLeafTabModalTab = 'about') => {
     setSettingsOpen(false);
+    setAboutModalDefaultTab(tab);
     setAboutModalOpen(true);
   }, [setSettingsOpen]);
 
@@ -1644,6 +1540,7 @@ export default function App() {
         aboutModalProps={{
           open: aboutModalOpen,
           onOpenChange: setAboutModalOpen,
+          defaultTab: aboutModalDefaultTab,
         }}
         webdavConfigDialogProps={{
           open: webdavDialogOpen,
@@ -1743,12 +1640,9 @@ export default function App() {
       <UpdateAvailableDialog
         open={updateDialogOpen}
         onOpenChange={setUpdateDialogOpen}
-        currentVersion={currentVersion}
         latestVersion={latestVersion}
         releaseUrl={releaseUrl}
-        publishedAt={publishedAt}
         notes={updateNotes}
-        onIgnoreCurrentVersion={ignoreCurrentRelease}
         onLater={snoozeCurrentRelease}
       />
       <Toaster />

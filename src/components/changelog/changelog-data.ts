@@ -1,0 +1,139 @@
+import type { TFunction } from "i18next";
+
+export interface ChangelogItem {
+  version: string;
+  date: string;
+  notes: string[];
+}
+
+export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
+  {
+    version: "1.3.1",
+    date: "2026-03-13",
+    notes: [
+      t("changelog.items.release131DynamicWallpaperFlickerFix"),
+      t("changelog.items.release131TimeSecondsDefaultOn"),
+      t("changelog.items.release131AdminDomainsBoard"),
+      t("changelog.items.release131DomainCountUniqueUsers"),
+      t("changelog.items.release131BackendModularDeploy"),
+    ],
+  },
+  {
+    version: "1.3.0",
+    date: "2026-03-13",
+    notes: [
+      t("changelog.items.release130DynamicEffectsOptimize"),
+      t("changelog.items.release130DynamicWallpaperTab"),
+      t("changelog.items.release130ManualWeatherCity"),
+    ],
+  },
+  {
+    version: "1.2.9",
+    date: "2026-03-12",
+    notes: [
+      t("changelog.items.release129ModeUiRefactor"),
+      t("changelog.items.release129WallpaperModalRefine"),
+      t("changelog.items.release129ColorWallpaperGradients"),
+      t("changelog.items.release129MaskSliderByMode"),
+      t("changelog.items.release129ContrastAndOpacityTune"),
+    ],
+  },
+  {
+    version: "1.2.8",
+    date: "2026-03-11",
+    notes: [
+      t("changelog.items.release128ShortcutStyleDialog"),
+      t("changelog.items.release128CompactLayoutRefine"),
+      t("changelog.items.release128CompactHoverOnlyIcon"),
+      t("changelog.items.release128EmptyIconFallback"),
+      t("changelog.items.release128IgnoreFakeFavicons"),
+    ],
+  },
+  {
+    version: "1.2.7",
+    date: "2026-03-11",
+    notes: [
+      t("changelog.items.release127CaptchaSessionFix"),
+      t("changelog.items.release127ProxyCookieDefaults"),
+      t("changelog.items.release127FirstLoginLocalFirst"),
+      t("changelog.items.release127DeployScriptLibUpload"),
+    ],
+  },
+  {
+    version: "1.2.6",
+    date: "2026-03-11",
+    notes: [
+      t("changelog.items.release126UnifiedCompareDialog"),
+      t("changelog.items.release126ConflictStrategyTabs"),
+      t("changelog.items.release126ConflictPendingPersist"),
+      t("changelog.items.release126ConflictFreezeAutoSync"),
+      t("changelog.items.release126CompareUiRefine"),
+    ],
+  },
+  {
+    version: "1.2.5",
+    date: "2026-03-11",
+    notes: [
+      t("changelog.items.release125ImportLocalFirstSync"),
+      t("changelog.items.release125ManualCloudLocalFirst"),
+      t("changelog.items.release125SyncSettingsUi"),
+      t("changelog.items.release125WebdavCorsPermission"),
+      t("changelog.items.release125WebdavAuthHint"),
+    ],
+  },
+  {
+    version: "1.2.4",
+    date: "2026-03-11",
+    notes: [
+      t("changelog.items.release124UpdateNotice"),
+      t("changelog.items.release124Snooze24h"),
+      t("changelog.items.release124ChangelogEntry"),
+      t("changelog.items.release124ReleasePackaging"),
+      t("changelog.items.release124FirefoxCompat"),
+    ],
+  },
+  {
+    version: "1.2.3",
+    date: "2026-03-10",
+    notes: [
+      t("changelog.items.release123WebdavAccessDialog"),
+      t("changelog.items.release123UnifiedSyncSettings"),
+      t("changelog.items.release123AutoSyncToggles"),
+      t("changelog.items.release123ProviderLabel"),
+      t("changelog.items.release123PasswordToggle"),
+    ],
+  },
+  {
+    version: "1.2.2",
+    date: "2026-03-09",
+    notes: [
+      t("changelog.items.release122Scrollbar"),
+      t("changelog.items.release122WelcomePersist"),
+      t("changelog.items.release122RateLimitToast"),
+      t("changelog.items.release122WebdavSchedule"),
+      t("changelog.items.release122CustomServer"),
+      t("changelog.items.release122CustomIconSource"),
+      t("changelog.items.release122OnlineIconSource"),
+      t("changelog.items.release122DynamicAccent"),
+    ],
+  },
+  {
+    version: "1.2.1",
+    date: "2026-03-07",
+    notes: [
+      t("changelog.items.release121Webdav"),
+      t("changelog.items.release121Ui"),
+      t("changelog.items.release121Fixes"),
+    ],
+  },
+  {
+    version: "1.2.0",
+    date: "2026-03-05",
+    notes: [
+      t("changelog.items.grid"),
+      t("changelog.items.carousel"),
+      t("changelog.items.entrance"),
+      t("changelog.items.dots"),
+    ],
+  },
+];

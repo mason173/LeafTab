@@ -3,16 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import leaftabUpdateImage from '@/assets/leaftabupdate.svg?url';
 
 type UpdateAvailableDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  currentVersion: string;
   latestVersion: string;
-  publishedAt: string;
   releaseUrl: string;
   notes: string[];
-  onIgnoreCurrentVersion: () => void;
   onLater: () => void;
   debugSample?: boolean;
 };
@@ -20,19 +18,14 @@ type UpdateAvailableDialogProps = {
 export function UpdateAvailableDialog({
   open,
   onOpenChange,
-  currentVersion,
   latestVersion,
-  publishedAt,
   releaseUrl,
   notes,
-  onIgnoreCurrentVersion,
   onLater,
   debugSample = false,
 }: UpdateAvailableDialogProps) {
-  const { t, i18n } = useTranslation();
-
-  const resolvedLatestVersion = latestVersion || (debugSample ? '1.2.5' : '');
-  const resolvedPublishedAt = publishedAt || (debugSample ? new Date().toISOString() : '');
+  const { t } = useTranslation();
+  const resolvedLatestVersion = latestVersion || (debugSample ? '1.3.1' : '');
   const resolvedNotes = useMemo(() => {
     if (notes.length > 0) return notes;
     if (!debugSample) return notes;
@@ -43,54 +36,36 @@ export function UpdateAvailableDialog({
     ];
   }, [debugSample, notes]);
 
-  const publishedLabel = useMemo(() => {
-    if (!resolvedPublishedAt) return '';
-    const d = new Date(resolvedPublishedAt);
-    if (Number.isNaN(d.getTime())) return '';
-    try {
-      return new Intl.DateTimeFormat(i18n.language || 'zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(d);
-    } catch {
-      return d.toISOString().slice(0, 10);
-    }
-  }, [i18n.language, resolvedPublishedAt]);
-
   const openReleasePage = () => {
-    if (!releaseUrl) return;
-    window.open(releaseUrl, '_blank', 'noopener,noreferrer');
+    const targetUrl = releaseUrl || (debugSample ? 'https://github.com/mason173/LeafTab/releases' : '');
+    if (!targetUrl) return;
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[32px]">
-        <DialogHeader>
-          <DialogTitle>{t('updateNotice.title', { version: resolvedLatestVersion ? `v${resolvedLatestVersion}` : '' })}</DialogTitle>
-          <DialogDescription>{t('updateNotice.description')}</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{t('updateNotice.currentVersion')}</span>
-            <span className="font-medium">v{currentVersion || '—'}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{t('updateNotice.latestVersion')}</span>
-            <span className="font-semibold">v{resolvedLatestVersion || '—'}</span>
-          </div>
-          {publishedLabel ? (
-            <div className="text-xs text-muted-foreground">
-              {t('updateNotice.publishedAt', { date: publishedLabel })}
-            </div>
+      <DialogContent className="w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] p-0 flex flex-col">
+        <div className="relative px-3 pt-3 shrink-0">
+          <img
+            src={leaftabUpdateImage}
+            alt="LeafTab Update"
+            className="block w-full h-auto rounded-[20px]"
+          />
+          {resolvedLatestVersion ? (
+            <span className="absolute left-1/2 bottom-5 -translate-x-1/2 inline-flex items-center rounded-full bg-primary text-primary-foreground px-4 py-1.5 text-sm font-semibold shadow-md border border-background/70">
+              新版本 v{resolvedLatestVersion}
+            </span>
           ) : null}
         </div>
 
-        <div className="space-y-2">
-          <div className="text-sm font-medium">{t('updateNotice.changelogTitle')}</div>
-          <ScrollArea className="max-h-[36vh] pr-1">
+        <DialogHeader className="px-6 pt-4 pb-0 shrink-0">
+          <DialogTitle>{t('updateNotice.changelogTitle')}</DialogTitle>
+          <DialogDescription>{t('updateNotice.description')}</DialogDescription>
+        </DialogHeader>
+
+        <div className="px-6 pt-3 flex-1 min-h-0">
+          <ScrollArea className="h-full pr-1" scrollBarClassName="hidden">
             {resolvedNotes.length > 0 ? (
               <ul className="space-y-2 pb-1">
                 {resolvedNotes.map((note, index) => (
@@ -105,18 +80,13 @@ export function UpdateAvailableDialog({
           </ScrollArea>
         </div>
 
-        <DialogFooter className="flex w-full items-center gap-2 sm:gap-2">
-          <button
-            type="button"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            onClick={onIgnoreCurrentVersion}
-          >
-            {t('updateNotice.ignoreThisVersion')}
-          </button>
-          <Button variant="secondary" onClick={onLater}>
-            {t('updateNotice.later')}
+        <DialogFooter className="px-6 pb-6 pt-4 flex w-full gap-3 sm:gap-3 shrink-0">
+          <Button variant="secondary" className="flex-1" onClick={onLater}>
+            稍后提醒
           </Button>
-          <Button onClick={openReleasePage}>{t('updateNotice.downloadFromGithub')}</Button>
+          <Button className="flex-1" onClick={openReleasePage}>
+            前往 GitHub 下载
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
