@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { animate, useMotionValue } from "framer-motion";
@@ -18,10 +19,8 @@ import {
   RiRefreshFill,
   RiSettings4Fill,
   RiUpload2Fill,
-  RiLayoutGridFill,
 } from "@remixicon/react";
 import { useTheme } from "next-themes";
-import WallpaperSelector from "./WallpaperSelector";
 import type { AboutLeafTabModalTab } from "./AboutLeafTabModal";
 import ConfirmDialog from "./ConfirmDialog";
 import type { WebdavConfig } from "@/hooks/useWebdavSync";
@@ -55,6 +54,7 @@ import {
 import { ShortcutStyleSettingsDialog } from "./ShortcutStyleSettingsDialog";
 import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode, shouldShowTimeDetailControls } from "@/displayMode/config";
+import type { DynamicWallpaperEffect, WallpaperMode } from "@/wallpaper/types";
 
 function RollingNumber({
   value,
@@ -100,8 +100,8 @@ interface SettingsModalProps {
   onShortcutCardVariantChange: (variant: ShortcutCardVariant) => void;
   shortcutCompactShowTitle: boolean;
   onShortcutCompactShowTitleChange: (show: boolean) => void;
-  shortcutsRowsPerColumn: number;
-  onShortcutsRowsPerColumnChange: (rows: number) => void;
+  shortcutGridColumns: number;
+  onShortcutGridColumnsChange: (columns: number) => void;
   openInNewTab: boolean;
   onOpenInNewTabChange: (checked: boolean) => void;
   is24Hour: boolean;
@@ -112,12 +112,10 @@ interface SettingsModalProps {
   onShowTimeChange: (checked: boolean) => void;
   onExportData: () => void;
   onImportData: (data: any) => void;
-  wallpaperMode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom') => void;
-  dynamicWallpaperEffect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence';
-  onDynamicWallpaperEffectChange: (
-    effect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
-  ) => void;
+  wallpaperMode: WallpaperMode;
+  onWallpaperModeChange: (mode: WallpaperMode) => void;
+  dynamicWallpaperEffect: DynamicWallpaperEffect;
+  onDynamicWallpaperEffectChange: (effect: DynamicWallpaperEffect) => void;
   bingWallpaper: string;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
@@ -136,6 +134,7 @@ interface SettingsModalProps {
   onVersionClick?: () => void;
   onOpenAdminModal?: () => void;
   onOpenAboutModal?: (tab?: AboutLeafTabModalTab) => void;
+  onOpenWallpaperSettings?: () => void;
 }
 
 export default function SettingsModal({
@@ -151,8 +150,8 @@ export default function SettingsModal({
   onShortcutCardVariantChange,
   shortcutCompactShowTitle,
   onShortcutCompactShowTitleChange,
-  shortcutsRowsPerColumn,
-  onShortcutsRowsPerColumnChange,
+  shortcutGridColumns,
+  onShortcutGridColumnsChange,
   openInNewTab,
   onOpenInNewTabChange,
   is24Hour,
@@ -185,6 +184,7 @@ export default function SettingsModal({
   onVersionClick,
   onOpenAdminModal,
   onOpenAboutModal,
+  onOpenWallpaperSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -223,6 +223,7 @@ export default function SettingsModal({
   ];
   const [shortcutStyleDialogOpen, setShortcutStyleDialogOpen] = useState(false);
   const shortcutStyleDialogTimerRef = useRef<number | null>(null);
+  const wallpaperSettingsDialogTimerRef = useRef<number | null>(null);
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
     if (mode === 'panoramic') return <RiDashboardFill className={className} />;
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
@@ -376,6 +377,7 @@ export default function SettingsModal({
   const [cloudSyncEnabledDraft, setCloudSyncEnabledDraft] = useState<boolean>(() => readCloudSyncConfigFromStorage().enabled);
   const [cloudAutoSyncToastEnabledDraft, setCloudAutoSyncToastEnabledDraft] = useState<boolean>(() => readCloudSyncConfigFromStorage().autoSyncToastEnabled);
   const [webdavToggleBusy, setWebdavToggleBusy] = useState(false);
+  const [logoutActionBusy, setLogoutActionBusy] = useState(false);
   const resolveWebdavProviderLabel = useCallback(() => {
     const normalizeUrl = (value: string) => value.trim().replace(/\/+$/, '');
     const savedUrl = normalizeUrl(localStorage.getItem(WEBDAV_STORAGE_KEYS.url) || '');
@@ -456,17 +458,6 @@ export default function SettingsModal({
     };
   }, [isOpen, resolveWebdavProviderLabel]);
 
-  const formatAbsoluteTime = (iso: string) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-  };
-
   const formatHourMinuteTime = (iso: string) => {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
@@ -475,22 +466,19 @@ export default function SettingsModal({
     return `${hh}:${mi}`;
   };
 
-  const webdavLastSyncLabel = useMemo(() => {
-    if (!webdavLastSyncAt) return t('settings.backup.webdav.notSynced');
-    const ts = new Date(webdavLastSyncAt).getTime();
+  const formatLastSyncRelativeLabel = (iso: string) => {
+    if (!iso) return t('settings.backup.webdav.notSynced');
+    const ts = new Date(iso).getTime();
     if (Number.isNaN(ts)) return t('settings.backup.webdav.notSynced');
     const diff = Math.max(0, relativeNow - ts);
     if (diff < 60 * 1000) return t('settings.backup.webdav.justSynced');
-    if (diff < 60 * 60 * 1000) {
-      const m = Math.floor(diff / (60 * 1000));
-      return t('settings.backup.webdav.minutesAgo', { count: m });
-    }
-    if (diff < 24 * 60 * 60 * 1000) {
-      const h = Math.floor(diff / (60 * 60 * 1000));
-      return t('settings.backup.webdav.hoursAgo', { count: h });
-    }
-    return formatAbsoluteTime(webdavLastSyncAt);
-  }, [relativeNow, t, webdavLastSyncAt]);
+    const minutes = Math.max(1, Math.floor(diff / (60 * 1000)));
+    return t('settings.backup.webdav.minutesAgo', { count: minutes });
+  };
+
+  const webdavLastSyncLabel = useMemo(() => {
+    return formatLastSyncRelativeLabel(webdavLastSyncAt);
+  }, [formatLastSyncRelativeLabel, webdavLastSyncAt]);
   const webdavNextSyncLabel = useMemo(() => {
     if (!webdavNextSyncAt) return '';
     const ts = new Date(webdavNextSyncAt).getTime();
@@ -504,21 +492,8 @@ export default function SettingsModal({
     return t('settings.backup.webdav.nextSyncAtLabel', { time: webdavNextSyncLabel || '--' });
   }, [t, webdavNextSyncLabel]);
   const cloudLastSyncLabel = useMemo(() => {
-    if (!cloudLastSyncAt) return t('settings.backup.webdav.notSynced');
-    const ts = new Date(cloudLastSyncAt).getTime();
-    if (Number.isNaN(ts)) return t('settings.backup.webdav.notSynced');
-    const diff = Math.max(0, relativeNow - ts);
-    if (diff < 60 * 1000) return t('settings.backup.webdav.justSynced');
-    if (diff < 60 * 60 * 1000) {
-      const m = Math.floor(diff / (60 * 1000));
-      return t('settings.backup.webdav.minutesAgo', { count: m });
-    }
-    if (diff < 24 * 60 * 60 * 1000) {
-      const h = Math.floor(diff / (60 * 60 * 1000));
-      return t('settings.backup.webdav.hoursAgo', { count: h });
-    }
-    return formatAbsoluteTime(cloudLastSyncAt);
-  }, [cloudLastSyncAt, relativeNow, t]);
+    return formatLastSyncRelativeLabel(cloudLastSyncAt);
+  }, [cloudLastSyncAt, formatLastSyncRelativeLabel]);
   const cloudNextSyncLabel = useMemo(() => {
     if (!cloudNextSyncAt) return '';
     const ts = new Date(cloudNextSyncAt).getTime();
@@ -657,11 +632,27 @@ export default function SettingsModal({
     }, 0);
   };
 
+  const handleOpenWallpaperSettings = () => {
+    onOpenChange(false);
+    if (wallpaperSettingsDialogTimerRef.current) {
+      window.clearTimeout(wallpaperSettingsDialogTimerRef.current);
+      wallpaperSettingsDialogTimerRef.current = null;
+    }
+    wallpaperSettingsDialogTimerRef.current = window.setTimeout(() => {
+      onOpenWallpaperSettings?.();
+      wallpaperSettingsDialogTimerRef.current = null;
+    }, 200);
+  };
+
   useEffect(() => {
     return () => {
       if (shortcutStyleDialogTimerRef.current) {
         window.clearTimeout(shortcutStyleDialogTimerRef.current);
         shortcutStyleDialogTimerRef.current = null;
+      }
+      if (wallpaperSettingsDialogTimerRef.current) {
+        window.clearTimeout(wallpaperSettingsDialogTimerRef.current);
+        wallpaperSettingsDialogTimerRef.current = null;
       }
     };
   }, []);
@@ -875,23 +866,18 @@ export default function SettingsModal({
                 </div>
               )}
             </div>
-
             {/* Display Mode Selection */}
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col space-y-1 items-start">
-                <span className="text-sm font-medium leading-none">{t('settings.displayMode.title')}</span>
-                <span className="font-normal text-xs text-muted-foreground">{t('settings.displayMode.description')}</span>
-              </div>
               <div className="grid grid-cols-3 gap-3">
                 {DISPLAY_MODE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
                     type="button"
-                    className={`flex flex-col items-center justify-center gap-2 rounded-xl p-3 text-center border transition-all ${displayMode === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
+                    className={`flex h-11 items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-center border transition-all ${displayMode === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
                     onClick={() => { onDisplayModeChange(option.value); onOpenChange(false); }}
                   >
-                    {renderDisplayModeIcon(option.value, "size-5 mb-0.5")}
-                    <div className="text-xs font-medium">
+                    {renderDisplayModeIcon(option.value, "size-4.5 shrink-0")}
+                    <div className="text-sm font-medium leading-none">
                       {t(option.labelKey)}
                     </div>
                   </button>
@@ -899,29 +885,7 @@ export default function SettingsModal({
               </div>
             </div>
             {displayMode !== 'minimalist' && (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-col space-y-1 items-start">
-                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.label')}</span>
-                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsStyle.entryDescription')}</span>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                  onClick={handleOpenShortcutStyleSettings}
-                >
-                  <RiLayoutGridFill className="size-4" />
-                  {t('settings.shortcutsStyle.open')}
-                </Button>
-              </div>
-            )}
-            {/* Theme Color Selection */}
-            {displayMode !== 'minimalist' && (
             <div className="flex flex-col gap-3">
-             <div className="flex flex-col space-y-1 items-start">
-              <span className="text-sm font-medium leading-none">{t('settings.accentColor.label')}</span>
-              <span className="font-normal text-xs text-muted-foreground">{t('settings.accentColor.description')}</span>
-            </div>
             <div className="flex justify-between w-full px-[12px]">
               {colorOptions.map((option) => (
                 <button
@@ -939,11 +903,39 @@ export default function SettingsModal({
             </div>
           </div>
           )}
+            <Separator className="bg-border/60" />
 
-          
-
-          
-          
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('weather.wallpaper.mode')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('weather.wallpaper.modeDesc')}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                onClick={handleOpenWallpaperSettings}
+              >
+                {t('settings.shortcutsLayout.set')}
+              </Button>
+            </div>
+            {displayMode !== 'minimalist' && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col space-y-1 items-start">
+                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.label')}</span>
+                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsStyle.entryDescription')}</span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                  onClick={handleOpenShortcutStyleSettings}
+                >
+                  {t('settings.shortcutsStyle.open')}
+                </Button>
+              </div>
+            )}
+            <Separator className="bg-border/60" />
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
                 <span className="text-sm font-medium leading-none">{t('settings.newTabMode.label')}</span>
@@ -1025,7 +1017,7 @@ export default function SettingsModal({
               </Switch>
             </div>
           )}
-
+          <Separator className="bg-border/60" />
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.language.label')}</span>
@@ -1100,33 +1092,7 @@ export default function SettingsModal({
           </div>
           )}
 
-          {displayMode === 'minimalist' && (
-            <div className="flex items-center justify-between space-x-2 py-2">
-              <div className="flex flex-col space-y-1 items-start">
-                <span className="text-sm font-medium leading-none">{t('weather.wallpaper.mode')}</span>
-                <span className="font-normal text-xs text-muted-foreground">{t('weather.wallpaper.modeDesc')}</span>
-              </div>
-              <WallpaperSelector
-                mode={wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
-                onModeChange={onWallpaperModeChange}
-                dynamicWallpaperEffect={dynamicWallpaperEffect}
-                onDynamicWallpaperEffectChange={onDynamicWallpaperEffectChange}
-                bingWallpaper={bingWallpaper}
-                weatherCode={weatherCode}
-                customWallpaper={customWallpaper}
-                onCustomWallpaperChange={onCustomWallpaperChange}
-                colorWallpaperId={colorWallpaperId}
-                onColorWallpaperIdChange={onColorWallpaperIdChange}
-                wallpaperMaskOpacity={wallpaperMaskOpacity}
-                onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
-                hideWeather={true}
-                trigger={
-                  <Button variant="secondary" size="sm" className="bg-secondary/50 hover:bg-secondary">{t('settings.shortcutsLayout.set')}</Button>
-                }
-              />
-            </div>
-          )}
-
+          <Separator className="bg-border/60" />
           {adminModeEnabled && (
             <div className="flex items-center justify-between space-x-2 pt-3">
               <div className="flex flex-col space-y-1 items-start">
@@ -1136,7 +1102,7 @@ export default function SettingsModal({
               <Button
                 variant="secondary"
                 size="sm"
-                className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
                 onClick={() => onOpenAdminModal?.()}
               >
                 {t('settings.adminMode.open')}
@@ -1152,7 +1118,7 @@ export default function SettingsModal({
             <Button
               variant="secondary"
               size="sm"
-              className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+              className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
               onClick={() => onOpenAboutModal?.('about')}
             >
               {t('settings.about.open')}
@@ -1220,11 +1186,11 @@ export default function SettingsModal({
         onOpenChange={setShortcutStyleDialogOpen}
         variant={shortcutCardVariant}
         compactShowTitle={shortcutCompactShowTitle}
-        rowsPerColumn={shortcutsRowsPerColumn}
-        onSave={({ variant, compactShowTitle, rowsPerColumn }) => {
+        columns={shortcutGridColumns}
+        onSave={({ variant, compactShowTitle, columns }) => {
           onShortcutCardVariantChange(variant);
           onShortcutCompactShowTitleChange(compactShowTitle);
-          onShortcutsRowsPerColumnChange(rowsPerColumn);
+          onShortcutGridColumnsChange(columns);
         }}
       />
       <SyncSettingsDialog
@@ -1266,6 +1232,7 @@ export default function SettingsModal({
         </div>
       </SyncSettingsDialog>
       <Dialog open={logoutConfirmOpen} onOpenChange={(open: boolean) => {
+        if (logoutActionBusy) return;
         setLogoutConfirmOpen(open);
         if (!open) {
           setLogoutClearLocal(false);
@@ -1280,7 +1247,7 @@ export default function SettingsModal({
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Checkbox checked={logoutClearLocal} onCheckedChange={(checked: boolean | "indeterminate") => setLogoutClearLocal(checked === true)} />
+            <Checkbox disabled={logoutActionBusy} checked={logoutClearLocal} onCheckedChange={(checked: boolean | "indeterminate") => setLogoutClearLocal(checked === true)} />
             <div className="flex flex-col gap-1">
               <span className="text-foreground">
                 {logoutConfirmClearLocalLabel}
@@ -1288,26 +1255,45 @@ export default function SettingsModal({
             </div>
           </div>
           <DialogFooter className="flex w-full gap-4 sm:gap-4">
-            <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => { setLogoutConfirmOpen(false); setLogoutClearLocal(false); }}>
+            <Button
+              disabled={logoutActionBusy}
+              className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              onClick={() => {
+                if (logoutActionBusy) return;
+                setLogoutConfirmOpen(false);
+                setLogoutClearLocal(false);
+              }}
+            >
               {t('logoutConfirm.cancel')}
             </Button>
-            <Button className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={async () => {
-              if (logoutConfirmTarget === 'webdav') {
-                setWebdavToggleBusy(true);
-                try {
-                  await onWebdavDisable?.({ clearLocal: logoutClearLocal });
-                  setRelativeNow(Date.now());
-                } finally {
-                  setWebdavToggleBusy(false);
-                }
-              } else {
-                await onLogout?.({ clearLocal: logoutClearLocal });
-              }
-              setLogoutConfirmOpen(false);
-              setLogoutClearLocal(false);
-              setLogoutConfirmTarget('cloud');
-              onOpenChange(false);
-            }}>
+            <Button
+              disabled={logoutActionBusy}
+              className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (logoutActionBusy) return;
+                const target = logoutConfirmTarget;
+                const shouldClearLocal = logoutClearLocal;
+                setLogoutActionBusy(true);
+                setLogoutConfirmOpen(false);
+                setLogoutClearLocal(false);
+                setLogoutConfirmTarget('cloud');
+                onOpenChange(false);
+                void (async () => {
+                  try {
+                    if (target === 'webdav') {
+                      setWebdavToggleBusy(true);
+                      await onWebdavDisable?.({ clearLocal: shouldClearLocal });
+                      setRelativeNow(Date.now());
+                    } else {
+                      await onLogout?.({ clearLocal: shouldClearLocal });
+                    }
+                  } finally {
+                    setWebdavToggleBusy(false);
+                    setLogoutActionBusy(false);
+                  }
+                })();
+              }}
+            >
               {logoutConfirmActionLabel}
             </Button>
           </DialogFooter>

@@ -109,6 +109,24 @@
           "title": "YouTube Learning",
           "url": "https://www.youtube.com/learning",
           "icon": ""
+        },
+        {
+          "id": "dev-01",
+          "title": "GitHub",
+          "url": "https://github.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-02",
+          "title": "Stack Overflow",
+          "url": "https://stackoverflow.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-03",
+          "title": "Reddit (Programming)",
+          "url": "https://www.reddit.com/r/programming",
+          "icon": ""
         }
       ],
       "life-mode-001": [

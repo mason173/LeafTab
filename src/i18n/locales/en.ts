@@ -85,15 +85,16 @@ export default {
       },
       shortcutsStyle: {
         label: "Shortcut Style",
-        entryDescription: "Switch shortcut style and density",
+        entryDescription: "Switch shortcut style and set grid columns and base rows",
         open: "Open",
         title: "Shortcut Style Settings",
-        description: "Choose a shortcut style and adjust grid density",
+        description: "Choose a shortcut style and set single-page grid columns and base rows",
         rich: "Rich",
         compact: "Minimal",
         showName: "Show Name",
         showNameDesc: "Display shortcut title below icon",
-        density: "Shortcut Density"
+        columns: "Grid Columns",
+        rows: "Base Rows"
       },
       backup: {
         label: "Data Backup & Recovery",
@@ -503,6 +504,7 @@ export default {
     search: {
       placeholder: "Search for content...",
       placeholderDynamic: "Search for content or enter URL...",
+      systemEngine: "System default",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
       noHistory: "No recent searches"
@@ -522,15 +524,8 @@ export default {
       copyLink: "Copy link",
       delete: "Delete",
       addShortcut: "Add Shortcut",
-      addPage: "New Page",
-      move: "Move to",
       newShortcut: "New Shortcut",
-      pinToTop: "Pin to top",
-      moveToPageDesc: "Select destination page"
-    },
-    pageDelete: {
-      title: "Delete Page",
-      description: "Are you sure you want to delete this page? This will remove all shortcuts on the page."
+      pinToTop: "Pin to top"
     },
     shortcutModal: {
       addTitle: "Add Shortcut",
@@ -541,7 +536,9 @@ export default {
       urlPlaceholder: "Enter URL",
       errors: {
         fillAll: "Please fill in all fields",
-        fillAllDesc: "Enter shortcut title and URL"
+        fillAllDesc: "Enter shortcut title and URL",
+        duplicateUrl: "A shortcut for this site already exists",
+        duplicateUrlDesc: "Only one shortcut per site is allowed. Please use a different URL."
       }
     },
     onboarding: {

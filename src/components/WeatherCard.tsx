@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RiCheckFill, RiMapPin2Line, RiSearchLine } from "@remixicon/react";
+import { RiCheckFill, RiMapPin2Line } from "@remixicon/react";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "./ui/utils";
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { toast } from "./ui/sonner";
 import { fetchWeatherCitySuggestions, type WeatherCitySuggestion, useWeatherLocation } from "@/hooks/useWeatherLocation";
 
@@ -201,69 +200,70 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
                 {t("weather.manualCityLabel", { defaultValue: "Manual city (highest priority)" })}
               </p>
 
-              <div className="relative">
-                <RiSearchLine className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={cityQuery}
-                  onChange={(event) => {
-                    setCityQuery(event.target.value);
-                    setSelectedCityId(null);
-                  }}
-                  placeholder={t("weather.manualCityPlaceholder", { defaultValue: "Search city, e.g. Shanghai" })}
-                  className="h-11 rounded-xl border-border bg-secondary/30 pl-10"
-                  disabled={isRefreshing}
-                />
+              <div className="rounded-2xl border border-border bg-secondary/20 overflow-hidden">
+                <Command shouldFilter={false} className="bg-transparent">
+                  <div className="px-2 pt-2">
+                    <div className="rounded-xl border border-border bg-secondary/30">
+                      <CommandInput
+                        value={cityQuery}
+                        onValueChange={(value) => {
+                          setCityQuery(value);
+                          setSelectedCityId(null);
+                        }}
+                        placeholder={t("weather.manualCityPlaceholder", { defaultValue: "Search city, e.g. Shanghai" })}
+                        disabled={isRefreshing}
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+                  <CommandList className="max-h-[220px] px-2 pb-2">
+                    {isCitySearching ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        {t("weather.manualCitySearching", { defaultValue: "Searching cities..." })}
+                      </div>
+                    ) : null}
+
+                    {!isCitySearching && cityQuery.trim().length < 2 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        {t("weather.manualCitySearchHint", { defaultValue: "Type at least 2 characters to search" })}
+                      </div>
+                    ) : null}
+
+                    {!isCitySearching && cityQuery.trim().length >= 2 && citySuggestions.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        {t("weather.manualCityNoResult", { defaultValue: "No matching city found" })}
+                      </div>
+                    ) : null}
+
+                    {!isCitySearching && citySuggestions.length > 0 ? (
+                      <CommandGroup className="p-0">
+                        {citySuggestions.map((item) => {
+                          const selected = item.id === selectedCityId;
+                          return (
+                            <CommandItem
+                              key={item.id}
+                              value={item.id}
+                              onSelect={() => {
+                                setSelectedCityId(item.id);
+                                setCityQuery(item.displayName);
+                              }}
+                              className={cn(
+                                "mx-1 my-0.5 rounded-xl px-3 py-2 data-[selected=true]:bg-secondary/60 data-[selected=true]:text-foreground",
+                                selected ? "bg-primary/20" : "",
+                              )}
+                            >
+                              <RiCheckFill className={cn("size-4", selected ? "opacity-100" : "opacity-0")} />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm text-foreground">{item.displayName}</div>
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    ) : null}
+                  </CommandList>
+                </Command>
               </div>
-
-              <ScrollArea
-                className="max-h-[220px] rounded-2xl border border-border bg-secondary/20"
-                scrollBarClassName="data-[orientation=vertical]:translate-x-2"
-              >
-                <div className="space-y-1 p-1 pr-3">
-                  {isCitySearching ? (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      {t("weather.manualCitySearching", { defaultValue: "Searching cities..." })}
-                    </div>
-                  ) : null}
-
-                  {!isCitySearching && cityQuery.trim().length < 2 ? (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      {t("weather.manualCitySearchHint", { defaultValue: "Type at least 2 characters to search" })}
-                    </div>
-                  ) : null}
-
-                  {!isCitySearching && cityQuery.trim().length >= 2 && citySuggestions.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      {t("weather.manualCityNoResult", { defaultValue: "No matching city found" })}
-                    </div>
-                  ) : null}
-
-                  {!isCitySearching && citySuggestions.length > 0
-                    ? citySuggestions.map((item) => {
-                        const selected = item.id === selectedCityId;
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCityId(item.id);
-                              setCityQuery(item.displayName);
-                            }}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors",
-                              selected ? "bg-primary/20" : "hover:bg-secondary/60",
-                            )}
-                          >
-                            <RiCheckFill className={cn("size-4", selected ? "opacity-100" : "opacity-0")} />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm text-foreground">{item.displayName}</div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    : null}
-                </div>
-              </ScrollArea>
 
               <div className="text-xs text-muted-foreground">
                 {t("weather.manualCityNeedSelect", {

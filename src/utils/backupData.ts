@@ -1,3 +1,5 @@
+import { getShortcutIdentityKey } from './shortcutIdentity';
+
 export type ScenarioShortcuts = Record<string, any[]>;
 
 export type WebdavPayload = {
@@ -19,30 +21,39 @@ export const clampShortcutsRowsPerColumn = (value: number) => {
   return Math.min(11, Math.max(1, Math.floor(value)));
 };
 
-const getShortcutKey = (shortcut: any, index: number) => {
-  const url = typeof shortcut?.url === 'string' ? shortcut.url.trim().toLowerCase() : '';
-  const id = typeof shortcut?.id === 'string' ? shortcut.id : '';
-  if (url) return `url:${url}`;
-  if (id) return `id:${id}`;
-  return `idx:${index}`;
-};
-
 export const mergeShortcutsLocalFirst = (localShortcuts: any[], remoteShortcuts: any[]) => {
   const keySet = new Set<string>();
   const merged: any[] = [];
   localShortcuts.forEach((shortcut, index) => {
-    const key = getShortcutKey(shortcut, index);
+    const key = getShortcutIdentityKey(shortcut, index);
     if (keySet.has(key)) return;
     keySet.add(key);
     merged.push(shortcut);
   });
   remoteShortcuts.forEach((shortcut, index) => {
-    const key = getShortcutKey(shortcut, index);
+    const key = getShortcutIdentityKey(shortcut, index);
     if (keySet.has(key)) return;
     keySet.add(key);
     merged.push(shortcut);
   });
   return merged;
+};
+
+const dedupeShortcutList = (list: any[]) => mergeShortcutsLocalFirst(list, []);
+
+const dedupeScenarioShortcutsMap = (raw: unknown): ScenarioShortcuts => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const next: ScenarioShortcuts = {};
+  Object.entries(raw as Record<string, unknown>).forEach(([modeId, value]) => {
+    if (Array.isArray(value)) {
+      next[modeId] = dedupeShortcutList(value);
+      return;
+    }
+    if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+      next[modeId] = [];
+    }
+  });
+  return next;
 };
 
 export const toScenarioShortcuts = (data: any): ScenarioShortcuts | null => {
@@ -87,10 +98,11 @@ const normalizeToPayload = (raw: any): WebdavPayload | null => {
   const scenarioModes = Array.isArray((raw as any).scenarioModes) ? (raw as any).scenarioModes : [];
   const selectedScenarioId = typeof (raw as any).selectedScenarioId === 'string' ? (raw as any).selectedScenarioId : '';
   if ((raw as any).scenarioShortcuts && typeof (raw as any).scenarioShortcuts === 'object') {
+    const scenarioShortcuts = dedupeScenarioShortcutsMap((raw as any).scenarioShortcuts);
     return {
       scenarioModes,
       selectedScenarioId: selectedScenarioId || (scenarioModes[0] as any)?.id || '',
-      scenarioShortcuts: (raw as any).scenarioShortcuts,
+      scenarioShortcuts,
     };
   }
   return null;

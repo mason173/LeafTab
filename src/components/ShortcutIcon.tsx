@@ -1,11 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
-import emptyIconBg from '@/assets/emptyicon.svg?url';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
 const MAX_CACHE_ITEMS = 400;
+const FAVICON_FAIL_PREFIX = 'favicon_cache_v2_fail:';
+const FAVICON_FAIL_TTL_MS = 12 * 60 * 60 * 1000;
+const EMPTY_ICON_COLOR_MAP_KEY = 'leaftab_empty_icon_color_map_v1';
+const EMPTY_ICON_CONTAINER_PATH_D = "M0 36C0.000156948 13.5 6.42873 0.0000175685 36 0C65.5713 -0.0000175684 72 11.8929 72 36C72 61.7143 61.0716 72 36 72C13.8214 72 -0.000192817 63.6429 0 36Z";
+const EMPTY_ICON_COLOR_PALETTE = [
+  '#F4E300',
+  '#7279E3',
+  '#24212E',
+  '#000000',
+  '#1964D2',
+  '#1BB1C7',
+  '#099A4A',
+  '#13375A',
+  '#1C84E2',
+  '#FA8A00',
+  '#E25724',
+  '#F00016',
+  '#DD4E84',
+  '#4E4DB7',
+  '#2994CC',
+] as const;
 
 const normalizeDomain = (domain: string) => {
   let d = domain.trim().toLowerCase();
@@ -77,6 +97,71 @@ function clearCachedFavicon(domain: string) {
     const filtered = list.filter((v) => v !== d1 && v !== d2);
     localStorage.setItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(filtered));
   } catch {}
+}
+
+function getFaviconFailAt(domain: string) {
+  try {
+    const d1 = normalizeDomain(domain);
+    const d2 = registrableDomain(domain);
+    const v1 = Number(localStorage.getItem(`${FAVICON_FAIL_PREFIX}${d1}`) || 0);
+    const v2 = Number(localStorage.getItem(`${FAVICON_FAIL_PREFIX}${d2}`) || 0);
+    return Math.max(v1, v2);
+  } catch {
+    return 0;
+  }
+}
+
+function markFaviconFetchFailed(domain: string) {
+  try {
+    const d = normalizeDomain(domain);
+    if (!d) return;
+    localStorage.setItem(`${FAVICON_FAIL_PREFIX}${d}`, String(Date.now()));
+  } catch {}
+}
+
+function clearFaviconFetchFailed(domain: string) {
+  try {
+    const d1 = normalizeDomain(domain);
+    const d2 = registrableDomain(domain);
+    if (d1) localStorage.removeItem(`${FAVICON_FAIL_PREFIX}${d1}`);
+    if (d2) localStorage.removeItem(`${FAVICON_FAIL_PREFIX}${d2}`);
+  } catch {}
+}
+
+function shouldSkipDomainCandidates(domain: string) {
+  const failAt = getFaviconFailAt(domain);
+  if (!failAt) return false;
+  return Date.now() - failAt < FAVICON_FAIL_TTL_MS;
+}
+
+function readEmptyIconColorMap() {
+  try {
+    const raw = localStorage.getItem(EMPTY_ICON_COLOR_MAP_KEY);
+    if (!raw) return {} as Record<string, string>;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    if (!parsed || typeof parsed !== 'object') return {} as Record<string, string>;
+    return parsed;
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+
+function persistEmptyIconColorMap(map: Record<string, string>) {
+  try {
+    localStorage.setItem(EMPTY_ICON_COLOR_MAP_KEY, JSON.stringify(map));
+  } catch {}
+}
+
+function getPersistedEmptyIconColor(seed: string) {
+  const safeSeed = seed.trim().toLowerCase();
+  if (!safeSeed) return EMPTY_ICON_COLOR_PALETTE[0];
+  const map = readEmptyIconColorMap();
+  const existing = map[safeSeed];
+  if (existing) return existing;
+  const picked = EMPTY_ICON_COLOR_PALETTE[Math.floor(Math.random() * EMPTY_ICON_COLOR_PALETTE.length)];
+  map[safeSeed] = picked;
+  persistEmptyIconColorMap(map);
+  return picked;
 }
 
 const ICON_META_PREFIX = 'favicon_cache_v2_meta:';
@@ -171,11 +256,12 @@ export default function ShortcutIcon({
 
   const candidates = useMemo(() => {
     const list: string[] = [];
+    const skipDomainCandidates = domain ? shouldSkipDomainCandidates(domain) : false;
     if (customIconUrl) list.push(customIconUrl);
-    if (cached && fallbackStyle !== 'emptyicon') list.push(cached);
+    if (cached && (fallbackStyle !== 'emptyicon' || cached.startsWith('data:'))) list.push(cached);
     // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
     if (icon && !isIowenFaviconUrl(icon)) list.push(icon);
-    if (domain) list.push(...buildFaviconCandidates(domain));
+    if (domain && !skipDomainCandidates) list.push(...buildFaviconCandidates(domain));
     const unique = Array.from(new Set(list));
     if (fallbackStyle === 'emptyicon') {
       return unique.filter((src) => !isDuckDuckGoIp3Url(src) && !isGoogleS2FaviconUrl(src) && !isGoogleGstaticFaviconV2Url(src));
@@ -234,30 +320,44 @@ export default function ShortcutIcon({
   const src = candidates[index] || '';
   const labelSeed = (fallbackLabel || domain || '').trim();
   const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
+  const emptyIconColorSeed = (domain || url || fallbackLabel || '').trim().toLowerCase();
+  const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getPersistedEmptyIconColor(emptyIconColorSeed));
   const isCustomActive = !!customIconUrl && src === customIconUrl;
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = 24;
 
+  useEffect(() => {
+    setEmptyIconColor(getPersistedEmptyIconColor(emptyIconColorSeed));
+  }, [emptyIconColorSeed]);
+
   const handleImageLoad = () => {
+    if (domain) clearFaviconFetchFailed(domain);
     if (domain && src && src !== cached) {
       cacheFaviconData(domain, src);
     }
   };
 
   const handleImageError = () => {
-    setIndex((prev) => (prev + 1 < candidates.length ? prev + 1 : candidates.length));
+    setIndex((prev) => {
+      const next = prev + 1;
+      if (next < candidates.length) return next;
+      if (domain) markFaviconFetchFailed(domain);
+      return candidates.length;
+    });
   };
 
   if (useEmptyFallback) {
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <img
-          alt=""
-          className="absolute inset-0 size-full max-w-none object-contain pointer-events-none select-none"
-          draggable={false}
-          src={emptyIconBg}
-        />
+        <svg
+          aria-hidden="true"
+          className="absolute inset-0 size-full max-w-none pointer-events-none select-none"
+          viewBox="0 0 72 72"
+        >
+          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill={emptyIconColor} />
+          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="2" />
+        </svg>
         {src ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>

@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tabs,
   TabsList,
@@ -37,6 +36,7 @@ type SyncPreviewConfirmDialogProps = {
   localPayload?: any | null;
   onConfirm: () => void;
   onCancel: () => void;
+  requireDecision?: boolean;
 };
 
 type FlatShortcut = {
@@ -154,10 +154,11 @@ export function SyncPreviewConfirmDialog({
   localPayload,
   onConfirm,
   onCancel,
+  requireDecision = false,
 }: SyncPreviewConfirmDialogProps) {
   const { t, i18n } = useTranslation();
   const isZh = i18n.language.startsWith('zh');
-  const currentChoice = (confirmChoice ?? 'local') as Exclude<SyncChoice, null>;
+  const currentChoice = (confirmChoice ?? 'merge') as Exclude<SyncChoice, null>;
 
   const rows = useMemo(
     () => buildCompareRows(localPayload, cloudPayload),
@@ -206,7 +207,15 @@ export function SyncPreviewConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-background border-border text-foreground rounded-[32px]">
+      <DialogContent
+        className={`sm:max-w-[520px] w-[520px] max-w-[calc(100vw-2rem)] max-h-[76vh] bg-background border-border text-foreground rounded-[32px] flex flex-col min-h-0 ${requireDecision ? '[&>button]:hidden' : ''}`}
+        onEscapeKeyDown={(event) => {
+          if (requireDecision) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (requireDecision) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{hint}</DialogDescription>
@@ -218,13 +227,13 @@ export function SyncPreviewConfirmDialog({
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-3 rounded-[16px]">
+              <TabsTrigger value="merge" className="rounded-xl">{t('syncConflict.merge')}</TabsTrigger>
               <TabsTrigger value="cloud" className="rounded-xl">{t('syncConflict.useCloud')}</TabsTrigger>
               <TabsTrigger value="local" className="rounded-xl">{t('syncConflict.useLocal')}</TabsTrigger>
-              <TabsTrigger value="merge" className="rounded-xl">{t('syncConflict.merge')}</TabsTrigger>
             </TabsList>
           </Tabs>
         ) : null}
-        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/60 bg-secondary/25 px-3 py-2 text-sm">
+        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/60 bg-secondary/25 px-3 py-2 text-sm shrink-0">
           <div className="min-w-0">
             <div className="font-medium text-foreground">{t('sync.local')}</div>
             <div className="mt-0.5 text-xs text-muted-foreground">{localCount} / {localTime || '—'}</div>
@@ -234,11 +243,8 @@ export function SyncPreviewConfirmDialog({
             <div className="mt-0.5 text-xs text-muted-foreground">{cloudCount} / {cloudTime || '—'}</div>
           </div>
         </div>
-        <ScrollArea
-          className="max-h-[52vh]"
-          scrollBarClassName="data-[orientation=vertical]:translate-x-4"
-        >
-          <div className="mt-2 grid grid-cols-2 gap-x-3 pr-2">
+        <div className="no-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+          <div className="grid grid-cols-2 gap-x-3">
             {rows.length === 0 ? (
               <div className="col-span-2 rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
                 {isZh ? '未读取到可对比的快捷方式数据' : 'No comparable shortcuts were found.'}
@@ -256,12 +262,19 @@ export function SyncPreviewConfirmDialog({
               ))
             )}
           </div>
-        </ScrollArea>
-        <DialogFooter>
-          <Button variant="secondary" onClick={onCancel}>
-            {t('common.cancel')}
-          </Button>
+        </div>
+        <DialogFooter className="flex w-full gap-3 sm:gap-3 shrink-0">
+          {!requireDecision ? (
+            <Button
+              variant="secondary"
+              className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              onClick={onCancel}
+            >
+              {t('common.cancel')}
+            </Button>
+          ) : null}
           <Button
+            className={requireDecision ? 'w-full' : 'flex-1'}
             disabled={!confirmChoice}
             onClick={() => {
               if (!confirmChoice) {

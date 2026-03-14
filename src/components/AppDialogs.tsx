@@ -11,6 +11,7 @@ import ShortcutModal from './ShortcutModal';
 import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
 import { WebdavConfigDialog } from './WebdavConfigDialog';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/sonner';
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { toast } from '@/components/ui/sonner';
-import type { Shortcut } from '../types';
 
 type ShortcutModalProps = ComponentProps<typeof ShortcutModal>;
 type ConfirmDialogProps = ComponentProps<typeof ConfirmDialog>;
@@ -32,17 +31,6 @@ type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
 
 type SyncChoice = 'cloud' | 'local' | 'merge' | null;
-
-type MovePageDialogProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  moveDialogData: { sourceIndex: number; sourceShortcutId?: string } | null;
-  getMaxPageIndex: (length: number) => number;
-  shortcuts: Shortcut[];
-  shortcutsPageCapacity: number;
-  moveShortcutToPage: (sourceIndex: number, targetPage: number, options: { strict: boolean; sourceShortcutId?: string }) => void;
-  onTargetPageSelected: (page: number) => void;
-};
 
 type ConfirmSyncDialogProps = {
   open: boolean;
@@ -63,6 +51,7 @@ type ConfirmSyncDialogProps = {
   localPayload?: any | null;
   onConfirm: () => void;
   onCancel: () => void;
+  requireDecision?: boolean;
 };
 
 type ImportConfirmDialogProps = {
@@ -85,7 +74,6 @@ type DisableConsentDialogProps = {
 };
 
 interface AppDialogsProps {
-  movePageDialog: MovePageDialogProps;
   shortcutModalProps: ShortcutModalProps;
   shortcutDeleteDialogProps: ConfirmDialogProps;
   scenarioCreateDialogProps: ScenarioModeCreateDialogProps;
@@ -98,12 +86,10 @@ interface AppDialogsProps {
   confirmSyncDialog: ConfirmSyncDialogProps;
   webdavConfirmSyncDialog: ConfirmSyncDialogProps;
   importConfirmDialog: ImportConfirmDialogProps;
-  pageDeleteDialogProps: ConfirmDialogProps;
   disableConsentDialog: DisableConsentDialogProps;
 }
 
 export function AppDialogs({
-  movePageDialog,
   shortcutModalProps,
   shortcutDeleteDialogProps,
   scenarioCreateDialogProps,
@@ -116,69 +102,12 @@ export function AppDialogs({
   confirmSyncDialog,
   webdavConfirmSyncDialog,
   importConfirmDialog,
-  pageDeleteDialogProps,
   disableConsentDialog,
 }: AppDialogsProps) {
   const { t } = useTranslation();
 
   return (
     <>
-      <Dialog open={movePageDialog.open} onOpenChange={movePageDialog.onOpenChange}>
-        <DialogContent className="sm:max-w-[480px] bg-background border-border text-foreground rounded-[32px]">
-          <DialogHeader>
-            <DialogTitle>{t('context.moveToPage')}</DialogTitle>
-            <DialogDescription>{t('context.moveToPageDesc')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: movePageDialog.getMaxPageIndex(movePageDialog.shortcuts.length) + 1 }, (_, p) => p).map((p) => {
-              const resolvedSourceIndex = (() => {
-                if (!movePageDialog.moveDialogData) return -1;
-                if (movePageDialog.moveDialogData.sourceShortcutId) {
-                  const idx = movePageDialog.shortcuts.findIndex((item) => item.id === movePageDialog.moveDialogData?.sourceShortcutId);
-                  if (idx >= 0) return idx;
-                }
-                const fallback = movePageDialog.moveDialogData.sourceIndex;
-                if (fallback < 0 || fallback >= movePageDialog.shortcuts.length) return -1;
-                return fallback;
-              })();
-              const srcPage = (() => {
-                if (resolvedSourceIndex < 0) return -1;
-                return Math.floor(resolvedSourceIndex / movePageDialog.shortcutsPageCapacity);
-              })();
-              const count = (() => {
-                const start = p * movePageDialog.shortcutsPageCapacity;
-                const end = Math.min(start + movePageDialog.shortcutsPageCapacity, movePageDialog.shortcuts.length);
-                return Math.max(0, end - start);
-              })();
-              const disabled = p === srcPage;
-              return (
-                <PageChip
-                  key={p}
-                  page={p}
-                  count={count}
-                  pageCapacity={movePageDialog.shortcutsPageCapacity}
-                  disabled={disabled}
-                  onClick={() => {
-                    if (!movePageDialog.moveDialogData) return;
-                    if (resolvedSourceIndex < 0) return;
-                    if (p === srcPage) {
-                      toast.error(t('toast.alreadyOnPage'));
-                      return;
-                    }
-                    movePageDialog.moveShortcutToPage(resolvedSourceIndex, p, {
-                      strict: true,
-                      sourceShortcutId: movePageDialog.moveDialogData.sourceShortcutId,
-                    });
-                    movePageDialog.onTargetPageSelected(p);
-                    movePageDialog.onOpenChange(false);
-                  }}
-                />
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <ShortcutModal {...shortcutModalProps} />
       <ConfirmDialog {...shortcutDeleteDialogProps} />
       <ScenarioModeCreateDialog {...scenarioCreateDialogProps} />
@@ -247,8 +176,6 @@ export function AppDialogs({
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog {...pageDeleteDialogProps} />
-
       <Dialog open={disableConsentDialog.open} onOpenChange={disableConsentDialog.onOpenChange}>
         <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground [&>button]:hidden">
           <DialogHeader>
@@ -276,33 +203,5 @@ export function AppDialogs({
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function PageChip({
-  page,
-  count,
-  pageCapacity,
-  onClick,
-  disabled,
-}: {
-  page: number;
-  count: number;
-  pageCapacity: number;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Button
-      type="button"
-      variant="secondary"
-      disabled={disabled}
-      className={`justify-between ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-      onClick={onClick}
-    >
-      <span>{t('pagination.page', { page: page + 1 })}</span>
-      <span className="text-xs text-muted-foreground">{count}/{pageCapacity}</span>
-    </Button>
   );
 }

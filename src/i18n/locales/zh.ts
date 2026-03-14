@@ -85,15 +85,16 @@ export default {
       },
       shortcutsStyle: {
         label: "快捷方式样式",
-        entryDescription: "切换快捷方式展示样式与密度",
+        entryDescription: "切换快捷方式样式并设置网格列数与基础行数",
         open: "打开",
         title: "快捷方式样式设置",
-        description: "选择快捷方式样式并调整网格密度",
+        description: "选择快捷方式样式，并设置单页网格的列数和基础行数",
         rich: "丰富",
         compact: "简约",
         showName: "显示名称",
         showNameDesc: "开启后在图标下显示快捷方式标题",
-        density: "快捷方式密度"
+        columns: "网格列数",
+        rows: "基础行数"
       },
       backup: {
         label: "数据备份与恢复",
@@ -425,8 +426,8 @@ export default {
         timezone: "时区兜底"
       },
       wallpaper: {
-        mode: "壁纸模式",
-        modeDesc: "自定义极简模式背景",
+        mode: "壁纸设置",
+        modeDesc: "设置页面壁纸",
         bing: "bing",
         weather: "天气",
         custom: "自定义",
@@ -505,6 +506,7 @@ export default {
     search: {
       placeholder: "搜索你想找的内容...",
       placeholderDynamic: "搜索你想找的内容或输入网址...",
+      systemEngine: "系统默认",
       historyTitle: "搜索历史",
       clearHistory: "清空",
       noHistory: "暂无搜索记录"
@@ -519,18 +521,8 @@ export default {
       copyLink: "复制链接",
       delete: "删除",
       addShortcut: "添加快捷方式",
-      addPage: "新建页面",
-      move: "移动到",
       newShortcut: "新建快捷方式",
-      pinToTop: "置顶",
-      movePrevPage: "移动到上一页",
-      moveNextPage: "移动到下一页",
-      moveToPage: "移动到指定页…",
-      moveToPageDesc: "选择目标页"
-    },
-    pageDelete: {
-      title: "删除页面",
-      description: "确定要删除当前页面吗？此操作会删除该页下的所有快捷方式。"
+      pinToTop: "置顶"
     },
     sidebar: {
       toggle: "切换侧边栏",
@@ -546,7 +538,9 @@ export default {
       urlPlaceholder: "请输入网址",
       errors: {
         fillAll: "请填写完整信息",
-        fillAllDesc: "请输入快捷方式标题和链接地址"
+        fillAllDesc: "请输入快捷方式标题和链接地址",
+        duplicateUrl: "该网站已存在快捷方式",
+        duplicateUrlDesc: "同一网站仅保留一个快捷方式，请检查网址后重试"
       }
     },
     onboarding: {

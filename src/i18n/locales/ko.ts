@@ -84,6 +84,19 @@ export default {
         set: "설정",
         select: "선택"
       },
+      shortcutsStyle: {
+        label: "바로가기 스타일",
+        entryDescription: "스타일을 바꾸고 그리드 열 수와 기본 행 수를 설정합니다",
+        open: "열기",
+        title: "바로가기 스타일 설정",
+        description: "바로가기 스타일을 선택하고 단일 페이지 그리드의 열 수와 기본 행 수를 설정합니다",
+        rich: "리치",
+        compact: "미니멀",
+        showName: "이름 표시",
+        showNameDesc: "켜면 아이콘 아래에 바로가기 이름을 표시합니다",
+        columns: "그리드 열 수",
+        rows: "기본 행 수"
+      },
       backup: {
         label: "데이터 백업 및 복원",
         description: "로컬 레이아웃 데이터 가져오기/내보내기 (.leaftab)",
@@ -350,6 +363,7 @@ export default {
     search: {
       placeholder: "검색할 내용 입력...",
       placeholderDynamic: "검색할 내용 또는 URL 입력...",
+      systemEngine: "시스템 기본",
       historyTitle: "검색 기록",
       clearHistory: "지우기",
       noHistory: "검색 기록 없음"
@@ -381,7 +395,9 @@ export default {
       urlPlaceholder: "URL 입력",
       errors: {
         fillAll: "모든 정보를 입력해주세요",
-        fillAllDesc: "바로가기 이름과 URL을 입력해주세요"
+        fillAllDesc: "바로가기 이름과 URL을 입력해주세요",
+        duplicateUrl: "이 사이트의 바로가기가 이미 존재합니다",
+        duplicateUrlDesc: "같은 사이트에는 바로가기 1개만 허용됩니다. URL을 확인해 주세요"
       }
     },
     onboarding: {

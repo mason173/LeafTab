@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ApplyImportedDataOptions, WebdavConfig } from './useWebdavSync';
+import type { WebdavConfig } from './useWebdavSync';
 import type { WebdavPayload } from '@/utils/backupData';
-import { areSyncPayloadsEqual, resolveSyncConflictPayload, type SyncConflictPolicy } from '@/sync/core';
+import { areSyncPayloadsEqual } from '@/sync/core';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
 import { readWebdavConfigFromStorage, readWebdavStorageStateFromStorage, WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { createWebdavSyncAdapter } from './webdavSyncAdapter';
@@ -12,22 +12,18 @@ type UseWebdavAutoSyncParams = {
   conflictModalOpen: boolean;
   isDragging: boolean;
   buildLocalPayload: () => WebdavPayload;
-  applyImportedData: (data: any, options?: ApplyImportedDataOptions) => void;
   uploadToWebdav: (config: WebdavConfig) => Promise<void>;
   uploadDataToWebdav: (config: WebdavConfig, data: any) => Promise<void>;
   fetchWebdavData: (config: WebdavConfig) => Promise<any>;
-  mergePayload: (localPayload: WebdavPayload, remotePayload: WebdavPayload) => WebdavPayload;
 };
 
 export function useWebdavAutoSync({
   conflictModalOpen,
   isDragging,
   buildLocalPayload,
-  applyImportedData,
   uploadToWebdav,
   uploadDataToWebdav,
   fetchWebdavData,
-  mergePayload,
 }: UseWebdavAutoSyncParams) {
   const { t } = useTranslation();
   const webdavScheduleTimerRef = useRef<number | null>(null);
@@ -85,31 +81,8 @@ export function useWebdavAutoSync({
         markLastSync();
         return true;
       }
-      const policy = (config.syncOptions?.syncConflictPolicy || 'merge') as SyncConflictPolicy;
-      const resolution = resolveSyncConflictPayload(localPayload, remotePayload, policy, mergePayload);
-
-      if (resolution.source === 'remote') {
-        applyImportedData(resolution.resolvedPayload, {
-          closeSettings: false,
-          successKey: 'settings.backup.webdav.syncSuccess',
-        });
-        refreshNextSyncAtAfterSuccess(config);
-        markLastSync();
-        return true;
-      }
-
-      if (resolution.source === 'merged') {
-        applyImportedData(resolution.resolvedPayload, {
-          closeSettings: false,
-          successKey: 'settings.backup.webdav.syncSuccess',
-        });
-        await adapter.push(resolution.resolvedPayload, { mode: 'strict' });
-        refreshNextSyncAtAfterSuccess(config);
-        markLastSync();
-        return true;
-      }
-
-      await adapter.push(resolution.resolvedPayload, { mode: 'prefer_local' });
+      // Unified policy: WebDAV sync always keeps local payload first.
+      await adapter.push(localPayload, { mode: 'prefer_local' });
       refreshNextSyncAtAfterSuccess(config);
       markLastSync();
       return true;
@@ -121,7 +94,7 @@ export function useWebdavAutoSync({
     } finally {
       webdavAutoSyncInFlightRef.current = false;
     }
-  }, [applyImportedData, buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, mergePayload, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
+  }, [buildLocalPayload, emitSyncStatusChanged, fetchWebdavData, markLastSync, refreshNextSyncAtAfterSuccess, uploadDataToWebdav, uploadToWebdav]);
   const resolveWebdavConflict = useCallback(async (config: WebdavConfig) => {
     void await resolveWebdavConflictInternal(config);
   }, [resolveWebdavConflictInternal]);

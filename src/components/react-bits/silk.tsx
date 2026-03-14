@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable react/no-unknown-property */
-import React, { forwardRef, useMemo, useRef } from 'react';
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree, RootState } from '@react-three/fiber';
 import { Color, Mesh, ShaderMaterial } from 'three';
 import { IUniform } from 'three';
@@ -135,6 +135,8 @@ export const Silk: React.FC<SilkProps> = ({
   staticFrame = false
 }) => {
   const meshRef = useRef<Mesh>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [remountKey, setRemountKey] = useState(0);
 
   const uniforms = useMemo<SilkUniforms>(
     () => ({
@@ -148,15 +150,40 @@ export const Silk: React.FC<SilkProps> = ({
     [speed, scale, noiseIntensity, color, rotation]
   );
 
+  useEffect(() => {
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const node = containerRef.current;
+    const rect = node.getBoundingClientRect();
+    let hadPositiveSize = rect.width > 0 && rect.height > 0;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      const hasPositiveSize = width > 0 && height > 0;
+      // When mounted under a hidden/zero-size container (e.g. tabs/drawer transitions),
+      // remount once after size becomes valid to avoid stale 300x150 canvas layout.
+      if (hasPositiveSize && !hadPositiveSize) {
+        setRemountKey((prev) => prev + 1);
+      }
+      hadPositiveSize = hasPositiveSize;
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <Canvas
-      dpr={[1, 2]}
-      frameloop={staticFrame ? "demand" : "always"}
-      className="h-full w-full"
-      resize={{ debounce: { resize: 0, scroll: 0 } }}
-    >
-      <SilkPlane ref={meshRef} uniforms={uniforms} staticFrame={staticFrame} />
-    </Canvas>
+    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
+      <Canvas
+        key={`silk-canvas-${remountKey}`}
+        dpr={[1, 2]}
+        frameloop={staticFrame ? "demand" : "always"}
+        className="h-full w-full"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        resize={{ scroll: false, debounce: { resize: 0 } }}
+      >
+        <SilkPlane ref={meshRef} uniforms={uniforms} staticFrame={staticFrame} />
+      </Canvas>
+    </div>
   );
 };
 

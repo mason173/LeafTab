@@ -84,6 +84,19 @@ export default {
         set: "設定",
         select: "選択"
       },
+      shortcutsStyle: {
+        label: "ショートカットスタイル",
+        entryDescription: "スタイルを切り替えて、グリッド列数と基本行数を設定します",
+        open: "開く",
+        title: "ショートカットスタイル設定",
+        description: "ショートカットスタイルを選び、単一ページのグリッド列数と基本行数を設定します",
+        rich: "リッチ",
+        compact: "ミニマル",
+        showName: "名前を表示",
+        showNameDesc: "オンにするとアイコンの下にショートカット名を表示します",
+        columns: "グリッド列数",
+        rows: "基本行数"
+      },
       backup: {
         label: "データのバックアップと復元",
         description: "ローカルレイアウトデータをインポート/エクスポート (.leaftab)",
@@ -375,6 +388,7 @@ export default {
     search: {
       placeholder: "検索したい内容を入力...",
       placeholderDynamic: "検索したい内容またはURLを入力...",
+      systemEngine: "システム既定",
       historyTitle: "検索履歴",
       clearHistory: "クリア",
       noHistory: "検索履歴はありません"
@@ -406,7 +420,9 @@ export default {
       urlPlaceholder: "URLを入力",
       errors: {
         fillAll: "すべての情報を入力してください",
-        fillAllDesc: "ショートカット名とURLを入力してください"
+        fillAllDesc: "ショートカット名とURLを入力してください",
+        duplicateUrl: "このサイトのショートカットは既に存在します",
+        duplicateUrlDesc: "同一サイトのショートカットは1件のみです。URLを確認して再試行してください"
       }
     },
     onboarding: {

@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import { TimeFontDialog } from './TimeFontDialog';
-import WallpaperSelector, { weatherVideoMap, sunnyVideo } from './WallpaperSelector';
 import ScenarioModeMenu from './ScenarioModeMenu';
 import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
@@ -11,13 +9,16 @@ import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
-import { Beams, Galaxy, Iridescence, LightRays, Prism, Silk } from '@/components/react-bits';
+import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
+import { renderDynamicWallpaper } from './wallpaper/dynamicWallpapers';
+import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
+import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
 
 interface WallpaperClockProps {
   time: string; 
   date: Date; 
   lunar: string; 
-  wallpaperUrl: string;
+  bingWallpaperUrl: string;
   onSettingsClick?: () => void;
   showScenarioMode: boolean;
   scenarioModes: ScenarioMode[];
@@ -28,21 +29,13 @@ interface WallpaperClockProps {
   onScenarioModeCreate: () => void;
   onScenarioModeEdit: (id: string) => void;
   onScenarioModeDelete: (id: string) => void;
-  wallpaperMode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom';
-  onWallpaperModeChange: (mode: 'bing' | 'weather' | 'color' | 'dynamic' | 'custom') => void;
-  dynamicWallpaperEffect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence';
-  onDynamicWallpaperEffectChange: (
-    effect: 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
-  ) => void;
+  wallpaperMode: WallpaperMode;
+  dynamicWallpaperEffect: DynamicWallpaperEffect;
   weatherCode: number;
   onWeatherUpdate?: (code: number) => void;
-  bingWallpaper: string;
   customWallpaper: string | null;
-  onCustomWallpaperChange: (url: string) => void;
   colorWallpaperId: string;
-  onColorWallpaperIdChange: (id: string) => void;
   wallpaperMaskOpacity: number;
-  onWallpaperMaskOpacityChange: (value: number) => void;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout?: ResponsiveLayout;
@@ -52,7 +45,7 @@ export function WallpaperClock({
   time, 
   date, 
   lunar, 
-  wallpaperUrl,
+  bingWallpaperUrl,
   onSettingsClick,
   showScenarioMode,
   scenarioModes,
@@ -64,57 +57,25 @@ export function WallpaperClock({
   onScenarioModeEdit,
   onScenarioModeDelete,
   wallpaperMode,
-  onWallpaperModeChange,
   dynamicWallpaperEffect,
-  onDynamicWallpaperEffectChange,
   weatherCode,
   onWeatherUpdate,
-  bingWallpaper,
   customWallpaper,
-  onCustomWallpaperChange,
   colorWallpaperId,
-  onColorWallpaperIdChange,
   wallpaperMaskOpacity,
-  onWallpaperMaskOpacityChange,
   timeFont,
   onTimeFontChange,
   layout,
 }: WallpaperClockProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [overlayFailed, setOverlayFailed] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
-  const { t, i18n } = useTranslation();
-
-  useEffect(() => {
-    setIsLoaded(false);
-    setOverlayFailed(false);
-  }, [wallpaperUrl]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.playbackRate = 0.7;
-
-    const handleTimeUpdate = () => {
-      const timeLeft = video.duration - video.currentTime;
-      if (timeLeft > 0 && timeLeft < 1.5) {
-        const newRate = Math.max(0.1, 0.7 * (timeLeft / 1.5));
-        video.playbackRate = newRate;
-      }
-    };
-
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    return () => video.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [weatherCode, wallpaperMode]);
+  const { i18n } = useTranslation();
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
   const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
   const edgeInset = layout ? Math.max(16, Math.round((layout.wallpaperHeight / 220) * 24)) : 24;
 
-  const weatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
+  const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
 
   return (
@@ -134,99 +95,28 @@ export function WallpaperClock({
               src={customWallpaper} 
             />
           ) : wallpaperMode === 'dynamic' ? (
-            dynamicWallpaperEffect === 'silk' ? (
-              <Silk
-                speed={4.4}
-                scale={0.95}
-                color="#7B7481"
-                noiseIntensity={1.2}
-                rotation={0}
-              />
-            ) : dynamicWallpaperEffect === 'light-rays' ? (
-              <LightRays
-                raysOrigin="top-center"
-                raysColor="#ffffff"
-                raysSpeed={1.15}
-                lightSpread={0.95}
-                rayLength={1.6}
-                fadeDistance={1}
-                saturation={1}
-                followMouse
-                mouseInfluence={0.08}
-                noiseAmount={0.04}
-                distortion={0.04}
-              />
-            ) : dynamicWallpaperEffect === 'beams' ? (
-              <Beams
-                beamWidth={2}
-                beamHeight={15}
-                beamNumber={12}
-                lightColor="#ffffff"
-                speed={2}
-                noiseIntensity={1.75}
-                scale={0.2}
-                rotation={0}
-              />
-            ) : dynamicWallpaperEffect === 'galaxy' ? (
-              <Galaxy
-                density={1.2}
-                glowIntensity={0.35}
-                saturation={0.5}
-                hueShift={165}
-                mouseRepulsion
-                mouseInteraction
-              />
-            ) : dynamicWallpaperEffect === 'iridescence' ? (
-              <Iridescence
-                color={[1, 1, 1]}
-                mouseReact
-                amplitude={0.08}
-                speed={1.0}
-              />
-            ) : (
-              <Prism
-                animationType="rotate"
-                timeScale={0.35}
-                scale={3.4}
-                noise={0.35}
-                glow={1}
-              />
-            )
+            renderDynamicWallpaper(dynamicWallpaperEffect, 'hero')
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
-            <>
-              <img 
-                alt="" 
-                className="w-full h-full object-cover" 
-                src={imgImage} 
+            (bingWallpaperUrl && bingWallpaperUrl !== imgImage) ? (
+              <img
+                key={bingWallpaperUrl}
+                alt=""
+                className="w-full h-full object-cover"
+                src={bingWallpaperUrl}
               />
-              {wallpaperUrl && wallpaperUrl !== imgImage && (
-                <motion.img 
-                  key={wallpaperUrl}
-                  alt="" 
-                  className="absolute inset-0 w-full h-full object-cover" 
-                  src={wallpaperUrl} 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: isLoaded || overlayFailed ? 1 : 0 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  onLoad={() => setIsLoaded(true)}
-                  onError={() => {
-                    setOverlayFailed(true);
-                    setIsLoaded(false);
-                  }}
-                />
-              )}
-            </>
+            ) : (
+              <img
+                alt=""
+                className="w-full h-full object-cover"
+                src={imgImage}
+              />
+            )
           ) : (
-            <video 
-              ref={videoRef}
-              key={weatherVideo}
+            <WeatherLoopVideo
               className="absolute inset-0 w-full h-full object-cover" 
               src={weatherVideo}
-              autoPlay
-              muted
-              playsInline
             />
           )}
         </div>
@@ -236,9 +126,23 @@ export function WallpaperClock({
 
       <div className="absolute z-20 transform-gpu" style={{ left: edgeInset, right: edgeInset, top: edgeInset }}>
         <TopNavBar 
-          onSettingsClick={onSettingsClick}
           settingsRevealOnHover
+          onSettingsClick={onSettingsClick}
           onWeatherUpdate={onWeatherUpdate}
+          rightSlot={
+            showScenarioMode ? (
+              <ScenarioModeMenu
+                scenarioModes={scenarioModes}
+                selectedScenarioId={selectedScenarioId}
+                open={scenarioModeOpen}
+                onOpenChange={onScenarioModeOpenChange}
+                onSelect={onScenarioModeSelect}
+                onCreate={onScenarioModeCreate}
+                onEdit={onScenarioModeEdit}
+                onDelete={onScenarioModeDelete}
+              />
+            ) : null
+          }
         />
       </div>
 
@@ -270,43 +174,6 @@ export function WallpaperClock({
         </div>
       </div>
 
-      <div
-        className="absolute z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu"
-        style={{ left: edgeInset, bottom: edgeInset }}
-      >
-        {showScenarioMode && (
-          <ScenarioModeMenu
-            scenarioModes={scenarioModes}
-            selectedScenarioId={selectedScenarioId}
-            open={scenarioModeOpen}
-            onOpenChange={onScenarioModeOpenChange}
-            onSelect={onScenarioModeSelect}
-            onCreate={onScenarioModeCreate}
-            onEdit={onScenarioModeEdit}
-            onDelete={onScenarioModeDelete}
-          />
-        )}
-      </div>
-
-      <div
-        className="absolute z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto transform-gpu"
-        style={{ right: edgeInset, bottom: edgeInset }}
-      >
-        <WallpaperSelector 
-          mode={wallpaperMode} 
-          onModeChange={onWallpaperModeChange} 
-          dynamicWallpaperEffect={dynamicWallpaperEffect}
-          onDynamicWallpaperEffectChange={onDynamicWallpaperEffectChange}
-          bingWallpaper={bingWallpaper}
-          weatherCode={weatherCode}
-          customWallpaper={customWallpaper}
-          onCustomWallpaperChange={onCustomWallpaperChange}
-          colorWallpaperId={colorWallpaperId}
-          onColorWallpaperIdChange={onColorWallpaperIdChange}
-          wallpaperMaskOpacity={wallpaperMaskOpacity}
-          onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
-        />
-      </div>
     </div>
   );
 }

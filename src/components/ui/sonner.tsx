@@ -136,7 +136,7 @@ const Toaster = ({ position = "top-center", offset = 16, className }: ToasterPro
   return (
     <div
       className={cn(
-        "pointer-events-none fixed left-1/2 z-[10000] flex w-full max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-2 sm:max-w-[460px]",
+        "pointer-events-none fixed left-1/2 z-[16000] flex w-full max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-2 sm:max-w-[460px]",
         position === "top-center" ? "top-0" : "top-0",
         className
       )}

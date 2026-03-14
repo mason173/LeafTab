@@ -3,14 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { ScenarioShortcuts, Shortcut, ScenarioMode, ContextMenuState } from '../types';
 import { defaultScenarioModes, SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from "@/scenario/scenario";
 import defaultProfile from '../assets/profiles/default-profile.json';
-import { clampShortcutsRowsPerColumn } from '@/utils/backupData';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot, readLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { useCloudSync } from './useCloudSync';
 import { useShortcutDomainReporting } from './useShortcutDomainReporting';
 import { useShortcutActions } from './useShortcutActions';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
 import { loadRoleProfileDataForReset } from '@/utils/roleProfile';
-import { getShortcutColumns, type ShortcutCardVariant, type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 
 const LEGACY_SHORTCUTS_KEY = 'local_shortcuts';
 
@@ -19,9 +17,6 @@ export function useShortcuts(
   openInNewTab: boolean,
   API_URL: string,
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void,
-  shortcutsRowsPerColumn: number,
-  shortcutCardVariant: ShortcutCardVariant,
-  layoutDensity: ShortcutLayoutDensity = 'regular',
 ) {
   const { t, i18n } = useTranslation();
 
@@ -121,9 +116,6 @@ export function useShortcuts(
   });
 
   const shortcuts = scenarioShortcuts[selectedScenarioId] ?? [];
-  const maxShortcutsPerColumn = useMemo(() => clampShortcutsRowsPerColumn(shortcutsRowsPerColumn), [shortcutsRowsPerColumn]);
-  const shortcutColumns = useMemo(() => getShortcutColumns(shortcutCardVariant, layoutDensity), [shortcutCardVariant, layoutDensity]);
-  const shortcutsPageCapacity = maxShortcutsPerColumn * shortcutColumns;
 
   const totalShortcuts = useMemo(() => {
     let count = 0;
@@ -132,11 +124,6 @@ export function useShortcuts(
     });
     return count;
   }, [scenarioShortcuts]);
-
-  const getMaxPageIndex = useCallback((length: number) => {
-    if (length <= 0) return 0;
-    return Math.max(0, Math.ceil(length / shortcutsPageCapacity) - 1);
-  }, [shortcutsPageCapacity]);
 
   const updateScenarioShortcuts = useCallback((updater: (prev: Shortcut[]) => Shortcut[]) => {
     const currentScenarioId = selectedScenarioIdRef.current;
@@ -192,20 +179,6 @@ export function useShortcuts(
   useEffect(() => {
     userRef.current = user;
   }, [user]);
-
-  const findInsertIndex = useCallback((startPageIndex: number) => {
-    const current = scenarioShortcuts[selectedScenarioId] ?? [];
-    const maxPage = getMaxPageIndex(current.length);
-    for (let page = startPageIndex; page <= maxPage; page += 1) {
-      const start = page * shortcutsPageCapacity;
-      const end = Math.min(start + shortcutsPageCapacity, current.length);
-      if (end - start < shortcutsPageCapacity) {
-        return { targetIndex: end, targetPage: page };
-      }
-    }
-    const targetPage = maxPage + 1;
-    return { targetIndex: current.length, targetPage };
-  }, [scenarioShortcuts, selectedScenarioId, getMaxPageIndex, shortcutsPageCapacity]);
 
   useEffect(() => {
     localStorage.setItem(SCENARIO_MODES_KEY, JSON.stringify(scenarioModes));
@@ -306,13 +279,11 @@ export function useShortcuts(
     handleDeleteScenarioMode,
     handleShortcutOpen,
     handleShortcutContextMenu,
-    handlePageContextMenu,
-    handlePageReorder,
-    moveShortcutToPage,
+    handleGridContextMenu,
+    handleShortcutReorder,
     handleSaveShortcutEdit,
     handleConfirmDeleteShortcut,
-    findOrCreateAvailableIndex,
-    handleDeletePage,
+    handleConfirmDeleteShortcuts,
   } = useShortcutActions({
     user,
     openInNewTab,
@@ -322,10 +293,7 @@ export function useShortcuts(
     currentInsertIndex,
     currentEditScenarioId,
     selectedShortcut,
-    shortcutsPageCapacity,
     updateScenarioShortcuts,
-    getMaxPageIndex,
-    findInsertIndex,
     localDirtyRef,
     setScenarioModes,
     setScenarioShortcuts,
@@ -362,12 +330,10 @@ export function useShortcuts(
     currentEditScenarioId, setCurrentEditScenarioId,
     currentInsertIndex, setCurrentInsertIndex,
     shortcuts,
-    localDirtyRef, lastSavedShortcutsJson,
+    localDirtyRef,
     handleCreateScenarioMode, handleOpenEditScenarioMode, handleUpdateScenarioMode, handleDeleteScenarioMode,
-    handleShortcutOpen, handleShortcutContextMenu, handlePageContextMenu,
-    handleSaveShortcutEdit, handleConfirmDeleteShortcut, handlePageReorder,
-    moveShortcutToPage,
-    findOrCreateAvailableIndex, handleDeletePage, getMaxPageIndex, contextMenuRef,
+    handleShortcutOpen, handleShortcutContextMenu, handleGridContextMenu,
+    handleSaveShortcutEdit, handleConfirmDeleteShortcut, handleConfirmDeleteShortcuts, handleShortcutReorder, contextMenuRef,
     resolveWithCloud, resolveWithLocal, resolveWithMerge,
     applyUndoPayload,
     resetLocalShortcutsByRole,

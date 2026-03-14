@@ -31,6 +31,17 @@
   100% { transform: translateX(var(--scroll-distance)); }
 }
 
+@keyframes home-block-enter {
+  from {
+    transform: translate3d(0, var(--home-block-enter-from, -420px), 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -244,4 +255,40 @@
   --primary: #ef4444;
   --primary-foreground: #ffffff;
   --ring: #ef4444;
+}
+
+/* Disable global keyboard/mouse focus outlines and rings */
+*:focus,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Keep all modal/popup surfaces above page blur/masks */
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"],
+[data-slot="sheet-overlay"] {
+  z-index: 15000 !important;
+}
+
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="sheet-content"] {
+  z-index: 15010 !important;
+}
+
+[data-slot="context-menu-content"],
+[data-slot="context-menu-sub-content"] {
+  z-index: 15020 !important;
+}
+
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"],
+[data-slot="select-content"],
+[data-slot="menubar-content"],
+[data-slot="menubar-sub-content"],
+[data-slot="hover-card-content"],
+[data-slot="tooltip-content"] {
+  z-index: 15030 !important;
 }

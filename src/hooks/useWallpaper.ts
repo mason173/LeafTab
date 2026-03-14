@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob } from '../db';
 import imgImage from "../assets/Default_wallpaper.png";
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
+import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
+import { isDynamicWallpaperEffect } from '@/wallpaper/types';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
@@ -150,15 +152,22 @@ const parseMaskOpacity = (value: string | null): number => {
   return Math.max(0, Math.min(100, parsed));
 };
 
+const getInitialBingWallpaper = (): string => {
+  if (typeof window === 'undefined') return '';
+  const meta = readBingCacheMeta();
+  return (meta?.sourceUrl || '').trim();
+};
+
 export function useWallpaper() {
-  const [bingWallpaper, setBingWallpaper] = useState('');
-  const hasBingWallpaperRef = useRef(false);
+  const initialBingWallpaper = getInitialBingWallpaper();
+  const [bingWallpaper, setBingWallpaper] = useState<string>(() => initialBingWallpaper);
+  const hasBingWallpaperRef = useRef(Boolean(initialBingWallpaper));
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
-  const [wallpaperMode, setWallpaperMode] = useState<'bing' | 'weather' | 'color' | 'dynamic' | 'custom'>(() => {
+  const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
     return (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'dynamic' || saved === 'custom')
       ? saved
-      : 'bing';
+      : 'dynamic';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -170,13 +179,10 @@ export function useWallpaper() {
     const exists = COLOR_WALLPAPER_PRESETS.some((preset) => preset.id === saved);
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
   });
-  const [dynamicWallpaperEffect, setDynamicWallpaperEffect] = useState<
-    'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence'
-  >(() => {
+  const [dynamicWallpaperEffect, setDynamicWallpaperEffect] = useState<DynamicWallpaperEffect>(() => {
     const saved = localStorage.getItem('dynamicWallpaperEffect');
-    return saved === 'silk' || saved === 'light-rays' || saved === 'beams' || saved === 'galaxy' || saved === 'iridescence'
-      ? saved
-      : 'prism';
+    if (isDynamicWallpaperEffect(saved)) return saved;
+    return 'silk';
   });
 
   useEffect(() => {

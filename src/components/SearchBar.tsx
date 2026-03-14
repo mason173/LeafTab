@@ -4,198 +4,14 @@ import { RiArrowRightLine, RiHistoryFill, RiLinkM } from '@remixicon/react';
 import { isUrl } from '../utils';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { SearchEngine, SearchEngineConfig } from '../types';
+import { SearchEngine } from '../types';
 import ShortcutIcon from './ShortcutIcon';
+import {
+  SearchEngineSwitcherDropdown,
+  SearchEngineSwitcherTrigger,
+} from './search/SearchEngineSwitcher';
 
-import googleIcon from '../assets/google.svg';
-import bingIcon from '../assets/bing.svg';
-import baiduIcon from '../assets/baidu.svg';
-import sougouIcon from '../assets/sougou.svg';
-import search360Icon from '../assets/360search.svg';
-import duckduckgoIcon from '../assets/duckduckgo.svg';
-import yandexIcon from '../assets/yandex.svg';
-import searchIcon from '../assets/searchicon.svg';
 import svgPaths from "../imports/svg-ccxie0sl7t";
-
-export const searchEngines: Record<SearchEngine, SearchEngineConfig> = {
-  google: {
-    name: 'Google',
-    url: 'https://www.google.com/search?q=',
-  },
-  bing: {
-    name: 'Bing',
-    url: 'https://www.bing.com/search?q=',
-  },
-  baidu: {
-    name: 'Baidu',
-    url: 'https://www.baidu.com/s?wd=',
-  },
-  sougou: {
-    name: 'Sogou',
-    url: 'https://www.sogou.com/web?query=',
-  },
-  '360': {
-    name: '360',
-    url: 'https://www.so.com/s?q=',
-  },
-  duckduckgo: {
-    name: 'DuckDuckGo',
-    url: 'https://duckduckgo.com/?q=',
-  },
-  yandex: {
-    name: 'Yandex',
-    url: 'https://yandex.com/search/?text=',
-  },
-};
-
-function Search360Icon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="360">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={search360Icon} />
-      </div>
-    </div>
-  );
-}
-
-function DuckDuckGoIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="duckduckgo">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={duckduckgoIcon} />
-      </div>
-    </div>
-  );
-}
-
-function YandexIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="yandex">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={yandexIcon} />
-      </div>
-    </div>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="google">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={googleIcon} />
-      </div>
-    </div>
-  );
-}
-
-function BingIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="bing">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={bingIcon} />
-      </div>
-    </div>
-  );
-}
-
-function BaiduIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="baidu">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={baiduIcon} />
-      </div>
-    </div>
-  );
-}
-
-function SougouIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="sougou">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={sougouIcon} />
-      </div>
-    </div>
-  );
-}
-
-function Group() {
-  return (
-    <div className="absolute contents inset-0" data-name="Group">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-        <g id="Group">
-          <g id="Path" />
-          <path d="M14 8L10 12L14 16" id="Path_2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function InterfaceEssentialArrow() {
-  return (
-    <div className="relative size-[24px]" data-name="Interface, Essential/Arrow">
-      <Group />
-    </div>
-  );
-}
-
-function DefaultSearchIcon() {
-  return (
-    <div className="relative shrink-0 size-[24px]" data-name="search">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <img alt="" className="size-[24px] object-contain pointer-events-none" src={searchIcon} />
-      </div>
-    </div>
-  );
-}
-
-// 搜索引擎选择按钮
-function SearchEngineButton({ engine, onClick, minimalistMode }: { engine: SearchEngine; onClick?: () => void; minimalistMode?: boolean }) {
-  const getIcon = () => {
-    // Default to the generic search icon for compliance
-    // The user requested to use the specific searchicon.svg
-    return <DefaultSearchIcon />;
-    
-    /* 
-    switch (engine) {
-      case 'google':
-        return <GoogleIcon />;
-      case 'bing':
-        return <BingIcon />;
-      case 'baidu':
-        return <BaiduIcon />;
-      case 'sougou':
-        return <SougouIcon />;
-      case '360':
-        return <Search360Icon />;
-      case 'duckduckgo':
-        return <DuckDuckGoIcon />;
-      case 'yandex':
-        return <YandexIcon />;
-    }
-    */
-  };
-
-  return (
-    <div 
-      className={`content-stretch flex gap-[10px] items-center px-[24px] relative rounded-bl-[999px] rounded-tl-[999px] self-stretch shrink-0 h-[52px] w-[72px] cursor-default ${
-        minimalistMode 
-          ? 'bg-black/20 backdrop-blur-md text-white/56' 
-          : 'bg-secondary text-foreground'
-      }`} 
-      // onClick={onClick} // Disable click
-    >
-      <div aria-hidden="true" className="absolute inset-0 pointer-events-none rounded-bl-[999px] rounded-tl-[999px] transition-colors" />
-      {getIcon()}
-      {/* Remove Arrow for compliance */}
-      {/* <div className="flex items-center justify-center relative shrink-0 size-[24px]" style={{ "--transform-inner-width": "1185", "--transform-inner-height": "19" } as React.CSSProperties}>
-        <div className="-rotate-90 flex-none">
-          <InterfaceEssentialArrow />
-        </div>
-      </div> */}
-    </div>
-  );
-}
 
 function Frame3({
   value,
@@ -204,8 +20,9 @@ function Frame3({
   onFocus,
   placeholder,
   onKeyDown,
-  minimalistMode,
+  blankMode,
   forceWhiteTheme,
+  subtleDarkTone,
   inputFontSize = 18,
 }: {
   value: string;
@@ -214,8 +31,9 @@ function Frame3({
   onFocus: () => void;
   placeholder?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
-  minimalistMode?: boolean;
+  blankMode?: boolean;
   forceWhiteTheme?: boolean;
+  subtleDarkTone?: boolean;
   inputFontSize?: number;
 }) {
   const { t } = useTranslation();
@@ -225,7 +43,9 @@ function Frame3({
     <div className="content-stretch flex items-center relative flex-1 min-w-0 gap-2">
       {showLinkIcon && (
         <RiLinkM className={`size-4 shrink-0 ${
-          forceWhiteTheme ? 'text-black/45' : (minimalistMode ? 'text-white/40' : 'text-muted-foreground')
+          subtleDarkTone
+            ? 'text-black/20'
+            : (forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/40' : 'text-muted-foreground'))
         }`} />
       )}
       <Input 
@@ -236,14 +56,16 @@ function Frame3({
         onFocus={onFocus}
         onKeyDown={onKeyDown}
         placeholder={placeholder || t('search.placeholder')}
-        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto px-0 py-0 font-['PingFang_SC:Regular',sans-serif] leading-[normal] not-italic w-full rounded-none ${
-          forceWhiteTheme
+        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto px-0 py-[1px] font-['PingFang_SC:Regular',sans-serif] not-italic w-full rounded-none ${
+          subtleDarkTone
+            ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/30'
+            : (forceWhiteTheme
             ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40'
-            : (minimalistMode
+            : (blankMode
               ? 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40'
-              : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground')
+              : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground'))
         }`}
-        style={{ fontSize: inputFontSize }}
+        style={{ fontSize: inputFontSize, lineHeight: `${Math.round(inputFontSize * 1.35)}px` }}
       />
     </div>
   );
@@ -282,12 +104,17 @@ function Frame2({
   onSearch,
   placeholder,
   onKeyDown,
-  minimalistMode,
+  blankMode,
   forceWhiteTheme,
+  subtleDarkTone,
   height = 52,
   inputFontSize = 18,
   horizontalPadding = 24,
   searchActionSize = 42,
+  surfaceStyle,
+  searchEngine,
+  onEngineClick,
+  showEngineSwitcher = true,
 }: {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -298,16 +125,22 @@ function Frame2({
   onSearch: () => void;
   placeholder?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
-  minimalistMode?: boolean;
+  blankMode?: boolean;
   forceWhiteTheme?: boolean;
+  subtleDarkTone?: boolean;
   height?: number;
   inputFontSize?: number;
   horizontalPadding?: number;
   searchActionSize?: number;
+  surfaceStyle?: React.CSSProperties;
+  searchEngine: SearchEngine;
+  onEngineClick: () => void;
+  showEngineSwitcher?: boolean;
 }) {
   const { t } = useTranslation();
   const isInputUrl = isUrl(value);
   const clearButtonSize = Math.max(28, searchActionSize - 10);
+  const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
   const gap = Math.max(8, Math.round(height * 0.2));
   
@@ -316,13 +149,14 @@ function Frame2({
       className={`content-stretch flex items-center relative rounded-[999px] self-stretch w-full min-w-0 group cursor-text ${
         forceWhiteTheme
           ? 'bg-white text-black/85'
-          : (minimalistMode ? 'bg-black/20 backdrop-blur-md text-white/56' : 'bg-secondary text-foreground')
+          : (blankMode ? 'bg-black/20 backdrop-blur-md text-white/56' : 'bg-secondary text-foreground')
       }`}
       style={{
         height,
-        paddingLeft: horizontalPadding,
+        paddingLeft: leftPadding,
         paddingRight: rightPadding,
         gap,
+        ...surfaceStyle,
       }}
       onClick={() => {
         onFocusContainer();
@@ -330,6 +164,15 @@ function Frame2({
       }}
     >
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none rounded-[999px] transition-colors" />
+      {showEngineSwitcher ? (
+        <SearchEngineSwitcherTrigger
+          engine={searchEngine}
+          onClick={() => onEngineClick()}
+          blankMode={blankMode}
+          forceWhiteTheme={forceWhiteTheme}
+          subtleDarkTone={subtleDarkTone}
+        />
+      ) : null}
       <Frame3
         value={value}
         onChange={onChange}
@@ -337,8 +180,9 @@ function Frame2({
         onFocus={onOpenHistory}
         placeholder={placeholder}
         onKeyDown={onKeyDown}
-        minimalistMode={minimalistMode}
+        blankMode={blankMode}
         forceWhiteTheme={forceWhiteTheme}
+        subtleDarkTone={subtleDarkTone}
         inputFontSize={inputFontSize}
       />
       {value.length > 0 && (
@@ -349,7 +193,7 @@ function Frame2({
           className={`flex items-center justify-center relative rounded-[999px] shrink-0 transition-colors ${
             forceWhiteTheme
               ? 'text-black/45 hover:text-black/80'
-              : (minimalistMode
+              : (blankMode
                 ? 'text-white/40 hover:text-white/80'
                 : 'text-muted-foreground hover:text-foreground')
           }`}
@@ -366,11 +210,13 @@ function Frame2({
       )}
       <div 
         className={`flex items-center justify-center relative rounded-[999px] shrink-0 transition-colors cursor-pointer ${
-          forceWhiteTheme
+          subtleDarkTone
+            ? 'text-black/30 hover:text-black/45 hover:bg-black/8'
+            : (forceWhiteTheme
             ? 'text-black/45 hover:text-white hover:bg-black/80'
-            : (minimalistMode
+            : (blankMode
               ? 'text-white/40 hover:text-white/80 hover:bg-white/10'
-              : 'text-muted-foreground hover:text-primary-foreground hover:bg-primary')
+              : 'text-muted-foreground hover:text-primary-foreground hover:bg-primary'))
         }`}
         style={{ width: searchActionSize, height: searchActionSize }}
         onClick={(e) => {
@@ -388,55 +234,9 @@ function Frame2({
   );
 }
 
-// 搜索引擎下拉框
-function SearchEngineDropdown({ currentEngine, onSelect, isOpen }: { currentEngine: SearchEngine; onSelect: (engine: SearchEngine) => void; isOpen: boolean }) {
-  if (!isOpen) return null;
-
-  const engines: { id: SearchEngine; name: string; icon: string }[] = [
-    { id: 'bing', name: 'Bing', icon: bingIcon },
-    { id: 'google', name: 'Google', icon: googleIcon },
-    { id: 'baidu', name: 'Baidu', icon: baiduIcon },
-    { id: 'sougou', name: 'Sogou', icon: sougouIcon },
-    { id: '360', name: '360', icon: search360Icon },
-    { id: 'duckduckgo', name: 'DuckDuckGo', icon: duckduckgoIcon },
-    { id: 'yandex', name: 'Yandex', icon: yandexIcon },
-  ];
-
-  return (
-    <div className="absolute bg-popover content-stretch flex flex-col items-start left-0 p-[8px] rounded-[16px] top-[calc(100%+8px)] w-[193px] z-50 text-popover-foreground border border-border shadow-lg max-h-[300px] overflow-y-auto" data-name="DropDown">
-      {engines.map((engine) => (
-        <div 
-          key={engine.id}
-          className={`relative rounded-[10px] shrink-0 w-full cursor-pointer ${currentEngine === engine.id ? 'bg-accent' : ''} hover:bg-accent transition-colors`}
-          onClick={() => onSelect(engine.id)}
-        >
-          <div className="flex flex-row items-center size-full">
-            <div className="content-stretch flex items-center justify-between p-[8px] relative w-full">
-              <div className="content-stretch flex gap-[8px] items-center relative shrink-0">
-                <div className="relative rounded-[8px] shrink-0 size-[24px]">
-                  <div aria-hidden="true" className="absolute border border-border border-solid inset-0 pointer-events-none rounded-[8px]" />
-                  <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 size-[16px] top-1/2" data-name={engine.id}>
-                    <img alt="" className="absolute inset-0 max-w-none object-contain pointer-events-none size-full" src={engine.icon} />
-                  </div>
-                </div>
-                <p className="font-['PingFang_SC:Medium',sans-serif] leading-none not-italic relative shrink-0 text-foreground text-[14px]">{engine.name}</p>
-              </div>
-              <div className="relative shrink-0 size-[4px]">
-                <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 4 4">
-                  <circle cx="2" cy="2" fill="currentColor" className="text-primary" id="Ellipse 1" r="2" opacity={currentEngine === engine.id ? 1 : 0} />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 type SuggestionItem = { type: 'history' | 'shortcut'; label: string; value: string; icon?: string };
 
-function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex = -1, minimalistMode, forceWhiteTheme }: { items: SuggestionItem[]; isOpen: boolean; onSelect: (value: SuggestionItem) => void; onClear: () => void; selectedIndex?: number; minimalistMode?: boolean; forceWhiteTheme?: boolean }) {
+function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex = -1, blankMode, forceWhiteTheme }: { items: SuggestionItem[]; isOpen: boolean; onSelect: (value: SuggestionItem) => void; onClear: () => void; selectedIndex?: number; blankMode?: boolean; forceWhiteTheme?: boolean }) {
   const { t } = useTranslation();
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
   const hideScrollbarTimerRef = useRef<number | null>(null);
@@ -480,13 +280,13 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
     <div className={`absolute left-0 right-0 p-[8px] rounded-[20px] top-[calc(100%+8px)] z-[500] border ${
       forceWhiteTheme
         ? 'bg-white text-black/85 border-black/10 shadow-lg'
-        : (minimalistMode
+        : (blankMode
           ? 'bg-background/15 backdrop-blur-xl border-white/10 text-white/80'
           : 'bg-popover text-popover-foreground border-border')
     }`}>
       <div className="flex items-center justify-between px-2 py-1">
         <div className={`text-[12px] ${
-          forceWhiteTheme ? 'text-black/45' : (minimalistMode ? 'text-white/60' : 'text-muted-foreground')
+          forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
         }`}>{t('search.historyTitle')}</div>
         {items.length > 0 && (
           <button
@@ -494,7 +294,7 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
             className={`text-[12px] transition-colors ${
               forceWhiteTheme
                 ? 'text-black/45 hover:text-black/80'
-                : (minimalistMode
+                : (blankMode
                   ? 'text-white/60 hover:text-white/90'
                   : 'text-muted-foreground hover:text-foreground')
             }`}
@@ -506,7 +306,7 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
       </div>
       {items.length === 0 ? (
         <div className={`flex justify-center px-3 py-2 text-[12px] ${
-          forceWhiteTheme ? 'text-black/45' : (minimalistMode ? 'text-white/60' : 'text-muted-foreground')
+          forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
         }`}>{t('search.noHistory')}</div>
       ) : (
         <ScrollArea
@@ -526,7 +326,7 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
                 className={`w-full text-left px-3 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${
                   forceWhiteTheme
                     ? `text-black/85 hover:bg-black/5 hover:text-black focus:bg-black/5 focus:text-black ${index === selectedIndex ? 'bg-black/8 text-black' : ''}`
-                    : (minimalistMode
+                    : (blankMode
                       ? `text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white ${index === selectedIndex ? 'bg-white/10 text-white' : ''}`
                       : `text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground ${index === selectedIndex ? 'bg-accent text-foreground' : ''}`)
                 }`}
@@ -540,10 +340,10 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, selectedIndex
                 ) : (
                   isUrl(item.value) 
                     ? <RiLinkM className={`size-3.5 ml-2 shrink-0 ${
-                      forceWhiteTheme ? 'text-black/45' : (minimalistMode ? 'text-white/60' : 'text-muted-foreground')
+                      forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
                     }`} />
                     : <RiHistoryFill className={`size-3.5 ml-2 shrink-0 ${
-                      forceWhiteTheme ? 'text-black/45' : (minimalistMode ? 'text-white/60' : 'text-muted-foreground')
+                      forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
                     }`} />
                 )}
               </button>
@@ -575,12 +375,15 @@ interface SearchBarProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   historySelectedIndex?: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  minimalistMode?: boolean;
+  blankMode?: boolean;
   forceWhiteTheme?: boolean;
   searchHeight?: number;
   searchInputFontSize?: number;
   searchHorizontalPadding?: number;
   searchActionSize?: number;
+  searchSurfaceStyle?: React.CSSProperties;
+  subtleDarkTone?: boolean;
+  showEngineSwitcher?: boolean;
 }
 
 export function SearchBar({ 
@@ -603,12 +406,15 @@ export function SearchBar({
   onKeyDown, 
   historySelectedIndex, 
   inputRef, 
-  minimalistMode,
+  blankMode,
   forceWhiteTheme,
   searchHeight = 52,
   searchInputFontSize = 18,
   searchHorizontalPadding = 24,
   searchActionSize = 42,
+  searchSurfaceStyle,
+  subtleDarkTone,
+  showEngineSwitcher = true,
 }: SearchBarProps) {
   const focusInput = () => {
     inputRef.current?.focus();
@@ -629,37 +435,43 @@ export function SearchBar({
 
   return (
     <div className="relative content-stretch flex items-start w-full" onKeyDown={handleKeyDown}>
-      {/* <div className="relative" ref={dropdownRef}>
-        <SearchEngineButton engine={searchEngine} onClick={undefined} minimalistMode={minimalistMode} />
-        <SearchEngineDropdown currentEngine={searchEngine} onSelect={onEngineSelect} isOpen={dropdownOpen} />
-      </div> */}
-      <div className="relative flex-1 min-w-0" ref={historyRef}>
-        <Frame2 
-          value={value} 
-          onChange={onChange} 
-          inputRef={inputRef} 
-          onFocusContainer={focusInput} 
-          onOpenHistory={onHistoryOpen} 
-          onClear={onClear} 
-          onSearch={onSubmit} 
-          placeholder={placeholder} 
-          onKeyDown={onKeyDown} 
-          minimalistMode={minimalistMode}
-          forceWhiteTheme={forceWhiteTheme}
-          height={searchHeight}
-          inputFontSize={searchInputFontSize}
-          horizontalPadding={searchHorizontalPadding}
-          searchActionSize={searchActionSize}
-        />
-        <SearchHistoryDropdown 
-          items={suggestionItems} 
-          isOpen={historyOpen} 
-          onSelect={onSuggestionSelect} 
-          onClear={onHistoryClear} 
-          selectedIndex={historySelectedIndex} 
-          minimalistMode={minimalistMode}
-          forceWhiteTheme={forceWhiteTheme}
-        />
+      <div className="relative flex-1 min-w-0" ref={dropdownRef}>
+        <div className="relative" ref={historyRef}>
+          <Frame2 
+            value={value} 
+            onChange={onChange} 
+            inputRef={inputRef} 
+            onFocusContainer={focusInput} 
+            onOpenHistory={onHistoryOpen} 
+            onClear={onClear} 
+            onSearch={onSubmit} 
+            placeholder={placeholder} 
+            onKeyDown={onKeyDown} 
+            blankMode={blankMode}
+            forceWhiteTheme={forceWhiteTheme}
+            subtleDarkTone={subtleDarkTone}
+            height={searchHeight}
+            inputFontSize={searchInputFontSize}
+            horizontalPadding={searchHorizontalPadding}
+            searchActionSize={searchActionSize}
+            surfaceStyle={searchSurfaceStyle}
+            searchEngine={searchEngine}
+            onEngineClick={onEngineClick}
+            showEngineSwitcher={showEngineSwitcher}
+          />
+          <SearchHistoryDropdown 
+            items={suggestionItems} 
+            isOpen={historyOpen} 
+            onSelect={onSuggestionSelect} 
+            onClear={onHistoryClear} 
+            selectedIndex={historySelectedIndex} 
+            blankMode={blankMode}
+            forceWhiteTheme={forceWhiteTheme}
+          />
+        </div>
+        {showEngineSwitcher ? (
+          <SearchEngineSwitcherDropdown currentEngine={searchEngine} onSelect={onEngineSelect} isOpen={dropdownOpen} />
+        ) : null}
       </div>
     </div>
   );

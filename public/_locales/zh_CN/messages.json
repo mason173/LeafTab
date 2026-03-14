@@ -4,7 +4,7 @@
     "description": "The title of the application"
   },
   "appDescription": {
-    "message": "一个平静、干净的极简新标签页体验。清晰专注地打开每一个新标签页，远离干扰。",
+    "message": "一个平静、干净的极简新标签页体验。清晰专注地打开每一个新标签页，远离干扰。该扩展允许用户使用 Google、Bing、DuckDuckGo 和 Baidu 等主流搜索引擎进行网页搜索。",
     "description": "The description of the application"
   }
 }

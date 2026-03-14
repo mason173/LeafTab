@@ -8,6 +8,15 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.2",
+    date: "2026-03-15",
+    notes: [
+      t("changelog.items.release132UiPolish", { defaultValue: "优化设置面板与交互细节，整体风格更统一" }),
+      t("changelog.items.release132SearchAndDrawer", { defaultValue: "改进搜索与抽屉联动体验，操作更顺滑" }),
+      t("changelog.items.release132Stability", { defaultValue: "修复若干已知问题并提升稳定性" }),
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-03-13",
     notes: [

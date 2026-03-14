@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, FC, ReactNode } from 'react';
+import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, useState, FC, ReactNode } from 'react';
 
 import * as THREE from 'three';
 
@@ -77,16 +77,45 @@ function extendMaterial<T extends THREE.Material = THREE.Material>(
   return mat;
 }
 
-const CanvasWrapper: FC<{ children: ReactNode; staticFrame: boolean }> = ({ children, staticFrame }) => (
-  <Canvas
-    dpr={[1, 2]}
-    frameloop={staticFrame ? "demand" : "always"}
-    className="h-full w-full"
-    resize={{ debounce: { resize: 0, scroll: 0 } }}
-  >
-    {children}
-  </Canvas>
-);
+const CanvasWrapper: FC<{ children: ReactNode; staticFrame: boolean }> = ({ children, staticFrame }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [remountKey, setRemountKey] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const node = containerRef.current;
+    const rect = node.getBoundingClientRect();
+    let hadPositiveSize = rect.width > 0 && rect.height > 0;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      const hasPositiveSize = width > 0 && height > 0;
+      // Recover from hidden/zero-size mount to prevent stale partial canvas paint.
+      if (hasPositiveSize && !hadPositiveSize) {
+        setRemountKey((prev) => prev + 1);
+      }
+      hadPositiveSize = hasPositiveSize;
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
+      <Canvas
+        key={`beams-canvas-${remountKey}`}
+        dpr={[1, 2]}
+        frameloop={staticFrame ? "demand" : "always"}
+        className="h-full w-full"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        resize={{ scroll: false, debounce: { resize: 0 } }}
+      >
+        {children}
+      </Canvas>
+    </div>
+  );
+};
 
 const hexToNormalizedRGB = (hex: string): [number, number, number] => {
   const clean = hex.replace('#', '');
