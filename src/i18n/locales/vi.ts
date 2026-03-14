@@ -84,6 +84,19 @@ export default {
         set: "Thiết lập",
         select: "Chọn"
       },
+      shortcutsStyle: {
+        label: "Kiểu lối tắt",
+        entryDescription: "Đổi kiểu hiển thị và đặt số cột, số hàng cơ sở của lưới",
+        open: "Mở",
+        title: "Cài đặt kiểu lối tắt",
+        description: "Chọn kiểu lối tắt và đặt số cột cùng số hàng cơ sở cho lưới một trang",
+        rich: "Đầy đủ",
+        compact: "Tối giản",
+        showName: "Hiện tên",
+        showNameDesc: "Bật để hiển thị tiêu đề lối tắt dưới biểu tượng",
+        columns: "Số cột",
+        rows: "Số hàng cơ sở"
+      },
       backup: {
         label: "Sao lưu & khôi phục dữ liệu",
         description: "Nhập hoặc xuất dữ liệu bố cục cục bộ (.leaftab)",
@@ -350,6 +363,7 @@ export default {
     search: {
       placeholder: "Tìm kiếm nội dung...",
       placeholderDynamic: "Tìm kiếm nội dung hoặc nhập URL...",
+      systemEngine: "Mặc định hệ thống",
       historyTitle: "Lịch sử tìm kiếm",
       clearHistory: "Xóa",
       noHistory: "Không có lịch sử tìm kiếm"
@@ -381,7 +395,9 @@ export default {
       urlPlaceholder: "Nhập URL",
       errors: {
         fillAll: "Vui lòng điền đầy đủ thông tin",
-        fillAllDesc: "Nhập tiêu đề và URL của lối tắt"
+        fillAllDesc: "Nhập tiêu đề và URL của lối tắt",
+        duplicateUrl: "Đã có lối tắt cho trang web này",
+        duplicateUrlDesc: "Mỗi trang web chỉ cho phép một lối tắt. Vui lòng kiểm tra lại URL."
       }
     },
     onboarding: {

@@ -30,6 +30,7 @@ interface TopNavBarProps {
   onWeatherUpdate?: (code: number) => void;
   variant?: 'inverted' | 'default';
   className?: string;
+  rightSlot?: React.ReactNode;
 }
 
 export function TopNavBar({ 
@@ -39,7 +40,8 @@ export function TopNavBar({
   fadeOnIdle = false,
   onWeatherUpdate,
   className = "",
-  variant = 'inverted'
+  variant = 'inverted',
+  rightSlot,
 }: TopNavBarProps) {
   return (
     <div className={`flex items-center justify-between w-full ${className}`} data-name="TopNavBar">
@@ -59,9 +61,12 @@ export function TopNavBar({
               : 'opacity-100'
           }`}
         >
-          <Magnetic intensity={0.32} range={110}>
-            <SettingsButton onClick={onSettingsClick || (() => {})} variant={variant} />
-          </Magnetic>
+          {rightSlot}
+          {onSettingsClick && (
+            <Magnetic intensity={0.32} range={110}>
+              <SettingsButton onClick={onSettingsClick} variant={variant} />
+            </Magnetic>
+          )}
         </div>
       </div>
     </div>

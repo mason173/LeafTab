@@ -9,7 +9,7 @@ export interface Shortcut {
 
 export type ScenarioShortcuts = Record<string, Shortcut[]>;
 
-export type SearchEngine = 'google' | 'bing' | 'baidu' | 'sougou' | '360' | 'duckduckgo' | 'yandex';
+export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
 
 export interface SearchEngineConfig {
   name: string;
@@ -25,6 +25,6 @@ export interface CloudShortcutsPayloadV3 {
 
 export type ContextMenuState =
   | { x: number; y: number; kind: 'shortcut'; shortcutIndex: number; shortcut: Shortcut }
-  | { x: number; y: number; kind: 'page' };
+  | { x: number; y: number; kind: 'grid' };
 
 export type { ScenarioMode };

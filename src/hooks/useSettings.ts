@@ -2,8 +2,53 @@ import { useState, useEffect } from 'react';
 import { loadGoogleFont } from '../utils/googleFonts';
 import { clampShortcutsRowsPerColumn } from '../utils/backupData';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
-import { parseShortcutCardVariant, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
+import {
+  clampShortcutGridColumns,
+  getShortcutColumns,
+  parseShortcutCardVariant,
+  type ShortcutCardVariant,
+} from '@/components/shortcuts/shortcutCardVariant';
 import { type DisplayMode } from '@/displayMode/config';
+
+const SHORTCUT_GRID_COLUMNS_LEGACY_KEY = 'shortcutGridColumns';
+const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
+
+function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {
+  try {
+    const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') return {};
+    const next: Partial<Record<ShortcutCardVariant, number>> = {};
+    for (const variant of ['default', 'compact'] as const) {
+      const value = Number((parsed as Record<string, unknown>)[variant]);
+      if (Number.isFinite(value)) {
+        next[variant] = clampShortcutGridColumns(value, variant);
+      }
+    }
+    return next;
+  } catch {
+    return {};
+  }
+}
+
+function writeShortcutGridColumnsByVariant(map: Partial<Record<ShortcutCardVariant, number>>) {
+  try {
+    localStorage.setItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY, JSON.stringify(map));
+  } catch {}
+}
+
+function readShortcutGridColumns(variant: ShortcutCardVariant): number {
+  const byVariant = readShortcutGridColumnsByVariant();
+  const variantValue = byVariant[variant];
+  if (Number.isFinite(variantValue)) {
+    return clampShortcutGridColumns(variantValue as number, variant);
+  }
+  const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY);
+  const parsed = raw === null ? Number.NaN : Number(raw);
+  if (Number.isFinite(parsed)) return clampShortcutGridColumns(parsed, variant);
+  return getShortcutColumns(variant);
+}
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,6 +82,10 @@ export function useSettings() {
     const stored = localStorage.getItem('shortcutCompactShowTitle');
     if (stored === null) return true;
     return stored === 'true';
+  });
+  const [shortcutGridColumns, setShortcutGridColumns] = useState(() => {
+    const variant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
+    return readShortcutGridColumns(variant);
   });
   const [shortcutsRowsPerColumn, setShortcutsRowsPerColumn] = useState(() => {
     const stored = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
@@ -96,6 +145,8 @@ export function useSettings() {
     if (storedShortcutCompactShowTitle !== null) {
       setShortcutCompactShowTitle(storedShortcutCompactShowTitle === 'true');
     }
+    const nextShortcutVariant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
+    setShortcutGridColumns(readShortcutGridColumns(nextShortcutVariant));
     const storedShortcutsRowsPerColumn = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     setShortcutsRowsPerColumn(clampShortcutsRowsPerColumn(storedShortcutsRowsPerColumn));
     
@@ -148,6 +199,21 @@ export function useSettings() {
   useEffect(() => {
     localStorage.setItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
   }, [shortcutCompactShowTitle]);
+
+  useEffect(() => {
+    const normalized = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant);
+    if (normalized !== shortcutGridColumns) {
+      setShortcutGridColumns(normalized);
+      return;
+    }
+    const currentMap = readShortcutGridColumnsByVariant();
+    const nextMap: Partial<Record<ShortcutCardVariant, number>> = {
+      ...currentMap,
+      [shortcutCardVariant]: normalized,
+    };
+    writeShortcutGridColumnsByVariant(nextMap);
+    localStorage.setItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY, String(normalized));
+  }, [shortcutCardVariant, shortcutGridColumns]);
 
   useEffect(() => {
     const normalized = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
@@ -207,6 +273,8 @@ export function useSettings() {
     setShortcutCardVariant,
     shortcutCompactShowTitle,
     setShortcutCompactShowTitle,
+    shortcutGridColumns,
+    setShortcutGridColumns,
     shortcutsRowsPerColumn,
     setShortcutsRowsPerColumn,
     privacyConsent,

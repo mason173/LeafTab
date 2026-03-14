@@ -7,18 +7,35 @@ import { Button } from '@/components/ui/button';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import Scrubber from '@/components/ui/smoothui/scrubber';
 import {
+  clampShortcutGridColumns,
   DEFAULT_SHORTCUT_CARD_VARIANT,
+  getShortcutColumnBounds,
   getShortcutColumns,
   type ShortcutCardVariant,
 } from '@/components/shortcuts/shortcutCardVariant';
+
+const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
+
+function readColumnsByVariant(variant: ShortcutCardVariant): number | null {
+  try {
+    const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const next = Number(parsed?.[variant]);
+    if (!Number.isFinite(next)) return null;
+    return clampShortcutGridColumns(next, variant);
+  } catch {
+    return null;
+  }
+}
 
 interface ShortcutStyleSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   variant: ShortcutCardVariant;
   compactShowTitle: boolean;
-  rowsPerColumn: number;
-  onSave: (payload: { variant: ShortcutCardVariant; compactShowTitle: boolean; rowsPerColumn: number }) => void;
+  columns: number;
+  onSave: (payload: { variant: ShortcutCardVariant; compactShowTitle: boolean; columns: number }) => void;
 }
 
 export function ShortcutStyleSettingsDialog({
@@ -26,22 +43,35 @@ export function ShortcutStyleSettingsDialog({
   onOpenChange,
   variant,
   compactShowTitle,
-  rowsPerColumn,
+  columns,
   onSave,
 }: ShortcutStyleSettingsDialogProps) {
   const { t } = useTranslation();
   const [draftVariant, setDraftVariant] = useState<ShortcutCardVariant>(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
-  const [draftRowsPerColumn, setDraftRowsPerColumn] = useState(rowsPerColumn);
+  const [draftColumns, setDraftColumns] = useState(columns);
   const [draftCompactShowTitle, setDraftCompactShowTitle] = useState(compactShowTitle);
 
   useEffect(() => {
     if (!open) return;
     setDraftVariant(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
-    setDraftRowsPerColumn(rowsPerColumn);
+    setDraftColumns(columns);
     setDraftCompactShowTitle(compactShowTitle);
-  }, [open, variant, rowsPerColumn, compactShowTitle]);
+  }, [open, variant, columns, compactShowTitle]);
 
-  const gridColumns = useMemo(() => getShortcutColumns(draftVariant), [draftVariant]);
+  const columnBounds = useMemo(() => getShortcutColumnBounds(draftVariant), [draftVariant]);
+
+  useEffect(() => {
+    const saved = readColumnsByVariant(draftVariant);
+    if (saved !== null) {
+      setDraftColumns(saved);
+      return;
+    }
+    setDraftColumns((prev) => {
+      const normalized = clampShortcutGridColumns(prev, draftVariant);
+      if (Number.isFinite(normalized)) return normalized;
+      return getShortcutColumns(draftVariant);
+    });
+  }, [draftVariant]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,8 +84,8 @@ export function ShortcutStyleSettingsDialog({
         <div className="flex flex-col gap-4">
           <Tabs value={draftVariant} onValueChange={(value) => setDraftVariant(value as ShortcutCardVariant)} className="w-full">
             <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
-              <TabsTrigger value="default" className="rounded-xl">{t('settings.shortcutsStyle.rich')}</TabsTrigger>
               <TabsTrigger value="compact" className="rounded-xl">{t('settings.shortcutsStyle.compact')}</TabsTrigger>
+              <TabsTrigger value="default" className="rounded-xl">{t('settings.shortcutsStyle.rich')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -89,27 +119,27 @@ export function ShortcutStyleSettingsDialog({
               variant="secondary"
               size="icon"
               className="h-8 w-8 rounded-full"
-              onClick={() => setDraftRowsPerColumn((prev) => Math.max(1, prev - 1))}
-              disabled={draftRowsPerColumn <= 1}
+              onClick={() => setDraftColumns((prev) => Math.max(columnBounds.min, prev - 1))}
+              disabled={draftColumns <= columnBounds.min}
             >
               <RiSubtractLine className="size-4" />
             </Button>
             <Scrubber
               className="flex-1"
-              label={t('settings.shortcutsStyle.density')}
-              min={1}
-              max={11}
+              label={t('settings.shortcutsStyle.columns')}
+              min={columnBounds.min}
+              max={columnBounds.max}
               step={1}
-              value={draftRowsPerColumn}
+              value={draftColumns}
               onValueChange={(nextRawValue) => {
-                const next = Math.max(1, Math.min(11, Math.round(nextRawValue)));
-                setDraftRowsPerColumn(next);
+                const next = clampShortcutGridColumns(Math.round(nextRawValue), draftVariant);
+                setDraftColumns(next);
               }}
               ticks={9}
               decimals={0}
               showLabel
               showValue
-              valueText={`${gridColumns}*${draftRowsPerColumn}`}
+              valueText={`${draftColumns}`}
               trackHeight={40}
             />
             <Button
@@ -117,12 +147,13 @@ export function ShortcutStyleSettingsDialog({
               variant="secondary"
               size="icon"
               className="h-8 w-8 rounded-full"
-              onClick={() => setDraftRowsPerColumn((prev) => Math.min(11, prev + 1))}
-              disabled={draftRowsPerColumn >= 11}
+              onClick={() => setDraftColumns((prev) => Math.min(columnBounds.max, prev + 1))}
+              disabled={draftColumns >= columnBounds.max}
             >
               <RiAddLine className="size-4" />
             </Button>
           </div>
+
         </div>
 
         <DialogFooter className="flex w-full gap-3 sm:gap-3">
@@ -135,7 +166,7 @@ export function ShortcutStyleSettingsDialog({
               onSave({
                 variant: draftVariant,
                 compactShowTitle: draftCompactShowTitle,
-                rowsPerColumn: draftRowsPerColumn,
+                columns: draftColumns,
               });
               onOpenChange(false);
             }}

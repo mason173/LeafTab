@@ -22,7 +22,7 @@ export function ShortcutCardCompact({
   onContextMenu,
 }: ShortcutCardCompactProps) {
   const titleBlockHeight = 24;
-  const totalHeight = showTitle ? iconSize + titleBlockHeight : iconSize;
+  const totalHeight = iconSize + titleBlockHeight;
   return (
     <div
       className="relative rounded-xl cursor-pointer select-none group/shortcut"
@@ -45,14 +45,13 @@ export function ShortcutCardCompact({
             fallbackLabel={shortcut.title}
           />
         </div>
-        {showTitle ? (
-          <p
-            className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-            style={{ width: iconSize, fontSize: titleFontSize }}
-          >
-            {shortcut.title}
-          </p>
-        ) : null}
+        <p
+          className={`truncate text-center leading-4 transition-opacity duration-150 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+          style={{ width: iconSize, fontSize: titleFontSize, opacity: showTitle ? 1 : 0 }}
+          aria-hidden={!showTitle}
+        >
+          {shortcut.title}
+        </p>
       </div>
     </div>
   );

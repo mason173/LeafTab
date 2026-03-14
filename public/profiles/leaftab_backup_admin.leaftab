@@ -109,6 +109,24 @@
           "title": "快递查询",
           "url": "https://www.kuaidi100.com",
           "icon": ""
+        },
+        {
+          "id": "dev-01",
+          "title": "GitHub",
+          "url": "https://github.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-02",
+          "title": "Stack Overflow",
+          "url": "https://stackoverflow.com",
+          "icon": ""
+        },
+        {
+          "id": "dev-03",
+          "title": "掘金",
+          "url": "https://juejin.cn",
+          "icon": ""
         }
       ],
       "life-mode-001": [

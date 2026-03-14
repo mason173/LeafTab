@@ -109,6 +109,24 @@
           "title": "Next.js",
           "url": "https://nextjs.org",
           "icon": ""
+        },
+        {
+          "id": "ent-01",
+          "title": "哔哩哔哩",
+          "url": "https://www.bilibili.com",
+          "icon": ""
+        },
+        {
+          "id": "ent-02",
+          "title": "YouTube",
+          "url": "https://www.youtube.com",
+          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+        },
+        {
+          "id": "ent-03",
+          "title": "Netflix",
+          "url": "https://www.netflix.com",
+          "icon": ""
         }
       ],
       "life-mode-001": [

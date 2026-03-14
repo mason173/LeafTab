@@ -3,9 +3,13 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  RiArrowRightSLine,
+  RiArrowDownLine,
+  RiArrowUpLine,
   RiCloseFill,
+  RiCloseLine,
   RiCloudFill,
+  RiDeleteBinLine,
+  RiFolderTransferLine,
   RiRainyFill,
   RiSnowyFill,
   RiSunFill,
@@ -29,7 +33,7 @@ import { Shortcut } from './types';
 // Components
 import { TopNavBar } from './components/TopNavBar';
 import ScenarioModeMenu from './components/ScenarioModeMenu';
-import WallpaperSelector, { weatherVideoMap, sunnyVideo } from './components/WallpaperSelector';
+import WallpaperSelector from './components/WallpaperSelector';
 import { RoleSelector } from './components/RoleSelector';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
@@ -40,7 +44,9 @@ import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { isWebdavAuthError } from '@/utils/webdavError';
 import { AppDialogs } from './components/AppDialogs';
+import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
+import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import { UpdateAvailableDialog } from './components/UpdateAvailableDialog';
 import {
   buildBackupDataV4,
@@ -49,13 +55,16 @@ import {
   type WebdavPayload,
 } from './utils/backupData';
 import { areSyncPayloadsEqual } from '@/sync/core';
+import { createCloudSyncAdapter } from '@/hooks/cloudSync/cloudSyncAdapter';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
-import { getShortcutColumns } from '@/components/shortcuts/shortcutCardVariant';
+import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-import { Beams, Galaxy, Iridescence, LightRays, Prism, Silk } from '@/components/react-bits';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
+import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
+import { renderDynamicWallpaper } from '@/components/wallpaper/dynamicWallpapers';
+import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -72,6 +81,7 @@ const getApiBase = () => {
 };
 
 const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
+const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
@@ -110,52 +120,12 @@ const clearPersistedWebdavConflict = () => {
   } catch {}
 };
 
-function WeatherBackgroundVideo({
-  src,
-  className,
-}: {
-  src: string;
-  className?: string;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.playbackRate = 0.7;
-    const handleTimeUpdate = () => {
-      const timeLeft = video.duration - video.currentTime;
-      if (timeLeft > 0 && timeLeft < 1.5) {
-        const newRate = Math.max(0.1, 0.7 * (timeLeft / 1.5));
-        video.playbackRate = newRate;
-      }
-    };
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-    };
-  }, [src]);
-
-  return (
-    <video
-      key={src}
-      ref={videoRef}
-      src={src}
-      className={className || "absolute w-full h-full object-cover"}
-      autoPlay
-      muted
-      playsInline
-    />
-  );
-}
-
 export default function App() {
   const { t, i18n } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
-  const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>('local');
+  const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>('merge');
   const [webdavConfirmSyncOpen, setWebdavConfirmSyncOpen] = useState(false);
   const [webdavConfirmChoice, setWebdavConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>(null);
   const [webdavPendingLocalPayload, setWebdavPendingLocalPayload] = useState<WebdavPayload | null>(null);
@@ -166,13 +136,10 @@ export default function App() {
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
-  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
-  const [moveDialogData, setMoveDialogData] = useState<{ sourceIndex: number; sourceShortcutId?: string } | null>(null);
-  const [moveSubOpen, setMoveSubOpen] = useState(false);
-  const [pageDeleteOpen, setPageDeleteOpen] = useState(false);
+  const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
       return sessionStorage.getItem('leaftab_weather_debug_visible') === 'true';
@@ -180,7 +147,6 @@ export default function App() {
       return false;
     }
   });
-  const moveSubTimerRef = useRef<number | null>(null);
   const weatherDebugTapCountRef = useRef(0);
   const weatherDebugTapTimerRef = useRef<number | null>(null);
   const webdavEnableConflictRef = useRef<{
@@ -189,30 +155,13 @@ export default function App() {
     remotePayload: WebdavPayload;
   } | null>(null);
   const webdavConflictHydratedRef = useRef(false);
-  const openMoveSub = useCallback(() => {
-    if (moveSubTimerRef.current) {
-      window.clearTimeout(moveSubTimerRef.current);
-      moveSubTimerRef.current = null;
-    }
-    setMoveSubOpen(true);
-  }, []);
-  const scheduleCloseMoveSub = useCallback((delay = 180) => {
-    if (moveSubTimerRef.current) window.clearTimeout(moveSubTimerRef.current);
-    moveSubTimerRef.current = window.setTimeout(() => {
-      setMoveSubOpen(false);
-      moveSubTimerRef.current = null;
-    }, delay);
-  }, []);
-  useEffect(() => () => {
-    if (moveSubTimerRef.current) window.clearTimeout(moveSubTimerRef.current);
-  }, []);
   useEffect(() => () => {
     if (weatherDebugTapTimerRef.current) window.clearTimeout(weatherDebugTapTimerRef.current);
   }, []);
   useEffect(() => {
     if (!webdavConflictHydratedRef.current) return;
     if (webdavPendingLocalPayload && webdavPendingRemotePayload) {
-      const choice: WebdavConflictChoice = webdavConfirmChoice === 'cloud' || webdavConfirmChoice === 'merge' ? webdavConfirmChoice : 'local';
+      const choice: WebdavConflictChoice = webdavConfirmChoice === 'cloud' || webdavConfirmChoice === 'merge' ? webdavConfirmChoice : 'merge';
       persistWebdavConflict({
         localPayload: webdavPendingLocalPayload,
         remotePayload: webdavPendingRemotePayload,
@@ -254,6 +203,7 @@ export default function App() {
     showTime, setShowTime,
     shortcutCardVariant, setShortcutCardVariant,
     shortcutCompactShowTitle, setShortcutCompactShowTitle,
+    shortcutGridColumns, setShortcutGridColumns,
     shortcutsRowsPerColumn, setShortcutsRowsPerColumn,
     privacyConsent, setPrivacyConsent,
     apiServer, setApiServer,
@@ -299,27 +249,14 @@ export default function App() {
     openSearchWithQuery,
   } = useSearch(searchInputRef as React.RefObject<HTMLInputElement>, openInNewTab);
 
-  const adaptiveShortcutRowHeight = shortcutCardVariant === 'compact'
-    ? (shortcutCompactShowTitle ? responsiveLayout.compactShortcutSize + 24 : responsiveLayout.compactShortcutSize)
-    : (responsiveLayout.defaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
-  const adaptiveShortcutRowGap = shortcutCardVariant === 'compact'
-    ? responsiveLayout.compactRowGap
-    : responsiveLayout.defaultRowGap;
-  const adaptiveHeaderHeight = responsiveLayout.mainTopMargin
-    + (displayMode === 'panoramic'
-      ? responsiveLayout.wallpaperHeight
-      : (showTime ? responsiveLayout.clockFontSize + 56 : 96))
-    + responsiveLayout.searchHeight
-    + (responsiveLayout.density === 'large' ? 184 : 160);
-  const adaptiveRowsViewportCap = clampShortcutsRowsPerColumn(
-    Math.floor((Math.max(adaptiveShortcutRowHeight, responsiveLayout.viewportHeight - adaptiveHeaderHeight) + adaptiveShortcutRowGap) / (adaptiveShortcutRowHeight + adaptiveShortcutRowGap)),
-  );
-  const adaptiveRowsPerColumn = clampShortcutsRowsPerColumn(
-    Math.min(
-      Math.max(clampShortcutsRowsPerColumn(shortcutsRowsPerColumn), responsiveLayout.baseRows),
-      adaptiveRowsViewportCap,
-    ),
-  );
+  useEffect(() => {
+    if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
+    if (dropdownOpen) setDropdownOpen(false);
+    if (searchEngine !== 'system') setSearchEngine('system');
+  }, [dropdownOpen, searchEngine, setDropdownOpen, setSearchEngine]);
+
+  const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
+  const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant, responsiveLayout.density);
 
   const {
     scenarioModes, setScenarioModes,
@@ -346,30 +283,133 @@ export default function App() {
     shortcuts,
     localDirtyRef,
     handleCreateScenarioMode, handleOpenEditScenarioMode, handleUpdateScenarioMode, handleDeleteScenarioMode,
-    handleShortcutOpen, handleShortcutContextMenu, handlePageContextMenu,
-    handleSaveShortcutEdit, handleConfirmDeleteShortcut,
-    findOrCreateAvailableIndex, handleDeletePage, getMaxPageIndex, contextMenuRef,
+    handleShortcutOpen, handleShortcutContextMenu, handleGridContextMenu,
+    handleSaveShortcutEdit, handleConfirmDeleteShortcut, handleConfirmDeleteShortcuts,
+    contextMenuRef,
     resolveWithCloud, resolveWithLocal, resolveWithMerge,
     applyUndoPayload,
     scenarioModeOpen, setScenarioModeOpen,
     scenarioCreateOpen, setScenarioCreateOpen,
     scenarioEditOpen, setScenarioEditOpen,
-    handlePageReorder,
-    moveShortcutToPage,
+    handleShortcutReorder,
     resetLocalShortcutsByRole
   } = useShortcuts(
     user,
     openInNewTab,
     API_URL,
     handleLogout,
-    adaptiveRowsPerColumn,
-    shortcutCardVariant,
-    responsiveLayout.density,
   );
+
+  const [shortcutMultiSelectMode, setShortcutMultiSelectMode] = useState(false);
+  const [selectedShortcutIndexes, setSelectedShortcutIndexes] = useState<number[]>([]);
+  const [bulkShortcutDeleteOpen, setBulkShortcutDeleteOpen] = useState(false);
+  const [multiSelectMoveOpen, setMultiSelectMoveOpen] = useState(false);
+  const multiSelectMoveRef = useRef<HTMLDivElement>(null);
+  const selectedShortcutIndexSet = useMemo(() => new Set(selectedShortcutIndexes), [selectedShortcutIndexes]);
+  const selectedShortcutCount = selectedShortcutIndexes.length;
+  const moveTargetScenarioModes = useMemo(
+    () => scenarioModes.filter((mode) => mode.id !== selectedScenarioId),
+    [scenarioModes, selectedScenarioId],
+  );
+
+  const clearShortcutMultiSelect = useCallback(() => {
+    setShortcutMultiSelectMode(false);
+    setSelectedShortcutIndexes([]);
+    setBulkShortcutDeleteOpen(false);
+    setMultiSelectMoveOpen(false);
+  }, []);
+
+  const openShortcutMultiSelect = useCallback((initialIndex?: number) => {
+    setShortcutMultiSelectMode(true);
+    if (typeof initialIndex === 'number' && initialIndex >= 0) {
+      setSelectedShortcutIndexes([initialIndex]);
+      return;
+    }
+    setSelectedShortcutIndexes([]);
+  }, []);
+
+  const toggleShortcutMultiSelect = useCallback((shortcutIndex: number) => {
+    setSelectedShortcutIndexes((prev) => {
+      if (prev.includes(shortcutIndex)) {
+        return prev.filter((index) => index !== shortcutIndex);
+      }
+      return [...prev, shortcutIndex];
+    });
+  }, []);
+
+  const requestBulkDeleteShortcuts = useCallback(() => {
+    if (selectedShortcutCount <= 0) return;
+    setBulkShortcutDeleteOpen(true);
+    setContextMenu(null);
+  }, [selectedShortcutCount, setContextMenu]);
+
+  const handleConfirmBulkDeleteShortcuts = useCallback(() => {
+    if (selectedShortcutIndexes.length === 0) return;
+    handleConfirmDeleteShortcuts(selectedShortcutIndexes);
+    setBulkShortcutDeleteOpen(false);
+    setContextMenu(null);
+    clearShortcutMultiSelect();
+  }, [clearShortcutMultiSelect, handleConfirmDeleteShortcuts, selectedShortcutIndexes, setContextMenu]);
+
+  const handlePinSelectedShortcuts = useCallback((position: 'top' | 'bottom') => {
+    if (selectedShortcutIndexes.length === 0 || shortcuts.length === 0) return;
+    const validIndices = Array.from(new Set(
+      selectedShortcutIndexes
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < shortcuts.length),
+    )).sort((a, b) => a - b);
+    if (validIndices.length === 0) return;
+    const selectedSet = new Set(validIndices);
+    const selectedItems = validIndices.map((index) => shortcuts[index]);
+    const remainingItems = shortcuts.filter((_, index) => !selectedSet.has(index));
+    const nextShortcuts = position === 'top'
+      ? [...selectedItems, ...remainingItems]
+      : [...remainingItems, ...selectedItems];
+    const nextSelectedIndexes = position === 'top'
+      ? selectedItems.map((_, index) => index)
+      : selectedItems.map((_, index) => remainingItems.length + index);
+    handleShortcutReorder(nextShortcuts);
+    setSelectedShortcutIndexes(nextSelectedIndexes);
+    setContextMenu(null);
+  }, [handleShortcutReorder, selectedShortcutIndexes, setContextMenu, shortcuts]);
+
+  const handleMoveSelectedShortcutsToScenario = useCallback((targetScenarioId: string) => {
+    if (!targetScenarioId || targetScenarioId === selectedScenarioId) return;
+    if (selectedShortcutIndexes.length === 0) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const targetShortcuts = prev[targetScenarioId] ?? [];
+      const validIndices = Array.from(new Set(
+        selectedShortcutIndexes
+          .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceShortcuts.length),
+      )).sort((a, b) => a - b);
+      if (validIndices.length === 0) return prev;
+      const selectedSet = new Set(validIndices);
+      const movedShortcuts = validIndices.map((index) => sourceShortcuts[index]);
+      const nextSourceShortcuts = sourceShortcuts.filter((_, index) => !selectedSet.has(index));
+      const nextTargetShortcuts = [...targetShortcuts, ...movedShortcuts];
+      return {
+        ...prev,
+        [selectedScenarioId]: nextSourceShortcuts,
+        [targetScenarioId]: nextTargetShortcuts,
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+    setMultiSelectMoveOpen(false);
+    setContextMenu(null);
+    clearShortcutMultiSelect();
+  }, [clearShortcutMultiSelect, localDirtyRef, selectedScenarioId, selectedShortcutIndexes, setContextMenu, setScenarioShortcuts, user]);
+
+  useEffect(() => {
+    setSelectedShortcutIndexes((prev) => prev.filter((index) => index >= 0 && index < shortcuts.length));
+  }, [shortcuts.length]);
+
+  useEffect(() => {
+    clearShortcutMultiSelect();
+  }, [clearShortcutMultiSelect, selectedScenarioId]);
 
   useEffect(() => {
     if (conflictModalOpen && !confirmChoice) {
-      setConfirmChoice('local');
+      setConfirmChoice('merge');
     }
   }, [confirmChoice, conflictModalOpen]);
 
@@ -518,7 +558,7 @@ export default function App() {
     dynamicWallpaperEffect, setDynamicWallpaperEffect,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
   } = useWallpaper();
-  const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyVideo;
+  const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
     ? customWallpaper
@@ -563,16 +603,13 @@ export default function App() {
     }
   }, [privacyConsent]);
 
-  const [shortcutsPageIndex, setShortcutsPageIndex] = useState(0);
-
-  useEffect(() => {
-    const maxPage = getMaxPageIndex(shortcuts.length);
-    setShortcutsPageIndex((prev) => Math.min(Math.max(prev, 0), maxPage));
-  }, [shortcuts.length, selectedScenarioId, getMaxPageIndex]);
+  const handleShortcutGridColumnsChange = useCallback((columns: number) => {
+    setShortcutGridColumns(columns);
+    setSettingsOpen(false);
+  }, [setShortcutGridColumns, setSettingsOpen]);
 
   const handleShortcutsRowsPerColumnChange = useCallback((rows: number) => {
     setShortcutsRowsPerColumn(rows);
-    setShortcutsPageIndex(0);
     setSettingsOpen(false);
   }, [setShortcutsRowsPerColumn, setSettingsOpen]);
 
@@ -696,6 +733,17 @@ export default function App() {
     emitWebdavSyncStatusChanged();
   }, [emitWebdavSyncStatusChanged]);
 
+  const clearWebdavEnableConflictState = useCallback((options?: { closeDialog?: boolean }) => {
+    webdavEnableConflictRef.current = null;
+    setWebdavConfirmChoice(null);
+    setWebdavPendingLocalPayload(null);
+    setWebdavPendingRemotePayload(null);
+    clearPersistedWebdavConflict();
+    if (options?.closeDialog !== false) {
+      setWebdavConfirmSyncOpen(false);
+    }
+  }, []);
+
   const executeWebdavEnableChoice = useCallback(async (
     mode: 'merge' | 'prefer_remote' | 'prefer_local',
     pendingOverride?: { localPayload: WebdavPayload; remotePayload: WebdavPayload },
@@ -723,13 +771,9 @@ export default function App() {
       emitWebdavSyncStatusChanged();
       toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t('settings.backup.webdav.syncError'));
     } finally {
-      webdavEnableConflictRef.current = null;
-      setWebdavConfirmSyncOpen(false);
-      setWebdavConfirmChoice(null);
-      setWebdavPendingLocalPayload(null);
-      setWebdavPendingRemotePayload(null);
+      clearWebdavEnableConflictState();
     }
-  }, [applyImportedDataWithoutClose, emitWebdavSyncStatusChanged, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, webdavPendingLocalPayload, webdavPendingRemotePayload]);
+  }, [applyImportedDataWithoutClose, clearWebdavEnableConflictState, emitWebdavSyncStatusChanged, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, webdavPendingLocalPayload, webdavPendingRemotePayload]);
 
   const handleEnableWebdavSync = useCallback(async () => {
     if (user) {
@@ -760,7 +804,7 @@ export default function App() {
       webdavEnableConflictRef.current = { config, localPayload, remotePayload };
       setWebdavPendingLocalPayload(localPayload);
       setWebdavPendingRemotePayload(remotePayload);
-      setWebdavConfirmChoice('local');
+      setWebdavConfirmChoice('merge');
       setWebdavConfirmSyncOpen(true);
     } catch (error) {
       markWebdavSyncError(error);
@@ -846,17 +890,29 @@ export default function App() {
     await executeWebdavEnableChoice('merge', { localPayload, remotePayload });
   }, [downloadBackupPayload, executeWebdavEnableChoice, t, webdavConfirmChoice, webdavPendingLocalPayload, webdavPendingRemotePayload]);
 
+  const handleWebdavConfirmDialogOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setWebdavConfirmSyncOpen(true);
+      return;
+    }
+    // For first-conflict onboarding, user must choose one option before leaving this dialog.
+    setWebdavConfirmSyncOpen(true);
+  }, []);
+
+  const handleCancelWebdavConfirmDialog = useCallback(() => {
+    // Keep dialog open: conflict decision is required.
+    setWebdavConfirmSyncOpen(true);
+  }, []);
+
   const webdavConflictPending = Boolean(webdavPendingLocalPayload && webdavPendingRemotePayload);
 
   const { resolveWebdavConflict } = useWebdavAutoSync({
     conflictModalOpen: conflictModalOpen || cloudConflictPending || webdavConflictPending,
     isDragging,
     buildLocalPayload: buildLocalWebdavPayload,
-    applyImportedData: applyImportedDataWithoutClose,
     uploadToWebdav: handleWebdavUpload,
     uploadDataToWebdav,
     fetchWebdavData,
-    mergePayload: mergeWebdavPayload,
   });
 
   const handleRequestCloudLogin = useCallback(() => {
@@ -873,31 +929,56 @@ export default function App() {
     const token = localStorage.getItem('token');
     if (!token) return false;
     if (!navigator.onLine) return false;
+    const hasPendingSync = localStorage.getItem('leaf_tab_sync_pending') === 'true' || localDirtyRef.current;
+    if (!hasPendingSync) return true;
     try {
-      const envelope = buildBackupDataV4({
+      const payload = {
+        version: 3 as const,
         scenarioModes,
         selectedScenarioId,
         scenarioShortcuts,
+      };
+      const adapter = createCloudSyncAdapter({
+        API_URL,
+        token,
+        normalizeCloudShortcutsPayload: () => null,
       });
-      const response = await fetch(`${API_URL}/user/shortcuts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          shortcuts: envelope,
-          syncMode: 'prefer_local',
-        }),
+      let pushResult = await adapter.push(payload, {
+        mode: 'prefer_local',
       });
-      return response.ok;
+      if (!pushResult.ok && pushResult.status === 409) {
+        const retryPull = await adapter.pull();
+        if (retryPull.status === 401 || retryPull.status === 403) {
+          return false;
+        }
+        const retryExpectedVersion = Number.isFinite(retryPull.version as number)
+          ? Number(retryPull.version)
+          : undefined;
+        pushResult = await adapter.push(payload, {
+          expectedVersion: retryExpectedVersion,
+          mode: 'prefer_local',
+        });
+      }
+      if (pushResult.ok) {
+        try {
+          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
+          localStorage.removeItem('leaf_tab_sync_pending');
+        } catch {}
+      }
+      return pushResult.ok;
     } catch {
       return false;
     }
-  }, [API_URL, scenarioModes, scenarioShortcuts, selectedScenarioId, user]);
+  }, [API_URL, localDirtyRef, scenarioModes, scenarioShortcuts, selectedScenarioId, user]);
   const handleLogoutWithOptions = useCallback(async (options?: { clearLocal?: boolean }) => {
     const shouldClearLocal = options?.clearLocal === true;
-    const syncedBeforeLogout = await syncLocalToCloudBeforeLogout();
+    const syncTask = syncLocalToCloudBeforeLogout();
+    const syncedBeforeLogout = await Promise.race<boolean>([
+      syncTask,
+      new Promise<boolean>((resolve) => {
+        window.setTimeout(() => resolve(false), LOGOUT_PRE_SYNC_MAX_WAIT_MS);
+      }),
+    ]);
     if (!shouldClearLocal) {
       try {
         persistLocalProfileSnapshot({
@@ -911,6 +992,11 @@ export default function App() {
         } else {
           markLocalNeedsCloudReconcile('logout_keep_local');
           localDirtyRef.current = true;
+          void syncTask.then((syncedEventually) => {
+            if (!syncedEventually) return;
+            clearLocalNeedsCloudReconcile();
+            localDirtyRef.current = false;
+          });
         }
       } catch {}
     }
@@ -993,36 +1079,15 @@ export default function App() {
     try { sessionStorage.setItem('leaftab_weather_debug_visible', enabled ? 'true' : 'false'); } catch {}
   }, []);
 
-  const normalizedRowsPerColumn = adaptiveRowsPerColumn;
-  const shortcutsColumns = getShortcutColumns(shortcutCardVariant, responsiveLayout.density);
-  const shortcutsPageCapacity = normalizedRowsPerColumn * shortcutsColumns;
-  const maxShortcutsPageIndex = getMaxPageIndex(shortcuts.length);
-  const maxShortcutsOnCurrentPage = (() => {
-    const start = shortcutsPageIndex * shortcutsPageCapacity;
-    const end = Math.min(start + shortcutsPageCapacity, shortcuts.length);
-    const total = Math.max(0, end - start);
-    const rows = Math.ceil(total / shortcutsColumns);
-    return Math.min(rows, normalizedRowsPerColumn);
-  })();
-  const displayRows = Math.max(maxShortcutsOnCurrentPage, normalizedRowsPerColumn);
+  const displayRows = Math.max(
+    Math.ceil(shortcuts.length / Math.max(normalizedGridColumns, 1)),
+    normalizedRowsPerColumn,
+  );
   const shortcutRowHeight = shortcutCardVariant === 'compact'
-    ? (shortcutCompactShowTitle ? responsiveLayout.compactShortcutSize + 24 : responsiveLayout.compactShortcutSize)
+    ? (responsiveLayout.compactShortcutSize + 24)
     : (responsiveLayout.defaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
   const shortcutRowGap = shortcutCardVariant === 'compact' ? responsiveLayout.compactRowGap : responsiveLayout.defaultRowGap;
-  const shortcutsAreaTopPadding = responsiveLayout.density === 'large' ? 36 : responsiveLayout.density === 'compact' ? 24 : 32;
-  const shortcutsAreaHeight = shortcutsAreaTopPadding + 4 + displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
-  const pageIndices = (() => {
-    const pageCount = Math.max(1, Math.ceil(shortcuts.length / shortcutsPageCapacity));
-    return Array.from({ length: pageCount }, (_, i) => i);
-  })();
-  const currentCarouselIndex = (() => {
-    const idx = pageIndices.indexOf(shortcutsPageIndex);
-    return idx >= 0 ? idx : 0;
-  })();
-  const handleCarouselIndexChange = useCallback((index: number) => {
-    const nextPage = pageIndices[index] ?? pageIndices[0] ?? 0;
-    setShortcutsPageIndex(nextPage);
-  }, [pageIndices]);
+  const shortcutsAreaHeight = displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -1032,6 +1097,17 @@ export default function App() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [contextMenu, contextMenuRef, setContextMenu]);
+
+  useEffect(() => {
+    if (!multiSelectMoveOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (multiSelectMoveRef.current && !multiSelectMoveRef.current.contains(event.target as Node)) {
+        setMultiSelectMoveOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [multiSelectMoveOpen]);
   
   useEffect(() => {
     const handleHistoryOutside = (event: MouseEvent) => {
@@ -1093,11 +1169,6 @@ export default function App() {
     ? freshWallpaperSrc
     : (wallpaperMode === 'custom' && customWallpaper ? customWallpaper : (bingWallpaper || imgImage));
   const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
-  const topNavModeProps = {
-    onSettingsClick: () => setSettingsOpen(true),
-    fadeOnIdle: true,
-    onWeatherUpdate: setWeatherCode,
-  };
   const scenarioMenuLayerProps = {
     scenarioModes,
     selectedScenarioId,
@@ -1122,11 +1193,17 @@ export default function App() {
     wallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
   };
+  const topNavModeProps = {
+    fadeOnIdle: true,
+    onSettingsClick: () => setSettingsOpen(true),
+    onWeatherUpdate: setWeatherCode,
+    rightSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} />,
+  };
   const wallpaperClockProps = {
     time,
     date,
     lunar,
-    wallpaperUrl: bingWallpaper,
+    bingWallpaperUrl: bingWallpaper,
     onSettingsClick: () => setSettingsOpen(true),
     showScenarioMode: true,
     scenarioModes,
@@ -1138,18 +1215,12 @@ export default function App() {
     onScenarioModeEdit: handleOpenEditScenarioMode,
     onScenarioModeDelete: handleDeleteScenarioMode,
     wallpaperMode,
-    onWallpaperModeChange: setWallpaperMode,
     dynamicWallpaperEffect,
-    onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
     weatherCode,
     onWeatherUpdate: setWeatherCode,
-    bingWallpaper,
     customWallpaper,
-    onCustomWallpaperChange: setCustomWallpaper,
     colorWallpaperId,
-    onColorWallpaperIdChange: setColorWallpaperId,
     wallpaperMaskOpacity,
-    onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
@@ -1182,14 +1253,14 @@ export default function App() {
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
+    showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
   };
-  const shortcutsCarouselProps = {
-    currentIndex: currentCarouselIndex,
-    onIndexChange: handleCarouselIndexChange,
-    pageIndices,
-    height: shortcutsAreaHeight,
+  const shortcutGridProps = {
+    containerHeight: shortcutsAreaHeight,
+    bottomInset: 0,
     shortcuts,
-    rowsPerColumn: normalizedRowsPerColumn,
+    gridColumns: normalizedGridColumns,
+    minRows: normalizedRowsPerColumn,
     cardVariant: shortcutCardVariant,
     layoutDensity: responsiveLayout.density,
     compactIconSize: responsiveLayout.compactShortcutSize,
@@ -1201,76 +1272,33 @@ export default function App() {
     compactShowTitle: shortcutCompactShowTitle,
     onShortcutOpen: handleShortcutOpen,
     onShortcutContextMenu: handleShortcutContextMenu,
-    onPageReorder: handlePageReorder,
-    onPageContextMenu: handlePageContextMenu,
+    onShortcutReorder: handleShortcutReorder,
+    onGridContextMenu: handleGridContextMenu,
+    selectionMode: shortcutMultiSelectMode,
+    selectedShortcutIndexes: selectedShortcutIndexSet,
+    onToggleShortcutSelection: toggleShortcutMultiSelect,
   };
 
   return (
     <div className="bg-background relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px]">
       {modeLayersVisible && displayModeFlags.showOverlayBackground && (
-        <div className="fixed inset-0 z-0 pointer-events-none">
+        <div
+          className="fixed z-0 pointer-events-none"
+          style={{
+            top: '-2px',
+            right: '-2px',
+            bottom: '-2px',
+            left: '-2px',
+            transform: 'scale(var(--rhythm-wallpaper-scale, 1))',
+            transformOrigin: 'center center',
+            willChange: 'transform',
+            backfaceVisibility: 'hidden',
+          }}
+        >
           {wallpaperMode === 'weather' ? (
-            <WeatherBackgroundVideo src={freshWeatherVideo} />
+            <WeatherLoopVideo src={freshWeatherVideo} />
           ) : wallpaperMode === 'dynamic' ? (
-            dynamicWallpaperEffect === 'silk' ? (
-              <Silk
-                speed={4.2}
-                scale={0.95}
-                color="#7B7481"
-                noiseIntensity={1.15}
-                rotation={0}
-              />
-            ) : dynamicWallpaperEffect === 'light-rays' ? (
-              <LightRays
-                raysOrigin="top-center"
-                raysColor="#ffffff"
-                raysSpeed={1.15}
-                lightSpread={0.95}
-                rayLength={1.6}
-                fadeDistance={1}
-                saturation={1}
-                followMouse
-                mouseInfluence={0.08}
-                noiseAmount={0.04}
-                distortion={0.04}
-              />
-            ) : dynamicWallpaperEffect === 'beams' ? (
-              <Beams
-                beamWidth={2}
-                beamHeight={15}
-                beamNumber={12}
-                lightColor="#ffffff"
-                speed={2}
-                noiseIntensity={1.75}
-                scale={0.2}
-                rotation={0}
-              />
-            ) : dynamicWallpaperEffect === 'galaxy' ? (
-              <Galaxy
-                density={1.2}
-                glowIntensity={0.35}
-                saturation={0.5}
-                hueShift={165}
-                mouseRepulsion
-                mouseInteraction
-              />
-            ) : dynamicWallpaperEffect === 'iridescence' ? (
-              <Iridescence
-                color={[1, 1, 1]}
-                mouseReact
-                amplitude={0.08}
-                speed={1.0}
-              />
-            ) : (
-              <Prism
-                animationType="rotate"
-                timeScale={0.35}
-                scale={3.8}
-                noise={0.35}
-                glow={1}
-                suspendWhenOffscreen
-              />
-            )
+            renderDynamicWallpaper(dynamicWallpaperEffect, 'background')
           ) : wallpaperMode === 'color' ? (
             <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : (
@@ -1284,17 +1312,6 @@ export default function App() {
           <TopNavBar {...topNavModeProps} />
         </div>
       )}
-      {modeLayersVisible && displayModeFlags.showFloatingScenarioMenu && (
-        <div className="fixed left-6 bottom-6 z-50 opacity-50 hover:opacity-100 transition-opacity">
-          <ScenarioModeMenu {...scenarioMenuLayerProps} />
-        </div>
-      )}
-      {modeLayersVisible && displayModeFlags.showFloatingWallpaperSelector && (
-        <div className="fixed right-6 bottom-6 z-50 opacity-50 hover:opacity-100 transition-opacity">
-          <WallpaperSelector {...wallpaperSelectorLayerProps} />
-        </div>
-      )}
-
       <HomeMainContent
         visible={!roleSelectorOpen}
         user={user}
@@ -1315,119 +1332,222 @@ export default function App() {
         layout={responsiveLayout}
         wallpaperClockProps={wallpaperClockProps}
         searchBarProps={searchBarProps}
-        shortcutsCarouselProps={shortcutsCarouselProps}
+        shortcutGridProps={shortcutGridProps}
+      />
+      <WallpaperSelector
+        {...wallpaperSelectorLayerProps}
+        mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
+        hideWeather={displayMode === 'minimalist'}
+        open={wallpaperSettingsOpen}
+        onOpenChange={setWallpaperSettingsOpen}
+        trigger={<span className="hidden" aria-hidden="true" />}
       />
 
       {contextMenu && (
-        <div ref={contextMenuRef} className="fixed z-50" style={{ top: contextMenu.y, left: contextMenu.x }}>
+        <div ref={contextMenuRef} className="fixed z-[15020]" style={{ top: contextMenu.y, left: contextMenu.x }}>
           <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
             {contextMenu.kind === 'shortcut' ? (
-              <>
-                <ContextMenuItem label={t('context.newShortcut')} onSelect={() => { const startPage = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity); const result = findOrCreateAvailableIndex(startPage); if (result && result.targetIndex >= 0) { setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); setCurrentInsertIndex(result.targetIndex); setShortcutEditOpen(true); if (pageIndices.includes(result.targetPage)) setShortcutsPageIndex(result.targetPage); } else { toast.error(t('toast.shortcutCreateFailed')); } setContextMenu(null); }} />
-                <ContextMenuItem label={t('context.open')} onSelect={() => { handleShortcutOpen(contextMenu.shortcut); setContextMenu(null); }} />
-                <ContextMenuItem label={t('context.copyLink')} onSelect={() => { const raw = contextMenu.shortcut.url || ''; let hostname = extractDomainFromUrl(raw); if (!hostname) { try { const normalized = raw.includes('://') ? raw : `https://${raw}`; hostname = new URL(normalized).hostname; } catch { hostname = ''; } } if (!hostname) { toast.error(t('toast.linkCopyFailed')); setContextMenu(null); return; } navigator.clipboard.writeText(hostname).then(() => { toast.success(t('toast.linkCopied')); }).catch(() => { try { const textarea = document.createElement('textarea'); textarea.value = hostname; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); document.body.removeChild(textarea); toast.success(t('toast.linkCopied')); } catch { toast.error(t('toast.linkCopyFailed')); } }); setContextMenu(null); }} />
-                <div className="relative" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
-                  <ContextMenuItem label={t('context.move')} onSelect={() => {}} iconRight={<RiArrowRightSLine className="size-4" />} />
-                  {moveSubOpen && (
-                    <div className="absolute left-full top-0 ml-2 bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]" onMouseEnter={openMoveSub} onMouseLeave={() => scheduleCloseMoveSub()}>
-                      <ContextMenuItem
-                        label={t('context.movePrevPage')}
-                        onSelect={() => {
-                          const sourceIndexById = shortcuts.findIndex((item) => item.id === contextMenu.shortcut.id);
-                          const sourceIndex = sourceIndexById >= 0 ? sourceIndexById : contextMenu.shortcutIndex;
-                          if (sourceIndex < 0 || sourceIndex >= shortcuts.length) return;
-                          const page = Math.floor(sourceIndex / shortcutsPageCapacity);
-                          const target = Math.max(0, page - 1);
-                          if (page === 0) return;
-                          moveShortcutToPage(sourceIndex, target, {
-                            strict: true,
-                            sourceShortcutId: contextMenu.shortcut.id,
-                          });
-                          setShortcutsPageIndex(target);
-                          setContextMenu(null);
-                          setMoveSubOpen(false);
-                        }}
-                        disabled={(() => {
-                          const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity);
-                          return page <= 0;
-                        })()}
-                      />
-                      <ContextMenuItem
-                        label={t('context.moveNextPage')}
-                        onSelect={() => {
-                          const sourceIndexById = shortcuts.findIndex((item) => item.id === contextMenu.shortcut.id);
-                          const sourceIndex = sourceIndexById >= 0 ? sourceIndexById : contextMenu.shortcutIndex;
-                          if (sourceIndex < 0 || sourceIndex >= shortcuts.length) return;
-                          const page = Math.floor(sourceIndex / shortcutsPageCapacity);
-                          const target = page + 1;
-                          const maxPage = getMaxPageIndex(shortcuts.length);
-                          if (target > maxPage) return;
-                          moveShortcutToPage(sourceIndex, target, {
-                            strict: true,
-                            sourceShortcutId: contextMenu.shortcut.id,
-                          });
-                          setShortcutsPageIndex(target);
-                          setContextMenu(null);
-                          setMoveSubOpen(false);
-                        }}
-                        disabled={(() => {
-                          const page = Math.floor(contextMenu.shortcutIndex / shortcutsPageCapacity);
-                          const maxPage = getMaxPageIndex(shortcuts.length);
-                          return page >= maxPage;
-                        })()}
-                      />
-                      <ContextMenuItem
-                        label={t('context.moveToPage')}
-                        onSelect={() => {
-                          setMoveDialogData({
-                            sourceIndex: contextMenu.shortcutIndex,
-                            sourceShortcutId: contextMenu.shortcut.id,
-                          });
-                          setMoveDialogOpen(true);
-                          setMoveSubOpen(false);
-                          setContextMenu(null);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <ContextMenuItem label={t('context.edit')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setEditingTitle(contextMenu.shortcut.title); setEditingUrl(contextMenu.shortcut.url); setShortcutModalMode('edit'); setShortcutEditOpen(true); setContextMenu(null); }} />
-                <ContextMenuItem label={t('context.delete')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setShortcutDeleteOpen(true); setContextMenu(null); }} variant="destructive" />
-              </>
+              shortcutMultiSelectMode ? (
+                <>
+                  <ContextMenuItem
+                    label={selectedShortcutIndexSet.has(contextMenu.shortcutIndex)
+                      ? t('context.unselect', { defaultValue: '取消选择' })
+                      : t('context.select', { defaultValue: '选择' })}
+                    onSelect={() => {
+                      toggleShortcutMultiSelect(contextMenu.shortcutIndex);
+                      setContextMenu(null);
+                    }}
+                  />
+                  <ContextMenuItem
+                    label={t('context.deleteSelected', { defaultValue: '删除已选' })}
+                    onSelect={requestBulkDeleteShortcuts}
+                    variant="destructive"
+                    disabled={selectedShortcutCount <= 0}
+                  />
+                  <ContextMenuItem
+                    label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+                    onSelect={() => {
+                      clearShortcutMultiSelect();
+                      setContextMenu(null);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <ContextMenuItem label={t('context.newShortcut')} onSelect={() => { setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); setCurrentInsertIndex(Math.min(contextMenu.shortcutIndex + 1, shortcuts.length)); setShortcutEditOpen(true); setContextMenu(null); }} />
+                  <ContextMenuItem label={t('context.open')} onSelect={() => { handleShortcutOpen(contextMenu.shortcut); setContextMenu(null); }} />
+                  <ContextMenuItem label={t('context.copyLink')} onSelect={() => { const raw = contextMenu.shortcut.url || ''; let hostname = extractDomainFromUrl(raw); if (!hostname) { try { const normalized = raw.includes('://') ? raw : `https://${raw}`; hostname = new URL(normalized).hostname; } catch { hostname = ''; } } if (!hostname) { toast.error(t('toast.linkCopyFailed')); setContextMenu(null); return; } navigator.clipboard.writeText(hostname).then(() => { toast.success(t('toast.linkCopied')); }).catch(() => { try { const textarea = document.createElement('textarea'); textarea.value = hostname; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); document.body.removeChild(textarea); toast.success(t('toast.linkCopied')); } catch { toast.error(t('toast.linkCopyFailed')); } }); setContextMenu(null); }} />
+                  <ContextMenuItem label={t('context.edit')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setEditingTitle(contextMenu.shortcut.title); setEditingUrl(contextMenu.shortcut.url); setShortcutModalMode('edit'); setShortcutEditOpen(true); setContextMenu(null); }} />
+                  <ContextMenuItem
+                    label={t('context.multiSelect', { defaultValue: '多选' })}
+                    onSelect={() => {
+                      openShortcutMultiSelect(contextMenu.shortcutIndex);
+                      setContextMenu(null);
+                    }}
+                  />
+                  <ContextMenuItem label={t('context.delete')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setShortcutDeleteOpen(true); setContextMenu(null); }} variant="destructive" />
+                </>
+              )
             ) : (
-              <>
-                <ContextMenuItem 
-                label={t('context.addShortcut')} 
-                onSelect={() => { 
-                  const result = findOrCreateAvailableIndex(shortcutsPageIndex);
-                  if (result && result.targetIndex >= 0) {
-                    setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); setCurrentInsertIndex(result.targetIndex); setShortcutEditOpen(true); if (pageIndices.includes(result.targetPage)) setShortcutsPageIndex(result.targetPage);
-                  } else {
-                    toast.error(t('toast.shortcutCreateFailed'));
-                  }
-                  setContextMenu(null); 
-                }} 
-              />
-                {contextMenu.kind === 'page' && (
-                  <ContextMenuItem label={t('pageDelete.title')} variant="destructive" onSelect={() => { setPageDeleteOpen(true); setContextMenu(null); }} />
-                )}
-              </>
+              shortcutMultiSelectMode ? (
+                <>
+                  <ContextMenuItem
+                    label={t('context.deleteSelected', { defaultValue: '删除已选' })}
+                    onSelect={requestBulkDeleteShortcuts}
+                    variant="destructive"
+                    disabled={selectedShortcutCount <= 0}
+                  />
+                  <ContextMenuItem
+                    label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+                    onSelect={() => {
+                      clearShortcutMultiSelect();
+                      setContextMenu(null);
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <ContextMenuItem 
+                    label={t('context.addShortcut')} 
+                    onSelect={() => { 
+                      setShortcutModalMode('add');
+                      setSelectedShortcut(null);
+                      setEditingTitle('');
+                      setEditingUrl('');
+                      setCurrentInsertIndex(shortcuts.length);
+                      setShortcutEditOpen(true);
+                      setContextMenu(null); 
+                    }} 
+                  />
+                  <ContextMenuItem
+                    label={t('context.multiSelect', { defaultValue: '多选' })}
+                    onSelect={() => {
+                      openShortcutMultiSelect();
+                      setContextMenu(null);
+                    }}
+                  />
+                </>
+              )
             )}
           </div>
         </div>
       )}
 
+      {shortcutMultiSelectMode && (
+        <div className="fixed bottom-6 left-1/2 z-[15025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground min-w-[88px]">
+              {t('context.selectedCount', { count: selectedShortcutCount, defaultValue: '已选 {{count}} 项' })}
+            </span>
+            <div ref={multiSelectMoveRef} className="relative">
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-8 w-8 rounded-xl"
+                title={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
+                aria-label={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
+                aria-expanded={multiSelectMoveOpen}
+                onClick={() => setMultiSelectMoveOpen((prev) => !prev)}
+              >
+                <RiFolderTransferLine className="size-4" />
+              </Button>
+              {multiSelectMoveOpen ? (
+                <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-[15050] w-[280px] -translate-x-1/2 rounded-2xl border border-border bg-popover/95 p-2 text-foreground shadow-2xl backdrop-blur-xl">
+                  <div className="px-2 pb-1 pt-1 text-xs text-muted-foreground">
+                    {t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
+                  </div>
+                  <div className="max-h-[260px] space-y-1 overflow-y-auto">
+                    {selectedShortcutCount <= 0 ? (
+                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
+                        {t('context.selectBeforeMove', { defaultValue: '请先选择快捷方式' })}
+                      </div>
+                    ) : null}
+                    {selectedShortcutCount > 0 && moveTargetScenarioModes.map((mode) => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                        onClick={() => handleMoveSelectedShortcutsToScenario(mode.id)}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: mode.color || '#60a5fa' }}
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{mode.name}</span>
+                      </button>
+                    ))}
+                    {selectedShortcutCount > 0 && moveTargetScenarioModes.length === 0 ? (
+                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
+                        {t('context.noScenarioTarget', { defaultValue: '暂无可移动的目标情景模式' })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 rounded-xl"
+              onClick={() => handlePinSelectedShortcuts('top')}
+              disabled={selectedShortcutCount <= 0}
+              title={t('context.pinTop', { defaultValue: '置顶已选' })}
+              aria-label={t('context.pinTop', { defaultValue: '置顶已选' })}
+            >
+              <RiArrowUpLine className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 rounded-xl"
+              onClick={() => handlePinSelectedShortcuts('bottom')}
+              disabled={selectedShortcutCount <= 0}
+              title={t('context.pinBottom', { defaultValue: '置底已选' })}
+              aria-label={t('context.pinBottom', { defaultValue: '置底已选' })}
+            >
+              <RiArrowDownLine className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-8 w-8 rounded-xl"
+              variant="secondary"
+              onClick={requestBulkDeleteShortcuts}
+              disabled={selectedShortcutCount <= 0}
+              title={t('context.deleteSelected', { defaultValue: '删除已选' })}
+              aria-label={t('context.deleteSelected', { defaultValue: '删除已选' })}
+            >
+              <RiDeleteBinLine className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 rounded-xl"
+              onClick={clearShortcutMultiSelect}
+              title={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+              aria-label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+            >
+              <RiCloseLine className="size-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={bulkShortcutDeleteOpen}
+        onOpenChange={setBulkShortcutDeleteOpen}
+        title={t('shortcutDelete.bulkTitle', { count: selectedShortcutCount, defaultValue: '批量删除快捷方式' })}
+        description={t('shortcutDelete.bulkDescription', {
+          count: selectedShortcutCount,
+          defaultValue: '确定要删除已选的 {{count}} 个快捷方式吗？',
+        })}
+        confirmText={t('shortcutDelete.confirm')}
+        cancelText={t('shortcutDelete.cancel')}
+        onConfirm={handleConfirmBulkDeleteShortcuts}
+        confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      />
+
       <AppDialogs
-        movePageDialog={{
-          open: moveDialogOpen,
-          onOpenChange: setMoveDialogOpen,
-          moveDialogData,
-          getMaxPageIndex,
-          shortcuts,
-          shortcutsPageCapacity,
-          moveShortcutToPage,
-          onTargetPageSelected: setShortcutsPageIndex,
-        }}
         shortcutModalProps={{
           isOpen: shortcutEditOpen,
           onOpenChange: (open) => {
@@ -1489,8 +1609,8 @@ export default function App() {
           onShortcutCardVariantChange: setShortcutCardVariant,
           shortcutCompactShowTitle,
           onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
-          shortcutsRowsPerColumn: normalizedRowsPerColumn,
-          onShortcutsRowsPerColumnChange: handleShortcutsRowsPerColumnChange,
+          shortcutGridColumns: normalizedGridColumns,
+          onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
           openInNewTab,
           onOpenInNewTabChange: setOpenInNewTab,
           is24Hour,
@@ -1513,6 +1633,7 @@ export default function App() {
           onColorWallpaperIdChange: setColorWallpaperId,
           wallpaperMaskOpacity,
           onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+          onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
           privacyConsent,
           onPrivacyConsentChange: handlePrivacySwitchChange,
           onOpenAdminModal: handleOpenAdminModal,
@@ -1562,6 +1683,7 @@ export default function App() {
           confirmChoice,
           onChoiceChange: setConfirmChoice,
           enableChoiceSwitch: true,
+          requireDecision: true,
           title: t('syncConflict.title'),
           description: t('syncConflict.description'),
           confirmCloudLabel: t('syncConflict.useCloud'),
@@ -1580,10 +1702,11 @@ export default function App() {
         }}
         webdavConfirmSyncDialog={{
           open: webdavConfirmSyncOpen,
-          onOpenChange: setWebdavConfirmSyncOpen,
+          onOpenChange: handleWebdavConfirmDialogOpenChange,
           confirmChoice: webdavConfirmChoice,
           onChoiceChange: setWebdavConfirmChoice,
           enableChoiceSwitch: true,
+          requireDecision: true,
           title: t('syncConflict.title'),
           description: t('syncConflict.description'),
           confirmCloudLabel: t('syncConflict.useCloud'),
@@ -1598,9 +1721,7 @@ export default function App() {
           onConfirm: () => {
             void handleConfirmWebdavSyncChoice();
           },
-          onCancel: () => {
-            setWebdavConfirmSyncOpen(false);
-          },
+          onCancel: handleCancelWebdavConfirmDialog,
         }}
         importConfirmDialog={{
           open: importConfirmOpen,
@@ -1612,17 +1733,6 @@ export default function App() {
           downloadCloudBackupEnvelope,
           applyUndoPayload,
           onSuccess: () => setSettingsOpen(false),
-        }}
-        pageDeleteDialogProps={{
-          open: pageDeleteOpen,
-          onOpenChange: setPageDeleteOpen,
-          title: t('pageDelete.title'),
-          description: t('pageDelete.description'),
-          onConfirm: () => {
-            handleDeletePage(shortcutsPageIndex);
-            setPageDeleteOpen(false);
-            setShortcutsPageIndex(Math.max(0, shortcutsPageIndex - 1));
-          },
         }}
         disableConsentDialog={{
           open: confirmDisableConsentOpen,
@@ -1660,7 +1770,7 @@ export default function App() {
         onConsent={handlePrivacyConsent} 
       />
       {weatherDebugVisible && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2">
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-[13010] pointer-events-auto flex flex-col gap-2">
           <div className="bg-popover border border-border rounded-xl p-2 shadow-lg flex flex-col gap-2">
             <div className="flex items-center justify-between px-1">
               <div className="text-xs text-muted-foreground">Weather Debug</div>

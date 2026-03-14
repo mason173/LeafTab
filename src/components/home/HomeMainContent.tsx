@@ -1,18 +1,18 @@
-import { motion } from 'framer-motion';
-import { useState, type ComponentProps } from 'react';
-import { useTranslation } from 'react-i18next';
-import { LoginBanner } from '@/components/LoginBanner';
+import type { CSSProperties, ComponentProps } from 'react';
+import { useTheme } from 'next-themes';
 import { SearchBar } from '@/components/SearchBar';
-import { ShortcutsCarousel } from '@/components/ShortcutsCarousel';
-import { TimeFontDialog } from '@/components/TimeFontDialog';
+import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
-import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
+import { RHYTHM_BACKGROUND_SCALE_AT_FULL_DRAWER } from './quickAccessDrawer.constants';
+import { QuickAccessDrawer } from './QuickAccessDrawer';
+import { InlineTime } from './InlineTime';
+import { useQuickAccessDrawer } from './useQuickAccessDrawer';
 
 type HomeContentFlags = Pick<
   DisplayModeLayoutFlags,
-  'showHeroWallpaperClock' | 'showShortcuts' | 'forceWhiteSearchTheme' | 'searchUsesMinimalStyle'
+  'showHeroWallpaperClock' | 'showShortcuts' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
 >;
 
 interface HomeMainContentProps {
@@ -32,18 +32,23 @@ interface HomeMainContentProps {
   layout: ResponsiveLayout;
   wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
   searchBarProps: ComponentProps<typeof SearchBar>;
-  shortcutsCarouselProps: ComponentProps<typeof ShortcutsCarousel>;
+  shortcutGridProps: ComponentProps<typeof ShortcutGrid>;
 }
 
-const HOME_REVEAL_HIDDEN = { opacity: 0, y: 20, filter: 'blur(12px)' };
-const HOME_REVEAL_SHOWN = { opacity: 1, y: 0, filter: 'blur(0px)' };
+const HOME_BLOCK_ENTER_MIN_DISTANCE_PX = 320;
+const HOME_BLOCK_ENTER_EXTRA_OFFSET_PX = 120;
+const HOME_BLOCK_ENTER_DURATION_MS = 680;
+const HOME_BLOCK_ENTER_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
+const HOME_WALLPAPER_BLOCK_LIFT_PX = 28;
+const HOME_BACKGROUND_SCALE_AT_FULL_DRAWER = 0.965;
 
 export function HomeMainContent({
   visible,
-  user,
-  loginBannerVisible,
-  onLoginRequest,
-  onDismissLoginBanner,
+  user: _user,
+  loginBannerVisible: _loginBannerVisible,
+  onLoginRequest: _onLoginRequest,
+  onDismissLoginBanner: _onDismissLoginBanner,
   modeFlags,
   showTime,
   displayMode,
@@ -55,138 +60,117 @@ export function HomeMainContent({
   layout,
   wallpaperClockProps,
   searchBarProps,
-  shortcutsCarouselProps,
+  shortcutGridProps,
 }: HomeMainContentProps) {
+  const { resolvedTheme } = useTheme();
+  const drawer = useQuickAccessDrawer({
+    displayMode,
+    showShortcuts: modeFlags.showShortcuts,
+    disableScrollInteraction: Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen),
+  });
+  const drawerScrollLocked = Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen);
+
+  const homeTopOffsetPercent = Math.max(
+    0,
+    ((layout.mainTopMargin + 50) / Math.max(layout.viewportHeight, 1)) * 100 - HOME_TOP_OFFSET_NUDGE_VH,
+  );
+  const homeTopOffsetPx = (homeTopOffsetPercent / 100) * layout.viewportHeight;
+  const estimatedHomeBlockHeight = modeFlags.showHeroWallpaperClock
+    ? layout.wallpaperHeight
+    : Math.max(layout.clockFontSize + 120, 240);
+  const homeBlockEnterDistancePx = Math.max(
+    HOME_BLOCK_ENTER_MIN_DISTANCE_PX,
+    homeTopOffsetPx + estimatedHomeBlockHeight + HOME_BLOCK_ENTER_EXTRA_OFFSET_PX,
+  );
+  const homeBlockEnterFromTopPx = -homeBlockEnterDistancePx;
+
+  const drawerShortcutFadeHeight = shortcutGridProps.cardVariant === 'compact'
+    ? Math.max(66, Math.round(((shortcutGridProps.compactIconSize ?? 72) + 24) * 0.92))
+    : Math.max(58, Math.round(((shortcutGridProps.defaultIconSize ?? 36) + (shortcutGridProps.defaultVerticalPadding ?? 8) * 2) * 1.05));
+  const drawerShortcutBottomInset = drawerShortcutFadeHeight + 16;
+
+  const homeWallpaperBlockTranslateYPx = -HOME_WALLPAPER_BLOCK_LIFT_PX * drawer.drawerLayoutProgress;
+  const homeBackgroundScaleAtFullDrawer = displayMode === 'fresh'
+    ? RHYTHM_BACKGROUND_SCALE_AT_FULL_DRAWER
+    : HOME_BACKGROUND_SCALE_AT_FULL_DRAWER;
+  const homeBackgroundScale = 1 + (homeBackgroundScaleAtFullDrawer - 1) * drawer.drawerLayoutProgress;
+
+  const isLightTheme = resolvedTheme !== 'dark';
+  const useExpandedLightSearchSurface = isLightTheme && drawer.isDrawerExpanded;
+  const drawerShortcutForceWhiteText = displayMode === 'fresh' && !(isLightTheme && drawer.isDrawerExpanded);
+  const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
+    ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
+    : undefined;
+
   if (!visible) return null;
 
   return (
-    <div className="flex flex-col items-center flex-1 w-full" style={{ marginTop: layout.mainTopMargin + 50 }}>
+    <>
       <div
-        className="max-w-full flex flex-col items-stretch"
-        style={{ width: layout.contentWidth, gap: layout.mainGap + 12 }}
+        className="flex flex-col items-center flex-1 w-full transform-gpu will-change-transform"
+        style={{
+          ['--home-block-enter-from' as string]: `${homeBlockEnterFromTopPx}px`,
+          marginTop: `${homeTopOffsetPercent}vh`,
+          animation: `home-block-enter ${HOME_BLOCK_ENTER_DURATION_MS}ms ${HOME_BLOCK_ENTER_EASE} both`,
+          willChange: 'transform, opacity',
+        }}
       >
-        {!user && loginBannerVisible && (
-          <motion.div
-            className="w-full transform-gpu will-change-transform"
-            initial={HOME_REVEAL_HIDDEN}
-            animate={HOME_REVEAL_SHOWN}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.02 }}
-          >
-            <LoginBanner
-              onLogin={onLoginRequest}
-              onClose={onDismissLoginBanner}
-            />
-          </motion.div>
-        )}
-
-        {modeFlags.showHeroWallpaperClock ? (
-          <motion.div
-            initial={HOME_REVEAL_HIDDEN}
-            animate={HOME_REVEAL_SHOWN}
-            transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-            className="w-full transform-gpu will-change-transform"
-          >
-            <WallpaperClock {...wallpaperClockProps} />
-          </motion.div>
-        ) : (
-          showTime && (
-            <motion.div
-              initial={HOME_REVEAL_HIDDEN}
-              animate={HOME_REVEAL_SHOWN}
-              transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-              className="w-full transform-gpu will-change-transform"
-            >
-              <InlineTime
-                time={time}
-                date={date}
-                lunar={lunar}
-                timeFont={timeFont}
-                onTimeFontChange={onTimeFontChange}
-                forceWhiteText={modeFlags.forceWhiteSearchTheme}
-                layout={layout}
-              />
-            </motion.div>
-          )
-        )}
-
-        <motion.div
-          className="relative w-full z-20 transform-gpu will-change-transform"
-          initial={HOME_REVEAL_HIDDEN}
-          animate={HOME_REVEAL_SHOWN}
-          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1], delay: 0.22 }}
-        >
-          <SearchBar
-            {...searchBarProps}
-            minimalistMode={modeFlags.searchUsesMinimalStyle}
-            forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
-          />
-        </motion.div>
-
-        {modeFlags.showShortcuts && (
-          <motion.div
-            className="relative w-full z-10 transform-gpu will-change-transform"
-            initial={HOME_REVEAL_HIDDEN}
-            animate={HOME_REVEAL_SHOWN}
-            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1], delay: 0.34 }}
-          >
-            <ShortcutsCarousel {...shortcutsCarouselProps} forceTextWhite={displayMode === 'fresh'} />
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function InlineTime({
-  time,
-  date,
-  lunar,
-  timeFont,
-  onTimeFontChange,
-  forceWhiteText,
-  layout,
-}: {
-  time: string;
-  date: Date;
-  lunar: string;
-  timeFont: string;
-  onTimeFontChange: (font: string) => void;
-  forceWhiteText: boolean;
-  layout: ResponsiveLayout;
-}) {
-  const { i18n } = useTranslation();
-  const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-  const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
-  return (
-    <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
-      <div className="absolute inset-0 pointer-events-none opacity-0" />
-      <div className="relative z-10 pointer-events-none transform-gpu flex flex-col items-center justify-center py-6">
-        <button
-          type="button"
-          className={`${forceWhiteText ? 'text-white text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
-          style={{ fontFamily: timeFont, fontSize: layout.clockFontSize }}
-          onClick={() => setTimeFontDialogOpen(true)}
-          aria-label={time}
-        >
-          <SlidingClockTime time={time} />
-        </button>
-        <TimeFontDialog
-          open={timeFontDialogOpen}
-          onOpenChange={setTimeFontDialogOpen}
-          currentFont={timeFont}
-          previewTime={time}
-          onSelect={onTimeFontChange}
-        />
         <div
-          className={`flex items-center gap-3 mt-2 font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}
-          style={{ fontSize: layout.clockMetaFontSize }}
+          className="max-w-full flex flex-col items-stretch"
+          style={{
+            width: layout.contentWidth,
+            gap: layout.mainGap + 12,
+            transform: `translate3d(0, ${homeWallpaperBlockTranslateYPx}px, 0) scale(${homeBackgroundScale})`,
+            transformOrigin: 'center top',
+          }}
         >
-          <span>{dateString} {weekday}</span>
-          {lunar && <span>{lunar}</span>}
+          {modeFlags.showHeroWallpaperClock ? (
+            <div className="w-full transform-gpu will-change-transform">
+              <WallpaperClock {...wallpaperClockProps} />
+            </div>
+          ) : (
+            showTime && (
+              <div className="w-full transform-gpu will-change-transform">
+                <InlineTime
+                  time={time}
+                  date={date}
+                  lunar={lunar}
+                  timeFont={timeFont}
+                  onTimeFontChange={onTimeFontChange}
+                  forceWhiteText={modeFlags.forceWhiteSearchTheme}
+                  layout={layout}
+                />
+              </div>
+            )
+          )}
         </div>
       </div>
-    </div>
+
+      <QuickAccessDrawer
+        modeFlags={modeFlags}
+        contentWidth={layout.contentWidth}
+        quickAccessOpen={drawer.quickAccessOpen}
+        quickAccessSnapPoint={drawer.quickAccessSnapPoint}
+        isDrawerExpanded={drawer.isDrawerExpanded}
+        drawerOverlayOpacity={drawer.drawerOverlayOpacity}
+        drawerSurfaceOpacity={drawer.drawerSurfaceOpacity}
+        drawerBottomBounceOffsetPx={drawer.drawerBottomBounceOffsetPx}
+        drawerContentTopPaddingPx={drawer.drawerContentTopPaddingPx}
+        drawerContentBackdropBlurPx={drawer.drawerContentBackdropBlurPx}
+        drawerPanelHeightVh={drawer.drawerPanelHeightVh}
+        drawerShortcutFadeHeight={drawerShortcutFadeHeight}
+        drawerShortcutBottomInset={drawerShortcutBottomInset}
+        drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
+        drawerScrollLocked={drawerScrollLocked}
+        drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
+        subtleDarkTone={useExpandedLightSearchSurface}
+        drawerWheelAreaRef={drawer.drawerWheelAreaRef}
+        drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
+        searchBarProps={searchBarProps}
+        shortcutGridProps={shortcutGridProps}
+        onDrawerOpenChange={drawer.handleDrawerOpenChange}
+        onActiveSnapPointChange={drawer.handleActiveSnapPointChange}
+      />
+    </>
   );
 }

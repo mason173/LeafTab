@@ -4,7 +4,15 @@ import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
 
 const SEARCH_HISTORY_KEY = 'search_history';
+const SEARCH_ENGINE_KEY = 'search_engine';
 const MAX_SEARCH_HISTORY = 15;
+const DEFAULT_SEARCH_ENGINE: SearchEngine = 'system';
+const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, string> = {
+  google: 'https://www.google.com/search?q=%s',
+  bing: 'https://www.bing.com/search?q=%s',
+  duckduckgo: 'https://duckduckgo.com/?q=%s',
+  baidu: 'https://www.baidu.com/s?wd=%s',
+};
 
 export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, openInNewTab: boolean) {
   const { t } = useTranslation();
@@ -27,14 +35,24 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
   const [historySelectedIndex, setHistorySelectedIndex] = useState(-1);
   const skipNextHistoryOpen = useRef(false);
 
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>('google'); // Default to Google for compliance mode
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
+    try {
+      const saved = (localStorage.getItem(SEARCH_ENGINE_KEY) || '').trim();
+      if (saved === 'system' || saved === 'google' || saved === 'bing' || saved === 'duckduckgo' || saved === 'baidu') {
+        return saved;
+      }
+    } catch {}
+    return DEFAULT_SEARCH_ENGINE;
+  });
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  // useEffect(() => {
-  //   localStorage.setItem('search_engine', searchEngine);
-  // }, [searchEngine]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SEARCH_ENGINE_KEY, searchEngine);
+    } catch {}
+  }, [searchEngine]);
 
   useEffect(() => {
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
@@ -73,20 +91,25 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
       }
       window.open(targetUrl, openInNewTab ? '_blank' : '_self');
     } else {
-      // Chrome Search API Compliance: Use chrome.search.query
-      // This respects the user's default browser search engine settings
-      if (typeof chrome !== 'undefined' && chrome.search && chrome.search.query) {
+      if (searchEngine === 'system' && typeof chrome !== 'undefined' && chrome.search?.query) {
         chrome.search.query({
           text: query,
-          disposition: openInNewTab ? 'NEW_TAB' : 'CURRENT_TAB'
+          disposition: openInNewTab ? 'NEW_TAB' : 'CURRENT_TAB',
         });
+        return;
+      }
+
+      const template = searchEngine === 'system'
+        ? SEARCH_ENGINE_URL_TEMPLATES.bing
+        : SEARCH_ENGINE_URL_TEMPLATES[searchEngine];
+      const searchUrl = template.replace('%s', encodeURIComponent(query));
+      if (openInNewTab) {
+        window.open(searchUrl, '_blank', 'noopener,noreferrer');
       } else {
-        // Fallback for development or if API is not available (defaults to Google)
-        const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-        window.open(searchUrl, openInNewTab ? '_blank' : '_self');
+        window.location.href = searchUrl;
       }
     }
-  }, [addSearchHistoryEntry, openInNewTab]); // Removed searchEngine dependency
+  }, [addSearchHistoryEntry, openInNewTab, searchEngine]);
 
   const handleSearch = useCallback(() => {
     if (historySelectedIndex !== -1 && filteredHistoryItems[historySelectedIndex]) {
@@ -99,14 +122,12 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
   }, [historySelectedIndex, filteredHistoryItems, openSearchWithQuery, searchValue]);
 
   const handleEngineClick = () => {
-    // Disable dropdown for compliance
-    // setDropdownOpen(!dropdownOpen);
+    setDropdownOpen(!dropdownOpen);
   };
 
   const handleEngineSelect = (engine: SearchEngine) => {
-    // Disable engine selection for compliance
-    // setSearchEngine(engine);
-    // setDropdownOpen(false);
+    setSearchEngine(engine);
+    setDropdownOpen(false);
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {

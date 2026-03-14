@@ -32,7 +32,7 @@ export type DisplayModeLayoutFlags = {
   showFloatingWallpaperSelector: boolean;
   showShortcuts: boolean;
   forceWhiteSearchTheme: boolean;
-  searchUsesMinimalStyle: boolean;
+  searchUsesBlankStyle: boolean;
 };
 
 export const getDisplayModeLayoutFlags = (mode: DisplayMode): DisplayModeLayoutFlags => {
@@ -47,7 +47,7 @@ export const getDisplayModeLayoutFlags = (mode: DisplayMode): DisplayModeLayoutF
     showFloatingWallpaperSelector: !isPanoramic,
     showShortcuts: !isBlank,
     forceWhiteSearchTheme: !isPanoramic,
-    searchUsesMinimalStyle: isBlank,
+    searchUsesBlankStyle: isBlank,
   };
 };
 

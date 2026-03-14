@@ -86,15 +86,16 @@ export default {
       },
       shortcutsStyle: {
         label: "捷徑樣式",
-        entryDescription: "切換捷徑展示樣式與密度",
+        entryDescription: "切換捷徑樣式並設定網格列數與基礎行數",
         open: "開啟",
         title: "捷徑樣式設定",
-        description: "選擇捷徑樣式並調整網格密度",
+        description: "選擇捷徑樣式，並設定單頁網格的列數與基礎行數",
         rich: "豐富",
         compact: "簡約",
         showName: "顯示名稱",
         showNameDesc: "開啟後在圖示下顯示捷徑標題",
-        density: "捷徑密度"
+        columns: "網格列數",
+        rows: "基礎行數"
       },
       backup: {
         label: "資料備份與還原",
@@ -367,6 +368,7 @@ export default {
     search: {
       placeholder: "搜尋你想找的內容...",
       placeholderDynamic: "搜尋你想找的內容或輸入網址...",
+      systemEngine: "系統預設",
       historyTitle: "搜尋歷史",
       clearHistory: "清空",
       noHistory: "暫無搜尋記錄"
@@ -398,7 +400,9 @@ export default {
       urlPlaceholder: "請輸入網址",
       errors: {
         fillAll: "請填寫完整資訊",
-        fillAllDesc: "請輸入捷徑標題和連結地址"
+        fillAllDesc: "請輸入捷徑標題和連結地址",
+        duplicateUrl: "此網站已存在捷徑",
+        duplicateUrlDesc: "同一網站僅保留一個捷徑，請確認網址後再試"
       }
     },
     onboarding: {

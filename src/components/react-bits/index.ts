@@ -24,3 +24,6 @@ export type { GalaxyProps } from './galaxy';
 
 export { default as Iridescence } from './iridescence';
 export type { IridescenceProps } from './iridescence';
+
+export { GradualBlur } from './gradual-blur';
+export type { GradualBlurProps, GradualBlurDirection } from './gradual-blur';

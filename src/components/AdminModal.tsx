@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/sonner";
 import { normalizeApiBase } from "@/utils";
+import { ensureOriginPermission } from "@/utils/extensionPermissions";
 import { DEFAULT_ICON_LIBRARY_URL, getIconLibraryUrl, normalizeIconLibraryUrl, setIconLibraryUrl } from "@/utils/iconLibrary";
 
 export function AdminModal({
@@ -166,7 +167,7 @@ export function AdminModal({
     toast.success(t("settings.server.customSaved"));
   };
 
-  const handleSaveIconLibraryUrl = () => {
+  const handleSaveIconLibraryUrl = async () => {
     const raw = iconLibraryUrlDraft.trim();
     if (!raw) {
       setIconLibraryUrl('');
@@ -187,6 +188,18 @@ export function AdminModal({
       toast.success(t("settings.iconLibrary.restored"));
       return;
     }
+
+    try {
+      const granted = await ensureOriginPermission(normalized, { requestIfNeeded: true });
+      if (!granted) {
+        toast.error(t("settings.iconLibrary.permissionDenied", { defaultValue: "未授权访问该图标库域名，请在弹窗中允许站点访问权限后重试。" }));
+        return;
+      }
+    } catch {
+      toast.error(t("settings.iconLibrary.permissionRequestFailed", { defaultValue: "申请站点访问权限失败，请稍后重试。" }));
+      return;
+    }
+
     setIconLibraryUrl(normalized);
     setIconLibraryUrlState(normalized);
     setIconLibraryUrlDraft(normalized);

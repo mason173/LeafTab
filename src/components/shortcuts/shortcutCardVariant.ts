@@ -3,7 +3,7 @@ export const SHORTCUT_CARD_VARIANTS = ['default', 'compact'] as const;
 export type ShortcutCardVariant = (typeof SHORTCUT_CARD_VARIANTS)[number];
 export type ShortcutLayoutDensity = 'compact' | 'regular' | 'large';
 
-export const DEFAULT_SHORTCUT_CARD_VARIANT: ShortcutCardVariant = 'default';
+export const DEFAULT_SHORTCUT_CARD_VARIANT: ShortcutCardVariant = 'compact';
 
 export function parseShortcutCardVariant(value: string | null | undefined): ShortcutCardVariant {
   if (value === 'default') return 'default';
@@ -15,12 +15,23 @@ export function getShortcutColumns(
   variant: ShortcutCardVariant,
   density: ShortcutLayoutDensity = 'regular',
 ): number {
+  void density;
+  return variant === 'compact' ? 9 : 4;
+}
+
+export function getShortcutColumnBounds(variant: ShortcutCardVariant): { min: number; max: number } {
   if (variant === 'compact') {
-    if (density === 'compact') return 9;
-    if (density === 'large') return 10;
-    return 9;
+    return { min: 3, max: 12 };
   }
-  if (density === 'compact') return 4;
-  if (density === 'large') return 5;
-  return 4;
+  return { min: 2, max: 6 };
+}
+
+export function clampShortcutGridColumns(
+  value: number,
+  variant: ShortcutCardVariant,
+  density: ShortcutLayoutDensity = 'regular',
+): number {
+  if (!Number.isFinite(value)) return getShortcutColumns(variant, density);
+  const { min, max } = getShortcutColumnBounds(variant);
+  return Math.min(max, Math.max(min, Math.floor(value)));
 }

@@ -65,6 +65,7 @@ export const fetchShortcutsWithDeps = async ({
   setters,
 }: FetchDeps): Promise<'success' | 'conflict' | 'error' | 'noop'> => {
   if (!user) return 'noop';
+  const shouldPromptOnThisLogin = Boolean(promptOnDiff);
 
   const {
     cloudShortcutsVersionRef,
@@ -98,7 +99,7 @@ export const fetchShortcutsWithDeps = async ({
           setScenarioModes(payload.scenarioModes);
           setSelectedScenarioId(payload.selectedScenarioId);
           setScenarioShortcuts(payload.scenarioShortcuts);
-          if (!promptOnDiff) {
+          if (!shouldPromptOnThisLogin) {
             setCloudSyncInitialized(true);
           }
           pendingPayloadFromCache = payload;
@@ -155,6 +156,7 @@ export const fetchShortcutsWithDeps = async ({
 
       const forceLocalFirstOnFirstLogin = promptOnDiff
         && localPayload
+        && !cloudPayload
         && localStorage.getItem(FIRST_LOGIN_LOCAL_FIRST_KEY) === user;
       if (forceLocalFirstOnFirstLogin && localPayload) {
         setScenarioModes(localPayload.scenarioModes);
@@ -190,7 +192,7 @@ export const fetchShortcutsWithDeps = async ({
         return 'success';
       }
 
-      const shouldPromptConflict = promptOnDiff;
+      const shouldPromptConflict = shouldPromptOnThisLogin;
       if (shouldPromptConflict && localPayload && cloudPayload && !areSyncPayloadsEqual(localPayload, cloudPayload)) {
         setPendingLocalPayload(localPayload);
         setPendingCloudPayload(cloudPayload);
@@ -202,7 +204,7 @@ export const fetchShortcutsWithDeps = async ({
       }
 
       // Outside explicit login conflict flow, always keep local state first.
-      if (!promptOnDiff && localPayload && cloudPayload && !areSyncPayloadsEqual(localPayload, cloudPayload)) {
+      if (!shouldPromptOnThisLogin && localPayload && cloudPayload && !areSyncPayloadsEqual(localPayload, cloudPayload)) {
         setScenarioModes(localPayload.scenarioModes);
         setSelectedScenarioId(localPayload.selectedScenarioId);
         setScenarioShortcuts(localPayload.scenarioShortcuts);

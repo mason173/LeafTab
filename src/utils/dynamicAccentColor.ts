@@ -1,7 +1,5 @@
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-
-type WallpaperMode = 'bing' | 'weather' | 'color' | 'dynamic' | 'custom';
-type DynamicWallpaperEffect = 'prism' | 'silk' | 'light-rays' | 'beams' | 'galaxy' | 'iridescence';
+import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
 
 type DynamicAccentInput = {
   wallpaperMode: WallpaperMode;
@@ -134,52 +132,106 @@ const resolveColorAccent = (colorWallpaperId?: string) => {
   return matches[Math.floor(matches.length / 2)];
 };
 
-const resolveImageAccent = (imageUrl: string): Promise<string> => {
-  if (!imageUrl) return Promise.resolve('#3b82f6');
-  if (imageAccentCache.has(imageUrl)) return Promise.resolve(imageAccentCache.get(imageUrl)!);
-  return new Promise((resolve) => {
+const FALLBACK_IMAGE_ACCENT = '#3b82f6';
+const REMOTE_URL_PATTERN = /^https?:\/\//i;
+
+const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(reader.error || new Error('read blob failed'));
+  reader.readAsDataURL(blob);
+});
+
+const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerPolicy?: ReferrerPolicy }) => {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.referrerPolicy = 'no-referrer';
+    if (options?.crossOrigin) img.crossOrigin = options.crossOrigin;
+    if (options?.referrerPolicy) img.referrerPolicy = options.referrerPolicy;
+    const timeout = window.setTimeout(() => reject(new Error('image-load-timeout')), 8000);
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) {
-        resolve('#3b82f6');
-        return;
-      }
-      const sampleWidth = 48;
-      const sampleHeight = 48;
-      canvas.width = sampleWidth;
-      canvas.height = sampleHeight;
-      ctx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
-      const data = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
-      let bestHue = 0.58;
-      let bestSat = 0.72;
-      let bestLight = 0.55;
-      let bestScore = -1;
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3];
-        if (alpha < 220) continue;
-        const { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-        if (s < 0.15 || l < 0.08 || l > 0.92) continue;
-        const score = s * 0.78 + (1 - Math.abs(l - 0.52)) * 0.22;
-        if (score > bestScore) {
-          bestScore = score;
-          bestHue = h;
-          bestSat = s;
-          bestLight = l;
+      window.clearTimeout(timeout);
+      resolve(img);
+    };
+    img.onerror = () => {
+      window.clearTimeout(timeout);
+      reject(new Error('image-load-failed'));
+    };
+    img.src = src;
+  });
+};
+
+const sampleAccentFromImage = (img: HTMLImageElement): string => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('canvas-context-unavailable');
+  const sampleWidth = 48;
+  const sampleHeight = 48;
+  canvas.width = sampleWidth;
+  canvas.height = sampleHeight;
+  ctx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
+  const data = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
+  let bestHue = 0.58;
+  let bestSat = 0.72;
+  let bestLight = 0.55;
+  let bestScore = -1;
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3];
+    if (alpha < 220) continue;
+    const { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+    if (s < 0.15 || l < 0.08 || l > 0.92) continue;
+    const score = s * 0.78 + (1 - Math.abs(l - 0.52)) * 0.22;
+    if (score > bestScore) {
+      bestScore = score;
+      bestHue = h;
+      bestSat = s;
+      bestLight = l;
+    }
+  }
+  const saturated = clamp(Math.max(0.58, bestSat), 0.58, 0.82);
+  const light = clamp(bestLight < 0.5 ? bestLight + 0.06 : bestLight - 0.02, 0.45, 0.62);
+  return hslToHex(bestHue, saturated, light);
+};
+
+const resolveImageAccent = async (imageUrl: string): Promise<string> => {
+  if (!imageUrl) return FALLBACK_IMAGE_ACCENT;
+  if (imageAccentCache.has(imageUrl)) return imageAccentCache.get(imageUrl)!;
+
+  const trySample = async (src: string, fromRemote: boolean) => {
+    const image = await loadImage(
+      src,
+      fromRemote ? { crossOrigin: 'anonymous', referrerPolicy: 'no-referrer' } : undefined,
+    );
+    return sampleAccentFromImage(image);
+  };
+
+  try {
+    const isRemote = REMOTE_URL_PATTERN.test(imageUrl);
+    const accent = await trySample(imageUrl, isRemote);
+    imageAccentCache.set(imageUrl, accent);
+    return accent;
+  } catch {
+    try {
+      // Fallback path for cross-origin image sampling failures:
+      // fetch image bytes first, then sample from a local data URL.
+      if (REMOTE_URL_PATTERN.test(imageUrl)) {
+        const response = await fetch(imageUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          if (blob instanceof Blob && blob.size > 0) {
+            const dataUrl = await blobToDataUrl(blob);
+            const accent = await trySample(dataUrl, false);
+            imageAccentCache.set(imageUrl, accent);
+            return accent;
+          }
         }
       }
-      const saturated = clamp(Math.max(0.58, bestSat), 0.58, 0.82);
-      const light = clamp(bestLight < 0.5 ? bestLight + 0.06 : bestLight - 0.02, 0.45, 0.62);
-      const accent = hslToHex(bestHue, saturated, light);
-      imageAccentCache.set(imageUrl, accent);
-      resolve(accent);
-    };
-    img.onerror = () => resolve('#3b82f6');
-    img.src = imageUrl;
-  });
+    } catch {
+      // Ignore and use fallback.
+    }
+  }
+
+  imageAccentCache.set(imageUrl, FALLBACK_IMAGE_ACCENT);
+  return FALLBACK_IMAGE_ACCENT;
 };
 
 export const resolveDynamicAccentColor = async (input: DynamicAccentInput) => {

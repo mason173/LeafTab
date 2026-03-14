@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction 
 import { toast } from '../components/ui/sonner';
 import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut } from '../types';
 import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
+import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 
 type SelectedShortcut = { index: number; shortcut: Shortcut } | null;
 type TranslateFn = (key: string, options?: any) => string;
@@ -15,10 +16,7 @@ type UseShortcutActionsParams = {
   currentInsertIndex: number | null;
   currentEditScenarioId: string;
   selectedShortcut: SelectedShortcut;
-  shortcutsPageCapacity: number;
   updateScenarioShortcuts: (updater: (prev: Shortcut[]) => Shortcut[]) => void;
-  getMaxPageIndex: (length: number) => number;
-  findInsertIndex: (startPageIndex: number) => { targetIndex: number; targetPage: number };
   localDirtyRef: MutableRefObject<boolean>;
   setScenarioModes: Dispatch<SetStateAction<ScenarioMode[]>>;
   setScenarioShortcuts: Dispatch<SetStateAction<ScenarioShortcuts>>;
@@ -41,10 +39,7 @@ export function useShortcutActions({
   currentInsertIndex,
   currentEditScenarioId,
   selectedShortcut,
-  shortcutsPageCapacity,
   updateScenarioShortcuts,
-  getMaxPageIndex,
-  findInsertIndex,
   localDirtyRef,
   setScenarioModes,
   setScenarioShortcuts,
@@ -115,67 +110,69 @@ export function useShortcutActions({
     setContextMenu({ x, y, kind: 'shortcut', shortcutIndex, shortcut });
   }, [setContextMenu]);
 
-  const handlePageContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  const handleGridContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     const menuWidth = 160;
     const menuHeight = 52;
     const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
     const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8);
-    setContextMenu({ x, y, kind: 'page' });
+    setContextMenu({ x, y, kind: 'grid' });
   }, [setContextMenu]);
 
-  const handlePageReorder = useCallback((pageIndex: number, nextShortcuts: Shortcut[]) => {
-    updateScenarioShortcuts((current) => {
-      const start = pageIndex * shortcutsPageCapacity;
-      const end = Math.min(start + shortcutsPageCapacity, current.length);
-      return [...current.slice(0, start), ...nextShortcuts, ...current.slice(end)];
-    });
-  }, [shortcutsPageCapacity, updateScenarioShortcuts]);
-
-  const moveShortcutToPage = useCallback((sourceIndex: number, targetPageInput: number, options?: { strict?: boolean; sourceShortcutId?: string }) => {
-    updateScenarioShortcuts((current) => {
-      const resolvedSourceIndex = (() => {
-        const sourceId = options?.sourceShortcutId?.trim();
-        if (sourceId) {
-          const byId = current.findIndex((item) => item.id === sourceId);
-          if (byId >= 0) return byId;
-        }
-        return sourceIndex;
-      })();
-      if (resolvedSourceIndex < 0 || resolvedSourceIndex >= current.length) return current;
-      const maxPage = getMaxPageIndex(current.length);
-      const targetPage = Math.max(0, targetPageInput);
-      if (options?.strict && targetPage > maxPage) return current;
-      const moving = current[resolvedSourceIndex];
-      const rest = current.filter((_, index) => index !== resolvedSourceIndex);
-      const insertIndex = Math.min(rest.length, targetPage * shortcutsPageCapacity);
-      return [...rest.slice(0, insertIndex), moving, ...rest.slice(insertIndex)];
-    });
-  }, [getMaxPageIndex, shortcutsPageCapacity, updateScenarioShortcuts]);
+  const handleShortcutReorder = useCallback((nextShortcuts: Shortcut[]) => {
+    updateScenarioShortcuts(() => nextShortcuts);
+  }, [updateScenarioShortcuts]);
 
   const handleSaveShortcutEdit = useCallback((title: string, url: string) => {
-    if (!title || !url) {
+    const nextTitle = title.trim();
+    const nextUrl = url.trim();
+    if (!nextTitle || !nextUrl) {
       toast.error(translate('shortcutModal.errors.fillAll'), { description: translate('shortcutModal.errors.fillAllDesc') });
       return;
     }
 
-    reportDomain(url);
+    let duplicateFound = false;
+    let saved = false;
 
     if (shortcutModalMode === 'add') {
       if (currentInsertIndex === null) return;
-      const newShortcut: Shortcut = { id: Date.now().toString(), title, url, icon: '' };
       updateScenarioShortcuts((current) => {
+        if (hasShortcutUrlConflict(current, nextUrl)) {
+          duplicateFound = true;
+          return current;
+        }
+        const newShortcut: Shortcut = { id: Date.now().toString(), title: nextTitle, url: nextUrl, icon: '' };
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
+        saved = true;
         return [...current.slice(0, insertIndex), newShortcut, ...current.slice(insertIndex)];
       });
     } else {
       if (!selectedShortcut) return;
-      let newIcon = selectedShortcut.shortcut.icon;
-      if (url !== selectedShortcut.shortcut.url && newIcon.includes('api.iowen.cn')) newIcon = '';
-      updateScenarioShortcuts((current) => current.map((item, index) => (
-        index === selectedShortcut.index ? { ...item, title, url, icon: newIcon } : item
-      )));
+      updateScenarioShortcuts((current) => {
+        if (hasShortcutUrlConflict(current, nextUrl, selectedShortcut.index)) {
+          duplicateFound = true;
+          return current;
+        }
+        let newIcon = selectedShortcut.shortcut.icon;
+        const prevIdentity = getShortcutUrlIdentity(selectedShortcut.shortcut.url || '');
+        const nextIdentity = getShortcutUrlIdentity(nextUrl);
+        const urlChanged = nextIdentity ? prevIdentity !== nextIdentity : nextUrl !== (selectedShortcut.shortcut.url || '').trim();
+        if (urlChanged && newIcon.includes('api.iowen.cn')) newIcon = '';
+        saved = true;
+        return current.map((item, index) => (
+          index === selectedShortcut.index ? { ...item, title: nextTitle, url: nextUrl, icon: newIcon } : item
+        ));
+      });
     }
+
+    if (duplicateFound) {
+      toast.error(translate('shortcutModal.errors.duplicateUrl'));
+      return;
+    }
+
+    if (!saved) return;
+
+    reportDomain(nextUrl);
     setShortcutEditOpen(false);
     setSelectedShortcut(null);
     setCurrentInsertIndex(null);
@@ -188,18 +185,14 @@ export function useShortcutActions({
     setSelectedShortcut(null);
   }, [selectedShortcut, setSelectedShortcut, setShortcutDeleteOpen, updateScenarioShortcuts]);
 
-  const findOrCreateAvailableIndex = useCallback((startPageIndex: number) => {
-    const result = findInsertIndex(startPageIndex);
-    return result;
-  }, [findInsertIndex]);
-
-  const handleDeletePage = useCallback((pageIndex: number) => {
-    updateScenarioShortcuts((current) => {
-      const start = pageIndex * shortcutsPageCapacity;
-      const end = Math.min(start + shortcutsPageCapacity, current.length);
-      return [...current.slice(0, start), ...current.slice(end)];
-    });
-  }, [shortcutsPageCapacity, updateScenarioShortcuts]);
+  const handleConfirmDeleteShortcuts = useCallback((indices: number[]) => {
+    if (!Array.isArray(indices) || indices.length === 0) return;
+    const validIndices = new Set(
+      indices.filter((index) => Number.isInteger(index) && index >= 0),
+    );
+    if (validIndices.size === 0) return;
+    updateScenarioShortcuts((current) => current.filter((_, index) => !validIndices.has(index)));
+  }, [updateScenarioShortcuts]);
 
   return {
     handleCreateScenarioMode,
@@ -208,12 +201,10 @@ export function useShortcutActions({
     handleDeleteScenarioMode,
     handleShortcutOpen,
     handleShortcutContextMenu,
-    handlePageContextMenu,
-    handlePageReorder,
-    moveShortcutToPage,
+    handleGridContextMenu,
+    handleShortcutReorder,
     handleSaveShortcutEdit,
     handleConfirmDeleteShortcut,
-    findOrCreateAvailableIndex,
-    handleDeletePage,
+    handleConfirmDeleteShortcuts,
   };
 }
