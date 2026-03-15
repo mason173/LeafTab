@@ -8,6 +8,15 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.3",
+    date: "2026-03-15",
+    notes: [
+      t("changelog.items.release133MultiEngineSwitcher", { defaultValue: "支持多搜索引擎切换，搜索选择更灵活" }),
+      t("changelog.items.release133ManifestCopyPolish", { defaultValue: "精简扩展描述文案，整体表达更清晰" }),
+      t("changelog.items.release133Stability", { defaultValue: "例行修复与稳定性优化" }),
+    ],
+  },
+  {
     version: "1.3.2",
     date: "2026-03-15",
     notes: [
