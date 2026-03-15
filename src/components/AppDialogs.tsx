@@ -7,6 +7,7 @@ import AuthModal from './AuthModal';
 import ConfirmDialog from './ConfirmDialog';
 import ScenarioModeCreateDialog from './ScenarioModeCreateDialog';
 import SettingsModal from './SettingsModal';
+import { SearchSettingsModal } from './SearchSettingsModal';
 import ShortcutModal from './ShortcutModal';
 import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
 import { WebdavConfigDialog } from './WebdavConfigDialog';
@@ -26,6 +27,7 @@ type ConfirmDialogProps = ComponentProps<typeof ConfirmDialog>;
 type ScenarioModeCreateDialogProps = ComponentProps<typeof ScenarioModeCreateDialog>;
 type AuthModalProps = ComponentProps<typeof AuthModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
+type SearchSettingsModalProps = ComponentProps<typeof SearchSettingsModal>;
 type AdminModalProps = ComponentProps<typeof AdminModal>;
 type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
@@ -80,6 +82,7 @@ interface AppDialogsProps {
   scenarioEditDialogProps: ScenarioModeCreateDialogProps;
   authModalProps: AuthModalProps;
   settingsModalProps: SettingsModalProps;
+  searchSettingsModalProps: SearchSettingsModalProps;
   adminModalProps: AdminModalProps;
   aboutModalProps: AboutLeafTabModalProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
@@ -96,6 +99,7 @@ export function AppDialogs({
   scenarioEditDialogProps,
   authModalProps,
   settingsModalProps,
+  searchSettingsModalProps,
   adminModalProps,
   aboutModalProps,
   webdavConfigDialogProps,
@@ -114,6 +118,7 @@ export function AppDialogs({
       <ScenarioModeCreateDialog {...scenarioEditDialogProps} />
       <AuthModal {...authModalProps} />
       <SettingsModal {...settingsModalProps} />
+      <SearchSettingsModal {...searchSettingsModalProps} />
       <AdminModal {...adminModalProps} />
       <AboutLeafTabModal {...aboutModalProps} />
       <WebdavConfigDialog {...webdavConfigDialogProps} />

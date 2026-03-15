@@ -28,6 +28,7 @@ interface QuickAccessDrawerProps {
   isDrawerExpanded: boolean;
   drawerOverlayOpacity: number;
   drawerSurfaceOpacity: number;
+  drawerLayoutProgress: number;
   drawerBottomBounceOffsetPx: number;
   drawerContentTopPaddingPx: number;
   drawerContentBackdropBlurPx: number;
@@ -54,6 +55,7 @@ export function QuickAccessDrawer({
   isDrawerExpanded,
   drawerOverlayOpacity,
   drawerSurfaceOpacity,
+  drawerLayoutProgress,
   drawerBottomBounceOffsetPx,
   drawerContentTopPaddingPx,
   drawerContentBackdropBlurPx,
@@ -71,6 +73,8 @@ export function QuickAccessDrawer({
   onDrawerOpenChange,
   onActiveSnapPointChange,
 }: QuickAccessDrawerProps) {
+  const drawerTopCornerRadius = 32 * drawerLayoutProgress;
+
   return (
     <>
       <div
@@ -109,7 +113,7 @@ export function QuickAccessDrawer({
         setActiveSnapPoint={onActiveSnapPointChange}
       >
         <DrawerContent
-          className="z-[14010] bg-transparent border-transparent shadow-none data-[vaul-drawer-direction=bottom]:rounded-t-[32px]"
+          className="z-[14010] bg-transparent border-transparent shadow-none"
           overlayClassName="bg-transparent"
           overlayStyle={{
             opacity: 1,
@@ -122,6 +126,8 @@ export function QuickAccessDrawer({
             WebkitBackdropFilter: `blur(${drawerContentBackdropBlurPx.toFixed(1)}px)`,
             height: `${drawerPanelHeightVh}vh`,
             maxHeight: `${drawerPanelHeightVh}vh`,
+            borderTopLeftRadius: `${drawerTopCornerRadius.toFixed(2)}px`,
+            borderTopRightRadius: `${drawerTopCornerRadius.toFixed(2)}px`,
           }}
           showHandle={false}
         >

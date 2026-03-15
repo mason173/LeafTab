@@ -20,6 +20,48 @@ export default {
         label: "新标签页打开",
         description: "快捷方式默认在新标签页中打开"
       },
+      searchEngineTabSwitch: {
+        label: "Tab 切换搜索引擎",
+        description: "聚焦搜索框时，按 Tab 在搜索引擎间循环切换"
+      },
+      searchSettings: {
+        label: "搜索设置",
+        description: "把搜索功能调成你习惯的方式",
+        open: "打开",
+        title: "搜索设置",
+        items: {
+          tabSwitch: {
+            label: "Tab 切换搜索引擎",
+            description: "在搜索框里按 Tab 就能换搜索引擎",
+            tooltip: "先点一下搜索框，再按 Tab 切到下一个引擎；按 Shift+Tab 切回上一个。"
+          },
+          prefix: {
+            label: "快速指定搜索引擎",
+            description: "先写引擎简称，再加空格输入内容",
+            tooltip: "例如：g AI 用 Google 搜，bd 天气 用百度搜。只影响这一次，不会改默认引擎。"
+          },
+          siteDirect: {
+            label: "站点直达搜索",
+            description: "输入“站点名 + 关键词”，直接站内搜索",
+            tooltip: "支持 GitHub、GitLab、Gitee、知乎、B站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站点。示例：github react。"
+          },
+          siteShortcut: {
+            label: "站点快捷建议",
+            description: "输入站点名时，优先给你常用站点建议",
+            tooltip: "例如输入 git，会优先出现 GitHub / GitLab / Gitee，回车可直接打开。"
+          },
+          anyKeyCapture: {
+            label: "任意键直接搜索",
+            description: "打开新标签页后，直接打字就能开始搜",
+            tooltip: "不用先点击搜索框，在页面空白处输入字符会自动聚焦并开始输入。"
+          },
+          calculator: {
+            label: "计算器预览",
+            description: "输入算式会实时显示结果",
+            tooltip: "例如 12*8、(3+5)/2 会显示计算结果；按回车会把结果填入并复制到剪贴板。"
+          }
+        }
+      },
       timeFormat: {
         label: "24 小时制",
         description: "使用 24 小时制显示时间"
@@ -504,9 +546,14 @@ export default {
       logoutOfflineWarning: "当前处于离线状态或有未同步的更改，退出登录将导致未保存的数据丢失。确定要退出吗？"
     },
     search: {
-      placeholder: "搜索你想找的内容...",
-      placeholderDynamic: "搜索你想找的内容或输入网址...",
+      placeholder: "按任意键开始搜索，也可输入网址直达",
+      placeholderDynamic: "按任意键开始搜索，也可输入网址直达",
+      placeholderHintTabSwitch: "按 Tab 或 Shift+Tab 切换搜索引擎",
+      placeholderHintCalculator: "输入算式可直接计算，例如 12*8",
+      placeholderHintSiteDirect: "输入“站点+关键词”直达站内搜索，如 github react",
+      placeholderHintPrefix: "先输入引擎简称再空格，例如 g AI、bd 天气",
       systemEngine: "系统默认",
+      useEngineSearch: "使用{{engine}} 搜索",
       historyTitle: "搜索历史",
       clearHistory: "清空",
       noHistory: "暂无搜索记录"

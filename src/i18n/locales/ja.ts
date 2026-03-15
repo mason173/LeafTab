@@ -21,6 +21,48 @@ export default {
         label: "新しいタブで開く",
         description: "ショートカットをデフォルトで新しいタブで開く"
       },
+      searchEngineTabSwitch: {
+        label: "Tabで検索エンジン切替",
+        description: "検索ボックスにフォーカス中、Tabキーで検索エンジンを順番に切り替えます"
+      },
+      searchSettings: {
+        label: "検索設定",
+        description: "検索動作と検索機能のオン/オフを管理",
+        open: "開く",
+        title: "検索設定",
+        items: {
+          tabSwitch: {
+            label: "Tabで検索エンジン切替",
+            description: "検索ボックスにフォーカス中、Tabでエンジンを切り替えます",
+            tooltip: "検索ボックスがフォーカス中のとき、Tab / Shift+Tab で検索エンジンを順番に切り替えます。"
+          },
+          prefix: {
+            label: "Prefix 検索",
+            description: "g / bing / ddg / bd などで一時的にエンジンを指定",
+            tooltip: "例: `g AI` と入力すると、その検索だけ Google を使用します。"
+          },
+          siteDirect: {
+            label: "サイト直指定検索",
+            description: "「サイト名 + キーワード」を `site:domain` に変換",
+            tooltip: "GitHub、GitLab、Gitee、Zhihu、Bilibili、YouTube、Google、Bing、Baidu、Wikipedia、Reddit、Amazon などに対応。例: `github react`。"
+          },
+          siteShortcut: {
+            label: "サイト候補サジェスト",
+            description: "サイト名入力時に内蔵サイト候補を優先表示",
+            tooltip: "例: `git` で GitHub / GitLab / Gitee などを優先表示します。"
+          },
+          anyKeyCapture: {
+            label: "任意キーで即検索",
+            description: "新しいタブでそのまま入力すると検索欄に反映",
+            tooltip: "有効時、ページ上で文字キーを押すと検索ボックスへ自動フォーカスします。"
+          },
+          calculator: {
+            label: "計算プレビュー",
+            description: "式を入力すると計算結果を候補に表示",
+            tooltip: "例: `12*8` でドロップダウンに計算結果を表示します。"
+          }
+        }
+      },
       timeFormat: {
         label: "24時間表示",
         description: "時間を24時間形式で表示する"
@@ -388,7 +430,12 @@ export default {
     search: {
       placeholder: "検索したい内容を入力...",
       placeholderDynamic: "検索したい内容またはURLを入力...",
+      placeholderHintTabSwitch: "Tabキーで検索エンジンを切り替え",
+      placeholderHintCalculator: "数式を直接入力して計算",
+      placeholderHintSiteDirect: "サイト直指定：例 github react",
+      placeholderHintPrefix: "Prefix検索：例 g AI",
       systemEngine: "システム既定",
+      useEngineSearch: "{{engine}} で検索",
       historyTitle: "検索履歴",
       clearHistory: "クリア",
       noHistory: "検索履歴はありません"

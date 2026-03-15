@@ -21,6 +21,48 @@ export default {
         label: "새 탭에서 열기",
         description: "바로가기를 기본적으로 새 탭에서 열기"
       },
+      searchEngineTabSwitch: {
+        label: "Tab 검색엔진 전환",
+        description: "검색창에 포커스된 상태에서 Tab 키로 검색엔진을 순환 전환합니다"
+      },
+      searchSettings: {
+        label: "검색 설정",
+        description: "검색 동작과 고급 검색 기능을 관리합니다",
+        open: "열기",
+        title: "검색 설정",
+        items: {
+          tabSwitch: {
+            label: "Tab 검색엔진 전환",
+            description: "검색창 포커스 상태에서 Tab으로 엔진 전환",
+            tooltip: "검색창이 포커스된 상태에서 Tab / Shift+Tab으로 검색엔진을 빠르게 전환합니다."
+          },
+          prefix: {
+            label: "Prefix 검색",
+            description: "g / bing / ddg / bd 같은 접두어로 임시 엔진 지정",
+            tooltip: "예: `g AI` 입력 시 해당 검색만 Google로 실행되고 기본 엔진은 유지됩니다."
+          },
+          siteDirect: {
+            label: "사이트 직접 검색",
+            description: "`사이트 + 키워드`를 `site:domain` 검색으로 변환",
+            tooltip: "GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon 등 주요 사이트를 지원합니다. 예: `github react`."
+          },
+          siteShortcut: {
+            label: "사이트 바로가기 추천",
+            description: "사이트명을 입력하면 내장 사이트 추천을 우선 표시",
+            tooltip: "예: `git` 입력 시 GitHub / GitLab / Gitee 추천을 우선 노출합니다."
+          },
+          anyKeyCapture: {
+            label: "아무 키나 바로 검색",
+            description: "새 탭을 열고 바로 입력하면 검색창으로 자동 입력",
+            tooltip: "활성화하면 빈 영역에서 문자 키를 누를 때 검색창에 자동 포커스됩니다."
+          },
+          calculator: {
+            label: "계산기 미리보기",
+            description: "수식 입력 시 실시간 계산 결과를 추천에 표시",
+            tooltip: "예: `12*8` 입력 시 드롭다운에 계산 결과가 표시됩니다."
+          }
+        }
+      },
       timeFormat: {
         label: "24시간 형식",
         description: "시간을 24시간 형식으로 표시"
@@ -363,7 +405,12 @@ export default {
     search: {
       placeholder: "검색할 내용 입력...",
       placeholderDynamic: "검색할 내용 또는 URL 입력...",
+      placeholderHintTabSwitch: "Tab 키로 검색엔진 전환",
+      placeholderHintCalculator: "수식을 바로 입력해 계산",
+      placeholderHintSiteDirect: "사이트 직접 검색: 예 github react",
+      placeholderHintPrefix: "Prefix 검색: 예 g AI",
       systemEngine: "시스템 기본",
+      useEngineSearch: "{{engine}}로 검색",
       historyTitle: "검색 기록",
       clearHistory: "지우기",
       noHistory: "검색 기록 없음"

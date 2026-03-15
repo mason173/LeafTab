@@ -11,6 +11,16 @@ export type ScenarioShortcuts = Record<string, Shortcut[]>;
 
 export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
 
+export type SearchSuggestionItem = {
+  type: 'history' | 'shortcut' | 'engine-prefix' | 'calculator';
+  label: string;
+  value: string;
+  icon?: string;
+  timestamp?: number;
+  engine?: SearchEngine;
+  formattedValue?: string;
+};
+
 export interface SearchEngineConfig {
   name: string;
   url: string;

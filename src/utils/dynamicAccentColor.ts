@@ -25,12 +25,12 @@ const WEATHER_THEME_ACCENT: Record<WeatherTheme, string> = {
 };
 
 const DYNAMIC_EFFECT_ACCENT: Record<DynamicWallpaperEffect, string> = {
-  prism: '#4EA5FF',
-  silk: '#8C7EA1',
-  'light-rays': '#9ECFFF',
-  beams: '#6E8BFF',
-  galaxy: '#7A6CFF',
-  iridescence: '#56C7D9',
+  prism: '#5B8CFF',
+  silk: '#4C854C',
+  'light-rays': '#7FB6F5',
+  beams: '#6E829B',
+  galaxy: '#3ECFDD',
+  iridescence: '#D78BC7',
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));

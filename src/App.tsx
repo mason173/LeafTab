@@ -28,6 +28,8 @@ import { useRole } from './hooks/useRole';
 import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
 import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
+import { useRotatingText } from './hooks/useRotatingText';
+import type { SearchSuggestionItem } from './types';
 import { Shortcut } from './types';
 
 // Components
@@ -65,6 +67,15 @@ import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { renderDynamicWallpaper } from '@/components/wallpaper/dynamicWallpapers';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
+import { getShortcutSuggestionScore, normalizeSearchQuery, parseSearchEnginePrefix } from '@/utils/searchHelpers';
+import { getBuiltinSiteShortcutSuggestions } from '@/utils/siteSearch';
+import {
+  buildShortcutUsageKey,
+  getSuggestionUsageBoost,
+  readSuggestionUsageMap,
+  recordSuggestionUsage,
+} from '@/utils/suggestionPersonalization';
+import { getCalculatorPreview } from '@/utils/calculator';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -138,8 +149,10 @@ export default function App() {
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
+  const [isQuickAccessDrawerExpanded, setIsQuickAccessDrawerExpanded] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
       return sessionStorage.getItem('leaftab_weather_debug_visible') === 'true';
@@ -197,6 +210,12 @@ export default function App() {
     settingsOpen, setSettingsOpen,
     displayMode, setDisplayMode,
     openInNewTab, setOpenInNewTab,
+    tabSwitchSearchEngine, setTabSwitchSearchEngine,
+    searchPrefixEnabled, setSearchPrefixEnabled,
+    searchSiteDirectEnabled, setSearchSiteDirectEnabled,
+    searchSiteShortcutEnabled, setSearchSiteShortcutEnabled,
+    searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled, setSearchCalculatorEnabled,
     is24Hour, setIs24Hour,
     timeFont, setTimeFont,
     showSeconds, setShowSeconds,
@@ -246,8 +265,12 @@ export default function App() {
     handleSearch,
     handleEngineClick,
     handleEngineSelect,
+    cycleSearchEngine,
     openSearchWithQuery,
-  } = useSearch(searchInputRef as React.RefObject<HTMLInputElement>, openInNewTab);
+  } = useSearch(searchInputRef as React.RefObject<HTMLInputElement>, openInNewTab, {
+    prefixEnabled: searchPrefixEnabled,
+    siteDirectEnabled: searchSiteDirectEnabled,
+  });
 
   useEffect(() => {
     if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
@@ -463,47 +486,202 @@ export default function App() {
     } catch {}
   }, [API_URL, t]);
 
-  type SuggestionItem = { type: 'history' | 'shortcut'; label: string; value: string; icon?: string };
+  const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
+  const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
 
   const shortcutSuggestionItems = useMemo(() => {
+    const normalizedQuery = normalizeSearchQuery(searchValue);
+    if (!normalizedQuery) return [] as SearchSuggestionItem[];
+
     const all: { title: string; url: string; icon: string }[] = [];
     Object.values(scenarioShortcuts as Record<string, Shortcut[]>).forEach((list) => {
       (list || []).forEach((s) => all.push({ title: s.title || '', url: s.url || '', icon: s.icon || '' }));
     });
-    const q = searchValue.trim().toLowerCase();
-    if (!q) return [] as SuggestionItem[];
+
     const seen = new Set<string>();
-    const out: SuggestionItem[] = [];
+    const ranked: Array<{ item: SearchSuggestionItem; score: number; order: number }> = [];
+    let order = 0;
     for (const s of all) {
-      const title = s.title.toLowerCase();
-      const url = s.url.toLowerCase();
-      if (!s.url) continue;
-      if (title.includes(q) || url.includes(q)) {
-        const key = s.url.trim();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({ type: 'shortcut', label: s.title || s.url, value: s.url.trim(), icon: s.icon });
-      }
+      const url = s.url.trim();
+      if (!url) continue;
+
+      const score = getShortcutSuggestionScore({
+        title: s.title,
+        url,
+        normalizedQuery,
+      });
+      if (score === 0) continue;
+
+      const key = url;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      ranked.push({
+        item: { type: 'shortcut', label: s.title || url, value: url, icon: s.icon },
+        score: score * 100 + getSuggestionUsageBoost(suggestionUsageMap, buildShortcutUsageKey(url)),
+        order,
+      });
+      order += 1;
     }
-    return out.slice(0, 10);
-  }, [scenarioShortcuts, searchValue]);
+
+    ranked.sort((a, b) => b.score - a.score || a.order - b.order);
+    return ranked.slice(0, 10).map((entry) => entry.item);
+  }, [scenarioShortcuts, searchValue, suggestionUsageMap]);
+
+  const builtinSiteSuggestionItems = useMemo(() => {
+    if (!searchSiteShortcutEnabled) return [] as SearchSuggestionItem[];
+    const sites = getBuiltinSiteShortcutSuggestions(searchValue, 8);
+    const rankedSites = sites
+      .map((site, index) => ({
+        site,
+        score: (sites.length - index) * 100 + getSuggestionUsageBoost(suggestionUsageMap, buildShortcutUsageKey(site.url)),
+      }))
+      .sort((a, b) => b.score - a.score);
+    return rankedSites.map(({ site }) => ({
+      type: 'shortcut',
+      label: site.label,
+      value: site.url,
+      icon: '',
+    } as SearchSuggestionItem));
+  }, [searchSiteShortcutEnabled, searchValue, suggestionUsageMap]);
+
+  const calculatorSuggestionItem = useMemo(() => {
+    if (!searchCalculatorEnabled) return null;
+    const preview = getCalculatorPreview(searchValue);
+    if (!preview) return null;
+    return {
+      type: 'calculator',
+      label: preview.expression,
+      value: String(preview.result),
+      formattedValue: preview.resultText,
+    } as SearchSuggestionItem;
+  }, [searchCalculatorEnabled, searchValue]);
 
   const mergedSuggestionItems = useMemo(() => {
-    if (!searchValue.trim()) return filteredHistoryItems.map((h) => ({ type: 'history', label: h, value: h } as SuggestionItem));
+    if (!searchValue.trim()) {
+      return filteredHistoryItems.map((h) => ({
+        type: 'history',
+        label: h.query,
+        value: h.query,
+        timestamp: h.timestamp,
+      } as SearchSuggestionItem));
+    }
+    const { overrideEngine } = searchPrefixEnabled
+      ? parseSearchEnginePrefix(searchValue)
+      : { overrideEngine: null };
     const seen = new Set<string>();
-    const merged: SuggestionItem[] = [];
+    const merged: SearchSuggestionItem[] = [];
+    const getSuggestionKey = (item: SearchSuggestionItem) => {
+      if (item.type === 'shortcut') return `shortcut|${item.value}`;
+      if (item.type === 'history') return `history|${item.value}`;
+      if (item.type === 'engine-prefix') return `engine-prefix|${item.engine || ''}|${item.value}`;
+      return `${item.type}|${item.value}`;
+    };
+    if (overrideEngine) {
+      const prefixItem: SearchSuggestionItem = {
+        type: 'engine-prefix',
+        label: '',
+        value: searchValue,
+        engine: overrideEngine,
+      };
+      seen.add(getSuggestionKey(prefixItem));
+      merged.push(prefixItem);
+    }
+    if (calculatorSuggestionItem) {
+      const key = getSuggestionKey(calculatorSuggestionItem);
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(calculatorSuggestionItem);
+      }
+    }
+    for (const it of builtinSiteSuggestionItems) {
+      const key = getSuggestionKey(it);
+      if (!seen.has(key)) { seen.add(key); merged.push(it); }
+    }
     for (const it of shortcutSuggestionItems) {
-      const key = `${it.label}|${it.value}`;
+      const key = getSuggestionKey(it);
       if (!seen.has(key)) { seen.add(key); merged.push(it); }
     }
     for (const h of filteredHistoryItems) {
-      const key = `history|${h}`;
-      if (!seen.has(key)) { seen.add(key); merged.push({ type: 'history', label: h, value: h }); }
+      const historyItem: SearchSuggestionItem = { type: 'history', label: h.query, value: h.query, timestamp: h.timestamp };
+      const key = getSuggestionKey(historyItem);
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(historyItem);
+      }
     }
     return merged.slice(0, 15);
-  }, [searchValue, shortcutSuggestionItems, filteredHistoryItems]);
+  }, [searchValue, searchPrefixEnabled, calculatorSuggestionItem, builtinSiteSuggestionItems, shortcutSuggestionItems, filteredHistoryItems]);
+
+  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
+    if (item.type === 'calculator') {
+      setSearchValue(item.value);
+      setHistoryOpen(true);
+      setHistorySelectedIndex(-1);
+      const copyText = String(item.value ?? '').trim();
+      if (copyText) {
+        const copyWithFallback = async () => {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(copyText);
+            return;
+          }
+          const el = document.createElement('textarea');
+          el.value = copyText;
+          el.setAttribute('readonly', '');
+          el.style.position = 'fixed';
+          el.style.left = '-9999px';
+          document.body.appendChild(el);
+          el.select();
+          const copied = document.execCommand('copy');
+          document.body.removeChild(el);
+          if (!copied) throw new Error('copy_failed');
+        };
+        void copyWithFallback()
+          .then(() => {
+            toast.success(t('search.calculatorCopied', { defaultValue: '计算结果已复制到剪贴板' }));
+          })
+          .catch(() => {
+            toast.error(t('search.calculatorCopyFailed', { defaultValue: '复制失败，请手动复制' }));
+          });
+      }
+      requestAnimationFrame(() => {
+        const input = searchInputRef.current;
+        if (!input) return;
+        input.focus();
+        const len = input.value.length;
+        input.setSelectionRange(len, len);
+      });
+      return;
+    }
+
+    if (item.type === 'shortcut') {
+      const usageKey = buildShortcutUsageKey(item.value);
+      if (usageKey) {
+        recordSuggestionUsage(usageKey);
+        setSuggestionUsageVersion((prev) => prev + 1);
+      }
+    }
+    if (item.type !== 'engine-prefix') setSearchValue(item.label);
+    openSearchWithQuery(item.value);
+    setHistoryOpen(false);
+    setHistorySelectedIndex(-1);
+  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue, t]);
   
   const handleSuggestionKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && historyOpen) {
+      e.preventDefault();
+      setHistoryOpen(false);
+      setHistorySelectedIndex(-1);
+      return;
+    }
+
+    if (e.key === 'Tab' && ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
+      e.preventDefault();
+      cycleSearchEngine(e.shiftKey ? -1 : 1);
+      if (dropdownOpen) setDropdownOpen(false);
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!historyOpen) {
@@ -524,15 +702,58 @@ export default function App() {
     if (e.key === 'Enter') {
       if (historySelectedIndex !== -1 && mergedSuggestionItems[historySelectedIndex]) {
         e.preventDefault();
-        const item = mergedSuggestionItems[historySelectedIndex];
-        setSearchValue(item.label);
-        openSearchWithQuery(item.value);
-        setHistoryOpen(false);
-        setHistorySelectedIndex(-1);
+        openSuggestionItem(mergedSuggestionItems[historySelectedIndex]);
         return;
       }
     }
-  }, [historyOpen, mergedSuggestionItems, historySelectedIndex, setHistorySelectedIndex, setHistoryOpen, setSearchValue, openSearchWithQuery]);
+  }, [tabSwitchSearchEngine, cycleSearchEngine, dropdownOpen, setDropdownOpen, historyOpen, mergedSuggestionItems, historySelectedIndex, setHistorySelectedIndex, setHistoryOpen, openSuggestionItem]);
+
+  useEffect(() => {
+    const handleGlobalSearchHotkey = (event: KeyboardEvent) => {
+      const isHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k';
+      const isPrintableKey = !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && event.key.length === 1;
+      if (!isHotkey && !isPrintableKey) return;
+      if (isPrintableKey && !searchAnyKeyCaptureEnabled) return;
+
+      const input = searchInputRef.current;
+      if (!input) return;
+      const target = event.target as HTMLElement | null;
+      if (target && target !== input) {
+        const tag = target.tagName.toLowerCase();
+        const isEditable = target.isContentEditable || tag === 'textarea' || tag === 'select' || (tag === 'input' && target.getAttribute('type') !== 'button');
+        if (isEditable) return;
+      }
+      const hasOpenModal = Boolean(
+        document.querySelector('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"]')
+      );
+      if (hasOpenModal && target !== input) return;
+
+      if (isHotkey) {
+        event.preventDefault();
+        input.focus();
+        input.select();
+        setHistoryOpen(true);
+        if (mergedSuggestionItems.length > 0) setHistorySelectedIndex(0);
+        return;
+      }
+
+      if (target === input) return;
+      event.preventDefault();
+      input.focus();
+      setSearchValue((prev) => `${prev}${event.key}`);
+      setHistoryOpen(true);
+      setHistorySelectedIndex(-1);
+      requestAnimationFrame(() => {
+        const current = searchInputRef.current;
+        if (!current) return;
+        const len = current.value.length;
+        current.setSelectionRange(len, len);
+      });
+    };
+
+    window.addEventListener('keydown', handleGlobalSearchHotkey);
+    return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
+  }, [mergedSuggestionItems.length, searchAnyKeyCaptureEnabled, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
 
   const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
 
@@ -563,6 +784,7 @@ export default function App() {
   const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
     ? customWallpaper
     : (bingWallpaper || imgImage);
+  const shouldPauseDynamicWallpaperRender = wallpaperMode === 'dynamic' && isQuickAccessDrawerExpanded;
 
   const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
     user, setUserRole, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, API_URL
@@ -612,6 +834,10 @@ export default function App() {
     setShortcutsRowsPerColumn(rows);
     setSettingsOpen(false);
   }, [setShortcutsRowsPerColumn, setSettingsOpen]);
+
+  const handleOpenSearchSettings = useCallback(() => {
+    setSearchSettingsOpen(true);
+  }, []);
 
   const buildBackupData = useCallback(() => {
     return buildBackupDataV4({ scenarioModes, selectedScenarioId, scenarioShortcuts });
@@ -1115,11 +1341,12 @@ export default function App() {
       const target = event.target as Node;
       if (searchAreaRef.current && !searchAreaRef.current.contains(target)) {
         setHistoryOpen(false);
+        setHistorySelectedIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleHistoryOutside);
     return () => document.removeEventListener('mousedown', handleHistoryOutside);
-  }, [historyOpen, setHistoryOpen]);
+  }, [historyOpen, setHistoryOpen, setHistorySelectedIndex]);
   
   useEffect(() => {
     const handleEngineOutside = (event: MouseEvent) => {
@@ -1132,6 +1359,17 @@ export default function App() {
     document.addEventListener('mousedown', handleEngineOutside);
     return () => document.removeEventListener('mousedown', handleEngineOutside);
   }, [dropdownOpen, setDropdownOpen]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    if (mergedSuggestionItems.length === 0) {
+      if (historySelectedIndex !== -1) setHistorySelectedIndex(-1);
+      return;
+    }
+    if (historySelectedIndex < 0 || historySelectedIndex >= mergedSuggestionItems.length) {
+      setHistorySelectedIndex(0);
+    }
+  }, [historyOpen, mergedSuggestionItems.length, historySelectedIndex, setHistorySelectedIndex]);
 
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const countPayload = (payload: any) => {
@@ -1225,6 +1463,31 @@ export default function App() {
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
   };
+  const rotatingPlaceholderItems = useMemo(() => {
+    const items: string[] = [t('search.placeholderDynamic')];
+    if (ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
+      items.push(t('search.placeholderHintTabSwitch'));
+    }
+    if (searchCalculatorEnabled) {
+      items.push(t('search.placeholderHintCalculator'));
+    }
+    if (searchSiteDirectEnabled) {
+      items.push(t('search.placeholderHintSiteDirect'));
+    }
+    if (searchPrefixEnabled) {
+      items.push(t('search.placeholderHintPrefix'));
+    }
+    return items;
+  }, [
+    i18n.language,
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchSiteDirectEnabled,
+    t,
+    tabSwitchSearchEngine,
+  ]);
+  const rotatingSearchPlaceholder = useRotatingText(rotatingPlaceholderItems, 3000);
+
   const searchBarProps = {
     value: searchValue,
     onChange: handleSearchChange,
@@ -1236,16 +1499,19 @@ export default function App() {
     dropdownRef: searchDropdownRef,
     suggestionItems: mergedSuggestionItems,
     historyOpen,
-    onHistoryOpen: () => setHistoryOpen(true),
-    onSuggestionSelect: (item: SuggestionItem) => {
-      setSearchValue(item.label);
-      openSearchWithQuery(item.value);
-      setHistoryOpen(false);
+    onHistoryOpen: () => {
+      setHistoryOpen(true);
+      if (mergedSuggestionItems.length > 0) setHistorySelectedIndex(0);
     },
-    onHistoryClear: () => setSearchHistory([]),
+    onSuggestionSelect: openSuggestionItem,
+    onSuggestionHighlight: (index: number) => setHistorySelectedIndex(index),
+    onHistoryClear: () => {
+      setSearchHistory([]);
+      setHistorySelectedIndex(-1);
+    },
     onClear: () => setSearchValue(''),
     historyRef: searchAreaRef,
-    placeholder: t('search.placeholderDynamic'),
+    placeholder: rotatingSearchPlaceholder,
     onKeyDown: handleSuggestionKeyDown,
     historySelectedIndex,
     inputRef: searchInputRef,
@@ -1298,7 +1564,10 @@ export default function App() {
           {wallpaperMode === 'weather' ? (
             <WeatherLoopVideo src={freshWeatherVideo} />
           ) : wallpaperMode === 'dynamic' ? (
-            renderDynamicWallpaper(dynamicWallpaperEffect, 'background')
+            renderDynamicWallpaper(
+              dynamicWallpaperEffect,
+              shouldPauseDynamicWallpaperRender ? 'background-static' : 'background',
+            )
           ) : wallpaperMode === 'color' ? (
             <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : (
@@ -1333,6 +1602,7 @@ export default function App() {
         wallpaperClockProps={wallpaperClockProps}
         searchBarProps={searchBarProps}
         shortcutGridProps={shortcutGridProps}
+        onDrawerExpandedChange={setIsQuickAccessDrawerExpanded}
       />
       <WallpaperSelector
         {...wallpaperSelectorLayerProps}
@@ -1613,6 +1883,7 @@ export default function App() {
           onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
           openInNewTab,
           onOpenInNewTabChange: setOpenInNewTab,
+          onOpenSearchSettings: handleOpenSearchSettings,
           is24Hour,
           onIs24HourChange: setIs24Hour,
           showSeconds,
@@ -1644,6 +1915,22 @@ export default function App() {
           onWebdavEnable: handleEnableWebdavSync,
           onWebdavDisable: handleDisableWebdavSync,
           onVersionClick: handleVersionTap,
+        }}
+        searchSettingsModalProps={{
+          isOpen: searchSettingsOpen,
+          onOpenChange: setSearchSettingsOpen,
+          tabSwitchSearchEngine,
+          onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
+          searchPrefixEnabled,
+          onSearchPrefixEnabledChange: setSearchPrefixEnabled,
+          searchSiteDirectEnabled,
+          onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
+          searchSiteShortcutEnabled,
+          onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
+          searchAnyKeyCaptureEnabled,
+          onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
+          searchCalculatorEnabled,
+          onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
         }}
         adminModalProps={{
           open: adminModalOpen,

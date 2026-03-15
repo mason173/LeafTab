@@ -21,6 +21,48 @@ export default {
         label: "Mở trong tab mới",
         description: "Các lối tắt mở trong tab mới theo mặc định"
       },
+      searchEngineTabSwitch: {
+        label: "Tab đổi công cụ tìm kiếm",
+        description: "Khi ô tìm kiếm đang được focus, nhấn Tab để chuyển vòng giữa các công cụ tìm kiếm"
+      },
+      searchSettings: {
+        label: "Cài đặt tìm kiếm",
+        description: "Quản lý hành vi tìm kiếm và các tính năng tìm kiếm nhanh",
+        open: "Mở",
+        title: "Cài đặt tìm kiếm",
+        items: {
+          tabSwitch: {
+            label: "Tab đổi công cụ tìm kiếm",
+            description: "Nhấn Tab trong ô tìm kiếm để chuyển công cụ",
+            tooltip: "Khi ô tìm kiếm được focus, dùng Tab / Shift+Tab để chuyển nhanh công cụ tìm kiếm."
+          },
+          prefix: {
+            label: "Tìm kiếm Prefix",
+            description: "Dùng tiền tố g / bing / ddg / bd để đổi công cụ tạm thời",
+            tooltip: "Ví dụ: `g AI` sẽ tìm bằng Google cho truy vấn đó mà không đổi công cụ mặc định."
+          },
+          siteDirect: {
+            label: "Tìm kiếm trực tiếp theo site",
+            description: "Chuyển `site + từ khóa` thành truy vấn `site:domain`",
+            tooltip: "Hỗ trợ các site phổ biến như GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon... Ví dụ: `github react`."
+          },
+          siteShortcut: {
+            label: "Gợi ý site nhanh",
+            description: "Hiển thị gợi ý site tích hợp khi nhập tên trang",
+            tooltip: "Ví dụ nhập `git` có thể ưu tiên GitHub / GitLab / Gitee."
+          },
+          anyKeyCapture: {
+            label: "Gõ phím bất kỳ để tìm",
+            description: "Mở tab mới và gõ trực tiếp để nhập vào ô tìm kiếm",
+            tooltip: "Khi bật, nhấn phím ký tự ở vùng trống sẽ tự focus ô tìm kiếm và nhập nội dung."
+          },
+          calculator: {
+            label: "Xem trước máy tính",
+            description: "Hiển thị kết quả phép tính theo thời gian thực trong gợi ý",
+            tooltip: "Ví dụ nhập `12*8` sẽ hiện kết quả ngay trong danh sách gợi ý."
+          }
+        }
+      },
       timeFormat: {
         label: "Định dạng 24 giờ",
         description: "Hiển thị thời gian ở định dạng 24 giờ"
@@ -363,7 +405,12 @@ export default {
     search: {
       placeholder: "Tìm kiếm nội dung...",
       placeholderDynamic: "Tìm kiếm nội dung hoặc nhập URL...",
+      placeholderHintTabSwitch: "Nhấn Tab để đổi công cụ tìm kiếm",
+      placeholderHintCalculator: "Nhập biểu thức để tính nhanh",
+      placeholderHintSiteDirect: "Tìm theo site: ví dụ github react",
+      placeholderHintPrefix: "Tìm bằng prefix: ví dụ g AI",
       systemEngine: "Mặc định hệ thống",
+      useEngineSearch: "Tìm kiếm bằng {{engine}}",
       historyTitle: "Lịch sử tìm kiếm",
       clearHistory: "Xóa",
       noHistory: "Không có lịch sử tìm kiếm"

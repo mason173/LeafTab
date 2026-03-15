@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiCheckFill, RiMapPin2Line } from "@remixicon/react";
 import { Button } from "./ui/button";
@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from "./ui/utils";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { toast } from "./ui/sonner";
-import { fetchWeatherCitySuggestions, type WeatherCitySuggestion, useWeatherLocation } from "@/hooks/useWeatherLocation";
+import { useCitySearch } from "@/hooks/useCitySearch";
+import { fetchWeatherCitySuggestions, useWeatherLocation } from "@/hooks/useWeatherLocation";
 
 function WeatherCity({ city, variant }: { city: string; variant: "inverted" | "default" }) {
   return (
@@ -53,58 +54,23 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
   } = useWeatherLocation({ onWeatherUpdate });
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [cityQuery, setCityQuery] = useState("");
-  const [citySuggestions, setCitySuggestions] = useState<WeatherCitySuggestion[]>([]);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
-  const [isCitySearching, setIsCitySearching] = useState(false);
-
-  useEffect(() => {
-    if (!dialogOpen) return;
-    setCityQuery(manualCityName || "");
-    setSelectedCityId(null);
-    setCitySuggestions([]);
-  }, [dialogOpen, manualCityName]);
-
-  useEffect(() => {
-    if (!dialogOpen) return;
-    const keyword = cityQuery.trim();
-    if (keyword.length < 2) {
-      setCitySuggestions([]);
-      setSelectedCityId(null);
-      setIsCitySearching(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsCitySearching(true);
-    const timer = window.setTimeout(async () => {
-      try {
-        const list = await fetchWeatherCitySuggestions(keyword, i18n.language, 10);
-        if (cancelled) return;
-        setCitySuggestions(list);
-        setSelectedCityId((prev) => (prev && list.some((item) => item.id === prev) ? prev : null));
-      } catch {
-        if (!cancelled) {
-          setCitySuggestions([]);
-          setSelectedCityId(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsCitySearching(false);
-        }
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [cityQuery, dialogOpen, i18n.language]);
-
-  const selectedCity = useMemo(
-    () => citySuggestions.find((item) => item.id === selectedCityId) || null,
-    [citySuggestions, selectedCityId],
-  );
+  const {
+    query: cityQuery,
+    suggestions: citySuggestions,
+    selectedCity,
+    selectedCityId,
+    isSearching: isCitySearching,
+    setQuery: setCityQuery,
+    selectSuggestion,
+  } = useCitySearch({
+    open: dialogOpen,
+    initialQuery: manualCityName || "",
+    language: i18n.language,
+    fetchSuggestions: fetchWeatherCitySuggestions,
+    minQueryLength: 2,
+    maxSuggestions: 10,
+    debounceMs: 250,
+  });
 
   const weatherText = t(`weather.codes.${weatherData.weatherCode}`, { defaultValue: t("weather.unknown") });
   const displayWeather = `${weatherText} ${Math.round(weatherData.temperature)}°C`;
@@ -138,13 +104,13 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
       return;
     }
 
-    await refresh(true);
+    setDialogOpen(false);
     toast.success(
       t("weather.manualCitySet", {
         defaultValue: "Manual city updated",
       }),
     );
-    setDialogOpen(false);
+    void refresh(true);
   }, [refresh, selectedCity, setManualLocation, t]);
 
   return (
@@ -206,10 +172,7 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
                     <div className="rounded-xl border border-border bg-secondary/30">
                       <CommandInput
                         value={cityQuery}
-                        onValueChange={(value) => {
-                          setCityQuery(value);
-                          setSelectedCityId(null);
-                        }}
+                        onValueChange={setCityQuery}
                         placeholder={t("weather.manualCityPlaceholder", { defaultValue: "Search city, e.g. Shanghai" })}
                         disabled={isRefreshing}
                         className="h-11"
@@ -244,8 +207,7 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
                               key={item.id}
                               value={item.id}
                               onSelect={() => {
-                                setSelectedCityId(item.id);
-                                setCityQuery(item.displayName);
+                                selectSuggestion(item);
                               }}
                               className={cn(
                                 "mx-1 my-0.5 rounded-xl px-3 py-2 data-[selected=true]:bg-secondary/60 data-[selected=true]:text-foreground",

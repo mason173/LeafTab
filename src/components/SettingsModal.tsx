@@ -104,6 +104,7 @@ interface SettingsModalProps {
   onShortcutGridColumnsChange: (columns: number) => void;
   openInNewTab: boolean;
   onOpenInNewTabChange: (checked: boolean) => void;
+  onOpenSearchSettings?: () => void;
   is24Hour: boolean;
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
@@ -154,6 +155,7 @@ export default function SettingsModal({
   onShortcutGridColumnsChange,
   openInNewTab,
   onOpenInNewTabChange,
+  onOpenSearchSettings,
   is24Hour,
   onIs24HourChange,
   showSeconds,
@@ -224,6 +226,7 @@ export default function SettingsModal({
   const [shortcutStyleDialogOpen, setShortcutStyleDialogOpen] = useState(false);
   const shortcutStyleDialogTimerRef = useRef<number | null>(null);
   const wallpaperSettingsDialogTimerRef = useRef<number | null>(null);
+  const searchSettingsDialogTimerRef = useRef<number | null>(null);
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
     if (mode === 'panoramic') return <RiDashboardFill className={className} />;
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
@@ -644,6 +647,18 @@ export default function SettingsModal({
     }, 200);
   };
 
+  const handleOpenSearchSettings = () => {
+    onOpenChange(false);
+    if (searchSettingsDialogTimerRef.current) {
+      window.clearTimeout(searchSettingsDialogTimerRef.current);
+      searchSettingsDialogTimerRef.current = null;
+    }
+    searchSettingsDialogTimerRef.current = window.setTimeout(() => {
+      onOpenSearchSettings?.();
+      searchSettingsDialogTimerRef.current = null;
+    }, 200);
+  };
+
   useEffect(() => {
     return () => {
       if (shortcutStyleDialogTimerRef.current) {
@@ -653,6 +668,10 @@ export default function SettingsModal({
       if (wallpaperSettingsDialogTimerRef.current) {
         window.clearTimeout(wallpaperSettingsDialogTimerRef.current);
         wallpaperSettingsDialogTimerRef.current = null;
+      }
+      if (searchSettingsDialogTimerRef.current) {
+        window.clearTimeout(searchSettingsDialogTimerRef.current);
+        searchSettingsDialogTimerRef.current = null;
       }
     };
   }, []);
@@ -904,6 +923,21 @@ export default function SettingsModal({
           </div>
           )}
             <Separator className="bg-border/60" />
+
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.searchSettings.label')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.searchSettings.description')}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                onClick={handleOpenSearchSettings}
+              >
+                {t('settings.searchSettings.open')}
+              </Button>
+            </div>
 
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
