@@ -1,0 +1,10 @@
+{
+  "githubRelease": {
+    "repo": "mason173/LeafTab",
+    "channels": [
+      "community"
+    ],
+    "defaultTitlePrefix": "v",
+    "defaultNotes": "## 更新内容\n- 支持多搜索引擎切换\n- 精简扩展描述文案\n- 交互与稳定性优化"
+  }
+}

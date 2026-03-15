@@ -4,7 +4,7 @@
     "description": "The title of the application"
   },
   "appDescription": {
-    "message": "A minimal new tab experience with a calm, clean interface. Open every tab with clarity and focus, free from distractions. The extension allows users to search the web using popular search engines like Google, Bing, DuckDuckGo, and Baidu.",
+    "message": "A calm, clean, minimalist new tab page for focused, distraction-free browsing.",
     "description": "The description of the application"
   }
 }
