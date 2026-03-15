@@ -52,36 +52,6 @@ LeafTab is a minimalist new-tab extension built with AI assistance. It does not 
 - **管理员模式：域名后台管理页（搜索/排序/分页/复制/CSV），支持自托管服务器 / Admin mode: Domains admin board (search/sort/paging/copy/CSV), supports self-hosted backend**
 - **自定义后端地址（登录/同步/统计）/ Custom backend URL (Auth/Sync/Stats)**
 
-## 为什么选 LeafTab / Why LeafTab
-
-| 维度 / Dimension | LeafTab | 常见新标签页扩展 / Typical New-tab Extensions |
-| --- | --- | --- |
-| 数据主权 / Data ownership | 支持本地优先 + 云同步 + WebDAV + 自托管后端 / Local-first + Cloud sync + WebDAV + Self-hosted backend | 多数仅依赖单一云端，迁移成本高 / Usually a single cloud backend |
-| 冲突处理 / Sync conflict handling | 登录时显式冲突选择（本地/云端） / Explicit conflict choice on login (Local/Cloud) | 常见静默覆盖，数据来源不透明 / Often silent overwrite |
-| 同步稳定性 / Sync stability | 定时对齐同步、限流兜底、本地持久化 / Scheduled aligned sync, rate-limit fallback, local persistence | 失败后行为不可预期 / Retry behavior often unclear |
-| 可运维性 / Operability | 管理员模式、域名导出、可替换图标源 / Admin mode, domain export, custom icon source | 运维可观测能力弱 / Limited observability |
-| 视觉体验 / Visual experience | 动态壁纸、天气视频、动态取色 / Dynamic wallpaper, weather video, dynamic accent | UI 能力相对固定 / More static UI |
-
-## 架构与数据流 / Architecture & Data Flow
-
-```mermaid
-flowchart LR
-  A["Browser Extension (LeafTab UI)"] --> B["Local Storage (Profile/Shortcuts/Flags)"]
-  A --> C["Cloud API (Auth/Sync/Stats)"]
-  A --> D["WebDAV Endpoint (Optional)"]
-  A --> E["Icon Library (GitHub Pages / Custom Source)"]
-
-  B --> A
-  C --> A
-  D --> A
-  E --> A
-```
-
-- 核心原则 / Core principle: **本地优先渲染，云端与 WebDAV 作为同步层**  
-- 登录同步 / Cloud sync: 登录时做本地/云端差异比对，避免静默覆盖  
-- 定时同步 / Scheduled sync: 基于系统时间对齐触发，支持限流和重试兜底  
-- 可替换能力 / Pluggable services: 后端地址与图标源均可自定义  
-
 ## 隐私与数据说明 / Privacy & Data Handling
 
 - 本地存储 / Stored locally:
@@ -110,9 +80,6 @@ flowchart LR
   <br />
   <br />
   <img alt="LeafTab preview 2" src="./Preview%202.png" style="width: 100%; max-width: 1100px;" />
-  <br />
-  <br />
-  <img alt="LeafTab preview 3" src="./Preview%203.png" style="width: 100%; max-width: 1100px;" />
 </div>
 
 ## 安装 / Installation
@@ -120,10 +87,10 @@ flowchart LR
 从 [Releases](https://github.com/mason173/LeafTab/releases) 下载对应压缩包：
 Download the corresponding package from [Releases](https://github.com/mason173/LeafTab/releases):
 
-- **Chrome / Edge**：下载 `LeafTab-chrome-edge-*.zip`，解压后在扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，选择解压后的根目录（目录内应直接包含 `manifest.json`）。
-  Download `LeafTab-chrome-edge-*.zip`, extract it, enable "Developer mode" in the extension management page, click "Load unpacked", and select the extracted root folder (it should directly contain `manifest.json`).
-- **Firefox**：下载 `LeafTab-firefox-*.zip`，解压后在 `about:debugging` → “This Firefox” → “Load Temporary Add-on…” 中选择解压根目录里的 `manifest.json`。
-  Download `LeafTab-firefox-*.zip`, extract it, go to `about:debugging` -> "This Firefox" -> "Load Temporary Add-on..." and select the `manifest.json` in the extracted root directory.
+- **Chrome / Edge**：下载 `LeafTab-community-chrome-edge-v*.zip` 或 `LeafTab-store-chrome-edge-v*.zip`，解压后在扩展管理页开启开发者模式，选择“加载已解压的扩展程序”，选择解压后的根目录（目录内应直接包含 `manifest.json`）。
+  Download `LeafTab-community-chrome-edge-v*.zip` or `LeafTab-store-chrome-edge-v*.zip`, extract it, enable "Developer mode" in the extension management page, click "Load unpacked", and select the extracted root folder (it should directly contain `manifest.json`).
+- **Firefox**：下载 `LeafTab-community-firefox-v*.zip` 或 `LeafTab-store-firefox-v*.zip`，解压后在 `about:debugging` → “This Firefox” → “Load Temporary Add-on…” 中选择解压根目录里的 `manifest.json`。
+  Download `LeafTab-community-firefox-v*.zip` or `LeafTab-store-firefox-v*.zip`, extract it, go to `about:debugging` -> "This Firefox" -> "Load Temporary Add-on..." and select the `manifest.json` in the extracted root directory.
 
 ## 项目结构 / Project Structure
 
