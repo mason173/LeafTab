@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { RiArrowRightSLine, RiCheckFill } from '@remixicon/react';
 import type { SearchEngine } from '@/types';
+import { SEARCH_ENGINE_ORDER } from '@/utils/searchHelpers';
 
 import googleIcon from '@/assets/google.svg';
 import bingIcon from '@/assets/bing.svg';
@@ -14,7 +15,14 @@ type SearchEngineOption = {
   icon: string;
 };
 
-const getEngineIcon = (engine: SearchEngine) => {
+export const SEARCH_ENGINE_BRAND_NAMES: Record<Exclude<SearchEngine, 'system'>, string> = {
+  google: 'Google',
+  bing: 'Bing',
+  duckduckgo: 'DuckDuckGo',
+  baidu: 'Baidu',
+};
+
+export const getEngineIcon = (engine: SearchEngine) => {
   switch (engine) {
     case 'system':
       return searchIcon;
@@ -77,13 +85,14 @@ export function SearchEngineSwitcherDropdown({
   const { t } = useTranslation();
   if (!isOpen) return null;
 
-  const engines: SearchEngineOption[] = [
-    { id: 'system', name: t('search.systemEngine'), icon: searchIcon },
-    { id: 'bing', name: 'Bing', icon: bingIcon },
-    { id: 'google', name: 'Google', icon: googleIcon },
-    { id: 'duckduckgo', name: 'DuckDuckGo', icon: duckduckgoIcon },
-    { id: 'baidu', name: 'Baidu', icon: baiduIcon },
-  ];
+  const engineOptionMap: Record<SearchEngine, SearchEngineOption> = {
+    system: { id: 'system', name: t('search.systemEngine'), icon: searchIcon },
+    bing: { id: 'bing', name: SEARCH_ENGINE_BRAND_NAMES.bing, icon: bingIcon },
+    google: { id: 'google', name: SEARCH_ENGINE_BRAND_NAMES.google, icon: googleIcon },
+    duckduckgo: { id: 'duckduckgo', name: SEARCH_ENGINE_BRAND_NAMES.duckduckgo, icon: duckduckgoIcon },
+    baidu: { id: 'baidu', name: SEARCH_ENGINE_BRAND_NAMES.baidu, icon: baiduIcon },
+  };
+  const engines = SEARCH_ENGINE_ORDER.map((engine) => engineOptionMap[engine]);
 
   return (
     <div className="absolute left-0 top-[calc(100%+8px)] z-[520] w-[232px] max-h-[300px] overflow-y-auto rounded-[16px] border border-border bg-popover p-1.5 text-popover-foreground shadow-lg" data-name="DropDown">

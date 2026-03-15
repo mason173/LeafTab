@@ -54,7 +54,8 @@ export type DynamicWallpaperRenderVariant =
   | 'selector-live'
   | 'selector-static'
   | 'hero'
-  | 'background';
+  | 'background'
+  | 'background-static';
 
 export function renderDynamicWallpaper(
   effect: DynamicWallpaperEffect,
@@ -63,6 +64,7 @@ export function renderDynamicWallpaper(
   const isSelectorLive = variant === 'selector-live';
   const isSelectorStatic = variant === 'selector-static';
   const isHero = variant === 'hero';
+  const isBackgroundStatic = variant === 'background-static';
 
   switch (effect) {
     case 'silk': {
@@ -71,19 +73,19 @@ export function renderDynamicWallpaper(
           <Silk
             speed={3.8}
             scale={0.9}
-            color="#7B7481"
+            color="#4C854C"
             noiseIntensity={1.2}
             rotation={0}
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <Silk
-            speed={3.8}
-            scale={0.9}
-            color="#7B7481"
-            noiseIntensity={1.2}
+            speed={isBackgroundStatic ? 4.2 : 3.8}
+            scale={isBackgroundStatic ? 0.95 : 0.9}
+            color="#4C854C"
+            noiseIntensity={isBackgroundStatic ? 1.15 : 1.2}
             rotation={0}
             staticFrame
           />
@@ -94,7 +96,7 @@ export function renderDynamicWallpaper(
           <Silk
             speed={4.4}
             scale={0.95}
-            color="#7B7481"
+            color="#4C854C"
             noiseIntensity={1.2}
             rotation={0}
           />
@@ -104,7 +106,7 @@ export function renderDynamicWallpaper(
         <Silk
           speed={4.2}
           scale={0.95}
-          color="#7B7481"
+          color="#4C854C"
           noiseIntensity={1.15}
           rotation={0}
         />
@@ -129,20 +131,20 @@ export function renderDynamicWallpaper(
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <LightRays
             raysOrigin="top-center"
             raysColor="#ffffff"
-            raysSpeed={1.05}
-            lightSpread={0.9}
-            rayLength={1.5}
+            raysSpeed={isBackgroundStatic ? 1.15 : 1.05}
+            lightSpread={isBackgroundStatic ? 0.95 : 0.9}
+            rayLength={isBackgroundStatic ? 1.6 : 1.5}
             fadeDistance={1}
             saturation={1}
             followMouse={false}
-            mouseInfluence={0.06}
-            noiseAmount={0.02}
-            distortion={0.03}
+            mouseInfluence={isBackgroundStatic ? 0.08 : 0.06}
+            noiseAmount={isBackgroundStatic ? 0.04 : 0.02}
+            distortion={isBackgroundStatic ? 0.04 : 0.03}
             staticFrame
           />
         );
@@ -179,15 +181,15 @@ export function renderDynamicWallpaper(
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <Beams
             beamWidth={2}
             beamHeight={15}
-            beamNumber={10}
+            beamNumber={isBackgroundStatic ? 12 : 10}
             lightColor="#ffffff"
-            speed={1.8}
-            noiseIntensity={1.4}
+            speed={isBackgroundStatic ? 2 : 1.8}
+            noiseIntensity={isBackgroundStatic ? 1.75 : 1.4}
             scale={0.2}
             rotation={0}
             staticFrame
@@ -221,7 +223,7 @@ export function renderDynamicWallpaper(
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <Galaxy
             density={1.2}
@@ -257,7 +259,7 @@ export function renderDynamicWallpaper(
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <Iridescence
             color={[1, 1, 1]}
@@ -292,13 +294,13 @@ export function renderDynamicWallpaper(
           />
         );
       }
-      if (isSelectorStatic) {
+      if (isSelectorStatic || isBackgroundStatic) {
         return (
           <Prism
             animationType="rotate"
             timeScale={0}
-            scale={3.1}
-            noise={0}
+            scale={isBackgroundStatic ? 3.8 : 3.1}
+            noise={isBackgroundStatic ? 0.35 : 0}
             glow={1}
             suspendWhenOffscreen
           />

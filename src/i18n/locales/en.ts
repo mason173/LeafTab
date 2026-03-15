@@ -20,6 +20,48 @@ export default {
         label: "Open in New Tab",
         description: "Shortcuts open in a new tab by default"
       },
+      searchEngineTabSwitch: {
+        label: "Tab Engine Switch",
+        description: "When the search box is focused, press Tab to cycle search engines"
+      },
+      searchSettings: {
+        label: "Search Settings",
+        description: "Manage search behaviors and smart search capabilities",
+        open: "Open",
+        title: "Search Settings",
+        items: {
+          tabSwitch: {
+            label: "Tab Engine Switch",
+            description: "Press Tab in the focused search box to cycle engines",
+            tooltip: "Use Tab or Shift+Tab to quickly switch search engines while the search box is focused."
+          },
+          prefix: {
+            label: "Prefix Search",
+            description: "Use prefixes like g / bing / ddg / bd to override engine",
+            tooltip: "Example: `g AI` searches with Google just for this query without changing your default engine."
+          },
+          siteDirect: {
+            label: "Site Direct Search",
+            description: "Convert `site + keywords` into `site:domain` queries",
+            tooltip: "Supports GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon, and more. Example: `github react`."
+          },
+          siteShortcut: {
+            label: "Site Shortcut Suggestions",
+            description: "Show built-in site shortcuts when typing site names",
+            tooltip: "Typing `git` can prioritize suggestions like GitHub, GitLab, and Gitee."
+          },
+          anyKeyCapture: {
+            label: "Any-Key Search Capture",
+            description: "Start typing anywhere to focus and fill the search box",
+            tooltip: "When enabled, pressing printable keys on a new tab auto-focuses the search input."
+          },
+          calculator: {
+            label: "Calculator Preview",
+            description: "Show live math result suggestions while typing expressions",
+            tooltip: "Example: `12*8` shows a computed result in the dropdown."
+          }
+        }
+      },
       timeFormat: {
         label: "24-Hour Clock",
         description: "Display time in 24-hour format"
@@ -427,9 +469,11 @@ export default {
       wallpaper: {
         mode: "Wallpaper Mode",
         modeDesc: "Customize minimalist mode background",
-        bing: "Daily Bing Wallpaper",
-        weather: "Weather Wallpaper",
-        custom: "Custom Wallpaper",
+        dynamic: "Dynamic",
+        bing: "Bing",
+        weather: "Weather",
+        color: "Color",
+        custom: "Custom",
         uploadTitle: "Upload Custom Wallpaper",
         upload: "Upload Image",
         uploadDesc: "Click to upload or drag and drop images here",
@@ -504,7 +548,12 @@ export default {
     search: {
       placeholder: "Search for content...",
       placeholderDynamic: "Search for content or enter URL...",
+      placeholderHintTabSwitch: "Press Tab to switch search engines",
+      placeholderHintCalculator: "Type an expression to calculate instantly",
+      placeholderHintSiteDirect: "Site search: e.g. github react",
+      placeholderHintPrefix: "Prefix search: e.g. g AI",
       systemEngine: "System default",
+      useEngineSearch: "Search with {{engine}}",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
       noHistory: "No recent searches"

@@ -1,4 +1,4 @@
-import type { CSSProperties, ComponentProps } from 'react';
+import { useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
@@ -33,6 +33,7 @@ interface HomeMainContentProps {
   wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
   searchBarProps: ComponentProps<typeof SearchBar>;
   shortcutGridProps: ComponentProps<typeof ShortcutGrid>;
+  onDrawerExpandedChange?: (expanded: boolean) => void;
 }
 
 const HOME_BLOCK_ENTER_MIN_DISTANCE_PX = 320;
@@ -61,6 +62,7 @@ export function HomeMainContent({
   wallpaperClockProps,
   searchBarProps,
   shortcutGridProps,
+  onDrawerExpandedChange,
 }: HomeMainContentProps) {
   const { resolvedTheme } = useTheme();
   const drawer = useQuickAccessDrawer({
@@ -101,6 +103,15 @@ export function HomeMainContent({
   const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
     ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
     : undefined;
+  const isDrawerFullyExpanded = visible && drawer.isDrawerExpanded;
+
+  useEffect(() => {
+    onDrawerExpandedChange?.(isDrawerFullyExpanded);
+  }, [isDrawerFullyExpanded, onDrawerExpandedChange]);
+
+  useEffect(() => () => {
+    onDrawerExpandedChange?.(false);
+  }, [onDrawerExpandedChange]);
 
   if (!visible) return null;
 
@@ -154,6 +165,7 @@ export function HomeMainContent({
         isDrawerExpanded={drawer.isDrawerExpanded}
         drawerOverlayOpacity={drawer.drawerOverlayOpacity}
         drawerSurfaceOpacity={drawer.drawerSurfaceOpacity}
+        drawerLayoutProgress={drawer.drawerLayoutProgress}
         drawerBottomBounceOffsetPx={drawer.drawerBottomBounceOffsetPx}
         drawerContentTopPaddingPx={drawer.drawerContentTopPaddingPx}
         drawerContentBackdropBlurPx={drawer.drawerContentBackdropBlurPx}

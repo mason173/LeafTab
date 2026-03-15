@@ -21,6 +21,48 @@ export default {
         label: "新分頁開啟",
         description: "捷徑預設在新分頁中開啟"
       },
+      searchEngineTabSwitch: {
+        label: "Tab 切換搜尋引擎",
+        description: "聚焦搜尋框時，按 Tab 可在搜尋引擎間循環切換"
+      },
+      searchSettings: {
+        label: "搜尋設定",
+        description: "管理搜尋行為與快捷能力開關",
+        open: "開啟",
+        title: "搜尋設定",
+        items: {
+          tabSwitch: {
+            label: "Tab 切換搜尋引擎",
+            description: "聚焦搜尋框時，按 Tab 可在搜尋引擎間循環切換",
+            tooltip: "開啟後，搜尋框聚焦時可用 Tab 或 Shift+Tab 快速切換搜尋引擎。"
+          },
+          prefix: {
+            label: "Prefix 搜尋",
+            description: "支援 g / bing / ddg / bd 等前綴暫時切換引擎",
+            tooltip: "例如輸入 g AI，會暫時使用 Google 搜尋 AI，不會改變預設引擎。"
+          },
+          siteDirect: {
+            label: "站點直達搜尋",
+            description: "識別「站點 + 關鍵字」，自動轉為 site:domain 查詢",
+            tooltip: "支援 GitHub、GitLab、Gitee、知乎、B 站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站點。示例：github react。"
+          },
+          siteShortcut: {
+            label: "站點快捷建議",
+            description: "輸入站點名稱時，優先顯示內建站點快捷建議",
+            tooltip: "例如輸入 git，可優先顯示 GitHub / GitLab / Gitee。"
+          },
+          anyKeyCapture: {
+            label: "任意鍵直接搜尋",
+            description: "開啟新分頁後，直接輸入即可喚起搜尋框",
+            tooltip: "開啟後，在頁面空白處輸入字元會自動聚焦搜尋框並寫入內容。"
+          },
+          calculator: {
+            label: "計算器預覽",
+            description: "輸入算式時顯示即時計算結果建議",
+            tooltip: "例如輸入 12*8，會在下拉建議中顯示結果。"
+          }
+        }
+      },
       timeFormat: {
         label: "24 小時制",
         description: "使用 24 小時制顯示時間"
@@ -368,7 +410,12 @@ export default {
     search: {
       placeholder: "搜尋你想找的內容...",
       placeholderDynamic: "搜尋你想找的內容或輸入網址...",
+      placeholderHintTabSwitch: "按 Tab 鍵切換搜尋引擎",
+      placeholderHintCalculator: "可直接輸入算式進行計算",
+      placeholderHintSiteDirect: "站點直達：例如 github react",
+      placeholderHintPrefix: "前綴搜尋：例如 g AI",
       systemEngine: "系統預設",
+      useEngineSearch: "使用{{engine}} 搜尋",
       historyTitle: "搜尋歷史",
       clearHistory: "清空",
       noHistory: "暫無搜尋記錄"

@@ -110,7 +110,7 @@ export function DynamicWallpaperPanel({
 
         <div className="flex flex-col gap-3">
           <div className="space-y-1">
-            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.dynamic", { defaultValue: "灵动" })}</h4>
+            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.dynamic", { defaultValue: "Dynamic" })}</h4>
             <p className="text-xs text-muted-foreground">
               {DYNAMIC_WALLPAPER_LABELS[dynamicWallpaperEffect]}
             </p>

@@ -12,6 +12,22 @@ import { type DisplayMode } from '@/displayMode/config';
 
 const SHORTCUT_GRID_COLUMNS_LEGACY_KEY = 'shortcutGridColumns';
 const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
+const SEARCH_TAB_SWITCH_ENGINE_KEY = 'search_tab_switch_engine';
+const SEARCH_PREFIX_ENABLED_KEY = 'search_prefix_enabled';
+const SEARCH_SITE_DIRECT_ENABLED_KEY = 'search_site_direct_enabled';
+const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
+const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
+const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
+
+function readStoredBoolean(key: string, defaultValue: boolean): boolean {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return defaultValue;
+  try {
+    return JSON.parse(raw) === true;
+  } catch {
+    return raw === 'true';
+  }
+}
 
 function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {
   try {
@@ -54,6 +70,12 @@ export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('panoramic');
   const [openInNewTab, setOpenInNewTab] = useState(true);
+  const [tabSwitchSearchEngine, setTabSwitchSearchEngine] = useState<boolean>(() => readStoredBoolean(SEARCH_TAB_SWITCH_ENGINE_KEY, true));
+  const [searchPrefixEnabled, setSearchPrefixEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_PREFIX_ENABLED_KEY, true));
+  const [searchSiteDirectEnabled, setSearchSiteDirectEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_SITE_DIRECT_ENABLED_KEY, true));
+  const [searchSiteShortcutEnabled, setSearchSiteShortcutEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
+  const [searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
+  const [searchCalculatorEnabled, setSearchCalculatorEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
   const [is24Hour, setIs24Hour] = useState(true);
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
   const [showSeconds, setShowSeconds] = useState(() => {
@@ -130,10 +152,19 @@ export function useSettings() {
       // Legacy keys were replaced by a single displayMode source.
       localStorage.removeItem('minimalistMode');
       localStorage.removeItem('freshMode');
+      // Personalization/fuzzy are now always-on system capabilities.
+      localStorage.removeItem('search_personalization_enabled');
+      localStorage.removeItem('search_fuzzy_match_enabled');
     } catch {}
     
     const storedOpenInNewTab = localStorage.getItem('openInNewTab');
     if (storedOpenInNewTab !== null) setOpenInNewTab(JSON.parse(storedOpenInNewTab));
+    setTabSwitchSearchEngine(readStoredBoolean(SEARCH_TAB_SWITCH_ENGINE_KEY, true));
+    setSearchPrefixEnabled(readStoredBoolean(SEARCH_PREFIX_ENABLED_KEY, true));
+    setSearchSiteDirectEnabled(readStoredBoolean(SEARCH_SITE_DIRECT_ENABLED_KEY, true));
+    setSearchSiteShortcutEnabled(readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
+    setSearchAnyKeyCaptureEnabled(readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
+    setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
     
     const storedIs24Hour = localStorage.getItem('is24Hour');
     if (storedIs24Hour !== null) setIs24Hour(JSON.parse(storedIs24Hour));
@@ -179,6 +210,30 @@ export function useSettings() {
   useEffect(() => {
     localStorage.setItem('openInNewTab', JSON.stringify(openInNewTab));
   }, [openInNewTab]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_TAB_SWITCH_ENGINE_KEY, JSON.stringify(tabSwitchSearchEngine));
+  }, [tabSwitchSearchEngine]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_PREFIX_ENABLED_KEY, JSON.stringify(searchPrefixEnabled));
+  }, [searchPrefixEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_SITE_DIRECT_ENABLED_KEY, JSON.stringify(searchSiteDirectEnabled));
+  }, [searchSiteDirectEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_SITE_SHORTCUT_ENABLED_KEY, JSON.stringify(searchSiteShortcutEnabled));
+  }, [searchSiteShortcutEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(searchAnyKeyCaptureEnabled));
+  }, [searchAnyKeyCaptureEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(searchCalculatorEnabled));
+  }, [searchCalculatorEnabled]);
 
   useEffect(() => {
     localStorage.setItem('is24Hour', JSON.stringify(is24Hour));
@@ -261,6 +316,18 @@ export function useSettings() {
     setDisplayMode,
     openInNewTab,
     setOpenInNewTab,
+    tabSwitchSearchEngine,
+    setTabSwitchSearchEngine,
+    searchPrefixEnabled,
+    setSearchPrefixEnabled,
+    searchSiteDirectEnabled,
+    setSearchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    setSearchSiteShortcutEnabled,
+    searchAnyKeyCaptureEnabled,
+    setSearchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
+    setSearchCalculatorEnabled,
     is24Hour,
     setIs24Hour,
     timeFont,

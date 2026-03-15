@@ -1,6 +1,7 @@
 import areas from "china-division/dist/areas.json";
 import cities from "china-division/dist/cities.json";
 import provinces from "china-division/dist/provinces.json";
+import { GLOBAL_MAJOR_CITIES } from "@/data/weatherGlobalMajorCities";
 
 export type WeatherCitySuggestion = {
   id: string;
@@ -30,7 +31,7 @@ type DivisionArea = {
   provinceCode: string;
 };
 
-type EntryLevel = "province" | "city" | "area";
+type EntryLevel = "province" | "city" | "area" | "global";
 
 type IndexedEntry = WeatherCitySuggestion & {
   level: EntryLevel;
@@ -155,6 +156,29 @@ for (const area of AREA_LIST) {
   });
 }
 
+for (const city of GLOBAL_MAJOR_CITIES) {
+  const region = city.region || city.country;
+  const displayName = [city.city, region, city.country].filter(Boolean).join(" · ");
+  indexedEntries.push({
+    id: city.id,
+    city: city.city,
+    region,
+    country: city.country,
+    latitude: city.latitude,
+    longitude: city.longitude,
+    displayName,
+    level: "global",
+    aliasKeys: buildAliasKeys([
+      city.city,
+      region,
+      city.country,
+      `${city.city} ${city.country}`,
+      `${city.city} ${region}`,
+      ...(city.aliases || []),
+    ]),
+  });
+}
+
 const uniqueById = new Map<string, IndexedEntry>();
 for (const entry of indexedEntries) {
   if (!uniqueById.has(entry.id)) {
@@ -167,6 +191,7 @@ const INDEXED = Array.from(uniqueById.values());
 const scoreLevel = (level: EntryLevel) => {
   if (level === "area") return 3;
   if (level === "city") return 2;
+  if (level === "global") return 2;
   return 1;
 };
 
@@ -228,9 +253,4 @@ export const searchWeatherCitiesLocal = (query: string, limit = 8): WeatherCityS
     .slice(0, Math.max(1, limit));
 
   return scored.map((item) => toSuggestion(item.entry));
-};
-
-export const resolveWeatherCityLocal = (query: string): WeatherCitySuggestion | null => {
-  const list = searchWeatherCitiesLocal(query, 1);
-  return list[0] || null;
 };

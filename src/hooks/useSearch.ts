@@ -1,12 +1,36 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
+import {
+  getNextSearchEngine,
+  getSearchMatchPriority,
+  normalizeSearchQuery,
+  parseSearchEnginePrefix,
+} from '../utils/searchHelpers';
+import { buildSiteSearchQuery, parseSiteSearchShortcut } from '@/utils/siteSearch';
+import {
+  buildQueryUsageKey,
+  getSuggestionUsageBoost,
+  readSuggestionUsageMap,
+  recordSuggestionUsage,
+} from '@/utils/suggestionPersonalization';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const SEARCH_ENGINE_KEY = 'search_engine';
 const MAX_SEARCH_HISTORY = 15;
 const DEFAULT_SEARCH_ENGINE: SearchEngine = 'system';
+export type SearchHistoryEntry = {
+  query: string;
+  timestamp: number;
+};
+
+type SearchFeatureOptions = {
+  prefixEnabled?: boolean;
+  siteDirectEnabled?: boolean;
+  personalizationEnabled?: boolean;
+  fuzzyMatchEnabled?: boolean;
+};
+
 const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, string> = {
   google: 'https://www.google.com/search?q=%s',
   bing: 'https://www.bing.com/search?q=%s',
@@ -14,20 +38,58 @@ const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, strin
   baidu: 'https://www.baidu.com/s?wd=%s',
 };
 
-export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, openInNewTab: boolean) {
-  const { t } = useTranslation();
+const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] => {
+  if (!Array.isArray(parsed)) return [];
+  const now = Date.now();
+  const normalized: SearchHistoryEntry[] = [];
+  const seen = new Set<string>();
+
+  parsed.forEach((entry, index) => {
+    if (typeof entry === 'string') {
+      const query = entry.trim();
+      if (!query || seen.has(query)) return;
+      seen.add(query);
+      normalized.push({
+        query,
+        timestamp: now - index * 60_000,
+      });
+      return;
+    }
+
+    if (!entry || typeof entry !== 'object') return;
+    const rawQuery = (entry as { query?: unknown }).query;
+    const rawTimestamp = (entry as { timestamp?: unknown }).timestamp;
+    const query = typeof rawQuery === 'string' ? rawQuery.trim() : '';
+    if (!query || seen.has(query)) return;
+    seen.add(query);
+    const parsedTimestamp = Number(rawTimestamp);
+    normalized.push({
+      query,
+      timestamp: Number.isFinite(parsedTimestamp) && parsedTimestamp > 0
+        ? parsedTimestamp
+        : now - index * 60_000,
+    });
+  });
+
+  return normalized.slice(0, MAX_SEARCH_HISTORY);
+};
+
+export function useSearch(
+  searchInputRef: React.RefObject<HTMLInputElement>,
+  openInNewTab: boolean,
+  options?: SearchFeatureOptions,
+) {
+  const prefixEnabled = options?.prefixEnabled ?? true;
+  const siteDirectEnabled = options?.siteDirectEnabled ?? true;
+  const personalizationEnabled = options?.personalizationEnabled ?? true;
+  const fuzzyMatchEnabled = options?.fuzzyMatchEnabled ?? true;
   const [searchValue, setSearchValue] = useState('');
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>(() => {
     try {
       const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
       if (!raw) return [];
       const parsed: unknown = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      const normalized = parsed
-        .filter((v): v is string => typeof v === 'string')
-        .map((v) => v.trim())
-        .filter(Boolean);
-      return Array.from(new Set(normalized)).slice(0, MAX_SEARCH_HISTORY);
+      return normalizeSearchHistory(parsed);
     } catch {
       return [];
     }
@@ -65,55 +127,92 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
   };
 
   const filteredHistoryItems = useMemo(() => {
-    const q = searchValue.trim().toLowerCase();
-    if (!q) return searchHistory;
-    return searchHistory.filter((item) => item.toLowerCase().includes(q));
-  }, [searchValue, searchHistory]);
+    const normalizedQuery = normalizeSearchQuery(searchValue);
+    const usageMap = personalizationEnabled ? readSuggestionUsageMap() : {};
+    const now = Date.now();
+
+    const ranked = searchHistory
+      .map((item) => {
+        const matchPriority = normalizedQuery
+          ? getSearchMatchPriority(item.query, normalizedQuery, { fuzzy: fuzzyMatchEnabled })
+          : 2;
+        if (normalizedQuery && matchPriority === 0) return null;
+
+        const usageBoost = personalizationEnabled
+          ? getSuggestionUsageBoost(usageMap, buildQueryUsageKey(item.query), now)
+          : 0;
+        const hoursSince = Math.max(0, (now - item.timestamp) / 3_600_000);
+        const freshnessBoost = Math.max(0, 12 - hoursSince * 0.5);
+        const score = matchPriority * 100 + usageBoost + freshnessBoost;
+        return { item, score };
+      })
+      .filter((entry): entry is { item: SearchHistoryEntry; score: number } => Boolean(entry));
+
+    ranked.sort((a, b) => b.score - a.score || b.item.timestamp - a.item.timestamp);
+    return ranked.map((entry) => entry.item);
+  }, [fuzzyMatchEnabled, personalizationEnabled, searchValue, searchHistory]);
 
   const addSearchHistoryEntry = useCallback((rawQuery: string) => {
     const query = rawQuery.trim();
     if (!query) return;
+    const now = Date.now();
     setSearchHistory((prev) => {
-      const next = [query, ...prev.filter((v) => v !== query)].slice(0, MAX_SEARCH_HISTORY);
+      const next = [
+        { query, timestamp: now },
+        ...prev.filter((v) => v.query !== query),
+      ].slice(0, MAX_SEARCH_HISTORY);
       return next;
     });
   }, []);
 
   const openSearchWithQuery = useCallback((rawQuery: string) => {
-    const query = rawQuery.trim();
+    const normalizedRawQuery = rawQuery.trim();
+    const { query: prefixedQuery, overrideEngine } = prefixEnabled
+      ? parseSearchEnginePrefix(normalizedRawQuery)
+      : { query: normalizedRawQuery, overrideEngine: null };
+    const { query, siteDomain, historyQuery } = siteDirectEnabled
+      ? parseSiteSearchShortcut(prefixedQuery)
+      : { query: prefixedQuery.trim(), siteDomain: null, historyQuery: prefixedQuery.trim() };
     if (!query) return;
-    addSearchHistoryEntry(query);
 
-    if (isUrl(query)) {
-      let targetUrl = query;
-      if (!/^https?:\/\//i.test(query)) {
-        targetUrl = `https://${query}`;
+    const queryForSearch = siteDomain ? buildSiteSearchQuery(siteDomain, query) : query;
+    const historyEntryValue = siteDomain ? historyQuery : query;
+    addSearchHistoryEntry(historyEntryValue);
+    if (personalizationEnabled) {
+      recordSuggestionUsage(buildQueryUsageKey(historyEntryValue));
+    }
+    const effectiveEngine = prefixEnabled ? (overrideEngine ?? searchEngine) : searchEngine;
+
+    if (isUrl(queryForSearch)) {
+      let targetUrl = queryForSearch;
+      if (!/^https?:\/\//i.test(queryForSearch)) {
+        targetUrl = `https://${queryForSearch}`;
       }
       window.open(targetUrl, openInNewTab ? '_blank' : '_self');
     } else {
-      if (searchEngine === 'system' && typeof chrome !== 'undefined' && chrome.search?.query) {
+      if (effectiveEngine === 'system' && typeof chrome !== 'undefined' && chrome.search?.query) {
         chrome.search.query({
-          text: query,
+          text: queryForSearch,
           disposition: openInNewTab ? 'NEW_TAB' : 'CURRENT_TAB',
         });
         return;
       }
 
-      const template = searchEngine === 'system'
+      const template = effectiveEngine === 'system'
         ? SEARCH_ENGINE_URL_TEMPLATES.bing
-        : SEARCH_ENGINE_URL_TEMPLATES[searchEngine];
-      const searchUrl = template.replace('%s', encodeURIComponent(query));
+        : SEARCH_ENGINE_URL_TEMPLATES[effectiveEngine];
+      const searchUrl = template.replace('%s', encodeURIComponent(queryForSearch));
       if (openInNewTab) {
         window.open(searchUrl, '_blank', 'noopener,noreferrer');
       } else {
         window.location.href = searchUrl;
       }
     }
-  }, [addSearchHistoryEntry, openInNewTab, searchEngine]);
+  }, [addSearchHistoryEntry, openInNewTab, personalizationEnabled, prefixEnabled, searchEngine, siteDirectEnabled]);
 
   const handleSearch = useCallback(() => {
     if (historySelectedIndex !== -1 && filteredHistoryItems[historySelectedIndex]) {
-      openSearchWithQuery(filteredHistoryItems[historySelectedIndex]);
+      openSearchWithQuery(filteredHistoryItems[historySelectedIndex].query);
     } else {
       openSearchWithQuery(searchValue);
     }
@@ -129,6 +228,10 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
     setSearchEngine(engine);
     setDropdownOpen(false);
   };
+
+  const cycleSearchEngine = useCallback((direction: 1 | -1 = 1) => {
+    setSearchEngine((prev) => getNextSearchEngine(prev, direction));
+  }, []);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -170,6 +273,7 @@ export function useSearch(searchInputRef: React.RefObject<HTMLInputElement>, ope
     handleSearch,
     handleEngineClick,
     handleEngineSelect,
+    cycleSearchEngine,
     handleSearchKeyDown,
     openSearchWithQuery,
   };

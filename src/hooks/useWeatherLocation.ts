@@ -307,7 +307,7 @@ export const fetchWeatherCitySuggestions = async (
   _language: string,
   count = 8,
 ): Promise<WeatherCitySuggestion[]> => {
-  return searchWeatherCitiesLocal(query, count);
+  return searchWeatherCitiesLocal(query, Math.max(1, count));
 };
 
 export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOptions = {}) {

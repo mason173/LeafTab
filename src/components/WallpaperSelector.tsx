@@ -82,21 +82,41 @@ export default function WallpaperSelector({
           <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">
             <div className="px-6 pb-4">
               <TabsList className={`grid w-full ${hideWeather ? "grid-cols-4" : "grid-cols-5"} rounded-[16px]`}>
-                <TabsTrigger value="dynamic" className="rounded-xl">
-                  {t("weather.wallpaper.dynamic", { defaultValue: "灵动" })}
+                <TabsTrigger
+                  value="dynamic"
+                  className="rounded-xl truncate text-[13px]"
+                  title={t("weather.wallpaper.dynamic", { defaultValue: "Dynamic" })}
+                >
+                  {t("weather.wallpaper.dynamic", { defaultValue: "Dynamic" })}
                 </TabsTrigger>
-                <TabsTrigger value="bing" className="rounded-xl">
+                <TabsTrigger
+                  value="bing"
+                  className="rounded-xl truncate text-[13px]"
+                  title={t("weather.wallpaper.bing")}
+                >
                   {t("weather.wallpaper.bing")}
                 </TabsTrigger>
                 {!hideWeather && (
-                  <TabsTrigger value="weather" className="rounded-xl">
+                  <TabsTrigger
+                    value="weather"
+                    className="rounded-xl truncate text-[13px]"
+                    title={t("weather.wallpaper.weather")}
+                  >
                     {t("weather.wallpaper.weather")}
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="color" className="rounded-xl">
-                  {t("weather.wallpaper.color", { defaultValue: "颜色" })}
+                <TabsTrigger
+                  value="color"
+                  className="rounded-xl truncate text-[13px]"
+                  title={t("weather.wallpaper.color", { defaultValue: "Color" })}
+                >
+                  {t("weather.wallpaper.color", { defaultValue: "Color" })}
                 </TabsTrigger>
-                <TabsTrigger value="custom" className="rounded-xl">
+                <TabsTrigger
+                  value="custom"
+                  className="rounded-xl truncate text-[13px]"
+                  title={t("weather.wallpaper.custom")}
+                >
                   {t("weather.wallpaper.custom")}
                 </TabsTrigger>
               </TabsList>
