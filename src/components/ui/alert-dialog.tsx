@@ -90,9 +90,9 @@ function AlertDialogOverlay({
       <motion.div
         key="alert-dialog-overlay"
         className={cn("fixed inset-0 z-50 bg-black/50", className)}
-        initial={{ opacity: 0, filter: "blur(4px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        exit={{ opacity: 0, filter: "blur(4px)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={transition}
         {...props}
       />
@@ -140,17 +140,14 @@ function AlertDialogContent({
           data-slot="alert-dialog-content"
           initial={{
             opacity: 0,
-            filter: "blur(4px)",
             transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
           }}
           animate={{
             opacity: 1,
-            filter: "blur(0px)",
             transform: `perspective(500px) ${rotateAxis}(0deg) scale(1)`,
           }}
           exit={{
             opacity: 0,
-            filter: "blur(4px)",
             transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
           }}
           transition={transition}

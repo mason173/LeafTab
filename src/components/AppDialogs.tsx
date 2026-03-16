@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ComponentProps } from 'react';
+import { Suspense, lazy, useEffect, useState, type ComponentProps } from 'react';
 import { RiShieldCrossFill } from '@remixicon/react';
 import { useTranslation } from 'react-i18next';
 import type { AboutLeafTabModal } from './AboutLeafTabModal';
@@ -106,6 +106,18 @@ interface AppDialogsProps {
   disableConsentDialog: DisableConsentDialogProps;
 }
 
+function useKeepMountedAfterFirstOpen(open: boolean) {
+  const [hasOpened, setHasOpened] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setHasOpened(true);
+    }
+  }, [open]);
+
+  return hasOpened || open;
+}
+
 export function AppDialogs({
   shortcutModalProps,
   shortcutDeleteDialogProps,
@@ -124,67 +136,79 @@ export function AppDialogs({
   disableConsentDialog,
 }: AppDialogsProps) {
   const { t } = useTranslation();
+  const shouldMountShortcutModal = useKeepMountedAfterFirstOpen(shortcutModalProps.isOpen);
+  const shouldMountScenarioCreateDialog = useKeepMountedAfterFirstOpen(scenarioCreateDialogProps.open);
+  const shouldMountScenarioEditDialog = useKeepMountedAfterFirstOpen(scenarioEditDialogProps.open);
+  const shouldMountAuthModal = useKeepMountedAfterFirstOpen(authModalProps.isOpen);
+  const shouldMountSettingsModal = useKeepMountedAfterFirstOpen(settingsModalProps.isOpen);
+  const shouldMountSearchSettingsModal = useKeepMountedAfterFirstOpen(searchSettingsModalProps.isOpen);
+  const shouldMountShortcutStyleDialog = useKeepMountedAfterFirstOpen(shortcutStyleSettingsDialogProps.open);
+  const shouldMountAdminModal = useKeepMountedAfterFirstOpen(adminModalProps.open);
+  const shouldMountAboutModal = useKeepMountedAfterFirstOpen(aboutModalProps.open);
+  const shouldMountWebdavConfigDialog = useKeepMountedAfterFirstOpen(webdavConfigDialogProps.open);
+  const shouldMountConfirmSyncDialog = useKeepMountedAfterFirstOpen(confirmSyncDialog.open);
+  const shouldMountWebdavConfirmSyncDialog = useKeepMountedAfterFirstOpen(webdavConfirmSyncDialog.open);
 
   return (
     <>
-      {shortcutModalProps.isOpen ? (
+      {shouldMountShortcutModal ? (
         <Suspense fallback={null}>
           <LazyShortcutModal {...shortcutModalProps} />
         </Suspense>
       ) : null}
       <ConfirmDialog {...shortcutDeleteDialogProps} />
-      {scenarioCreateDialogProps.open ? (
+      {shouldMountScenarioCreateDialog ? (
         <Suspense fallback={null}>
           <LazyScenarioModeCreateDialog {...scenarioCreateDialogProps} />
         </Suspense>
       ) : null}
-      {scenarioEditDialogProps.open ? (
+      {shouldMountScenarioEditDialog ? (
         <Suspense fallback={null}>
           <LazyScenarioModeCreateDialog {...scenarioEditDialogProps} />
         </Suspense>
       ) : null}
-      {authModalProps.isOpen ? (
+      {shouldMountAuthModal ? (
         <Suspense fallback={null}>
           <LazyAuthModal {...authModalProps} />
         </Suspense>
       ) : null}
-      {settingsModalProps.isOpen ? (
+      {shouldMountSettingsModal ? (
         <Suspense fallback={null}>
           <LazySettingsModal {...settingsModalProps} />
         </Suspense>
       ) : null}
-      {searchSettingsModalProps.isOpen ? (
+      {shouldMountSearchSettingsModal ? (
         <Suspense fallback={null}>
           <LazySearchSettingsModal {...searchSettingsModalProps} />
         </Suspense>
       ) : null}
-      {shortcutStyleSettingsDialogProps.open ? (
+      {shouldMountShortcutStyleDialog ? (
         <Suspense fallback={null}>
           <LazyShortcutStyleSettingsDialog {...shortcutStyleSettingsDialogProps} />
         </Suspense>
       ) : null}
-      {adminModalProps.open ? (
+      {shouldMountAdminModal ? (
         <Suspense fallback={null}>
           <LazyAdminModal {...adminModalProps} />
         </Suspense>
       ) : null}
-      {aboutModalProps.open ? (
+      {shouldMountAboutModal ? (
         <Suspense fallback={null}>
           <LazyAboutLeafTabModal {...aboutModalProps} />
         </Suspense>
       ) : null}
-      {webdavConfigDialogProps.open ? (
+      {shouldMountWebdavConfigDialog ? (
         <Suspense fallback={null}>
           <LazyWebdavConfigDialog {...webdavConfigDialogProps} />
         </Suspense>
       ) : null}
 
-      {confirmSyncDialog.open ? (
+      {shouldMountConfirmSyncDialog ? (
         <Suspense fallback={null}>
           <LazySyncPreviewConfirmDialog {...confirmSyncDialog} />
         </Suspense>
       ) : null}
-      {webdavConfirmSyncDialog.open ? (
+      {shouldMountWebdavConfirmSyncDialog ? (
         <Suspense fallback={null}>
           <LazySyncPreviewConfirmDialog {...webdavConfirmSyncDialog} />
         </Suspense>

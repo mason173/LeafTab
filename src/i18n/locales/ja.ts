@@ -43,7 +43,7 @@ export default {
           },
           siteDirect: {
             label: "サイト直指定検索",
-            description: "「サイト名 + キーワード」を `site:domain` に変換",
+            description: "「サイト名 + キーワード」でサイト内検索結果を優先表示",
             tooltip: "GitHub、GitLab、Gitee、Zhihu、Bilibili、YouTube、Google、Bing、Baidu、Wikipedia、Reddit、Amazon などに対応。例: `github react`。"
           },
           siteShortcut: {

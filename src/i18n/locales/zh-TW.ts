@@ -43,7 +43,7 @@ export default {
           },
           siteDirect: {
             label: "站點直達搜尋",
-            description: "識別「站點 + 關鍵字」，自動轉為 site:domain 查詢",
+            description: "輸入「站點 + 關鍵字」，優先開啟該站點搜尋結果",
             tooltip: "支援 GitHub、GitLab、Gitee、知乎、B 站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站點。示例：github react。"
           },
           siteShortcut: {

@@ -3,6 +3,7 @@ export type BuiltinSiteShortcut = {
   label: string;
   domain: string;
   url: string;
+  searchUrlTemplate?: string;
   aliases: string[];
   keywords?: string[];
 };
@@ -18,6 +19,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'GitHub',
     domain: 'github.com',
     url: 'https://github.com',
+    searchUrlTemplate: 'https://github.com/search?q=%s',
     aliases: ['github', 'gh', 'git'],
     keywords: ['code', 'repo', '开源', '代码'],
   },
@@ -26,6 +28,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'GitLab',
     domain: 'gitlab.com',
     url: 'https://gitlab.com',
+    searchUrlTemplate: 'https://gitlab.com/search?search=%s',
     aliases: ['gitlab', 'gl', 'lab'],
     keywords: ['repo', 'devops'],
   },
@@ -34,6 +37,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Gitee',
     domain: 'gitee.com',
     url: 'https://gitee.com',
+    searchUrlTemplate: 'https://search.gitee.com/?q=%s',
     aliases: ['gitee', '码云', 'maiyun'],
     keywords: ['repo', 'git'],
   },
@@ -50,6 +54,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Stack Overflow',
     domain: 'stackoverflow.com',
     url: 'https://stackoverflow.com',
+    searchUrlTemplate: 'https://stackoverflow.com/search?q=%s',
     aliases: ['stackoverflow', 'so', 'stack'],
     keywords: ['qa', '开发问答', '问答'],
   },
@@ -58,6 +63,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'MDN',
     domain: 'developer.mozilla.org',
     url: 'https://developer.mozilla.org',
+    searchUrlTemplate: 'https://developer.mozilla.org/search?q=%s',
     aliases: ['mdn', 'mozilla'],
     keywords: ['docs', 'javascript', 'css', 'web'],
   },
@@ -66,6 +72,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'npm',
     domain: 'npmjs.com',
     url: 'https://www.npmjs.com',
+    searchUrlTemplate: 'https://www.npmjs.com/search?q=%s',
     aliases: ['npm', 'npmjs'],
     keywords: ['package', 'node'],
   },
@@ -74,6 +81,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'PyPI',
     domain: 'pypi.org',
     url: 'https://pypi.org',
+    searchUrlTemplate: 'https://pypi.org/search/?q=%s',
     aliases: ['pypi', 'pip', 'pythonpkg'],
     keywords: ['python', 'package'],
   },
@@ -82,6 +90,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '掘金',
     domain: 'juejin.cn',
     url: 'https://juejin.cn',
+    searchUrlTemplate: 'https://juejin.cn/search?query=%s',
     aliases: ['juejin', '掘金'],
     keywords: ['开发', '技术'],
   },
@@ -90,6 +99,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'CSDN',
     domain: 'csdn.net',
     url: 'https://www.csdn.net',
+    searchUrlTemplate: 'https://so.csdn.net/so/search?q=%s',
     aliases: ['csdn'],
     keywords: ['博客', '开发', '技术'],
   },
@@ -107,6 +117,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Hugging Face',
     domain: 'huggingface.co',
     url: 'https://huggingface.co',
+    searchUrlTemplate: 'https://huggingface.co/search/full-text?q=%s',
     aliases: ['huggingface', 'hf'],
     keywords: ['model', 'ai'],
   },
@@ -115,6 +126,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'arXiv',
     domain: 'arxiv.org',
     url: 'https://arxiv.org',
+    searchUrlTemplate: 'https://arxiv.org/search/?query=%s&searchtype=all',
     aliases: ['arxiv', 'paper'],
     keywords: ['research', '论文'],
   },
@@ -123,6 +135,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Google Scholar',
     domain: 'scholar.google.com',
     url: 'https://scholar.google.com',
+    searchUrlTemplate: 'https://scholar.google.com/scholar?q=%s',
     aliases: ['scholar', 'googlescholar', 'gs'],
     keywords: ['paper', 'citation', '学术'],
   },
@@ -132,6 +145,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Google',
     domain: 'google.com',
     url: 'https://www.google.com',
+    searchUrlTemplate: 'https://www.google.com/search?q=%s',
     aliases: ['google', 'gg'],
     keywords: ['search', '搜索'],
   },
@@ -140,6 +154,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Bing',
     domain: 'bing.com',
     url: 'https://www.bing.com',
+    searchUrlTemplate: 'https://www.bing.com/search?q=%s',
     aliases: ['bing'],
     keywords: ['search', '搜索'],
   },
@@ -148,6 +163,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'DuckDuckGo',
     domain: 'duckduckgo.com',
     url: 'https://duckduckgo.com',
+    searchUrlTemplate: 'https://duckduckgo.com/?q=%s',
     aliases: ['duckduckgo', 'ddg', 'duck'],
     keywords: ['search', 'privacy'],
   },
@@ -156,6 +172,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Baidu',
     domain: 'baidu.com',
     url: 'https://www.baidu.com',
+    searchUrlTemplate: 'https://www.baidu.com/s?wd=%s',
     aliases: ['baidu', 'bd', '百度'],
     keywords: ['search', '搜索'],
   },
@@ -164,6 +181,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Wikipedia',
     domain: 'wikipedia.org',
     url: 'https://www.wikipedia.org',
+    searchUrlTemplate: 'https://www.wikipedia.org/w/index.php?search=%s',
     aliases: ['wiki', 'wikipedia', '维基'],
     keywords: ['百科', 'knowledge'],
   },
@@ -173,6 +191,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'YouTube',
     domain: 'youtube.com',
     url: 'https://www.youtube.com',
+    searchUrlTemplate: 'https://www.youtube.com/results?search_query=%s',
     aliases: ['youtube', 'yt'],
     keywords: ['video', '影音'],
   },
@@ -181,6 +200,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Bilibili',
     domain: 'bilibili.com',
     url: 'https://www.bilibili.com',
+    searchUrlTemplate: 'https://search.bilibili.com/all?keyword=%s',
     aliases: ['bilibili', 'b站', 'bili'],
     keywords: ['video', '动漫', 'up主'],
   },
@@ -189,6 +209,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Zhihu',
     domain: 'zhihu.com',
     url: 'https://www.zhihu.com',
+    searchUrlTemplate: 'https://www.zhihu.com/search?type=content&q=%s',
     aliases: ['zhihu', '知乎', 'zh'],
     keywords: ['问答', '社区'],
   },
@@ -197,6 +218,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '微博',
     domain: 'weibo.com',
     url: 'https://weibo.com',
+    searchUrlTemplate: 'https://s.weibo.com/weibo?q=%s',
     aliases: ['weibo', '微博', 'wb'],
     keywords: ['social', '社交'],
   },
@@ -205,6 +227,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '小红书',
     domain: 'xiaohongshu.com',
     url: 'https://www.xiaohongshu.com',
+    searchUrlTemplate: 'https://www.xiaohongshu.com/search_result?keyword=%s',
     aliases: ['xiaohongshu', 'xhs', '小红书'],
     keywords: ['种草', '社区'],
   },
@@ -213,6 +236,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '抖音',
     domain: 'douyin.com',
     url: 'https://www.douyin.com',
+    searchUrlTemplate: 'https://www.douyin.com/search/%s',
     aliases: ['douyin', 'dy', '抖音'],
     keywords: ['video', '短视频'],
   },
@@ -221,6 +245,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'X',
     domain: 'x.com',
     url: 'https://x.com',
+    searchUrlTemplate: 'https://x.com/search?q=%s',
     aliases: ['x', 'twitter', '推特'],
     keywords: ['social', 'news'],
   },
@@ -229,6 +254,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Reddit',
     domain: 'reddit.com',
     url: 'https://www.reddit.com',
+    searchUrlTemplate: 'https://www.reddit.com/search/?q=%s',
     aliases: ['reddit', 'rdt'],
     keywords: ['forum', '社区'],
   },
@@ -238,6 +264,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '淘宝',
     domain: 'taobao.com',
     url: 'https://www.taobao.com',
+    searchUrlTemplate: 'https://s.taobao.com/search?q=%s',
     aliases: ['taobao', 'tb', '淘宝'],
     keywords: ['shop', '购物'],
   },
@@ -246,6 +273,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: '京东',
     domain: 'jd.com',
     url: 'https://www.jd.com',
+    searchUrlTemplate: 'https://search.jd.com/Search?keyword=%s',
     aliases: ['jd', 'jingdong', '京东'],
     keywords: ['shop', '购物'],
   },
@@ -254,6 +282,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
     label: 'Amazon',
     domain: 'amazon.com',
     url: 'https://www.amazon.com',
+    searchUrlTemplate: 'https://www.amazon.com/s?k=%s',
     aliases: ['amazon', 'amz'],
     keywords: ['shop', 'shopping'],
   },
@@ -373,30 +402,45 @@ export function getBuiltinSiteShortcutSuggestions(
 export function parseSiteSearchShortcut(rawQuery: string): {
   query: string;
   siteDomain: string | null;
+  siteSearchUrl: string | null;
   historyQuery: string;
 } {
   const trimmed = rawQuery.trim();
-  if (!trimmed) return { query: '', siteDomain: null, historyQuery: '' };
+  if (!trimmed) return { query: '', siteDomain: null, siteSearchUrl: null, historyQuery: '' };
 
   const match = trimmed.match(/^(\S+)\s+(.+)$/);
   if (!match) {
-    return { query: trimmed, siteDomain: null, historyQuery: trimmed };
+    return { query: trimmed, siteDomain: null, siteSearchUrl: null, historyQuery: trimmed };
   }
 
   const token = match[1];
   const query = match[2].trim();
-  if (!query) return { query: '', siteDomain: null, historyQuery: '' };
+  if (!query) return { query: '', siteDomain: null, siteSearchUrl: null, historyQuery: '' };
 
   const site = findSiteByToken(token);
   if (!site) {
-    return { query: trimmed, siteDomain: null, historyQuery: trimmed };
+    return { query: trimmed, siteDomain: null, siteSearchUrl: null, historyQuery: trimmed };
   }
 
   return {
     query,
     siteDomain: site.domain,
+    siteSearchUrl: site.searchUrlTemplate
+      ? buildSiteDirectSearchUrl(site.searchUrlTemplate, query)
+      : null,
     historyQuery: `${token} ${query}`,
   };
+}
+
+export function buildSiteDirectSearchUrl(searchUrlTemplate: string, query: string): string {
+  const template = searchUrlTemplate.trim();
+  const rawQuery = query.trim();
+  if (!template || !rawQuery) return '';
+  const encodedQuery = encodeURIComponent(rawQuery);
+  if (template.includes('%s')) {
+    return template.replace('%s', encodedQuery);
+  }
+  return `${template}${encodedQuery}`;
 }
 
 export function buildSiteSearchQuery(siteDomain: string, query: string): string {

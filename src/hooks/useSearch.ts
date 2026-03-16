@@ -192,12 +192,17 @@ export function useSearch(
     const { query: prefixedQuery, overrideEngine } = prefixEnabled
       ? parseSearchEnginePrefix(normalizedRawQuery)
       : { query: normalizedRawQuery, overrideEngine: null };
-    const { query, siteDomain, historyQuery } = siteDirectEnabled
+    const { query, siteDomain, siteSearchUrl, historyQuery } = siteDirectEnabled
       ? parseSiteSearchShortcut(prefixedQuery)
-      : { query: prefixedQuery.trim(), siteDomain: null, historyQuery: prefixedQuery.trim() };
+      : {
+        query: prefixedQuery.trim(),
+        siteDomain: null,
+        siteSearchUrl: null,
+        historyQuery: prefixedQuery.trim(),
+      };
     if (!query) return;
 
-    const queryForSearch = siteDomain ? buildSiteSearchQuery(siteDomain, query) : query;
+    const queryForSearch = siteSearchUrl || (siteDomain ? buildSiteSearchQuery(siteDomain, query) : query);
     const historyEntryValue = siteDomain ? historyQuery : query;
     addSearchHistoryEntry(historyEntryValue);
     if (personalizationEnabled) {

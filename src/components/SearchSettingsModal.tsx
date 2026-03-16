@@ -77,7 +77,7 @@ function SearchSettingRow({
           </div>
         </div>
         <div className="mt-auto">
-          <span className="font-normal text-xs leading-[1.4] text-muted-foreground text-left line-clamp-2">{description}</span>
+          <span className="font-normal text-xs leading-[1.4] text-muted-foreground text-left line-clamp-2 whitespace-pre-line">{description}</span>
         </div>
       </div>
     </div>
