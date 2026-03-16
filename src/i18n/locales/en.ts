@@ -42,8 +42,8 @@ export default {
           },
           siteDirect: {
             label: "Site Direct Search",
-            description: "Convert `site + keywords` into `site:domain` queries",
-            tooltip: "Supports GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon, and more. Example: `github react`."
+            description: "Use `site + keywords` to jump to a site's own search page first",
+            tooltip: "Supports GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon, and more. Example: `yt loagao`. If a site has no template, it falls back to `site:domain` search."
           },
           siteShortcut: {
             label: "Site Shortcut Suggestions",
@@ -340,6 +340,9 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release135UiPolish: "Optimized interface effects",
+        release135VisualRefine: "Refined interaction and visual details",
+        release135KnownIssuesFix: "Fixed some known issues",
         release131DynamicWallpaperFlickerFix: "Fixed Galaxy/Iridescence dynamic wallpaper flicker on some devices and completed a dependency-stability sweep for similar visual components",
         release131TimeSecondsDefaultOn: "Time setting now shows seconds by default (enabled for new users)",
         release131AdminDomainsBoard: "Admin mode now opens a dedicated domains board page with search, sorting, paging, copy, and CSV export",

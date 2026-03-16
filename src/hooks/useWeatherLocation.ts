@@ -1,9 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/components/ui/sonner";
-import { searchWeatherCitiesLocal, type WeatherCitySuggestion } from "@/data/weatherCityIndex";
+import type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
 
 export type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
+
+type WeatherCityIndexModule = typeof import("@/data/weatherCityIndex");
+
+let weatherCityIndexPromise: Promise<WeatherCityIndexModule> | null = null;
+
+const loadWeatherCityIndex = (): Promise<WeatherCityIndexModule> => {
+  if (!weatherCityIndexPromise) {
+    weatherCityIndexPromise = import("@/data/weatherCityIndex");
+  }
+  return weatherCityIndexPromise;
+};
 
 type WeatherData = {
   city: string;
@@ -307,6 +318,7 @@ export const fetchWeatherCitySuggestions = async (
   _language: string,
   count = 8,
 ): Promise<WeatherCitySuggestion[]> => {
+  const { searchWeatherCitiesLocal } = await loadWeatherCityIndex();
   return searchWeatherCitiesLocal(query, Math.max(1, count));
 };
 

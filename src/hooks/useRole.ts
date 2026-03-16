@@ -1,9 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../components/ui/sonner';
-import confetti from 'canvas-confetti';
 import { ScenarioMode, ScenarioShortcuts } from '../types';
 import { persistLocalProfileSnapshot, persistRoleSeedSnapshot } from '@/utils/localProfileStorage';
+
+let confettiModulePromise: Promise<typeof import('canvas-confetti')> | null = null;
+
+function loadConfettiModule() {
+  if (!confettiModulePromise) {
+    confettiModulePromise = import('canvas-confetti');
+  }
+  return confettiModulePromise;
+}
 
 export function useRole(
   user: string | null,
@@ -75,23 +83,30 @@ export function useRole(
         setRoleSelectorOpen(false);
         toast.success(t('settings.importSuccess'));
         
-        const duration = 1500;
-        const animationEnd = Date.now() + duration;
-        const interval: any = setInterval(function() {
-          const timeLeft = animationEnd - Date.now();
-          if (timeLeft <= 0) return clearInterval(interval);
-          confetti({
-            particleCount: 5,
-            angle: 270,
-            spread: 55, 
-            origin: { x: Math.random(), y: -0.1 },
-            zIndex: 9999,
-            gravity: 1.2,
-            startVelocity: 30,
-            ticks: 200,
-            colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
-          });
-        }, 50);
+        void loadConfettiModule()
+          .then(({ default: confetti }) => {
+            const duration = 1500;
+            const animationEnd = Date.now() + duration;
+            const interval = window.setInterval(() => {
+              const timeLeft = animationEnd - Date.now();
+              if (timeLeft <= 0) {
+                window.clearInterval(interval);
+                return;
+              }
+              confetti({
+                particleCount: 5,
+                angle: 270,
+                spread: 55,
+                origin: { x: Math.random(), y: -0.1 },
+                zIndex: 9999,
+                gravity: 1.2,
+                startVelocity: 30,
+                ticks: 200,
+                colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff'],
+              });
+            }, 50);
+          })
+          .catch(() => {});
       }
     } catch (error) {
       console.error('Failed to load role profile:', error);

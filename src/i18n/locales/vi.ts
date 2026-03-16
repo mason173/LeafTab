@@ -43,7 +43,7 @@ export default {
           },
           siteDirect: {
             label: "Tìm kiếm trực tiếp theo site",
-            description: "Chuyển `site + từ khóa` thành truy vấn `site:domain`",
+            description: "Nhập `site + từ khóa` để ưu tiên mở trang tìm kiếm của chính site đó",
             tooltip: "Hỗ trợ các site phổ biến như GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon... Ví dụ: `github react`."
           },
           siteShortcut: {

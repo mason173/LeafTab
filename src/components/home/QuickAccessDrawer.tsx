@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type RefObject } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
-import { GradualBlur } from '@/components/react-bits';
+import { GradualBlur } from '@/components/react-bits/gradual-blur';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import {
   INITIAL_REVEAL_TIMING,

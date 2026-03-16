@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, lazy, useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { Suspense, useEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RiArrowDownLine,
@@ -37,7 +37,6 @@ import type { SearchSuggestionItem } from './types';
 // Components
 import { TopNavBar } from './components/TopNavBar';
 import ScenarioModeMenu from './components/ScenarioModeMenu';
-import { RoleSelector } from './components/RoleSelector';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
 import { HomeMainContent } from './components/home/HomeMainContent';
@@ -65,7 +64,14 @@ import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpaper
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
-import { LazyDynamicWallpaperScene } from '@/components/wallpaper/LazyDynamicWallpaperScene';
+import { getDynamicWallpaperStaticBackground } from '@/components/wallpaper/dynamicWallpaperFallbacks';
+import {
+  LazyAppDialogs,
+  LazyDynamicWallpaperScene,
+  LazyRoleSelector,
+  LazyUpdateAvailableDialog,
+  LazyWallpaperSelector,
+} from '@/lazy/components';
 import {
   buildShortcutUsageKey,
   readSuggestionUsageMap,
@@ -73,6 +79,7 @@ import {
 } from '@/utils/suggestionPersonalization';
 import {
   INITIAL_REVEAL_TIMING,
+  PANORAMIC_SURFACE_REVEAL_TIMING,
   resolveInitialRevealOpacity,
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
@@ -93,10 +100,6 @@ const getApiBase = () => {
 
 const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
 const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
-const LazyAppDialogs = lazy(() => import('./components/AppDialogs').then((module) => ({ default: module.AppDialogs })));
-const LazyWallpaperSelector = lazy(() => import('./components/WallpaperSelector'));
-const LazyUpdateAvailableDialog = lazy(() => import('./components/UpdateAvailableDialog').then((module) => ({ default: module.UpdateAvailableDialog })));
-
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
   localPayload: WebdavPayload;
@@ -133,6 +136,18 @@ const clearPersistedWebdavConflict = () => {
     localStorage.removeItem(WEBDAV_CONFLICT_CACHE_KEY);
   } catch {}
 };
+
+function useKeepMountedAfterFirstOpen(open: boolean) {
+  const [hasOpened, setHasOpened] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setHasOpened(true);
+    }
+  }, [open]);
+
+  return hasOpened || open;
+}
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -603,8 +618,9 @@ export default function App() {
   useEffect(() => {
     const handleGlobalSearchHotkey = (event: KeyboardEvent) => {
       const isHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k';
+      const isPasteHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'v';
       const isPrintableKey = !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && event.key.length === 1;
-      if (!isHotkey && !isPrintableKey) return;
+      if (!isHotkey && !isPasteHotkey && !isPrintableKey) return;
       if (isPrintableKey && !searchAnyKeyCaptureEnabled) return;
 
       const input = searchInputRef.current;
@@ -619,6 +635,14 @@ export default function App() {
         document.querySelector('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"]')
       );
       if (hasOpenModal && target !== input) return;
+
+      if (isPasteHotkey) {
+        if (target === input) return;
+        input.focus();
+        setHistoryOpen(true);
+        setHistorySelectedIndex(-1);
+        return;
+      }
 
       if (isHotkey) {
         event.preventDefault();
@@ -1457,7 +1481,11 @@ export default function App() {
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
   const initialRevealTiming = INITIAL_REVEAL_TIMING;
-  const shouldMountAppDialogs = shortcutEditOpen
+  const panoramicSurfaceRevealStyle: CSSProperties = {
+    backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)',
+    transition: `background-color ${PANORAMIC_SURFACE_REVEAL_TIMING}`,
+  };
+  const anyAppDialogOpen = shortcutEditOpen
     || shortcutDeleteOpen
     || scenarioCreateOpen
     || scenarioEditOpen
@@ -1472,12 +1500,16 @@ export default function App() {
     || webdavConfirmSyncOpen
     || importConfirmOpen
     || confirmDisableConsentOpen;
+  const shouldMountAppDialogs = useKeepMountedAfterFirstOpen(anyAppDialogOpen);
+  const shouldMountWallpaperSelector = useKeepMountedAfterFirstOpen(wallpaperSettingsOpen);
+  const shouldMountUpdateDialog = useKeepMountedAfterFirstOpen(updateDialogOpen);
 
   return (
     <div
       ref={pageFocusRef}
       tabIndex={-1}
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
+      style={panoramicSurfaceRevealStyle}
     >
       {showOverlayWallpaperLayer && (
         <div
@@ -1495,10 +1527,19 @@ export default function App() {
             {wallpaperMode === 'weather' ? (
               <WeatherLoopVideo src={freshWeatherVideo} />
             ) : wallpaperMode === 'dynamic' ? (
-              <LazyDynamicWallpaperScene
-                effect={dynamicWallpaperEffect}
-                variant={shouldPauseDynamicWallpaperRender ? 'background-static' : 'background'}
-              />
+              <Suspense
+                fallback={
+                  <div
+                    className="absolute inset-0"
+                    style={{ backgroundImage: getDynamicWallpaperStaticBackground(dynamicWallpaperEffect) }}
+                  />
+                }
+              >
+                <LazyDynamicWallpaperScene
+                  effect={dynamicWallpaperEffect}
+                  variant={shouldPauseDynamicWallpaperRender ? 'background-static' : 'background'}
+                />
+              </Suspense>
             ) : wallpaperMode === 'color' ? (
               <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
             ) : effectiveOverlayWallpaperSrc ? (
@@ -1549,7 +1590,7 @@ export default function App() {
         shortcutGridProps={shortcutGridProps}
         onDrawerExpandedChange={setIsQuickAccessDrawerExpanded}
       />
-      {wallpaperSettingsOpen ? (
+      {shouldMountWallpaperSelector ? (
         <Suspense fallback={null}>
           <LazyWallpaperSelector
             {...wallpaperSelectorLayerProps}
@@ -2000,7 +2041,7 @@ export default function App() {
           />
         </Suspense>
       ) : null}
-      {updateDialogOpen ? (
+      {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>
           <LazyUpdateAvailableDialog
             open={updateDialogOpen}
@@ -2013,15 +2054,19 @@ export default function App() {
         </Suspense>
       ) : null}
       <Toaster />
-      <RoleSelector 
-        open={roleSelectorOpen} 
-        onSelect={(role, id, layout) => {
-          handleRoleSelect(role, id);
-          if (layout) {
-            setDisplayMode(layout);
-          }
-        }} 
-      />
+      {roleSelectorOpen ? (
+        <Suspense fallback={null}>
+          <LazyRoleSelector
+            open={roleSelectorOpen}
+            onSelect={(role, id, layout) => {
+              handleRoleSelect(role, id);
+              if (layout) {
+                setDisplayMode(layout);
+              }
+            }}
+          />
+        </Suspense>
+      ) : null}
       <PrivacyConsentModal 
         isOpen={showPrivacyModal} 
         onConsent={handlePrivacyConsent} 

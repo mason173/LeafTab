@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeFontDialog } from './TimeFontDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
@@ -13,7 +13,8 @@ import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-t
 import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
 import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
-import { LazyDynamicWallpaperScene } from './wallpaper/LazyDynamicWallpaperScene';
+import { getDynamicWallpaperStaticBackground } from './wallpaper/dynamicWallpaperFallbacks';
+import { LazyDynamicWallpaperScene } from '@/lazy/components';
 
 interface WallpaperClockProps {
   is24Hour: boolean;
@@ -95,7 +96,16 @@ export function WallpaperClock({
               src={customWallpaper} 
             />
           ) : wallpaperMode === 'dynamic' ? (
-            <LazyDynamicWallpaperScene effect={dynamicWallpaperEffect} variant="hero" />
+            <Suspense
+              fallback={
+                <div
+                  className="absolute inset-0"
+                  style={{ backgroundImage: getDynamicWallpaperStaticBackground(dynamicWallpaperEffect) }}
+                />
+              }
+            >
+              <LazyDynamicWallpaperScene effect={dynamicWallpaperEffect} variant="hero" />
+            </Suspense>
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (

@@ -1,7 +1,28 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { RiSettings4Fill } from '@remixicon/react';
-import { WeatherCard } from './WeatherCard';
 import { Magnetic } from '@/components/motion-primitives/magnetic';
+import { LazyWeatherCard } from '@/lazy/components';
+
+function WeatherCardFallback({ variant }: { variant: 'inverted' | 'default' }) {
+  return (
+    <div
+      className={`content-stretch flex items-center justify-center p-[3px] relative rounded-[999px] shrink-0 ${
+        variant === 'inverted' ? 'bg-white/10 backdrop-blur-md' : 'bg-secondary'
+      }`}
+      aria-hidden="true"
+    >
+      <div
+        className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
+          variant === 'inverted' ? 'border-white/10' : 'border-border'
+        }`}
+      />
+      <div className={`h-[34px] w-[150px] rounded-[999px] animate-pulse ${
+        variant === 'inverted' ? 'bg-white/10' : 'bg-secondary/70'
+      }`}
+      />
+    </div>
+  );
+}
 
 function SettingsButton({ onClick, variant = 'inverted' }: { onClick: () => void; variant?: 'inverted' | 'default' }) {
   return (
@@ -48,7 +69,9 @@ export function TopNavBar({
       {!hideWeather && (
         <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
           <Magnetic intensity={0.32} range={110}>
-            <WeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />
+            <Suspense fallback={<WeatherCardFallback variant={variant} />}>
+              <LazyWeatherCard onWeatherUpdate={onWeatherUpdate} variant={variant} />
+            </Suspense>
           </Magnetic>
         </div>
       )}

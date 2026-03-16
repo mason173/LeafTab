@@ -3,6 +3,141 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
+function getPackageName(id: string): string | null {
+  const normalizedId = id.split('\\').join('/');
+  const nodeModulesIndex = normalizedId.lastIndexOf('/node_modules/');
+  if (nodeModulesIndex === -1) return null;
+
+  const pathAfterNodeModules = normalizedId.slice(nodeModulesIndex + '/node_modules/'.length);
+  const cleanPath = pathAfterNodeModules.startsWith('.pnpm/')
+    ? pathAfterNodeModules.split('/').slice(1).join('/')
+    : pathAfterNodeModules;
+
+  if (!cleanPath) return null;
+
+  const parts = cleanPath.split('/');
+  if (parts[0].startsWith('@') && parts.length > 1) {
+    return `${parts[0]}/${parts[1]}`;
+  }
+  return parts[0];
+}
+
+function resolveManualChunk(id: string): string | undefined {
+  const normalizedId = id.split('\\').join('/');
+
+  if (normalizedId.includes('/src/i18n/')) {
+    return 'vendor-i18n';
+  }
+
+  if (normalizedId.includes('/src/lazy/')) {
+    return 'vendor-lazy';
+  }
+
+  if (
+    normalizedId.includes('/src/components/react-bits/gradual-blur.tsx') ||
+    normalizedId.includes('/src/hooks/useRenderActivity.ts')
+  ) {
+    return 'vendor-visual-utils';
+  }
+
+  if (
+    normalizedId.includes('/src/components/react-bits/prism.tsx') ||
+    normalizedId.includes('/src/components/react-bits/silk.tsx') ||
+    normalizedId.includes('/src/components/react-bits/light-rays.tsx') ||
+    normalizedId.includes('/src/components/react-bits/beams.tsx') ||
+    normalizedId.includes('/src/components/react-bits/galaxy.tsx') ||
+    normalizedId.includes('/src/components/react-bits/iridescence.tsx') ||
+    normalizedId.includes('/src/components/wallpaper/dynamicWallpapers.tsx') ||
+    normalizedId.includes('/src/components/wallpaper/dynamicWallpaperSceneImpl.tsx')
+  ) {
+    return 'vendor-visuals';
+  }
+
+  const pkg = getPackageName(normalizedId);
+  if (!pkg) return undefined;
+
+  if (pkg === 'react' || pkg === 'react-dom' || pkg === 'scheduler') {
+    return 'vendor-react';
+  }
+
+  if (
+    pkg === 'i18next' ||
+    pkg === 'react-i18next' ||
+    pkg === 'i18next-browser-languagedetector'
+  ) {
+    return 'vendor-i18n';
+  }
+
+  if (
+    pkg === 'framer-motion' ||
+    pkg === 'motion'
+  ) {
+    return 'vendor-motion';
+  }
+
+  if (
+    pkg === 'next-themes' ||
+    pkg === 'use-sync-external-store' ||
+    pkg === 'use-sync-external-store/shim'
+  ) {
+    return 'vendor-theme';
+  }
+
+  if (
+    pkg === 'clsx' ||
+    pkg === 'tailwind-merge' ||
+    pkg === 'class-variance-authority'
+  ) {
+    return 'vendor-style-utils';
+  }
+
+  if (
+    pkg.startsWith('@radix-ui/') ||
+    pkg === 'cmdk' ||
+    pkg === 'vaul' ||
+    pkg === 'react-resizable-panels' ||
+    pkg === 'react-hook-form' ||
+    pkg === 'react-day-picker' ||
+    pkg === 'embla-carousel-react'
+  ) {
+    return 'vendor-ui';
+  }
+
+  if (
+    pkg.startsWith('@dnd-kit/') ||
+    pkg.startsWith('@atlaskit/')
+  ) {
+    return 'vendor-dnd';
+  }
+
+  if (
+    pkg === '@react-three/fiber' ||
+    pkg === '@react-three/drei' ||
+    pkg === 'three' ||
+    pkg === 'ogl'
+  ) {
+    return 'vendor-visuals';
+  }
+
+  if (pkg === 'recharts') {
+    return 'vendor-charts';
+  }
+
+  if (pkg === 'lunar-javascript') {
+    return 'vendor-lunar';
+  }
+
+  if (pkg === 'china-division') {
+    return 'vendor-location';
+  }
+
+  if (pkg === '@remixicon/react' || pkg === 'lucide-react') {
+    return 'vendor-icons';
+  }
+
+  return 'vendor-misc';
+}
+
 export default defineConfig(async () => {
   const { default: tailwindcss } = await import('@tailwindcss/vite');
   return {
@@ -61,6 +196,19 @@ export default defineConfig(async () => {
     build: {
       target: 'esnext',
       outDir: 'build',
+      modulePreload: {
+        resolveDependencies: (_filename, deps, context) => {
+          if (context.hostType === 'html') {
+            return deps.filter((dep) => !dep.includes('vendor-visuals'));
+          }
+          return deps;
+        },
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: resolveManualChunk,
+        },
+      },
     },
     server: {
       port: 3000,

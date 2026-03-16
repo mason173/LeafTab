@@ -32,32 +32,32 @@ export default {
         items: {
           tabSwitch: {
             label: "Tab 切换搜索引擎",
-            description: "在搜索框里按 Tab 就能换搜索引擎",
+            description: "搜索框聚焦后按 Tab 切换引擎\n按 Shift+Tab 可切回上一个",
             tooltip: "先点一下搜索框，再按 Tab 切到下一个引擎；按 Shift+Tab 切回上一个。"
           },
           prefix: {
             label: "快速指定搜索引擎",
-            description: "先写引擎简称，再加空格输入内容",
+            description: "输入引擎简称加空格，临时切换\n只影响本次搜索，不改默认引擎",
             tooltip: "例如：g AI 用 Google 搜，bd 天气 用百度搜。只影响这一次，不会改默认引擎。"
           },
           siteDirect: {
             label: "站点直达搜索",
-            description: "输入“站点名 + 关键词”，直接站内搜索",
-            tooltip: "支持 GitHub、GitLab、Gitee、知乎、B站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站点。示例：github react。"
+            description: "输入“站点名 + 关键词”，优先站内搜索\n若站点不支持模板会自动回退为 site: 搜索",
+            tooltip: "支持 GitHub、GitLab、Gitee、知乎、B站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站点。若站点不支持模板会自动回退为 site: 搜索。"
           },
           siteShortcut: {
             label: "站点快捷建议",
-            description: "输入站点名时，优先给你常用站点建议",
+            description: "输入站点名时优先匹配关键词\n先给出常用站点建议，回车可直达",
             tooltip: "例如输入 git，会优先出现 GitHub / GitLab / Gitee，回车可直接打开。"
           },
           anyKeyCapture: {
             label: "任意键直接搜索",
-            description: "打开新标签页后，直接打字就能开始搜",
+            description: "打开新标签页后直接打字\n自动聚焦搜索框并开始输入",
             tooltip: "不用先点击搜索框，在页面空白处输入字符会自动聚焦并开始输入。"
           },
           calculator: {
             label: "计算器预览",
-            description: "输入算式会实时显示结果",
+            description: "输入算式会实时显示结果\n回车可填入并复制计算值",
             tooltip: "例如 12*8、(3+5)/2 会显示计算结果；按回车会把结果填入并复制到剪贴板。"
           }
         }
@@ -341,6 +341,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release135UiPolish: "优化界面效果",
+        release135VisualRefine: "优化交互与视觉细节",
+        release135KnownIssuesFix: "修复一些已知问题",
         release131DynamicWallpaperFlickerFix: "修复 Galaxy / Iridescence 灵动壁纸在部分设备上的闪烁，并对同类动态组件做一轮依赖稳定性排查。",
         release131TimeSecondsDefaultOn: "时间设置项“显示秒数”默认开启，新用户无需手动打开。",
         release131AdminDomainsBoard: "管理员模式新增域名后台管理页，支持搜索、排序、分页、复制与 CSV 导出。",

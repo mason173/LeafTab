@@ -75,7 +75,7 @@ export function resolveQuickAccessDrawerViewportMetrics(viewportHeight: number):
   };
 }
 
-export const DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX = 40;
+export const DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX = 24;
 export const DRAWER_CONTENT_BACKDROP_BLUR_MAX_PX = 0;
 export const DRAWER_CONTENT_BG_MAX_OPACITY = 1;
 export const DRAWER_OVERLAY_MAX_OPACITY = 0.35;

@@ -43,7 +43,7 @@ export default {
           },
           siteDirect: {
             label: "사이트 직접 검색",
-            description: "`사이트 + 키워드`를 `site:domain` 검색으로 변환",
+            description: "`사이트 + 키워드` 입력 시 해당 사이트 검색 결과를 우선 열기",
             tooltip: "GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon 등 주요 사이트를 지원합니다. 예: `github react`."
           },
           siteShortcut: {
