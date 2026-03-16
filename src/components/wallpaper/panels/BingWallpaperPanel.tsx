@@ -13,6 +13,9 @@ interface BingWallpaperPanelProps {
   wallpaperMaskOpacity: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
   onModeChange: (mode: WallpaperMode) => void;
+  isMaskSliderIsolation?: boolean;
+  onMaskSliderInteractionStart?: () => void;
+  onMaskSliderInteractionEnd?: () => void;
 }
 
 export function BingWallpaperPanel({
@@ -21,9 +24,14 @@ export function BingWallpaperPanel({
   wallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
   onModeChange,
+  isMaskSliderIsolation = false,
+  onMaskSliderInteractionStart,
+  onMaskSliderInteractionEnd,
 }: BingWallpaperPanelProps) {
   const { t, i18n } = useTranslation();
   const showBingMaskSlider = mode === "bing";
+  const isolateMaskSlider = isMaskSliderIsolation && showBingMaskSlider;
+  const fadeClass = "transition-opacity duration-220 ease-out";
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -69,18 +77,27 @@ export function BingWallpaperPanel({
   return (
     <TabsContent value="bing" disableAnimation className="mt-0 outline-none">
       <div className="flex flex-col gap-4">
-        <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 group bg-muted/20">
-          <img src={bingWallpaper || imgImage} alt="Bing" className="w-full h-full object-cover" />
-          <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+        <div className={`relative aspect-video rounded-[24px] overflow-hidden border group ${isolateMaskSlider ? "border-transparent bg-transparent" : "border-border/50 bg-muted/20"}`}>
+          <img
+            src={bingWallpaper || imgImage}
+            alt="Bing"
+            className={`w-full h-full object-cover ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
+          />
+          <WallpaperMaskOverlay
+            opacity={wallpaperMaskOpacity}
+            className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
+          />
           {showBingMaskSlider ? (
             <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2">
               <WallpaperMaskOpacitySlider
                 value={wallpaperMaskOpacity}
                 onChange={onWallpaperMaskOpacityChange}
+                onInteractionStart={onMaskSliderInteractionStart}
+                onInteractionEnd={onMaskSliderInteractionEnd}
               />
             </div>
           ) : null}
-          <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+          <div className={`absolute bottom-3 right-3 flex gap-2 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"}`}>
             <Button
               size="icon"
               variant="secondary"
@@ -93,7 +110,7 @@ export function BingWallpaperPanel({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
           <div className="space-y-1">
             <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.bing")}</h4>
             <p className="text-xs text-muted-foreground">{t("weather.wallpaper.bingDesc")}</p>

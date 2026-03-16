@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
 import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
 import {
+  buildSearchMatchCandidates,
+  getSearchMatchPriorityFromCandidates,
   getNextSearchEngine,
-  getSearchMatchPriority,
   normalizeSearchQuery,
   parseSearchEnginePrefix,
 } from '../utils/searchHelpers';
@@ -22,6 +23,11 @@ const DEFAULT_SEARCH_ENGINE: SearchEngine = 'system';
 export type SearchHistoryEntry = {
   query: string;
   timestamp: number;
+};
+
+type IndexedSearchHistoryEntry = SearchHistoryEntry & {
+  usageKey: string;
+  matchCandidates: string[];
 };
 
 type SearchFeatureOptions = {
@@ -75,7 +81,6 @@ const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] => {
 };
 
 export function useSearch(
-  searchInputRef: React.RefObject<HTMLInputElement>,
   openInNewTab: boolean,
   options?: SearchFeatureOptions,
 ) {
@@ -96,6 +101,7 @@ export function useSearch(
   });
   const [historySelectedIndex, setHistorySelectedIndex] = useState(-1);
   const skipNextHistoryOpen = useRef(false);
+  const [historyUsageVersion, setHistoryUsageVersion] = useState(0);
 
   const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
     try {
@@ -109,6 +115,11 @@ export function useSearch(
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const deferredSearchValue = useDeferredValue(searchValue);
+  const historyUsageMap = useMemo(
+    () => (personalizationEnabled ? readSuggestionUsageMap() : {}),
+    [personalizationEnabled, historyUsageVersion],
+  );
 
   useEffect(() => {
     try {
@@ -126,31 +137,42 @@ export function useSearch(
     // 不在输入时自动展开历史，仅在点击/聚焦输入框时展开
   };
 
+  const indexedSearchHistory = useMemo<IndexedSearchHistoryEntry[]>(
+    () => searchHistory.map((item) => ({
+      ...item,
+      usageKey: buildQueryUsageKey(item.query),
+      matchCandidates: buildSearchMatchCandidates(item.query),
+    })),
+    [searchHistory],
+  );
+
   const filteredHistoryItems = useMemo(() => {
-    const normalizedQuery = normalizeSearchQuery(searchValue);
-    const usageMap = personalizationEnabled ? readSuggestionUsageMap() : {};
+    const normalizedQuery = normalizeSearchQuery(deferredSearchValue);
     const now = Date.now();
 
-    const ranked = searchHistory
+    const ranked = indexedSearchHistory
       .map((item) => {
         const matchPriority = normalizedQuery
-          ? getSearchMatchPriority(item.query, normalizedQuery, { fuzzy: fuzzyMatchEnabled })
+          ? getSearchMatchPriorityFromCandidates(item.matchCandidates, normalizedQuery, { fuzzy: fuzzyMatchEnabled })
           : 2;
         if (normalizedQuery && matchPriority === 0) return null;
 
         const usageBoost = personalizationEnabled
-          ? getSuggestionUsageBoost(usageMap, buildQueryUsageKey(item.query), now)
+          ? getSuggestionUsageBoost(historyUsageMap, item.usageKey, now)
           : 0;
         const hoursSince = Math.max(0, (now - item.timestamp) / 3_600_000);
         const freshnessBoost = Math.max(0, 12 - hoursSince * 0.5);
         const score = matchPriority * 100 + usageBoost + freshnessBoost;
         return { item, score };
       })
-      .filter((entry): entry is { item: SearchHistoryEntry; score: number } => Boolean(entry));
+      .filter((entry): entry is { item: IndexedSearchHistoryEntry; score: number } => Boolean(entry));
 
     ranked.sort((a, b) => b.score - a.score || b.item.timestamp - a.item.timestamp);
-    return ranked.map((entry) => entry.item);
-  }, [fuzzyMatchEnabled, personalizationEnabled, searchValue, searchHistory]);
+    return ranked.map(({ item }) => ({
+      query: item.query,
+      timestamp: item.timestamp,
+    }));
+  }, [deferredSearchValue, fuzzyMatchEnabled, historyUsageMap, indexedSearchHistory, personalizationEnabled]);
 
   const addSearchHistoryEntry = useCallback((rawQuery: string) => {
     const query = rawQuery.trim();
@@ -180,6 +202,7 @@ export function useSearch(
     addSearchHistoryEntry(historyEntryValue);
     if (personalizationEnabled) {
       recordSuggestionUsage(buildQueryUsageKey(historyEntryValue));
+      setHistoryUsageVersion((prev) => prev + 1);
     }
     const effectiveEngine = prefixEnabled ? (overrideEngine ?? searchEngine) : searchEngine;
 

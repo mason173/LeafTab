@@ -96,6 +96,7 @@ function SortableShortcut({
   return (
     <motion.div
       ref={setNodeRef}
+      initial={false}
       layout={!isActiveDragItem}
       transition={CARD_LAYOUT_SHIFT_TRANSITION}
       style={style}
@@ -223,8 +224,11 @@ export function ShortcutGrid({
   const clearOverlayTimerRef = useRef<number | null>(null);
   const ignoreClickRef = useRef(false);
   const autoScrollContainerRef = useRef<HTMLElement | null>(null);
+  const autoScrollBoundsRef = useRef<{ top: number; bottom: number } | null>(null);
   const autoScrollVelocityRef = useRef(0);
   const autoScrollRafRef = useRef<number | null>(null);
+  const pointerVelocityFrameRef = useRef<number | null>(null);
+  const pendingPointerClientYRef = useRef<number | null>(null);
   const actualRows = Math.ceil(items.length / Math.max(gridColumns, 1));
   const displayRows = Math.max(actualRows, minRows);
   const rowHeight = cardVariant === 'compact'
@@ -242,6 +246,21 @@ export function ShortcutGrid({
       window.cancelAnimationFrame(autoScrollRafRef.current);
       autoScrollRafRef.current = null;
     }
+    if (pointerVelocityFrameRef.current !== null) {
+      window.cancelAnimationFrame(pointerVelocityFrameRef.current);
+      pointerVelocityFrameRef.current = null;
+    }
+    pendingPointerClientYRef.current = null;
+  }, []);
+
+  const refreshAutoScrollBounds = useCallback(() => {
+    const container = autoScrollContainerRef.current;
+    if (!container) {
+      autoScrollBoundsRef.current = null;
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    autoScrollBoundsRef.current = { top: rect.top, bottom: rect.bottom };
   }, []);
 
   const startAutoScrollLoop = useCallback(() => {
@@ -263,19 +282,32 @@ export function ShortcutGrid({
 
   const updateAutoScrollVelocity = useCallback((clientY: number) => {
     const container = autoScrollContainerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
+    const bounds = autoScrollBoundsRef.current;
+    if (!container || !bounds) return;
     let velocity = 0;
-    if (clientY < rect.top + DRAG_AUTO_SCROLL_EDGE_PX) {
-      const ratio = Math.min(1, (rect.top + DRAG_AUTO_SCROLL_EDGE_PX - clientY) / DRAG_AUTO_SCROLL_EDGE_PX);
+    if (clientY < bounds.top + DRAG_AUTO_SCROLL_EDGE_PX) {
+      const ratio = Math.min(1, (bounds.top + DRAG_AUTO_SCROLL_EDGE_PX - clientY) / DRAG_AUTO_SCROLL_EDGE_PX);
       velocity = -(DRAG_AUTO_SCROLL_MAX_SPEED_PX * ratio * ratio);
-    } else if (clientY > rect.bottom - DRAG_AUTO_SCROLL_EDGE_PX) {
-      const ratio = Math.min(1, (clientY - (rect.bottom - DRAG_AUTO_SCROLL_EDGE_PX)) / DRAG_AUTO_SCROLL_EDGE_PX);
+    } else if (clientY > bounds.bottom - DRAG_AUTO_SCROLL_EDGE_PX) {
+      const ratio = Math.min(1, (clientY - (bounds.bottom - DRAG_AUTO_SCROLL_EDGE_PX)) / DRAG_AUTO_SCROLL_EDGE_PX);
       velocity = DRAG_AUTO_SCROLL_MAX_SPEED_PX * ratio * ratio;
     }
     autoScrollVelocityRef.current = velocity;
     if (Math.abs(velocity) > 0.01) startAutoScrollLoop();
   }, [startAutoScrollLoop]);
+
+  const scheduleAutoScrollVelocityUpdate = useCallback((clientY: number) => {
+    pendingPointerClientYRef.current = clientY;
+    if (pointerVelocityFrameRef.current !== null) return;
+    pointerVelocityFrameRef.current = window.requestAnimationFrame(() => {
+      pointerVelocityFrameRef.current = null;
+      const nextClientY = pendingPointerClientYRef.current;
+      pendingPointerClientYRef.current = null;
+      if (typeof nextClientY === 'number') {
+        updateAutoScrollVelocity(nextClientY);
+      }
+    });
+  }, [updateAutoScrollVelocity]);
 
   useEffect(() => {
     if (dragging) {
@@ -300,22 +332,29 @@ export function ShortcutGrid({
   useEffect(() => {
     if (!dragging) {
       stopAutoScroll();
+      autoScrollBoundsRef.current = null;
       return;
     }
     const handlePointerMove = (event: PointerEvent) => {
-      updateAutoScrollVelocity(event.clientY);
+      scheduleAutoScrollVelocityUpdate(event.clientY);
     };
     const handleTouchMove = (event: TouchEvent) => {
       const touch = event.touches[0];
-      if (touch) updateAutoScrollVelocity(touch.clientY);
+      if (touch) scheduleAutoScrollVelocityUpdate(touch.clientY);
     };
+    const handleWindowResize = () => {
+      refreshAutoScrollBounds();
+    };
+    refreshAutoScrollBounds();
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('resize', handleWindowResize, { passive: true });
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('resize', handleWindowResize);
     };
-  }, [dragging, stopAutoScroll, updateAutoScrollVelocity]);
+  }, [dragging, refreshAutoScrollBounds, scheduleAutoScrollVelocityUpdate, stopAutoScroll]);
 
   return (
     <div 
@@ -337,6 +376,7 @@ export function ShortcutGrid({
             clearOverlayTimerRef.current = null;
           }
           autoScrollContainerRef.current = findScrollableParent(rootRef.current);
+          refreshAutoScrollBounds();
           autoScrollVelocityRef.current = 0;
           setDragging(true);
           setActiveDragId(String(active.id));
@@ -349,6 +389,7 @@ export function ShortcutGrid({
           }
           stopAutoScroll();
           autoScrollContainerRef.current = null;
+          autoScrollBoundsRef.current = null;
           setDragging(false);
           setActiveDragId(null);
         }}
@@ -356,6 +397,7 @@ export function ShortcutGrid({
           if (selectionMode) return;
           stopAutoScroll();
           autoScrollContainerRef.current = null;
+          autoScrollBoundsRef.current = null;
           setDragging(false);
           if (clearOverlayTimerRef.current !== null) {
             window.clearTimeout(clearOverlayTimerRef.current);

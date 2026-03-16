@@ -3,7 +3,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { RiImageFill } from "@remixicon/react";
 import { useTranslation } from "react-i18next";
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { Magnetic } from "@/components/motion-primitives/magnetic";
 import type { DynamicWallpaperEffect, WallpaperMode } from "@/wallpaper/types";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
@@ -67,20 +67,39 @@ export default function WallpaperSelector({
   onOpenChange,
 }: WallpaperSelectorProps) {
   const { t } = useTranslation();
+  const [isMaskSliderInteracting, setIsMaskSliderInteracting] = useState(false);
+  const isMaskSliderIsolation = isMaskSliderInteracting && (mode === "bing" || mode === "custom" || mode === "weather");
+  const isolationFadeClass = "transition-opacity duration-220 ease-out";
+
+  useEffect(() => {
+    if (mode !== "bing" && mode !== "custom" && mode !== "weather") {
+      setIsMaskSliderInteracting(false);
+    }
+  }, [mode]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsMaskSliderInteracting(false);
+    }
+    onOpenChange?.(nextOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || <WallpaperDialogTrigger />}
       </DialogTrigger>
-      <DialogContent className="max-w-[480px] bg-popover/95 backdrop-blur-xl border-white/10 rounded-[32px] overflow-hidden p-0 shadow-2xl [&>button]:text-foreground [&>button]:opacity-70 [&>button:hover]:opacity-100">
+      <DialogContent
+        overlayClassName={`transition-opacity duration-220 ease-out ${isMaskSliderIsolation ? "!opacity-0 !bg-black/0" : ""}`}
+        className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${isMaskSliderIsolation ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none" : "bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"}`}
+      >
         <div className="flex flex-col h-full">
-          <DialogHeader className="px-6 pt-6 pb-2">
+          <DialogHeader className={`px-6 pt-6 pb-2 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">{t("weather.wallpaper.mode")}</DialogTitle>
           </DialogHeader>
 
           <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">
-            <div className="px-6 pb-4">
+            <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
               <TabsList className={`grid w-full ${hideWeather ? "grid-cols-4" : "grid-cols-5"} rounded-[16px]`}>
                 <TabsTrigger
                   value="dynamic"
@@ -122,7 +141,7 @@ export default function WallpaperSelector({
               </TabsList>
             </div>
 
-            <Separator className="bg-border/40" />
+            <Separator className={`bg-border/40 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0" : ""}`} />
 
             <div className="p-4">
               <BingWallpaperPanel
@@ -131,6 +150,9 @@ export default function WallpaperSelector({
                 wallpaperMaskOpacity={wallpaperMaskOpacity}
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                 onModeChange={onModeChange}
+                isMaskSliderIsolation={isMaskSliderIsolation}
+                onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
+                onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
               />
 
               {!hideWeather && (
@@ -139,6 +161,9 @@ export default function WallpaperSelector({
                   wallpaperMaskOpacity={wallpaperMaskOpacity}
                   onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                   onModeChange={onModeChange}
+                  isMaskSliderIsolation={isMaskSliderIsolation}
+                  onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
+                  onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
                 />
               )}
 
@@ -157,6 +182,9 @@ export default function WallpaperSelector({
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                 onCustomWallpaperChange={onCustomWallpaperChange}
                 onModeChange={onModeChange}
+                isMaskSliderIsolation={isMaskSliderIsolation}
+                onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
+                onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
               />
 
               <DynamicWallpaperPanel

@@ -124,7 +124,7 @@ function isFuzzyMatch(candidate: string, normalizedQuery: string): boolean {
   return hasSmallTypo(candidate, normalizedQuery);
 }
 
-function buildMatchCandidates(rawValue: string): string[] {
+export function buildSearchMatchCandidates(rawValue: string): string[] {
   const normalized = normalizeSearchQuery(rawValue);
   if (!normalized) return [];
 
@@ -144,9 +144,8 @@ function buildMatchCandidates(rawValue: string): string[] {
   return Array.from(new Set(candidates));
 }
 
-// 2 = prefix match, 1 = fallback contains match, 0 = no match
-export function getSearchMatchPriority(
-  rawValue: string,
+export function getSearchMatchPriorityFromCandidates(
+  candidates: readonly string[],
   normalizedQuery: string,
   options?: { fuzzy?: boolean },
 ): 0 | 1 | 2 {
@@ -154,7 +153,6 @@ export function getSearchMatchPriority(
   const fuzzyEnabled = options?.fuzzy ?? true;
 
   let priority: 0 | 1 | 2 = 0;
-  const candidates = buildMatchCandidates(rawValue);
   for (const candidate of candidates) {
     if (candidate.startsWith(normalizedQuery)) return 2;
     if (priority === 0 && candidate.includes(normalizedQuery)) priority = 1;
@@ -163,6 +161,19 @@ export function getSearchMatchPriority(
     return 1;
   }
   return priority;
+}
+
+// 2 = prefix match, 1 = fallback contains match, 0 = no match
+export function getSearchMatchPriority(
+  rawValue: string,
+  normalizedQuery: string,
+  options?: { fuzzy?: boolean },
+): 0 | 1 | 2 {
+  return getSearchMatchPriorityFromCandidates(
+    buildSearchMatchCandidates(rawValue),
+    normalizedQuery,
+    options,
+  );
 }
 
 // Higher score means higher suggestion priority.
@@ -178,6 +189,25 @@ export function getShortcutSuggestionScore(args: {
 
   const titlePriority = getSearchMatchPriority(title, normalizedQuery, { fuzzy });
   const urlPriority = getSearchMatchPriority(url, normalizedQuery, { fuzzy });
+
+  if (titlePriority === 2) return 4;
+  if (urlPriority === 2) return 3;
+  if (titlePriority === 1) return 2;
+  if (urlPriority === 1) return 1;
+  return 0;
+}
+
+export function getShortcutSuggestionScoreFromCandidates(args: {
+  titleCandidates: readonly string[];
+  urlCandidates: readonly string[];
+  normalizedQuery: string;
+  fuzzy?: boolean;
+}): 0 | 1 | 2 | 3 | 4 {
+  const { titleCandidates, urlCandidates, normalizedQuery, fuzzy } = args;
+  if (!normalizedQuery) return 0;
+
+  const titlePriority = getSearchMatchPriorityFromCandidates(titleCandidates, normalizedQuery, { fuzzy });
+  const urlPriority = getSearchMatchPriorityFromCandidates(urlCandidates, normalizedQuery, { fuzzy });
 
   if (titlePriority === 2) return 4;
   if (urlPriority === 2) return 3;

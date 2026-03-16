@@ -5,6 +5,8 @@ interface WallpaperMaskOpacitySliderProps {
   value: number;
   onChange: (value: number) => void;
   className?: string;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 const clampOpacity = (value: number): number => {
@@ -16,6 +18,8 @@ export function WallpaperMaskOpacitySlider({
   value,
   onChange,
   className = '',
+  onInteractionStart,
+  onInteractionEnd,
 }: WallpaperMaskOpacitySliderProps) {
   const { t } = useTranslation();
   const safeValue = clampOpacity(value);
@@ -32,8 +36,10 @@ export function WallpaperMaskOpacitySlider({
       decimals={0}
       showLabel
       showValue
-      trackHeight={48}
-      className={`w-full ${className} [&_[data-slot=scrubber-track]]:bg-black/40 [&_[data-slot=scrubber-track]]:backdrop-blur-md [&_[data-slot=scrubber-fill]]:bg-white/14 [&_[data-slot=scrubber-tick]]:bg-white/30 [&_[data-slot=scrubber-thumb]]:bg-white/70 [&_[data-slot=scrubber-thumb]]:shadow-none [&_[data-slot=scrubber-label]]:text-white [&_[data-slot=scrubber-label]]:text-[13px] [&_[data-slot=scrubber-value]]:text-white [&_[data-slot=scrubber-value]]:text-[13px]`}
+      trackHeight={40}
+      className={`w-full ${className}`}
+      onDragStart={onInteractionStart}
+      onDragEnd={onInteractionEnd}
       onValueChange={(nextRawValue) => {
         const next = clampOpacity(nextRawValue);
         onChange(next);

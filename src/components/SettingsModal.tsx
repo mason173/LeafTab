@@ -51,7 +51,6 @@ import {
   SyncSettingsActionButtons,
   SyncToggleField,
 } from "./sync/SyncSettingsFields";
-import { ShortcutStyleSettingsDialog } from "./ShortcutStyleSettingsDialog";
 import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode, shouldShowTimeDetailControls } from "@/displayMode/config";
 import type { DynamicWallpaperEffect, WallpaperMode } from "@/wallpaper/types";
@@ -136,6 +135,7 @@ interface SettingsModalProps {
   onOpenAdminModal?: () => void;
   onOpenAboutModal?: (tab?: AboutLeafTabModalTab) => void;
   onOpenWallpaperSettings?: () => void;
+  onOpenShortcutStyleSettings?: () => void;
 }
 
 export default function SettingsModal({
@@ -187,6 +187,7 @@ export default function SettingsModal({
   onOpenAdminModal,
   onOpenAboutModal,
   onOpenWallpaperSettings,
+  onOpenShortcutStyleSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -223,10 +224,6 @@ export default function SettingsModal({
     { name: 'pink', value: '#ec4899', label: t('settings.accent.pink') },
     { name: 'red', value: '#ef4444', label: t('settings.accent.red') },
   ];
-  const [shortcutStyleDialogOpen, setShortcutStyleDialogOpen] = useState(false);
-  const shortcutStyleDialogTimerRef = useRef<number | null>(null);
-  const wallpaperSettingsDialogTimerRef = useRef<number | null>(null);
-  const searchSettingsDialogTimerRef = useRef<number | null>(null);
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
     if (mode === 'panoramic') return <RiDashboardFill className={className} />;
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
@@ -625,56 +622,18 @@ export default function SettingsModal({
 
   const handleOpenShortcutStyleSettings = () => {
     onOpenChange(false);
-    if (shortcutStyleDialogTimerRef.current) {
-      window.clearTimeout(shortcutStyleDialogTimerRef.current);
-      shortcutStyleDialogTimerRef.current = null;
-    }
-    shortcutStyleDialogTimerRef.current = window.setTimeout(() => {
-      setShortcutStyleDialogOpen(true);
-      shortcutStyleDialogTimerRef.current = null;
-    }, 0);
+    onOpenShortcutStyleSettings?.();
   };
 
   const handleOpenWallpaperSettings = () => {
     onOpenChange(false);
-    if (wallpaperSettingsDialogTimerRef.current) {
-      window.clearTimeout(wallpaperSettingsDialogTimerRef.current);
-      wallpaperSettingsDialogTimerRef.current = null;
-    }
-    wallpaperSettingsDialogTimerRef.current = window.setTimeout(() => {
-      onOpenWallpaperSettings?.();
-      wallpaperSettingsDialogTimerRef.current = null;
-    }, 200);
+    onOpenWallpaperSettings?.();
   };
 
   const handleOpenSearchSettings = () => {
     onOpenChange(false);
-    if (searchSettingsDialogTimerRef.current) {
-      window.clearTimeout(searchSettingsDialogTimerRef.current);
-      searchSettingsDialogTimerRef.current = null;
-    }
-    searchSettingsDialogTimerRef.current = window.setTimeout(() => {
-      onOpenSearchSettings?.();
-      searchSettingsDialogTimerRef.current = null;
-    }, 200);
+    onOpenSearchSettings?.();
   };
-
-  useEffect(() => {
-    return () => {
-      if (shortcutStyleDialogTimerRef.current) {
-        window.clearTimeout(shortcutStyleDialogTimerRef.current);
-        shortcutStyleDialogTimerRef.current = null;
-      }
-      if (wallpaperSettingsDialogTimerRef.current) {
-        window.clearTimeout(wallpaperSettingsDialogTimerRef.current);
-        wallpaperSettingsDialogTimerRef.current = null;
-      }
-      if (searchSettingsDialogTimerRef.current) {
-        window.clearTimeout(searchSettingsDialogTimerRef.current);
-        searchSettingsDialogTimerRef.current = null;
-      }
-    };
-  }, []);
 
   return (
     <>
@@ -1215,18 +1174,6 @@ export default function SettingsModal({
           </div>
         </ScrollArea>
       </DialogContent>
-      <ShortcutStyleSettingsDialog
-        open={shortcutStyleDialogOpen}
-        onOpenChange={setShortcutStyleDialogOpen}
-        variant={shortcutCardVariant}
-        compactShowTitle={shortcutCompactShowTitle}
-        columns={shortcutGridColumns}
-        onSave={({ variant, compactShowTitle, columns }) => {
-          onShortcutCardVariantChange(variant);
-          onShortcutCompactShowTitleChange(compactShowTitle);
-          onShortcutGridColumnsChange(columns);
-        }}
-      />
       <SyncSettingsDialog
         open={cloudSyncConfigOpen}
         onOpenChange={setCloudSyncConfigOpen}

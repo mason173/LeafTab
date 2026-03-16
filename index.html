@@ -1,18 +1,23 @@
-
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
+<!DOCTYPE html>
+<html lang="en" style="background-color:#323232;">
+  <head>
+    <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" sizes="16x16" href="icons/icon16.ico?v=2" />
     <link rel="icon" type="image/x-icon" sizes="32x32" href="icons/icon32.ico?v=2" />
     <link rel="shortcut icon" href="icons/icon32.ico?v=2" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>New Tab</title>
-    </head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style id="boot-bg-style">
+      html, body, #root {
+        min-height: 100%;
+        margin: 0;
+        background-color: #323232;
+      }
+    </style>
+    <title>New Tab</title>
+  </head>
 
-    <body>
-      <div id="root" data-vaul-drawer-wrapper></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+  <body style="margin:0;background-color:#323232;">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

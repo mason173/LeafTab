@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeFontDialog } from '@/components/TimeFontDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
+import { useClock } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 interface InlineTimeProps {
-  time: string;
-  date: Date;
-  lunar: string;
+  is24Hour: boolean;
+  showSeconds: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   forceWhiteText: boolean;
@@ -15,15 +15,15 @@ interface InlineTimeProps {
 }
 
 export function InlineTime({
-  time,
-  date,
-  lunar,
+  is24Hour,
+  showSeconds,
   timeFont,
   onTimeFontChange,
   forceWhiteText,
   layout,
 }: InlineTimeProps) {
   const { i18n } = useTranslation();
+  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
   const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);

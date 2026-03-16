@@ -13,6 +13,9 @@ interface WeatherWallpaperPanelProps {
   wallpaperMaskOpacity: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
   onModeChange: (mode: WallpaperMode) => void;
+  isMaskSliderIsolation?: boolean;
+  onMaskSliderInteractionStart?: () => void;
+  onMaskSliderInteractionEnd?: () => void;
 }
 
 export function WeatherWallpaperPanel({
@@ -20,6 +23,9 @@ export function WeatherWallpaperPanel({
   wallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
   onModeChange,
+  isMaskSliderIsolation = false,
+  onMaskSliderInteractionStart,
+  onMaskSliderInteractionEnd,
 }: WeatherWallpaperPanelProps) {
   const { t } = useTranslation();
   const [weatherPreviewIndex, setWeatherPreviewIndex] = useState(0);
@@ -33,6 +39,8 @@ export function WeatherWallpaperPanel({
   ]), [t]);
   const currentWeatherPreview = weatherPreviewVideos[weatherPreviewIndex] || weatherPreviewVideos[0];
   const showWeatherMaskSlider = mode === "weather";
+  const isolateMaskSlider = isMaskSliderIsolation && showWeatherMaskSlider;
+  const fadeClass = "transition-opacity duration-220 ease-out";
 
   const goPrevWeatherPreview = () => {
     setWeatherPreviewIndex((prev) => (prev - 1 + weatherPreviewVideos.length) % weatherPreviewVideos.length);
@@ -45,26 +53,31 @@ export function WeatherWallpaperPanel({
   return (
     <TabsContent value="weather" disableAnimation className="mt-0 outline-none">
       <div className="flex flex-col gap-4">
-        <div className="relative aspect-video rounded-[24px] overflow-hidden border border-border/50 bg-transparent group">
+        <div className={`relative aspect-video rounded-[24px] overflow-hidden border bg-transparent group ${isolateMaskSlider ? "border-transparent" : "border-border/50"}`}>
           <video
             key={currentWeatherPreview.id}
             src={currentWeatherPreview.src}
-            className="h-full w-full object-cover object-center"
+            className={`h-full w-full object-cover object-center ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
             muted
             autoPlay
             playsInline
           />
-          <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+          <WallpaperMaskOverlay
+            opacity={wallpaperMaskOpacity}
+            className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
+          />
           {showWeatherMaskSlider ? (
             <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2">
               <WallpaperMaskOpacitySlider
                 value={wallpaperMaskOpacity}
                 onChange={onWallpaperMaskOpacityChange}
+                onInteractionStart={onMaskSliderInteractionStart}
+                onInteractionEnd={onMaskSliderInteractionEnd}
               />
             </div>
           ) : null}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-          <div className="absolute inset-y-0 left-2 flex items-center opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+          <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`} />
+          <div className={`absolute inset-y-0 left-2 flex items-center ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"}`}>
             <Button
               type="button"
               variant="secondary"
@@ -76,7 +89,7 @@ export function WeatherWallpaperPanel({
               <RiArrowLeftSLine className="size-5" />
             </Button>
           </div>
-          <div className="absolute inset-y-0 right-2 flex items-center opacity-0 transition-opacity duration-200 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+          <div className={`absolute inset-y-0 right-2 flex items-center ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"}`}>
             <Button
               type="button"
               variant="secondary"
@@ -88,12 +101,12 @@ export function WeatherWallpaperPanel({
               <RiArrowRightSLine className="size-5" />
             </Button>
           </div>
-          <div className="absolute left-3 bottom-3 rounded-md border border-white/20 bg-black/35 px-2 py-0.5 text-[11px] text-white">
+          <div className={`absolute left-3 bottom-3 rounded-md border border-white/20 bg-black/35 px-2 py-0.5 text-[11px] text-white ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             {currentWeatherPreview.label}
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
           <div className="space-y-1">
             <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.weather")}</h4>
             <p className="text-xs text-muted-foreground">{t("weather.wallpaper.weatherDesc")}</p>

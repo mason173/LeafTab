@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiAddLine, RiSubtractLine } from '@remixicon/react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -50,46 +50,106 @@ export function ShortcutStyleSettingsDialog({
   const [draftVariant, setDraftVariant] = useState<ShortcutCardVariant>(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
   const [draftColumns, setDraftColumns] = useState(columns);
   const [draftCompactShowTitle, setDraftCompactShowTitle] = useState(compactShowTitle);
+  const [isColumnsSliderInteracting, setIsColumnsSliderInteracting] = useState(false);
+  const columnsByVariantRef = useRef<Partial<Record<ShortcutCardVariant, number>>>({});
+  const isSliderIsolation = isColumnsSliderInteracting;
+  const isolationFadeClass = 'transition-opacity duration-220 ease-out';
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setIsColumnsSliderInteracting(false);
+      return;
+    }
     setDraftVariant(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
     setDraftColumns(columns);
     setDraftCompactShowTitle(compactShowTitle);
+    columnsByVariantRef.current[variant || DEFAULT_SHORTCUT_CARD_VARIANT] = clampShortcutGridColumns(
+      columns,
+      variant || DEFAULT_SHORTCUT_CARD_VARIANT,
+    );
   }, [open, variant, columns, compactShowTitle]);
 
   const columnBounds = useMemo(() => getShortcutColumnBounds(draftVariant), [draftVariant]);
-
-  useEffect(() => {
-    const saved = readColumnsByVariant(draftVariant);
-    if (saved !== null) {
-      setDraftColumns(saved);
-      return;
+  const resolveColumnsForVariant = (nextVariant: ShortcutCardVariant, fallbackColumns: number): number => {
+    const remembered = columnsByVariantRef.current[nextVariant];
+    if (Number.isFinite(remembered)) {
+      return clampShortcutGridColumns(remembered as number, nextVariant);
     }
-    setDraftColumns((prev) => {
-      const normalized = clampShortcutGridColumns(prev, draftVariant);
-      if (Number.isFinite(normalized)) return normalized;
-      return getShortcutColumns(draftVariant);
+    const saved = readColumnsByVariant(nextVariant);
+    if (saved !== null) return saved;
+    const normalized = clampShortcutGridColumns(fallbackColumns, nextVariant);
+    if (Number.isFinite(normalized)) return normalized;
+    return getShortcutColumns(nextVariant);
+  };
+
+  const emitLiveUpdate = (
+    nextVariant: ShortcutCardVariant,
+    nextCompactShowTitle: boolean,
+    nextColumns: number,
+  ) => {
+    onSave({
+      variant: nextVariant,
+      compactShowTitle: nextCompactShowTitle,
+      columns: nextColumns,
     });
-  }, [draftVariant]);
+  };
+
+  const handleVariantChange = (value: string) => {
+    const nextVariant = value as ShortcutCardVariant;
+    const nextColumns = resolveColumnsForVariant(nextVariant, draftColumns);
+    setDraftVariant(nextVariant);
+    setDraftColumns(nextColumns);
+    columnsByVariantRef.current[nextVariant] = nextColumns;
+    emitLiveUpdate(nextVariant, draftCompactShowTitle, nextColumns);
+  };
+
+  const handleCompactShowTitleChange = (nextCompactShowTitle: boolean) => {
+    setDraftCompactShowTitle(nextCompactShowTitle);
+    emitLiveUpdate(draftVariant, nextCompactShowTitle, draftColumns);
+  };
+
+  const handleColumnsChange = (nextRawValue: number) => {
+    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue), draftVariant);
+    setDraftColumns(nextColumns);
+    columnsByVariantRef.current[draftVariant] = nextColumns;
+    emitLiveUpdate(draftVariant, draftCompactShowTitle, nextColumns);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsColumnsSliderInteracting(false);
+    }
+    onOpenChange(nextOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] bg-background border-border text-foreground rounded-[32px] flex flex-col">
-        <DialogHeader>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        overlayClassName={`${isolationFadeClass} ${isSliderIsolation ? '!opacity-0 !bg-black/0' : ''}`}
+        className={`sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-[32px] flex flex-col transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
+          isSliderIsolation
+            ? 'bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none'
+            : 'bg-background border-border text-foreground'
+        }`}
+      >
+        <DialogHeader className={`${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}>
           <DialogTitle>{t('settings.shortcutsStyle.title')}</DialogTitle>
           <DialogDescription>{t('settings.shortcutsStyle.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <Tabs value={draftVariant} onValueChange={(value) => setDraftVariant(value as ShortcutCardVariant)} className="w-full">
+          <Tabs
+            value={draftVariant}
+            onValueChange={handleVariantChange}
+            className={`w-full ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}
+          >
             <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
               <TabsTrigger value="compact" className="rounded-xl">{t('settings.shortcutsStyle.compact')}</TabsTrigger>
               <TabsTrigger value="default" className="rounded-xl">{t('settings.shortcutsStyle.rich')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="min-h-[40px]">
+          <div className={`min-h-[40px] ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}>
             <div className={`flex items-center justify-between gap-3 rounded-xl px-1 py-1 ${draftVariant !== 'compact' ? 'opacity-55' : ''}`}>
               <div className="flex flex-col">
                 <span className={`text-sm font-medium leading-none ${draftVariant !== 'compact' ? 'text-muted-foreground' : ''}`}>{t('settings.shortcutsStyle.showName')}</span>
@@ -97,7 +157,7 @@ export function ShortcutStyleSettingsDialog({
               </div>
               <Switch
                 checked={draftVariant === 'compact' ? draftCompactShowTitle : true}
-                onCheckedChange={draftVariant === 'compact' ? setDraftCompactShowTitle : undefined}
+                onCheckedChange={draftVariant === 'compact' ? handleCompactShowTitleChange : undefined}
                 disabled={draftVariant !== 'compact'}
                 className={`relative flex h-6 w-10 items-center justify-start rounded-full border p-0.5 transition-colors data-[state=checked]:justify-end ${
                   draftVariant !== 'compact'
@@ -118,8 +178,8 @@ export function ShortcutStyleSettingsDialog({
               type="button"
               variant="secondary"
               size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={() => setDraftColumns((prev) => Math.max(columnBounds.min, prev - 1))}
+              className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              onClick={() => handleColumnsChange(Math.max(columnBounds.min, draftColumns - 1))}
               disabled={draftColumns <= columnBounds.min}
             >
               <RiSubtractLine className="size-4" />
@@ -131,10 +191,9 @@ export function ShortcutStyleSettingsDialog({
               max={columnBounds.max}
               step={1}
               value={draftColumns}
-              onValueChange={(nextRawValue) => {
-                const next = clampShortcutGridColumns(Math.round(nextRawValue), draftVariant);
-                setDraftColumns(next);
-              }}
+              onValueChange={handleColumnsChange}
+              onDragStart={() => setIsColumnsSliderInteracting(true)}
+              onDragEnd={() => setIsColumnsSliderInteracting(false)}
               ticks={9}
               decimals={0}
               showLabel
@@ -146,8 +205,8 @@ export function ShortcutStyleSettingsDialog({
               type="button"
               variant="secondary"
               size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={() => setDraftColumns((prev) => Math.min(columnBounds.max, prev + 1))}
+              className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              onClick={() => handleColumnsChange(Math.min(columnBounds.max, draftColumns + 1))}
               disabled={draftColumns >= columnBounds.max}
             >
               <RiAddLine className="size-4" />
@@ -156,22 +215,9 @@ export function ShortcutStyleSettingsDialog({
 
         </div>
 
-        <DialogFooter className="flex w-full gap-3 sm:gap-3">
+        <DialogFooter className={`flex w-full gap-3 sm:gap-3 ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}>
           <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => onOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => {
-              onSave({
-                variant: draftVariant,
-                compactShowTitle: draftCompactShowTitle,
-                columns: draftColumns,
-              });
-              onOpenChange(false);
-            }}
-          >
-            {t('common.save')}
+            {t('common.close')}
           </Button>
         </DialogFooter>
       </DialogContent>

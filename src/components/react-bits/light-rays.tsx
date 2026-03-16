@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { Renderer, Program, Triangle, Mesh } from 'ogl';
+import { useRenderActivity } from '@/hooks/useRenderActivity';
 
 export type RaysOrigin =
   | 'top-center'
@@ -111,32 +112,10 @@ export const LightRays: React.FC<LightRaysProps> = ({
   const raysOriginRef = useRef<RaysOrigin>(raysOrigin);
   const followMouseRef = useRef(followMouse);
   const mouseInfluenceRef = useRef(mouseInfluence);
-  const [isVisible, setIsVisible] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const renderActive = useRenderActivity(containerRef, { threshold: 0.1 });
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    observerRef.current = new IntersectionObserver(
-      entries => {
-        const entry = entries[0];
-        setIsVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
-
-    observerRef.current.observe(containerRef.current);
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isVisible || !containerRef.current) return;
+    if (!renderActive || !containerRef.current) return;
 
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
@@ -392,7 +371,7 @@ void main() {
       }
     };
   }, [
-    isVisible,
+    renderActive,
     staticFrame
   ]);
 
@@ -451,11 +430,11 @@ void main() {
       mouseRef.current = { x, y };
     };
 
-    if (followMouse) {
+    if (renderActive && followMouse) {
       window.addEventListener('mousemove', handleMouseMove);
       return () => window.removeEventListener('mousemove', handleMouseMove);
     }
-  }, [followMouse]);
+  }, [followMouse, renderActive]);
 
   return (
     <div
