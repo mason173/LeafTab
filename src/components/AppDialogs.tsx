@@ -1,16 +1,17 @@
-import type { ComponentProps } from 'react';
+import { Suspense, lazy, type ComponentProps } from 'react';
 import { RiShieldCrossFill } from '@remixicon/react';
 import { useTranslation } from 'react-i18next';
-import { AboutLeafTabModal } from './AboutLeafTabModal';
-import { AdminModal } from './AdminModal';
-import AuthModal from './AuthModal';
+import type { AboutLeafTabModal } from './AboutLeafTabModal';
+import type { AdminModal } from './AdminModal';
+import type AuthModal from './AuthModal';
 import ConfirmDialog from './ConfirmDialog';
-import ScenarioModeCreateDialog from './ScenarioModeCreateDialog';
-import SettingsModal from './SettingsModal';
-import { SearchSettingsModal } from './SearchSettingsModal';
-import ShortcutModal from './ShortcutModal';
-import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
-import { WebdavConfigDialog } from './WebdavConfigDialog';
+import type ScenarioModeCreateDialog from './ScenarioModeCreateDialog';
+import type SettingsModal from './SettingsModal';
+import type { SearchSettingsModal } from './SearchSettingsModal';
+import type { ShortcutStyleSettingsDialog } from './ShortcutStyleSettingsDialog';
+import type ShortcutModal from './ShortcutModal';
+import type { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
+import type { WebdavConfigDialog } from './WebdavConfigDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import {
@@ -22,12 +23,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+const LazyShortcutModal = lazy(() => import('./ShortcutModal'));
+const LazyScenarioModeCreateDialog = lazy(() => import('./ScenarioModeCreateDialog'));
+const LazyAuthModal = lazy(() => import('./AuthModal'));
+const LazySettingsModal = lazy(() => import('./SettingsModal'));
+const LazySearchSettingsModal = lazy(() => import('./SearchSettingsModal').then((module) => ({ default: module.SearchSettingsModal })));
+const LazyShortcutStyleSettingsDialog = lazy(() => import('./ShortcutStyleSettingsDialog').then((module) => ({ default: module.ShortcutStyleSettingsDialog })));
+const LazyAdminModal = lazy(() => import('./AdminModal').then((module) => ({ default: module.AdminModal })));
+const LazyAboutLeafTabModal = lazy(() => import('./AboutLeafTabModal').then((module) => ({ default: module.AboutLeafTabModal })));
+const LazyWebdavConfigDialog = lazy(() => import('./WebdavConfigDialog').then((module) => ({ default: module.WebdavConfigDialog })));
+const LazySyncPreviewConfirmDialog = lazy(() => import('./SyncPreviewConfirmDialog').then((module) => ({ default: module.SyncPreviewConfirmDialog })));
+
 type ShortcutModalProps = ComponentProps<typeof ShortcutModal>;
 type ConfirmDialogProps = ComponentProps<typeof ConfirmDialog>;
 type ScenarioModeCreateDialogProps = ComponentProps<typeof ScenarioModeCreateDialog>;
 type AuthModalProps = ComponentProps<typeof AuthModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type SearchSettingsModalProps = ComponentProps<typeof SearchSettingsModal>;
+type ShortcutStyleSettingsDialogProps = ComponentProps<typeof ShortcutStyleSettingsDialog>;
 type AdminModalProps = ComponentProps<typeof AdminModal>;
 type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
@@ -83,6 +96,7 @@ interface AppDialogsProps {
   authModalProps: AuthModalProps;
   settingsModalProps: SettingsModalProps;
   searchSettingsModalProps: SearchSettingsModalProps;
+  shortcutStyleSettingsDialogProps: ShortcutStyleSettingsDialogProps;
   adminModalProps: AdminModalProps;
   aboutModalProps: AboutLeafTabModalProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
@@ -100,6 +114,7 @@ export function AppDialogs({
   authModalProps,
   settingsModalProps,
   searchSettingsModalProps,
+  shortcutStyleSettingsDialogProps,
   adminModalProps,
   aboutModalProps,
   webdavConfigDialogProps,
@@ -112,19 +127,68 @@ export function AppDialogs({
 
   return (
     <>
-      <ShortcutModal {...shortcutModalProps} />
+      {shortcutModalProps.isOpen ? (
+        <Suspense fallback={null}>
+          <LazyShortcutModal {...shortcutModalProps} />
+        </Suspense>
+      ) : null}
       <ConfirmDialog {...shortcutDeleteDialogProps} />
-      <ScenarioModeCreateDialog {...scenarioCreateDialogProps} />
-      <ScenarioModeCreateDialog {...scenarioEditDialogProps} />
-      <AuthModal {...authModalProps} />
-      <SettingsModal {...settingsModalProps} />
-      <SearchSettingsModal {...searchSettingsModalProps} />
-      <AdminModal {...adminModalProps} />
-      <AboutLeafTabModal {...aboutModalProps} />
-      <WebdavConfigDialog {...webdavConfigDialogProps} />
+      {scenarioCreateDialogProps.open ? (
+        <Suspense fallback={null}>
+          <LazyScenarioModeCreateDialog {...scenarioCreateDialogProps} />
+        </Suspense>
+      ) : null}
+      {scenarioEditDialogProps.open ? (
+        <Suspense fallback={null}>
+          <LazyScenarioModeCreateDialog {...scenarioEditDialogProps} />
+        </Suspense>
+      ) : null}
+      {authModalProps.isOpen ? (
+        <Suspense fallback={null}>
+          <LazyAuthModal {...authModalProps} />
+        </Suspense>
+      ) : null}
+      {settingsModalProps.isOpen ? (
+        <Suspense fallback={null}>
+          <LazySettingsModal {...settingsModalProps} />
+        </Suspense>
+      ) : null}
+      {searchSettingsModalProps.isOpen ? (
+        <Suspense fallback={null}>
+          <LazySearchSettingsModal {...searchSettingsModalProps} />
+        </Suspense>
+      ) : null}
+      {shortcutStyleSettingsDialogProps.open ? (
+        <Suspense fallback={null}>
+          <LazyShortcutStyleSettingsDialog {...shortcutStyleSettingsDialogProps} />
+        </Suspense>
+      ) : null}
+      {adminModalProps.open ? (
+        <Suspense fallback={null}>
+          <LazyAdminModal {...adminModalProps} />
+        </Suspense>
+      ) : null}
+      {aboutModalProps.open ? (
+        <Suspense fallback={null}>
+          <LazyAboutLeafTabModal {...aboutModalProps} />
+        </Suspense>
+      ) : null}
+      {webdavConfigDialogProps.open ? (
+        <Suspense fallback={null}>
+          <LazyWebdavConfigDialog {...webdavConfigDialogProps} />
+        </Suspense>
+      ) : null}
 
-      <SyncPreviewConfirmDialog {...confirmSyncDialog} />
-      <SyncPreviewConfirmDialog {...webdavConfirmSyncDialog} />
+      {confirmSyncDialog.open ? (
+        <Suspense fallback={null}>
+          <LazySyncPreviewConfirmDialog {...confirmSyncDialog} />
+        </Suspense>
+      ) : null}
+      {webdavConfirmSyncDialog.open ? (
+        <Suspense fallback={null}>
+          <LazySyncPreviewConfirmDialog {...webdavConfirmSyncDialog} />
+        </Suspense>
+      ) : null}
 
       <Dialog
         open={importConfirmDialog.open}

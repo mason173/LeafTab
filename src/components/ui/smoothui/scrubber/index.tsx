@@ -9,6 +9,8 @@ export interface ScrubberProps {
   value?: number;
   defaultValue?: number;
   onValueChange?: (value: number) => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
   min?: number;
   max?: number;
   step?: number;
@@ -33,6 +35,8 @@ const Scrubber = ({
   value: controlledValue,
   defaultValue = 0,
   onValueChange,
+  onDragStart,
+  onDragEnd,
   min = 0,
   max = 1,
   step = 0.01,
@@ -47,6 +51,7 @@ const Scrubber = ({
 }: ScrubberProps) => {
   const shouldReduceMotion = useReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
+  const wasDraggingRef = useRef(false);
   const [internalValue, setInternalValue] = useState(defaultValue);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -110,6 +115,24 @@ const Scrubber = ({
     setIsDragging(false);
   }, []);
 
+  const handlePointerCancel = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleLostPointerCapture = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging && !wasDraggingRef.current) {
+      onDragStart?.();
+    }
+    if (!isDragging && wasDraggingRef.current) {
+      onDragEnd?.();
+    }
+    wasDraggingRef.current = isDragging;
+  }, [isDragging, onDragEnd, onDragStart]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (disabled) return;
@@ -163,6 +186,8 @@ const Scrubber = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={handleLostPointerCapture}
         ref={trackRef}
         role="slider"
         style={{

@@ -5,7 +5,11 @@ import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
-import { RHYTHM_BACKGROUND_SCALE_AT_FULL_DRAWER } from './quickAccessDrawer.constants';
+import {
+  INITIAL_REVEAL_TIMING,
+  resolveInitialRevealOpacity,
+  resolveInitialRevealTransform,
+} from '@/config/animationTokens';
 import { QuickAccessDrawer } from './QuickAccessDrawer';
 import { InlineTime } from './InlineTime';
 import { useQuickAccessDrawer } from './useQuickAccessDrawer';
@@ -16,6 +20,7 @@ type HomeContentFlags = Pick<
 >;
 
 interface HomeMainContentProps {
+  initialRevealReady: boolean;
   visible: boolean;
   user: string | null;
   loginBannerVisible: boolean;
@@ -24,9 +29,8 @@ interface HomeMainContentProps {
   modeFlags: HomeContentFlags;
   showTime: boolean;
   displayMode: DisplayMode;
-  time: string;
-  date: Date;
-  lunar: string;
+  is24Hour: boolean;
+  showSeconds: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
@@ -36,15 +40,12 @@ interface HomeMainContentProps {
   onDrawerExpandedChange?: (expanded: boolean) => void;
 }
 
-const HOME_BLOCK_ENTER_MIN_DISTANCE_PX = 320;
-const HOME_BLOCK_ENTER_EXTRA_OFFSET_PX = 120;
-const HOME_BLOCK_ENTER_DURATION_MS = 680;
-const HOME_BLOCK_ENTER_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
 const HOME_WALLPAPER_BLOCK_LIFT_PX = 28;
-const HOME_BACKGROUND_SCALE_AT_FULL_DRAWER = 0.965;
+const HOME_DRAWER_LINKED_TRANSITION = '320ms cubic-bezier(0.22, 1, 0.36, 1)';
 
 export function HomeMainContent({
+  initialRevealReady,
   visible,
   user: _user,
   loginBannerVisible: _loginBannerVisible,
@@ -53,9 +54,8 @@ export function HomeMainContent({
   modeFlags,
   showTime,
   displayMode,
-  time,
-  date,
-  lunar,
+  is24Hour,
+  showSeconds,
   timeFont,
   onTimeFontChange,
   layout,
@@ -66,7 +66,7 @@ export function HomeMainContent({
 }: HomeMainContentProps) {
   const { resolvedTheme } = useTheme();
   const drawer = useQuickAccessDrawer({
-    displayMode,
+    viewportHeight: layout.viewportHeight,
     showShortcuts: modeFlags.showShortcuts,
     disableScrollInteraction: Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen),
   });
@@ -76,15 +76,6 @@ export function HomeMainContent({
     0,
     ((layout.mainTopMargin + 50) / Math.max(layout.viewportHeight, 1)) * 100 - HOME_TOP_OFFSET_NUDGE_VH,
   );
-  const homeTopOffsetPx = (homeTopOffsetPercent / 100) * layout.viewportHeight;
-  const estimatedHomeBlockHeight = modeFlags.showHeroWallpaperClock
-    ? layout.wallpaperHeight
-    : Math.max(layout.clockFontSize + 120, 240);
-  const homeBlockEnterDistancePx = Math.max(
-    HOME_BLOCK_ENTER_MIN_DISTANCE_PX,
-    homeTopOffsetPx + estimatedHomeBlockHeight + HOME_BLOCK_ENTER_EXTRA_OFFSET_PX,
-  );
-  const homeBlockEnterFromTopPx = -homeBlockEnterDistancePx;
 
   const drawerShortcutFadeHeight = shortcutGridProps.cardVariant === 'compact'
     ? Math.max(66, Math.round(((shortcutGridProps.compactIconSize ?? 72) + 24) * 0.92))
@@ -92,10 +83,8 @@ export function HomeMainContent({
   const drawerShortcutBottomInset = drawerShortcutFadeHeight + 16;
 
   const homeWallpaperBlockTranslateYPx = -HOME_WALLPAPER_BLOCK_LIFT_PX * drawer.drawerLayoutProgress;
-  const homeBackgroundScaleAtFullDrawer = displayMode === 'fresh'
-    ? RHYTHM_BACKGROUND_SCALE_AT_FULL_DRAWER
-    : HOME_BACKGROUND_SCALE_AT_FULL_DRAWER;
-  const homeBackgroundScale = 1 + (homeBackgroundScaleAtFullDrawer - 1) * drawer.drawerLayoutProgress;
+  const homeInitialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
+  const homeInitialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
 
   const isLightTheme = resolvedTheme !== 'dark';
   const useExpandedLightSearchSurface = isLightTheme && drawer.isDrawerExpanded;
@@ -120,10 +109,10 @@ export function HomeMainContent({
       <div
         className="flex flex-col items-center flex-1 w-full transform-gpu will-change-transform"
         style={{
-          ['--home-block-enter-from' as string]: `${homeBlockEnterFromTopPx}px`,
           marginTop: `${homeTopOffsetPercent}vh`,
-          animation: `home-block-enter ${HOME_BLOCK_ENTER_DURATION_MS}ms ${HOME_BLOCK_ENTER_EASE} both`,
-          willChange: 'transform, opacity',
+          opacity: homeInitialRevealOpacity,
+          transform: homeInitialRevealTransform,
+          transition: `opacity ${INITIAL_REVEAL_TIMING}, transform ${INITIAL_REVEAL_TIMING}`,
         }}
       >
         <div
@@ -131,8 +120,10 @@ export function HomeMainContent({
           style={{
             width: layout.contentWidth,
             gap: layout.mainGap + 12,
-            transform: `translate3d(0, ${homeWallpaperBlockTranslateYPx}px, 0) scale(${homeBackgroundScale})`,
+            transform: `translate3d(0, ${homeWallpaperBlockTranslateYPx}px, 0)`,
             transformOrigin: 'center top',
+            transition: `transform ${HOME_DRAWER_LINKED_TRANSITION}`,
+            willChange: 'transform',
           }}
         >
           {modeFlags.showHeroWallpaperClock ? (
@@ -143,9 +134,8 @@ export function HomeMainContent({
             showTime && (
               <div className="w-full transform-gpu will-change-transform">
                 <InlineTime
-                  time={time}
-                  date={date}
-                  lunar={lunar}
+                  is24Hour={is24Hour}
+                  showSeconds={showSeconds}
                   timeFont={timeFont}
                   onTimeFontChange={onTimeFontChange}
                   forceWhiteText={modeFlags.forceWhiteSearchTheme}
@@ -158,10 +148,13 @@ export function HomeMainContent({
       </div>
 
       <QuickAccessDrawer
+        initialRevealReady={initialRevealReady}
         modeFlags={modeFlags}
         contentWidth={layout.contentWidth}
         quickAccessOpen={drawer.quickAccessOpen}
         quickAccessSnapPoint={drawer.quickAccessSnapPoint}
+        quickAccessDefaultSnapPoint={drawer.quickAccessDefaultSnapPoint}
+        quickAccessFullSnapPoint={drawer.quickAccessFullSnapPoint}
         isDrawerExpanded={drawer.isDrawerExpanded}
         drawerOverlayOpacity={drawer.drawerOverlayOpacity}
         drawerSurfaceOpacity={drawer.drawerSurfaceOpacity}

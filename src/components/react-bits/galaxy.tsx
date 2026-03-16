@@ -2,6 +2,7 @@
 
 import { Renderer, Program, Mesh, Color, Triangle } from 'ogl';
 import { useEffect, useRef } from 'react';
+import { useRenderActivity } from '@/hooks/useRenderActivity';
 
 const vertexShader = `
 attribute vec2 uv;
@@ -212,13 +213,14 @@ export default function Galaxy({
   const [focalX, focalY] = focal;
   const [rotationX, rotationY] = rotation;
   const ctnDom = useRef<HTMLDivElement>(null);
+  const renderActive = useRenderActivity(ctnDom, { threshold: 0.1 });
   const targetMousePos = useRef({ x: 0.5, y: 0.5 });
   const smoothMousePos = useRef({ x: 0.5, y: 0.5 });
   const targetMouseActive = useRef(0.0);
   const smoothMouseActive = useRef(0.0);
 
   useEffect(() => {
-    if (!ctnDom.current) return;
+    if (!renderActive || !ctnDom.current) return;
     const ctn = ctnDom.current;
     const renderer = new Renderer({
       alpha: transparent,
@@ -341,6 +343,7 @@ export default function Galaxy({
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [
+    renderActive,
     focalX,
     focalY,
     rotationX,

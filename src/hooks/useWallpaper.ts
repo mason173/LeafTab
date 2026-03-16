@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob } from '../db';
-import imgImage from "../assets/Default_wallpaper.png";
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
 import { isDynamicWallpaperEffect } from '@/wallpaper/types';
@@ -162,6 +161,7 @@ export function useWallpaper() {
   const initialBingWallpaper = getInitialBingWallpaper();
   const [bingWallpaper, setBingWallpaper] = useState<string>(() => initialBingWallpaper);
   const hasBingWallpaperRef = useRef(Boolean(initialBingWallpaper));
+  const ownedBingObjectUrlRef = useRef<string | null>(null);
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
@@ -211,31 +211,39 @@ export function useWallpaper() {
     let cancelled = false;
     let onceTimer: number | null = null;
     let dailyTimer: number | null = null;
+    const revokeOwnedBingObjectUrl = () => {
+      if (!ownedBingObjectUrlRef.current) return;
+      URL.revokeObjectURL(ownedBingObjectUrlRef.current);
+      ownedBingObjectUrlRef.current = null;
+    };
 
-    const setBingSource = (source: string) => {
+    const setBingSource = (source: string, options?: { ownsObjectUrl?: boolean }) => {
       const url = (source || '').trim();
       if (url) {
+        if (ownedBingObjectUrlRef.current && ownedBingObjectUrlRef.current !== url) {
+          revokeOwnedBingObjectUrl();
+        }
+        if (options?.ownsObjectUrl) {
+          ownedBingObjectUrlRef.current = url;
+        }
         hasBingWallpaperRef.current = true;
         setBingWallpaper(url);
         return;
       }
+      revokeOwnedBingObjectUrl();
       hasBingWallpaperRef.current = false;
-      setBingWallpaper(imgImage);
+      setBingWallpaper('');
     };
-
-    const blobToDataUrl = (blob: Blob): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(reader.error || new Error('read blob failed'));
-        reader.readAsDataURL(blob);
-      });
+    const clearBingSourceIfMissing = () => {
+      if (!hasBingWallpaperRef.current) {
+        setBingSource('');
+      }
     };
 
     const applyBingBlob = async (blob: Blob) => {
-      const dataUrl = await blobToDataUrl(blob);
-      if (!dataUrl) throw new Error('empty-data-url');
-      setBingSource(dataUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      if (!objectUrl) throw new Error('empty-object-url');
+      setBingSource(objectUrl, { ownsObjectUrl: true });
     };
 
     const fetchBingImageSource = async (market: string): Promise<{ blob: Blob | null; sourceUrl: string }> => {
@@ -294,7 +302,7 @@ export function useWallpaper() {
           });
         }
       } catch {
-        if (!cancelled && !hasBingWallpaperRef.current) setBingSource('');
+        if (!cancelled) clearBingSourceIfMissing();
       }
     };
 
@@ -308,15 +316,15 @@ export function useWallpaper() {
           } catch {
             const meta = readBingCacheMeta();
             if (meta?.sourceUrl) setBingSource(meta.sourceUrl);
-            else setBingSource('');
+            else clearBingSourceIfMissing();
           }
         } else {
           const meta = readBingCacheMeta();
           if (meta?.sourceUrl) setBingSource(meta.sourceUrl);
-          else setBingSource('');
+          else clearBingSourceIfMissing();
         }
       } catch {
-        if (!cancelled) setBingSource('');
+        if (!cancelled) clearBingSourceIfMissing();
       }
 
       await refreshBingWallpaper(false);
@@ -334,6 +342,7 @@ export function useWallpaper() {
       cancelled = true;
       if (onceTimer !== null) window.clearTimeout(onceTimer);
       if (dailyTimer !== null) window.clearInterval(dailyTimer);
+      revokeOwnedBingObjectUrl();
     };
   }, []);
 

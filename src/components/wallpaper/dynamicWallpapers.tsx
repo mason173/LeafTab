@@ -314,6 +314,7 @@ export function renderDynamicWallpaper(
             scale={3.4}
             noise={0.35}
             glow={1}
+            suspendWhenOffscreen
           />
         );
       }

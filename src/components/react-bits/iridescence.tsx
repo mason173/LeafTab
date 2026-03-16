@@ -2,6 +2,7 @@
 
 import { Renderer, Program, Mesh, Color, Triangle } from 'ogl';
 import { useEffect, useRef } from 'react';
+import { useRenderActivity } from '@/hooks/useRenderActivity';
 
 const vertexShader = `
 attribute vec2 uv;
@@ -64,10 +65,11 @@ export default function Iridescence({
 }: IridescenceProps) {
   const [colorR, colorG, colorB] = color;
   const ctnDom = useRef<HTMLDivElement>(null);
+  const renderActive = useRenderActivity(ctnDom, { threshold: 0.1 });
   const mousePos = useRef({ x: 0.5, y: 0.5 });
 
   useEffect(() => {
-    if (!ctnDom.current) return;
+    if (!renderActive || !ctnDom.current) return;
     const ctn = ctnDom.current;
     const renderer = new Renderer();
     const gl = renderer.gl;
@@ -145,7 +147,7 @@ export default function Iridescence({
       ctn.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
-  }, [colorR, colorG, colorB, speed, amplitude, mouseReact, staticFrame]);
+  }, [colorR, colorG, colorB, speed, amplitude, mouseReact, renderActive, staticFrame]);
 
   return <div ref={ctnDom} className="w-full h-full" {...rest} />;
 }

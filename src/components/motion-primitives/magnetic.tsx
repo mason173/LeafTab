@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   motion,
   useMotionValue,
@@ -34,53 +34,73 @@ export function Magnetic({
   const springX = useSpring(x, springOptions);
   const springY = useSpring(y, springOptions);
 
-  useEffect(() => {
-    const calculateDistance = (e: MouseEvent) => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const distanceX = e.clientX - centerX;
-        const distanceY = e.clientY - centerY;
+  const resetPosition = useCallback(() => {
+    x.set(0);
+    y.set(0);
+  }, [x, y]);
 
-        const absoluteDistance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
+  const calculateDistance = useCallback((clientX: number, clientY: number) => {
+    if (!ref.current || !isHovered) {
+      resetPosition();
+      return;
+    }
 
-        if (isHovered && absoluteDistance <= range) {
-          const scale = 1 - absoluteDistance / range;
-          x.set(distanceX * intensity * scale);
-          y.set(distanceY * intensity * scale);
-        } else {
-          x.set(0);
-          y.set(0);
-        }
-      }
-    };
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const distanceX = clientX - centerX;
+    const distanceY = clientY - centerY;
+    const absoluteDistance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
-    document.addEventListener('mousemove', calculateDistance);
+    if (absoluteDistance <= range) {
+      const scale = 1 - absoluteDistance / range;
+      x.set(distanceX * intensity * scale);
+      y.set(distanceY * intensity * scale);
+      return;
+    }
 
-    return () => {
-      document.removeEventListener('mousemove', calculateDistance);
-    };
-  }, [ref, isHovered, intensity, range]);
+    resetPosition();
+  }, [intensity, isHovered, range, resetPosition, x, y]);
 
   useEffect(() => {
     if (actionArea === 'parent' && ref.current?.parentElement) {
       const parent = ref.current.parentElement;
 
       const handleParentEnter = () => setIsHovered(true);
-      const handleParentLeave = () => setIsHovered(false);
+      const handleParentLeave = () => {
+        setIsHovered(false);
+        resetPosition();
+      };
+      const handleParentMove = (event: MouseEvent) => {
+        calculateDistance(event.clientX, event.clientY);
+      };
 
       parent.addEventListener('mouseenter', handleParentEnter);
       parent.addEventListener('mouseleave', handleParentLeave);
+      parent.addEventListener('mousemove', handleParentMove);
 
       return () => {
         parent.removeEventListener('mouseenter', handleParentEnter);
         parent.removeEventListener('mouseleave', handleParentLeave);
+        parent.removeEventListener('mousemove', handleParentMove);
       };
     } else if (actionArea === 'global') {
       setIsHovered(true);
     }
-  }, [actionArea]);
+  }, [actionArea, calculateDistance, resetPosition]);
+
+  useEffect(() => {
+    if (actionArea !== 'global') return;
+
+    const handleGlobalMove = (event: MouseEvent) => {
+      calculateDistance(event.clientX, event.clientY);
+    };
+
+    window.addEventListener('mousemove', handleGlobalMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMove);
+    };
+  }, [actionArea, calculateDistance]);
 
   const handleMouseEnter = () => {
     if (actionArea === 'self') {
@@ -88,11 +108,16 @@ export function Magnetic({
     }
   };
 
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (actionArea === 'self') {
+      calculateDistance(event.clientX, event.clientY);
+    }
+  };
+
   const handleMouseLeave = () => {
     if (actionArea === 'self') {
       setIsHovered(false);
-      x.set(0);
-      y.set(0);
+      resetPosition();
     }
   };
 
@@ -100,6 +125,7 @@ export function Magnetic({
     <motion.div
       ref={ref}
       onMouseEnter={actionArea === 'self' ? handleMouseEnter : undefined}
+      onMouseMove={actionArea === 'self' ? handleMouseMove : undefined}
       onMouseLeave={actionArea === 'self' ? handleMouseLeave : undefined}
       style={{
         x: springX,

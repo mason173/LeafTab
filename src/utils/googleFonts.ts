@@ -7,16 +7,16 @@ export interface GoogleFont {
 export const googleFonts: GoogleFont[] = [
   { name: 'Default', family: 'PingFang SC', category: 'sans-serif' },
   { name: 'Inter', family: 'Inter', category: 'sans-serif' },
-  { name: 'Roboto', family: 'Roboto', category: 'sans-serif' },
-  { name: 'Lato', family: 'Lato', category: 'sans-serif' },
-  { name: 'Montserrat', family: 'Montserrat', category: 'sans-serif' },
-  { name: 'Oswald', family: 'Oswald', category: 'sans-serif' },
+  { name: 'Bebas Neue', family: 'Bebas Neue', category: 'display' },
+  { name: 'Orbitron', family: 'Orbitron', category: 'sans-serif' },
+  { name: 'Righteous', family: 'Righteous', category: 'display' },
   { name: 'Playfair Display', family: 'Playfair Display', category: 'serif' },
-  { name: 'Merriweather', family: 'Merriweather', category: 'serif' },
-  { name: 'Nunito', family: 'Nunito', category: 'sans-serif' },
-  { name: 'Inconsolata', family: 'Inconsolata', category: 'monospace' },
-  { name: 'Dancing Script', family: 'Dancing Script', category: 'handwriting' },
+  { name: 'Abril Fatface', family: 'Abril Fatface', category: 'serif' },
+  { name: 'Cormorant Garamond', family: 'Cormorant Garamond', category: 'serif' },
+  { name: 'Space Mono', family: 'Space Mono', category: 'monospace' },
+  { name: 'Caveat', family: 'Caveat', category: 'handwriting' },
   { name: 'Pacifico', family: 'Pacifico', category: 'handwriting' },
+  { name: 'Monoton', family: 'Monoton', category: 'display' },
   { name: 'Bangers', family: 'Bangers', category: 'display' },
   { name: 'Press Start 2P', family: 'Press Start 2P', category: 'display' },
   { name: 'Pixelify Sans', family: 'Pixelify Sans', category: 'display' },
@@ -31,7 +31,8 @@ export const loadGoogleFont = (fontFamily: string) => {
   const link = document.createElement('link');
   link.id = linkId;
   link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}:wght@100;300;400;500;700;900&display=swap`;
+  // Use the generic CSS2 family URL for better compatibility across display/handwriting fonts.
+  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}&display=swap`;
   
   document.head.appendChild(link);
 };

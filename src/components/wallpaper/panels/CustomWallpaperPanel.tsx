@@ -15,6 +15,9 @@ interface CustomWallpaperPanelProps {
   onWallpaperMaskOpacityChange: (value: number) => void;
   onCustomWallpaperChange: (url: string) => void;
   onModeChange: (mode: WallpaperMode) => void;
+  isMaskSliderIsolation?: boolean;
+  onMaskSliderInteractionStart?: () => void;
+  onMaskSliderInteractionEnd?: () => void;
 }
 
 export function CustomWallpaperPanel({
@@ -24,10 +27,15 @@ export function CustomWallpaperPanel({
   onWallpaperMaskOpacityChange,
   onCustomWallpaperChange,
   onModeChange,
+  isMaskSliderIsolation = false,
+  onMaskSliderInteractionStart,
+  onMaskSliderInteractionEnd,
 }: CustomWallpaperPanelProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showCustomMaskSlider = mode === "custom" && !!customWallpaper;
+  const isolateMaskSlider = isMaskSliderIsolation && showCustomMaskSlider;
+  const fadeClass = "transition-opacity duration-220 ease-out";
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,22 +68,33 @@ export function CustomWallpaperPanel({
           className={`relative aspect-video rounded-[24px] overflow-hidden border transition-all group ${
             !customWallpaper
               ? "border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50 cursor-pointer flex flex-col items-center justify-center gap-3"
-              : "border-border/50"
+              : isolateMaskSlider
+                ? "border-transparent bg-transparent"
+                : "border-border/50"
           }`}
         >
           {customWallpaper ? (
             <>
-              <img src={customWallpaper} alt="Custom" className="w-full h-full object-cover" />
-              <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} className="absolute inset-0 pointer-events-none" />
+              <img
+                src={customWallpaper}
+                alt="Custom"
+                className={`w-full h-full object-cover ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
+              />
+              <WallpaperMaskOverlay
+                opacity={wallpaperMaskOpacity}
+                className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
+              />
               {showCustomMaskSlider ? (
                 <div className="absolute left-1/2 top-3 z-20 w-[72%] -translate-x-1/2">
                   <WallpaperMaskOpacitySlider
                     value={wallpaperMaskOpacity}
                     onChange={onWallpaperMaskOpacityChange}
+                    onInteractionStart={onMaskSliderInteractionStart}
+                    onInteractionEnd={onMaskSliderInteractionEnd}
                   />
                 </div>
               ) : null}
-              <div className="absolute inset-0 z-10 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+              <div className={`absolute inset-0 z-10 bg-black/40 flex items-center justify-center ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"}`}>
                 <Button
                   variant="secondary"
                   className="h-9 gap-2 bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-none text-sm"
@@ -106,7 +125,7 @@ export function CustomWallpaperPanel({
           />
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
           <div className="space-y-1">
             <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.custom")}</h4>
             <p className="text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { Suspense, lazy, useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RiArrowDownLine,
@@ -21,7 +21,6 @@ import imgImage from "./assets/Default_wallpaper.png?url";
 import { useAuth } from './hooks/useAuth';
 import { useSearch } from './hooks/useSearch';
 import { useShortcuts } from './hooks/useShortcuts';
-import { useClock } from './hooks/useClock';
 import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
 import { useRole } from './hooks/useRole';
@@ -29,13 +28,15 @@ import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
 import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
 import { useRotatingText } from './hooks/useRotatingText';
+import { useInitialReveal } from './hooks/useInitialReveal';
+import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
+import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
+import { useSearchSuggestions } from './hooks/useSearchSuggestions';
 import type { SearchSuggestionItem } from './types';
-import { Shortcut } from './types';
 
 // Components
 import { TopNavBar } from './components/TopNavBar';
 import ScenarioModeMenu from './components/ScenarioModeMenu';
-import WallpaperSelector from './components/WallpaperSelector';
 import { RoleSelector } from './components/RoleSelector';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
@@ -45,11 +46,9 @@ import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLoc
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
 import { isWebdavAuthError } from '@/utils/webdavError';
-import { AppDialogs } from './components/AppDialogs';
 import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
-import { UpdateAvailableDialog } from './components/UpdateAvailableDialog';
 import {
   buildBackupDataV4,
   clampShortcutsRowsPerColumn,
@@ -65,17 +64,18 @@ import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverla
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
-import { renderDynamicWallpaper } from '@/components/wallpaper/dynamicWallpapers';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
-import { getShortcutSuggestionScore, normalizeSearchQuery, parseSearchEnginePrefix } from '@/utils/searchHelpers';
-import { getBuiltinSiteShortcutSuggestions } from '@/utils/siteSearch';
+import { LazyDynamicWallpaperScene } from '@/components/wallpaper/LazyDynamicWallpaperScene';
 import {
   buildShortcutUsageKey,
-  getSuggestionUsageBoost,
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
-import { getCalculatorPreview } from '@/utils/calculator';
+import {
+  INITIAL_REVEAL_TIMING,
+  resolveInitialRevealOpacity,
+  resolveInitialRevealTransform,
+} from '@/config/animationTokens';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -93,6 +93,9 @@ const getApiBase = () => {
 
 const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
 const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
+const LazyAppDialogs = lazy(() => import('./components/AppDialogs').then((module) => ({ default: module.AppDialogs })));
+const LazyWallpaperSelector = lazy(() => import('./components/WallpaperSelector'));
+const LazyUpdateAvailableDialog = lazy(() => import('./components/UpdateAvailableDialog').then((module) => ({ default: module.UpdateAvailableDialog })));
 
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
@@ -133,6 +136,7 @@ const clearPersistedWebdavConflict = () => {
 
 export default function App() {
   const { t, i18n } = useTranslation();
+  const pageFocusRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
@@ -150,6 +154,7 @@ export default function App() {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
+  const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
   const [isQuickAccessDrawerExpanded, setIsQuickAccessDrawerExpanded] = useState(false);
@@ -162,6 +167,7 @@ export default function App() {
   });
   const weatherDebugTapCountRef = useRef(0);
   const weatherDebugTapTimerRef = useRef<number | null>(null);
+  const initialRevealReady = useInitialReveal();
   const webdavEnableConflictRef = useRef<{
     config: WebdavConfig;
     localPayload: WebdavPayload;
@@ -231,7 +237,6 @@ export default function App() {
   } = useSettings();
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
-  // removed auto-focus search feature
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
 
@@ -267,7 +272,7 @@ export default function App() {
     handleEngineSelect,
     cycleSearchEngine,
     openSearchWithQuery,
-  } = useSearch(searchInputRef as React.RefObject<HTMLInputElement>, openInNewTab, {
+  } = useSearch(openInNewTab, {
     prefixEnabled: searchPrefixEnabled,
     siteDirectEnabled: searchSiteDirectEnabled,
   });
@@ -488,130 +493,15 @@ export default function App() {
 
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
-
-  const shortcutSuggestionItems = useMemo(() => {
-    const normalizedQuery = normalizeSearchQuery(searchValue);
-    if (!normalizedQuery) return [] as SearchSuggestionItem[];
-
-    const all: { title: string; url: string; icon: string }[] = [];
-    Object.values(scenarioShortcuts as Record<string, Shortcut[]>).forEach((list) => {
-      (list || []).forEach((s) => all.push({ title: s.title || '', url: s.url || '', icon: s.icon || '' }));
-    });
-
-    const seen = new Set<string>();
-    const ranked: Array<{ item: SearchSuggestionItem; score: number; order: number }> = [];
-    let order = 0;
-    for (const s of all) {
-      const url = s.url.trim();
-      if (!url) continue;
-
-      const score = getShortcutSuggestionScore({
-        title: s.title,
-        url,
-        normalizedQuery,
-      });
-      if (score === 0) continue;
-
-      const key = url;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      ranked.push({
-        item: { type: 'shortcut', label: s.title || url, value: url, icon: s.icon },
-        score: score * 100 + getSuggestionUsageBoost(suggestionUsageMap, buildShortcutUsageKey(url)),
-        order,
-      });
-      order += 1;
-    }
-
-    ranked.sort((a, b) => b.score - a.score || a.order - b.order);
-    return ranked.slice(0, 10).map((entry) => entry.item);
-  }, [scenarioShortcuts, searchValue, suggestionUsageMap]);
-
-  const builtinSiteSuggestionItems = useMemo(() => {
-    if (!searchSiteShortcutEnabled) return [] as SearchSuggestionItem[];
-    const sites = getBuiltinSiteShortcutSuggestions(searchValue, 8);
-    const rankedSites = sites
-      .map((site, index) => ({
-        site,
-        score: (sites.length - index) * 100 + getSuggestionUsageBoost(suggestionUsageMap, buildShortcutUsageKey(site.url)),
-      }))
-      .sort((a, b) => b.score - a.score);
-    return rankedSites.map(({ site }) => ({
-      type: 'shortcut',
-      label: site.label,
-      value: site.url,
-      icon: '',
-    } as SearchSuggestionItem));
-  }, [searchSiteShortcutEnabled, searchValue, suggestionUsageMap]);
-
-  const calculatorSuggestionItem = useMemo(() => {
-    if (!searchCalculatorEnabled) return null;
-    const preview = getCalculatorPreview(searchValue);
-    if (!preview) return null;
-    return {
-      type: 'calculator',
-      label: preview.expression,
-      value: String(preview.result),
-      formattedValue: preview.resultText,
-    } as SearchSuggestionItem;
-  }, [searchCalculatorEnabled, searchValue]);
-
-  const mergedSuggestionItems = useMemo(() => {
-    if (!searchValue.trim()) {
-      return filteredHistoryItems.map((h) => ({
-        type: 'history',
-        label: h.query,
-        value: h.query,
-        timestamp: h.timestamp,
-      } as SearchSuggestionItem));
-    }
-    const { overrideEngine } = searchPrefixEnabled
-      ? parseSearchEnginePrefix(searchValue)
-      : { overrideEngine: null };
-    const seen = new Set<string>();
-    const merged: SearchSuggestionItem[] = [];
-    const getSuggestionKey = (item: SearchSuggestionItem) => {
-      if (item.type === 'shortcut') return `shortcut|${item.value}`;
-      if (item.type === 'history') return `history|${item.value}`;
-      if (item.type === 'engine-prefix') return `engine-prefix|${item.engine || ''}|${item.value}`;
-      return `${item.type}|${item.value}`;
-    };
-    if (overrideEngine) {
-      const prefixItem: SearchSuggestionItem = {
-        type: 'engine-prefix',
-        label: '',
-        value: searchValue,
-        engine: overrideEngine,
-      };
-      seen.add(getSuggestionKey(prefixItem));
-      merged.push(prefixItem);
-    }
-    if (calculatorSuggestionItem) {
-      const key = getSuggestionKey(calculatorSuggestionItem);
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(calculatorSuggestionItem);
-      }
-    }
-    for (const it of builtinSiteSuggestionItems) {
-      const key = getSuggestionKey(it);
-      if (!seen.has(key)) { seen.add(key); merged.push(it); }
-    }
-    for (const it of shortcutSuggestionItems) {
-      const key = getSuggestionKey(it);
-      if (!seen.has(key)) { seen.add(key); merged.push(it); }
-    }
-    for (const h of filteredHistoryItems) {
-      const historyItem: SearchSuggestionItem = { type: 'history', label: h.query, value: h.query, timestamp: h.timestamp };
-      const key = getSuggestionKey(historyItem);
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(historyItem);
-      }
-    }
-    return merged.slice(0, 15);
-  }, [searchValue, searchPrefixEnabled, calculatorSuggestionItem, builtinSiteSuggestionItems, shortcutSuggestionItems, filteredHistoryItems]);
+  const mergedSuggestionItems = useSearchSuggestions({
+    searchValue,
+    filteredHistoryItems,
+    scenarioShortcuts,
+    searchPrefixEnabled,
+    searchSiteShortcutEnabled,
+    searchCalculatorEnabled,
+    suggestionUsageMap,
+  });
 
   const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
     if (item.type === 'calculator') {
@@ -708,6 +598,8 @@ export default function App() {
     }
   }, [tabSwitchSearchEngine, cycleSearchEngine, dropdownOpen, setDropdownOpen, historyOpen, mergedSuggestionItems, historySelectedIndex, setHistorySelectedIndex, setHistoryOpen, openSuggestionItem]);
 
+  useNewtabBootstrapFocus(pageFocusRef);
+
   useEffect(() => {
     const handleGlobalSearchHotkey = (event: KeyboardEvent) => {
       const isHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k';
@@ -755,8 +647,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
   }, [mergedSuggestionItems.length, searchAnyKeyCaptureEnabled, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
 
-  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
-
   useEffect(() => {
     if (!contextMenu || !contextMenuRef.current) return;
     const pad = 8;
@@ -783,7 +673,9 @@ export default function App() {
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
     ? customWallpaper
-    : (bingWallpaper || imgImage);
+    : wallpaperMode === 'bing'
+      ? bingWallpaper
+      : (bingWallpaper || imgImage);
   const shouldPauseDynamicWallpaperRender = wallpaperMode === 'dynamic' && isQuickAccessDrawerExpanded;
 
   const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
@@ -827,16 +719,18 @@ export default function App() {
 
   const handleShortcutGridColumnsChange = useCallback((columns: number) => {
     setShortcutGridColumns(columns);
-    setSettingsOpen(false);
-  }, [setShortcutGridColumns, setSettingsOpen]);
+  }, [setShortcutGridColumns]);
 
   const handleShortcutsRowsPerColumnChange = useCallback((rows: number) => {
     setShortcutsRowsPerColumn(rows);
-    setSettingsOpen(false);
-  }, [setShortcutsRowsPerColumn, setSettingsOpen]);
+  }, [setShortcutsRowsPerColumn]);
 
   const handleOpenSearchSettings = useCallback(() => {
     setSearchSettingsOpen(true);
+  }, []);
+
+  const handleOpenShortcutStyleSettings = useCallback(() => {
+    setShortcutStyleSettingsOpen(true);
   }, []);
 
   const buildBackupData = useCallback(() => {
@@ -1403,10 +1297,27 @@ export default function App() {
   const webdavCloudTime = formatTime(webdavCloudTimeRaw);
   const webdavLocalTime = formatTime(webdavLocalTimeRaw);
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
+  const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
     ? freshWallpaperSrc
-    : (wallpaperMode === 'custom' && customWallpaper ? customWallpaper : (bingWallpaper || imgImage));
+    : wallpaperMode === 'custom'
+      ? (customWallpaper || imgImage)
+      : wallpaperMode === 'bing'
+        ? bingWallpaper
+        : (bingWallpaper || imgImage);
+  const usesImageWallpaperLayer = wallpaperMode !== 'weather' && wallpaperMode !== 'dynamic' && wallpaperMode !== 'color';
   const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
+  const {
+    effectiveOverlayWallpaperSrc,
+    wallpaperAnimatedLayerStyle,
+    handleOverlayImageReady,
+  } = useWallpaperRevealController({
+    wallpaperMode,
+    overlayBackgroundImageSrc,
+    usesImageWallpaperLayer,
+    showOverlayWallpaperLayer,
+    hasWeatherVisual: Boolean(freshWeatherVideo),
+  });
   const scenarioMenuLayerProps = {
     scenarioModes,
     selectedScenarioId,
@@ -1438,9 +1349,8 @@ export default function App() {
     rightSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} />,
   };
   const wallpaperClockProps = {
-    time,
-    date,
-    lunar,
+    is24Hour,
+    showSeconds,
     bingWallpaperUrl: bingWallpaper,
     onSettingsClick: () => setSettingsOpen(true),
     showScenarioMode: true,
@@ -1544,10 +1454,32 @@ export default function App() {
     selectedShortcutIndexes: selectedShortcutIndexSet,
     onToggleShortcutSelection: toggleShortcutMultiSelect,
   };
+  const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
+  const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
+  const initialRevealTiming = INITIAL_REVEAL_TIMING;
+  const shouldMountAppDialogs = shortcutEditOpen
+    || shortcutDeleteOpen
+    || scenarioCreateOpen
+    || scenarioEditOpen
+    || isAuthModalOpen
+    || settingsOpen
+    || searchSettingsOpen
+    || shortcutStyleSettingsOpen
+    || adminModalOpen
+    || aboutModalOpen
+    || webdavDialogOpen
+    || conflictModalOpen
+    || webdavConfirmSyncOpen
+    || importConfirmOpen
+    || confirmDisableConsentOpen;
 
   return (
-    <div className="bg-background relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px]">
-      {modeLayersVisible && displayModeFlags.showOverlayBackground && (
+    <div
+      ref={pageFocusRef}
+      tabIndex={-1}
+      className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
+    >
+      {showOverlayWallpaperLayer && (
         <div
           className="fixed z-0 pointer-events-none"
           style={{
@@ -1555,33 +1487,47 @@ export default function App() {
             right: '-2px',
             bottom: '-2px',
             left: '-2px',
-            transform: 'scale(var(--rhythm-wallpaper-scale, 1))',
-            transformOrigin: 'center center',
-            willChange: 'transform',
+            backgroundColor: 'var(--initial-reveal-surface)',
             backfaceVisibility: 'hidden',
           }}
         >
-          {wallpaperMode === 'weather' ? (
-            <WeatherLoopVideo src={freshWeatherVideo} />
-          ) : wallpaperMode === 'dynamic' ? (
-            renderDynamicWallpaper(
-              dynamicWallpaperEffect,
-              shouldPauseDynamicWallpaperRender ? 'background-static' : 'background',
-            )
-          ) : wallpaperMode === 'color' ? (
-            <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
-          ) : (
-            <img src={overlayBackgroundImageSrc} alt={overlayBackgroundAlt} className="absolute w-full h-full object-cover" />
-          )}
-          <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
+          <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
+            {wallpaperMode === 'weather' ? (
+              <WeatherLoopVideo src={freshWeatherVideo} />
+            ) : wallpaperMode === 'dynamic' ? (
+              <LazyDynamicWallpaperScene
+                effect={dynamicWallpaperEffect}
+                variant={shouldPauseDynamicWallpaperRender ? 'background-static' : 'background'}
+              />
+            ) : wallpaperMode === 'color' ? (
+              <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
+            ) : effectiveOverlayWallpaperSrc ? (
+              <img
+                src={effectiveOverlayWallpaperSrc}
+                alt={overlayBackgroundAlt}
+                className="absolute w-full h-full object-cover"
+                onLoad={handleOverlayImageReady}
+                onError={handleOverlayImageReady}
+              />
+            ) : null}
+            <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
+          </div>
         </div>
       )}
       {modeLayersVisible && displayModeFlags.showInlineTopNav && (
-        <div className="fixed top-6 left-6 right-6 z-50 animate-in fade-in zoom-in duration-300">
+        <div
+          className="fixed top-6 left-6 right-6 z-50"
+          style={{
+            opacity: initialRevealOpacity,
+            transform: initialRevealTransform,
+            transition: `opacity ${initialRevealTiming}, transform ${initialRevealTiming}`,
+          }}
+        >
           <TopNavBar {...topNavModeProps} />
         </div>
       )}
       <HomeMainContent
+        initialRevealReady={initialRevealReady}
         visible={!roleSelectorOpen}
         user={user}
         loginBannerVisible={loginBannerVisible}
@@ -1593,9 +1539,8 @@ export default function App() {
         modeFlags={displayModeFlags}
         showTime={showTime}
         displayMode={displayMode}
-        time={time}
-        date={date}
-        lunar={lunar}
+        is24Hour={is24Hour}
+        showSeconds={showSeconds}
         timeFont={timeFont}
         onTimeFontChange={setTimeFont}
         layout={responsiveLayout}
@@ -1604,14 +1549,18 @@ export default function App() {
         shortcutGridProps={shortcutGridProps}
         onDrawerExpandedChange={setIsQuickAccessDrawerExpanded}
       />
-      <WallpaperSelector
-        {...wallpaperSelectorLayerProps}
-        mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
-        hideWeather={displayMode === 'minimalist'}
-        open={wallpaperSettingsOpen}
-        onOpenChange={setWallpaperSettingsOpen}
-        trigger={<span className="hidden" aria-hidden="true" />}
-      />
+      {wallpaperSettingsOpen ? (
+        <Suspense fallback={null}>
+          <LazyWallpaperSelector
+            {...wallpaperSelectorLayerProps}
+            mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
+            hideWeather={displayMode === 'minimalist'}
+            open={wallpaperSettingsOpen}
+            onOpenChange={setWallpaperSettingsOpen}
+            trigger={<span className="hidden" aria-hidden="true" />}
+          />
+        </Suspense>
+      ) : null}
 
       {contextMenu && (
         <div ref={contextMenuRef} className="fixed z-[15020]" style={{ top: contextMenu.y, left: contextMenu.x }}>
@@ -1817,231 +1766,252 @@ export default function App() {
         confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
       />
 
-      <AppDialogs
-        shortcutModalProps={{
-          isOpen: shortcutEditOpen,
-          onOpenChange: (open) => {
-            setShortcutEditOpen(open);
-            if (!open) {
-              setShortcutModalMode('add');
-              setSelectedShortcut(null);
-              setEditingTitle('');
-              setEditingUrl('');
-            }
-          },
-          mode: shortcutModalMode,
-          initialTitle: editingTitle,
-          initialUrl: editingUrl,
-          initialIcon: selectedShortcut?.shortcut.icon || 'chatgpt',
-          onSave: handleSaveShortcutEdit,
-        }}
-        shortcutDeleteDialogProps={{
-          open: shortcutDeleteOpen,
-          onOpenChange: setShortcutDeleteOpen,
-          title: t('shortcutDelete.title'),
-          description: t('shortcutDelete.description'),
-          onConfirm: handleConfirmDeleteShortcut,
-        }}
-        scenarioCreateDialogProps={{
-          open: scenarioCreateOpen,
-          onOpenChange: setScenarioCreateOpen,
-          onSubmit: handleCreateScenarioMode,
-        }}
-        scenarioEditDialogProps={{
-          open: scenarioEditOpen,
-          onOpenChange: setScenarioEditOpen,
-          onSubmit: handleUpdateScenarioMode,
-          title: t('scenario.editTitle'),
-          submitText: t('common.save'),
-          mode: scenarioEditMode,
-        }}
-        authModalProps={{
-          isOpen: isAuthModalOpen,
-          onOpenChange: setIsAuthModalOpen,
-          onLoginSuccess: onLoginSuccess,
-          apiServer,
-          onApiServerChange: setApiServer,
-          customApiUrl,
-          customApiName,
-          defaultApiBase,
-          allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
-        }}
-        settingsModalProps={{
-          isOpen: settingsOpen,
-          onOpenChange: setSettingsOpen,
-          username: user,
-          onLogin: handleRequestCloudLogin,
-          onLogout: handleLogoutWithOptions,
-          shortcutsCount: totalShortcuts,
-          displayMode,
-          onDisplayModeChange: setDisplayMode,
-          shortcutCardVariant,
-          onShortcutCardVariantChange: setShortcutCardVariant,
-          shortcutCompactShowTitle,
-          onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
-          shortcutGridColumns: normalizedGridColumns,
-          onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
-          openInNewTab,
-          onOpenInNewTabChange: setOpenInNewTab,
-          onOpenSearchSettings: handleOpenSearchSettings,
-          is24Hour,
-          onIs24HourChange: setIs24Hour,
-          showSeconds,
-          onShowSecondsChange: setShowSeconds,
-          showTime,
-          onShowTimeChange: setShowTime,
-          onExportData: handleExportData,
-          onImportData: handleImportData,
-          wallpaperMode,
-          onWallpaperModeChange: setWallpaperMode,
-          dynamicWallpaperEffect,
-          onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
-          bingWallpaper,
-          customWallpaper,
-          onCustomWallpaperChange: setCustomWallpaper,
-          weatherCode,
-          colorWallpaperId,
-          onColorWallpaperIdChange: setColorWallpaperId,
-          wallpaperMaskOpacity,
-          onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
-          onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
-          privacyConsent,
-          onPrivacyConsentChange: handlePrivacySwitchChange,
-          onOpenAdminModal: handleOpenAdminModal,
-          onOpenAboutModal: handleOpenAboutModal,
-          onCloudSyncNow: triggerCloudSyncNow,
-          onOpenWebdavConfig: handleOpenWebdavConfig,
-          onWebdavSync: resolveWebdavConflict,
-          onWebdavEnable: handleEnableWebdavSync,
-          onWebdavDisable: handleDisableWebdavSync,
-          onVersionClick: handleVersionTap,
-        }}
-        searchSettingsModalProps={{
-          isOpen: searchSettingsOpen,
-          onOpenChange: setSearchSettingsOpen,
-          tabSwitchSearchEngine,
-          onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
-          searchPrefixEnabled,
-          onSearchPrefixEnabledChange: setSearchPrefixEnabled,
-          searchSiteDirectEnabled,
-          onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
-          searchSiteShortcutEnabled,
-          onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
-          searchAnyKeyCaptureEnabled,
-          onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
-          searchCalculatorEnabled,
-          onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
-        }}
-        adminModalProps={{
-          open: adminModalOpen,
-          onOpenChange: setAdminModalOpen,
-          onExportDomains: handleExportDomains,
-          onFetchAdminStats: handleFetchAdminStats,
-          weatherDebugEnabled: weatherDebugVisible,
-          onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
-          customApiUrl,
-          onCustomApiUrlChange: setCustomApiUrl,
-          customApiName,
-          onCustomApiNameChange: setCustomApiName,
-          allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
-        }}
-        aboutModalProps={{
-          open: aboutModalOpen,
-          onOpenChange: setAboutModalOpen,
-          defaultTab: aboutModalDefaultTab,
-        }}
-        webdavConfigDialogProps={{
-          open: webdavDialogOpen,
-          onOpenChange: (open: boolean) => {
-            setWebdavDialogOpen(open);
-            if (!open) {
-              setWebdavEnableAfterConfigSave(false);
-            }
-          },
-          enableAfterSave: webdavEnableAfterConfigSave,
-          onEnableAfterSave: async () => {
-            await handleEnableWebdavSync();
-            setWebdavEnableAfterConfigSave(false);
-          },
-        }}
-        confirmSyncDialog={{
-          open: conflictModalOpen,
-          onOpenChange: setConflictModalOpen,
-          confirmChoice,
-          onChoiceChange: setConfirmChoice,
-          enableChoiceSwitch: true,
-          requireDecision: true,
-          title: t('syncConflict.title'),
-          description: t('syncConflict.description'),
-          confirmCloudLabel: t('syncConflict.useCloud'),
-          confirmLocalLabel: t('syncConflict.useLocal'),
-          confirmMergeLabel: t('syncConflict.merge'),
-          cloudCount,
-          cloudTime,
-          cloudPayload: pendingCloudPayload,
-          localCount,
-          localTime,
-          localPayload: pendingLocalPayload,
-          onConfirm: handleConfirmCloudSyncChoice,
-          onCancel: () => {
-            setConflictModalOpen(false);
-          },
-        }}
-        webdavConfirmSyncDialog={{
-          open: webdavConfirmSyncOpen,
-          onOpenChange: handleWebdavConfirmDialogOpenChange,
-          confirmChoice: webdavConfirmChoice,
-          onChoiceChange: setWebdavConfirmChoice,
-          enableChoiceSwitch: true,
-          requireDecision: true,
-          title: t('syncConflict.title'),
-          description: t('syncConflict.description'),
-          confirmCloudLabel: t('syncConflict.useCloud'),
-          confirmLocalLabel: t('syncConflict.useLocal'),
-          confirmMergeLabel: t('syncConflict.merge'),
-          cloudCount: webdavCloudCount,
-          cloudTime: webdavCloudTime,
-          cloudPayload: webdavPendingRemotePayload,
-          localCount: webdavLocalCount,
-          localTime: webdavLocalTime,
-          localPayload: webdavPendingLocalPayload,
-          onConfirm: () => {
-            void handleConfirmWebdavSyncChoice();
-          },
-          onCancel: handleCancelWebdavConfirmDialog,
-        }}
-        importConfirmDialog={{
-          open: importConfirmOpen,
-          setOpen: setImportConfirmOpen,
-          payload: importPendingPayload,
-          setPayload: setImportPendingPayload,
-          busy: importConfirmBusy,
-          setBusy: setImportConfirmBusy,
-          downloadCloudBackupEnvelope,
-          applyUndoPayload,
-          onSuccess: () => setSettingsOpen(false),
-        }}
-        disableConsentDialog={{
-          open: confirmDisableConsentOpen,
-          onOpenChange: setConfirmDisableConsentOpen,
-          onAgree: () => {
-            setConfirmDisableConsentOpen(false);
-            handlePrivacyConsent(true);
-          },
-          onDisagree: () => {
-            setConfirmDisableConsentOpen(false);
-            handlePrivacyConsent(false);
-          },
-        }}
-      />
-      <UpdateAvailableDialog
-        open={updateDialogOpen}
-        onOpenChange={setUpdateDialogOpen}
-        latestVersion={latestVersion}
-        releaseUrl={releaseUrl}
-        notes={updateNotes}
-        onLater={snoozeCurrentRelease}
-      />
+      {shouldMountAppDialogs ? (
+        <Suspense fallback={null}>
+          <LazyAppDialogs
+            shortcutModalProps={{
+              isOpen: shortcutEditOpen,
+              onOpenChange: (open) => {
+                setShortcutEditOpen(open);
+                if (!open) {
+                  setShortcutModalMode('add');
+                  setSelectedShortcut(null);
+                  setEditingTitle('');
+                  setEditingUrl('');
+                }
+              },
+              mode: shortcutModalMode,
+              initialTitle: editingTitle,
+              initialUrl: editingUrl,
+              initialIcon: selectedShortcut?.shortcut.icon || 'chatgpt',
+              onSave: handleSaveShortcutEdit,
+            }}
+            shortcutDeleteDialogProps={{
+              open: shortcutDeleteOpen,
+              onOpenChange: setShortcutDeleteOpen,
+              title: t('shortcutDelete.title'),
+              description: t('shortcutDelete.description'),
+              onConfirm: handleConfirmDeleteShortcut,
+            }}
+            scenarioCreateDialogProps={{
+              open: scenarioCreateOpen,
+              onOpenChange: setScenarioCreateOpen,
+              onSubmit: handleCreateScenarioMode,
+            }}
+            scenarioEditDialogProps={{
+              open: scenarioEditOpen,
+              onOpenChange: setScenarioEditOpen,
+              onSubmit: handleUpdateScenarioMode,
+              title: t('scenario.editTitle'),
+              submitText: t('common.save'),
+              mode: scenarioEditMode,
+            }}
+            authModalProps={{
+              isOpen: isAuthModalOpen,
+              onOpenChange: setIsAuthModalOpen,
+              onLoginSuccess: onLoginSuccess,
+              apiServer,
+              onApiServerChange: setApiServer,
+              customApiUrl,
+              customApiName,
+              defaultApiBase,
+              allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
+            }}
+            settingsModalProps={{
+              isOpen: settingsOpen,
+              onOpenChange: setSettingsOpen,
+              username: user,
+              onLogin: handleRequestCloudLogin,
+              onLogout: handleLogoutWithOptions,
+              shortcutsCount: totalShortcuts,
+              displayMode,
+              onDisplayModeChange: setDisplayMode,
+              shortcutCardVariant,
+              onShortcutCardVariantChange: setShortcutCardVariant,
+              shortcutCompactShowTitle,
+              onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
+              shortcutGridColumns: normalizedGridColumns,
+              onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
+              openInNewTab,
+              onOpenInNewTabChange: setOpenInNewTab,
+              onOpenSearchSettings: handleOpenSearchSettings,
+              is24Hour,
+              onIs24HourChange: setIs24Hour,
+              showSeconds,
+              onShowSecondsChange: setShowSeconds,
+              showTime,
+              onShowTimeChange: setShowTime,
+              onExportData: handleExportData,
+              onImportData: handleImportData,
+              wallpaperMode,
+              onWallpaperModeChange: setWallpaperMode,
+              dynamicWallpaperEffect,
+              onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
+              bingWallpaper,
+              customWallpaper,
+              onCustomWallpaperChange: setCustomWallpaper,
+              weatherCode,
+              colorWallpaperId,
+              onColorWallpaperIdChange: setColorWallpaperId,
+              wallpaperMaskOpacity,
+              onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+              onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
+              privacyConsent,
+              onPrivacyConsentChange: handlePrivacySwitchChange,
+              onOpenAdminModal: handleOpenAdminModal,
+              onOpenAboutModal: handleOpenAboutModal,
+              onCloudSyncNow: triggerCloudSyncNow,
+              onOpenWebdavConfig: handleOpenWebdavConfig,
+              onWebdavSync: resolveWebdavConflict,
+              onWebdavEnable: handleEnableWebdavSync,
+              onWebdavDisable: handleDisableWebdavSync,
+              onVersionClick: handleVersionTap,
+              onOpenShortcutStyleSettings: handleOpenShortcutStyleSettings,
+            }}
+            searchSettingsModalProps={{
+              isOpen: searchSettingsOpen,
+              onOpenChange: setSearchSettingsOpen,
+              tabSwitchSearchEngine,
+              onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
+              searchPrefixEnabled,
+              onSearchPrefixEnabledChange: setSearchPrefixEnabled,
+              searchSiteDirectEnabled,
+              onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
+              searchSiteShortcutEnabled,
+              onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
+              searchAnyKeyCaptureEnabled,
+              onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
+              searchCalculatorEnabled,
+              onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
+            }}
+            shortcutStyleSettingsDialogProps={{
+              open: shortcutStyleSettingsOpen,
+              onOpenChange: setShortcutStyleSettingsOpen,
+              variant: shortcutCardVariant,
+              compactShowTitle: shortcutCompactShowTitle,
+              columns: normalizedGridColumns,
+              onSave: ({ variant, compactShowTitle, columns }) => {
+                setShortcutCardVariant(variant);
+                setShortcutCompactShowTitle(compactShowTitle);
+                handleShortcutGridColumnsChange(columns);
+              },
+            }}
+            adminModalProps={{
+              open: adminModalOpen,
+              onOpenChange: setAdminModalOpen,
+              onExportDomains: handleExportDomains,
+              onFetchAdminStats: handleFetchAdminStats,
+              weatherDebugEnabled: weatherDebugVisible,
+              onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
+              customApiUrl,
+              onCustomApiUrlChange: setCustomApiUrl,
+              customApiName,
+              onCustomApiNameChange: setCustomApiName,
+              allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
+            }}
+            aboutModalProps={{
+              open: aboutModalOpen,
+              onOpenChange: setAboutModalOpen,
+              defaultTab: aboutModalDefaultTab,
+            }}
+            webdavConfigDialogProps={{
+              open: webdavDialogOpen,
+              onOpenChange: (open: boolean) => {
+                setWebdavDialogOpen(open);
+                if (!open) {
+                  setWebdavEnableAfterConfigSave(false);
+                }
+              },
+              enableAfterSave: webdavEnableAfterConfigSave,
+              onEnableAfterSave: async () => {
+                await handleEnableWebdavSync();
+                setWebdavEnableAfterConfigSave(false);
+              },
+            }}
+            confirmSyncDialog={{
+              open: conflictModalOpen,
+              onOpenChange: setConflictModalOpen,
+              confirmChoice,
+              onChoiceChange: setConfirmChoice,
+              enableChoiceSwitch: true,
+              requireDecision: true,
+              title: t('syncConflict.title'),
+              description: t('syncConflict.description'),
+              confirmCloudLabel: t('syncConflict.useCloud'),
+              confirmLocalLabel: t('syncConflict.useLocal'),
+              confirmMergeLabel: t('syncConflict.merge'),
+              cloudCount,
+              cloudTime,
+              cloudPayload: pendingCloudPayload,
+              localCount,
+              localTime,
+              localPayload: pendingLocalPayload,
+              onConfirm: handleConfirmCloudSyncChoice,
+              onCancel: () => {
+                setConflictModalOpen(false);
+              },
+            }}
+            webdavConfirmSyncDialog={{
+              open: webdavConfirmSyncOpen,
+              onOpenChange: handleWebdavConfirmDialogOpenChange,
+              confirmChoice: webdavConfirmChoice,
+              onChoiceChange: setWebdavConfirmChoice,
+              enableChoiceSwitch: true,
+              requireDecision: true,
+              title: t('syncConflict.title'),
+              description: t('syncConflict.description'),
+              confirmCloudLabel: t('syncConflict.useCloud'),
+              confirmLocalLabel: t('syncConflict.useLocal'),
+              confirmMergeLabel: t('syncConflict.merge'),
+              cloudCount: webdavCloudCount,
+              cloudTime: webdavCloudTime,
+              cloudPayload: webdavPendingRemotePayload,
+              localCount: webdavLocalCount,
+              localTime: webdavLocalTime,
+              localPayload: webdavPendingLocalPayload,
+              onConfirm: () => {
+                void handleConfirmWebdavSyncChoice();
+              },
+              onCancel: handleCancelWebdavConfirmDialog,
+            }}
+            importConfirmDialog={{
+              open: importConfirmOpen,
+              setOpen: setImportConfirmOpen,
+              payload: importPendingPayload,
+              setPayload: setImportPendingPayload,
+              busy: importConfirmBusy,
+              setBusy: setImportConfirmBusy,
+              downloadCloudBackupEnvelope,
+              applyUndoPayload,
+              onSuccess: () => setSettingsOpen(false),
+            }}
+            disableConsentDialog={{
+              open: confirmDisableConsentOpen,
+              onOpenChange: setConfirmDisableConsentOpen,
+              onAgree: () => {
+                setConfirmDisableConsentOpen(false);
+                handlePrivacyConsent(true);
+              },
+              onDisagree: () => {
+                setConfirmDisableConsentOpen(false);
+                handlePrivacyConsent(false);
+              },
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {updateDialogOpen ? (
+        <Suspense fallback={null}>
+          <LazyUpdateAvailableDialog
+            open={updateDialogOpen}
+            onOpenChange={setUpdateDialogOpen}
+            latestVersion={latestVersion}
+            releaseUrl={releaseUrl}
+            notes={updateNotes}
+            onLater={snoozeCurrentRelease}
+          />
+        </Suspense>
+      ) : null}
       <Toaster />
       <RoleSelector 
         open={roleSelectorOpen} 

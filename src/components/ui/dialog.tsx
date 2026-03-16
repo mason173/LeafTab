@@ -104,12 +104,16 @@ type DialogContentProps = Omit<
 > &
   HTMLMotionProps<"div"> & {
     from?: DialogFlipDirection;
+    overlayClassName?: string;
+    overlayStyle?: React.CSSProperties;
   };
 
 function DialogContent({
   className,
   children,
   from = "top",
+  overlayClassName,
+  overlayStyle,
   onOpenAutoFocus,
   onCloseAutoFocus,
   onEscapeKeyDown,
@@ -125,7 +129,7 @@ function DialogContent({
 
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} style={overlayStyle} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         aria-describedby={undefined}

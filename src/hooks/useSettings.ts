@@ -19,6 +19,26 @@ const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
 
+function readInitialDisplayMode(): DisplayMode {
+  const storedDisplayMode = localStorage.getItem('displayMode');
+  if (storedDisplayMode === 'panoramic' || storedDisplayMode === 'minimalist' || storedDisplayMode === 'fresh') {
+    return storedDisplayMode;
+  }
+  const parseStoredBoolean = (value: string | null): boolean => {
+    if (value === null) return false;
+    try {
+      return JSON.parse(value) === true;
+    } catch {
+      return value === 'true';
+    }
+  };
+  const storedMinimalistMode = parseStoredBoolean(localStorage.getItem('minimalistMode'));
+  const storedFreshMode = parseStoredBoolean(localStorage.getItem('freshMode'));
+  if (storedMinimalistMode) return 'minimalist';
+  if (storedFreshMode) return 'fresh';
+  return 'panoramic';
+}
+
 function readStoredBoolean(key: string, defaultValue: boolean): boolean {
   const raw = localStorage.getItem(key);
   if (raw === null) return defaultValue;
@@ -68,7 +88,7 @@ function readShortcutGridColumns(variant: ShortcutCardVariant): number {
 
 export function useSettings() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('panoramic');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readInitialDisplayMode());
   const [openInNewTab, setOpenInNewTab] = useState(true);
   const [tabSwitchSearchEngine, setTabSwitchSearchEngine] = useState<boolean>(() => readStoredBoolean(SEARCH_TAB_SWITCH_ENGINE_KEY, true));
   const [searchPrefixEnabled, setSearchPrefixEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_PREFIX_ENABLED_KEY, true));
@@ -130,24 +150,7 @@ export function useSettings() {
   }, [timeFont]);
 
   useEffect(() => {
-    const storedDisplayMode = localStorage.getItem('displayMode');
-    if (storedDisplayMode === 'panoramic' || storedDisplayMode === 'minimalist' || storedDisplayMode === 'fresh') {
-      setDisplayMode(storedDisplayMode);
-    } else {
-      const parseStoredBoolean = (value: string | null): boolean => {
-        if (value === null) return false;
-        try {
-          return JSON.parse(value) === true;
-        } catch {
-          return value === 'true';
-        }
-      };
-      const storedMinimalistMode = parseStoredBoolean(localStorage.getItem('minimalistMode'));
-      const storedFreshMode = parseStoredBoolean(localStorage.getItem('freshMode'));
-      if (storedMinimalistMode) setDisplayMode('minimalist');
-      else if (storedFreshMode) setDisplayMode('fresh');
-      else setDisplayMode('panoramic');
-    }
+    setDisplayMode(readInitialDisplayMode());
     try {
       // Legacy keys were replaced by a single displayMode source.
       localStorage.removeItem('minimalistMode');

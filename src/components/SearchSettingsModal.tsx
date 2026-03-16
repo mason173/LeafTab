@@ -2,12 +2,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { RiQuestionLine } from "@remixicon/react";
+import {
+  RiCalculatorLine,
+  RiCodeSSlashFill,
+  RiComputerFill,
+  RiDashboardFill,
+  RiLinkM,
+  RiQuestionLine,
+  RiRefreshFill,
+} from "@remixicon/react";
+import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from "@/config/featureFlags";
 
 type SearchSettingRowProps = {
   id: string;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   description: string;
   tooltip: string;
@@ -18,6 +28,7 @@ type SearchSettingRowProps = {
 
 function SearchSettingRow({
   id,
+  icon: Icon,
   label,
   description,
   tooltip,
@@ -26,36 +37,49 @@ function SearchSettingRow({
   disabled = false,
 }: SearchSettingRowProps) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex flex-col space-y-1 items-start min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-sm font-medium leading-none truncate">{label}</span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label={tooltip}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <RiQuestionLine className="size-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8} className="max-w-[220px] px-3 py-2 leading-[1.45] text-left">
-              <span className="block whitespace-normal break-words [text-wrap:wrap]">{tooltip}</span>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <span className="font-normal text-xs text-muted-foreground text-left">{description}</span>
-      </div>
+    <div
+      className={[
+        "group relative overflow-hidden rounded-2xl border p-3 transition-all",
+        "border-border/70 bg-card/75 hover:bg-card/90",
+        disabled ? "opacity-55" : "",
+      ].join(" ")}
+    >
       <Switch
         id={id}
         checked={checked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
-        className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input data-[disabled]:opacity-50"
+        className="absolute right-3 top-3 z-10 flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input data-[disabled]:opacity-50"
       >
         <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
       </Switch>
+      <div className="relative flex min-h-[96px] flex-col gap-1.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background/45">
+          <Icon className="size-4 text-foreground/80" />
+        </div>
+        <div className="min-w-0 pr-12">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm font-semibold leading-none truncate">{label}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={tooltip}
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <RiQuestionLine className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8} className="max-w-[220px] px-3 py-2 leading-[1.45] text-left">
+                <span className="block whitespace-normal break-words [text-wrap:wrap]">{tooltip}</span>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+        <div className="mt-auto">
+          <span className="font-normal text-xs leading-[1.4] text-muted-foreground text-left line-clamp-2">{description}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -101,10 +125,11 @@ export function SearchSettingsModal({
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.searchSettings.title')}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh]" scrollBarClassName="data-[orientation=vertical]:translate-x-4">
-          <div className="flex flex-col gap-5">
+        <ScrollArea className="max-h-[68vh]" scrollBarClassName="data-[orientation=vertical]:translate-x-4">
+          <div className="mx-auto w-full max-w-[500px] grid grid-cols-1 sm:grid-cols-2 gap-2">
             <SearchSettingRow
               id="search-engine-tab-switch"
+              icon={RiRefreshFill}
               label={t('settings.searchSettings.items.tabSwitch.label')}
               description={t('settings.searchSettings.items.tabSwitch.description')}
               tooltip={t('settings.searchSettings.items.tabSwitch.tooltip')}
@@ -115,6 +140,7 @@ export function SearchSettingsModal({
 
             <SearchSettingRow
               id="search-prefix-enabled"
+              icon={RiCodeSSlashFill}
               label={t('settings.searchSettings.items.prefix.label')}
               description={t('settings.searchSettings.items.prefix.description')}
               tooltip={t('settings.searchSettings.items.prefix.tooltip')}
@@ -124,6 +150,7 @@ export function SearchSettingsModal({
 
             <SearchSettingRow
               id="search-site-direct-enabled"
+              icon={RiLinkM}
               label={t('settings.searchSettings.items.siteDirect.label')}
               description={t('settings.searchSettings.items.siteDirect.description')}
               tooltip={t('settings.searchSettings.items.siteDirect.tooltip')}
@@ -133,6 +160,7 @@ export function SearchSettingsModal({
 
             <SearchSettingRow
               id="search-site-shortcut-enabled"
+              icon={RiDashboardFill}
               label={t('settings.searchSettings.items.siteShortcut.label')}
               description={t('settings.searchSettings.items.siteShortcut.description')}
               tooltip={t('settings.searchSettings.items.siteShortcut.tooltip')}
@@ -142,6 +170,7 @@ export function SearchSettingsModal({
 
             <SearchSettingRow
               id="search-any-key-capture-enabled"
+              icon={RiComputerFill}
               label={t('settings.searchSettings.items.anyKeyCapture.label')}
               description={t('settings.searchSettings.items.anyKeyCapture.description')}
               tooltip={t('settings.searchSettings.items.anyKeyCapture.tooltip')}
@@ -151,6 +180,7 @@ export function SearchSettingsModal({
 
             <SearchSettingRow
               id="search-calculator-enabled"
+              icon={RiCalculatorLine}
               label={t('settings.searchSettings.items.calculator.label')}
               description={t('settings.searchSettings.items.calculator.description')}
               tooltip={t('settings.searchSettings.items.calculator.tooltip')}

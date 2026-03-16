@@ -6,18 +6,18 @@ import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
 import imgImage from "../assets/Default_wallpaper.png";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useClock } from '@/hooks/useClock';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
-import { renderDynamicWallpaper } from './wallpaper/dynamicWallpapers';
 import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
+import { LazyDynamicWallpaperScene } from './wallpaper/LazyDynamicWallpaperScene';
 
 interface WallpaperClockProps {
-  time: string; 
-  date: Date; 
-  lunar: string; 
+  is24Hour: boolean;
+  showSeconds: boolean;
   bingWallpaperUrl: string;
   onSettingsClick?: () => void;
   showScenarioMode: boolean;
@@ -42,9 +42,8 @@ interface WallpaperClockProps {
 }
 
 export function WallpaperClock({ 
-  time, 
-  date, 
-  lunar, 
+  is24Hour,
+  showSeconds,
   bingWallpaperUrl,
   onSettingsClick,
   showScenarioMode,
@@ -69,6 +68,7 @@ export function WallpaperClock({
 }: WallpaperClockProps) {
   const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
   const { i18n } = useTranslation();
+  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
@@ -95,7 +95,7 @@ export function WallpaperClock({
               src={customWallpaper} 
             />
           ) : wallpaperMode === 'dynamic' ? (
-            renderDynamicWallpaper(dynamicWallpaperEffect, 'hero')
+            <LazyDynamicWallpaperScene effect={dynamicWallpaperEffect} variant="hero" />
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
