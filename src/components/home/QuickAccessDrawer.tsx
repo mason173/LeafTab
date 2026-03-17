@@ -234,6 +234,10 @@ export function QuickAccessDrawer({
                 onWheelCapture={(event) => {
                   enableInteractiveTransitions();
                   if (!drawerScrollLocked) return;
+                  const target = event.target;
+                  if (target instanceof Element && target.closest('[data-allow-drawer-locked-scroll="true"]')) {
+                    return;
+                  }
                   event.preventDefault();
                   event.stopPropagation();
                 }}

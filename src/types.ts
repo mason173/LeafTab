@@ -12,7 +12,7 @@ export type ScenarioShortcuts = Record<string, Shortcut[]>;
 export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
 
 export type SearchSuggestionItem = {
-  type: 'history' | 'shortcut' | 'bookmark' | 'engine-prefix' | 'calculator';
+  type: 'history' | 'shortcut' | 'bookmark' | 'tab' | 'engine-prefix' | 'calculator';
   label: string;
   value: string;
   icon?: string;
@@ -20,6 +20,8 @@ export type SearchSuggestionItem = {
   historySource?: 'local' | 'browser';
   engine?: SearchEngine;
   formattedValue?: string;
+  tabId?: number;
+  windowId?: number;
 };
 
 export interface SearchEngineConfig {

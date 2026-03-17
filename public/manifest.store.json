@@ -16,7 +16,8 @@
   ],
   "optional_permissions": [
     "bookmarks",
-    "history"
+    "history",
+    "tabs"
   ],
   "optional_host_permissions": [
     "https://*/*",
