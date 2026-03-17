@@ -236,6 +236,29 @@ export function parseSearchEnginePrefix(rawQuery: string): {
   return { query: nextQuery, overrideEngine };
 }
 
+export function parseBookmarkSearchCommand(rawQuery: string): {
+  active: boolean;
+  query: string;
+} {
+  const trimmedStart = rawQuery.trimStart();
+  const lowered = trimmedStart.toLowerCase();
+
+  if (lowered === '/b') {
+    return { active: true, query: '' };
+  }
+  if (lowered.startsWith('/b ')) {
+    return { active: true, query: trimmedStart.slice(2).trim() };
+  }
+  if (lowered === '/bookmarks') {
+    return { active: true, query: '' };
+  }
+  if (lowered.startsWith('/bookmarks ')) {
+    return { active: true, query: trimmedStart.slice('/bookmarks'.length).trim() };
+  }
+
+  return { active: false, query: '' };
+}
+
 export function getNextSearchEngine(current: SearchEngine, direction: 1 | -1 = 1): SearchEngine {
   const total = SEARCH_ENGINE_ORDER.length;
   const currentIndex = SEARCH_ENGINE_ORDER.indexOf(current);

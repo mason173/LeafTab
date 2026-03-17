@@ -44,6 +44,10 @@ const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, strin
   baidu: 'https://www.baidu.com/s?wd=%s',
 };
 
+const COMMAND_AUTOCOMPLETE_MAP: Record<string, string> = {
+  '/b': '/bookmarks ',
+};
+
 const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] => {
   if (!Array.isArray(parsed)) return [];
   const now = Date.now();
@@ -131,7 +135,35 @@ export function useSearch(
   }, [searchHistory]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value);
+    const rawValue = e.target.value;
+    const nativeEvent = e.nativeEvent as InputEvent | undefined;
+    const inputType = nativeEvent?.inputType || '';
+    const inputData = nativeEvent?.data ?? '';
+    let nextValue = rawValue;
+
+    // 对齐 Omni 的 checkShortHand 逻辑：
+    // 1) 输入 /b 自动补全为 /bookmarks␠
+    // 2) Backspace 到 /bookmarks 时，清空为 ''
+    const loweredRawValue = rawValue.toLowerCase();
+    if (inputType === 'deleteContentBackward') {
+      if (loweredRawValue === '/bookmarks') {
+        nextValue = '';
+      }
+    } else if (COMMAND_AUTOCOMPLETE_MAP[loweredRawValue]) {
+      nextValue = COMMAND_AUTOCOMPLETE_MAP[loweredRawValue];
+    }
+
+    // 防止在输入普通字符时意外留下尾随空格（用户手动输入空格除外）
+    if (
+      inputType === 'insertText' &&
+      inputData !== ' ' &&
+      nextValue.toLowerCase().startsWith('/bookmarks ') &&
+      /\s+$/.test(nextValue)
+    ) {
+      nextValue = nextValue.replace(/\s+$/, '');
+    }
+
+    setSearchValue(nextValue);
     setHistorySelectedIndex(-1);
     // 不在输入时自动展开历史，仅在点击/聚焦输入框时展开
   };

@@ -14,6 +14,10 @@
     "search",
     "permissions"
   ],
+  "optional_permissions": [
+    "bookmarks",
+    "history"
+  ],
   "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
