@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeFontDialog } from '@/components/TimeFontDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
@@ -8,6 +8,7 @@ import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 interface InlineTimeProps {
   is24Hour: boolean;
   showSeconds: boolean;
+  disableSecondTickMotion?: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   forceWhiteText: boolean;
@@ -17,6 +18,7 @@ interface InlineTimeProps {
 export function InlineTime({
   is24Hour,
   showSeconds,
+  disableSecondTickMotion = false,
   timeFont,
   onTimeFontChange,
   forceWhiteText,
@@ -26,8 +28,13 @@ export function InlineTime({
   const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
   const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-  const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+  const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }),
+    [locale],
+  );
+  const weekday = weekdayFormatter.format(date);
+  const dateString = dateFormatter.format(date);
 
   return (
     <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
@@ -40,7 +47,7 @@ export function InlineTime({
           onClick={() => setTimeFontDialogOpen(true)}
           aria-label={time}
         >
-          <SlidingClockTime time={time} />
+          {disableSecondTickMotion ? time : <SlidingClockTime time={time} />}
         </button>
         <TimeFontDialog
           open={timeFontDialogOpen}

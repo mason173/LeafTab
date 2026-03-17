@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckFill } from "@remixicon/react";
+import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckFill } from "@/icons/ri-compat";
 import { WEATHER_PREVIEW_VIDEOS } from "@/components/wallpaper/weatherWallpapers";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";
 import { WallpaperMaskOpacitySlider } from "@/components/wallpaper/WallpaperMaskOpacitySlider";

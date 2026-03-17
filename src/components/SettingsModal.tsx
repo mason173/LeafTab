@@ -19,7 +19,7 @@ import {
   RiRefreshFill,
   RiSettings4Fill,
   RiUpload2Fill,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 import { useTheme } from "next-themes";
 import type { AboutLeafTabModalTab } from "./AboutLeafTabModal";
 import ConfirmDialog from "./ConfirmDialog";
@@ -27,7 +27,6 @@ import type { WebdavConfig } from "@/hooks/useWebdavSync";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
 import { toast } from "./ui/sonner";
-import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { parseLeafTabBackup } from "@/utils/backupData";
 import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncConfigChanged, readCloudSyncConfigFromStorage, writeCloudSyncConfigToStorage } from "@/utils/cloudSyncConfig";
 import { hasWebdavUrlConfiguredFromStorage, isWebdavSyncEnabledFromStorage, readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from "@/utils/webdavConfig";
@@ -53,20 +52,28 @@ import {
 } from "./sync/SyncSettingsFields";
 import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode, shouldShowTimeDetailControls } from "@/displayMode/config";
-import type { DynamicWallpaperEffect, WallpaperMode } from "@/wallpaper/types";
+import type { WallpaperMode } from "@/wallpaper/types";
+import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
 
 function RollingNumber({
   value,
   trigger,
+  disabled = false,
   className,
 }: {
   value: number;
   trigger: number;
+  disabled?: boolean;
   className?: string;
 }) {
   const motionValue = useMotionValue(0);
   const [display, setDisplay] = useState('0');
   useEffect(() => {
+    if (disabled) {
+      const n = Math.max(0, Math.round(Number.isFinite(value) ? value : 0));
+      setDisplay(String(n));
+      return;
+    }
     motionValue.set(0);
     setDisplay('0');
     const controls = animate(motionValue, Number.isFinite(value) ? value : 0, {
@@ -81,7 +88,7 @@ function RollingNumber({
       controls.stop();
       unsubscribe();
     };
-  }, [motionValue, trigger, value]);
+  }, [disabled, motionValue, trigger, value]);
   return <span className={className}>{display}</span>;
 }
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,14 +115,15 @@ interface SettingsModalProps {
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
   onShowSecondsChange: (checked: boolean) => void;
+  visualEffectsLevel: VisualEffectsLevel;
+  onVisualEffectsLevelChange: (level: VisualEffectsLevel) => void;
+  disableSyncCardAccentAnimation: boolean;
   showTime: boolean;
   onShowTimeChange: (checked: boolean) => void;
   onExportData: () => void;
   onImportData: (data: any) => void;
   wallpaperMode: WallpaperMode;
   onWallpaperModeChange: (mode: WallpaperMode) => void;
-  dynamicWallpaperEffect: DynamicWallpaperEffect;
-  onDynamicWallpaperEffectChange: (effect: DynamicWallpaperEffect) => void;
   bingWallpaper: string;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
@@ -160,14 +168,15 @@ export default function SettingsModal({
   onIs24HourChange,
   showSeconds,
   onShowSecondsChange,
+  visualEffectsLevel,
+  onVisualEffectsLevelChange,
+  disableSyncCardAccentAnimation,
   showTime,
   onShowTimeChange,
   onExportData,
   onImportData,
   wallpaperMode,
   onWallpaperModeChange,
-  dynamicWallpaperEffect,
-  onDynamicWallpaperEffectChange,
   bingWallpaper,
   customWallpaper,
   onCustomWallpaperChange,
@@ -252,38 +261,11 @@ export default function SettingsModal({
     const syncAccent = () => {
       const savedColor = localStorage.getItem('accentColor') || 'green';
       setAccentColor(savedColor);
-      document.documentElement.setAttribute('data-accent-color', savedColor);
-      if (savedColor !== 'dynamic') clearDynamicAccentColor();
     };
     syncAccent();
     window.addEventListener('leaftab-accent-color-changed', syncAccent);
     return () => window.removeEventListener('leaftab-accent-color-changed', syncAccent);
   }, []);
-  useEffect(() => {
-    let canceled = false;
-    if (accentColor !== 'dynamic') {
-      clearDynamicAccentColor();
-      return;
-    }
-    document.documentElement.setAttribute('data-accent-color', 'dynamic');
-    resolveDynamicAccentColor({
-      wallpaperMode,
-      bingWallpaper,
-      customWallpaper,
-      weatherCode,
-      colorWallpaperId,
-      dynamicWallpaperEffect,
-    }).then((hex) => {
-      if (canceled) return;
-      applyDynamicAccentColor(hex);
-    }).catch(() => {
-      if (canceled) return;
-      applyDynamicAccentColor('#3b82f6');
-    });
-    return () => {
-      canceled = true;
-    };
-  }, [accentColor, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId, dynamicWallpaperEffect]);
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
@@ -619,8 +601,10 @@ export default function SettingsModal({
   const logoutConfirmActionLabel = logoutConfirmTarget === 'webdav'
     ? t('common.confirm')
     : t('logoutConfirm.confirm');
+  const shortcutStyleDisabled = displayMode === 'minimalist';
 
   const handleOpenShortcutStyleSettings = () => {
+    if (shortcutStyleDisabled) return;
     onOpenChange(false);
     onOpenShortcutStyleSettings?.();
   };
@@ -702,15 +686,24 @@ export default function SettingsModal({
                       <div className="grid grid-cols-2 gap-2.5">
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{t('settings.profile.shortcutsCount')}</span>
-                          <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
+                          <RollingNumber
+                            value={shortcutsCount}
+                            trigger={syncCardAnimSeq}
+                            disabled={disableSyncCardAccentAnimation}
+                            className="text-lg font-semibold"
+                          />
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{cloudLastSyncTitleLabel}</span>
                           <SyncStatusBadge
                             label={
-                              <TextShimmer as="span">
-                                {cloudNextSyncBadgeLabel}
-                              </TextShimmer>
+                              disableSyncCardAccentAnimation ? (
+                                <span className="text-primary">{cloudNextSyncBadgeLabel}</span>
+                              ) : (
+                                <TextShimmer as="span">
+                                  {cloudNextSyncBadgeLabel}
+                                </TextShimmer>
+                              )
                             }
                             tone='info'
                             className="mt-1.5"
@@ -786,15 +779,24 @@ export default function SettingsModal({
                       <div className="grid grid-cols-2 gap-2.5">
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{t('settings.profile.shortcutsCount')}</span>
-                          <RollingNumber value={shortcutsCount} trigger={syncCardAnimSeq} className="text-lg font-semibold" />
+                          <RollingNumber
+                            value={shortcutsCount}
+                            trigger={syncCardAnimSeq}
+                            disabled={disableSyncCardAccentAnimation}
+                            className="text-lg font-semibold"
+                          />
                         </div>
                         <div className="flex flex-col">
                           <span className="text-xs text-muted-foreground">{webdavLastSyncTitleLabel}</span>
                           <SyncStatusBadge
                             label={
-                              <TextShimmer as="span">
-                                {webdavNextSyncBadgeLabel}
-                              </TextShimmer>
+                              disableSyncCardAccentAnimation ? (
+                                <span className="text-primary">{webdavNextSyncBadgeLabel}</span>
+                              ) : (
+                                <TextShimmer as="span">
+                                  {webdavNextSyncBadgeLabel}
+                                </TextShimmer>
+                              )
                             }
                             tone='info'
                             className="mt-1.5"
@@ -862,7 +864,6 @@ export default function SettingsModal({
                 ))}
               </div>
             </div>
-            {displayMode !== 'minimalist' && (
             <div className="flex flex-col gap-3">
             <div className="flex justify-between w-full px-[12px]">
               {colorOptions.map((option) => (
@@ -880,7 +881,6 @@ export default function SettingsModal({
               ))}
             </div>
           </div>
-          )}
             <Separator className="bg-border/60" />
 
             <div className="flex items-center justify-between space-x-2">
@@ -912,8 +912,7 @@ export default function SettingsModal({
                 {t('settings.shortcutsLayout.set')}
               </Button>
             </div>
-            {displayMode !== 'minimalist' && (
-              <div className="flex items-center justify-between gap-3">
+              <div className={`flex items-center justify-between gap-3 ${shortcutStyleDisabled ? 'opacity-55' : ''}`}>
                 <div className="flex flex-col space-y-1 items-start">
                   <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.label')}</span>
                   <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsStyle.entryDescription')}</span>
@@ -921,13 +920,13 @@ export default function SettingsModal({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                  className={`!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 ${shortcutStyleDisabled ? 'bg-secondary/35 text-muted-foreground cursor-not-allowed hover:bg-secondary/35' : 'bg-secondary/50 hover:bg-secondary'}`}
+                  disabled={shortcutStyleDisabled}
                   onClick={handleOpenShortcutStyleSettings}
                 >
                   {t('settings.shortcutsStyle.open')}
                 </Button>
               </div>
-            )}
             <Separator className="bg-border/60" />
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
@@ -991,6 +990,22 @@ export default function SettingsModal({
                     <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
                   </Switch>
                 </div>
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1 items-start">
+                    <span className="text-sm font-medium leading-none">{t('settings.visualEffectsLevel.label')}</span>
+                    <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
+                  </div>
+                  <Select value={visualEffectsLevel} onValueChange={(value) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
+                    <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border text-popover-foreground">
+                      <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
+                      <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
+                      <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </>
             )}
           
@@ -1017,7 +1032,7 @@ export default function SettingsModal({
               <span className="font-normal text-xs text-muted-foreground">{t('settings.language.description')}</span>
             </div>
             <Select value={languageValue} onValueChange={changeLanguage}>
-              <SelectTrigger className="w-[120px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={t('settings.language.selectPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -1030,14 +1045,13 @@ export default function SettingsModal({
               </SelectContent>
             </Select>
           </div>
-          {displayMode !== 'minimalist' && (
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.theme.label')}</span>
               <span className="font-normal text-xs text-muted-foreground">{t('settings.theme.description')}</span>
             </div>
             <Select value={mounted ? theme : "system"} onValueChange={setTheme}>
-              <SelectTrigger className="w-[120px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={t('settings.theme.selectPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -1047,9 +1061,7 @@ export default function SettingsModal({
               </SelectContent>
             </Select>
           </div>
-          )}
 
-          {displayMode !== 'minimalist' && (
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.backup.label')}</span>
@@ -1083,7 +1095,6 @@ export default function SettingsModal({
               />
             </div>
           </div>
-          )}
 
           <Separator className="bg-border/60" />
           {adminModeEnabled && (

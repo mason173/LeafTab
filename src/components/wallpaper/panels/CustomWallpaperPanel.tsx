@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RiCheckFill, RiUpload2Fill } from "@remixicon/react";
+import { RiCheckFill, RiUpload2Fill } from "@/icons/ri-compat";
 import { saveWallpaper } from "@/db";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";
 import { WallpaperMaskOpacitySlider } from "@/components/wallpaper/WallpaperMaskOpacitySlider";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RiDraggable as GripVerticalIcon } from "@remixicon/react";
+import { RiDraggable as GripVerticalIcon } from "@/icons/ri-compat";
 import * as ResizablePrimitive from "react-resizable-panels@2.1.7";
 
 import { cn } from "./utils";

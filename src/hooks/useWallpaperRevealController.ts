@@ -14,6 +14,7 @@ interface UseWallpaperRevealControllerOptions {
   usesImageWallpaperLayer: boolean;
   showOverlayWallpaperLayer: boolean;
   hasWeatherVisual: boolean;
+  disableRevealAnimation?: boolean;
 }
 
 interface UseWallpaperRevealControllerResult {
@@ -28,6 +29,7 @@ export function useWallpaperRevealController({
   usesImageWallpaperLayer,
   showOverlayWallpaperLayer,
   hasWeatherVisual,
+  disableRevealAnimation = false,
 }: UseWallpaperRevealControllerOptions): UseWallpaperRevealControllerResult {
   const [wallpaperImageLoaded, setWallpaperImageLoaded] = useState(false);
   const [wallpaperFadeRevealReady, setWallpaperFadeRevealReady] = useState(false);
@@ -76,11 +78,14 @@ export function useWallpaperRevealController({
   }, [displayedOverlayWallpaperSrc, hasLoadedOverlayWallpaperOnce, overlayBackgroundImageSrc, usesImageWallpaperLayer]);
 
   useEffect(() => {
+    if (disableRevealAnimation) {
+      setWallpaperFadeRevealReady(true);
+      setWallpaperColorRevealReady(true);
+      return;
+    }
     const hasOverlayWallpaperVisual = wallpaperMode === 'weather'
       ? hasWeatherVisual
-      : wallpaperMode === 'dynamic'
-        ? true
-        : wallpaperMode === 'color'
+      : wallpaperMode === 'color'
           ? true
           : Boolean(displayedOverlayWallpaperSrc || overlayBackgroundImageSrc);
     const wallpaperVisualReady = usesImageWallpaperLayer
@@ -102,6 +107,7 @@ export function useWallpaperRevealController({
       wallpaperColorTimerRef.current = null;
     }, WALLPAPER_COLOR_REVEAL_DELAY_MS);
   }, [
+    disableRevealAnimation,
     displayedOverlayWallpaperSrc,
     hasWeatherVisual,
     overlayBackgroundImageSrc,
@@ -118,6 +124,15 @@ export function useWallpaperRevealController({
 
   const effectiveOverlayWallpaperSrc = displayedOverlayWallpaperSrc || overlayBackgroundImageSrc;
   const wallpaperAnimatedLayerStyle = useMemo<CSSProperties>(() => {
+    if (disableRevealAnimation) {
+      return {
+        opacity: 1,
+        filter: 'none',
+        transform: 'scale(1)',
+        transformOrigin: 'center center',
+        transition: 'none',
+      };
+    }
     const wallpaperImageRevealOpacity = wallpaperFadeRevealReady ? 1 : 0;
     const wallpaperImageRevealFilter = wallpaperColorRevealReady
       ? 'grayscale(0) saturate(1) brightness(1)'
@@ -130,7 +145,7 @@ export function useWallpaperRevealController({
       transformOrigin: 'center center',
       transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear, transform ${WALLPAPER_SCALE_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${WALLPAPER_COLOR_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1) ${WALLPAPER_COLOR_REVEAL_DELAY_MS}ms`,
     };
-  }, [wallpaperColorRevealReady, wallpaperFadeRevealReady]);
+  }, [disableRevealAnimation, wallpaperColorRevealReady, wallpaperFadeRevealReady]);
 
   return {
     effectiveOverlayWallpaperSrc,

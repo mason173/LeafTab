@@ -70,6 +70,13 @@ export default {
         label: "Show Seconds",
         description: "Display seconds in the time component"
       },
+      visualEffectsLevel: {
+        label: "Smoothness Level",
+        description: "Choose effect intensity based on device performance",
+        low: "Low",
+        medium: "Medium",
+        high: "High"
+      },
       showTime: {
         label: "Show Time",
         description: "Display time on the page"
@@ -322,7 +329,7 @@ export default {
         content: "LeafTab is a browser new-tab extension.\nIt provides a clean start page with shortcuts, wallpaper/weather, and sync features including Cloud Sync and WebDAV.",
         openSourceNoticePrefix: "LeafTab Community Edition is open source under ",
         openSourceNoticeSuffix: ". Issues and PRs are welcome on GitHub.",
-        thirdPartyLicenseNotice: "Some third-party components follow their own licenses (for example, react-bits under MIT + Commons Clause).",
+        thirdPartyLicenseNotice: "Some third-party components follow their own licenses.",
         ackTitle: "Acknowledgements",
         ackDesc: "LeafTab is built with the following open-source libraries and resources (tap to open):",
         frontend: "Frontend",
@@ -557,6 +564,7 @@ export default {
       placeholderHintPrefix: "Prefix search: e.g. g AI",
       systemEngine: "System default",
       useEngineSearch: "Search with {{engine}}",
+      prefixEngineInlineHint: "Search with {{engine}}",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
       noHistory: "No recent searches"

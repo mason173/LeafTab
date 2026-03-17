@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type RefObject } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
-import { GradualBlur } from '@/components/react-bits/gradual-blur';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import {
   INITIAL_REVEAL_TIMING,
@@ -39,6 +38,7 @@ interface QuickAccessDrawerProps {
   drawerShortcutBottomInset: number;
   drawerShortcutForceWhiteText: boolean;
   drawerScrollLocked: boolean;
+  disableBottomGradualBlur?: boolean;
   drawerSearchSurfaceStyle?: CSSProperties;
   subtleDarkTone?: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
@@ -72,6 +72,7 @@ export function QuickAccessDrawer({
   drawerShortcutBottomInset,
   drawerShortcutForceWhiteText,
   drawerScrollLocked,
+  disableBottomGradualBlur = false,
   drawerSearchSurfaceStyle,
   subtleDarkTone,
   drawerWheelAreaRef,
@@ -307,14 +308,7 @@ export function QuickAccessDrawer({
           aria-hidden="true"
         >
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/0 to-black/10" />
-          <GradualBlur
-            direction="bottom"
-            layers={5}
-            blurStrength={0.35}
-            exponential
-            curve="bezier"
-            className="absolute inset-0"
-          />
+          {!disableBottomGradualBlur ? <div className="absolute inset-0 backdrop-blur-[1.4px]" /> : null}
         </div>
       )}
     </>

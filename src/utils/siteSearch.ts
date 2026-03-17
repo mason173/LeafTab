@@ -303,6 +303,25 @@ function normalizeSiteToken(raw: string): string {
     .replace(/\/.*$/, '');
 }
 
+function buildSiteTokenIndex(sites: BuiltinSiteShortcut[]): Map<string, BuiltinSiteShortcut> {
+  const index = new Map<string, BuiltinSiteShortcut>();
+  sites.forEach((site) => {
+    const tokens = [
+      normalizeSiteToken(site.domain),
+      normalizeSiteToken(site.id),
+      ...site.aliases.map((alias) => normalizeSiteToken(alias)),
+    ];
+    tokens.forEach((token) => {
+      if (token && !index.has(token)) {
+        index.set(token, site);
+      }
+    });
+  });
+  return index;
+}
+
+const BUILTIN_SITE_TOKEN_INDEX = buildSiteTokenIndex(BUILTIN_SITE_SHORTCUTS);
+
 function isSubsequenceMatch(candidate: string, query: string): boolean {
   if (!candidate || !query || query.length > candidate.length) return false;
   let i = 0;
@@ -367,12 +386,7 @@ function scoreSiteMatch(site: BuiltinSiteShortcut, normalizedQuery: string, fuzz
 function findSiteByToken(rawToken: string): BuiltinSiteShortcut | null {
   const token = normalizeSiteToken(rawToken);
   if (!token) return null;
-  for (const site of BUILTIN_SITE_SHORTCUTS) {
-    if (token === site.domain.toLowerCase()) return site;
-    if (token === site.id.toLowerCase()) return site;
-    if (site.aliases.some((alias) => alias.toLowerCase() === token)) return site;
-  }
-  return null;
+  return BUILTIN_SITE_TOKEN_INDEX.get(token) || null;
 }
 
 export function getBuiltinSiteShortcutSuggestions(
@@ -403,23 +417,24 @@ export function parseSiteSearchShortcut(rawQuery: string): {
   query: string;
   siteDomain: string | null;
   siteSearchUrl: string | null;
+  siteLabel: string | null;
   historyQuery: string;
 } {
   const trimmed = rawQuery.trim();
-  if (!trimmed) return { query: '', siteDomain: null, siteSearchUrl: null, historyQuery: '' };
+  if (!trimmed) return { query: '', siteDomain: null, siteSearchUrl: null, siteLabel: null, historyQuery: '' };
 
   const match = trimmed.match(/^(\S+)\s+(.+)$/);
   if (!match) {
-    return { query: trimmed, siteDomain: null, siteSearchUrl: null, historyQuery: trimmed };
+    return { query: trimmed, siteDomain: null, siteSearchUrl: null, siteLabel: null, historyQuery: trimmed };
   }
 
   const token = match[1];
   const query = match[2].trim();
-  if (!query) return { query: '', siteDomain: null, siteSearchUrl: null, historyQuery: '' };
+  if (!query) return { query: '', siteDomain: null, siteSearchUrl: null, siteLabel: null, historyQuery: '' };
 
   const site = findSiteByToken(token);
   if (!site) {
-    return { query: trimmed, siteDomain: null, siteSearchUrl: null, historyQuery: trimmed };
+    return { query: trimmed, siteDomain: null, siteSearchUrl: null, siteLabel: null, historyQuery: trimmed };
   }
 
   return {
@@ -428,6 +443,7 @@ export function parseSiteSearchShortcut(rawQuery: string): {
     siteSearchUrl: site.searchUrlTemplate
       ? buildSiteDirectSearchUrl(site.searchUrlTemplate, query)
       : null,
+    siteLabel: site.label,
     historyQuery: `${token} ${query}`,
   };
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RiCheckFill, RiMapPin2Line } from "@remixicon/react";
+import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { cn } from "./ui/utils";
@@ -41,9 +41,14 @@ function WeatherInfo({ weather, variant }: { weather: string; variant: "inverted
 interface WeatherCardProps {
   onWeatherUpdate?: (code: number) => void;
   variant?: "inverted" | "default";
+  disableBackdropBlur?: boolean;
 }
 
-export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCardProps) {
+export function WeatherCard({
+  onWeatherUpdate,
+  variant = "inverted",
+  disableBackdropBlur = false,
+}: WeatherCardProps) {
   const { t, i18n } = useTranslation();
   const {
     weatherData,
@@ -117,7 +122,9 @@ export function WeatherCard({ onWeatherUpdate, variant = "inverted" }: WeatherCa
     <>
       <div
         className={`content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors transform-gpu backface-hidden ${
-          variant === "inverted" ? "hover:bg-white/10 backdrop-blur-md" : "hover:bg-secondary"
+          variant === "inverted"
+            ? (disableBackdropBlur ? "hover:bg-white/10" : "hover:bg-white/10 backdrop-blur-md")
+            : "hover:bg-secondary"
         }`}
         data-name="Weather"
         onClick={onOpenDialog}

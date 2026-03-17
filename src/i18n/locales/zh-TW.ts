@@ -71,6 +71,13 @@ export default {
         label: "顯示秒數",
         description: "在時間組件中顯示秒數"
       },
+      visualEffectsLevel: {
+        label: "流暢度檔位",
+        description: "依裝置效能選擇動效強度",
+        low: "低",
+        medium: "中",
+        high: "高"
+      },
       showTime: {
         label: "顯示時間",
         description: "在頁面上顯示時間"
@@ -416,6 +423,7 @@ export default {
       placeholderHintPrefix: "前綴搜尋：例如 g AI",
       systemEngine: "系統預設",
       useEngineSearch: "使用{{engine}} 搜尋",
+      prefixEngineInlineHint: "使用{{engine}}搜尋",
       historyTitle: "搜尋歷史",
       clearHistory: "清空",
       noHistory: "暫無搜尋記錄"

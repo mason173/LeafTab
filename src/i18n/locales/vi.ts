@@ -71,6 +71,13 @@ export default {
         label: "Hiển thị giây",
         description: "Hiển thị giây trong thành phần thời gian"
       },
+      visualEffectsLevel: {
+        label: "Mức độ mượt",
+        description: "Chọn cường độ hiệu ứng theo hiệu năng thiết bị",
+        low: "Thấp",
+        medium: "Trung bình",
+        high: "Cao"
+      },
       showTime: {
         label: "Hiển thị thời gian",
         description: "Hiển thị thời gian trên trang"
@@ -411,6 +418,7 @@ export default {
       placeholderHintPrefix: "Tìm bằng prefix: ví dụ g AI",
       systemEngine: "Mặc định hệ thống",
       useEngineSearch: "Tìm kiếm bằng {{engine}}",
+      prefixEngineInlineHint: "Tìm bằng {{engine}}",
       historyTitle: "Lịch sử tìm kiếm",
       clearHistory: "Xóa",
       noHistory: "Không có lịch sử tìm kiếm"

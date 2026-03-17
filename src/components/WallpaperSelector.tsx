@@ -1,16 +1,15 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { RiImageFill } from "@remixicon/react";
+import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
 import { forwardRef, useEffect, useState } from "react";
 import { Magnetic } from "@/components/motion-primitives/magnetic";
-import type { DynamicWallpaperEffect, WallpaperMode } from "@/wallpaper/types";
+import type { WallpaperMode } from "@/wallpaper/types";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
-import { DynamicWallpaperPanel } from "./wallpaper/panels/DynamicWallpaperPanel";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
@@ -33,8 +32,6 @@ const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<H
 interface WallpaperSelectorProps {
   mode: WallpaperMode;
   onModeChange: (mode: WallpaperMode) => void;
-  dynamicWallpaperEffect: DynamicWallpaperEffect;
-  onDynamicWallpaperEffectChange: (effect: DynamicWallpaperEffect) => void;
   bingWallpaper: string;
   weatherCode: number;
   customWallpaper: string | null;
@@ -43,6 +40,7 @@ interface WallpaperSelectorProps {
   onColorWallpaperIdChange: (id: string) => void;
   wallpaperMaskOpacity: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
+  reduceVisualEffects?: boolean;
   hideWeather?: boolean;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -52,8 +50,6 @@ interface WallpaperSelectorProps {
 export default function WallpaperSelector({
   mode,
   onModeChange,
-  dynamicWallpaperEffect,
-  onDynamicWallpaperEffectChange,
   bingWallpaper,
   customWallpaper,
   onCustomWallpaperChange,
@@ -61,6 +57,7 @@ export default function WallpaperSelector({
   onColorWallpaperIdChange,
   wallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
+  reduceVisualEffects = false,
   hideWeather = false,
   trigger,
   open,
@@ -100,14 +97,7 @@ export default function WallpaperSelector({
 
           <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">
             <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
-              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-4" : "grid-cols-5"} rounded-[16px]`}>
-                <TabsTrigger
-                  value="dynamic"
-                  className="rounded-xl truncate text-[13px]"
-                  title={t("weather.wallpaper.dynamic", { defaultValue: "Dynamic" })}
-                >
-                  {t("weather.wallpaper.dynamic", { defaultValue: "Dynamic" })}
-                </TabsTrigger>
+              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-3" : "grid-cols-4"} rounded-[16px]`}>
                 <TabsTrigger
                   value="bing"
                   className="rounded-xl truncate text-[13px]"
@@ -185,14 +175,6 @@ export default function WallpaperSelector({
                 isMaskSliderIsolation={isMaskSliderIsolation}
                 onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
                 onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
-              />
-
-              <DynamicWallpaperPanel
-                mode={mode}
-                dynamicWallpaperEffect={dynamicWallpaperEffect}
-                wallpaperMaskOpacity={wallpaperMaskOpacity}
-                onDynamicWallpaperEffectChange={onDynamicWallpaperEffectChange}
-                onModeChange={onModeChange}
               />
             </div>
           </Tabs>

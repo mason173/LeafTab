@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { googleFonts, loadGoogleFont } from '../utils/googleFonts';
-import { RiCheckFill } from '@remixicon/react';
+import { RiCheckFill } from '@/icons/ri-compat';
 import { cn } from './ui/utils';
 import { ScrollArea } from './ui/scroll-area';
 import {

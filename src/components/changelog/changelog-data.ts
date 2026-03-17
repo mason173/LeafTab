@@ -8,6 +8,16 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.6",
+    date: "2026-03-17",
+    notes: [
+      t("changelog.items.release136LicenseGplv3", { defaultValue: "开源协议切换到 GPLv3" }),
+      t("changelog.items.release136SystemEffectsLevel", { defaultValue: "新增系统特效强度档位选择" }),
+      t("changelog.items.release136UiPolish", { defaultValue: "优化界面显示效果" }),
+      t("changelog.items.release136RemoveDynamicWallpaper", { defaultValue: "移除灵动壁纸（因性能原因）" }),
+    ],
+  },
+  {
     version: "1.3.5",
     date: "2026-03-16",
     notes: [

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob } from '../db';
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
-import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
-import { isDynamicWallpaperEffect } from '@/wallpaper/types';
+import type { WallpaperMode } from '@/wallpaper/types';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
@@ -165,9 +164,10 @@ export function useWallpaper() {
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    return (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'dynamic' || saved === 'custom')
-      ? saved
-      : 'dynamic';
+    if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') return saved;
+    // Backward compatibility: old versions may persist "dynamic".
+    if (saved === 'dynamic') return 'bing';
+    return 'bing';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -179,12 +179,6 @@ export function useWallpaper() {
     const exists = COLOR_WALLPAPER_PRESETS.some((preset) => preset.id === saved);
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
   });
-  const [dynamicWallpaperEffect, setDynamicWallpaperEffect] = useState<DynamicWallpaperEffect>(() => {
-    const saved = localStorage.getItem('dynamicWallpaperEffect');
-    if (isDynamicWallpaperEffect(saved)) return saved;
-    return 'silk';
-  });
-
   useEffect(() => {
     localStorage.setItem('wallpaperMode', wallpaperMode);
   }, [wallpaperMode]);
@@ -196,10 +190,6 @@ export function useWallpaper() {
   useEffect(() => {
     localStorage.setItem('colorWallpaperId', colorWallpaperId);
   }, [colorWallpaperId]);
-
-  useEffect(() => {
-    localStorage.setItem('dynamicWallpaperEffect', dynamicWallpaperEffect);
-  }, [dynamicWallpaperEffect]);
 
   useEffect(() => {
     getWallpaper().then((wallpaper) => {
@@ -353,6 +343,5 @@ export function useWallpaper() {
     weatherCode, setWeatherCode,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
     colorWallpaperId, setColorWallpaperId,
-    dynamicWallpaperEffect, setDynamicWallpaperEffect,
   };
 }

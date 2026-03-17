@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState, type ComponentProps } from 'react';
-import { RiShieldCrossFill } from '@remixicon/react';
+import { RiShieldCrossFill } from '@/icons/ri-compat';
 import { useTranslation } from 'react-i18next';
 import type { AboutLeafTabModal } from './AboutLeafTabModal';
 import type { AdminModal } from './AdminModal';

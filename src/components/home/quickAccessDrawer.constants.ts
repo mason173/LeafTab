@@ -13,6 +13,7 @@ const DRAWER_COLLAPSED_HEIGHT_MAX_VH = 71;
 const DRAWER_EXPANDED_HEIGHT_MIN_VH = 91;
 const DRAWER_EXPANDED_HEIGHT_MAX_VH = 97;
 const DRAWER_MIN_SNAP_GAP = 0.08;
+const DRAWER_TOP_CONTENT_SAFE_GAP_PX = 20;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -33,10 +34,32 @@ export interface QuickAccessDrawerViewportMetrics {
   expandedHeightVh: number;
 }
 
-export function resolveQuickAccessDrawerViewportMetrics(viewportHeight: number): QuickAccessDrawerViewportMetrics {
+export interface QuickAccessDrawerVerticalConstraint {
+  topContentBottomPx?: number;
+  topContentSafeGapPx?: number;
+}
+
+export function resolveQuickAccessDrawerViewportMetrics(
+  viewportHeight: number,
+  constraint?: QuickAccessDrawerVerticalConstraint,
+): QuickAccessDrawerViewportMetrics {
   const resolvedViewportHeight = Number.isFinite(viewportHeight) && viewportHeight > 0
     ? viewportHeight
     : FALLBACK_VIEWPORT_HEIGHT_PX;
+  const hasTopContentBottomConstraint = Number.isFinite(constraint?.topContentBottomPx);
+  const resolvedTopContentBottomPx = hasTopContentBottomConstraint
+    ? Math.max(0, Number(constraint?.topContentBottomPx))
+    : 0;
+  const resolvedTopContentSafeGapPx = Number.isFinite(constraint?.topContentSafeGapPx)
+    ? Math.max(0, Number(constraint?.topContentSafeGapPx))
+    : DRAWER_TOP_CONTENT_SAFE_GAP_PX;
+  const maxCollapsedHeightByTopContentVh = hasTopContentBottomConstraint
+    ? clamp(
+        ((resolvedViewportHeight - resolvedTopContentBottomPx - resolvedTopContentSafeGapPx) / resolvedViewportHeight) * 100,
+        0,
+        100,
+      )
+    : null;
 
   let defaultSnapPoint = calcRatioByTopGap(
     resolvedViewportHeight,
@@ -53,13 +76,19 @@ export function resolveQuickAccessDrawerViewportMetrics(viewportHeight: number):
   if (fullSnapPoint - defaultSnapPoint < DRAWER_MIN_SNAP_GAP) {
     defaultSnapPoint = Math.max(DRAWER_DEFAULT_SNAP_MIN, fullSnapPoint - DRAWER_MIN_SNAP_GAP);
   }
+  if (maxCollapsedHeightByTopContentVh !== null) {
+    defaultSnapPoint = Math.min(defaultSnapPoint, maxCollapsedHeightByTopContentVh / 100);
+  }
 
-  const collapsedHeightVh = calcVhByTopGap(
+  let collapsedHeightVh = calcVhByTopGap(
     resolvedViewportHeight,
     DRAWER_COLLAPSED_HEIGHT_TOP_GAP_PX,
     DRAWER_COLLAPSED_HEIGHT_MIN_VH,
     DRAWER_COLLAPSED_HEIGHT_MAX_VH,
   );
+  if (maxCollapsedHeightByTopContentVh !== null) {
+    collapsedHeightVh = Math.min(collapsedHeightVh, maxCollapsedHeightByTopContentVh);
+  }
   const expandedHeightVh = calcVhByTopGap(
     resolvedViewportHeight,
     DRAWER_EXPANDED_HEIGHT_TOP_GAP_PX,
@@ -75,7 +104,7 @@ export function resolveQuickAccessDrawerViewportMetrics(viewportHeight: number):
   };
 }
 
-export const DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX = 24;
+export const DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX = 18;
 export const DRAWER_CONTENT_BACKDROP_BLUR_MAX_PX = 0;
 export const DRAWER_CONTENT_BG_MAX_OPACITY = 1;
 export const DRAWER_OVERLAY_MAX_OPACITY = 0.35;

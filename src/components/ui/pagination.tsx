@@ -3,7 +3,7 @@ import {
   RiArrowLeftSLine as ChevronLeftIcon,
   RiArrowRightSLine as ChevronRightIcon,
   RiMoreFill as MoreHorizontalIcon,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 import { Button, buttonVariants } from "./button";

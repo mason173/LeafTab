@@ -4,7 +4,7 @@ import * as React from "react";
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react@8.6.0";
-import { RiArrowLeftSLine as ArrowLeft, RiArrowRightSLine as ArrowRight } from "@remixicon/react";
+import { RiArrowLeftSLine as ArrowLeft, RiArrowRightSLine as ArrowRight } from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 import { Button } from "./button";

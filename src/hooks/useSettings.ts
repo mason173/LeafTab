@@ -9,6 +9,7 @@ import {
   type ShortcutCardVariant,
 } from '@/components/shortcuts/shortcutCardVariant';
 import { type DisplayMode } from '@/displayMode/config';
+import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 
 const SHORTCUT_GRID_COLUMNS_LEGACY_KEY = 'shortcutGridColumns';
 const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
@@ -18,6 +19,8 @@ const SEARCH_SITE_DIRECT_ENABLED_KEY = 'search_site_direct_enabled';
 const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
+const VISUAL_EFFECTS_LEVEL_KEY = 'visual_effects_level';
+const REDUCE_VISUAL_EFFECTS_KEY = 'reduce_visual_effects';
 
 function readInitialDisplayMode(): DisplayMode {
   const storedDisplayMode = localStorage.getItem('displayMode');
@@ -47,6 +50,13 @@ function readStoredBoolean(key: string, defaultValue: boolean): boolean {
   } catch {
     return raw === 'true';
   }
+}
+
+function readVisualEffectsLevel(): VisualEffectsLevel {
+  const stored = (localStorage.getItem(VISUAL_EFFECTS_LEVEL_KEY) || '').trim();
+  if (stored === 'low' || stored === 'medium' || stored === 'high') return stored;
+  const legacyReduced = readStoredBoolean(REDUCE_VISUAL_EFFECTS_KEY, false);
+  return legacyReduced ? 'low' : 'high';
 }
 
 function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {
@@ -107,6 +117,7 @@ export function useSettings() {
       return storedShowSeconds === 'true';
     }
   });
+  const [visualEffectsLevel, setVisualEffectsLevel] = useState<VisualEffectsLevel>(() => readVisualEffectsLevel());
   const [showTime, setShowTime] = useState(true);
   const [apiServer, setApiServer] = useState<'official' | 'custom'>(() => {
     if (!ENABLE_CUSTOM_API_SERVER) return 'official';
@@ -174,6 +185,7 @@ export function useSettings() {
     
     const storedShowTime = localStorage.getItem('showTime');
     if (storedShowTime !== null) setShowTime(JSON.parse(storedShowTime));
+    setVisualEffectsLevel(readVisualEffectsLevel());
     setShortcutCardVariant(parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')));
     const storedShortcutCompactShowTitle = localStorage.getItem('shortcutCompactShowTitle');
     if (storedShortcutCompactShowTitle !== null) {
@@ -245,6 +257,12 @@ export function useSettings() {
   useEffect(() => {
     localStorage.setItem('showSeconds', JSON.stringify(showSeconds));
   }, [showSeconds]);
+
+  useEffect(() => {
+    localStorage.setItem(VISUAL_EFFECTS_LEVEL_KEY, visualEffectsLevel);
+    // Keep legacy key for backward compatibility with previous versions.
+    localStorage.setItem(REDUCE_VISUAL_EFFECTS_KEY, JSON.stringify(visualEffectsLevel === 'low'));
+  }, [visualEffectsLevel]);
 
   useEffect(() => {
     localStorage.setItem('showTime', JSON.stringify(showTime));
@@ -337,6 +355,8 @@ export function useSettings() {
     setTimeFont,
     showSeconds,
     setShowSeconds,
+    visualEffectsLevel,
+    setVisualEffectsLevel,
     showTime,
     setShowTime,
     shortcutCardVariant,

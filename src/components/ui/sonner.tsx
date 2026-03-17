@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { RiCheckboxCircleFill, RiErrorWarningFill, RiInformationFill } from "@remixicon/react";
+import { RiCheckboxCircleFill, RiErrorWarningFill, RiInformationFill } from "@/icons/ri-compat";
 import { cn } from "./utils";
 
 type ToastType = "default" | "success" | "error" | "info";

@@ -37,8 +37,12 @@ function Switch({
   defaultChecked,
   onCheckedChange,
   type,
+  style,
   ...props
 }: SwitchProps) {
+  const reduceEffects =
+    typeof document !== "undefined" &&
+    document.documentElement.dataset.reduceEffects === "on";
   const [isPressed, setIsPressed] = React.useState(false);
   const [isChecked, setIsChecked] = useControlledState({
     value: checked,
@@ -55,13 +59,17 @@ function Switch({
       >
         <motion.button
           data-slot="switch"
-          whileTap="tap"
+          whileTap={reduceEffects ? undefined : "tap"}
           initial={false}
-          onTapStart={() => setIsPressed(true)}
+          onTapStart={() => {
+            if (reduceEffects) return;
+            setIsPressed(true);
+          }}
           onTapCancel={() => setIsPressed(false)}
           onTap={() => setIsPressed(false)}
           className={className}
           type={type ?? "button"}
+          style={reduceEffects ? { ...style, transition: "none" } : style}
           {...props}
         >
           {children ?? <SwitchThumb />}
@@ -89,16 +97,21 @@ function SwitchThumb({
   transition = { type: "spring", stiffness: 300, damping: 25 },
   ...props
 }: SwitchThumbProps) {
+  const reduceEffects =
+    typeof document !== "undefined" &&
+    document.documentElement.dataset.reduceEffects === "on";
   const { isPressed } = useSwitch();
+  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
 
   return (
     <SwitchPrimitives.Thumb asChild>
       <motion.div
         data-slot="switch-thumb"
-        layout
+        layout={!reduceEffects}
         className={cn("block h-full aspect-square rounded-full bg-background", className)}
-        transition={transition}
-        animate={isPressed ? pressedAnimation : undefined}
+        transition={resolvedTransition}
+        animate={reduceEffects ? undefined : (isPressed ? pressedAnimation : undefined)}
+        style={reduceEffects ? { transition: "none" } : undefined}
         {...props}
       />
     </SwitchPrimitives.Thumb>
@@ -116,7 +129,11 @@ function SwitchIcon({
   transition = { type: "spring", bounce: 0 },
   ...props
 }: SwitchIconProps) {
+  const reduceEffects =
+    typeof document !== "undefined" &&
+    document.documentElement.dataset.reduceEffects === "on";
   const { isChecked } = useSwitch();
+  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
 
   const isAnimated = React.useMemo(() => {
     if (position === "right") return !isChecked;
@@ -129,7 +146,7 @@ function SwitchIcon({
     <motion.div
       data-slot={`switch-${position}-icon`}
       animate={isAnimated ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-      transition={transition}
+      transition={resolvedTransition}
       {...props}
     />
   );

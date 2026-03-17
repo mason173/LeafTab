@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
@@ -31,6 +31,8 @@ interface HomeMainContentProps {
   displayMode: DisplayMode;
   is24Hour: boolean;
   showSeconds: boolean;
+  disableSecondTickMotion: boolean;
+  disableBottomGradualBlur: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
@@ -43,8 +45,9 @@ interface HomeMainContentProps {
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
 const HOME_WALLPAPER_BLOCK_LIFT_PX = 28;
 const HOME_DRAWER_LINKED_TRANSITION = '320ms cubic-bezier(0.22, 1, 0.36, 1)';
+const HOME_DRAWER_WALLPAPER_SAFE_GAP_PX = 12;
 
-export function HomeMainContent({
+export const HomeMainContent = memo(function HomeMainContent({
   initialRevealReady,
   visible,
   user: _user,
@@ -56,6 +59,8 @@ export function HomeMainContent({
   displayMode,
   is24Hour,
   showSeconds,
+  disableSecondTickMotion,
+  disableBottomGradualBlur,
   timeFont,
   onTimeFontChange,
   layout,
@@ -65,17 +70,23 @@ export function HomeMainContent({
   onDrawerExpandedChange,
 }: HomeMainContentProps) {
   const { resolvedTheme } = useTheme();
-  const drawer = useQuickAccessDrawer({
-    viewportHeight: layout.viewportHeight,
-    showShortcuts: modeFlags.showShortcuts,
-    disableScrollInteraction: Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen),
-  });
-  const drawerScrollLocked = Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen);
 
   const homeTopOffsetPercent = Math.max(
     0,
     ((layout.mainTopMargin + 50) / Math.max(layout.viewportHeight, 1)) * 100 - HOME_TOP_OFFSET_NUDGE_VH,
   );
+  const homeTopOffsetPx = (homeTopOffsetPercent / 100) * Math.max(layout.viewportHeight, 1);
+  const homeWallpaperBottomPx = modeFlags.showHeroWallpaperClock
+    ? homeTopOffsetPx + layout.wallpaperHeight
+    : undefined;
+  const drawerScrollLocked = Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen);
+  const drawer = useQuickAccessDrawer({
+    viewportHeight: layout.viewportHeight,
+    showShortcuts: modeFlags.showShortcuts,
+    disableScrollInteraction: drawerScrollLocked,
+    topContentBottomPx: homeWallpaperBottomPx,
+    topContentSafeGapPx: HOME_DRAWER_WALLPAPER_SAFE_GAP_PX,
+  });
 
   const drawerShortcutFadeHeight = shortcutGridProps.cardVariant === 'compact'
     ? Math.max(66, Math.round(((shortcutGridProps.compactIconSize ?? 72) + 24) * 0.92))
@@ -136,6 +147,7 @@ export function HomeMainContent({
                 <InlineTime
                   is24Hour={is24Hour}
                   showSeconds={showSeconds}
+                  disableSecondTickMotion={disableSecondTickMotion}
                   timeFont={timeFont}
                   onTimeFontChange={onTimeFontChange}
                   forceWhiteText={modeFlags.forceWhiteSearchTheme}
@@ -167,6 +179,7 @@ export function HomeMainContent({
         drawerShortcutBottomInset={drawerShortcutBottomInset}
         drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
         drawerScrollLocked={drawerScrollLocked}
+        disableBottomGradualBlur={disableBottomGradualBlur}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
@@ -178,4 +191,4 @@ export function HomeMainContent({
       />
     </>
   );
-}
+});

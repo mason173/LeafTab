@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot@1.1.2";
 import { VariantProps, cva } from "class-variance-authority@0.7.1";
-import { RiSidebarFoldFill as PanelLeftIcon } from "@remixicon/react";
+import { RiSidebarFoldFill as PanelLeftIcon } from "@/icons/ri-compat";
 
 import { useIsMobile } from "./use-mobile";
 import { cn } from "./utils";

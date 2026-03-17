@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export function useRotatingText(items: string[], intervalMs = 1800): string {
+export function useRotatingText(items: string[], intervalMs = 1800, disabled = false): string {
   const normalizedItems = useMemo(
     () => items.map((item) => item.trim()).filter((item) => item.length > 0),
     [items],
@@ -14,13 +14,15 @@ export function useRotatingText(items: string[], intervalMs = 1800): string {
   }, [itemsKey]);
 
   useEffect(() => {
+    if (disabled) return;
     if (normalizedItems.length <= 1) return;
     const timer = window.setInterval(() => {
       setIndex((prev) => (prev + 1) % normalizedItems.length);
     }, Math.max(500, intervalMs));
     return () => window.clearInterval(timer);
-  }, [intervalMs, normalizedItems]);
+  }, [disabled, intervalMs, normalizedItems]);
 
   if (normalizedItems.length === 0) return '';
+  if (disabled) return normalizedItems[0];
   return normalizedItems[index] ?? normalizedItems[0];
 }

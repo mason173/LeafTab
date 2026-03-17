@@ -66,6 +66,7 @@ export function useClock(is24Hour: boolean, showSeconds: boolean, language: stri
 
   useEffect(() => {
     let cancelled = false;
+    let timer: number | null = null;
     const needsLunar = shouldRenderLunar(language);
 
     const updateTime = () => {
@@ -100,10 +101,22 @@ export function useClock(is24Hour: boolean, showSeconds: boolean, language: stri
         });
     }
 
-    const interval = setInterval(updateTime, 1000);
+    const scheduleNextTick = () => {
+      const stepMs = showSeconds ? 1000 : 60_000;
+      const now = Date.now();
+      const delay = stepMs - (now % stepMs) + 8;
+      timer = window.setTimeout(() => {
+        updateTime();
+        scheduleNextTick();
+      }, Math.max(16, delay));
+    };
+    scheduleNextTick();
+
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
     };
   }, [is24Hour, showSeconds, language]);
 

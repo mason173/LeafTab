@@ -71,6 +71,13 @@ export default {
         label: "초 표시",
         description: "시간 구성 요소에 초를 표시합니다"
       },
+      visualEffectsLevel: {
+        label: "부드러움 단계",
+        description: "기기 성능에 맞게 효과 강도를 선택",
+        low: "낮음",
+        medium: "중간",
+        high: "높음"
+      },
       showTime: {
         label: "시간 표시",
         description: "페이지에 시간을 표시합니다"
@@ -411,6 +418,7 @@ export default {
       placeholderHintPrefix: "Prefix 검색: 예 g AI",
       systemEngine: "시스템 기본",
       useEngineSearch: "{{engine}}로 검색",
+      prefixEngineInlineHint: "{{engine}}로 검색",
       historyTitle: "검색 기록",
       clearHistory: "지우기",
       noHistory: "검색 기록 없음"
