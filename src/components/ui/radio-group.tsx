@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group@1.2.3";
-import { RiCheckboxBlankCircleFill as CircleIcon } from "@remixicon/react";
+import { RiCheckboxBlankCircleFill as CircleIcon } from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 

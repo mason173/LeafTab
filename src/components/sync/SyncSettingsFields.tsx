@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RiAddLine, RiSubtractLine } from '@remixicon/react';
+import { RiAddLine, RiSubtractLine } from '@/icons/ri-compat';
 import Scrubber from '@/components/ui/smoothui/scrubber';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 

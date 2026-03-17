@@ -6,7 +6,7 @@ import {
   RiArrowDownSLine as ChevronDownIcon,
   RiArrowUpSLine as ChevronUpIcon,
   RiCheckFill as CheckIcon,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 

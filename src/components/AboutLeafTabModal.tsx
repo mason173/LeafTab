@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@remixicon/react";
+import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@/icons/ri-compat";
 import { InfiniteSlider } from "@/components/motion-primitives/infinite-slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { buildChangelogItems } from "@/components/changelog/changelog-data";
@@ -34,7 +34,7 @@ export function AboutLeafTabModal({
       { name: "Framer Motion", url: "https://www.framer.com/motion/" },
       { name: "i18next", url: "https://www.i18next.com/" },
       { name: "next-themes", url: "https://github.com/pacocoursey/next-themes" },
-      { name: "Remix Icon", url: "https://remixicon.com/" },
+      { name: "Lucide", url: "https://lucide.dev/" },
       { name: "lunar-javascript", url: "https://github.com/6tail/lunar-javascript" },
       { name: "Recharts", url: "https://recharts.org/" },
     ],
@@ -53,8 +53,6 @@ export function AboutLeafTabModal({
       { name: "connect-sqlite3", url: "https://github.com/rawberg/connect-sqlite3" },
     ],
     resources: [
-      { name: "Unsplash Photos", url: "https://unsplash.com/" },
-      { name: "Unsplash License", url: "https://unsplash.com/license" },
       { name: "shadcn/ui License", url: "https://github.com/shadcn-ui/ui/blob/main/LICENSE.md" },
     ],
   };
@@ -101,7 +99,7 @@ export function AboutLeafTabModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[610px] max-h-[610px] overflow-hidden bg-background border-border text-foreground rounded-[32px] flex flex-col">
+      <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[630px] max-h-[84vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] flex flex-col">
         <DialogHeader>
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
         </DialogHeader>
@@ -150,13 +148,13 @@ export function AboutLeafTabModal({
                       rel="noreferrer"
                       className="text-foreground/90 underline-offset-2 hover:underline"
                     >
-                      MIT License
+                      GNU GPL v3.0 (or later)
                     </a>
                     {t("settings.about.openSourceNoticeSuffix", { defaultValue: ". Issues and PRs are welcome on GitHub." })}
                   </p>
                   <p className="mt-1">
                     {t("settings.about.thirdPartyLicenseNotice", {
-                      defaultValue: "Some third-party components follow their own licenses (for example, react-bits under MIT + Commons Clause).",
+                      defaultValue: "Some third-party components follow their own licenses.",
                     })}
                   </p>
                 </div>

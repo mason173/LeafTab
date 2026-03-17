@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, useDeferredValue } from 'react';
+import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
 import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
 import {
@@ -100,7 +100,6 @@ export function useSearch(
     }
   });
   const [historySelectedIndex, setHistorySelectedIndex] = useState(-1);
-  const skipNextHistoryOpen = useRef(false);
   const [historyUsageVersion, setHistoryUsageVersion] = useState(0);
 
   const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
@@ -149,13 +148,20 @@ export function useSearch(
   const filteredHistoryItems = useMemo(() => {
     const normalizedQuery = normalizeSearchQuery(deferredSearchValue);
     const now = Date.now();
+    if (!normalizedQuery) {
+      return indexedSearchHistory
+        .slice()
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((item) => ({
+          query: item.query,
+          timestamp: item.timestamp,
+        }));
+    }
 
     const ranked = indexedSearchHistory
       .map((item) => {
-        const matchPriority = normalizedQuery
-          ? getSearchMatchPriorityFromCandidates(item.matchCandidates, normalizedQuery, { fuzzy: fuzzyMatchEnabled })
-          : 2;
-        if (normalizedQuery && matchPriority === 0) return null;
+        const matchPriority = getSearchMatchPriorityFromCandidates(item.matchCandidates, normalizedQuery, { fuzzy: fuzzyMatchEnabled });
+        if (matchPriority === 0) return null;
 
         const usageBoost = personalizationEnabled
           ? getSuggestionUsageBoost(historyUsageMap, item.usageKey, now)
@@ -261,27 +267,6 @@ export function useSearch(
     setSearchEngine((prev) => getNextSearchEngine(prev, direction));
   }, []);
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!historyOpen) {
-        setHistoryOpen(true);
-        if (filteredHistoryItems.length > 0) {
-          setHistorySelectedIndex(0);
-        }
-      } else {
-        if (filteredHistoryItems.length > 0) {
-          setHistorySelectedIndex((prev) => (prev + 1) % filteredHistoryItems.length);
-        }
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (historyOpen && filteredHistoryItems.length > 0) {
-        setHistorySelectedIndex((prev) => (prev - 1 + filteredHistoryItems.length) % filteredHistoryItems.length);
-      }
-    }
-  };
-
   return {
     searchValue,
     setSearchValue,
@@ -295,14 +280,12 @@ export function useSearch(
     setDropdownOpen,
     historyOpen,
     setHistoryOpen,
-    skipNextHistoryOpen,
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
     handleEngineClick,
     handleEngineSelect,
     cycleSearchEngine,
-    handleSearchKeyDown,
     openSearchWithQuery,
   };
 }

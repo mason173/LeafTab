@@ -1,6 +1,6 @@
 import { forwardRef, useState, type ButtonHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
-import { RiDeleteBin6Fill, RiPencilFill } from "@remixicon/react";
+import { RiDeleteBin6Fill, RiPencilFill } from "@/icons/ri-compat";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,40 +18,41 @@ function ScenarioModeChevronDown({ open }: { open: boolean }) {
 
 const ScenarioModeButton = forwardRef<
   HTMLButtonElement,
-  { mode: ScenarioMode; open: boolean } & ButtonHTMLAttributes<HTMLButtonElement>
->(function ScenarioModeButton({ mode, open, ...buttonProps }, ref) {
-  const { t } = useTranslation();
+  { mode: ScenarioMode; open: boolean; reduceVisualEffects?: boolean } & ButtonHTMLAttributes<HTMLButtonElement>
+>(function ScenarioModeButton({ mode, open, reduceVisualEffects = false, ...buttonProps }, ref) {
   const Icon = getScenarioIconByKey(mode.icon);
   const displayName = mode.name;
-  return (
-    <Magnetic intensity={0.34} range={116}>
-      <button
-        ref={ref}
-        type="button"
-        {...buttonProps}
-        className="content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/10 backdrop-blur-md transition-colors text-white/90 transform-gpu"
-        data-name="ScenarioMode"
-      >
-        <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
-        <div className="relative shrink-0 size-[24px]">
-          <div
-            className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 rounded-[999px] size-[24px] flex items-center justify-center text-white"
-            style={{ backgroundColor: mode.color }}
-          >
-            <Icon className="size-[14px]" />
-          </div>
+  const buttonNode = (
+    <button
+      ref={ref}
+      type="button"
+      {...buttonProps}
+      className={`content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/10 transition-colors text-white/90 transform-gpu ${
+        reduceVisualEffects ? '' : 'backdrop-blur-md'
+      }`}
+      data-name="ScenarioMode"
+    >
+      <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
+      <div className="relative shrink-0 size-[24px]">
+        <div
+          className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 rounded-[999px] size-[24px] flex items-center justify-center text-white"
+          style={{ backgroundColor: mode.color }}
+        >
+          <Icon className="size-[14px]" />
         </div>
-        <div className="content-stretch flex gap-[4px] items-center justify-center pr-[6px] relative shrink-0">
-          <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-inherit text-[13px]">
-            {displayName}
-          </p>
-          <div className="relative shrink-0 size-[10px] text-white/60">
-            <ScenarioModeChevronDown open={open} />
-          </div>
+      </div>
+      <div className="content-stretch flex gap-[4px] items-center justify-center pr-[6px] relative shrink-0">
+        <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-inherit text-[13px]">
+          {displayName}
+        </p>
+        <div className="relative shrink-0 size-[10px] text-white/60">
+          <ScenarioModeChevronDown open={open} />
         </div>
-      </button>
-    </Magnetic>
+      </div>
+    </button>
   );
+  if (reduceVisualEffects) return buttonNode;
+  return <Magnetic intensity={0.34} range={116}>{buttonNode}</Magnetic>;
 });
 
 function ScenarioModeMenu({
@@ -63,6 +64,7 @@ function ScenarioModeMenu({
   onCreate,
   onEdit,
   onDelete,
+  reduceVisualEffects = false,
 }: {
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
@@ -72,6 +74,7 @@ function ScenarioModeMenu({
   onCreate: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  reduceVisualEffects?: boolean;
 }) {
   const { t } = useTranslation();
   const selectedMode = scenarioModes.find((m) => m.id === selectedScenarioId) ?? scenarioModes[0];
@@ -84,7 +87,7 @@ function ScenarioModeMenu({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <ScenarioModeButton mode={selectedMode} open={open} />
+        <ScenarioModeButton mode={selectedMode} open={open} reduceVisualEffects={reduceVisualEffects} />
       </PopoverTrigger>
       <PopoverContent side="top" align="start" sideOffset={8} className="w-[320px] p-[8px] bg-popover border-border text-foreground rounded-[24px] shadow-[0px_8px_24px_rgba(0,0,0,0.2)]">
         <div className="flex flex-col gap-[6px]">

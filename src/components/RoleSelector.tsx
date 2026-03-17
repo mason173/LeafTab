@@ -19,7 +19,7 @@ import {
   RiPaletteFill,
   RiSunFill,
   RiTeamFill,
-} from '@remixicon/react';
+} from '@/icons/ri-compat';
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";

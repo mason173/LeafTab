@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk@1.1.1";
-import { RiSearchLine as SearchIcon } from "@remixicon/react";
+import { RiSearchLine as SearchIcon } from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 import {

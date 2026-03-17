@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { RiEyeFill, RiEyeOffFill } from "@remixicon/react";
+import { RiEyeFill, RiEyeOffFill } from "@/icons/ri-compat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

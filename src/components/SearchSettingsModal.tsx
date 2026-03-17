@@ -10,7 +10,7 @@ import {
   RiLinkM,
   RiQuestionLine,
   RiRefreshFill,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from "@/config/featureFlags";

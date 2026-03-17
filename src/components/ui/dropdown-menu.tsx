@@ -6,7 +6,7 @@ import {
   RiArrowRightSLine as ChevronRightIcon,
   RiCheckFill as CheckIcon,
   RiCheckboxBlankCircleFill as CircleIcon,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 
 import { cn } from "./utils";
 

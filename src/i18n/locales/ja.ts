@@ -71,6 +71,13 @@ export default {
         label: "秒を表示",
         description: "時間コンポーネントに秒を表示します"
       },
+      visualEffectsLevel: {
+        label: "スムーズさレベル",
+        description: "端末性能に合わせてエフェクト強度を選択",
+        low: "低",
+        medium: "中",
+        high: "高"
+      },
       showTime: {
         label: "時間を表示",
         description: "ページに時間を表示します"
@@ -436,6 +443,7 @@ export default {
       placeholderHintPrefix: "Prefix検索：例 g AI",
       systemEngine: "システム既定",
       useEngineSearch: "{{engine}} で検索",
+      prefixEngineInlineHint: "{{engine}}で検索",
       historyTitle: "検索履歴",
       clearHistory: "クリア",
       noHistory: "検索履歴はありません"

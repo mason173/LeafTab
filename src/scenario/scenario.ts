@@ -17,7 +17,7 @@ import {
   RiShoppingCartFill,
   RiSnowflakeFill,
   RiUserFill,
-} from "@remixicon/react";
+} from "@/icons/ri-compat";
 
 type ScenarioIconKey =
   | "home"

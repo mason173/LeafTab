@@ -29,6 +29,8 @@ interface UseQuickAccessDrawerOptions {
   viewportHeight: number;
   showShortcuts: boolean;
   disableScrollInteraction?: boolean;
+  topContentBottomPx?: number;
+  topContentSafeGapPx?: number;
 }
 
 interface UseQuickAccessDrawerResult {
@@ -54,6 +56,8 @@ export function useQuickAccessDrawer({
   viewportHeight,
   showShortcuts,
   disableScrollInteraction = false,
+  topContentBottomPx,
+  topContentSafeGapPx,
 }: UseQuickAccessDrawerOptions): UseQuickAccessDrawerResult {
   const {
     defaultSnapPoint: quickAccessDefaultSnapPoint,
@@ -61,8 +65,11 @@ export function useQuickAccessDrawer({
     collapsedHeightVh,
     expandedHeightVh,
   } = useMemo(
-    () => resolveQuickAccessDrawerViewportMetrics(viewportHeight),
-    [viewportHeight],
+    () => resolveQuickAccessDrawerViewportMetrics(viewportHeight, {
+      topContentBottomPx,
+      topContentSafeGapPx,
+    }),
+    [topContentBottomPx, topContentSafeGapPx, viewportHeight],
   );
   const [quickAccessOpen, setQuickAccessOpen] = useState(true);
   const [quickAccessSnapPoint, setQuickAccessSnapPoint] = useState<number | string | null>(quickAccessDefaultSnapPoint);

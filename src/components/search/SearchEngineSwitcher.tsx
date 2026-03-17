@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { RiArrowRightSLine, RiCheckFill } from '@remixicon/react';
+import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
 import type { SearchEngine } from '@/types';
 import { SEARCH_ENGINE_ORDER } from '@/utils/searchHelpers';
 

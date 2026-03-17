@@ -4,7 +4,7 @@ import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { RiCheckFill } from '@remixicon/react';
+import { RiCheckFill } from '@/icons/ri-compat';
 import { Shortcut } from '../types';
 import { ShortcutCardRenderer } from './shortcuts/ShortcutCardRenderer';
 import {
@@ -59,6 +59,7 @@ function SortableShortcut({
   selected,
   selectionMode,
   dragDisabled,
+  disableReorderAnimation,
 }: {
   sortId: string;
   activeDragId: string | null;
@@ -78,6 +79,7 @@ function SortableShortcut({
   selected: boolean;
   selectionMode: boolean;
   dragDisabled: boolean;
+  disableReorderAnimation: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sortId,
@@ -91,14 +93,16 @@ function SortableShortcut({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     // Keep slot-shift animation for other cards; only the actively dragged card skips transition.
-    transition: isActiveDragItem ? undefined : (transition ? CARD_SETTLE_TRANSITION : undefined),
+    transition: disableReorderAnimation
+      ? undefined
+      : (isActiveDragItem ? undefined : (transition ? CARD_SETTLE_TRANSITION : undefined)),
   };
   return (
     <motion.div
       ref={setNodeRef}
       initial={false}
-      layout={!isActiveDragItem}
-      transition={CARD_LAYOUT_SHIFT_TRANSITION}
+      layout={disableReorderAnimation ? false : !isActiveDragItem}
+      transition={disableReorderAnimation ? undefined : CARD_LAYOUT_SHIFT_TRANSITION}
       style={style}
       {...draggableProps}
       className={`relative will-change-transform ${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'} ${
@@ -170,6 +174,7 @@ interface ShortcutGridProps {
   forceTextWhite?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  disableReorderAnimation?: boolean;
   selectionMode?: boolean;
   selectedShortcutIndexes?: ReadonlySet<number>;
   onToggleShortcutSelection?: (shortcutIndex: number) => void;
@@ -197,6 +202,7 @@ export function ShortcutGrid({
   forceTextWhite = false,
   onDragStart,
   onDragEnd,
+  disableReorderAnimation = false,
   selectionMode = false,
   selectedShortcutIndexes,
   onToggleShortcutSelection,
@@ -405,7 +411,7 @@ export function ShortcutGrid({
           clearOverlayTimerRef.current = window.setTimeout(() => {
             setActiveDragId(null);
             clearOverlayTimerRef.current = null;
-          }, DRAG_DROP_ANIMATION_MS);
+          }, disableReorderAnimation ? 0 : DRAG_DROP_ANIMATION_MS);
           if (!active || !over || active.id === over.id) return;
           const oldIndex = items.findIndex(i => i.sortId === String(active.id));
           const newIndex = items.findIndex(i => i.sortId === String(over.id));
@@ -452,13 +458,14 @@ export function ShortcutGrid({
                 selected={Boolean(selectedShortcutIndexes?.has(item.shortcutIndex))}
                 selectionMode={selectionMode}
                 dragDisabled={selectionMode}
+                disableReorderAnimation={disableReorderAnimation}
               />
             ))}
           </div>
         </SortableContext>
         {typeof document !== 'undefined' ? createPortal(
           <DragOverlay
-            dropAnimation={{ duration: DRAG_DROP_ANIMATION_MS, easing: DRAG_DROP_EASING }}
+            dropAnimation={disableReorderAnimation ? null : { duration: DRAG_DROP_ANIMATION_MS, easing: DRAG_DROP_EASING }}
             zIndex={DRAG_OVERLAY_Z_INDEX}
           >
             {activeDragItem ? (

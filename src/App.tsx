@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, useEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   RiArrowDownLine,
@@ -14,7 +14,7 @@ import {
   RiSnowyFill,
   RiSunFill,
   RiThunderstormsFill,
-} from '@remixicon/react';
+} from '@/icons/ri-compat';
 import imgImage from "./assets/Default_wallpaper.png?url";
 
 // Hooks
@@ -32,6 +32,7 @@ import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
 import { useSearchSuggestions } from './hooks/useSearchSuggestions';
+import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
 import type { SearchSuggestionItem } from './types';
 
 // Components
@@ -64,10 +65,8 @@ import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpaper
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
-import { getDynamicWallpaperStaticBackground } from '@/components/wallpaper/dynamicWallpaperFallbacks';
 import {
   LazyAppDialogs,
-  LazyDynamicWallpaperScene,
   LazyRoleSelector,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
@@ -77,6 +76,10 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
+import { getCalculatorPreview } from '@/utils/calculator';
+import { parseSiteSearchShortcut } from '@/utils/siteSearch';
+import { parseSearchEnginePrefix } from '@/utils/searchHelpers';
+import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import {
   INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -106,6 +109,15 @@ type PersistedWebdavConflict = {
   remotePayload: WebdavPayload;
   choice: WebdavConflictChoice;
 };
+
+function readAccentColorSetting(): string {
+  try {
+    const stored = (localStorage.getItem('accentColor') || '').trim();
+    return stored || 'green';
+  } catch {
+    return 'green';
+  }
+}
 
 const readPersistedWebdavConflict = (): PersistedWebdavConflict | null => {
   try {
@@ -182,7 +194,6 @@ export default function App() {
   });
   const weatherDebugTapCountRef = useRef(0);
   const weatherDebugTapTimerRef = useRef<number | null>(null);
-  const initialRevealReady = useInitialReveal();
   const webdavEnableConflictRef = useRef<{
     config: WebdavConfig;
     localPayload: WebdavPayload;
@@ -240,6 +251,7 @@ export default function App() {
     is24Hour, setIs24Hour,
     timeFont, setTimeFont,
     showSeconds, setShowSeconds,
+    visualEffectsLevel, setVisualEffectsLevel,
     showTime, setShowTime,
     shortcutCardVariant, setShortcutCardVariant,
     shortcutCompactShowTitle, setShortcutCompactShowTitle,
@@ -250,8 +262,17 @@ export default function App() {
     customApiUrl, setCustomApiUrl,
     customApiName, setCustomApiName,
   } = useSettings();
+  const visualEffectsPolicy = useVisualEffectsPolicy(visualEffectsLevel);
+  const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
+
+  useEffect(() => {
+    document.documentElement.dataset.reduceEffects = visualEffectsPolicy.reduceVisualEffects ? 'on' : 'off';
+    return () => {
+      delete document.documentElement.dataset.reduceEffects;
+    };
+  }, [visualEffectsPolicy.reduceVisualEffects]);
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
 
@@ -279,7 +300,6 @@ export default function App() {
     searchEngine, setSearchEngine,
     dropdownOpen, setDropdownOpen,
     historyOpen, setHistoryOpen,
-    skipNextHistoryOpen,
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
@@ -507,41 +527,74 @@ export default function App() {
   }, [API_URL, t]);
 
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
+  const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const mergedSuggestionItems = useSearchSuggestions({
     searchValue,
     filteredHistoryItems,
     scenarioShortcuts,
-    searchPrefixEnabled,
     searchSiteShortcutEnabled,
-    searchCalculatorEnabled,
     suggestionUsageMap,
   });
+  const calculatorPreview = useMemo(() => {
+    if (!searchCalculatorEnabled) return null;
+    return getCalculatorPreview(searchValue);
+  }, [searchCalculatorEnabled, searchValue]);
+  const calculatorInlinePreview = useMemo(() => {
+    if (!calculatorPreview) return '';
+    return `=${calculatorPreview.resultText}`;
+  }, [calculatorPreview]);
+  const siteDirectInlinePreview = useMemo(() => {
+    if (!searchSiteDirectEnabled) return '';
+    const { query, siteDomain, siteSearchUrl, siteLabel } = parseSiteSearchShortcut(searchValue);
+    if (!query || !siteLabel) return '';
+    if (!siteSearchUrl && !siteDomain) return '';
+    const resolvedSiteLabel = siteLabel === 'YouTube' ? 'Youtube' : siteLabel;
+    return t('search.siteDirectInlineHint', {
+      site: resolvedSiteLabel,
+      defaultValue: `在${resolvedSiteLabel}中搜索`,
+    });
+  }, [searchSiteDirectEnabled, searchValue, t]);
+  const enginePrefixInlinePreview = useMemo(() => {
+    if (!searchPrefixEnabled) return '';
+    const { query, overrideEngine } = parseSearchEnginePrefix(searchValue);
+    if (!overrideEngine || !query) return '';
+    const engineLabelMap = {
+      google: 'Google',
+      bing: 'Bing',
+      duckduckgo: 'DuckDuckGo',
+      baidu: 'Baidu',
+    } as const;
+    const engineLabel = engineLabelMap[overrideEngine];
+    return t('search.prefixEngineInlineHint', {
+      engine: engineLabel,
+      defaultValue: `用${engineLabel}搜索`,
+    });
+  }, [searchPrefixEnabled, searchValue, t]);
+  const searchInlinePreview = siteDirectInlinePreview || enginePrefixInlinePreview || calculatorInlinePreview;
 
-  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
-    if (item.type === 'calculator') {
-      setSearchValue(item.value);
-      setHistoryOpen(true);
-      setHistorySelectedIndex(-1);
-      const copyText = String(item.value ?? '').trim();
-      if (copyText) {
-        const copyWithFallback = async () => {
-          if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(copyText);
-            return;
-          }
-          const el = document.createElement('textarea');
-          el.value = copyText;
-          el.setAttribute('readonly', '');
-          el.style.position = 'fixed';
-          el.style.left = '-9999px';
-          document.body.appendChild(el);
-          el.select();
-          const copied = document.execCommand('copy');
-          document.body.removeChild(el);
-          if (!copied) throw new Error('copy_failed');
-        };
-        void copyWithFallback()
+  const copyTextToClipboard = useCallback(async (copyText: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(copyText);
+      return;
+    }
+    const el = document.createElement('textarea');
+    el.value = copyText;
+    el.setAttribute('readonly', '');
+    el.style.position = 'fixed';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(el);
+    if (!copied) throw new Error('copy_failed');
+  }, []);
+
+  const handleSearchSubmit = useCallback(() => {
+    if (calculatorPreview) {
+      const resultText = String(calculatorPreview.resultText ?? '').trim();
+      if (resultText) {
+        void copyTextToClipboard(resultText)
           .then(() => {
             toast.success(t('search.calculatorCopied', { defaultValue: '计算结果已复制到剪贴板' }));
           })
@@ -549,16 +602,15 @@ export default function App() {
             toast.error(t('search.calculatorCopyFailed', { defaultValue: '复制失败，请手动复制' }));
           });
       }
-      requestAnimationFrame(() => {
-        const input = searchInputRef.current;
-        if (!input) return;
-        input.focus();
-        const len = input.value.length;
-        input.setSelectionRange(len, len);
-      });
+      setSearchValue('');
+      setHistoryOpen(false);
+      setHistorySelectedIndex(-1);
       return;
     }
+    handleSearch();
+  }, [calculatorPreview, copyTextToClipboard, handleSearch, setHistoryOpen, setHistorySelectedIndex, setSearchValue, t]);
 
+  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
     if (item.type === 'shortcut') {
       const usageKey = buildShortcutUsageKey(item.value);
       if (usageKey) {
@@ -570,7 +622,7 @@ export default function App() {
     openSearchWithQuery(item.value);
     setHistoryOpen(false);
     setHistorySelectedIndex(-1);
-  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue, t]);
+  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
   
   const handleSuggestionKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && historyOpen) {
@@ -600,7 +652,11 @@ export default function App() {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (historyOpen && mergedSuggestionItems.length > 0) {
-        setHistorySelectedIndex((prev) => (prev - 1 + mergedSuggestionItems.length) % mergedSuggestionItems.length);
+        setHistorySelectedIndex((prev) => (
+          prev === -1
+            ? mergedSuggestionItems.length - 1
+            : (prev - 1 + mergedSuggestionItems.length) % mergedSuggestionItems.length
+        ));
       }
       return;
     }
@@ -690,7 +746,6 @@ export default function App() {
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
     colorWallpaperId, setColorWallpaperId,
-    dynamicWallpaperEffect, setDynamicWallpaperEffect,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
   } = useWallpaper();
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
@@ -700,7 +755,43 @@ export default function App() {
     : wallpaperMode === 'bing'
       ? bingWallpaper
       : (bingWallpaper || imgImage);
-  const shouldPauseDynamicWallpaperRender = wallpaperMode === 'dynamic' && isQuickAccessDrawerExpanded;
+  useEffect(() => {
+    const syncAccentColorSetting = () => {
+      setAccentColorSetting(readAccentColorSetting());
+    };
+    window.addEventListener('leaftab-accent-color-changed', syncAccentColorSetting);
+    return () => window.removeEventListener('leaftab-accent-color-changed', syncAccentColorSetting);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (accentColorSetting !== 'dynamic') {
+      document.documentElement.setAttribute('data-accent-color', accentColorSetting);
+      clearDynamicAccentColor();
+      return;
+    }
+
+    let canceled = false;
+    document.documentElement.setAttribute('data-accent-color', 'dynamic');
+    resolveDynamicAccentColor({
+      wallpaperMode,
+      bingWallpaper,
+      customWallpaper,
+      weatherCode,
+      colorWallpaperId,
+    })
+      .then((hex) => {
+        if (canceled) return;
+        applyDynamicAccentColor(hex);
+      })
+      .catch(() => {
+        if (canceled) return;
+        applyDynamicAccentColor('#3b82f6');
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [accentColorSetting, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
 
   const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
     user, setUserRole, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, API_URL
@@ -1267,15 +1358,22 @@ export default function App() {
   }, [historyOpen, setHistoryOpen, setHistorySelectedIndex]);
   
   useEffect(() => {
-    const handleEngineOutside = (event: MouseEvent) => {
+    const handleEngineOutside = (event: PointerEvent) => {
       if (!dropdownOpen) return;
-      const target = event.target as Node;
-      if (searchDropdownRef.current && !searchDropdownRef.current.contains(target)) {
+      const root = searchDropdownRef.current;
+      if (!root) {
         setDropdownOpen(false);
+        return;
       }
+      const target = event.target as Node | null;
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+      const clickedInside = (target ? root.contains(target) : false) || path.includes(root);
+      if (!clickedInside) setDropdownOpen(false);
     };
-    document.addEventListener('mousedown', handleEngineOutside);
-    return () => document.removeEventListener('mousedown', handleEngineOutside);
+
+    // Use capture phase so outside-click close is not blocked by stopPropagation in nested UI.
+    window.addEventListener('pointerdown', handleEngineOutside, true);
+    return () => window.removeEventListener('pointerdown', handleEngineOutside, true);
   }, [dropdownOpen, setDropdownOpen]);
 
   useEffect(() => {
@@ -1284,8 +1382,8 @@ export default function App() {
       if (historySelectedIndex !== -1) setHistorySelectedIndex(-1);
       return;
     }
-    if (historySelectedIndex < 0 || historySelectedIndex >= mergedSuggestionItems.length) {
-      setHistorySelectedIndex(0);
+    if (historySelectedIndex >= mergedSuggestionItems.length) {
+      setHistorySelectedIndex(-1);
     }
   }, [historyOpen, mergedSuggestionItems.length, historySelectedIndex, setHistorySelectedIndex]);
 
@@ -1329,7 +1427,7 @@ export default function App() {
       : wallpaperMode === 'bing'
         ? bingWallpaper
         : (bingWallpaper || imgImage);
-  const usesImageWallpaperLayer = wallpaperMode !== 'weather' && wallpaperMode !== 'dynamic' && wallpaperMode !== 'color';
+  const usesImageWallpaperLayer = wallpaperMode !== 'weather' && wallpaperMode !== 'color';
   const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
   const {
     effectiveOverlayWallpaperSrc,
@@ -1341,22 +1439,55 @@ export default function App() {
     usesImageWallpaperLayer,
     showOverlayWallpaperLayer,
     hasWeatherVisual: Boolean(freshWeatherVideo),
+    disableRevealAnimation: visualEffectsPolicy.disableWallpaperRevealMotion,
   });
-  const scenarioMenuLayerProps = {
+  const handleOpenSettings = useCallback(() => {
+    setSettingsOpen(true);
+  }, [setSettingsOpen]);
+  const handleScenarioModeCreate = useCallback(() => {
+    setScenarioCreateOpen(true);
+  }, [setScenarioCreateOpen]);
+  const handleSearchHistoryOpen = useCallback(() => {
+    setDropdownOpen(false);
+    setHistoryOpen(true);
+    setHistorySelectedIndex(-1);
+  }, [setDropdownOpen, setHistoryOpen, setHistorySelectedIndex]);
+  const handleSearchSuggestionHighlight = useCallback((index: number) => {
+    setHistorySelectedIndex(index);
+  }, [setHistorySelectedIndex]);
+  const handleSearchHistoryClear = useCallback(() => {
+    setSearchHistory([]);
+    setHistorySelectedIndex(-1);
+  }, [setSearchHistory, setHistorySelectedIndex]);
+  const handleSearchClear = useCallback(() => {
+    setSearchValue('');
+  }, [setSearchValue]);
+  const handleDismissLoginBanner = useCallback(() => {
+    setLoginBannerVisible(false);
+    sessionStorage.setItem('loginBannerDismissed', 'true');
+  }, [setLoginBannerVisible]);
+  const scenarioMenuLayerProps = useMemo(() => ({
     scenarioModes,
     selectedScenarioId,
     open: scenarioModeOpen,
     onOpenChange: setScenarioModeOpen,
     onSelect: setSelectedScenarioId,
-    onCreate: () => setScenarioCreateOpen(true),
+    onCreate: handleScenarioModeCreate,
     onEdit: handleOpenEditScenarioMode,
     onDelete: handleDeleteScenarioMode,
-  };
-  const wallpaperSelectorLayerProps = {
+  }), [
+    handleDeleteScenarioMode,
+    handleOpenEditScenarioMode,
+    handleScenarioModeCreate,
+    scenarioModeOpen,
+    scenarioModes,
+    selectedScenarioId,
+    setScenarioModeOpen,
+    setSelectedScenarioId,
+  ]);
+  const wallpaperSelectorLayerProps = useMemo(() => ({
     mode: wallpaperMode,
     onModeChange: setWallpaperMode,
-    dynamicWallpaperEffect,
-    onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
     bingWallpaper,
     weatherCode,
     customWallpaper,
@@ -1365,29 +1496,40 @@ export default function App() {
     onColorWallpaperIdChange: setColorWallpaperId,
     wallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
-  };
-  const topNavModeProps = {
+  }), [
+    bingWallpaper,
+    colorWallpaperId,
+    customWallpaper,
+    setColorWallpaperId,
+    setCustomWallpaper,
+    setWallpaperMaskOpacity,
+    setWallpaperMode,
+    wallpaperMaskOpacity,
+    wallpaperMode,
+    weatherCode,
+  ]);
+  const topNavModeProps = useMemo(() => ({
     fadeOnIdle: true,
-    onSettingsClick: () => setSettingsOpen(true),
+    onSettingsClick: handleOpenSettings,
     onWeatherUpdate: setWeatherCode,
-    rightSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} />,
-  };
-  const wallpaperClockProps = {
+    reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur,
+    rightSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur} />,
+  }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, visualEffectsPolicy.disableBackdropBlur]);
+  const wallpaperClockProps = useMemo(() => ({
     is24Hour,
     showSeconds,
     bingWallpaperUrl: bingWallpaper,
-    onSettingsClick: () => setSettingsOpen(true),
+    onSettingsClick: handleOpenSettings,
     showScenarioMode: true,
     scenarioModes,
     selectedScenarioId,
     scenarioModeOpen,
     onScenarioModeOpenChange: setScenarioModeOpen,
     onScenarioModeSelect: setSelectedScenarioId,
-    onScenarioModeCreate: () => setScenarioCreateOpen(true),
+    onScenarioModeCreate: handleScenarioModeCreate,
     onScenarioModeEdit: handleOpenEditScenarioMode,
     onScenarioModeDelete: handleDeleteScenarioMode,
     wallpaperMode,
-    dynamicWallpaperEffect,
     weatherCode,
     onWeatherUpdate: setWeatherCode,
     customWallpaper,
@@ -1396,7 +1538,33 @@ export default function App() {
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
-  };
+    reduceTopControlsEffects: visualEffectsPolicy.disableBackdropBlur,
+    disableSecondTickMotion: visualEffectsPolicy.disableSecondTickMotion,
+  }), [
+    bingWallpaper,
+    colorWallpaperId,
+    customWallpaper,
+    handleDeleteScenarioMode,
+    handleOpenEditScenarioMode,
+    handleOpenSettings,
+    handleScenarioModeCreate,
+    is24Hour,
+    responsiveLayout,
+    scenarioModeOpen,
+    scenarioModes,
+    selectedScenarioId,
+    setScenarioModeOpen,
+    setSelectedScenarioId,
+    setTimeFont,
+    setWeatherCode,
+    showSeconds,
+    timeFont,
+    visualEffectsPolicy.disableBackdropBlur,
+    visualEffectsPolicy.disableSecondTickMotion,
+    wallpaperMaskOpacity,
+    wallpaperMode,
+    weatherCode,
+  ]);
   const rotatingPlaceholderItems = useMemo(() => {
     const items: string[] = [t('search.placeholderDynamic')];
     if (ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
@@ -1420,12 +1588,15 @@ export default function App() {
     t,
     tabSwitchSearchEngine,
   ]);
-  const rotatingSearchPlaceholder = useRotatingText(rotatingPlaceholderItems, 3000);
+  const rotatingSearchPlaceholder = useRotatingText(
+    rotatingPlaceholderItems,
+    3000,
+  );
 
-  const searchBarProps = {
+  const searchBarProps = useMemo(() => ({
     value: searchValue,
     onChange: handleSearchChange,
-    onSubmit: handleSearch,
+    onSubmit: handleSearchSubmit,
     searchEngine,
     onEngineClick: handleEngineClick,
     dropdownOpen,
@@ -1433,29 +1604,50 @@ export default function App() {
     dropdownRef: searchDropdownRef,
     suggestionItems: mergedSuggestionItems,
     historyOpen,
-    onHistoryOpen: () => {
-      setHistoryOpen(true);
-      if (mergedSuggestionItems.length > 0) setHistorySelectedIndex(0);
-    },
+    onHistoryOpen: handleSearchHistoryOpen,
     onSuggestionSelect: openSuggestionItem,
-    onSuggestionHighlight: (index: number) => setHistorySelectedIndex(index),
-    onHistoryClear: () => {
-      setSearchHistory([]);
-      setHistorySelectedIndex(-1);
-    },
-    onClear: () => setSearchValue(''),
+    onSuggestionHighlight: handleSearchSuggestionHighlight,
+    onHistoryClear: handleSearchHistoryClear,
+    onClear: handleSearchClear,
     historyRef: searchAreaRef,
-    placeholder: rotatingSearchPlaceholder,
+    placeholder: rotatingSearchPlaceholder || t('search.placeholderDynamic'),
+    calculatorInlinePreview: searchInlinePreview,
     onKeyDown: handleSuggestionKeyDown,
     historySelectedIndex,
     inputRef: searchInputRef,
+    disablePlaceholderAnimation: visualEffectsPolicy.disableSearchPlaceholderAnimation,
     searchHeight: responsiveLayout.searchHeight,
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
     showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
-  };
-  const shortcutGridProps = {
+  }), [
+    dropdownOpen,
+    handleEngineClick,
+    handleEngineSelect,
+    handleSearchChange,
+    handleSearchClear,
+    handleSearchHistoryClear,
+    handleSearchHistoryOpen,
+    handleSearchSubmit,
+    handleSearchSuggestionHighlight,
+    handleSuggestionKeyDown,
+    historyOpen,
+    historySelectedIndex,
+    mergedSuggestionItems,
+    openSuggestionItem,
+    responsiveLayout.searchActionSize,
+    responsiveLayout.searchHeight,
+    responsiveLayout.searchHorizontalPadding,
+    responsiveLayout.searchInputFontSize,
+    rotatingSearchPlaceholder,
+    searchEngine,
+    searchInlinePreview,
+    searchValue,
+    t,
+    visualEffectsPolicy.disableSearchPlaceholderAnimation,
+  ]);
+  const shortcutGridProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
     shortcuts,
@@ -1470,6 +1662,7 @@ export default function App() {
     defaultUrlFontSize: responsiveLayout.defaultShortcutUrlSize,
     defaultVerticalPadding: responsiveLayout.defaultShortcutVerticalPadding,
     compactShowTitle: shortcutCompactShowTitle,
+    disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion,
     onShortcutOpen: handleShortcutOpen,
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
@@ -1477,7 +1670,30 @@ export default function App() {
     selectionMode: shortcutMultiSelectMode,
     selectedShortcutIndexes: selectedShortcutIndexSet,
     onToggleShortcutSelection: toggleShortcutMultiSelect,
-  };
+  }), [
+    handleGridContextMenu,
+    handleShortcutContextMenu,
+    handleShortcutOpen,
+    handleShortcutReorder,
+    normalizedGridColumns,
+    normalizedRowsPerColumn,
+    responsiveLayout.compactShortcutSize,
+    responsiveLayout.compactShortcutTitleSize,
+    responsiveLayout.defaultRowGap,
+    responsiveLayout.defaultShortcutIconSize,
+    responsiveLayout.defaultShortcutTitleSize,
+    responsiveLayout.defaultShortcutUrlSize,
+    responsiveLayout.defaultShortcutVerticalPadding,
+    responsiveLayout.density,
+    selectedShortcutIndexSet,
+    shortcutCardVariant,
+    shortcutCompactShowTitle,
+    shortcutMultiSelectMode,
+    shortcuts,
+    shortcutsAreaHeight,
+    toggleShortcutMultiSelect,
+    visualEffectsPolicy.disableShortcutReorderMotion,
+  ]);
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
   const initialRevealTiming = INITIAL_REVEAL_TIMING;
@@ -1508,6 +1724,7 @@ export default function App() {
     <div
       ref={pageFocusRef}
       tabIndex={-1}
+      data-reduce-effects={visualEffectsPolicy.reduceVisualEffects ? 'on' : 'off'}
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
       style={panoramicSurfaceRevealStyle}
     >
@@ -1526,20 +1743,6 @@ export default function App() {
           <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
             {wallpaperMode === 'weather' ? (
               <WeatherLoopVideo src={freshWeatherVideo} />
-            ) : wallpaperMode === 'dynamic' ? (
-              <Suspense
-                fallback={
-                  <div
-                    className="absolute inset-0"
-                    style={{ backgroundImage: getDynamicWallpaperStaticBackground(dynamicWallpaperEffect) }}
-                  />
-                }
-              >
-                <LazyDynamicWallpaperScene
-                  effect={dynamicWallpaperEffect}
-                  variant={shouldPauseDynamicWallpaperRender ? 'background-static' : 'background'}
-                />
-              </Suspense>
             ) : wallpaperMode === 'color' ? (
               <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
             ) : effectiveOverlayWallpaperSrc ? (
@@ -1573,15 +1776,14 @@ export default function App() {
         user={user}
         loginBannerVisible={loginBannerVisible}
         onLoginRequest={handleRequestCloudLogin}
-        onDismissLoginBanner={() => {
-          setLoginBannerVisible(false);
-          sessionStorage.setItem('loginBannerDismissed', 'true');
-        }}
+        onDismissLoginBanner={handleDismissLoginBanner}
         modeFlags={displayModeFlags}
         showTime={showTime}
         displayMode={displayMode}
         is24Hour={is24Hour}
         showSeconds={showSeconds}
+        disableSecondTickMotion={visualEffectsPolicy.disableSecondTickMotion}
+        disableBottomGradualBlur={visualEffectsPolicy.disableBottomGradualBlur}
         timeFont={timeFont}
         onTimeFontChange={setTimeFont}
         layout={responsiveLayout}
@@ -1880,14 +2082,15 @@ export default function App() {
               onIs24HourChange: setIs24Hour,
               showSeconds,
               onShowSecondsChange: setShowSeconds,
+              visualEffectsLevel,
+              onVisualEffectsLevelChange: setVisualEffectsLevel,
+              disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
               showTime,
               onShowTimeChange: setShowTime,
               onExportData: handleExportData,
               onImportData: handleImportData,
               wallpaperMode,
               onWallpaperModeChange: setWallpaperMode,
-              dynamicWallpaperEffect,
-              onDynamicWallpaperEffectChange: setDynamicWallpaperEffect,
               bingWallpaper,
               customWallpaper,
               onCustomWallpaperChange: setCustomWallpaper,
@@ -2072,7 +2275,7 @@ export default function App() {
         onConsent={handlePrivacyConsent} 
       />
       {weatherDebugVisible && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-[13010] pointer-events-auto flex flex-col gap-2">
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-[15030] pointer-events-auto flex flex-col gap-2">
           <div className="bg-popover border border-border rounded-xl p-2 shadow-lg flex flex-col gap-2">
             <div className="flex items-center justify-between px-1">
               <div className="text-xs text-muted-foreground">Weather Debug</div>

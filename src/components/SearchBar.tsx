@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RiArrowRightSLine, RiCalculatorLine, RiHistoryFill, RiLinkM } from '@remixicon/react';
+import { RiArrowRightSLine, RiHistoryFill, RiLinkM, RiSearchLine } from '@/icons/ri-compat';
 import { extractDomainFromUrl, isUrl } from '../utils';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { SearchEngine } from '../types';
 import type { SearchSuggestionItem } from '../types';
+import { parseSiteSearchShortcut } from '@/utils/siteSearch';
 import ShortcutIcon from './ShortcutIcon';
 import { TextScramble } from '@/components/motion-primitives/text-scramble';
 import {
@@ -21,7 +22,9 @@ function Frame3({
   inputRef,
   onFocus,
   placeholder,
+  calculatorInlinePreview,
   onKeyDown,
+  disablePlaceholderAnimation,
   blankMode,
   forceWhiteTheme,
   subtleDarkTone,
@@ -32,7 +35,9 @@ function Frame3({
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFocus: () => void;
   placeholder?: string;
+  calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  disablePlaceholderAnimation?: boolean;
   blankMode?: boolean;
   forceWhiteTheme?: boolean;
   subtleDarkTone?: boolean;
@@ -40,6 +45,7 @@ function Frame3({
 }) {
   const { t } = useTranslation();
   const [isFocused, setIsFocused] = useState(false);
+  const textMeasureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const imeComposingRef = useRef(false);
   const showLinkIcon = isUrl(value);
   const placeholderText = placeholder || t('search.placeholder');
@@ -51,8 +57,22 @@ function Frame3({
   const inputLineHeight = Math.round(inputFontSize * 1.35);
   const placeholderFontSize = Math.max(14, Math.round(inputFontSize * 0.88));
   const placeholderLineHeight = Math.round(placeholderFontSize * 1.35);
+  const inlinePreviewFontSize = Math.max(10, inputFontSize - 4);
+  const inlinePreviewLineHeight = Math.round(inlinePreviewFontSize * 1.35);
   const customCaretHeight = Math.max(16, Math.round(inputLineHeight * 0.95));
   const customCaretWidth = 2;
+
+  const typedTextWidth = useMemo(() => {
+    if (!calculatorInlinePreview || value.length === 0) return 0;
+    if (typeof document === 'undefined') return Math.ceil(value.length * inputFontSize * 0.56);
+    if (!textMeasureCanvasRef.current) {
+      textMeasureCanvasRef.current = document.createElement('canvas');
+    }
+    const context = textMeasureCanvasRef.current.getContext('2d');
+    if (!context) return Math.ceil(value.length * inputFontSize * 0.56);
+    context.font = `400 ${inputFontSize}px "PingFang SC", sans-serif`;
+    return Math.ceil(context.measureText(value).width);
+  }, [calculatorInlinePreview, inputFontSize, value]);
   const isImeComposingEvent = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const native = e.nativeEvent as KeyboardEvent & { keyCode?: number; which?: number };
     return Boolean(
@@ -109,21 +129,39 @@ function Frame3({
         }`}
         style={{ fontSize: inputFontSize, lineHeight: `${inputLineHeight}px` }}
       />
+      {value.length > 0 && calculatorInlinePreview ? (
+        <span
+          className="pointer-events-none absolute top-1/2 -translate-y-1/2 select-none whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 font-normal text-primary"
+          style={{
+            left: `calc(0.5rem + ${Math.ceil(typedTextWidth)}px + 4px)`,
+            fontSize: inlinePreviewFontSize,
+            lineHeight: `${inlinePreviewLineHeight}px`,
+          }}
+        >
+          {calculatorInlinePreview}
+        </span>
+      ) : null}
       {!isFocused && value.length === 0 ? (
         <span
           aria-hidden="true"
           className={`pointer-events-none absolute left-2 right-0 top-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap ${placeholderTextClass}`}
           style={{ fontSize: placeholderFontSize, lineHeight: `${placeholderLineHeight}px` }}
         >
-          <TextScramble
-            key={placeholderText}
-            as="span"
-            className="block truncate"
-            duration={0.52}
-            speed={0.02}
-          >
-            {placeholderText}
-          </TextScramble>
+          {disablePlaceholderAnimation ? (
+            <span key={placeholderText} className="block truncate">
+              {placeholderText}
+            </span>
+          ) : (
+            <TextScramble
+              key={placeholderText}
+              as="span"
+              className="block truncate"
+              duration={0.52}
+              speed={0.02}
+            >
+              {placeholderText}
+            </TextScramble>
+          )}
         </span>
       ) : null}
       {isFocused && value.length === 0 ? (
@@ -145,7 +183,9 @@ function Frame2({
   onOpenHistory,
   onClear,
   placeholder,
+  calculatorInlinePreview,
   onKeyDown,
+  disablePlaceholderAnimation,
   blankMode,
   forceWhiteTheme,
   subtleDarkTone,
@@ -165,7 +205,9 @@ function Frame2({
   onOpenHistory: () => void;
   onClear: () => void;
   placeholder?: string;
+  calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  disablePlaceholderAnimation?: boolean;
   blankMode?: boolean;
   forceWhiteTheme?: boolean;
   subtleDarkTone?: boolean;
@@ -219,7 +261,9 @@ function Frame2({
         inputRef={inputRef}
         onFocus={onOpenHistory}
         placeholder={placeholder}
+        calculatorInlinePreview={calculatorInlinePreview}
         onKeyDown={onKeyDown}
+        disablePlaceholderAnimation={disablePlaceholderAnimation}
         blankMode={blankMode}
         forceWhiteTheme={forceWhiteTheme}
         subtleDarkTone={subtleDarkTone}
@@ -265,14 +309,9 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
   const shortcutRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
   const historyRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
   const prefixRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  const calculatorRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
   items.forEach((item, index) => {
     if (item.type === 'engine-prefix') {
       prefixRows.push({ item, index });
-      return;
-    }
-    if (item.type === 'calculator') {
-      calculatorRows.push({ item, index });
       return;
     }
     if (item.type === 'shortcut') {
@@ -281,6 +320,15 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
     }
     historyRows.push({ item, index });
   });
+  const historySiteDirectDomainMap = useMemo(() => {
+    const map = new Map<string, string>();
+    items.forEach((item) => {
+      if (item.type !== 'history') return;
+      const { siteDomain } = parseSiteSearchShortcut(item.value);
+      map.set(item.value, siteDomain || '');
+    });
+    return map;
+  }, [items]);
 
   const sectionCount = Number(shortcutRows.length > 0) + Number(historyRows.length > 0);
   const visualRowCount = items.length + sectionCount;
@@ -341,27 +389,6 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
     return relativeTimeFormatter.format(Math.round(diffSeconds / 2_592_000), 'month');
   };
   const renderSuggestionRow = ({ item, index }: { item: SearchSuggestionItem; index: number }) => {
-    if (item.type === 'calculator') {
-      return (
-        <button
-          key={`${item.type}-${item.label}-${index}`}
-          type="button"
-          data-selected={index === selectedIndex}
-          className={rowClass(index)}
-          onMouseEnter={() => onHighlight?.(index)}
-          onClick={() => onSelect(item)}
-        >
-          <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
-            <RiCalculatorLine className={`size-3.5 ${secondaryTextClass}`} />
-          </span>
-          <span className="truncate flex-1 min-w-0">
-            <span className="truncate">{item.label}</span>
-            <span className={`ml-2 ${secondaryTextClass}`}>= {item.formattedValue || item.value}</span>
-          </span>
-        </button>
-      );
-    }
-
     if (item.type === 'engine-prefix' && item.engine && item.engine !== 'system') {
       const engineName = SEARCH_ENGINE_BRAND_NAMES[item.engine];
       const hintText = t('search.useEngineSearch', {
@@ -388,6 +415,7 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
 
     const shortcutDomain = item.type === 'shortcut' ? extractDomainFromUrl(item.value) : '';
     const showShortcutDomain = Boolean(shortcutDomain) && shortcutDomain !== item.label;
+    const siteDirectDomain = item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '';
     const historyTimeText = item.type === 'history' ? formatRelativeTime(item.timestamp) : '';
     return (
       <button
@@ -401,6 +429,8 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
         <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
           {item.type === 'shortcut' ? (
             <ShortcutIcon icon={item.icon || ''} url={item.value} size={24} exact />
+          ) : item.type === 'history' && siteDirectDomain ? (
+            <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : (
             isUrl(item.value)
               ? <RiLinkM className={`size-3.5 ${secondaryTextClass}`} />
@@ -439,7 +469,6 @@ function SearchHistoryDropdown({ items, isOpen, onSelect, onClear, onHighlight, 
         >
           <div className="flex flex-col gap-1 pr-2 w-full overflow-hidden">
             {prefixRows.length > 0 ? prefixRows.map(renderSuggestionRow) : null}
-            {calculatorRows.length > 0 ? calculatorRows.map(renderSuggestionRow) : null}
 
             {shortcutRows.length > 0 ? (
               <>
@@ -506,7 +535,9 @@ interface SearchBarProps {
   onClear: () => void;
   historyRef: React.RefObject<HTMLDivElement | null>;
   placeholder?: string;
+  calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
+  disablePlaceholderAnimation?: boolean;
   historySelectedIndex?: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
   blankMode?: boolean;
@@ -538,7 +569,9 @@ export function SearchBar({
   onClear, 
   historyRef, 
   placeholder, 
+  calculatorInlinePreview,
   onKeyDown, 
+  disablePlaceholderAnimation = false,
   historySelectedIndex, 
   inputRef, 
   blankMode,
@@ -590,7 +623,9 @@ export function SearchBar({
             onOpenHistory={onHistoryOpen} 
             onClear={onClear} 
             placeholder={placeholder} 
+            calculatorInlinePreview={calculatorInlinePreview}
             onKeyDown={onKeyDown} 
+            disablePlaceholderAnimation={disablePlaceholderAnimation}
             blankMode={blankMode}
             forceWhiteTheme={forceWhiteTheme}
             subtleDarkTone={subtleDarkTone}

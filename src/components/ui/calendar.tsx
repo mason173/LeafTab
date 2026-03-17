@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RiArrowLeftSLine as ChevronLeft, RiArrowRightSLine as ChevronRight } from "@remixicon/react";
+import { RiArrowLeftSLine as ChevronLeft, RiArrowRightSLine as ChevronRight } from "@/icons/ri-compat";
 import { DayPicker } from "react-day-picker@8.10.1";
 
 import { cn } from "./utils";

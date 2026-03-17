@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog@1.1.6";
 import { AnimatePresence, motion, type HTMLMotionProps } from "framer-motion";
-import { RiCloseFill as XIcon } from "@remixicon/react";
+import { RiCloseFill as XIcon } from "@/icons/ri-compat";
 
 import { useControlledState } from "@/hooks/use-controlled-state";
 import { getStrictContext } from "@/lib/get-strict-context";
@@ -81,15 +81,17 @@ function DialogOverlay({
   transition = { duration: 0.2, ease: "easeInOut" },
   ...props
 }: DialogOverlayProps) {
+  const reduceEffects = typeof document !== "undefined" && document.documentElement.dataset.reduceEffects === "on";
+  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
   return (
     <DialogPrimitive.Overlay data-slot="dialog-overlay" asChild forceMount>
       <motion.div
         key="dialog-overlay"
         className={cn("fixed inset-0 z-50 bg-black/50", className)}
-        initial={{ opacity: 0 }}
+        initial={reduceEffects ? { opacity: 1 } : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={transition}
+        exit={reduceEffects ? { opacity: 1 } : { opacity: 0 }}
+        transition={resolvedTransition}
         {...props}
       />
     </DialogPrimitive.Overlay>
@@ -126,6 +128,10 @@ function DialogContent({
     from === "bottom" || from === "left" ? "20deg" : "-20deg";
   const isVertical = from === "top" || from === "bottom";
   const rotateAxis = isVertical ? "rotateX" : "rotateY";
+  const reduceEffects = typeof document !== "undefined" && document.documentElement.dataset.reduceEffects === "on";
+  const restingTransform = `perspective(500px) ${rotateAxis}(0deg) scale(1)`;
+  const enterExitTransform = `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`;
+  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -144,19 +150,19 @@ function DialogContent({
         <motion.div
           key="dialog-content"
           data-slot="dialog-content"
-          initial={{
+          initial={reduceEffects ? { opacity: 1, transform: restingTransform } : {
             opacity: 0,
-            transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
+            transform: enterExitTransform,
           }}
           animate={{
             opacity: 1,
-            transform: `perspective(500px) ${rotateAxis}(0deg) scale(1)`,
+            transform: restingTransform,
           }}
-          exit={{
+          exit={reduceEffects ? { opacity: 1, transform: restingTransform } : {
             opacity: 0,
-            transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
+            transform: enterExitTransform,
           }}
-          transition={transition}
+          transition={resolvedTransition}
           className={cn(
             "bg-background/80 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[32px] border border-border p-6 shadow-lg sm:max-w-lg min-w-0 max-w-full overflow-hidden",
             className,

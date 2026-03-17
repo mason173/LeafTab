@@ -1,6 +1,6 @@
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RiCheckFill, RiDownload2Fill } from "@remixicon/react";
+import { RiCheckFill, RiDownload2Fill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
 import imgImage from "@/assets/Default_wallpaper.png";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";

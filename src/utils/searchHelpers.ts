@@ -7,29 +7,30 @@ const URL_PROTOCOL_PREFIX_RE = /^https?:\/\//i;
 const URL_WWW_PREFIX_RE = /^www\./i;
 const NON_ALNUM_RE = /[^a-z0-9]+/i;
 
-const CHINESE_INITIAL_MAP: Record<string, string> = {
-  知: 'z',
-  乎: 'h',
-  微: 'w',
-  博: 'b',
-  小: 'x',
-  红: 'h',
-  书: 's',
-  掘: 'j',
-  金: 'j',
-  抖: 'd',
-  音: 'y',
-  百: 'b',
-  度: 'd',
-  淘: 't',
-  宝: 'b',
-  京: 'j',
-  东: 'd',
-  码: 'm',
-  云: 'y',
-  维: 'w',
-  基: 'j',
-};
+const CHINESE_PINYIN_INITIAL_BOUNDARIES = [
+  '啊', '芭', '擦', '搭', '蛾', '发', '噶', '哈', '机', '喀', '垃',
+  '妈', '拿', '哦', '啪', '期', '然', '撒', '塌', '挖', '昔', '压', '匝',
+] as const;
+const CHINESE_PINYIN_INITIAL_LETTERS = 'abcdefghjklmnopqrstwxyz' as const;
+const zhPinyinCollator = new Intl.Collator('zh-CN-u-co-pinyin');
+
+function isHanCharacter(ch: string): boolean {
+  const codePoint = ch.codePointAt(0);
+  if (codePoint === undefined) return false;
+  return (
+    (codePoint >= 0x3400 && codePoint <= 0x9fff) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff)
+  );
+}
+
+function getChinesePinyinInitial(ch: string): string {
+  for (let i = CHINESE_PINYIN_INITIAL_BOUNDARIES.length - 1; i >= 0; i -= 1) {
+    if (zhPinyinCollator.compare(ch, CHINESE_PINYIN_INITIAL_BOUNDARIES[i]) >= 0) {
+      return CHINESE_PINYIN_INITIAL_LETTERS[i];
+    }
+  }
+  return '';
+}
 
 const SEARCH_ENGINE_PREFIX_MAP: Record<string, SearchEngineOverride> = {
   g: 'google',
@@ -60,9 +61,9 @@ function buildInitialsToken(rawValue: string): string {
       atWordStart = false;
       continue;
     }
-    const chineseInitial = CHINESE_INITIAL_MAP[ch];
-    if (chineseInitial) {
-      initials += chineseInitial;
+    if (isHanCharacter(ch)) {
+      const chineseInitial = getChinesePinyinInitial(ch);
+      if (chineseInitial) initials += chineseInitial;
       atWordStart = false;
       continue;
     }

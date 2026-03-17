@@ -16,12 +16,6 @@ export const LazyRoleSelector = lazy(() =>
   import('../components/RoleSelector').then((module) => ({ default: module.RoleSelector })),
 );
 
-export const LazyDynamicWallpaperScene = lazy(() =>
-  import('../components/wallpaper/LazyDynamicWallpaperScene').then((module) => ({
-    default: module.LazyDynamicWallpaperScene,
-  })),
-);
-
 export const LazyWeatherCard = lazy(() =>
   import('../components/WeatherCard').then((module) => ({ default: module.WeatherCard })),
 );

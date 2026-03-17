@@ -1,5 +1,5 @@
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
+import type { WallpaperMode } from '@/wallpaper/types';
 
 type DynamicAccentInput = {
   wallpaperMode: WallpaperMode;
@@ -7,7 +7,6 @@ type DynamicAccentInput = {
   customWallpaper: string | null;
   weatherCode: number;
   colorWallpaperId?: string;
-  dynamicWallpaperEffect?: DynamicWallpaperEffect;
 };
 
 const imageAccentCache = new Map<string, string>();
@@ -22,15 +21,6 @@ const WEATHER_THEME_ACCENT: Record<WeatherTheme, string> = {
   rainy: '#596E85',
   snowy: '#8FAFD1',
   thunderstorm: '#46506F',
-};
-
-const DYNAMIC_EFFECT_ACCENT: Record<DynamicWallpaperEffect, string> = {
-  prism: '#5B8CFF',
-  silk: '#4C854C',
-  'light-rays': '#7FB6F5',
-  beams: '#6E829B',
-  galaxy: '#3ECFDD',
-  iridescence: '#D78BC7',
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -237,10 +227,6 @@ const resolveImageAccent = async (imageUrl: string): Promise<string> => {
 export const resolveDynamicAccentColor = async (input: DynamicAccentInput) => {
   if (input.wallpaperMode === 'weather') return resolveWeatherAccent(input.weatherCode);
   if (input.wallpaperMode === 'color') return resolveColorAccent(input.colorWallpaperId);
-  if (input.wallpaperMode === 'dynamic') {
-    const effect = input.dynamicWallpaperEffect || 'prism';
-    return DYNAMIC_EFFECT_ACCENT[effect];
-  }
   const source = resolveSourceImage(input);
   return resolveImageAccent(source);
 };

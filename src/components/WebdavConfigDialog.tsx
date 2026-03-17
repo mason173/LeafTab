@@ -11,7 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RiEyeFill, RiEyeOffFill } from "@remixicon/react";
+import { RiEyeFill, RiEyeOffFill } from "@/icons/ri-compat";
 import { toast } from "./ui/sonner";
 import {
   isWebdavSyncEnabledFromStorage,

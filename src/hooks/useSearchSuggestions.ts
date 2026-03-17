@@ -1,12 +1,10 @@
 import { useDeferredValue, useMemo } from 'react';
 import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
-import { getCalculatorPreview } from '@/utils/calculator';
 import {
   buildSearchMatchCandidates,
   getShortcutSuggestionScoreFromCandidates,
   normalizeSearchQuery,
-  parseSearchEnginePrefix,
 } from '@/utils/searchHelpers';
 import { getBuiltinSiteShortcutSuggestions } from '@/utils/siteSearch';
 import {
@@ -19,9 +17,7 @@ type UseSearchSuggestionsOptions = {
   searchValue: string;
   filteredHistoryItems: SearchHistoryEntry[];
   scenarioShortcuts: ScenarioShortcuts;
-  searchPrefixEnabled: boolean;
   searchSiteShortcutEnabled: boolean;
-  searchCalculatorEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
 };
 
@@ -71,9 +67,7 @@ export function useSearchSuggestions({
   searchValue,
   filteredHistoryItems,
   scenarioShortcuts,
-  searchPrefixEnabled,
   searchSiteShortcutEnabled,
-  searchCalculatorEnabled,
   suggestionUsageMap,
 }: UseSearchSuggestionsOptions) {
   const deferredSearchValue = useDeferredValue(searchValue);
@@ -151,18 +145,6 @@ export function useSearchSuggestions({
       .map(({ item }) => item);
   }, [deferredSearchValue, searchSiteShortcutEnabled, suggestionUsageMap]);
 
-  const calculatorSuggestionItem = useMemo(() => {
-    if (!searchCalculatorEnabled) return null;
-    const preview = getCalculatorPreview(deferredSearchValue);
-    if (!preview) return null;
-    return {
-      type: 'calculator',
-      label: preview.expression,
-      value: String(preview.result),
-      formattedValue: preview.resultText,
-    } as SearchSuggestionItem;
-  }, [deferredSearchValue, searchCalculatorEnabled]);
-
   return useMemo(() => {
     if (!searchValue.trim()) {
       return filteredHistoryItems.map((historyItem) => ({
@@ -173,30 +155,8 @@ export function useSearchSuggestions({
       } as SearchSuggestionItem));
     }
 
-    const { overrideEngine } = searchPrefixEnabled
-      ? parseSearchEnginePrefix(searchValue)
-      : { overrideEngine: null };
     const seen = new Set<string>();
     const merged: SearchSuggestionItem[] = [];
-
-    if (overrideEngine) {
-      const prefixItem: SearchSuggestionItem = {
-        type: 'engine-prefix',
-        label: '',
-        value: searchValue,
-        engine: overrideEngine,
-      };
-      seen.add(buildSuggestionKey(prefixItem));
-      merged.push(prefixItem);
-    }
-
-    if (calculatorSuggestionItem) {
-      const key = buildSuggestionKey(calculatorSuggestionItem);
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(calculatorSuggestionItem);
-      }
-    }
 
     for (const suggestionItem of builtinSiteSuggestionItems) {
       const key = buildSuggestionKey(suggestionItem);
@@ -231,9 +191,7 @@ export function useSearchSuggestions({
     return merged.slice(0, 15);
   }, [
     builtinSiteSuggestionItems,
-    calculatorSuggestionItem,
     filteredHistoryItems,
-    searchPrefixEnabled,
     searchValue,
     shortcutSuggestionItems,
   ]);

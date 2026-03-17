@@ -1,4 +1,4 @@
-import { RiCloseFill } from '@remixicon/react';
+import { RiCloseFill } from '@/icons/ri-compat';
 import { useTranslation } from 'react-i18next';
 
 interface LoginBannerProps {

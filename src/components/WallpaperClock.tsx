@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeFontDialog } from './TimeFontDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
@@ -11,10 +11,8 @@ import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
-import type { DynamicWallpaperEffect, WallpaperMode } from '@/wallpaper/types';
+import type { WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
-import { getDynamicWallpaperStaticBackground } from './wallpaper/dynamicWallpaperFallbacks';
-import { LazyDynamicWallpaperScene } from '@/lazy/components';
 
 interface WallpaperClockProps {
   is24Hour: boolean;
@@ -31,12 +29,14 @@ interface WallpaperClockProps {
   onScenarioModeEdit: (id: string) => void;
   onScenarioModeDelete: (id: string) => void;
   wallpaperMode: WallpaperMode;
-  dynamicWallpaperEffect: DynamicWallpaperEffect;
   weatherCode: number;
   onWeatherUpdate?: (code: number) => void;
   customWallpaper: string | null;
   colorWallpaperId: string;
   wallpaperMaskOpacity: number;
+  reduceTopControlsEffects?: boolean;
+  disableSecondTickMotion?: boolean;
+  reduceVisualEffects?: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout?: ResponsiveLayout;
@@ -57,12 +57,14 @@ export function WallpaperClock({
   onScenarioModeEdit,
   onScenarioModeDelete,
   wallpaperMode,
-  dynamicWallpaperEffect,
   weatherCode,
   onWeatherUpdate,
   customWallpaper,
   colorWallpaperId,
   wallpaperMaskOpacity,
+  reduceTopControlsEffects,
+  disableSecondTickMotion,
+  reduceVisualEffects = false,
   timeFont,
   onTimeFontChange,
   layout,
@@ -72,12 +74,19 @@ export function WallpaperClock({
   const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
-  const dateString = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+  const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }),
+    [locale],
+  );
+  const weekday = weekdayFormatter.format(date);
+  const dateString = dateFormatter.format(date);
   const edgeInset = layout ? Math.max(16, Math.round((layout.wallpaperHeight / 220) * 24)) : 24;
 
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
+  const resolvedReduceTopControlsEffects = reduceTopControlsEffects ?? reduceVisualEffects;
+  const resolvedDisableSecondTickMotion = disableSecondTickMotion ?? reduceVisualEffects;
 
   return (
     <div
@@ -95,17 +104,6 @@ export function WallpaperClock({
               className="w-full h-full object-cover" 
               src={customWallpaper} 
             />
-          ) : wallpaperMode === 'dynamic' ? (
-            <Suspense
-              fallback={
-                <div
-                  className="absolute inset-0"
-                  style={{ backgroundImage: getDynamicWallpaperStaticBackground(dynamicWallpaperEffect) }}
-                />
-              }
-            >
-              <LazyDynamicWallpaperScene effect={dynamicWallpaperEffect} variant="hero" />
-            </Suspense>
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
@@ -139,6 +137,7 @@ export function WallpaperClock({
           settingsRevealOnHover
           onSettingsClick={onSettingsClick}
           onWeatherUpdate={onWeatherUpdate}
+          reduceVisualEffects={resolvedReduceTopControlsEffects}
           rightSlot={
             showScenarioMode ? (
               <ScenarioModeMenu
@@ -150,6 +149,7 @@ export function WallpaperClock({
                 onCreate={onScenarioModeCreate}
                 onEdit={onScenarioModeEdit}
                 onDelete={onScenarioModeDelete}
+                reduceVisualEffects={resolvedReduceTopControlsEffects}
               />
             ) : null
           }
@@ -164,7 +164,7 @@ export function WallpaperClock({
           onClick={() => setTimeFontDialogOpen(true)}
           aria-label={time}
         >
-          <SlidingClockTime time={time} />
+          {resolvedDisableSecondTickMotion ? time : <SlidingClockTime time={time} />}
         </button>
         <TimeFontDialog
           open={timeFontDialogOpen}

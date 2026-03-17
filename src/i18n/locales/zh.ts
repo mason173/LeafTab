@@ -70,6 +70,13 @@ export default {
         label: "显示秒数",
         description: "在时间组件中显示秒数"
       },
+      visualEffectsLevel: {
+        label: "系统特效强度",
+        description: "选择低/中/高档位，平衡流畅度与视觉效果",
+        low: "低",
+        medium: "中",
+        high: "高"
+      },
       showTime: {
         label: "显示时间",
         description: "在页面中显示时间组件"
@@ -323,7 +330,7 @@ export default {
         content: "LeafTab，一个由 AI 协助开发的、极简主义的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是回归“新标签页”这一动作的本质——一个高效的起点。它不追求花哨，而是追求稳定、顺手、可控。",
         openSourceNoticePrefix: "LeafTab 社区版已开源（",
         openSourceNoticeSuffix: "），欢迎在 GitHub 提交 Issue / PR。",
-        thirdPartyLicenseNotice: "部分第三方组件遵循其各自许可证（如 react-bits 的 MIT + Commons Clause）。",
+        thirdPartyLicenseNotice: "部分第三方组件遵循其各自许可证。",
         ackTitle: "致谢与开源声明",
         ackDesc: "LeafTab 使用了以下开源库与资源（点击可跳转）：",
         frontend: "前端",
@@ -557,6 +564,7 @@ export default {
       placeholderHintPrefix: "先输入引擎简称再空格，例如 g AI、bd 天气",
       systemEngine: "系统默认",
       useEngineSearch: "使用{{engine}} 搜索",
+      prefixEngineInlineHint: "用{{engine}}搜索",
       historyTitle: "搜索历史",
       clearHistory: "清空",
       noHistory: "暂无搜索记录"

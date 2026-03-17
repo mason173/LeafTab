@@ -185,6 +185,14 @@ npm run clear:domain-stats
 - 不要将 `.env`、数据库文件或私钥提交到仓库
 - Always set secrets in production; do not commit sensitive files to the repository.
 
+## 许可证 / License
+
+LeafTab Community Edition 使用 GNU General Public License v3.0 或更高版本（`GPL-3.0-or-later`）发布。  
+LeafTab Community Edition is released under GNU General Public License v3.0 or later (`GPL-3.0-or-later`).
+
+完整许可证文本见 [LICENSE](./LICENSE)。  
+See [LICENSE](./LICENSE) for the full license text.
+
 ## ✨ Star 数 / Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mason173/LeafTab&type=Date)](https://star-history.com/#mason173/LeafTab&Date)
