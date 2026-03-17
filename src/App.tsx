@@ -78,8 +78,9 @@ import {
 } from '@/utils/suggestionPersonalization';
 import { getCalculatorPreview } from '@/utils/calculator';
 import { parseSiteSearchShortcut } from '@/utils/siteSearch';
-import { parseSearchEnginePrefix } from '@/utils/searchHelpers';
+import { parseBookmarkSearchCommand, parseSearchEnginePrefix } from '@/utils/searchHelpers';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
+import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import {
   INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -528,6 +529,7 @@ export default function App() {
 
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
+  const [historyPermissionGranted, setHistoryPermissionGranted] = useState<boolean>(true);
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const mergedSuggestionItems = useSearchSuggestions({
     searchValue,
@@ -535,6 +537,7 @@ export default function App() {
     scenarioShortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
+    historyPermissionGranted,
   });
   const calculatorPreview = useMemo(() => {
     if (!searchCalculatorEnabled) return null;
@@ -572,6 +575,10 @@ export default function App() {
     });
   }, [searchPrefixEnabled, searchValue, t]);
   const searchInlinePreview = siteDirectInlinePreview || enginePrefixInlinePreview || calculatorInlinePreview;
+  const shouldShowHistoryPermissionBanner = useMemo(() => {
+    if (historyPermissionGranted) return false;
+    return !parseBookmarkSearchCommand(searchValue).active;
+  }, [historyPermissionGranted, searchValue]);
 
   const copyTextToClipboard = useCallback(async (copyText: string) => {
     if (navigator.clipboard?.writeText) {
@@ -588,6 +595,135 @@ export default function App() {
     const copied = document.execCommand('copy');
     document.body.removeChild(el);
     if (!copied) throw new Error('copy_failed');
+  }, []);
+
+  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
+    if (item.type === 'shortcut') {
+      const usageKey = buildShortcutUsageKey(item.value);
+      if (usageKey) {
+        recordSuggestionUsage(usageKey);
+        setSuggestionUsageVersion((prev) => prev + 1);
+      }
+    }
+    if (item.type !== 'engine-prefix') setSearchValue(item.label);
+    openSearchWithQuery(item.value);
+    setHistoryOpen(false);
+    setHistorySelectedIndex(-1);
+  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
+
+  const showSearchCommandPermissionDeniedToast = useCallback((permission: 'bookmarks' | 'history') => {
+    if (permission === 'bookmarks') {
+      toast.error(t('search.permissionBookmarksDenied', {
+        defaultValue: '未授予书签权限，无法搜索书签。下次使用 /b 时可再次申请。',
+      }));
+    } else {
+      toast.error(t('search.permissionHistoryDenied', {
+        defaultValue: '未授予历史记录权限，无法显示浏览器历史记录。可在下拉框顶部再次申请。',
+      }));
+    }
+  }, [t]);
+
+  const refreshHistoryPermissionStatus = useCallback(() => {
+    void ensureExtensionPermission('history', { requestIfNeeded: false })
+      .then((granted) => {
+        setHistoryPermissionGranted(granted);
+      })
+      .catch(() => {
+        setHistoryPermissionGranted(false);
+      });
+  }, [setHistoryPermissionGranted]);
+
+  useEffect(() => {
+    refreshHistoryPermissionStatus();
+  }, [refreshHistoryPermissionStatus]);
+
+  useEffect(() => {
+    const permissionsApi = globalThis.chrome?.permissions;
+    if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
+
+    const handlePermissionsChanged = () => {
+      refreshHistoryPermissionStatus();
+    };
+    permissionsApi.onAdded.addListener(handlePermissionsChanged);
+    permissionsApi.onRemoved.addListener(handlePermissionsChanged);
+    return () => {
+      permissionsApi.onAdded.removeListener(handlePermissionsChanged);
+      permissionsApi.onRemoved.removeListener(handlePermissionsChanged);
+    };
+  }, [refreshHistoryPermissionStatus]);
+
+  const runAfterSearchCommandPermission = useCallback((
+    permission: 'bookmarks' | 'history',
+    onGranted: () => void,
+  ) => {
+    const chromeApi = (globalThis as any)?.chrome;
+    const runtime = chromeApi?.runtime;
+    const permissionsApi = chromeApi?.permissions;
+    if (!runtime?.id || !permissionsApi?.request) {
+      onGranted();
+      return;
+    }
+
+    permissionsApi.request({ permissions: [permission] }, (allowed: boolean) => {
+      const lastError = runtime.lastError;
+      if (lastError) {
+        toast.error(t('search.permissionRequestFailed', {
+          defaultValue: '权限申请失败，请重试。',
+        }));
+        return;
+      }
+      if (!allowed) {
+        showSearchCommandPermissionDeniedToast(permission);
+        return;
+      }
+      onGranted();
+    });
+  }, [showSearchCommandPermissionDeniedToast, t]);
+
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const lowered = e.target.value.trimStart().toLowerCase();
+    if (lowered === '/b') {
+      runAfterSearchCommandPermission('bookmarks', () => {});
+    }
+    handleSearchChange(e);
+  }, [handleSearchChange, runAfterSearchCommandPermission]);
+
+  const requestHistoryPermissionFromDropdown = useCallback(() => {
+    runAfterSearchCommandPermission('history', () => {
+      setHistoryPermissionGranted(true);
+    });
+  }, [runAfterSearchCommandPermission, setHistoryPermissionGranted]);
+
+  const findFirstBookmarkSuggestion = useCallback(async (query: string): Promise<SearchSuggestionItem | null> => {
+    const bookmarksApi = globalThis.chrome?.bookmarks;
+    if (!bookmarksApi) return null;
+
+    return new Promise((resolve) => {
+      const finish = (nodes: chrome.bookmarks.BookmarkTreeNode[] | undefined) => {
+        if (globalThis.chrome?.runtime?.lastError) {
+          resolve(null);
+          return;
+        }
+        const first = (nodes || []).find((node) => (node.url || '').trim());
+        if (!first?.url) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          type: 'bookmark',
+          label: (first.title || first.url).trim() || first.url,
+          value: first.url,
+          icon: '',
+        });
+      };
+
+      const normalized = query.trim();
+      if (!normalized) {
+        bookmarksApi.getRecent(30, finish);
+      } else {
+        bookmarksApi.search({ query: normalized }, finish);
+      }
+    });
   }, []);
 
   const handleSearchSubmit = useCallback(() => {
@@ -607,22 +743,42 @@ export default function App() {
       setHistorySelectedIndex(-1);
       return;
     }
-    handleSearch();
-  }, [calculatorPreview, copyTextToClipboard, handleSearch, setHistoryOpen, setHistorySelectedIndex, setSearchValue, t]);
 
-  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
-    if (item.type === 'shortcut') {
-      const usageKey = buildShortcutUsageKey(item.value);
-      if (usageKey) {
-        recordSuggestionUsage(usageKey);
-        setSuggestionUsageVersion((prev) => prev + 1);
-      }
+    const bookmarkCommand = parseBookmarkSearchCommand(searchValue);
+    if (bookmarkCommand.active) {
+      void ensureExtensionPermission('bookmarks', { requestIfNeeded: false }).then((granted) => {
+        if (!granted) {
+          showSearchCommandPermissionDeniedToast('bookmarks');
+          return;
+        }
+        const firstBookmark = mergedSuggestionItems.find((item) => item.type === 'bookmark');
+        if (firstBookmark) {
+          openSuggestionItem(firstBookmark);
+          return;
+        }
+        void findFirstBookmarkSuggestion(bookmarkCommand.query).then((fallbackBookmark) => {
+          if (fallbackBookmark) openSuggestionItem(fallbackBookmark);
+        });
+      });
+      return;
     }
-    if (item.type !== 'engine-prefix') setSearchValue(item.label);
-    openSearchWithQuery(item.value);
-    setHistoryOpen(false);
-    setHistorySelectedIndex(-1);
-  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
+
+    handleSearch();
+  }, [
+    calculatorPreview,
+    copyTextToClipboard,
+    ensureExtensionPermission,
+    findFirstBookmarkSuggestion,
+    handleSearch,
+    mergedSuggestionItems,
+    openSuggestionItem,
+    showSearchCommandPermissionDeniedToast,
+    searchValue,
+    setHistoryOpen,
+    setHistorySelectedIndex,
+    setSearchValue,
+    t,
+  ]);
   
   const handleSuggestionKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && historyOpen) {
@@ -1451,7 +1607,8 @@ export default function App() {
     setDropdownOpen(false);
     setHistoryOpen(true);
     setHistorySelectedIndex(-1);
-  }, [setDropdownOpen, setHistoryOpen, setHistorySelectedIndex]);
+    refreshHistoryPermissionStatus();
+  }, [refreshHistoryPermissionStatus, setDropdownOpen, setHistoryOpen, setHistorySelectedIndex]);
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     setHistorySelectedIndex(index);
   }, [setHistorySelectedIndex]);
@@ -1595,7 +1752,7 @@ export default function App() {
 
   const searchBarProps = useMemo(() => ({
     value: searchValue,
-    onChange: handleSearchChange,
+    onChange: handleSearchInputChange,
     onSubmit: handleSearchSubmit,
     searchEngine,
     onEngineClick: handleEngineClick,
@@ -1621,11 +1778,13 @@ export default function App() {
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
     showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
+    showHistoryPermissionBanner: shouldShowHistoryPermissionBanner,
+    onRequestHistoryPermission: requestHistoryPermissionFromDropdown,
   }), [
     dropdownOpen,
     handleEngineClick,
     handleEngineSelect,
-    handleSearchChange,
+    handleSearchInputChange,
     handleSearchClear,
     handleSearchHistoryClear,
     handleSearchHistoryOpen,
@@ -1634,8 +1793,10 @@ export default function App() {
     handleSuggestionKeyDown,
     historyOpen,
     historySelectedIndex,
+    shouldShowHistoryPermissionBanner,
     mergedSuggestionItems,
     openSuggestionItem,
+    requestHistoryPermissionFromDropdown,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,
     responsiveLayout.searchHorizontalPadding,
