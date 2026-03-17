@@ -8,6 +8,8 @@ export type SuggestionUsageMap = Record<string, SuggestionUsageEntry>;
 
 const USAGE_STATS_KEY = 'leaftab_search_usage_stats_v1';
 const MAX_USAGE_ENTRIES = 800;
+let cachedUsageMapRaw: string | null = null;
+let cachedUsageMapParsed: SuggestionUsageMap | null = null;
 
 function normalizeHourCounts(raw: unknown): number[] {
   if (!Array.isArray(raw)) return Array.from({ length: 24 }, () => 0);
@@ -42,8 +44,14 @@ export function readSuggestionUsageMap(): SuggestionUsageMap {
   try {
     const raw = localStorage.getItem(USAGE_STATS_KEY);
     if (!raw) return {};
+    if (cachedUsageMapRaw === raw && cachedUsageMapParsed) {
+      return cachedUsageMapParsed;
+    }
     const parsed = JSON.parse(raw) as unknown;
-    return normalizeUsageMap(parsed);
+    const normalized = normalizeUsageMap(parsed);
+    cachedUsageMapRaw = raw;
+    cachedUsageMapParsed = normalized;
+    return normalized;
   } catch {
     return {};
   }
@@ -51,7 +59,10 @@ export function readSuggestionUsageMap(): SuggestionUsageMap {
 
 function writeSuggestionUsageMap(map: SuggestionUsageMap) {
   try {
-    localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(map));
+    const serialized = JSON.stringify(map);
+    localStorage.setItem(USAGE_STATS_KEY, serialized);
+    cachedUsageMapRaw = serialized;
+    cachedUsageMapParsed = map;
   } catch {}
 }
 

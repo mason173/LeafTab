@@ -13,6 +13,21 @@ import {
 const IOS_BOUNCE_MAX_OFFSET_PX = 30;
 const IOS_BOUNCE_SPRING_STIFFNESS = 240;
 const IOS_BOUNCE_SPRING_DAMPING = 26;
+const LOCKED_SCROLL_ALLOW_SELECTOR = '[data-allow-drawer-locked-scroll="true"]';
+
+function canUseLockedScrollRegion(event: WheelEvent): boolean {
+  const eventTarget = event.target;
+  if (!(eventTarget instanceof Element)) return false;
+  const region = eventTarget.closest(LOCKED_SCROLL_ALLOW_SELECTOR);
+  if (!(region instanceof HTMLElement)) return false;
+  const viewport = region.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]') || region;
+  const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+  if (maxScrollTop <= 1) return false;
+  const deltaY = event.deltaY;
+  if (deltaY > 1) return viewport.scrollTop < maxScrollTop - 1;
+  if (deltaY < -1) return viewport.scrollTop > 1;
+  return true;
+}
 
 function resolveDrawerSnapPoint(value: number | string | null, fallbackValue: number): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -205,6 +220,12 @@ export function useQuickAccessDrawer({
 
   const handleDrawerWheel = useCallback((event: WheelEvent) => {
     if (disableScrollInteraction) {
+      if (canUseLockedScrollRegion(event)) {
+        wheelIntentRef.current = 0;
+        blockedShortcutScrollSessionRef.current = null;
+        setBottomBounceOffsetImmediate(0);
+        return;
+      }
       wheelIntentRef.current = 0;
       blockedShortcutScrollSessionRef.current = null;
       setBottomBounceOffsetImmediate(0);

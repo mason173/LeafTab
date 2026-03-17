@@ -7,6 +7,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { SearchEngine } from '../types';
 import type { SearchSuggestionItem } from '../types';
 import { parseSiteSearchShortcut } from '@/utils/siteSearch';
+import { getHighlightedSearchCommandToken } from '@/utils/searchCommands';
 import ShortcutIcon from './ShortcutIcon';
 import { TextScramble } from '@/components/motion-primitives/text-scramble';
 import {
@@ -48,22 +49,17 @@ function Frame3({
   const textMeasureCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const imeComposingRef = useRef(false);
   const showLinkIcon = isUrl(value);
-  const commandHighlightPrefixes = ['/bookmarks'] as const;
-  const highlightedCommandPrefix = commandHighlightPrefixes.find((prefix) => value.toLowerCase().startsWith(prefix)) || '';
+  const highlightedCommandPrefix = getHighlightedSearchCommandToken(value);
   const commandPrefixHighlighted = Boolean(highlightedCommandPrefix);
   const commandPrefixText = value.slice(0, Math.min(highlightedCommandPrefix.length, value.length));
   const commandSuffixText = value.slice(highlightedCommandPrefix.length);
+  const inputDisplayValue = commandPrefixHighlighted ? commandSuffixText : value;
   const placeholderText = placeholder || t('search.placeholder');
   const placeholderTextClass = subtleDarkTone
     ? 'text-black/30'
     : (forceWhiteTheme
       ? 'text-black/40'
       : (blankMode ? 'text-white/40' : 'text-muted-foreground'));
-  const inputTextClass = subtleDarkTone
-    ? 'text-black/85'
-    : (forceWhiteTheme
-      ? 'text-black/85'
-      : (blankMode ? 'text-white/80' : 'text-foreground'));
   const inputLineHeight = Math.round(inputFontSize * 1.35);
   const placeholderFontSize = Math.max(14, Math.round(inputFontSize * 0.88));
   const placeholderLineHeight = Math.round(placeholderFontSize * 1.35);
@@ -84,14 +80,35 @@ function Frame3({
     return Math.ceil(context.measureText(value).width);
   }, [calculatorInlinePreview, inputFontSize, value]);
   const isImeComposingEvent = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const native = e.nativeEvent as KeyboardEvent & { keyCode?: number; which?: number };
+    const isModifierDigitHotkey = (e.metaKey || e.ctrlKey) && /^[0-9]$/.test(e.key);
+    if (isModifierDigitHotkey) return false;
+    const navigationKeys = new Set([
+      'Escape',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'Backspace',
+      'Delete',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+    ]);
+    if (navigationKeys.has(e.key)) return false;
+    const native = e.nativeEvent as KeyboardEvent;
     return Boolean(
       imeComposingRef.current ||
       native.isComposing ||
-      e.key === 'Process' ||
-      native.keyCode === 229 ||
-      native.which === 229,
+      e.key === 'Process',
     );
+  };
+  const emitPatchedChange = (nextValue: string, nativeEvent?: Event) => {
+    onChange({
+      target: { value: nextValue } as EventTarget & HTMLInputElement,
+      currentTarget: { value: nextValue } as EventTarget & HTMLInputElement,
+      nativeEvent: (nativeEvent || ({} as Event)) as Event,
+    } as React.ChangeEvent<HTMLInputElement>);
   };
 
   return (
@@ -103,11 +120,25 @@ function Frame3({
             : (forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/40' : 'text-muted-foreground'))
         }`} />
       )}
+      {commandPrefixHighlighted ? (
+        <span
+          className="inline-flex shrink-0 items-center rounded-full bg-primary/10 px-2 py-0.5 font-normal text-primary"
+          style={{ fontSize: inlinePreviewFontSize, lineHeight: `${inlinePreviewLineHeight}px` }}
+        >
+          {commandPrefixText}
+        </span>
+      ) : null}
       <Input 
         ref={inputRef}
         type="text"
-        value={value}
-        onChange={onChange}
+        value={inputDisplayValue}
+        onChange={(e) => {
+          if (!commandPrefixHighlighted) {
+            onChange(e);
+            return;
+          }
+          emitPatchedChange(`${highlightedCommandPrefix}${e.target.value}`, e.nativeEvent);
+        }}
         onFocus={() => {
           setIsFocused(true);
           onFocus();
@@ -126,40 +157,28 @@ function Frame3({
             return;
           }
           onKeyDown?.(e);
+          if (e.defaultPrevented) return;
+          if (commandPrefixHighlighted && inputDisplayValue.length === 0 && e.key === 'Backspace') {
+            e.preventDefault();
+            emitPatchedChange('', e.nativeEvent);
+            return;
+          }
         }}
         placeholder=""
-        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto pl-2 pr-0 py-0 caret-primary focus:placeholder:text-transparent font-['PingFang_SC:Regular',sans-serif] font-normal placeholder:font-normal not-italic w-full rounded-none ${value.length === 0 ? 'focus:caret-transparent' : ''} ${
-          commandPrefixHighlighted
-            ? 'bg-transparent dark:bg-transparent text-transparent placeholder:text-muted-foreground selection:text-transparent'
-            : subtleDarkTone
-              ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/30'
-              : (forceWhiteTheme
-                ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40'
-                : (blankMode
-                  ? 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40'
-                  : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground'))
+        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto pl-0 pr-0 py-0 caret-primary focus:placeholder:text-transparent font-['PingFang_SC:Regular',sans-serif] font-normal placeholder:font-normal not-italic w-full rounded-none ${value.length === 0 ? 'focus:caret-transparent' : ''} ${
+          subtleDarkTone
+            ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/30'
+            : (forceWhiteTheme
+              ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40'
+              : (blankMode
+                ? 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40'
+                : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground'))
         }`}
         style={{
           fontSize: inputFontSize,
           lineHeight: `${inputLineHeight}px`,
-          WebkitTextFillColor: commandPrefixHighlighted ? 'transparent' : undefined,
         }}
       />
-      {commandPrefixHighlighted && value.length > 0 ? (
-        <span
-          aria-hidden="true"
-          className={`pointer-events-none absolute left-2 right-0 top-1/2 -translate-y-1/2 overflow-hidden whitespace-pre ${inputTextClass}`}
-          style={{ fontSize: inputFontSize, lineHeight: `${inputLineHeight}px` }}
-        >
-          <span
-            className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 font-normal text-primary"
-            style={{ fontSize: inlinePreviewFontSize, lineHeight: `${inlinePreviewLineHeight}px` }}
-          >
-            {commandPrefixText}
-          </span>
-          <span>{commandSuffixText}</span>
-        </span>
-      ) : null}
       {value.length > 0 && calculatorInlinePreview ? (
         <span
           className="pointer-events-none absolute top-1/2 -translate-y-1/2 select-none whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 font-normal text-primary"
@@ -338,6 +357,9 @@ function SearchHistoryDropdown({
   forceWhiteTheme,
   showHistoryPermissionBanner = false,
   onRequestHistoryPermission,
+  showNumberHints = false,
+  tabsPanelActive = false,
+  currentBrowserTabId = null,
 }: {
   items: SearchSuggestionItem[];
   isOpen: boolean;
@@ -349,6 +371,9 @@ function SearchHistoryDropdown({
   forceWhiteTheme?: boolean;
   showHistoryPermissionBanner?: boolean;
   onRequestHistoryPermission?: () => void;
+  showNumberHints?: boolean;
+  tabsPanelActive?: boolean;
+  currentBrowserTabId?: number | null;
 }) {
   const { t, i18n } = useTranslation();
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
@@ -358,31 +383,10 @@ function SearchHistoryDropdown({
     () => new Intl.RelativeTimeFormat(i18n.language || undefined, { numeric: 'auto' }),
     [i18n.language],
   );
-
-  const shortcutRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  const bookmarkRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  const localHistoryRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  const browserHistoryRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  const prefixRows: Array<{ item: SearchSuggestionItem; index: number }> = [];
-  items.forEach((item, index) => {
-    if (item.type === 'engine-prefix') {
-      prefixRows.push({ item, index });
-      return;
-    }
-    if (item.type === 'shortcut') {
-      shortcutRows.push({ item, index });
-      return;
-    }
-    if (item.type === 'bookmark') {
-      bookmarkRows.push({ item, index });
-      return;
-    }
-    if (item.historySource === 'browser') {
-      browserHistoryRows.push({ item, index });
-      return;
-    }
-    localHistoryRows.push({ item, index });
-  });
+  const hasLocalHistoryRows = useMemo(
+    () => items.some((item) => item.type === 'history' && item.historySource !== 'browser'),
+    [items],
+  );
   const historySiteDirectDomainMap = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach((item) => {
@@ -392,12 +396,23 @@ function SearchHistoryDropdown({
     });
     return map;
   }, [items]);
+  const derivedSuggestionRows = useMemo(() => items.map((item, index) => {
+    const shortcutDomain = item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab'
+      ? extractDomainFromUrl(item.value)
+      : '';
+    const isCurrentTab = item.type === 'tab' && item.tabId === currentBrowserTabId;
+    return {
+      item,
+      index,
+      isCurrentTab,
+      shortcutDomain,
+      showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
+      secondaryLabel: isCurrentTab ? t('search.currentTabLabel', { defaultValue: '当前标签页' }) : '',
+      siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
+    };
+  }), [currentBrowserTabId, historySiteDirectDomainMap, items, t]);
 
-  const sectionCount = Number(shortcutRows.length > 0)
-    + Number(bookmarkRows.length > 0)
-    + Number(localHistoryRows.length > 0)
-    + Number(browserHistoryRows.length > 0);
-  const visualRowCount = items.length + sectionCount;
+  const visualRowCount = items.length;
   const maxVisibleRows = 8;
   const canScroll = visualRowCount > maxVisibleRows;
   const visibleCount = Math.min(visualRowCount, maxVisibleRows);
@@ -433,9 +448,6 @@ function SearchHistoryDropdown({
 
   if (!isOpen) return null;
 
-  const sectionTitleClass = `text-[12px] ${
-    forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
-  }`;
   const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${
     forceWhiteTheme
       ? `text-black/85 hover:bg-black/5 hover:text-black focus:bg-black/5 focus:text-black ${index === selectedIndex ? 'bg-black/8 text-black' : ''}`
@@ -454,7 +466,40 @@ function SearchHistoryDropdown({
     if (absSeconds < 2_592_000) return relativeTimeFormatter.format(Math.round(diffSeconds / 86_400), 'day');
     return relativeTimeFormatter.format(Math.round(diffSeconds / 2_592_000), 'month');
   };
-  const renderSuggestionRow = ({ item, index }: { item: SearchSuggestionItem; index: number }) => {
+  const renderSuggestionRow = ({
+    item,
+    index,
+    isCurrentTab,
+    shortcutDomain,
+    secondaryLabel,
+    showShortcutDomain,
+    siteDirectDomain,
+  }: {
+    item: SearchSuggestionItem;
+    index: number;
+    isCurrentTab: boolean;
+    shortcutDomain: string;
+    secondaryLabel: string;
+    showShortcutDomain: boolean;
+    siteDirectDomain: string;
+  }) => {
+    const numberHintBadge = (
+      <span
+        aria-hidden={!showNumberHints}
+        className={`shrink-0 overflow-hidden transition-[width,margin] duration-300 ease-out ${
+          showNumberHints ? 'w-7 mr-2' : 'w-0 mr-0'
+        }`}
+      >
+        <span
+          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground transition-[opacity,transform] duration-300 ease-out origin-left ${
+            showNumberHints ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+          }`}
+        >
+          {String(index + 1)}
+        </span>
+      </span>
+    );
+
     if (item.type === 'engine-prefix' && item.engine && item.engine !== 'system') {
       const engineName = SEARCH_ENGINE_BRAND_NAMES[item.engine];
       const hintText = t('search.useEngineSearch', {
@@ -473,15 +518,13 @@ function SearchHistoryDropdown({
           <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
             <img alt="" className="size-[18px] object-contain pointer-events-none shrink-0" src={getEngineIcon(item.engine)} />
           </span>
+          {numberHintBadge}
           <span className="truncate flex-1 min-w-0">{hintText}</span>
           <RiArrowRightSLine className={`ml-2 size-4 shrink-0 ${secondaryTextClass}`} />
         </button>
       );
     }
 
-    const shortcutDomain = item.type === 'shortcut' || item.type === 'bookmark' ? extractDomainFromUrl(item.value) : '';
-    const showShortcutDomain = Boolean(shortcutDomain) && shortcutDomain !== item.label;
-    const siteDirectDomain = item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '';
     const historyTimeText = item.type === 'history' ? formatRelativeTime(item.timestamp) : '';
     return (
       <button
@@ -493,7 +536,7 @@ function SearchHistoryDropdown({
         onClick={() => onSelect(item)}
       >
         <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
-          {item.type === 'shortcut' || item.type === 'bookmark' ? (
+          {item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab' ? (
             <ShortcutIcon icon={item.icon || ''} url={item.value} size={24} exact />
           ) : item.type === 'history' && siteDirectDomain ? (
             <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />
@@ -503,8 +546,12 @@ function SearchHistoryDropdown({
               : <RiHistoryFill className={`size-3.5 ${secondaryTextClass}`} />
           )}
         </span>
+        {numberHintBadge}
         <span className="flex min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
           <span className="block min-w-0 max-w-full flex-1 truncate">{item.label}</span>
+          {secondaryLabel ? (
+            <span className={`shrink-0 truncate ${secondaryTextClass}`}>{secondaryLabel}</span>
+          ) : null}
           {showShortcutDomain ? (
             <span className={`max-w-[35%] shrink-0 truncate ${secondaryTextClass}`}>{shortcutDomain}</span>
           ) : null}
@@ -557,6 +604,23 @@ function SearchHistoryDropdown({
           </button>
         </div>
       ) : null}
+      {hasLocalHistoryRows ? (
+        <div className="mb-2 flex items-center justify-end px-2">
+          <button
+            type="button"
+            className={`text-[12px] transition-colors ${
+              forceWhiteTheme
+                ? 'text-black/45 hover:text-black/80'
+                : (blankMode
+                  ? 'text-white/60 hover:text-white/90'
+                  : 'text-muted-foreground hover:text-foreground')
+            }`}
+            onClick={onClear}
+          >
+            {t('search.clearHistory')}
+          </button>
+        </div>
+      ) : null}
       {items.length === 0 ? (
         <div className={`flex justify-center px-3 py-2 text-[12px] ${
           forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
@@ -564,6 +628,7 @@ function SearchHistoryDropdown({
       ) : (
         <ScrollArea
           ref={scrollAreaRef}
+          data-allow-drawer-locked-scroll="true"
           className="mt-1 w-full"
           style={{ height: listHeight }}
           onWheelCapture={showScrollbar}
@@ -571,63 +636,28 @@ function SearchHistoryDropdown({
           scrollBarClassName={`transition-opacity duration-200 ${scrollbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
           <div className="flex flex-col gap-1 pr-2 w-full overflow-hidden">
-            {prefixRows.length > 0 ? prefixRows.map(renderSuggestionRow) : null}
-
-            {shortcutRows.length > 0 ? (
-              <>
-                <div className={`px-2 py-1 ${sectionTitleClass}`}>{t('search.shortcutsTitle', { defaultValue: '快捷方式' })}</div>
-                {shortcutRows.map(renderSuggestionRow)}
-              </>
-            ) : null}
-
-            {bookmarkRows.length > 0 ? (
-              <>
-                <div className={`px-2 py-1 ${sectionTitleClass}`}>{t('search.bookmarksTitle', { defaultValue: '书签' })}</div>
-                {bookmarkRows.map(renderSuggestionRow)}
-              </>
-            ) : null}
-
-            {localHistoryRows.length > 0 ? (
-              <>
-                <div className="flex items-center justify-between px-2 py-1">
-                  <div className={sectionTitleClass}>{t('search.localHistoryTitle', { defaultValue: '插件历史' })}</div>
-                  <button
-                    type="button"
-                    className={`text-[12px] transition-colors ${
-                      forceWhiteTheme
-                        ? 'text-black/45 hover:text-black/80'
-                        : (blankMode
-                          ? 'text-white/60 hover:text-white/90'
-                          : 'text-muted-foreground hover:text-foreground')
-                    }`}
-                    onClick={onClear}
-                  >
-                    {t('search.clearHistory')}
-                  </button>
-                </div>
-                {localHistoryRows.map(renderSuggestionRow)}
-              </>
-            ) : null}
-
-            {browserHistoryRows.length > 0 ? (
-              <>
-                <div className={`px-2 py-1 ${sectionTitleClass}`}>{t('search.browserHistoryTitle', { defaultValue: '浏览器历史' })}</div>
-                {browserHistoryRows.map(renderSuggestionRow)}
-              </>
-            ) : null}
+            {derivedSuggestionRows.map(renderSuggestionRow)}
           </div>
         </ScrollArea>
       )}
 
-      {items.length > 0 ? (
-        <div className={`mt-2 border-t px-2 pt-2 text-[12px] flex items-center gap-4 ${
+      {items.length > 0 || tabsPanelActive ? (
+        <div className={`mt-2 border-t px-2 pt-2 text-[12px] flex items-center justify-between gap-4 ${
           forceWhiteTheme
             ? 'border-black/10 text-black/45'
             : (blankMode ? 'border-white/10 text-white/60' : 'border-border text-muted-foreground')
         }`}>
-          <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
-          <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
-          <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+          <div className="flex items-center gap-4">
+            <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
+            <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
+            <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+          </div>
+          {tabsPanelActive ? (
+            <div className="flex items-center gap-4">
+              <span>Del {t('search.actionCloseTab', { defaultValue: '关闭标签页' })}</span>
+              <span>Shift+Del {t('search.actionCloseOtherTabs', { defaultValue: '关闭其他标签页' })}</span>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -668,6 +698,9 @@ interface SearchBarProps {
   showEngineSwitcher?: boolean;
   showHistoryPermissionBanner?: boolean;
   onRequestHistoryPermission?: () => void;
+  showSuggestionNumberHints?: boolean;
+  tabsPanelActive?: boolean;
+  currentBrowserTabId?: number | null;
 }
 
 export function SearchBar({ 
@@ -704,14 +737,31 @@ export function SearchBar({
   showEngineSwitcher = true,
   showHistoryPermissionBanner = false,
   onRequestHistoryPermission,
+  showSuggestionNumberHints = false,
+  tabsPanelActive = false,
+  currentBrowserTabId = null,
 }: SearchBarProps) {
   const isImeComposingEvent = (e: React.KeyboardEvent) => {
-    const native = e.nativeEvent as KeyboardEvent & { keyCode?: number; which?: number };
+    const isModifierDigitHotkey = (e.metaKey || e.ctrlKey) && /^[0-9]$/.test(e.key);
+    if (isModifierDigitHotkey) return false;
+    const navigationKeys = new Set([
+      'Escape',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'Backspace',
+      'Delete',
+      'Home',
+      'End',
+      'PageUp',
+      'PageDown',
+    ]);
+    if (navigationKeys.has(e.key)) return false;
+    const native = e.nativeEvent as KeyboardEvent;
     return Boolean(
       native.isComposing ||
-      e.key === 'Process' ||
-      native.keyCode === 229 ||
-      native.which === 229,
+      e.key === 'Process',
     );
   };
 
@@ -770,6 +820,9 @@ export function SearchBar({
             forceWhiteTheme={forceWhiteTheme}
             showHistoryPermissionBanner={showHistoryPermissionBanner}
             onRequestHistoryPermission={onRequestHistoryPermission}
+            showNumberHints={showSuggestionNumberHints}
+            tabsPanelActive={tabsPanelActive}
+            currentBrowserTabId={currentBrowserTabId}
           />
         </div>
         {showEngineSwitcher ? (

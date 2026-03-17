@@ -1,4 +1,5 @@
 import type { SearchEngine } from '@/types';
+import { parseSearchCommandById } from '@/utils/searchCommands';
 
 type SearchEngineOverride = Exclude<SearchEngine, 'system'>;
 export const SEARCH_ENGINE_ORDER: SearchEngine[] = ['system', 'bing', 'google', 'duckduckgo', 'baidu'];
@@ -240,23 +241,14 @@ export function parseBookmarkSearchCommand(rawQuery: string): {
   active: boolean;
   query: string;
 } {
-  const trimmedStart = rawQuery.trimStart();
-  const lowered = trimmedStart.toLowerCase();
+  return parseSearchCommandById(rawQuery, 'bookmarks');
+}
 
-  if (lowered === '/b') {
-    return { active: true, query: '' };
-  }
-  if (lowered.startsWith('/b ')) {
-    return { active: true, query: trimmedStart.slice(2).trim() };
-  }
-  if (lowered === '/bookmarks') {
-    return { active: true, query: '' };
-  }
-  if (lowered.startsWith('/bookmarks ')) {
-    return { active: true, query: trimmedStart.slice('/bookmarks'.length).trim() };
-  }
-
-  return { active: false, query: '' };
+export function parseTabSearchCommand(rawQuery: string): {
+  active: boolean;
+  query: string;
+} {
+  return parseSearchCommandById(rawQuery, 'tabs');
 }
 
 export function getNextSearchEngine(current: SearchEngine, direction: 1 | -1 = 1): SearchEngine {

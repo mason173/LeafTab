@@ -32,6 +32,7 @@ import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
 import { useSearchSuggestions } from './hooks/useSearchSuggestions';
+import { useSearchInteractionController } from './hooks/useSearchInteractionController';
 import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
 import type { SearchSuggestionItem } from './types';
 
@@ -76,11 +77,12 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
-import { getCalculatorPreview } from '@/utils/calculator';
-import { parseSiteSearchShortcut } from '@/utils/siteSearch';
-import { parseBookmarkSearchCommand, parseSearchEnginePrefix } from '@/utils/searchHelpers';
+import { matchSearchCommandAliasInput } from '@/utils/searchCommands';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
+import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
+import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
+import { createSearchQueryModel } from '@/utils/searchQueryModel';
 import {
   INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -185,6 +187,7 @@ export default function App() {
   const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
+  const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [isQuickAccessDrawerExpanded, setIsQuickAccessDrawerExpanded] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
@@ -300,7 +303,10 @@ export default function App() {
     historySelectedIndex, setHistorySelectedIndex,
     searchEngine, setSearchEngine,
     dropdownOpen, setDropdownOpen,
-    historyOpen, setHistoryOpen,
+    historyOpen,
+    openHistoryPanel,
+    closeHistoryPanel,
+    syncHistorySelectionByCount,
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
@@ -531,25 +537,33 @@ export default function App() {
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [historyPermissionGranted, setHistoryPermissionGranted] = useState<boolean>(true);
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
+  const searchQueryModel = useMemo(() => createSearchQueryModel(searchValue, {
+    prefixEnabled: searchPrefixEnabled,
+    siteDirectEnabled: searchSiteDirectEnabled,
+    calculatorEnabled: searchCalculatorEnabled,
+  }), [
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchSiteDirectEnabled,
+    searchValue,
+  ]);
   const mergedSuggestionItems = useSearchSuggestions({
     searchValue,
+    queryModel: searchQueryModel,
     filteredHistoryItems,
     scenarioShortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     historyPermissionGranted,
   });
-  const calculatorPreview = useMemo(() => {
-    if (!searchCalculatorEnabled) return null;
-    return getCalculatorPreview(searchValue);
-  }, [searchCalculatorEnabled, searchValue]);
+  const calculatorPreview = searchQueryModel.calculatorPreview;
   const calculatorInlinePreview = useMemo(() => {
     if (!calculatorPreview) return '';
     return `=${calculatorPreview.resultText}`;
   }, [calculatorPreview]);
   const siteDirectInlinePreview = useMemo(() => {
-    if (!searchSiteDirectEnabled) return '';
-    const { query, siteDomain, siteSearchUrl, siteLabel } = parseSiteSearchShortcut(searchValue);
+    if (searchQueryModel.command.active) return '';
+    const { query, siteDomain, siteSearchUrl, siteLabel } = searchQueryModel.siteSearch;
     if (!query || !siteLabel) return '';
     if (!siteSearchUrl && !siteDomain) return '';
     const resolvedSiteLabel = siteLabel === 'YouTube' ? 'Youtube' : siteLabel;
@@ -557,10 +571,10 @@ export default function App() {
       site: resolvedSiteLabel,
       defaultValue: `在${resolvedSiteLabel}中搜索`,
     });
-  }, [searchSiteDirectEnabled, searchValue, t]);
+  }, [searchQueryModel.command.active, searchQueryModel.siteSearch, t]);
   const enginePrefixInlinePreview = useMemo(() => {
-    if (!searchPrefixEnabled) return '';
-    const { query, overrideEngine } = parseSearchEnginePrefix(searchValue);
+    if (searchQueryModel.command.active) return '';
+    const { query, overrideEngine } = searchQueryModel.enginePrefix;
     if (!overrideEngine || !query) return '';
     const engineLabelMap = {
       google: 'Google',
@@ -573,12 +587,11 @@ export default function App() {
       engine: engineLabel,
       defaultValue: `用${engineLabel}搜索`,
     });
-  }, [searchPrefixEnabled, searchValue, t]);
+  }, [searchQueryModel.command.active, searchQueryModel.enginePrefix, t]);
   const searchInlinePreview = siteDirectInlinePreview || enginePrefixInlinePreview || calculatorInlinePreview;
   const shouldShowHistoryPermissionBanner = useMemo(() => {
-    if (historyPermissionGranted) return false;
-    return !parseBookmarkSearchCommand(searchValue).active;
-  }, [historyPermissionGranted, searchValue]);
+    return !historyPermissionGranted && !searchQueryModel.command.active;
+  }, [historyPermissionGranted, searchQueryModel.command.active]);
 
   const copyTextToClipboard = useCallback(async (copyText: string) => {
     if (navigator.clipboard?.writeText) {
@@ -598,6 +611,18 @@ export default function App() {
   }, []);
 
   const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
+    if (item.type === 'tab' && Number.isFinite(item.tabId)) {
+      const tabsApi = globalThis.chrome?.tabs;
+      if (tabsApi?.update && typeof item.tabId === 'number') {
+        tabsApi.update(item.tabId, { active: true }, () => {});
+      }
+      const windowsApi = globalThis.chrome?.windows;
+      if (windowsApi?.update && typeof item.windowId === 'number') {
+        windowsApi.update(item.windowId, { focused: true }, () => {});
+      }
+      closeHistoryPanel('selection');
+      return;
+    }
     if (item.type === 'shortcut') {
       const usageKey = buildShortcutUsageKey(item.value);
       if (usageKey) {
@@ -605,16 +630,18 @@ export default function App() {
         setSuggestionUsageVersion((prev) => prev + 1);
       }
     }
-    if (item.type !== 'engine-prefix') setSearchValue(item.label);
     openSearchWithQuery(item.value);
-    setHistoryOpen(false);
-    setHistorySelectedIndex(-1);
-  }, [openSearchWithQuery, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
+    closeHistoryPanel('selection');
+  }, [closeHistoryPanel, openSearchWithQuery]);
 
-  const showSearchCommandPermissionDeniedToast = useCallback((permission: 'bookmarks' | 'history') => {
+  const showSearchCommandPermissionDeniedToast = useCallback((permission: 'bookmarks' | 'history' | 'tabs') => {
     if (permission === 'bookmarks') {
       toast.error(t('search.permissionBookmarksDenied', {
         defaultValue: '未授予书签权限，无法搜索书签。下次使用 /b 时可再次申请。',
+      }));
+    } else if (permission === 'tabs') {
+      toast.error(t('search.permissionTabsDenied', {
+        defaultValue: '未授予标签页权限，无法搜索已打开标签页。下次使用 /t 时可再次申请。',
       }));
     } else {
       toast.error(t('search.permissionHistoryDenied', {
@@ -638,6 +665,37 @@ export default function App() {
   }, [refreshHistoryPermissionStatus]);
 
   useEffect(() => {
+    const tabsApi = globalThis.chrome?.tabs;
+    const windowsApi = globalThis.chrome?.windows;
+    if (!tabsApi?.query) return;
+
+    const syncCurrentBrowserTabId = () => {
+      tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
+        if (globalThis.chrome?.runtime?.lastError) {
+          setCurrentBrowserTabId(null);
+          return;
+        }
+        const activeTabId = tabs?.find((tab) => Number.isFinite(tab.id))?.id;
+        setCurrentBrowserTabId(Number.isFinite(activeTabId) ? Number(activeTabId) : null);
+      });
+    };
+
+    syncCurrentBrowserTabId();
+    tabsApi.onActivated?.addListener(syncCurrentBrowserTabId);
+    windowsApi?.onFocusChanged?.addListener(syncCurrentBrowserTabId);
+    return () => {
+      tabsApi.onActivated?.removeListener(syncCurrentBrowserTabId);
+      windowsApi?.onFocusChanged?.removeListener(syncCurrentBrowserTabId);
+    };
+  }, []);
+
+  const notifyCurrentTabProtected = useCallback(() => {
+    toast.error(t('search.tabCloseCurrentBlocked', {
+      defaultValue: '当前标签页不能在这里关闭',
+    }));
+  }, [t]);
+
+  useEffect(() => {
     const permissionsApi = globalThis.chrome?.permissions;
     if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
 
@@ -653,7 +711,7 @@ export default function App() {
   }, [refreshHistoryPermissionStatus]);
 
   const runAfterSearchCommandPermission = useCallback((
-    permission: 'bookmarks' | 'history',
+    permission: 'bookmarks' | 'history' | 'tabs',
     onGranted: () => void,
   ) => {
     const chromeApi = (globalThis as any)?.chrome;
@@ -681,12 +739,15 @@ export default function App() {
   }, [showSearchCommandPermissionDeniedToast, t]);
 
   const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const lowered = e.target.value.trimStart().toLowerCase();
-    if (lowered === '/b') {
+    const matchedAlias = matchSearchCommandAliasInput(e.target.value);
+    if (matchedAlias === 'bookmarks') {
       runAfterSearchCommandPermission('bookmarks', () => {});
+    } else if (matchedAlias === 'tabs') {
+      runAfterSearchCommandPermission('tabs', () => {});
     }
     handleSearchChange(e);
-  }, [handleSearchChange, runAfterSearchCommandPermission]);
+    openHistoryPanel({ select: 'none' });
+  }, [handleSearchChange, openHistoryPanel, runAfterSearchCommandPermission]);
 
   const requestHistoryPermissionFromDropdown = useCallback(() => {
     runAfterSearchCommandPermission('history', () => {
@@ -694,36 +755,70 @@ export default function App() {
     });
   }, [runAfterSearchCommandPermission, setHistoryPermissionGranted]);
 
+  const closeSelectedTabSuggestion = useCallback((item: SearchSuggestionItem) => {
+    if (item.type !== 'tab' || !Number.isFinite(item.tabId)) return;
+    if (item.tabId === currentBrowserTabId) {
+      notifyCurrentTabProtected();
+      return;
+    }
+    const tabsApi = globalThis.chrome?.tabs;
+    if (!tabsApi?.remove) return;
+
+    tabsApi.remove(item.tabId, () => {
+      if (globalThis.chrome?.runtime?.lastError) {
+        toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
+      }
+    });
+  }, [currentBrowserTabId, notifyCurrentTabProtected, t]);
+
+  const closeOtherTabsSuggestions = useCallback((item: SearchSuggestionItem) => {
+    if (item.type !== 'tab' || !Number.isFinite(item.tabId)) return;
+    const tabsApi = globalThis.chrome?.tabs;
+    if (!tabsApi?.query || !tabsApi.remove) return;
+
+    tabsApi.query({}, (tabs) => {
+      if (globalThis.chrome?.runtime?.lastError) {
+        toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
+        return;
+      }
+
+      const otherTabIds = (tabs || [])
+        .map((tab) => tab.id)
+        .filter((tabId): tabId is number => (
+          Number.isFinite(tabId) &&
+          tabId !== item.tabId &&
+          tabId !== currentBrowserTabId
+        ));
+      if (otherTabIds.length === 0) return;
+
+      tabsApi.remove(otherTabIds, () => {
+        if (globalThis.chrome?.runtime?.lastError) {
+          toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
+        }
+      });
+    });
+  }, [currentBrowserTabId, t]);
+
   const findFirstBookmarkSuggestion = useCallback(async (query: string): Promise<SearchSuggestionItem | null> => {
+    const cachedBookmark = getCachedBookmarkSuggestions(query, 1)?.[0] ?? null;
+    if (cachedBookmark) return cachedBookmark;
+
     const bookmarksApi = globalThis.chrome?.bookmarks;
     if (!bookmarksApi) return null;
 
-    return new Promise((resolve) => {
-      const finish = (nodes: chrome.bookmarks.BookmarkTreeNode[] | undefined) => {
-        if (globalThis.chrome?.runtime?.lastError) {
-          resolve(null);
-          return;
-        }
-        const first = (nodes || []).find((node) => (node.url || '').trim());
-        if (!first?.url) {
-          resolve(null);
-          return;
-        }
-        resolve({
-          type: 'bookmark',
-          label: (first.title || first.url).trim() || first.url,
-          value: first.url,
-          icon: '',
-        });
-      };
+    const bookmarkItems = await getBookmarkSuggestionsFromApi(bookmarksApi, query, 1);
+    return bookmarkItems[0] ?? null;
+  }, []);
 
-      const normalized = query.trim();
-      if (!normalized) {
-        bookmarksApi.getRecent(30, finish);
-      } else {
-        bookmarksApi.search({ query: normalized }, finish);
-      }
-    });
+  const findFirstTabSuggestion = useCallback(async (query: string): Promise<SearchSuggestionItem | null> => {
+    const cachedTab = getCachedTabSuggestions(query, 1)?.[0] ?? null;
+    if (cachedTab) return cachedTab;
+
+    const tabsApi = globalThis.chrome?.tabs;
+    if (!tabsApi) return null;
+
+    const tabItems = await getTabSuggestionsFromApi(tabsApi, query, 1);
+    return tabItems[0] ?? null;
   }, []);
 
   const handleSearchSubmit = useCallback(() => {
@@ -739,13 +834,29 @@ export default function App() {
           });
       }
       setSearchValue('');
-      setHistoryOpen(false);
-      setHistorySelectedIndex(-1);
+      closeHistoryPanel('submit');
       return;
     }
 
-    const bookmarkCommand = parseBookmarkSearchCommand(searchValue);
-    if (bookmarkCommand.active) {
+    if (searchQueryModel.command.id === 'tabs') {
+      void ensureExtensionPermission('tabs', { requestIfNeeded: false }).then((granted) => {
+        if (!granted) {
+          showSearchCommandPermissionDeniedToast('tabs');
+          return;
+        }
+        const firstTab = mergedSuggestionItems.find((item) => item.type === 'tab');
+        if (firstTab) {
+          openSuggestionItem(firstTab);
+          return;
+        }
+        void findFirstTabSuggestion(searchQueryModel.commandQuery).then((fallbackTab) => {
+          if (fallbackTab) openSuggestionItem(fallbackTab);
+        });
+      });
+      return;
+    }
+
+    if (searchQueryModel.command.id === 'bookmarks') {
       void ensureExtensionPermission('bookmarks', { requestIfNeeded: false }).then((granted) => {
         if (!granted) {
           showSearchCommandPermissionDeniedToast('bookmarks');
@@ -756,7 +867,7 @@ export default function App() {
           openSuggestionItem(firstBookmark);
           return;
         }
-        void findFirstBookmarkSuggestion(bookmarkCommand.query).then((fallbackBookmark) => {
+        void findFirstBookmarkSuggestion(searchQueryModel.commandQuery).then((fallbackBookmark) => {
           if (fallbackBookmark) openSuggestionItem(fallbackBookmark);
         });
       });
@@ -769,119 +880,45 @@ export default function App() {
     copyTextToClipboard,
     ensureExtensionPermission,
     findFirstBookmarkSuggestion,
+    findFirstTabSuggestion,
     handleSearch,
     mergedSuggestionItems,
     openSuggestionItem,
+    searchQueryModel.command.id,
+    searchQueryModel.commandQuery,
     showSearchCommandPermissionDeniedToast,
-    searchValue,
-    setHistoryOpen,
-    setHistorySelectedIndex,
+    closeHistoryPanel,
     setSearchValue,
     t,
   ]);
   
-  const handleSuggestionKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && historyOpen) {
-      e.preventDefault();
-      setHistoryOpen(false);
-      setHistorySelectedIndex(-1);
-      return;
-    }
-
-    if (e.key === 'Tab' && ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
-      e.preventDefault();
-      cycleSearchEngine(e.shiftKey ? -1 : 1);
-      if (dropdownOpen) setDropdownOpen(false);
-      return;
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!historyOpen) {
-        setHistoryOpen(true);
-        if (mergedSuggestionItems.length > 0) setHistorySelectedIndex(0);
-      } else if (mergedSuggestionItems.length > 0) {
-        setHistorySelectedIndex((prev) => (prev + 1) % mergedSuggestionItems.length);
-      }
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (historyOpen && mergedSuggestionItems.length > 0) {
-        setHistorySelectedIndex((prev) => (
-          prev === -1
-            ? mergedSuggestionItems.length - 1
-            : (prev - 1 + mergedSuggestionItems.length) % mergedSuggestionItems.length
-        ));
-      }
-      return;
-    }
-    if (e.key === 'Enter') {
-      if (historySelectedIndex !== -1 && mergedSuggestionItems[historySelectedIndex]) {
-        e.preventDefault();
-        openSuggestionItem(mergedSuggestionItems[historySelectedIndex]);
-        return;
-      }
-    }
-  }, [tabSwitchSearchEngine, cycleSearchEngine, dropdownOpen, setDropdownOpen, historyOpen, mergedSuggestionItems, historySelectedIndex, setHistorySelectedIndex, setHistoryOpen, openSuggestionItem]);
+  const {
+    suggestionModifierHeld,
+    handleSuggestionKeyDown,
+  } = useSearchInteractionController({
+    historyOpen,
+    openHistoryPanel,
+    closeHistoryPanel,
+    historySelectedIndex,
+    setHistorySelectedIndex,
+    mergedSuggestionItems,
+    openSuggestionItem,
+    tabSwitchSearchEngine,
+    enableSearchEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
+    cycleSearchEngine,
+    dropdownOpen,
+    setDropdownOpen,
+    searchAnyKeyCaptureEnabled,
+    searchInputRef,
+    setSearchValue,
+    tabsPanelActive: searchQueryModel.command.id === 'tabs',
+    protectedTabId: currentBrowserTabId,
+    onProtectedTabCloseAttempt: notifyCurrentTabProtected,
+    closeSelectedTabSuggestion,
+    closeOtherTabsSuggestions,
+  });
 
   useNewtabBootstrapFocus(pageFocusRef);
-
-  useEffect(() => {
-    const handleGlobalSearchHotkey = (event: KeyboardEvent) => {
-      const isHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k';
-      const isPasteHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'v';
-      const isPrintableKey = !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && event.key.length === 1;
-      if (!isHotkey && !isPasteHotkey && !isPrintableKey) return;
-      if (isPrintableKey && !searchAnyKeyCaptureEnabled) return;
-
-      const input = searchInputRef.current;
-      if (!input) return;
-      const target = event.target as HTMLElement | null;
-      if (target && target !== input) {
-        const tag = target.tagName.toLowerCase();
-        const isEditable = target.isContentEditable || tag === 'textarea' || tag === 'select' || (tag === 'input' && target.getAttribute('type') !== 'button');
-        if (isEditable) return;
-      }
-      const hasOpenModal = Boolean(
-        document.querySelector('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"]')
-      );
-      if (hasOpenModal && target !== input) return;
-
-      if (isPasteHotkey) {
-        if (target === input) return;
-        input.focus();
-        setHistoryOpen(true);
-        setHistorySelectedIndex(-1);
-        return;
-      }
-
-      if (isHotkey) {
-        event.preventDefault();
-        input.focus();
-        input.select();
-        setHistoryOpen(true);
-        if (mergedSuggestionItems.length > 0) setHistorySelectedIndex(0);
-        return;
-      }
-
-      if (target === input) return;
-      event.preventDefault();
-      input.focus();
-      setSearchValue((prev) => `${prev}${event.key}`);
-      setHistoryOpen(true);
-      setHistorySelectedIndex(-1);
-      requestAnimationFrame(() => {
-        const current = searchInputRef.current;
-        if (!current) return;
-        const len = current.value.length;
-        current.setSelectionRange(len, len);
-      });
-    };
-
-    window.addEventListener('keydown', handleGlobalSearchHotkey);
-    return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
-  }, [mergedSuggestionItems.length, searchAnyKeyCaptureEnabled, setHistoryOpen, setHistorySelectedIndex, setSearchValue]);
 
   useEffect(() => {
     if (!contextMenu || !contextMenuRef.current) return;
@@ -1505,13 +1542,12 @@ export default function App() {
       if (!historyOpen) return;
       const target = event.target as Node;
       if (searchAreaRef.current && !searchAreaRef.current.contains(target)) {
-        setHistoryOpen(false);
-        setHistorySelectedIndex(-1);
+        closeHistoryPanel('outside');
       }
     };
     document.addEventListener('mousedown', handleHistoryOutside);
     return () => document.removeEventListener('mousedown', handleHistoryOutside);
-  }, [historyOpen, setHistoryOpen, setHistorySelectedIndex]);
+  }, [closeHistoryPanel, historyOpen]);
   
   useEffect(() => {
     const handleEngineOutside = (event: PointerEvent) => {
@@ -1534,14 +1570,27 @@ export default function App() {
 
   useEffect(() => {
     if (!historyOpen) return;
-    if (mergedSuggestionItems.length === 0) {
-      if (historySelectedIndex !== -1) setHistorySelectedIndex(-1);
-      return;
+    syncHistorySelectionByCount(mergedSuggestionItems.length);
+  }, [historyOpen, mergedSuggestionItems.length, syncHistorySelectionByCount]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    if (searchQueryModel.command.id !== 'tabs') return;
+    if (historySelectedIndex !== -1) return;
+    const firstTabIndex = mergedSuggestionItems.findIndex((item) => (
+      item.type === 'tab' && item.tabId !== currentBrowserTabId
+    ));
+    if (firstTabIndex !== -1) {
+      setHistorySelectedIndex(firstTabIndex);
     }
-    if (historySelectedIndex >= mergedSuggestionItems.length) {
-      setHistorySelectedIndex(-1);
-    }
-  }, [historyOpen, mergedSuggestionItems.length, historySelectedIndex, setHistorySelectedIndex]);
+  }, [
+    currentBrowserTabId,
+    historyOpen,
+    historySelectedIndex,
+    mergedSuggestionItems,
+    searchQueryModel.command.id,
+    setHistorySelectedIndex,
+  ]);
 
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const countPayload = (payload: any) => {
@@ -1605,10 +1654,9 @@ export default function App() {
   }, [setScenarioCreateOpen]);
   const handleSearchHistoryOpen = useCallback(() => {
     setDropdownOpen(false);
-    setHistoryOpen(true);
-    setHistorySelectedIndex(-1);
+    openHistoryPanel({ select: 'none' });
     refreshHistoryPermissionStatus();
-  }, [refreshHistoryPermissionStatus, setDropdownOpen, setHistoryOpen, setHistorySelectedIndex]);
+  }, [openHistoryPanel, refreshHistoryPermissionStatus, setDropdownOpen]);
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     setHistorySelectedIndex(index);
   }, [setHistorySelectedIndex]);
@@ -1780,7 +1828,11 @@ export default function App() {
     showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
     showHistoryPermissionBanner: shouldShowHistoryPermissionBanner,
     onRequestHistoryPermission: requestHistoryPermissionFromDropdown,
+    showSuggestionNumberHints: historyOpen && suggestionModifierHeld,
+    tabsPanelActive: searchQueryModel.command.id === 'tabs',
+    currentBrowserTabId,
   }), [
+    currentBrowserTabId,
     dropdownOpen,
     handleEngineClick,
     handleEngineSelect,
@@ -1794,6 +1846,7 @@ export default function App() {
     historyOpen,
     historySelectedIndex,
     shouldShowHistoryPermissionBanner,
+    suggestionModifierHeld,
     mergedSuggestionItems,
     openSuggestionItem,
     requestHistoryPermissionFromDropdown,
@@ -1804,6 +1857,7 @@ export default function App() {
     rotatingSearchPlaceholder,
     searchEngine,
     searchInlinePreview,
+    searchQueryModel.command.id,
     searchValue,
     t,
     visualEffectsPolicy.disableSearchPlaceholderAnimation,

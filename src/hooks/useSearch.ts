@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
+import { useState, useEffect, useCallback, useMemo, useDeferredValue, useReducer } from 'react';
 import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
 import {
@@ -6,15 +6,18 @@ import {
   getSearchMatchPriorityFromCandidates,
   getNextSearchEngine,
   normalizeSearchQuery,
-  parseSearchEnginePrefix,
 } from '../utils/searchHelpers';
-import { buildSiteSearchQuery, parseSiteSearchShortcut } from '@/utils/siteSearch';
+import {
+  isSearchCommandTokenValue,
+  resolveSearchCommandAutocomplete,
+} from '@/utils/searchCommands';
 import {
   buildQueryUsageKey,
   getSuggestionUsageBoost,
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
+import { createSearchQueryModel } from '@/utils/searchQueryModel';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const SEARCH_ENGINE_KEY = 'search_engine';
@@ -37,6 +40,26 @@ type SearchFeatureOptions = {
   fuzzyMatchEnabled?: boolean;
 };
 
+export type SearchPanelCloseReason =
+  | 'manual'
+  | 'escape'
+  | 'outside'
+  | 'submit'
+  | 'selection'
+  | 'hotkey';
+
+type SearchPanelState = {
+  open: boolean;
+  selectedIndex: number;
+  lastCloseReason: SearchPanelCloseReason | null;
+};
+
+type SearchPanelAction =
+  | { type: 'open'; select?: 'keep' | 'first' | 'none'; itemCount?: number }
+  | { type: 'close'; reason?: SearchPanelCloseReason }
+  | { type: 'set-selected'; value: number | ((prev: number) => number) }
+  | { type: 'sync-item-count'; itemCount: number };
+
 const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, string> = {
   google: 'https://www.google.com/search?q=%s',
   bing: 'https://www.bing.com/search?q=%s',
@@ -44,9 +67,82 @@ const SEARCH_ENGINE_URL_TEMPLATES: Record<Exclude<SearchEngine, 'system'>, strin
   baidu: 'https://www.baidu.com/s?wd=%s',
 };
 
-const COMMAND_AUTOCOMPLETE_MAP: Record<string, string> = {
-  '/b': '/bookmarks ',
+const SEARCH_PANEL_INITIAL_STATE: SearchPanelState = {
+  open: false,
+  selectedIndex: -1,
+  lastCloseReason: null,
 };
+
+function normalizeSuggestionIndex(index: number): number {
+  if (!Number.isFinite(index)) return -1;
+  return Math.trunc(index);
+}
+
+function reduceSearchPanelState(
+  state: SearchPanelState,
+  action: SearchPanelAction,
+): SearchPanelState {
+  if (action.type === 'open') {
+    const selectMode = action.select ?? 'keep';
+    const itemCount = Number(action.itemCount ?? 0);
+    if (selectMode === 'none') {
+      return {
+        open: true,
+        selectedIndex: -1,
+        lastCloseReason: state.lastCloseReason,
+      };
+    }
+    if (selectMode === 'first') {
+      return {
+        open: true,
+        selectedIndex: itemCount > 0 ? 0 : -1,
+        lastCloseReason: state.lastCloseReason,
+      };
+    }
+    return {
+      open: true,
+      selectedIndex: state.selectedIndex,
+      lastCloseReason: state.lastCloseReason,
+    };
+  }
+
+  if (action.type === 'close') {
+    return {
+      open: false,
+      selectedIndex: -1,
+      lastCloseReason: action.reason ?? 'manual',
+    };
+  }
+
+  if (action.type === 'set-selected') {
+    const resolved = typeof action.value === 'function'
+      ? action.value(state.selectedIndex)
+      : action.value;
+    return {
+      open: state.open,
+      selectedIndex: normalizeSuggestionIndex(resolved),
+      lastCloseReason: state.lastCloseReason,
+    };
+  }
+
+  const itemCount = Number(action.itemCount);
+  if (itemCount <= 0) {
+    if (state.selectedIndex === -1) return state;
+    return {
+      open: state.open,
+      selectedIndex: -1,
+      lastCloseReason: state.lastCloseReason,
+    };
+  }
+  if (state.selectedIndex >= itemCount) {
+    return {
+      open: state.open,
+      selectedIndex: -1,
+      lastCloseReason: state.lastCloseReason,
+    };
+  }
+  return state;
+}
 
 const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] => {
   if (!Array.isArray(parsed)) return [];
@@ -103,7 +199,11 @@ export function useSearch(
       return [];
     }
   });
-  const [historySelectedIndex, setHistorySelectedIndex] = useState(-1);
+  const [searchPanelState, dispatchSearchPanel] = useReducer(
+    reduceSearchPanelState,
+    SEARCH_PANEL_INITIAL_STATE,
+  );
+  const historySelectedIndex = searchPanelState.selectedIndex;
   const [historyUsageVersion, setHistoryUsageVersion] = useState(0);
 
   const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
@@ -117,7 +217,7 @@ export function useSearch(
   });
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyOpen = searchPanelState.open;
   const deferredSearchValue = useDeferredValue(searchValue);
   const historyUsageMap = useMemo(
     () => (personalizationEnabled ? readSuggestionUsageMap() : {}),
@@ -134,38 +234,67 @@ export function useSearch(
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
   }, [searchHistory]);
 
+  const openHistoryPanel = useCallback((options?: { select?: 'keep' | 'first' | 'none'; itemCount?: number }) => {
+    dispatchSearchPanel({
+      type: 'open',
+      select: options?.select,
+      itemCount: options?.itemCount,
+    });
+  }, []);
+
+  const closeHistoryPanel = useCallback((reason: SearchPanelCloseReason = 'manual') => {
+    dispatchSearchPanel({
+      type: 'close',
+      reason,
+    });
+  }, []);
+
+  const setHistorySelectedIndex = useCallback((next: number | ((prev: number) => number)) => {
+    dispatchSearchPanel({
+      type: 'set-selected',
+      value: next,
+    });
+  }, []);
+
+  const setHistoryOpen = useCallback((next: boolean) => {
+    if (next) {
+      openHistoryPanel({ select: 'keep' });
+      return;
+    }
+    closeHistoryPanel('manual');
+  }, [closeHistoryPanel, openHistoryPanel]);
+
+  const syncHistorySelectionByCount = useCallback((itemCount: number) => {
+    dispatchSearchPanel({
+      type: 'sync-item-count',
+      itemCount,
+    });
+  }, []);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const nativeEvent = e.nativeEvent as InputEvent | undefined;
     const inputType = nativeEvent?.inputType || '';
-    const inputData = nativeEvent?.data ?? '';
     let nextValue = rawValue;
 
-    // 对齐 Omni 的 checkShortHand 逻辑：
-    // 1) 输入 /b 自动补全为 /bookmarks␠
-    // 2) Backspace 到 /bookmarks 时，清空为 ''
+    // 对齐命令补全交互：
+    // 1) 输入 /b 自动补全为 /bookmarks，输入 /t 自动补全为 /tabs（不自动补空格）
+    // 2) 当只剩命令 token 时，再按一次退格可整段清空
     const loweredRawValue = rawValue.toLowerCase();
     if (inputType === 'deleteContentBackward') {
-      if (loweredRawValue === '/bookmarks') {
+      if (isSearchCommandTokenValue(searchValue)) {
         nextValue = '';
       }
-    } else if (COMMAND_AUTOCOMPLETE_MAP[loweredRawValue]) {
-      nextValue = COMMAND_AUTOCOMPLETE_MAP[loweredRawValue];
-    }
-
-    // 防止在输入普通字符时意外留下尾随空格（用户手动输入空格除外）
-    if (
-      inputType === 'insertText' &&
-      inputData !== ' ' &&
-      nextValue.toLowerCase().startsWith('/bookmarks ') &&
-      /\s+$/.test(nextValue)
-    ) {
-      nextValue = nextValue.replace(/\s+$/, '');
+    } else {
+      const autocompletedCommandToken = resolveSearchCommandAutocomplete(loweredRawValue);
+      if (autocompletedCommandToken) {
+        nextValue = autocompletedCommandToken;
+      }
     }
 
     setSearchValue(nextValue);
     setHistorySelectedIndex(-1);
-    // 不在输入时自动展开历史，仅在点击/聚焦输入框时展开
+    // 下拉展开时机由上层控制（App.handleSearchInputChange）。
   };
 
   const indexedSearchHistory = useMemo<IndexedSearchHistoryEntry[]>(
@@ -226,28 +355,20 @@ export function useSearch(
   }, []);
 
   const openSearchWithQuery = useCallback((rawQuery: string) => {
-    const normalizedRawQuery = rawQuery.trim();
-    const { query: prefixedQuery, overrideEngine } = prefixEnabled
-      ? parseSearchEnginePrefix(normalizedRawQuery)
-      : { query: normalizedRawQuery, overrideEngine: null };
-    const { query, siteDomain, siteSearchUrl, historyQuery } = siteDirectEnabled
-      ? parseSiteSearchShortcut(prefixedQuery)
-      : {
-        query: prefixedQuery.trim(),
-        siteDomain: null,
-        siteSearchUrl: null,
-        historyQuery: prefixedQuery.trim(),
-      };
+    const queryModel = createSearchQueryModel(rawQuery, {
+      prefixEnabled,
+      siteDirectEnabled,
+      calculatorEnabled: false,
+      defaultEngine: searchEngine,
+    });
+    const { query, queryForSearch, historyEntryValue, effectiveEngine } = queryModel.submission;
     if (!query) return;
 
-    const queryForSearch = siteSearchUrl || (siteDomain ? buildSiteSearchQuery(siteDomain, query) : query);
-    const historyEntryValue = siteDomain ? historyQuery : query;
     addSearchHistoryEntry(historyEntryValue);
     if (personalizationEnabled) {
       recordSuggestionUsage(buildQueryUsageKey(historyEntryValue));
       setHistoryUsageVersion((prev) => prev + 1);
     }
-    const effectiveEngine = prefixEnabled ? (overrideEngine ?? searchEngine) : searchEngine;
 
     if (isUrl(queryForSearch)) {
       let targetUrl = queryForSearch;
@@ -282,9 +403,8 @@ export function useSearch(
     } else {
       openSearchWithQuery(searchValue);
     }
-    setHistoryOpen(false);
-    setHistorySelectedIndex(-1);
-  }, [historySelectedIndex, filteredHistoryItems, openSearchWithQuery, searchValue]);
+    closeHistoryPanel('submit');
+  }, [closeHistoryPanel, historySelectedIndex, filteredHistoryItems, openSearchWithQuery, searchValue]);
 
   const handleEngineClick = () => {
     setDropdownOpen(!dropdownOpen);
@@ -312,6 +432,9 @@ export function useSearch(
     setDropdownOpen,
     historyOpen,
     setHistoryOpen,
+    openHistoryPanel,
+    closeHistoryPanel,
+    syncHistorySelectionByCount,
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
