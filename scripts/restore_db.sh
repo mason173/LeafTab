@@ -28,8 +28,6 @@ if [ -f ${OLD_DB_PATH} ]; then
     cp ${OLD_DB_PATH} ${NEW_DB_PATH}
     
     echo '>>> 设置权限...'
-    # Assuming the service runs as root based on service file, but good practice to check ownership
-    # For now we keep it as is since service user is root
     
     echo '>>> 重启后端服务...'
     systemctl start leaftab-backend

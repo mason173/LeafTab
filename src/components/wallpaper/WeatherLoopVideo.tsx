@@ -1,15 +1,20 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 interface WeatherLoopVideoProps {
   src: string;
   className?: string;
+  paused?: boolean;
 }
 
-export function WeatherLoopVideo({
+export const WeatherLoopVideo = memo(function WeatherLoopVideo({
   src,
   className,
+  paused = false,
 }: WeatherLoopVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const isDocumentVisible = useDocumentVisibility();
+  const shouldPause = paused || !isDocumentVisible;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -30,6 +35,21 @@ export function WeatherLoopVideo({
     };
   }, [src]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (shouldPause) {
+      video.pause();
+      return;
+    }
+
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {});
+    }
+  }, [shouldPause, src]);
+
   return (
     <video
       key={src}
@@ -41,4 +61,4 @@ export function WeatherLoopVideo({
       playsInline
     />
   );
-}
+});

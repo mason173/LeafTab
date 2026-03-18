@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/components/ui/sonner";
 import type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
+import { useDocumentVisibility } from "@/hooks/useDocumentVisibility";
 
 export type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
 
@@ -324,6 +325,7 @@ export const fetchWeatherCitySuggestions = async (
 
 export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOptions = {}) {
   const { t, i18n } = useTranslation();
+  const isDocumentVisible = useDocumentVisibility();
   const [weatherData, setWeatherData] = useState<WeatherData>({
     ...DEFAULT_WEATHER,
     city: t("weather.unknownLocation"),
@@ -332,6 +334,7 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
   const [manualCityName, setManualCityName] = useState<string | null>(() => readManualLocation()?.city || null);
 
   const inflightRefreshRef = useRef<Promise<void> | null>(null);
+  const lastRefreshAtRef = useRef(0);
 
   const applyWeather = useCallback(
     (payload: WeatherData) => {
@@ -421,6 +424,7 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
         setIsRefreshing(true);
         try {
           await runRefresh({ force });
+          lastRefreshAtRef.current = Date.now();
         } finally {
           setIsRefreshing(false);
         }
@@ -457,17 +461,24 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
   }, []);
 
   useEffect(() => {
-    void refresh(false);
-  }, [refresh]);
+    if (!isDocumentVisible) return;
 
-  useEffect(() => {
+    const shouldRefreshNow =
+      lastRefreshAtRef.current === 0 ||
+      Date.now() - lastRefreshAtRef.current >= AUTO_REFRESH_MS;
+
+    if (shouldRefreshNow) {
+      void refresh(false);
+    }
+
     const timer = window.setInterval(() => {
       void refresh(false);
     }, AUTO_REFRESH_MS);
+
     return () => {
       window.clearInterval(timer);
     };
-  }, [refresh]);
+  }, [isDocumentVisible, refresh]);
 
   return {
     weatherData,

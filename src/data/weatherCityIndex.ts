@@ -1,4 +1,3 @@
-import areas from "china-division/dist/areas.json";
 import cities from "china-division/dist/cities.json";
 import provinces from "china-division/dist/provinces.json";
 import { GLOBAL_MAJOR_CITIES } from "@/data/weatherGlobalMajorCities";
@@ -81,8 +80,6 @@ const buildAliasKeys = (parts: string[]) => {
 
 const PROVINCE_LIST = provinces as DivisionProvince[];
 const CITY_LIST = cities as DivisionCity[];
-const AREA_LIST = areas as DivisionArea[];
-
 const provinceMap = new Map(PROVINCE_LIST.map((item) => [item.code, item.name]));
 const cityMap = new Map(CITY_LIST.map((item) => [item.code, item]));
 
@@ -124,38 +121,6 @@ for (const city of CITY_LIST) {
   });
 }
 
-for (const area of AREA_LIST) {
-  const provinceName = provinceMap.get(area.provinceCode);
-  const parentCity = cityMap.get(area.cityCode);
-  if (!provinceName || !parentCity) continue;
-
-  const normalizedCity = normalizeCityName(parentCity.name, provinceName);
-  const queryCity = normalizedCity === provinceName ? `${provinceName}${area.name}` : `${normalizedCity}${area.name}`;
-  const displayName =
-    normalizedCity === provinceName
-      ? `${provinceName} · ${area.name}`
-      : `${provinceName} · ${normalizedCity} · ${area.name}`;
-
-  indexedEntries.push({
-    id: `cn-area-${area.code}`,
-    city: queryCity,
-    region: provinceName,
-    country: COUNTRY_NAME,
-    displayName,
-    level: "area",
-    aliasKeys: buildAliasKeys([
-      area.name,
-      queryCity,
-      `${normalizedCity}${area.name}`,
-      `${provinceName}${normalizedCity}${area.name}`,
-      `${provinceName}${area.name}`,
-      `${normalizedCity} ${area.name}`,
-      `${provinceName} ${normalizedCity} ${area.name}`,
-      area.code,
-    ]),
-  });
-}
-
 for (const city of GLOBAL_MAJOR_CITIES) {
   const region = city.region || city.country;
   const displayName = [city.city, region, city.country].filter(Boolean).join(" · ");
@@ -187,6 +152,7 @@ for (const entry of indexedEntries) {
 }
 
 const INDEXED = Array.from(uniqueById.values());
+let areaIndexedEntriesPromise: Promise<IndexedEntry[]> | null = null;
 
 const scoreLevel = (level: EntryLevel) => {
   if (level === "area") return 3;
@@ -225,7 +191,74 @@ const toSuggestion = (entry: IndexedEntry): WeatherCitySuggestion => ({
   displayName: entry.displayName,
 });
 
-export const searchWeatherCitiesLocal = (query: string, limit = 8): WeatherCitySuggestion[] => {
+function getRankedSuggestions(
+  entries: readonly IndexedEntry[],
+  queryKeys: string[],
+  limit: number,
+): WeatherCitySuggestion[] {
+  const maxResults = Math.max(1, limit);
+  const scored = entries.map((entry) => ({
+    entry,
+    score: scoreEntry(entry, queryKeys),
+  }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const levelDiff = scoreLevel(b.entry.level) - scoreLevel(a.entry.level);
+      if (levelDiff !== 0) return levelDiff;
+      return a.entry.displayName.length - b.entry.displayName.length;
+    })
+    .slice(0, maxResults);
+
+  return scored.map((item) => toSuggestion(item.entry));
+}
+
+async function loadAreaIndexedEntries(): Promise<IndexedEntry[]> {
+  if (!areaIndexedEntriesPromise) {
+    areaIndexedEntriesPromise = import("china-division/dist/areas.json").then((module) => {
+      const areaList = module.default as DivisionArea[];
+      const areaEntries: IndexedEntry[] = [];
+
+      for (const area of areaList) {
+        const provinceName = provinceMap.get(area.provinceCode);
+        const parentCity = cityMap.get(area.cityCode);
+        if (!provinceName || !parentCity) continue;
+
+        const normalizedCity = normalizeCityName(parentCity.name, provinceName);
+        const queryCity = normalizedCity === provinceName ? `${provinceName}${area.name}` : `${normalizedCity}${area.name}`;
+        const displayName =
+          normalizedCity === provinceName
+            ? `${provinceName} · ${area.name}`
+            : `${provinceName} · ${normalizedCity} · ${area.name}`;
+
+        areaEntries.push({
+          id: `cn-area-${area.code}`,
+          city: queryCity,
+          region: provinceName,
+          country: COUNTRY_NAME,
+          displayName,
+          level: "area",
+          aliasKeys: buildAliasKeys([
+            area.name,
+            queryCity,
+            `${normalizedCity}${area.name}`,
+            `${provinceName}${normalizedCity}${area.name}`,
+            `${provinceName}${area.name}`,
+            `${normalizedCity} ${area.name}`,
+            `${provinceName} ${normalizedCity} ${area.name}`,
+            area.code,
+          ]),
+        });
+      }
+
+      return areaEntries;
+    });
+  }
+
+  return areaIndexedEntriesPromise;
+}
+
+export const searchWeatherCitiesLocal = async (query: string, limit = 8): Promise<WeatherCitySuggestion[]> => {
   const raw = query.trim();
   if (!raw) return [];
 
@@ -239,18 +272,11 @@ export const searchWeatherCitiesLocal = (query: string, limit = 8): WeatherCityS
 
   if (!queryKeys.length) return [];
 
-  const scored = INDEXED.map((entry) => ({
-    entry,
-    score: scoreEntry(entry, queryKeys),
-  }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      const levelDiff = scoreLevel(b.entry.level) - scoreLevel(a.entry.level);
-      if (levelDiff !== 0) return levelDiff;
-      return a.entry.displayName.length - b.entry.displayName.length;
-    })
-    .slice(0, Math.max(1, limit));
+  const baseMatches = getRankedSuggestions(INDEXED, queryKeys, limit);
+  if (baseMatches.length >= Math.max(1, limit)) {
+    return baseMatches;
+  }
 
-  return scored.map((item) => toSuggestion(item.entry));
+  const areaEntries = await loadAreaIndexedEntries();
+  return getRankedSuggestions([...INDEXED, ...areaEntries], queryKeys, limit);
 };

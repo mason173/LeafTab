@@ -18,6 +18,7 @@ import {
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
 import { createSearchQueryModel } from '@/utils/searchQueryModel';
+import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const SEARCH_ENGINE_KEY = 'search_engine';
@@ -226,12 +227,12 @@ export function useSearch(
 
   useEffect(() => {
     try {
-      localStorage.setItem(SEARCH_ENGINE_KEY, searchEngine);
+      queueLocalStorageSetItem(SEARCH_ENGINE_KEY, searchEngine);
     } catch {}
   }, [searchEngine]);
 
   useEffect(() => {
-    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
+    queueLocalStorageSetItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
   }, [searchHistory]);
 
   const openHistoryPanel = useCallback((options?: { select?: 'keep' | 'first' | 'none'; itemCount?: number }) => {

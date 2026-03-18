@@ -1,79 +1,64 @@
 import * as React from "react";
+import * as TabsPrimitive from "@radix-ui/react-tabs@1.1.3";
 
-import {
-  Tabs as TabsPrimitive,
-  TabsList as TabsListPrimitive,
-  TabsTrigger as TabsTriggerPrimitive,
-  TabsContent as TabsContentPrimitive,
-  TabsContents as TabsContentsPrimitive,
-  TabsHighlight as TabsHighlightPrimitive,
-  TabsHighlightItem as TabsHighlightItemPrimitive,
-  type TabsProps as TabsPrimitiveProps,
-  type TabsListProps as TabsListPrimitiveProps,
-  type TabsTriggerProps as TabsTriggerPrimitiveProps,
-  type TabsContentProps as TabsContentPrimitiveProps,
-  type TabsContentsProps as TabsContentsPrimitiveProps,
-} from "@/components/animate-ui/primitives/radix/tabs";
 import { cn } from "./utils";
 
-type TabsProps = TabsPrimitiveProps;
+type TabsProps = React.ComponentProps<typeof TabsPrimitive.Root>;
 
 function Tabs({ className, ...props }: TabsProps) {
-  return <TabsPrimitive className={cn("flex flex-col gap-2", className)} {...props} />;
+  return (
+    <TabsPrimitive.Root
+      className={cn("flex flex-col gap-2", className)}
+      {...props}
+    />
+  );
 }
 
-type TabsListProps = TabsListPrimitiveProps;
+type TabsListProps = React.ComponentProps<typeof TabsPrimitive.List>;
 
 function TabsList({ className, ...props }: TabsListProps) {
-  const reduceEffects = typeof document !== "undefined" && document.documentElement.dataset.reduceEffects === "on";
-  const resolvedHighlightTransition = reduceEffects ? { duration: 0 } : undefined;
   return (
-    <TabsHighlightPrimitive
-      className="absolute inset-0 z-0 rounded-full bg-primary"
-      transition={resolvedHighlightTransition}
-    >
-      <TabsListPrimitive
-        className={cn(
-          "bg-muted dark:bg-secondary/60 text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-full p-[3px] flex",
-          className,
-          "!rounded-full",
-        )}
-        {...props}
-      />
-    </TabsHighlightPrimitive>
+    <TabsPrimitive.List
+      className={cn(
+        "bg-muted dark:bg-secondary/60 inline-flex h-9 w-fit items-center justify-center rounded-full p-[3px] text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-type TabsTriggerProps = TabsTriggerPrimitiveProps;
+type TabsTriggerProps = React.ComponentProps<typeof TabsPrimitive.Trigger>;
 
 function TabsTrigger({ className, ...props }: TabsTriggerProps) {
-  const reduceEffects = typeof document !== "undefined" && document.documentElement.dataset.reduceEffects === "on";
   return (
-    <TabsHighlightItemPrimitive value={props.value} className="flex-1">
-      <TabsTriggerPrimitive
-        className={cn(
-          "data-[state=active]:text-primary-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 w-full items-center justify-center gap-1.5 rounded-full px-2 py-1 text-sm font-medium whitespace-nowrap focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-          reduceEffects ? "transition-none" : "transition-colors duration-500 ease-in-out",
-          className,
-          "!rounded-full",
-        )}
-        {...props}
-      />
-    </TabsHighlightItemPrimitive>
+    <TabsPrimitive.Trigger
+      className={cn(
+        "inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
-type TabsContentsProps = TabsContentsPrimitiveProps;
+type TabsContentsProps = React.ComponentPropsWithoutRef<"div">;
 
-function TabsContents(props: TabsContentsProps) {
-  return <TabsContentsPrimitive {...props} />;
+function TabsContents({ className, ...props }: TabsContentsProps) {
+  return <div className={cn("overflow-hidden", className)} {...props} />;
 }
 
-type TabsContentProps = TabsContentPrimitiveProps;
+type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content> & {
+  disableAnimation?: boolean;
+};
 
-function TabsContent({ className, ...props }: TabsContentProps) {
+function TabsContent({
+  className,
+  disableAnimation: _disableAnimation,
+  ...props
+}: TabsContentProps) {
   return (
-    <TabsContentPrimitive
+    <TabsPrimitive.Content
       className={cn("flex-1 outline-none", className)}
       {...props}
     />

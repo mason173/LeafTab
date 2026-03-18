@@ -1,9 +1,5 @@
 import { lazy } from 'react';
 
-export const LazyAppDialogs = lazy(() =>
-  import('../components/AppDialogs').then((module) => ({ default: module.AppDialogs })),
-);
-
 export const LazyWallpaperSelector = lazy(() => import('../components/WallpaperSelector'));
 
 export const LazyUpdateAvailableDialog = lazy(() =>

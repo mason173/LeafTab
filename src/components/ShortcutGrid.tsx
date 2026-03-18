@@ -180,7 +180,7 @@ interface ShortcutGridProps {
   onToggleShortcutSelection?: (shortcutIndex: number) => void;
 }
 
-export function ShortcutGrid({ 
+export const ShortcutGrid = React.memo(function ShortcutGrid({ 
   containerHeight,
   bottomInset = 0,
   shortcuts,
@@ -492,4 +492,4 @@ export function ShortcutGrid({
       </DndContext>
     </div>
   );
-}
+});

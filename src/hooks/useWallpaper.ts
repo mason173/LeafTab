@@ -150,6 +150,13 @@ const parseMaskOpacity = (value: string | null): number => {
   return Math.max(0, Math.min(100, parsed));
 };
 
+const parseBooleanSwitch = (value: string | null, defaultValue: boolean): boolean => {
+  if (value == null) return defaultValue;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return defaultValue;
+};
+
 const getInitialBingWallpaper = (): string => {
   if (typeof window === 'undefined') return '';
   const meta = readBingCacheMeta();
@@ -173,6 +180,9 @@ export function useWallpaper() {
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
     parseMaskOpacity(localStorage.getItem('wallpaperMaskOpacity')),
   );
+  const [darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled] = useState<boolean>(() =>
+    parseBooleanSwitch(localStorage.getItem('darkModeAutoDimWallpaperEnabled'), true),
+  );
   const [colorWallpaperId, setColorWallpaperId] = useState<string>(() => {
     const saved = localStorage.getItem('colorWallpaperId');
     if (!saved) return DEFAULT_COLOR_WALLPAPER_ID;
@@ -186,6 +196,10 @@ export function useWallpaper() {
   useEffect(() => {
     localStorage.setItem('wallpaperMaskOpacity', String(wallpaperMaskOpacity));
   }, [wallpaperMaskOpacity]);
+
+  useEffect(() => {
+    localStorage.setItem('darkModeAutoDimWallpaperEnabled', String(darkModeAutoDimWallpaperEnabled));
+  }, [darkModeAutoDimWallpaperEnabled]);
 
   useEffect(() => {
     localStorage.setItem('colorWallpaperId', colorWallpaperId);
@@ -342,6 +356,7 @@ export function useWallpaper() {
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
+    darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled,
     colorWallpaperId, setColorWallpaperId,
   };
 }

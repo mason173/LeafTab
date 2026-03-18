@@ -25,6 +25,10 @@ function getPackageName(id: string): string | null {
 function resolveManualChunk(id: string): string | undefined {
   const normalizedId = id.split('\\').join('/');
 
+  if (normalizedId.includes('/src/i18n/locales/')) {
+    return undefined;
+  }
+
   if (normalizedId.includes('/src/i18n/')) {
     return 'vendor-i18n';
   }
@@ -125,6 +129,17 @@ function resolveManualChunk(id: string): string | undefined {
 
   if (pkg === 'lunar-javascript') {
     return 'vendor-lunar';
+  }
+
+  if (normalizedId.includes('/china-division/dist/areas.json')) {
+    return 'vendor-location-areas';
+  }
+
+  if (
+    normalizedId.includes('/china-division/dist/provinces.json')
+    || normalizedId.includes('/china-division/dist/cities.json')
+  ) {
+    return 'vendor-location-core';
   }
 
   if (pkg === 'china-division') {

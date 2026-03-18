@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type CSSProperties, type RefObject } from 'react';
-import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
+import { SearchExperience } from '@/components/search/SearchExperience';
 import {
   INITIAL_REVEAL_TIMING,
   resolveInitialRevealOpacity,
@@ -43,7 +43,7 @@ interface QuickAccessDrawerProps {
   subtleDarkTone?: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
-  searchBarProps: ComponentProps<typeof SearchBar>;
+  searchExperienceProps: ComponentProps<typeof SearchExperience>;
   shortcutGridProps: ComponentProps<typeof ShortcutGrid>;
   onDrawerOpenChange: () => void;
   onActiveSnapPointChange: (next: number | string | null) => void;
@@ -77,7 +77,7 @@ export function QuickAccessDrawer({
   subtleDarkTone,
   drawerWheelAreaRef,
   drawerShortcutScrollRef,
-  searchBarProps,
+  searchExperienceProps,
   shortcutGridProps,
   onDrawerOpenChange: _onDrawerOpenChange,
   onActiveSnapPointChange: _onActiveSnapPointChange,
@@ -252,13 +252,11 @@ export function QuickAccessDrawer({
                   style={{ width: contentWidth }}
                 >
                   <div className="relative z-20 w-full">
-                    <SearchBar
-                      {...searchBarProps}
+                    <SearchExperience
+                      {...searchExperienceProps}
                       blankMode={modeFlags.searchUsesBlankStyle}
                       forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
                       subtleDarkTone={subtleDarkTone}
-                      onSubmit={searchBarProps.onSubmit}
-                      onSuggestionSelect={searchBarProps.onSuggestionSelect}
                       searchSurfaceStyle={drawerSearchSurfaceStyle}
                     />
                   </div>

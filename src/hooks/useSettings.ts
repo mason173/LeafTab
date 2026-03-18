@@ -10,6 +10,12 @@ import {
 } from '@/components/shortcuts/shortcutCardVariant';
 import { type DisplayMode } from '@/displayMode/config';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
+import {
+  queueLocalStorageRemoveItem,
+  queueLocalStorageSetItem,
+} from '@/utils/storageWriteQueue';
+
+export type TimeAnimationMode = 'inherit' | 'on' | 'off';
 
 const SHORTCUT_GRID_COLUMNS_LEGACY_KEY = 'shortcutGridColumns';
 const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
@@ -19,6 +25,9 @@ const SEARCH_SITE_DIRECT_ENABLED_KEY = 'search_site_direct_enabled';
 const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
+const PREVENT_DUPLICATE_NEWTAB_KEY = 'leaftab_prevent_duplicate_newtab';
+const SHOW_LUNAR_KEY = 'showLunar';
+const TIME_ANIMATION_MODE_KEY = 'time_animation_mode';
 const VISUAL_EFFECTS_LEVEL_KEY = 'visual_effects_level';
 const REDUCE_VISUAL_EFFECTS_KEY = 'reduce_visual_effects';
 
@@ -57,6 +66,22 @@ function readVisualEffectsLevel(): VisualEffectsLevel {
   if (stored === 'low' || stored === 'medium' || stored === 'high') return stored;
   const legacyReduced = readStoredBoolean(REDUCE_VISUAL_EFFECTS_KEY, false);
   return legacyReduced ? 'low' : 'high';
+}
+
+function readTimeAnimationMode(): TimeAnimationMode {
+  const stored = (localStorage.getItem(TIME_ANIMATION_MODE_KEY) || '').trim();
+  if (stored === 'inherit' || stored === 'on' || stored === 'off') return stored;
+
+  const legacyRaw = localStorage.getItem('time_animation_enabled');
+  if (legacyRaw !== null) {
+    try {
+      return JSON.parse(legacyRaw) === false ? 'off' : 'inherit';
+    } catch {
+      return legacyRaw === 'false' ? 'off' : 'inherit';
+    }
+  }
+
+  return 'inherit';
 }
 
 function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {
@@ -106,7 +131,10 @@ export function useSettings() {
   const [searchSiteShortcutEnabled, setSearchSiteShortcutEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
   const [searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
   const [searchCalculatorEnabled, setSearchCalculatorEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
+  const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
   const [is24Hour, setIs24Hour] = useState(true);
+  const [showLunar, setShowLunar] = useState<boolean>(() => readStoredBoolean(SHOW_LUNAR_KEY, true));
+  const [timeAnimationMode, setTimeAnimationMode] = useState<TimeAnimationMode>(() => readTimeAnimationMode());
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
   const [showSeconds, setShowSeconds] = useState(() => {
     const storedShowSeconds = localStorage.getItem('showSeconds');
@@ -157,7 +185,7 @@ export function useSettings() {
 
   useEffect(() => {
     loadGoogleFont(timeFont);
-    localStorage.setItem('time_font', timeFont);
+    queueLocalStorageSetItem('time_font', timeFont);
   }, [timeFont]);
 
   useEffect(() => {
@@ -179,6 +207,9 @@ export function useSettings() {
     setSearchSiteShortcutEnabled(readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
     setSearchAnyKeyCaptureEnabled(readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
     setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
+    setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
+    setShowLunar(readStoredBoolean(SHOW_LUNAR_KEY, true));
+    setTimeAnimationMode(readTimeAnimationMode());
     
     const storedIs24Hour = localStorage.getItem('is24Hour');
     if (storedIs24Hour !== null) setIs24Hour(JSON.parse(storedIs24Hour));
@@ -219,62 +250,48 @@ export function useSettings() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('displayMode', displayMode);
-  }, [displayMode]);
-
-  useEffect(() => {
-    localStorage.setItem('openInNewTab', JSON.stringify(openInNewTab));
-  }, [openInNewTab]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_TAB_SWITCH_ENGINE_KEY, JSON.stringify(tabSwitchSearchEngine));
-  }, [tabSwitchSearchEngine]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_PREFIX_ENABLED_KEY, JSON.stringify(searchPrefixEnabled));
-  }, [searchPrefixEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_SITE_DIRECT_ENABLED_KEY, JSON.stringify(searchSiteDirectEnabled));
-  }, [searchSiteDirectEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_SITE_SHORTCUT_ENABLED_KEY, JSON.stringify(searchSiteShortcutEnabled));
-  }, [searchSiteShortcutEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(searchAnyKeyCaptureEnabled));
-  }, [searchAnyKeyCaptureEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(searchCalculatorEnabled));
-  }, [searchCalculatorEnabled]);
-
-  useEffect(() => {
-    localStorage.setItem('is24Hour', JSON.stringify(is24Hour));
-  }, [is24Hour]);
-
-  useEffect(() => {
-    localStorage.setItem('showSeconds', JSON.stringify(showSeconds));
-  }, [showSeconds]);
-
-  useEffect(() => {
-    localStorage.setItem(VISUAL_EFFECTS_LEVEL_KEY, visualEffectsLevel);
-    // Keep legacy key for backward compatibility with previous versions.
-    localStorage.setItem(REDUCE_VISUAL_EFFECTS_KEY, JSON.stringify(visualEffectsLevel === 'low'));
-  }, [visualEffectsLevel]);
-
-  useEffect(() => {
-    localStorage.setItem('showTime', JSON.stringify(showTime));
-  }, [showTime]);
-
-  useEffect(() => {
-    localStorage.setItem('shortcutCardVariant', shortcutCardVariant);
-  }, [shortcutCardVariant]);
-
-  useEffect(() => {
-    localStorage.setItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
-  }, [shortcutCompactShowTitle]);
+    queueLocalStorageSetItem('displayMode', displayMode);
+    queueLocalStorageSetItem('openInNewTab', JSON.stringify(openInNewTab));
+    queueLocalStorageSetItem(SEARCH_TAB_SWITCH_ENGINE_KEY, JSON.stringify(tabSwitchSearchEngine));
+    queueLocalStorageSetItem(SEARCH_PREFIX_ENABLED_KEY, JSON.stringify(searchPrefixEnabled));
+    queueLocalStorageSetItem(SEARCH_SITE_DIRECT_ENABLED_KEY, JSON.stringify(searchSiteDirectEnabled));
+    queueLocalStorageSetItem(SEARCH_SITE_SHORTCUT_ENABLED_KEY, JSON.stringify(searchSiteShortcutEnabled));
+    queueLocalStorageSetItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(searchAnyKeyCaptureEnabled));
+    queueLocalStorageSetItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(searchCalculatorEnabled));
+    queueLocalStorageSetItem(PREVENT_DUPLICATE_NEWTAB_KEY, JSON.stringify(preventDuplicateNewTab));
+    queueLocalStorageSetItem('is24Hour', JSON.stringify(is24Hour));
+    queueLocalStorageSetItem(SHOW_LUNAR_KEY, JSON.stringify(showLunar));
+    queueLocalStorageSetItem(TIME_ANIMATION_MODE_KEY, timeAnimationMode);
+    queueLocalStorageRemoveItem('time_animation_enabled');
+    queueLocalStorageSetItem('showSeconds', JSON.stringify(showSeconds));
+    queueLocalStorageSetItem(VISUAL_EFFECTS_LEVEL_KEY, visualEffectsLevel);
+    queueLocalStorageSetItem(REDUCE_VISUAL_EFFECTS_KEY, JSON.stringify(visualEffectsLevel === 'low'));
+    queueLocalStorageSetItem('showTime', JSON.stringify(showTime));
+    queueLocalStorageSetItem('shortcutCardVariant', shortcutCardVariant);
+    queueLocalStorageSetItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
+    if (privacyConsent !== null) {
+      queueLocalStorageSetItem('privacy_consent', JSON.stringify(privacyConsent));
+    }
+  }, [
+    displayMode,
+    is24Hour,
+    openInNewTab,
+    preventDuplicateNewTab,
+    privacyConsent,
+    searchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    shortcutCardVariant,
+    shortcutCompactShowTitle,
+    showLunar,
+    showSeconds,
+    showTime,
+    tabSwitchSearchEngine,
+    timeAnimationMode,
+    visualEffectsLevel,
+  ]);
 
   useEffect(() => {
     const normalized = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant);
@@ -301,33 +318,27 @@ export function useSettings() {
   }, [shortcutsRowsPerColumn]);
 
   useEffect(() => {
-    if (privacyConsent !== null) {
-      localStorage.setItem('privacy_consent', JSON.stringify(privacyConsent));
-    }
-  }, [privacyConsent]);
-
-  useEffect(() => {
     if (!ENABLE_CUSTOM_API_SERVER) {
       if (apiServer !== 'official') {
         setApiServer('official');
         return;
       }
-      localStorage.setItem('leaftab_api_server', 'official');
+      queueLocalStorageSetItem('leaftab_api_server', 'official');
       return;
     }
-    localStorage.setItem('leaftab_api_server', apiServer);
+    queueLocalStorageSetItem('leaftab_api_server', apiServer);
   }, [apiServer]);
 
   useEffect(() => {
     const next = customApiUrl.trim();
-    localStorage.setItem('leaftab_custom_api_url', next);
+    queueLocalStorageSetItem('leaftab_custom_api_url', next);
     if (apiServer === 'custom' && !next) {
       setApiServer('official');
     }
   }, [customApiUrl, apiServer]);
 
   useEffect(() => {
-    localStorage.setItem('leaftab_custom_api_name', customApiName.trim());
+    queueLocalStorageSetItem('leaftab_custom_api_name', customApiName.trim());
   }, [customApiName]);
 
   return {
@@ -349,8 +360,14 @@ export function useSettings() {
     setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
     setSearchCalculatorEnabled,
+    preventDuplicateNewTab,
+    setPreventDuplicateNewTab,
     is24Hour,
     setIs24Hour,
+    showLunar,
+    setShowLunar,
+    timeAnimationMode,
+    setTimeAnimationMode,
     timeFont,
     setTimeFont,
     showSeconds,

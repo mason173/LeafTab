@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TimeFontDialog } from './TimeFontDialog';
+import { TimeDisplayDialog } from './TimeDisplayDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
 import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
@@ -16,7 +16,13 @@ import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
 
 interface WallpaperClockProps {
   is24Hour: boolean;
+  onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
+  onShowSecondsChange: (checked: boolean) => void;
+  showLunar: boolean;
+  onShowLunarChange: (checked: boolean) => void;
+  timeAnimationEnabled: boolean;
+  onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   bingWallpaperUrl: string;
   onSettingsClick?: () => void;
   showScenarioMode: boolean;
@@ -34,17 +40,23 @@ interface WallpaperClockProps {
   customWallpaper: string | null;
   colorWallpaperId: string;
   wallpaperMaskOpacity: number;
+  pauseDynamicWallpaper?: boolean;
   reduceTopControlsEffects?: boolean;
-  disableSecondTickMotion?: boolean;
   reduceVisualEffects?: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout?: ResponsiveLayout;
 }
 
-export function WallpaperClock({ 
+export const WallpaperClock = memo(function WallpaperClock({ 
   is24Hour,
+  onIs24HourChange,
   showSeconds,
+  onShowSecondsChange,
+  showLunar,
+  onShowLunarChange,
+  timeAnimationEnabled,
+  onTimeAnimationModeChange,
   bingWallpaperUrl,
   onSettingsClick,
   showScenarioMode,
@@ -62,16 +74,16 @@ export function WallpaperClock({
   customWallpaper,
   colorWallpaperId,
   wallpaperMaskOpacity,
+  pauseDynamicWallpaper = false,
   reduceTopControlsEffects,
-  disableSecondTickMotion,
   reduceVisualEffects = false,
   timeFont,
   onTimeFontChange,
   layout,
 }: WallpaperClockProps) {
-  const [timeFontDialogOpen, setTimeFontDialogOpen] = useState(false);
+  const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
   const { i18n } = useTranslation();
-  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language);
+  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language, showLunar);
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
@@ -86,7 +98,6 @@ export function WallpaperClock({
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const resolvedReduceTopControlsEffects = reduceTopControlsEffects ?? reduceVisualEffects;
-  const resolvedDisableSecondTickMotion = disableSecondTickMotion ?? reduceVisualEffects;
 
   return (
     <div
@@ -125,6 +136,7 @@ export function WallpaperClock({
             <WeatherLoopVideo
               className="absolute inset-0 w-full h-full object-cover" 
               src={weatherVideo}
+              paused={pauseDynamicWallpaper}
             />
           )}
         </div>
@@ -161,16 +173,24 @@ export function WallpaperClock({
           type="button"
           className="font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
           style={{ fontFamily: timeFont, fontSize: layout?.clockFontSize ?? 100 }}
-          onClick={() => setTimeFontDialogOpen(true)}
+          onClick={() => setTimeDisplayDialogOpen(true)}
           aria-label={time}
         >
-          {resolvedDisableSecondTickMotion ? time : <SlidingClockTime time={time} />}
+          {!timeAnimationEnabled ? time : <SlidingClockTime time={time} />}
         </button>
-        <TimeFontDialog
-          open={timeFontDialogOpen}
-          onOpenChange={setTimeFontDialogOpen}
+        <TimeDisplayDialog
+          open={timeDisplayDialogOpen}
+          onOpenChange={setTimeDisplayDialogOpen}
           currentFont={timeFont}
           previewTime={time}
+          is24Hour={is24Hour}
+          onIs24HourChange={onIs24HourChange}
+          showSeconds={showSeconds}
+          onShowSecondsChange={onShowSecondsChange}
+          showLunar={showLunar}
+          onShowLunarChange={onShowLunarChange}
+          timeAnimationEnabled={timeAnimationEnabled}
+          onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
         <div
@@ -178,12 +198,10 @@ export function WallpaperClock({
           style={{ fontSize: layout?.clockMetaFontSize ?? 16 }}
         >
           <span>{dateString} {weekday}</span>
-          {(i18n.language.startsWith('zh') || i18n.language.startsWith('ja') || i18n.language.startsWith('ko') || i18n.language.startsWith('vi')) && (
-            <span>{lunar}</span>
-          )}
+          {showLunar && lunar ? <span>{lunar}</span> : null}
         </div>
       </div>
 
     </div>
   );
-}
+});
