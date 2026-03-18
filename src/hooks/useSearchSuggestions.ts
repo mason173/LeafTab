@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
-import { buildSuggestionPanelItems } from '@/utils/searchSuggestionPolicy';
+import { buildSearchSuggestionItems } from '@/utils/searchSuggestionEngine';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 import { useSearchSuggestionSources } from '@/hooks/useSearchSuggestionSources';
 import type { SearchQueryModel } from '@/utils/searchQueryModel';
@@ -43,7 +43,7 @@ export function useSearchSuggestions({
     historyPermissionGranted,
   });
 
-  return useMemo(() => buildSuggestionPanelItems({
+  return useMemo(() => buildSearchSuggestionItems({
     mode: suggestionDisplayMode,
     searchValue,
     bookmarkSuggestionItems,

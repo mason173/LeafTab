@@ -141,7 +141,7 @@ function Frame3({
         }}
         onFocus={() => {
           setIsFocused(true);
-          onFocus();
+          if (value.length > 0) onFocus();
         }}
         onBlur={() => setIsFocused(false)}
         onCompositionStart={() => {
@@ -191,7 +191,7 @@ function Frame3({
           {calculatorInlinePreview}
         </span>
       ) : null}
-      {!isFocused && value.length === 0 ? (
+      {value.length === 0 ? (
         <span
           aria-hidden="true"
           className={`pointer-events-none absolute left-2 right-0 top-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap ${placeholderTextClass}`}
@@ -292,7 +292,7 @@ function Frame2({
       }}
       onClick={() => {
         onFocusContainer();
-        onOpenHistory();
+        if (value.length > 0) onOpenHistory();
       }}
     >
       <div aria-hidden="true" className="absolute inset-0 pointer-events-none rounded-[999px] transition-colors" />
@@ -336,7 +336,6 @@ function Frame2({
             e.stopPropagation();
             onClear();
             inputRef.current?.focus();
-            onOpenHistory();
           }}
         >
           <span className="leading-none" style={{ fontSize: Math.max(16, inputFontSize) }}>×</span>
@@ -512,7 +511,10 @@ function SearchHistoryDropdown({
           type="button"
           data-selected={index === selectedIndex}
           className={rowClass(index)}
-          onMouseEnter={() => onHighlight?.(index)}
+          onMouseMove={() => {
+            if (index === selectedIndex) return;
+            onHighlight?.(index);
+          }}
           onClick={() => onSelect(item)}
         >
           <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
@@ -532,7 +534,10 @@ function SearchHistoryDropdown({
         type="button"
         data-selected={index === selectedIndex}
         className={rowClass(index)}
-        onMouseEnter={() => onHighlight?.(index)}
+        onMouseMove={() => {
+          if (index === selectedIndex) return;
+          onHighlight?.(index);
+        }}
         onClick={() => onSelect(item)}
       >
         <span className="relative shrink-0 mr-2 flex items-center justify-center" style={{ width: 24, height: 24 }}>
