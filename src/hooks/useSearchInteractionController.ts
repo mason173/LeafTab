@@ -28,6 +28,7 @@ type UseSearchInteractionControllerArgs = {
   searchAnyKeyCaptureEnabled: boolean;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   setSearchValue: (next: string | ((prev: string) => string)) => void;
+  onKeyboardNavigate?: () => void;
   tabsPanelActive: boolean;
   protectedTabId?: number | null;
   onProtectedTabCloseAttempt: () => void;
@@ -56,6 +57,7 @@ export function useSearchInteractionController({
   searchAnyKeyCaptureEnabled,
   searchInputRef,
   setSearchValue,
+  onKeyboardNavigate,
   tabsPanelActive,
   protectedTabId,
   onProtectedTabCloseAttempt,
@@ -109,11 +111,7 @@ export function useSearchInteractionController({
     const selectedSuggestion = historySelectedIndex !== -1
       ? mergedSuggestionItems[historySelectedIndex]
       : null;
-    const activeTabSuggestion = selectedSuggestion?.type === 'tab'
-      ? selectedSuggestion
-      : (tabsPanelActive
-        ? (mergedSuggestionItems.find((item) => item.type === 'tab' && item.tabId !== protectedTabId) ?? null)
-        : null);
+    const activeTabSuggestion = selectedSuggestion?.type === 'tab' ? selectedSuggestion : null;
     const deleteKeyPressed = e.key === 'Backspace' || e.key === 'Delete';
     if (
       tabsPanelActive &&
@@ -137,7 +135,9 @@ export function useSearchInteractionController({
 
     if (e.key === 'Escape' && historyOpen) {
       e.preventDefault();
+      e.stopPropagation();
       closeHistoryPanel('escape');
+      searchInputRef.current?.focus();
       return;
     }
 
@@ -150,6 +150,7 @@ export function useSearchInteractionController({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      onKeyboardNavigate?.();
       if (!historyOpen) {
         openHistoryPanel({
           select: 'first',
@@ -162,6 +163,7 @@ export function useSearchInteractionController({
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
+      onKeyboardNavigate?.();
       if (historyOpen && mergedSuggestionItems.length > 0) {
         setHistorySelectedIndex((prev) => (
           prev === -1
@@ -190,6 +192,7 @@ export function useSearchInteractionController({
     closeHistoryPanel,
     closeOtherTabsSuggestions,
     closeSelectedTabSuggestion,
+    onKeyboardNavigate,
     onProtectedTabCloseAttempt,
     protectedTabId,
     setHistorySelectedIndex,
@@ -229,6 +232,7 @@ export function useSearchInteractionController({
         event.preventDefault();
         input.focus();
         input.select();
+        onKeyboardNavigate?.();
         openHistoryPanel({
           select: 'first',
           itemCount: mergedSuggestionItems.length,
@@ -237,16 +241,10 @@ export function useSearchInteractionController({
       }
 
       if (target === input) return;
-      event.preventDefault();
+      // Focus first and let the browser/IME handle the current key naturally.
+      // Manually appending event.key breaks IME pinyin composition (e.g. "ren" loses the first letter).
       input.focus();
-      setSearchValue((prev) => `${prev}${event.key}`);
       openHistoryPanel({ select: 'none' });
-      requestAnimationFrame(() => {
-        const current = searchInputRef.current;
-        if (!current) return;
-        const len = current.value.length;
-        current.setSelectionRange(len, len);
-      });
     };
 
     window.addEventListener('keydown', handleGlobalSearchHotkey);
@@ -254,6 +252,7 @@ export function useSearchInteractionController({
   }, [
     mergedSuggestionItems.length,
     openHistoryPanel,
+    onKeyboardNavigate,
     searchAnyKeyCaptureEnabled,
     searchInputRef,
     setSearchValue,

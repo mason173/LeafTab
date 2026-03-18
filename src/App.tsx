@@ -80,8 +80,6 @@ import {
 import { matchSearchCommandAliasInput } from '@/utils/searchCommands';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
-import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
-import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
 import { createSearchQueryModel } from '@/utils/searchQueryModel';
 import {
   INITIAL_REVEAL_TIMING,
@@ -106,6 +104,9 @@ const getApiBase = () => {
 
 const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
 const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
+const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
+const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
+const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
   localPayload: WebdavPayload;
@@ -170,6 +171,70 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const searchDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let attempts = 0;
+    let retryTimer: number | null = null;
+    let rafId: number | null = null;
+
+    const scheduleRetry = () => {
+      if (attempts >= INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS) return;
+      if (retryTimer !== null) return;
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null;
+        tryFocusSearchInput();
+      }, INITIAL_SEARCH_FOCUS_RETRY_MS);
+    };
+
+    const tryFocusSearchInput = () => {
+      attempts += 1;
+      const input = searchInputRef.current;
+      if (!input) {
+        scheduleRetry();
+        return;
+      }
+
+      const activeElement = document.activeElement as HTMLElement | null;
+      const activeTag = activeElement?.tagName?.toLowerCase() || '';
+      const activeIsEditable = Boolean(
+        activeElement
+        && (
+          activeElement.isContentEditable
+          || activeTag === 'input'
+          || activeTag === 'textarea'
+          || activeTag === 'select'
+        ),
+      );
+      if (activeElement && activeElement !== input && activeIsEditable) {
+        return;
+      }
+
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+
+      const cursor = input.value.length;
+      try {
+        input.setSelectionRange(cursor, cursor);
+      } catch {}
+
+      if (document.activeElement !== input) {
+        scheduleRetry();
+      }
+    };
+
+    rafId = window.requestAnimationFrame(() => {
+      tryFocusSearchInput();
+    });
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
+  }, []);
+
   const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>('merge');
   const [webdavConfirmSyncOpen, setWebdavConfirmSyncOpen] = useState(false);
   const [webdavConfirmChoice, setWebdavConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>(null);
@@ -318,6 +383,7 @@ export default function App() {
     prefixEnabled: searchPrefixEnabled,
     siteDirectEnabled: searchSiteDirectEnabled,
   });
+  const pointerHighlightLockUntilRef = useRef(0);
 
   useEffect(() => {
     if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
@@ -739,15 +805,25 @@ export default function App() {
   }, [showSearchCommandPermissionDeniedToast, t]);
 
   const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = e.target.value;
     const matchedAlias = matchSearchCommandAliasInput(e.target.value);
     if (matchedAlias === 'bookmarks') {
       runAfterSearchCommandPermission('bookmarks', () => {});
     } else if (matchedAlias === 'tabs') {
       runAfterSearchCommandPermission('tabs', () => {});
     }
+    pointerHighlightLockUntilRef.current = 0;
     handleSearchChange(e);
-    openHistoryPanel({ select: 'none' });
-  }, [handleSearchChange, openHistoryPanel, runAfterSearchCommandPermission]);
+    if (nextValue.length > 0) {
+      openHistoryPanel({ select: 'none' });
+      return;
+    }
+    closeHistoryPanel('manual');
+  }, [closeHistoryPanel, handleSearchChange, openHistoryPanel, runAfterSearchCommandPermission]);
+
+  const markSuggestionKeyboardNavigation = useCallback(() => {
+    pointerHighlightLockUntilRef.current = Date.now() + POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS;
+  }, []);
 
   const requestHistoryPermissionFromDropdown = useCallback(() => {
     runAfterSearchCommandPermission('history', () => {
@@ -799,28 +875,6 @@ export default function App() {
     });
   }, [currentBrowserTabId, t]);
 
-  const findFirstBookmarkSuggestion = useCallback(async (query: string): Promise<SearchSuggestionItem | null> => {
-    const cachedBookmark = getCachedBookmarkSuggestions(query, 1)?.[0] ?? null;
-    if (cachedBookmark) return cachedBookmark;
-
-    const bookmarksApi = globalThis.chrome?.bookmarks;
-    if (!bookmarksApi) return null;
-
-    const bookmarkItems = await getBookmarkSuggestionsFromApi(bookmarksApi, query, 1);
-    return bookmarkItems[0] ?? null;
-  }, []);
-
-  const findFirstTabSuggestion = useCallback(async (query: string): Promise<SearchSuggestionItem | null> => {
-    const cachedTab = getCachedTabSuggestions(query, 1)?.[0] ?? null;
-    if (cachedTab) return cachedTab;
-
-    const tabsApi = globalThis.chrome?.tabs;
-    if (!tabsApi) return null;
-
-    const tabItems = await getTabSuggestionsFromApi(tabsApi, query, 1);
-    return tabItems[0] ?? null;
-  }, []);
-
   const handleSearchSubmit = useCallback(() => {
     if (calculatorPreview) {
       const resultText = String(calculatorPreview.resultText ?? '').trim();
@@ -839,37 +893,27 @@ export default function App() {
     }
 
     if (searchQueryModel.command.id === 'tabs') {
+      const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
+      if (!selectedItem || selectedItem.type !== 'tab') return;
       void ensureExtensionPermission('tabs', { requestIfNeeded: false }).then((granted) => {
         if (!granted) {
           showSearchCommandPermissionDeniedToast('tabs');
           return;
         }
-        const firstTab = mergedSuggestionItems.find((item) => item.type === 'tab');
-        if (firstTab) {
-          openSuggestionItem(firstTab);
-          return;
-        }
-        void findFirstTabSuggestion(searchQueryModel.commandQuery).then((fallbackTab) => {
-          if (fallbackTab) openSuggestionItem(fallbackTab);
-        });
+        openSuggestionItem(selectedItem);
       });
       return;
     }
 
     if (searchQueryModel.command.id === 'bookmarks') {
+      const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
+      if (!selectedItem || selectedItem.type !== 'bookmark') return;
       void ensureExtensionPermission('bookmarks', { requestIfNeeded: false }).then((granted) => {
         if (!granted) {
           showSearchCommandPermissionDeniedToast('bookmarks');
           return;
         }
-        const firstBookmark = mergedSuggestionItems.find((item) => item.type === 'bookmark');
-        if (firstBookmark) {
-          openSuggestionItem(firstBookmark);
-          return;
-        }
-        void findFirstBookmarkSuggestion(searchQueryModel.commandQuery).then((fallbackBookmark) => {
-          if (fallbackBookmark) openSuggestionItem(fallbackBookmark);
-        });
+        openSuggestionItem(selectedItem);
       });
       return;
     }
@@ -879,13 +923,11 @@ export default function App() {
     calculatorPreview,
     copyTextToClipboard,
     ensureExtensionPermission,
-    findFirstBookmarkSuggestion,
-    findFirstTabSuggestion,
     handleSearch,
+    historySelectedIndex,
     mergedSuggestionItems,
     openSuggestionItem,
     searchQueryModel.command.id,
-    searchQueryModel.commandQuery,
     showSearchCommandPermissionDeniedToast,
     closeHistoryPanel,
     setSearchValue,
@@ -911,6 +953,7 @@ export default function App() {
     searchAnyKeyCaptureEnabled,
     searchInputRef,
     setSearchValue,
+    onKeyboardNavigate: markSuggestionKeyboardNavigation,
     tabsPanelActive: searchQueryModel.command.id === 'tabs',
     protectedTabId: currentBrowserTabId,
     onProtectedTabCloseAttempt: notifyCurrentTabProtected,
@@ -1573,25 +1616,6 @@ export default function App() {
     syncHistorySelectionByCount(mergedSuggestionItems.length);
   }, [historyOpen, mergedSuggestionItems.length, syncHistorySelectionByCount]);
 
-  useEffect(() => {
-    if (!historyOpen) return;
-    if (searchQueryModel.command.id !== 'tabs') return;
-    if (historySelectedIndex !== -1) return;
-    const firstTabIndex = mergedSuggestionItems.findIndex((item) => (
-      item.type === 'tab' && item.tabId !== currentBrowserTabId
-    ));
-    if (firstTabIndex !== -1) {
-      setHistorySelectedIndex(firstTabIndex);
-    }
-  }, [
-    currentBrowserTabId,
-    historyOpen,
-    historySelectedIndex,
-    mergedSuggestionItems,
-    searchQueryModel.command.id,
-    setHistorySelectedIndex,
-  ]);
-
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const countPayload = (payload: any) => {
     if (!payload || !payload.scenarioShortcuts) return 0;
@@ -1654,11 +1678,13 @@ export default function App() {
   }, [setScenarioCreateOpen]);
   const handleSearchHistoryOpen = useCallback(() => {
     setDropdownOpen(false);
+    pointerHighlightLockUntilRef.current = 0;
     openHistoryPanel({ select: 'none' });
     refreshHistoryPermissionStatus();
   }, [openHistoryPanel, refreshHistoryPermissionStatus, setDropdownOpen]);
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
-    setHistorySelectedIndex(index);
+    if (Date.now() < pointerHighlightLockUntilRef.current) return;
+    setHistorySelectedIndex((prev) => (prev === index ? prev : index));
   }, [setHistorySelectedIndex]);
   const handleSearchHistoryClear = useCallback(() => {
     setSearchHistory([]);
@@ -1666,7 +1692,8 @@ export default function App() {
   }, [setSearchHistory, setHistorySelectedIndex]);
   const handleSearchClear = useCallback(() => {
     setSearchValue('');
-  }, [setSearchValue]);
+    closeHistoryPanel('manual');
+  }, [closeHistoryPanel, setSearchValue]);
   const handleDismissLoginBanner = useCallback(() => {
     setLoginBannerVisible(false);
     sessionStorage.setItem('loginBannerDismissed', 'true');

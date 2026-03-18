@@ -114,8 +114,8 @@ export function useSearchSuggestionSources({
   );
   const commandQuery = queryModel.commandQuery;
   const normalizedDeferredQuery = useMemo(
-    () => normalizeSearchQuery(deferredSearchValue),
-    [deferredSearchValue],
+    () => normalizeSearchQuery(searchValue),
+    [searchValue],
   );
   const trimmedDeferredSearchValue = deferredSearchValue.trim();
   const debouncedBrowserHistoryQuery = useDebouncedValue(
@@ -125,21 +125,21 @@ export function useSearchSuggestionSources({
   const browserHistoryMaxResults = debouncedBrowserHistoryQuery ? BROWSER_HISTORY_QUERY_LIMIT : BROWSER_HISTORY_EMPTY_QUERY_LIMIT;
   const shouldFetchBrowserHistory = useMemo(() => {
     if (!historyPermissionGranted) return false;
-    if (!deferredSearchValue.trimStart()) return true;
+    if (!searchValue.trimStart()) return true;
     if (!normalizedDeferredQuery) return false;
-    return !deferredSearchValue.trimStart().startsWith('/');
-  }, [deferredSearchValue, historyPermissionGranted, normalizedDeferredQuery]);
+    return !searchValue.trimStart().startsWith('/');
+  }, [historyPermissionGranted, normalizedDeferredQuery, searchValue]);
 
   const syncSourceItems = useMemo(() => buildSearchSuggestionSourceItems({
-    deferredSearchValue,
+    deferredSearchValue: searchValue,
     filteredHistoryItems,
     scenarioShortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   }), [
-    deferredSearchValue,
     filteredHistoryItems,
     scenarioShortcuts,
+    searchValue,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   ]);
