@@ -49,45 +49,37 @@ function resolveSearchBarTheme(args: {
   resolvedTheme?: string;
 }): SearchBarTheme {
   const { blankMode, forceWhiteTheme, subtleDarkTone, resolvedTheme } = args;
-  const useDarkThemedDropdown = resolvedTheme === 'dark' && (forceWhiteTheme || blankMode);
+  const defaultTheme: SearchBarTheme = {
+    surfaceClassName: 'bg-secondary text-foreground',
+    triggerToneClassName: 'text-foreground/70',
+    clearButtonClassName: 'text-muted-foreground hover:text-foreground',
+    inputClassName: 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground',
+    placeholderClassName: 'text-muted-foreground',
+    linkIconClassName: 'text-muted-foreground',
+    dropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border',
+    dropdownRowClassName: 'text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground',
+    dropdownRowSelectedClassName: 'bg-accent text-foreground',
+    dropdownSecondaryTextClassName: 'text-muted-foreground',
+    engineDropdownSurfaceClassName: 'bg-secondary text-foreground border-border shadow-lg',
+    engineDropdownItemClassName: 'text-foreground hover:bg-accent hover:text-foreground',
+    engineDropdownItemSelectedClassName: 'bg-accent text-foreground',
+    dropdownStatusLoadingContainerClassName: 'bg-primary/10',
+    dropdownStatusInfoContainerClassName: 'bg-primary/10',
+    dropdownStatusDotClassName: 'bg-primary',
+    dropdownStatusTextClassName: 'text-primary',
+    dropdownStatusButtonClassName: 'bg-primary/15 text-primary hover:bg-primary/25',
+    dropdownClearButtonClassName: 'text-muted-foreground hover:text-foreground',
+    dropdownEmptyStateClassName: 'text-muted-foreground',
+    dropdownFooterClassName: 'border-border text-muted-foreground',
+  };
+  const darkTheme: SearchBarTheme = {
+    ...defaultTheme,
+    surfaceClassName: 'bg-[rgb(26,28,30)] text-foreground',
+    engineDropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
+  };
 
-  if (useDarkThemedDropdown) {
-    const darkSurfaceClassName = blankMode
-      ? 'bg-black/20 backdrop-blur-md text-white/80'
-      : 'bg-secondary text-foreground';
-    const darkTriggerToneClassName = blankMode ? 'text-white/70' : 'text-foreground/70';
-    const darkClearButtonClassName = blankMode
-      ? 'text-white/50 hover:text-white/90'
-      : 'text-muted-foreground hover:text-foreground';
-    const darkInputClassName = blankMode
-      ? 'bg-transparent dark:bg-transparent text-white/90 placeholder:text-white/45'
-      : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground';
-    const darkPlaceholderClassName = blankMode ? 'text-white/45' : 'text-muted-foreground';
-    const darkLinkIconClassName = blankMode ? 'text-white/45' : 'text-muted-foreground';
-
-    return {
-      surfaceClassName: darkSurfaceClassName,
-      triggerToneClassName: darkTriggerToneClassName,
-      clearButtonClassName: darkClearButtonClassName,
-      inputClassName: darkInputClassName,
-      placeholderClassName: darkPlaceholderClassName,
-      linkIconClassName: darkLinkIconClassName,
-      dropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
-      dropdownRowClassName: 'text-popover-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-      dropdownRowSelectedClassName: 'bg-accent text-accent-foreground',
-      dropdownSecondaryTextClassName: 'text-muted-foreground',
-      engineDropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
-      engineDropdownItemClassName: 'text-popover-foreground hover:bg-accent hover:text-accent-foreground',
-      engineDropdownItemSelectedClassName: 'bg-accent text-accent-foreground',
-      dropdownStatusLoadingContainerClassName: 'bg-accent/70',
-      dropdownStatusInfoContainerClassName: 'bg-accent/70',
-      dropdownStatusDotClassName: 'bg-primary',
-      dropdownStatusTextClassName: 'text-popover-foreground',
-      dropdownStatusButtonClassName: 'bg-accent text-foreground hover:bg-accent/80',
-      dropdownClearButtonClassName: 'text-muted-foreground hover:text-foreground',
-      dropdownEmptyStateClassName: 'text-muted-foreground',
-      dropdownFooterClassName: 'border-border text-muted-foreground',
-    };
+  if (resolvedTheme === 'dark') {
+    return darkTheme;
   }
 
   if (forceWhiteTheme) {
@@ -144,29 +136,7 @@ function resolveSearchBarTheme(args: {
     };
   }
 
-  return {
-    surfaceClassName: 'bg-secondary text-foreground',
-    triggerToneClassName: 'text-foreground/70',
-    clearButtonClassName: 'text-muted-foreground hover:text-foreground',
-    inputClassName: 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground',
-    placeholderClassName: 'text-muted-foreground',
-    linkIconClassName: 'text-muted-foreground',
-    dropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border',
-    dropdownRowClassName: 'text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground',
-    dropdownRowSelectedClassName: 'bg-accent text-foreground',
-    dropdownSecondaryTextClassName: 'text-muted-foreground',
-    engineDropdownSurfaceClassName: 'bg-secondary text-foreground border-border shadow-lg',
-    engineDropdownItemClassName: 'text-foreground hover:bg-accent hover:text-foreground',
-    engineDropdownItemSelectedClassName: 'bg-accent text-foreground',
-    dropdownStatusLoadingContainerClassName: 'bg-primary/10',
-    dropdownStatusInfoContainerClassName: 'bg-primary/10',
-    dropdownStatusDotClassName: 'bg-primary',
-    dropdownStatusTextClassName: 'text-primary',
-    dropdownStatusButtonClassName: 'bg-primary/15 text-primary hover:bg-primary/25',
-    dropdownClearButtonClassName: 'text-muted-foreground hover:text-foreground',
-    dropdownEmptyStateClassName: 'text-muted-foreground',
-    dropdownFooterClassName: 'border-border text-muted-foreground',
-  };
+  return defaultTheme;
 }
 
 function Frame3({
@@ -886,6 +856,14 @@ export function SearchBar({
     // Non-input targets (suggestion rows, panel actions) rely on the shared
     // suggestion keyboard controller first, so Enter behaves like other row actions.
     if ((e.target as HTMLElement).tagName !== 'INPUT') {
+      onKeyDown?.(e);
+      if (e.defaultPrevented) return;
+    }
+
+    // Input-originated Enter still gets a wrapper-level fallback so command
+    // panels like /tabs and /bookmarks can consume the selected suggestion
+    // before the generic submit path runs.
+    if ((e.target as HTMLElement).tagName === 'INPUT' && e.key === 'Enter') {
       onKeyDown?.(e);
       if (e.defaultPrevented) return;
     }

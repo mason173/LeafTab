@@ -1,10 +1,10 @@
 import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
-import { SearchBar } from '@/components/SearchBar';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
+import { SearchExperience } from '@/components/search/SearchExperience';
 import {
   INITIAL_REVEAL_TIMING,
   resolveInitialRevealOpacity,
@@ -30,14 +30,20 @@ interface HomeMainContentProps {
   showTime: boolean;
   displayMode: DisplayMode;
   is24Hour: boolean;
+  onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
-  disableSecondTickMotion: boolean;
+  onShowSecondsChange: (checked: boolean) => void;
+  showLunar: boolean;
+  onShowLunarChange: (checked: boolean) => void;
+  timeAnimationEnabled: boolean;
+  onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   disableBottomGradualBlur: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
   wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
-  searchBarProps: ComponentProps<typeof SearchBar>;
+  searchExperienceProps: ComponentProps<typeof SearchExperience>;
+  searchInteractionLocked: boolean;
   shortcutGridProps: ComponentProps<typeof ShortcutGrid>;
   onDrawerExpandedChange?: (expanded: boolean) => void;
 }
@@ -58,14 +64,20 @@ export const HomeMainContent = memo(function HomeMainContent({
   showTime,
   displayMode,
   is24Hour,
+  onIs24HourChange,
   showSeconds,
-  disableSecondTickMotion,
+  onShowSecondsChange,
+  showLunar,
+  onShowLunarChange,
+  timeAnimationEnabled,
+  onTimeAnimationModeChange,
   disableBottomGradualBlur,
   timeFont,
   onTimeFontChange,
   layout,
   wallpaperClockProps,
-  searchBarProps,
+  searchExperienceProps,
+  searchInteractionLocked,
   shortcutGridProps,
   onDrawerExpandedChange,
 }: HomeMainContentProps) {
@@ -79,7 +91,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   const homeWallpaperBottomPx = modeFlags.showHeroWallpaperClock
     ? homeTopOffsetPx + layout.wallpaperHeight
     : undefined;
-  const drawerScrollLocked = Boolean(searchBarProps.historyOpen || searchBarProps.dropdownOpen);
+  const drawerScrollLocked = searchInteractionLocked;
   const drawer = useQuickAccessDrawer({
     viewportHeight: layout.viewportHeight,
     showShortcuts: modeFlags.showShortcuts,
@@ -146,8 +158,13 @@ export const HomeMainContent = memo(function HomeMainContent({
               <div className="w-full transform-gpu will-change-transform">
                 <InlineTime
                   is24Hour={is24Hour}
+                  onIs24HourChange={onIs24HourChange}
                   showSeconds={showSeconds}
-                  disableSecondTickMotion={disableSecondTickMotion}
+                  onShowSecondsChange={onShowSecondsChange}
+                  showLunar={showLunar}
+                  onShowLunarChange={onShowLunarChange}
+                  timeAnimationEnabled={timeAnimationEnabled}
+                  onTimeAnimationModeChange={onTimeAnimationModeChange}
                   timeFont={timeFont}
                   onTimeFontChange={onTimeFontChange}
                   forceWhiteText={modeFlags.forceWhiteSearchTheme}
@@ -184,7 +201,7 @@ export const HomeMainContent = memo(function HomeMainContent({
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
-        searchBarProps={searchBarProps}
+        searchExperienceProps={searchExperienceProps}
         shortcutGridProps={shortcutGridProps}
         onDrawerOpenChange={drawer.handleDrawerOpenChange}
         onActiveSnapPointChange={drawer.handleActiveSnapPointChange}

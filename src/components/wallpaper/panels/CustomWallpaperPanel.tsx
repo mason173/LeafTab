@@ -12,6 +12,7 @@ interface CustomWallpaperPanelProps {
   mode: WallpaperMode;
   customWallpaper: string | null;
   wallpaperMaskOpacity: number;
+  wallpaperMaskPreviewOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
   onCustomWallpaperChange: (url: string) => void;
   onModeChange: (mode: WallpaperMode) => void;
@@ -24,6 +25,7 @@ export function CustomWallpaperPanel({
   mode,
   customWallpaper,
   wallpaperMaskOpacity,
+  wallpaperMaskPreviewOpacity,
   onWallpaperMaskOpacityChange,
   onCustomWallpaperChange,
   onModeChange,
@@ -36,6 +38,7 @@ export function CustomWallpaperPanel({
   const showCustomMaskSlider = mode === "custom" && !!customWallpaper;
   const isolateMaskSlider = isMaskSliderIsolation && showCustomMaskSlider;
   const fadeClass = "transition-opacity duration-220 ease-out";
+  const previewOpacity = wallpaperMaskPreviewOpacity ?? wallpaperMaskOpacity;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,7 +84,7 @@ export function CustomWallpaperPanel({
                 className={`w-full h-full object-cover ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
               />
               <WallpaperMaskOverlay
-                opacity={wallpaperMaskOpacity}
+                opacity={previewOpacity}
                 className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
               />
               {showCustomMaskSlider ? (
@@ -125,14 +128,8 @@ export function CustomWallpaperPanel({
           />
         </div>
 
-        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.custom")}</h4>
-            <p className="text-xs text-muted-foreground">
-              {customWallpaper ? t("weather.wallpaper.customUploaded") : t("weather.wallpaper.customDesc")}
-            </p>
-          </div>
-          <div className="flex justify-center">
+        <div className={`flex ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+          <div className="flex justify-center w-full">
             {mode === "custom" ? (
               <Button disabled variant="secondary" className="h-9 gap-2 min-w-[160px] bg-primary/10 text-primary hover:bg-primary/20 text-sm">
                 <RiCheckFill className="size-3.5" />

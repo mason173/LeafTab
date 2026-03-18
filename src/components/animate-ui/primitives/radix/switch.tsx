@@ -2,154 +2,57 @@
 
 import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch@1.1.3";
-import {
-  motion,
-  type HTMLMotionProps,
-  type LegacyAnimationControls,
-  type TargetAndTransition,
-  type VariantLabels,
-} from "framer-motion";
 
-import { useControlledState } from "@/hooks/use-controlled-state";
-import { getStrictContext } from "@/lib/get-strict-context";
 import { cn } from "@/components/ui/utils";
 
-type SwitchContextType = {
-  isChecked: boolean;
-  setIsChecked: (isChecked: boolean) => void;
-  isPressed: boolean;
-  setIsPressed: (isPressed: boolean) => void;
-};
+type SwitchProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>;
 
-const [SwitchProvider, useSwitch] =
-  getStrictContext<SwitchContextType>("SwitchContext");
-
-type SwitchProps = Omit<
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>,
-  "asChild"
-> &
-  HTMLMotionProps<"button">;
-
-function Switch({
-  className,
-  children,
-  checked,
-  defaultChecked,
-  onCheckedChange,
-  type,
-  style,
-  ...props
-}: SwitchProps) {
-  const reduceEffects =
-    typeof document !== "undefined" &&
-    document.documentElement.dataset.reduceEffects === "on";
-  const [isPressed, setIsPressed] = React.useState(false);
-  const [isChecked, setIsChecked] = useControlledState({
-    value: checked,
-    defaultValue: defaultChecked,
-    onChange: onCheckedChange,
-  });
-
+function Switch({ className, children, ...props }: SwitchProps) {
   return (
-    <SwitchProvider value={{ isChecked, setIsChecked, isPressed, setIsPressed }}>
-      <SwitchPrimitives.Root
-        checked={isChecked}
-        onCheckedChange={setIsChecked}
-        asChild
-      >
-        <motion.button
-          data-slot="switch"
-          whileTap={reduceEffects ? undefined : "tap"}
-          initial={false}
-          onTapStart={() => {
-            if (reduceEffects) return;
-            setIsPressed(true);
-          }}
-          onTapCancel={() => setIsPressed(false)}
-          onTap={() => setIsPressed(false)}
-          className={className}
-          type={type ?? "button"}
-          style={reduceEffects ? { ...style, transition: "none" } : style}
-          {...props}
-        >
-          {children ?? <SwitchThumb />}
-        </motion.button>
-      </SwitchPrimitives.Root>
-    </SwitchProvider>
+    <SwitchPrimitives.Root
+      data-slot="switch"
+      className={cn(
+        "relative inline-flex h-6 w-10 shrink-0 items-center justify-start rounded-full border border-border p-0.5 outline-none transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      )}
+      {...props}
+    >
+      {children ?? <SwitchThumb />}
+    </SwitchPrimitives.Root>
   );
 }
 
-type SwitchThumbProps = Omit<
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Thumb>,
-  "asChild"
-> &
-  HTMLMotionProps<"div"> & {
-    pressedAnimation?:
-      | TargetAndTransition
-      | VariantLabels
-      | boolean
-      | LegacyAnimationControls;
-  };
+type SwitchThumbProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Thumb> & {
+  pressedAnimation?: unknown;
+};
 
-function SwitchThumb({
-  className,
-  pressedAnimation,
-  transition = { type: "spring", stiffness: 300, damping: 25 },
-  ...props
-}: SwitchThumbProps) {
-  const reduceEffects =
-    typeof document !== "undefined" &&
-    document.documentElement.dataset.reduceEffects === "on";
-  const { isPressed } = useSwitch();
-  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
-
+function SwitchThumb({ className, ...props }: SwitchThumbProps) {
   return (
-    <SwitchPrimitives.Thumb asChild>
-      <motion.div
-        data-slot="switch-thumb"
-        layout={!reduceEffects}
-        className={cn("block h-full aspect-square rounded-full bg-background", className)}
-        transition={resolvedTransition}
-        animate={reduceEffects ? undefined : (isPressed ? pressedAnimation : undefined)}
-        style={reduceEffects ? { transition: "none" } : undefined}
-        {...props}
-      />
-    </SwitchPrimitives.Thumb>
+    <SwitchPrimitives.Thumb
+      data-slot="switch-thumb"
+      className={cn("block h-full aspect-square rounded-full bg-background", className)}
+      {...props}
+    />
   );
 }
 
 type SwitchIconPosition = "left" | "right" | "thumb";
 
-type SwitchIconProps = HTMLMotionProps<"div"> & {
+type SwitchIconProps = React.ComponentPropsWithoutRef<"div"> & {
   position: SwitchIconPosition;
 };
 
-function SwitchIcon({
-  position,
-  transition = { type: "spring", bounce: 0 },
-  ...props
-}: SwitchIconProps) {
-  const reduceEffects =
-    typeof document !== "undefined" &&
-    document.documentElement.dataset.reduceEffects === "on";
-  const { isChecked } = useSwitch();
-  const resolvedTransition = reduceEffects ? { duration: 0 } : transition;
+function SwitchIcon({ position: _position, ...props }: SwitchIconProps) {
+  return <div {...props} />;
+}
 
-  const isAnimated = React.useMemo(() => {
-    if (position === "right") return !isChecked;
-    if (position === "left") return isChecked;
-    if (position === "thumb") return true;
-    return false;
-  }, [position, isChecked]);
-
-  return (
-    <motion.div
-      data-slot={`switch-${position}-icon`}
-      animate={isAnimated ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-      transition={resolvedTransition}
-      {...props}
-    />
-  );
+function useSwitch() {
+  return {
+    isChecked: false,
+    setIsChecked: () => {},
+    isPressed: false,
+    setIsPressed: () => {},
+  };
 }
 
 export {
@@ -161,5 +64,4 @@ export {
   type SwitchThumbProps,
   type SwitchIconProps,
   type SwitchIconPosition,
-  type SwitchContextType,
 };

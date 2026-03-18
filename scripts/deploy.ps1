@@ -64,9 +64,7 @@ if (Test-Path "deployment/Caddyfile") {
 # 4. Deploy Backend
 Write-Host ">>> Deploying Backend..."
 ssh -o StrictHostKeyChecking=no ${User}@${ServerIP} "mkdir -p ${BackendRemoteDir}"
-# Upload server files (excluding node_modules and db)
-# Using a temp exclude file or careful copy would be better, but for simplicity we copy all and then clean or rely on scp exclusion if possible. 
-# Since scp doesn't support exclude easily, we will copy specific files.
+# Upload required server files explicitly (scp exclude rules are limited).
 Write-Host ">>> Uploading server files..."
 scp -o StrictHostKeyChecking=no server/package.json server/package-lock.json server/index.js server/clear_users.js "${User}@${ServerIP}:${BackendRemoteDir}/"
 

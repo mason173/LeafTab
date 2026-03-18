@@ -11,6 +11,7 @@ import type { WallpaperMode } from "@/wallpaper/types";
 interface WeatherWallpaperPanelProps {
   mode: WallpaperMode;
   wallpaperMaskOpacity: number;
+  wallpaperMaskPreviewOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
   onModeChange: (mode: WallpaperMode) => void;
   isMaskSliderIsolation?: boolean;
@@ -21,6 +22,7 @@ interface WeatherWallpaperPanelProps {
 export function WeatherWallpaperPanel({
   mode,
   wallpaperMaskOpacity,
+  wallpaperMaskPreviewOpacity,
   onWallpaperMaskOpacityChange,
   onModeChange,
   isMaskSliderIsolation = false,
@@ -41,6 +43,7 @@ export function WeatherWallpaperPanel({
   const showWeatherMaskSlider = mode === "weather";
   const isolateMaskSlider = isMaskSliderIsolation && showWeatherMaskSlider;
   const fadeClass = "transition-opacity duration-220 ease-out";
+  const previewOpacity = wallpaperMaskPreviewOpacity ?? wallpaperMaskOpacity;
 
   const goPrevWeatherPreview = () => {
     setWeatherPreviewIndex((prev) => (prev - 1 + weatherPreviewVideos.length) % weatherPreviewVideos.length);
@@ -63,7 +66,7 @@ export function WeatherWallpaperPanel({
             playsInline
           />
           <WallpaperMaskOverlay
-            opacity={wallpaperMaskOpacity}
+            opacity={previewOpacity}
             className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
           />
           {showWeatherMaskSlider ? (
@@ -106,12 +109,8 @@ export function WeatherWallpaperPanel({
           </div>
         </div>
 
-        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.weather")}</h4>
-            <p className="text-xs text-muted-foreground">{t("weather.wallpaper.weatherDesc")}</p>
-          </div>
-          <div className="flex justify-center">
+        <div className={`flex ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+          <div className="flex justify-center w-full">
             {mode === "weather" ? (
               <Button disabled variant="secondary" className="h-9 gap-2 min-w-[160px] bg-primary/10 text-primary hover:bg-primary/20 text-sm">
                 <RiCheckFill className="size-3.5" />

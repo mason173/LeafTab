@@ -11,6 +11,7 @@ interface BingWallpaperPanelProps {
   mode: WallpaperMode;
   bingWallpaper: string;
   wallpaperMaskOpacity: number;
+  wallpaperMaskPreviewOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
   onModeChange: (mode: WallpaperMode) => void;
   isMaskSliderIsolation?: boolean;
@@ -22,6 +23,7 @@ export function BingWallpaperPanel({
   mode,
   bingWallpaper,
   wallpaperMaskOpacity,
+  wallpaperMaskPreviewOpacity,
   onWallpaperMaskOpacityChange,
   onModeChange,
   isMaskSliderIsolation = false,
@@ -32,6 +34,7 @@ export function BingWallpaperPanel({
   const showBingMaskSlider = mode === "bing";
   const isolateMaskSlider = isMaskSliderIsolation && showBingMaskSlider;
   const fadeClass = "transition-opacity duration-220 ease-out";
+  const previewOpacity = wallpaperMaskPreviewOpacity ?? wallpaperMaskOpacity;
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -84,7 +87,7 @@ export function BingWallpaperPanel({
             className={`w-full h-full object-cover ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
           />
           <WallpaperMaskOverlay
-            opacity={wallpaperMaskOpacity}
+            opacity={previewOpacity}
             className={`absolute inset-0 pointer-events-none ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
           />
           {showBingMaskSlider ? (
@@ -110,12 +113,8 @@ export function BingWallpaperPanel({
           </div>
         </div>
 
-        <div className={`flex flex-col gap-3 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.bing")}</h4>
-            <p className="text-xs text-muted-foreground">{t("weather.wallpaper.bingDesc")}</p>
-          </div>
-          <div className="flex justify-center">
+        <div className={`flex ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+          <div className="flex justify-center w-full">
             {mode === "bing" ? (
               <Button disabled variant="secondary" className="h-9 gap-2 min-w-[160px] bg-primary/10 text-primary hover:bg-primary/20 text-sm">
                 <RiCheckFill className="size-3.5" />

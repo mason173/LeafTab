@@ -58,14 +58,8 @@ export function ColorWallpaperPanel({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
-          <div className="space-y-1">
-            <h4 className="text-sm font-medium leading-none">{t("weather.wallpaper.color", { defaultValue: "颜色" })}</h4>
-            <p className="text-xs text-muted-foreground">
-              {t("weather.wallpaper.colorDesc", { defaultValue: "从 12 组淡雅渐变中选择你喜欢的颜色壁纸。" })}
-            </p>
-          </div>
-          <div className="flex justify-center">
+        <div className="flex">
+          <div className="flex justify-center w-full">
             {mode === "color" ? (
               <Button disabled variant="secondary" className="h-9 gap-2 min-w-[160px] bg-primary/10 text-primary hover:bg-primary/20 text-sm">
                 <RiCheckFill className="size-3.5" />

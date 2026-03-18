@@ -7,8 +7,12 @@ import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSe
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 import type { SearchQueryModel } from '@/utils/searchQueryModel';
-import { buildSearchSuggestionSourceItems } from '@/utils/searchSuggestionSources';
+import {
+  buildSearchSuggestionSourceItems,
+  buildShortcutSearchIndex,
+} from '@/utils/searchSuggestionSources';
 import type { SearchCommandPermission } from '@/utils/searchCommands';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 type UseSearchSuggestionSourcesOptions = {
   searchValue: string;
@@ -128,6 +132,7 @@ export function useSearchSuggestionSources({
   tabsPermissionGranted,
   permissionWarmup,
 }: UseSearchSuggestionSourcesOptions) {
+  const isDocumentVisible = useDocumentVisibility();
   const deferredSearchValue = useDeferredValue(searchValue);
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
   const [browserHistoryCacheVersion, setBrowserHistoryCacheVersion] = useState(0);
@@ -137,8 +142,8 @@ export function useSearchSuggestionSources({
   );
   const commandQuery = queryModel.commandQuery;
   const normalizedDeferredQuery = useMemo(
-    () => normalizeSearchQuery(searchValue),
-    [searchValue],
+    () => normalizeSearchQuery(deferredSearchValue),
+    [deferredSearchValue],
   );
   const trimmedDeferredSearchValue = deferredSearchValue.trim();
   const debouncedBrowserHistoryQuery = useDebouncedValue(
@@ -147,24 +152,36 @@ export function useSearchSuggestionSources({
   );
   const browserHistoryMaxResults = debouncedBrowserHistoryQuery ? BROWSER_HISTORY_QUERY_LIMIT : BROWSER_HISTORY_EMPTY_QUERY_LIMIT;
   const shouldFetchBrowserHistory = useMemo(() => {
+    if (!isDocumentVisible) return false;
     if (!historyPermissionGranted) return false;
     if (permissionWarmup === 'history') return false;
-    if (!searchValue.trimStart()) return true;
+    if (!trimmedDeferredSearchValue) return true;
     if (!normalizedDeferredQuery) return false;
-    return !searchValue.trimStart().startsWith('/');
-  }, [historyPermissionGranted, normalizedDeferredQuery, permissionWarmup, searchValue]);
+    return !trimmedDeferredSearchValue.startsWith('/');
+  }, [
+    historyPermissionGranted,
+    isDocumentVisible,
+    normalizedDeferredQuery,
+    permissionWarmup,
+    trimmedDeferredSearchValue,
+  ]);
+
+  const shortcutSearchIndex = useMemo(
+    () => buildShortcutSearchIndex(scenarioShortcuts),
+    [scenarioShortcuts],
+  );
 
   const syncSourceItems = useMemo(() => buildSearchSuggestionSourceItems({
-    deferredSearchValue: searchValue,
+    deferredSearchValue,
     filteredHistoryItems,
-    scenarioShortcuts,
+    shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   }), [
+    deferredSearchValue,
     filteredHistoryItems,
-    scenarioShortcuts,
-    searchValue,
     searchSiteShortcutEnabled,
+    shortcutSearchIndex,
     suggestionUsageMap,
   ]);
 
@@ -172,7 +189,7 @@ export function useSearchSuggestionSources({
     items: bookmarkSuggestionItems,
     loading: bookmarkLoading,
   } = useAsyncSearchSuggestionSource({
-    enabled: suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
+    enabled: isDocumentVisible && suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
     query: commandQuery,
     getCachedItems: (query) => getCachedBookmarkSuggestions(query, 30),
     load: async (query) => {
@@ -186,7 +203,7 @@ export function useSearchSuggestionSources({
     items: tabSuggestionItems,
     loading: tabLoading,
   } = useAsyncSearchSuggestionSource({
-    enabled: suggestionDisplayMode === 'tabs' && tabsPermissionGranted && permissionWarmup !== 'tabs',
+    enabled: isDocumentVisible && suggestionDisplayMode === 'tabs' && tabsPermissionGranted && permissionWarmup !== 'tabs',
     query: commandQuery,
     getCachedItems: (query) => getCachedTabSuggestions(query, 50),
     load: async (query) => {

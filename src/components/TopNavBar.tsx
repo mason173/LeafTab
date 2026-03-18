@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, memo } from 'react';
 import { RiSettings4Fill } from '@/icons/ri-compat';
 import { Magnetic } from '@/components/motion-primitives/magnetic';
 import { LazyWeatherCard } from '@/lazy/components';
@@ -74,7 +74,7 @@ interface TopNavBarProps {
   reduceVisualEffects?: boolean;
 }
 
-export function TopNavBar({ 
+export const TopNavBar = memo(function TopNavBar({ 
   onSettingsClick,
   hideWeather = false,
   settingsRevealOnHover = false,
@@ -132,4 +132,4 @@ export function TopNavBar({
       </div>
     </div>
   );
-}
+});

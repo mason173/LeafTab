@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'next-themes';
 import {
   RiArrowDownLine,
   RiArrowUpLine,
@@ -19,7 +20,6 @@ import imgImage from "./assets/Default_wallpaper.png?url";
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
-import { useSearch } from './hooks/useSearch';
 import { useShortcuts } from './hooks/useShortcuts';
 import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
@@ -27,14 +27,10 @@ import { useRole } from './hooks/useRole';
 import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
 import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
-import { useRotatingText } from './hooks/useRotatingText';
 import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
-import { useSearchSuggestions } from './hooks/useSearchSuggestions';
-import { useSearchInteractionController } from './hooks/useSearchInteractionController';
 import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
-import type { SearchSuggestionItem } from './types';
 
 // Components
 import { TopNavBar } from './components/TopNavBar';
@@ -42,6 +38,7 @@ import ScenarioModeMenu from './components/ScenarioModeMenu';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
 import { HomeMainContent } from './components/home/HomeMainContent';
+import type { SearchInteractionState } from './components/search/SearchExperience';
 import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
@@ -49,7 +46,6 @@ import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdav
 import { isWebdavAuthError } from '@/utils/webdavError';
 import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
-import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import {
   buildBackupDataV4,
   clampShortcutsRowsPerColumn,
@@ -64,24 +60,16 @@ import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
+import { AppDialogs } from './components/AppDialogs';
+import WallpaperSelector from './components/WallpaperSelector';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 import {
-  LazyAppDialogs,
   LazyRoleSelector,
   LazyUpdateAvailableDialog,
-  LazyWallpaperSelector,
 } from '@/lazy/components';
-import {
-  buildShortcutUsageKey,
-  readSuggestionUsageMap,
-  recordSuggestionUsage,
-} from '@/utils/suggestionPersonalization';
-import { matchSearchCommandAliasInput, type SearchCommandPermission } from '@/utils/searchCommands';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
-import { createSearchQueryModel } from '@/utils/searchQueryModel';
-import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import {
   INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -105,15 +93,39 @@ const getApiBase = () => {
 
 const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
 const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
-const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
-const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
+const DARK_MODE_AUTO_DIM_OPACITY = 12;
+const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
+const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 4 * 60 * 1000;
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
   localPayload: WebdavPayload;
   remotePayload: WebdavPayload;
   choice: WebdavConflictChoice;
+};
+
+const clampMaskOpacity = (value: number): number => {
+  if (!Number.isFinite(value)) return 10;
+  return Math.max(0, Math.min(100, value));
+};
+
+const resolveWallpaperMaskOpacityWithDarkModeAutoDim = (args: {
+  userOpacity: number;
+  isDarkTheme: boolean;
+  autoDimEnabled: boolean;
+}): number => {
+  const { userOpacity, isDarkTheme, autoDimEnabled } = args;
+  const safeUserOpacity = clampMaskOpacity(userOpacity);
+  if (!isDarkTheme || !autoDimEnabled) return safeUserOpacity;
+  if (safeUserOpacity >= DARK_MODE_AUTO_DIM_OPACITY_CAP) return safeUserOpacity;
+
+  const userRatio = safeUserOpacity / 100;
+  const autoDimRatio = DARK_MODE_AUTO_DIM_OPACITY / 100;
+  const boostedRatio = 1 - (1 - userRatio) * (1 - autoDimRatio);
+  const boostedOpacity = boostedRatio * 100;
+  const cappedBoostedOpacity = Math.min(DARK_MODE_AUTO_DIM_OPACITY_CAP, boostedOpacity);
+  return Math.max(safeUserOpacity, cappedBoostedOpacity);
 };
 
 function readAccentColorSetting(): string {
@@ -171,8 +183,6 @@ export default function App() {
   const { t, i18n } = useTranslation();
   const pageFocusRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchAreaRef = useRef<HTMLDivElement>(null);
-  const searchDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let attempts = 0;
@@ -251,10 +261,10 @@ export default function App() {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
+  const [shortcutGuideOpen, setShortcutGuideOpen] = useState(false);
   const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
-  const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [isQuickAccessDrawerExpanded, setIsQuickAccessDrawerExpanded] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
@@ -319,7 +329,10 @@ export default function App() {
     searchSiteShortcutEnabled, setSearchSiteShortcutEnabled,
     searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled, setSearchCalculatorEnabled,
+    preventDuplicateNewTab, setPreventDuplicateNewTab,
     is24Hour, setIs24Hour,
+    showLunar, setShowLunar,
+    timeAnimationMode, setTimeAnimationMode,
     timeFont, setTimeFont,
     showSeconds, setShowSeconds,
     visualEffectsLevel, setVisualEffectsLevel,
@@ -334,6 +347,12 @@ export default function App() {
     customApiName, setCustomApiName,
   } = useSettings();
   const visualEffectsPolicy = useVisualEffectsPolicy(visualEffectsLevel);
+  const effectiveTimeAnimationEnabled = timeAnimationMode === 'on'
+    ? true
+    : timeAnimationMode === 'off'
+      ? false
+      : !visualEffectsPolicy.disableSecondTickMotion;
+  const [isDynamicWallpaperIdleFrozen, setIsDynamicWallpaperIdleFrozen] = useState(false);
   const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
@@ -344,6 +363,55 @@ export default function App() {
       delete document.documentElement.dataset.reduceEffects;
     };
   }, [visualEffectsPolicy.reduceVisualEffects]);
+
+  useEffect(() => {
+    let idleTimer: number | null = null;
+
+    const clearIdleTimer = () => {
+      if (idleTimer !== null) {
+        window.clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+    };
+
+    const scheduleIdleFreeze = () => {
+      clearIdleTimer();
+      idleTimer = window.setTimeout(() => {
+        setIsDynamicWallpaperIdleFrozen(true);
+      }, DYNAMIC_WALLPAPER_IDLE_FREEZE_MS);
+    };
+
+    const markActive = () => {
+      if (document.hidden) return;
+      setIsDynamicWallpaperIdleFrozen(false);
+      scheduleIdleFreeze();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearIdleTimer();
+        setIsDynamicWallpaperIdleFrozen(true);
+        return;
+      }
+      markActive();
+    };
+
+    markActive();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pointerdown', markActive, { passive: true });
+    window.addEventListener('wheel', markActive, { passive: true });
+    window.addEventListener('touchstart', markActive, { passive: true });
+    window.addEventListener('keydown', markActive, true);
+
+    return () => {
+      clearIdleTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pointerdown', markActive);
+      window.removeEventListener('wheel', markActive);
+      window.removeEventListener('touchstart', markActive);
+      window.removeEventListener('keydown', markActive, true);
+    };
+  }, []);
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
 
@@ -364,34 +432,18 @@ export default function App() {
     snoozeCurrentRelease,
   } = useGithubReleaseUpdate(API_URL);
 
-  const {
-    searchValue, setSearchValue,
-    searchHistory, setSearchHistory,
-    historySelectedIndex, setHistorySelectedIndex,
-    searchEngine, setSearchEngine,
-    dropdownOpen, setDropdownOpen,
-    historyOpen,
-    openHistoryPanel,
-    closeHistoryPanel,
-    syncHistorySelectionByCount,
-    handleSearchChange,
-    filteredHistoryItems,
-    handleSearch,
-    handleEngineClick,
-    handleEngineSelect,
-    cycleSearchEngine,
-    openSearchWithQuery,
-  } = useSearch(openInNewTab, {
-    prefixEnabled: searchPrefixEnabled,
-    siteDirectEnabled: searchSiteDirectEnabled,
+  const [searchInteractionState, setSearchInteractionState] = useState<SearchInteractionState>({
+    historyOpen: false,
+    dropdownOpen: false,
+    typingBurst: false,
   });
-  const pointerHighlightLockUntilRef = useRef(0);
-
-  useEffect(() => {
-    if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
-    if (dropdownOpen) setDropdownOpen(false);
-    if (searchEngine !== 'system') setSearchEngine('system');
-  }, [dropdownOpen, searchEngine, setDropdownOpen, setSearchEngine]);
+  const searchPerformanceModeActive = searchInteractionState.historyOpen
+    || searchInteractionState.dropdownOpen
+    || searchInteractionState.typingBurst;
+  const effectiveTopTimeAnimationEnabled = effectiveTimeAnimationEnabled && !searchPerformanceModeActive;
+  const shouldFreezeDynamicWallpaper = visualEffectsPolicy.freezeDynamicWallpaper
+    || isDynamicWallpaperIdleFrozen
+    || searchPerformanceModeActive;
 
   const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
   const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant, responsiveLayout.density);
@@ -601,437 +653,80 @@ export default function App() {
     } catch {}
   }, [API_URL, t]);
 
-  const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
-  const [searchPermissions, setSearchPermissions] = useState<Record<SearchCommandPermission, boolean>>(() => ({
-    bookmarks: typeof chrome === 'undefined' || !chrome.runtime?.id,
-    history: typeof chrome === 'undefined' || !chrome.runtime?.id,
-    tabs: typeof chrome === 'undefined' || !chrome.runtime?.id,
-  }));
-  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => (
-    typeof chrome === 'undefined' || !chrome.runtime?.id
-  ));
-  const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
-  const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
-  const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
-  const searchQueryModel = useMemo(() => createSearchQueryModel(searchValue, {
-    prefixEnabled: searchPrefixEnabled,
-    siteDirectEnabled: searchSiteDirectEnabled,
-    calculatorEnabled: searchCalculatorEnabled,
-  }), [
-    searchCalculatorEnabled,
-    searchPrefixEnabled,
-    searchSiteDirectEnabled,
-    searchValue,
-  ]);
-  const {
-    items: mergedSuggestionItems,
-    sourceStatus: suggestionSourceStatus,
-  } = useSearchSuggestions({
-    searchValue,
-    queryModel: searchQueryModel,
-    filteredHistoryItems,
-    scenarioShortcuts,
-    searchSiteShortcutEnabled,
-    suggestionUsageMap,
-    historyPermissionGranted: searchPermissions.history,
-    bookmarksPermissionGranted: searchPermissions.bookmarks,
-    tabsPermissionGranted: searchPermissions.tabs,
-    permissionWarmup,
-  });
-  const calculatorPreview = searchQueryModel.calculatorPreview;
-  const calculatorInlinePreview = useMemo(() => {
-    if (!calculatorPreview) return '';
-    return `=${calculatorPreview.resultText}`;
-  }, [calculatorPreview]);
-  const siteDirectInlinePreview = useMemo(() => {
-    if (searchQueryModel.command.active) return '';
-    const { query, siteDomain, siteSearchUrl, siteLabel } = searchQueryModel.siteSearch;
-    if (!query || !siteLabel) return '';
-    if (!siteSearchUrl && !siteDomain) return '';
-    const resolvedSiteLabel = siteLabel === 'YouTube' ? 'Youtube' : siteLabel;
-    return t('search.siteDirectInlineHint', {
-      site: resolvedSiteLabel,
-      defaultValue: `在${resolvedSiteLabel}中搜索`,
-    });
-  }, [searchQueryModel.command.active, searchQueryModel.siteSearch, t]);
-  const enginePrefixInlinePreview = useMemo(() => {
-    if (searchQueryModel.command.active) return '';
-    const { query, overrideEngine } = searchQueryModel.enginePrefix;
-    if (!overrideEngine || !query) return '';
-    const engineLabelMap = {
-      google: 'Google',
-      bing: 'Bing',
-      duckduckgo: 'DuckDuckGo',
-      baidu: 'Baidu',
-    } as const;
-    const engineLabel = engineLabelMap[overrideEngine];
-    return t('search.prefixEngineInlineHint', {
-      engine: engineLabel,
-      defaultValue: `用${engineLabel}搜索`,
-    });
-  }, [searchQueryModel.command.active, searchQueryModel.enginePrefix, t]);
-  const searchInlinePreview = siteDirectInlinePreview || enginePrefixInlinePreview || calculatorInlinePreview;
-
-  const copyTextToClipboard = useCallback(async (copyText: string) => {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(copyText);
-      return;
-    }
-    const el = document.createElement('textarea');
-    el.value = copyText;
-    el.setAttribute('readonly', '');
-    el.style.position = 'fixed';
-    el.style.left = '-9999px';
-    document.body.appendChild(el);
-    el.select();
-    const copied = document.execCommand('copy');
-    document.body.removeChild(el);
-    if (!copied) throw new Error('copy_failed');
+  const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
+  const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
+    setSearchInteractionState((prevState) => (
+      prevState.historyOpen === nextState.historyOpen
+      && prevState.dropdownOpen === nextState.dropdownOpen
+      && prevState.typingBurst === nextState.typingBurst
+    ) ? prevState : nextState);
   }, []);
 
-  const openSuggestionItem = useCallback((item: SearchSuggestionItem) => {
-    if (item.type === 'tab' && Number.isFinite(item.tabId)) {
-      const tabsApi = globalThis.chrome?.tabs;
-      if (tabsApi?.update && typeof item.tabId === 'number') {
-        tabsApi.update(item.tabId, { active: true }, () => {});
-      }
-      const windowsApi = globalThis.chrome?.windows;
-      if (windowsApi?.update && typeof item.windowId === 'number') {
-        windowsApi.update(item.windowId, { focused: true }, () => {});
-      }
-      closeHistoryPanel('selection');
+  const handlePreventDuplicateNewTabChange = useCallback((checked: boolean) => {
+    if (!checked) {
+      setPreventDuplicateNewTab(false);
       return;
     }
-    if (item.type === 'shortcut') {
-      const usageKey = buildShortcutUsageKey(item.value);
-      if (usageKey) {
-        recordSuggestionUsage(usageKey);
-        setSuggestionUsageVersion((prev) => prev + 1);
-      }
-    }
-    openSearchWithQuery(item.value);
-    closeHistoryPanel('selection');
-  }, [closeHistoryPanel, openSearchWithQuery]);
+    if (preventDuplicatePermissionRequestInFlight) return;
 
-  const showSearchCommandPermissionDeniedToast = useCallback((permission: 'bookmarks' | 'history' | 'tabs') => {
-    if (permission === 'bookmarks') {
-      toast.error(t('search.permissionBookmarksDenied', {
-        defaultValue: '未授予书签权限，无法搜索书签。下次使用 /b 时可再次申请。',
-      }));
-    } else if (permission === 'tabs') {
-      toast.error(t('search.permissionTabsDenied', {
-        defaultValue: '未授予标签页权限，无法搜索已打开标签页。下次使用 /t 时可再次申请。',
-      }));
-    } else {
-      toast.error(t('search.permissionHistoryDenied', {
-        defaultValue: '未授予历史记录权限，无法显示浏览器历史记录。可在下拉框顶部再次申请。',
-      }));
-    }
-  }, [t]);
-
-  const setSearchPermissionGranted = useCallback((permission: SearchCommandPermission, granted: boolean) => {
-    setSearchPermissions((prev) => {
-      if (prev[permission] === granted) return prev;
-      return {
-        ...prev,
-        [permission]: granted,
-      };
-    });
-    setSearchPermissionsReady(true);
-  }, []);
-
-  const activateSuggestionItem = useCallback((item: SearchSuggestionItem) => {
-    if (item.type === 'tab') {
-      if (!searchPermissions.tabs) {
-        showSearchCommandPermissionDeniedToast('tabs');
-        return;
-      }
-      openSuggestionItem(item);
-      return;
-    }
-
-    if (item.type === 'bookmark') {
-      if (!searchPermissions.bookmarks) {
-        showSearchCommandPermissionDeniedToast('bookmarks');
-        return;
-      }
-      openSuggestionItem(item);
-      return;
-    }
-
-    openSuggestionItem(item);
-  }, [openSuggestionItem, searchPermissions.bookmarks, searchPermissions.tabs, showSearchCommandPermissionDeniedToast]);
-
-  const refreshSearchPermissionStatus = useCallback((permissions: SearchCommandPermission[] = SEARCH_PERMISSION_KEYS) => {
-    void Promise.all(
-      permissions.map((permission) => ensureExtensionPermission(permission, { requestIfNeeded: false })
-        .then((granted) => ({ permission, granted }))
-        .catch(() => ({ permission, granted: false }))),
-    ).then((results) => {
-      setSearchPermissions((prev) => {
-        let changed = false;
-        const next = { ...prev };
-        results.forEach(({ permission, granted }) => {
-          if (next[permission] !== granted) {
-            next[permission] = granted;
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-      setSearchPermissionsReady(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    refreshSearchPermissionStatus();
-  }, [refreshSearchPermissionStatus]);
-
-  useEffect(() => {
-    const tabsApi = globalThis.chrome?.tabs;
-    const windowsApi = globalThis.chrome?.windows;
-    if (!tabsApi?.query) return;
-
-    const syncCurrentBrowserTabId = () => {
-      tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
-        if (globalThis.chrome?.runtime?.lastError) {
-          setCurrentBrowserTabId(null);
+    setPreventDuplicatePermissionRequestInFlight(true);
+    void ensureExtensionPermission('tabs')
+      .then((granted) => {
+        setPreventDuplicatePermissionRequestInFlight(false);
+        if (!granted) {
+          toast.error(t('settings.preventDuplicateNewTab.permissionDenied', {
+            defaultValue: '未授予标签页权限，无法启用避免重复打开 LeafTab。',
+          }));
           return;
         }
-        const activeTabId = tabs?.find((tab) => Number.isFinite(tab.id))?.id;
-        setCurrentBrowserTabId(Number.isFinite(activeTabId) ? Number(activeTabId) : null);
+        setPreventDuplicateNewTab(true);
+      })
+      .catch(() => {
+        setPreventDuplicatePermissionRequestInFlight(false);
+        toast.error(t('settings.preventDuplicateNewTab.permissionFailed', {
+          defaultValue: '申请标签页权限失败，请重试。',
+        }));
       });
-    };
-
-    syncCurrentBrowserTabId();
-    tabsApi.onActivated?.addListener(syncCurrentBrowserTabId);
-    windowsApi?.onFocusChanged?.addListener(syncCurrentBrowserTabId);
-    return () => {
-      tabsApi.onActivated?.removeListener(syncCurrentBrowserTabId);
-      windowsApi?.onFocusChanged?.removeListener(syncCurrentBrowserTabId);
-    };
-  }, []);
-
-  const notifyCurrentTabProtected = useCallback(() => {
-    toast.error(t('search.tabCloseCurrentBlocked', {
-      defaultValue: '当前标签页不能在这里关闭',
-    }));
-  }, [t]);
+  }, [
+    preventDuplicatePermissionRequestInFlight,
+    setPreventDuplicateNewTab,
+    t,
+  ]);
 
   useEffect(() => {
+    if (!preventDuplicateNewTab) return;
+
+    let canceled = false;
+    const syncTabsPermission = () => {
+      void ensureExtensionPermission('tabs', { requestIfNeeded: false })
+        .then((granted) => {
+          if (canceled || granted) return;
+          setPreventDuplicateNewTab(false);
+        })
+        .catch(() => {});
+    };
+
+    syncTabsPermission();
+
     const permissionsApi = globalThis.chrome?.permissions;
-    if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
+    if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) {
+      return () => {
+        canceled = true;
+      };
+    }
 
     const handlePermissionsChanged = () => {
-      refreshSearchPermissionStatus();
+      syncTabsPermission();
     };
     permissionsApi.onAdded.addListener(handlePermissionsChanged);
     permissionsApi.onRemoved.addListener(handlePermissionsChanged);
     return () => {
+      canceled = true;
       permissionsApi.onAdded.removeListener(handlePermissionsChanged);
       permissionsApi.onRemoved.removeListener(handlePermissionsChanged);
     };
-  }, [refreshSearchPermissionStatus]);
-
-  const runAfterSearchCommandPermission = useCallback((
-    permission: 'bookmarks' | 'history' | 'tabs',
-    onGranted: () => void,
-  ) => {
-    if (searchPermissions[permission]) {
-      onGranted();
-      return;
-    }
-    if (permissionRequestInFlight === permission) return;
-
-    const chromeApi = (globalThis as any)?.chrome;
-    const runtime = chromeApi?.runtime;
-    const permissionsApi = chromeApi?.permissions;
-    if (!runtime?.id || !permissionsApi?.request) {
-      setSearchPermissionGranted(permission, true);
-      onGranted();
-      return;
-    }
-
-    setPermissionRequestInFlight(permission);
-    permissionsApi.request({ permissions: [permission] }, (allowed: boolean) => {
-      setPermissionRequestInFlight((current) => (current === permission ? null : current));
-      const lastError = runtime.lastError;
-      if (lastError) {
-        toast.error(t('search.permissionRequestFailed', {
-          defaultValue: '权限申请失败，请重试。',
-        }));
-        return;
-      }
-      if (!allowed) {
-        setSearchPermissionGranted(permission, false);
-        showSearchCommandPermissionDeniedToast(permission);
-        return;
-      }
-      setSearchPermissionGranted(permission, true);
-      setPermissionWarmup(permission);
-      scheduleAfterInteractivePaint(() => {
-        setPermissionWarmup((current) => (current === permission ? null : current));
-        onGranted();
-      });
-    });
-  }, [
-    permissionRequestInFlight,
-    scheduleAfterInteractivePaint,
-    searchPermissions,
-    setSearchPermissionGranted,
-    showSearchCommandPermissionDeniedToast,
-    t,
-  ]);
-
-  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const nextValue = e.target.value;
-    const matchedAlias = matchSearchCommandAliasInput(e.target.value);
-    if (matchedAlias === 'bookmarks') {
-      runAfterSearchCommandPermission('bookmarks', () => {});
-    } else if (matchedAlias === 'tabs') {
-      runAfterSearchCommandPermission('tabs', () => {});
-    }
-    pointerHighlightLockUntilRef.current = 0;
-    handleSearchChange(e);
-    if (nextValue.length > 0) {
-      openHistoryPanel({ select: 'none' });
-      return;
-    }
-    closeHistoryPanel('manual');
-  }, [closeHistoryPanel, handleSearchChange, openHistoryPanel, runAfterSearchCommandPermission]);
-
-  const markSuggestionKeyboardNavigation = useCallback(() => {
-    pointerHighlightLockUntilRef.current = Date.now() + POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS;
-  }, []);
-
-  const requestBookmarksPermissionFromDropdown = useCallback(() => {
-    runAfterSearchCommandPermission('bookmarks', () => {});
-  }, [runAfterSearchCommandPermission]);
-
-  const requestTabsPermissionFromDropdown = useCallback(() => {
-    runAfterSearchCommandPermission('tabs', () => {});
-  }, [runAfterSearchCommandPermission]);
-
-  const requestHistoryPermissionFromDropdown = useCallback(() => {
-    runAfterSearchCommandPermission('history', () => {});
-  }, [runAfterSearchCommandPermission]);
-
-  const closeSelectedTabSuggestion = useCallback((item: SearchSuggestionItem) => {
-    if (item.type !== 'tab' || !Number.isFinite(item.tabId)) return;
-    if (item.tabId === currentBrowserTabId) {
-      notifyCurrentTabProtected();
-      return;
-    }
-    const tabsApi = globalThis.chrome?.tabs;
-    if (!tabsApi?.remove) return;
-
-    tabsApi.remove(item.tabId, () => {
-      if (globalThis.chrome?.runtime?.lastError) {
-        toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
-      }
-    });
-  }, [currentBrowserTabId, notifyCurrentTabProtected, t]);
-
-  const closeOtherTabsSuggestions = useCallback((item: SearchSuggestionItem) => {
-    if (item.type !== 'tab' || !Number.isFinite(item.tabId)) return;
-    const tabsApi = globalThis.chrome?.tabs;
-    if (!tabsApi?.query || !tabsApi.remove) return;
-
-    tabsApi.query({}, (tabs) => {
-      if (globalThis.chrome?.runtime?.lastError) {
-        toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
-        return;
-      }
-
-      const otherTabIds = (tabs || [])
-        .map((tab) => tab.id)
-        .filter((tabId): tabId is number => (
-          Number.isFinite(tabId) &&
-          tabId !== item.tabId &&
-          tabId !== currentBrowserTabId
-        ));
-      if (otherTabIds.length === 0) return;
-
-      tabsApi.remove(otherTabIds, () => {
-        if (globalThis.chrome?.runtime?.lastError) {
-          toast.error(t('search.tabCloseFailed', { defaultValue: '关闭标签页失败，请重试' }));
-        }
-      });
-    });
-  }, [currentBrowserTabId, t]);
-
-  const handleSearchSubmit = useCallback(() => {
-    if (calculatorPreview) {
-      const resultText = String(calculatorPreview.resultText ?? '').trim();
-      if (resultText) {
-        void copyTextToClipboard(resultText)
-          .then(() => {
-            toast.success(t('search.calculatorCopied', { defaultValue: '计算结果已复制到剪贴板' }));
-          })
-          .catch(() => {
-            toast.error(t('search.calculatorCopyFailed', { defaultValue: '复制失败，请手动复制' }));
-          });
-      }
-      setSearchValue('');
-      closeHistoryPanel('submit');
-      return;
-    }
-
-    if (searchQueryModel.command.id === 'tabs') {
-      const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
-      if (!selectedItem || selectedItem.type !== 'tab') return;
-      activateSuggestionItem(selectedItem);
-      return;
-    }
-
-    if (searchQueryModel.command.id === 'bookmarks') {
-      const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
-      if (!selectedItem || selectedItem.type !== 'bookmark') return;
-      activateSuggestionItem(selectedItem);
-      return;
-    }
-
-    handleSearch();
-  }, [
-    activateSuggestionItem,
-    calculatorPreview,
-    copyTextToClipboard,
-    handleSearch,
-    historySelectedIndex,
-    mergedSuggestionItems,
-    searchQueryModel.command.id,
-    closeHistoryPanel,
-    setSearchValue,
-    t,
-  ]);
-  
-  const {
-    suggestionModifierHeld,
-    handleSuggestionKeyDown,
-  } = useSearchInteractionController({
-    historyOpen,
-    openHistoryPanel,
-    closeHistoryPanel,
-    historySelectedIndex,
-    setHistorySelectedIndex,
-    mergedSuggestionItems,
-    activateSuggestionItem,
-    tabSwitchSearchEngine,
-    enableSearchEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
-    cycleSearchEngine,
-    dropdownOpen,
-    setDropdownOpen,
-    searchAnyKeyCaptureEnabled,
-    searchInputRef,
-    setSearchValue,
-    onKeyboardNavigate: markSuggestionKeyboardNavigation,
-    tabsPanelActive: searchQueryModel.command.id === 'tabs',
-    protectedTabId: currentBrowserTabId,
-    onProtectedTabCloseAttempt: notifyCurrentTabProtected,
-    closeSelectedTabSuggestion,
-    closeOtherTabsSuggestions,
-  });
+  }, [preventDuplicateNewTab, setPreventDuplicateNewTab]);
 
   useNewtabBootstrapFocus(pageFocusRef);
 
@@ -1055,7 +750,17 @@ export default function App() {
     weatherCode, setWeatherCode,
     colorWallpaperId, setColorWallpaperId,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
+    darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled,
   } = useWallpaper();
+  const { resolvedTheme } = useTheme();
+  const isDarkTheme = resolvedTheme === 'dark';
+  const effectiveWallpaperMaskOpacity = useMemo(() => (
+    resolveWallpaperMaskOpacityWithDarkModeAutoDim({
+      userOpacity: wallpaperMaskOpacity,
+      isDarkTheme,
+      autoDimEnabled: darkModeAutoDimWallpaperEnabled,
+    })
+  ), [darkModeAutoDimWallpaperEnabled, isDarkTheme, wallpaperMaskOpacity]);
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
@@ -1651,42 +1356,6 @@ export default function App() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [multiSelectMoveOpen]);
-  
-  useEffect(() => {
-    const handleHistoryOutside = (event: MouseEvent) => {
-      if (!historyOpen) return;
-      const target = event.target as Node;
-      if (searchAreaRef.current && !searchAreaRef.current.contains(target)) {
-        closeHistoryPanel('outside');
-      }
-    };
-    document.addEventListener('mousedown', handleHistoryOutside);
-    return () => document.removeEventListener('mousedown', handleHistoryOutside);
-  }, [closeHistoryPanel, historyOpen]);
-  
-  useEffect(() => {
-    const handleEngineOutside = (event: PointerEvent) => {
-      if (!dropdownOpen) return;
-      const root = searchDropdownRef.current;
-      if (!root) {
-        setDropdownOpen(false);
-        return;
-      }
-      const target = event.target as Node | null;
-      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
-      const clickedInside = (target ? root.contains(target) : false) || path.includes(root);
-      if (!clickedInside) setDropdownOpen(false);
-    };
-
-    // Use capture phase so outside-click close is not blocked by stopPropagation in nested UI.
-    window.addEventListener('pointerdown', handleEngineOutside, true);
-    return () => window.removeEventListener('pointerdown', handleEngineOutside, true);
-  }, [dropdownOpen, setDropdownOpen]);
-
-  useEffect(() => {
-    if (!historyOpen) return;
-    syncHistorySelectionByCount(mergedSuggestionItems.length);
-  }, [historyOpen, mergedSuggestionItems.length, syncHistorySelectionByCount]);
 
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const countPayload = (payload: any) => {
@@ -1748,24 +1417,6 @@ export default function App() {
   const handleScenarioModeCreate = useCallback(() => {
     setScenarioCreateOpen(true);
   }, [setScenarioCreateOpen]);
-  const handleSearchHistoryOpen = useCallback(() => {
-    setDropdownOpen(false);
-    pointerHighlightLockUntilRef.current = 0;
-    openHistoryPanel({ select: 'none' });
-    refreshSearchPermissionStatus();
-  }, [openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
-  const handleSearchSuggestionHighlight = useCallback((index: number) => {
-    if (Date.now() < pointerHighlightLockUntilRef.current) return;
-    setHistorySelectedIndex((prev) => (prev === index ? prev : index));
-  }, [setHistorySelectedIndex]);
-  const handleSearchHistoryClear = useCallback(() => {
-    setSearchHistory([]);
-    setHistorySelectedIndex(-1);
-  }, [setSearchHistory, setHistorySelectedIndex]);
-  const handleSearchClear = useCallback(() => {
-    setSearchValue('');
-    closeHistoryPanel('manual');
-  }, [closeHistoryPanel, setSearchValue]);
   const handleDismissLoginBanner = useCallback(() => {
     setLoginBannerVisible(false);
     sessionStorage.setItem('loginBannerDismissed', 'true');
@@ -1799,11 +1450,17 @@ export default function App() {
     colorWallpaperId,
     onColorWallpaperIdChange: setColorWallpaperId,
     wallpaperMaskOpacity,
+    effectiveWallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+    darkModeAutoDimWallpaperEnabled,
+    onDarkModeAutoDimWallpaperEnabledChange: setDarkModeAutoDimWallpaperEnabled,
   }), [
     bingWallpaper,
     colorWallpaperId,
     customWallpaper,
+    darkModeAutoDimWallpaperEnabled,
+    effectiveWallpaperMaskOpacity,
+    setDarkModeAutoDimWallpaperEnabled,
     setColorWallpaperId,
     setCustomWallpaper,
     setWallpaperMaskOpacity,
@@ -1821,7 +1478,13 @@ export default function App() {
   }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, visualEffectsPolicy.disableBackdropBlur]);
   const wallpaperClockProps = useMemo(() => ({
     is24Hour,
+    onIs24HourChange: setIs24Hour,
     showSeconds,
+    onShowSecondsChange: setShowSeconds,
+    showLunar,
+    onShowLunarChange: setShowLunar,
+    timeAnimationEnabled: effectiveTopTimeAnimationEnabled,
+    onTimeAnimationModeChange: setTimeAnimationMode,
     bingWallpaperUrl: bingWallpaper,
     onSettingsClick: handleOpenSettings,
     showScenarioMode: true,
@@ -1838,12 +1501,12 @@ export default function App() {
     onWeatherUpdate: setWeatherCode,
     customWallpaper,
     colorWallpaperId,
-    wallpaperMaskOpacity,
+    wallpaperMaskOpacity: effectiveWallpaperMaskOpacity,
+    pauseDynamicWallpaper: shouldFreezeDynamicWallpaper,
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
     reduceTopControlsEffects: visualEffectsPolicy.disableBackdropBlur,
-    disableSecondTickMotion: visualEffectsPolicy.disableSecondTickMotion,
   }), [
     bingWallpaper,
     colorWallpaperId,
@@ -1861,218 +1524,50 @@ export default function App() {
     setSelectedScenarioId,
     setTimeFont,
     setWeatherCode,
+    setIs24Hour,
+    setShowLunar,
+    setShowSeconds,
+    setTimeAnimationMode,
     showSeconds,
+    showLunar,
     timeFont,
+    effectiveTopTimeAnimationEnabled,
     visualEffectsPolicy.disableBackdropBlur,
-    visualEffectsPolicy.disableSecondTickMotion,
-    wallpaperMaskOpacity,
+    effectiveWallpaperMaskOpacity,
+    shouldFreezeDynamicWallpaper,
     wallpaperMode,
     weatherCode,
   ]);
-  const rotatingPlaceholderItems = useMemo(() => {
-    const items: string[] = [t('search.placeholderDynamic')];
-    if (ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
-      items.push(t('search.placeholderHintTabSwitch'));
-    }
-    if (searchCalculatorEnabled) {
-      items.push(t('search.placeholderHintCalculator'));
-    }
-    if (searchSiteDirectEnabled) {
-      items.push(t('search.placeholderHintSiteDirect'));
-    }
-    if (searchPrefixEnabled) {
-      items.push(t('search.placeholderHintPrefix'));
-    }
-    return items;
-  }, [
-    i18n.language,
-    searchCalculatorEnabled,
+  const searchExperienceProps = useMemo(() => ({
+    inputRef: searchInputRef,
+    openInNewTab,
+    scenarioShortcuts,
+    tabSwitchSearchEngine,
     searchPrefixEnabled,
     searchSiteDirectEnabled,
-    t,
-    tabSwitchSearchEngine,
-  ]);
-  const rotatingSearchPlaceholder = useRotatingText(
-    rotatingPlaceholderItems,
-    3000,
-  );
-  const searchDropdownStatusNotice = useMemo(() => {
-    const authorizationLabel = t('search.authorizeHistoryPermission', { defaultValue: '去授权' });
-
-    if (searchQueryModel.command.id === 'bookmarks') {
-      if (permissionRequestInFlight === 'bookmarks') {
-        return {
-          tone: 'loading' as const,
-          message: t('search.bookmarksPermissionPending', {
-            defaultValue: '正在等待书签权限确认...',
-          }),
-        };
-      }
-      if (permissionWarmup === 'bookmarks' || suggestionSourceStatus.bookmarkLoading) {
-        return {
-          tone: 'loading' as const,
-          message: t('search.bookmarksPreparing', {
-            defaultValue: '正在整理书签，请稍候...',
-          }),
-        };
-      }
-      if (searchPermissionsReady && !searchPermissions.bookmarks) {
-        return {
-          tone: 'info' as const,
-          message: t('search.bookmarksPermissionBanner', {
-            defaultValue: '授权后可搜索浏览器书签',
-          }),
-          actionLabel: authorizationLabel,
-          onAction: requestBookmarksPermissionFromDropdown,
-        };
-      }
-      return undefined;
-    }
-
-    if (searchQueryModel.command.id === 'tabs') {
-      if (permissionRequestInFlight === 'tabs') {
-        return {
-          tone: 'loading' as const,
-          message: t('search.tabsPermissionPending', {
-            defaultValue: '正在等待标签页权限确认...',
-          }),
-        };
-      }
-      if (permissionWarmup === 'tabs' || suggestionSourceStatus.tabLoading) {
-        return {
-          tone: 'loading' as const,
-          message: t('search.tabsPreparing', {
-            defaultValue: '正在整理已打开标签页，请稍候...',
-          }),
-        };
-      }
-      if (searchPermissionsReady && !searchPermissions.tabs) {
-        return {
-          tone: 'info' as const,
-          message: t('search.tabsPermissionBanner', {
-            defaultValue: '授权后可搜索已打开标签页',
-          }),
-          actionLabel: authorizationLabel,
-          onAction: requestTabsPermissionFromDropdown,
-        };
-      }
-      return undefined;
-    }
-
-    if (permissionRequestInFlight === 'history') {
-      return {
-        tone: 'loading' as const,
-        message: t('search.historyPermissionPending', {
-          defaultValue: '正在等待历史记录权限确认...',
-        }),
-      };
-    }
-    if (permissionWarmup === 'history' || suggestionSourceStatus.browserHistoryLoading) {
-      return {
-        tone: 'loading' as const,
-        message: t('search.historyPreparing', {
-          defaultValue: '正在加载浏览器历史记录...',
-        }),
-      };
-    }
-    if (searchPermissionsReady && !searchPermissions.history && !searchQueryModel.command.active) {
-      return {
-        tone: 'info' as const,
-        message: t('search.historyPermissionBanner', {
-          defaultValue: '授权后可显示浏览器历史记录',
-        }),
-        actionLabel: authorizationLabel,
-        onAction: requestHistoryPermissionFromDropdown,
-      };
-    }
-    return undefined;
-  }, [
-    permissionRequestInFlight,
-    permissionWarmup,
-    requestBookmarksPermissionFromDropdown,
-    requestHistoryPermissionFromDropdown,
-    requestTabsPermissionFromDropdown,
-    searchPermissions,
-    searchPermissionsReady,
-    searchQueryModel.command.active,
-    searchQueryModel.command.id,
-    suggestionSourceStatus.bookmarkLoading,
-    suggestionSourceStatus.browserHistoryLoading,
-    suggestionSourceStatus.tabLoading,
-    t,
-  ]);
-  const searchDropdownEmptyStateLabel = useMemo(() => {
-    if (searchQueryModel.command.id === 'bookmarks') {
-      return t('search.noBookmarks', { defaultValue: '没有找到匹配的书签' });
-    }
-    if (searchQueryModel.command.id === 'tabs') {
-      return t('search.noTabs', { defaultValue: '没有找到匹配的标签页' });
-    }
-    return t('search.noHistory');
-  }, [searchQueryModel.command.id, t]);
-
-  const searchBarProps = useMemo(() => ({
-    value: searchValue,
-    onChange: handleSearchInputChange,
-    onSubmit: handleSearchSubmit,
-    searchEngine,
-    onEngineClick: handleEngineClick,
-    dropdownOpen,
-    onEngineSelect: handleEngineSelect,
-    dropdownRef: searchDropdownRef,
-    suggestionItems: mergedSuggestionItems,
-    historyOpen,
-    onHistoryOpen: handleSearchHistoryOpen,
-    onSuggestionSelect: activateSuggestionItem,
-    onSuggestionHighlight: handleSearchSuggestionHighlight,
-    onHistoryClear: handleSearchHistoryClear,
-    onClear: handleSearchClear,
-    historyRef: searchAreaRef,
-    placeholder: rotatingSearchPlaceholder || t('search.placeholderDynamic'),
-    calculatorInlinePreview: searchInlinePreview,
-    onKeyDown: handleSuggestionKeyDown,
-    historySelectedIndex,
-    inputRef: searchInputRef,
+    searchSiteShortcutEnabled,
+    searchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
     disablePlaceholderAnimation: visualEffectsPolicy.disableSearchPlaceholderAnimation,
     searchHeight: responsiveLayout.searchHeight,
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
-    showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
-    statusNotice: searchDropdownStatusNotice,
-    emptyStateLabel: searchDropdownEmptyStateLabel,
-    showSuggestionNumberHints: historyOpen && suggestionModifierHeld,
-    tabsPanelActive: searchQueryModel.command.id === 'tabs',
-    currentBrowserTabId,
+    onInteractionStateChange: handleSearchInteractionStateChange,
   }), [
-    currentBrowserTabId,
-    dropdownOpen,
-    handleEngineClick,
-    handleEngineSelect,
-    handleSearchInputChange,
-    handleSearchClear,
-    handleSearchHistoryClear,
-    handleSearchHistoryOpen,
-    handleSearchSubmit,
-    handleSearchSuggestionHighlight,
-    handleSuggestionKeyDown,
-    historyOpen,
-    historySelectedIndex,
-    suggestionModifierHeld,
-    mergedSuggestionItems,
-    activateSuggestionItem,
+    handleSearchInteractionStateChange,
+    openInNewTab,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,
     responsiveLayout.searchHorizontalPadding,
     responsiveLayout.searchInputFontSize,
-    rotatingSearchPlaceholder,
-    searchDropdownEmptyStateLabel,
-    searchDropdownStatusNotice,
-    searchEngine,
-    searchInlinePreview,
-    searchQueryModel.command.id,
-    searchValue,
-    t,
+    scenarioShortcuts,
+    searchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    tabSwitchSearchEngine,
     visualEffectsPolicy.disableSearchPlaceholderAnimation,
   ]);
   const shortcutGridProps = useMemo(() => ({
@@ -2125,26 +1620,78 @@ export default function App() {
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
   const initialRevealTiming = INITIAL_REVEAL_TIMING;
+  const overlayWallpaperLayer = useMemo(() => {
+    if (!showOverlayWallpaperLayer) return null;
+
+    return (
+      <div
+        className="fixed z-0 pointer-events-none"
+        style={{
+          top: '-2px',
+          right: '-2px',
+          bottom: '-2px',
+          left: '-2px',
+          backgroundColor: 'var(--initial-reveal-surface)',
+          backfaceVisibility: 'hidden',
+        }}
+      >
+        <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
+          {wallpaperMode === 'weather' ? (
+            <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
+          ) : wallpaperMode === 'color' ? (
+            <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
+          ) : effectiveOverlayWallpaperSrc ? (
+            <img
+              src={effectiveOverlayWallpaperSrc}
+              alt={overlayBackgroundAlt}
+              className="absolute w-full h-full object-cover"
+              onLoad={handleOverlayImageReady}
+              onError={handleOverlayImageReady}
+            />
+          ) : null}
+          <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
+        </div>
+      </div>
+    );
+  }, [
+    colorWallpaperGradient,
+    effectiveOverlayWallpaperSrc,
+    effectiveWallpaperMaskOpacity,
+    freshWeatherVideo,
+    handleOverlayImageReady,
+    overlayBackgroundAlt,
+    shouldFreezeDynamicWallpaper,
+    showOverlayWallpaperLayer,
+    wallpaperAnimatedLayerStyle,
+    wallpaperMode,
+  ]);
+  const fixedTopNavLayer = useMemo(() => {
+    if (!(modeLayersVisible && displayModeFlags.showInlineTopNav)) return null;
+
+    return (
+      <div
+        className="fixed top-6 left-6 right-6 z-50"
+        style={{
+          opacity: initialRevealOpacity,
+          transform: initialRevealTransform,
+          transition: `opacity ${initialRevealTiming}, transform ${initialRevealTiming}`,
+        }}
+      >
+        <TopNavBar {...topNavModeProps} />
+      </div>
+    );
+  }, [
+    displayModeFlags.showInlineTopNav,
+    initialRevealOpacity,
+    initialRevealTiming,
+    initialRevealTransform,
+    modeLayersVisible,
+    topNavModeProps,
+  ]);
   const panoramicSurfaceRevealStyle: CSSProperties = {
     backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)',
     transition: `background-color ${PANORAMIC_SURFACE_REVEAL_TIMING}`,
   };
-  const anyAppDialogOpen = shortcutEditOpen
-    || shortcutDeleteOpen
-    || scenarioCreateOpen
-    || scenarioEditOpen
-    || isAuthModalOpen
-    || settingsOpen
-    || searchSettingsOpen
-    || shortcutStyleSettingsOpen
-    || adminModalOpen
-    || aboutModalOpen
-    || webdavDialogOpen
-    || conflictModalOpen
-    || webdavConfirmSyncOpen
-    || importConfirmOpen
-    || confirmDisableConsentOpen;
-  const shouldMountAppDialogs = useKeepMountedAfterFirstOpen(anyAppDialogOpen);
   const shouldMountWallpaperSelector = useKeepMountedAfterFirstOpen(wallpaperSettingsOpen);
   const shouldMountUpdateDialog = useKeepMountedAfterFirstOpen(updateDialogOpen);
 
@@ -2156,48 +1703,8 @@ export default function App() {
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
       style={panoramicSurfaceRevealStyle}
     >
-      {showOverlayWallpaperLayer && (
-        <div
-          className="fixed z-0 pointer-events-none"
-          style={{
-            top: '-2px',
-            right: '-2px',
-            bottom: '-2px',
-            left: '-2px',
-            backgroundColor: 'var(--initial-reveal-surface)',
-            backfaceVisibility: 'hidden',
-          }}
-        >
-          <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
-            {wallpaperMode === 'weather' ? (
-              <WeatherLoopVideo src={freshWeatherVideo} />
-            ) : wallpaperMode === 'color' ? (
-              <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
-            ) : effectiveOverlayWallpaperSrc ? (
-              <img
-                src={effectiveOverlayWallpaperSrc}
-                alt={overlayBackgroundAlt}
-                className="absolute w-full h-full object-cover"
-                onLoad={handleOverlayImageReady}
-                onError={handleOverlayImageReady}
-              />
-            ) : null}
-            <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
-          </div>
-        </div>
-      )}
-      {modeLayersVisible && displayModeFlags.showInlineTopNav && (
-        <div
-          className="fixed top-6 left-6 right-6 z-50"
-          style={{
-            opacity: initialRevealOpacity,
-            transform: initialRevealTransform,
-            transition: `opacity ${initialRevealTiming}, transform ${initialRevealTiming}`,
-          }}
-        >
-          <TopNavBar {...topNavModeProps} />
-        </div>
-      )}
+      {overlayWallpaperLayer}
+      {fixedTopNavLayer}
       <HomeMainContent
         initialRevealReady={initialRevealReady}
         visible={!roleSelectorOpen}
@@ -2209,28 +1716,32 @@ export default function App() {
         showTime={showTime}
         displayMode={displayMode}
         is24Hour={is24Hour}
+        onIs24HourChange={setIs24Hour}
         showSeconds={showSeconds}
-        disableSecondTickMotion={visualEffectsPolicy.disableSecondTickMotion}
+        onShowSecondsChange={setShowSeconds}
+        showLunar={showLunar}
+        onShowLunarChange={setShowLunar}
+        timeAnimationEnabled={effectiveTopTimeAnimationEnabled}
+        onTimeAnimationModeChange={setTimeAnimationMode}
         disableBottomGradualBlur={visualEffectsPolicy.disableBottomGradualBlur}
         timeFont={timeFont}
         onTimeFontChange={setTimeFont}
         layout={responsiveLayout}
         wallpaperClockProps={wallpaperClockProps}
-        searchBarProps={searchBarProps}
+        searchExperienceProps={searchExperienceProps}
+        searchInteractionLocked={searchInteractionState.historyOpen || searchInteractionState.dropdownOpen}
         shortcutGridProps={shortcutGridProps}
         onDrawerExpandedChange={setIsQuickAccessDrawerExpanded}
       />
       {shouldMountWallpaperSelector ? (
-        <Suspense fallback={null}>
-          <LazyWallpaperSelector
-            {...wallpaperSelectorLayerProps}
-            mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
-            hideWeather={displayMode === 'minimalist'}
-            open={wallpaperSettingsOpen}
-            onOpenChange={setWallpaperSettingsOpen}
-            trigger={<span className="hidden" aria-hidden="true" />}
-          />
-        </Suspense>
+        <WallpaperSelector
+          {...wallpaperSelectorLayerProps}
+          mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
+          hideWeather={displayMode === 'minimalist'}
+          open={wallpaperSettingsOpen}
+          onOpenChange={setWallpaperSettingsOpen}
+          trigger={<span className="hidden" aria-hidden="true" />}
+        />
       ) : null}
 
       {contextMenu && (
@@ -2437,9 +1948,7 @@ export default function App() {
         confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
       />
 
-      {shouldMountAppDialogs ? (
-        <Suspense fallback={null}>
-          <LazyAppDialogs
+      <AppDialogs
             shortcutModalProps={{
               isOpen: shortcutEditOpen,
               onOpenChange: (open) => {
@@ -2505,11 +2014,9 @@ export default function App() {
               onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
               openInNewTab,
               onOpenInNewTabChange: setOpenInNewTab,
+              preventDuplicateNewTab,
+              onPreventDuplicateNewTabChange: handlePreventDuplicateNewTabChange,
               onOpenSearchSettings: handleOpenSearchSettings,
-              is24Hour,
-              onIs24HourChange: setIs24Hour,
-              showSeconds,
-              onShowSecondsChange: setShowSeconds,
               visualEffectsLevel,
               onVisualEffectsLevelChange: setVisualEffectsLevel,
               disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
@@ -2527,39 +2034,44 @@ export default function App() {
               onColorWallpaperIdChange: setColorWallpaperId,
               wallpaperMaskOpacity,
               onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
-              onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
-              privacyConsent,
-              onPrivacyConsentChange: handlePrivacySwitchChange,
-              onOpenAdminModal: handleOpenAdminModal,
-              onOpenAboutModal: handleOpenAboutModal,
-              onCloudSyncNow: triggerCloudSyncNow,
-              onOpenWebdavConfig: handleOpenWebdavConfig,
-              onWebdavSync: resolveWebdavConflict,
-              onWebdavEnable: handleEnableWebdavSync,
-              onWebdavDisable: handleDisableWebdavSync,
-              onVersionClick: handleVersionTap,
-              onOpenShortcutStyleSettings: handleOpenShortcutStyleSettings,
-            }}
-            searchSettingsModalProps={{
-              isOpen: searchSettingsOpen,
-              onOpenChange: setSearchSettingsOpen,
-              tabSwitchSearchEngine,
-              onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
-              searchPrefixEnabled,
-              onSearchPrefixEnabledChange: setSearchPrefixEnabled,
-              searchSiteDirectEnabled,
-              onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
-              searchSiteShortcutEnabled,
-              onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
-              searchAnyKeyCaptureEnabled,
-              onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
-              searchCalculatorEnabled,
-              onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
-            }}
-            shortcutStyleSettingsDialogProps={{
-              open: shortcutStyleSettingsOpen,
-              onOpenChange: setShortcutStyleSettingsOpen,
-              variant: shortcutCardVariant,
+	              onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
+	              privacyConsent,
+	              onPrivacyConsentChange: handlePrivacySwitchChange,
+	              onOpenAdminModal: handleOpenAdminModal,
+	              onOpenAboutModal: handleOpenAboutModal,
+	              onCloudSyncNow: triggerCloudSyncNow,
+	              onOpenWebdavConfig: handleOpenWebdavConfig,
+	              onWebdavSync: resolveWebdavConflict,
+	              onWebdavEnable: handleEnableWebdavSync,
+	              onWebdavDisable: handleDisableWebdavSync,
+	              onVersionClick: handleVersionTap,
+	              onOpenShortcutGuide: () => setShortcutGuideOpen(true),
+	              onOpenShortcutStyleSettings: handleOpenShortcutStyleSettings,
+	            }}
+	            searchSettingsModalProps={{
+	              isOpen: searchSettingsOpen,
+	              onOpenChange: setSearchSettingsOpen,
+	              tabSwitchSearchEngine,
+	              onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
+	              searchPrefixEnabled,
+	              onSearchPrefixEnabledChange: setSearchPrefixEnabled,
+	              searchSiteDirectEnabled,
+	              onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
+	              searchSiteShortcutEnabled,
+	              onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
+	              searchAnyKeyCaptureEnabled,
+	              onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
+	              searchCalculatorEnabled,
+	              onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
+	            }}
+	            shortcutGuideDialogProps={{
+	              open: shortcutGuideOpen,
+	              onOpenChange: setShortcutGuideOpen,
+	            }}
+	            shortcutStyleSettingsDialogProps={{
+	              open: shortcutStyleSettingsOpen,
+	              onOpenChange: setShortcutStyleSettingsOpen,
+	              variant: shortcutCardVariant,
               compactShowTitle: shortcutCompactShowTitle,
               columns: normalizedGridColumns,
               onSave: ({ variant, compactShowTitle, columns }) => {
@@ -2670,8 +2182,6 @@ export default function App() {
               },
             }}
           />
-        </Suspense>
-      ) : null}
       {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>
           <LazyUpdateAvailableDialog

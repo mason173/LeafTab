@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
 import { forwardRef, useEffect, useState } from "react";
@@ -39,7 +39,10 @@ interface WallpaperSelectorProps {
   colorWallpaperId: string;
   onColorWallpaperIdChange: (id: string) => void;
   wallpaperMaskOpacity: number;
+  effectiveWallpaperMaskOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
+  darkModeAutoDimWallpaperEnabled: boolean;
+  onDarkModeAutoDimWallpaperEnabledChange: (enabled: boolean) => void;
   reduceVisualEffects?: boolean;
   hideWeather?: boolean;
   trigger?: React.ReactNode;
@@ -56,7 +59,10 @@ export default function WallpaperSelector({
   colorWallpaperId,
   onColorWallpaperIdChange,
   wallpaperMaskOpacity,
+  effectiveWallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
+  darkModeAutoDimWallpaperEnabled,
+  onDarkModeAutoDimWallpaperEnabledChange,
   reduceVisualEffects = false,
   hideWeather = false,
   trigger,
@@ -67,6 +73,7 @@ export default function WallpaperSelector({
   const [isMaskSliderInteracting, setIsMaskSliderInteracting] = useState(false);
   const isMaskSliderIsolation = isMaskSliderInteracting && (mode === "bing" || mode === "custom" || mode === "weather");
   const isolationFadeClass = "transition-opacity duration-220 ease-out";
+  const previewWallpaperMaskOpacity = effectiveWallpaperMaskOpacity ?? wallpaperMaskOpacity;
 
   useEffect(() => {
     if (mode !== "bing" && mode !== "custom" && mode !== "weather") {
@@ -131,13 +138,33 @@ export default function WallpaperSelector({
               </TabsList>
             </div>
 
-            <Separator className={`bg-border/40 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0" : ""}`} />
+            <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
+              <div className="flex items-center justify-between gap-3 px-1 py-1">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none">
+                    {t("weather.wallpaper.autoDimInDarkMode", { defaultValue: "深色模式自动调暗壁纸" })}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                    {t("weather.wallpaper.autoDimInDarkModeDesc", { defaultValue: "深色模式下自动额外增加黑色遮罩，提升可读性。" })}
+                  </p>
+                </div>
+                <Switch
+                  id="wallpaper-auto-dim-in-dark-mode"
+                  checked={darkModeAutoDimWallpaperEnabled}
+                  onCheckedChange={onDarkModeAutoDimWallpaperEnabledChange}
+                  className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+                >
+                  <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+                </Switch>
+              </div>
+            </div>
 
-            <div className="p-4">
+            <div className="px-6 pb-6">
               <BingWallpaperPanel
                 mode={mode}
                 bingWallpaper={bingWallpaper}
                 wallpaperMaskOpacity={wallpaperMaskOpacity}
+                wallpaperMaskPreviewOpacity={previewWallpaperMaskOpacity}
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                 onModeChange={onModeChange}
                 isMaskSliderIsolation={isMaskSliderIsolation}
@@ -149,6 +176,7 @@ export default function WallpaperSelector({
                 <WeatherWallpaperPanel
                   mode={mode}
                   wallpaperMaskOpacity={wallpaperMaskOpacity}
+                  wallpaperMaskPreviewOpacity={previewWallpaperMaskOpacity}
                   onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                   onModeChange={onModeChange}
                   isMaskSliderIsolation={isMaskSliderIsolation}
@@ -160,7 +188,7 @@ export default function WallpaperSelector({
               <ColorWallpaperPanel
                 mode={mode}
                 colorWallpaperId={colorWallpaperId}
-                wallpaperMaskOpacity={wallpaperMaskOpacity}
+                wallpaperMaskOpacity={previewWallpaperMaskOpacity}
                 onColorWallpaperIdChange={onColorWallpaperIdChange}
                 onModeChange={onModeChange}
               />
@@ -169,6 +197,7 @@ export default function WallpaperSelector({
                 mode={mode}
                 customWallpaper={customWallpaper}
                 wallpaperMaskOpacity={wallpaperMaskOpacity}
+                wallpaperMaskPreviewOpacity={previewWallpaperMaskOpacity}
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
                 onCustomWallpaperChange={onCustomWallpaperChange}
                 onModeChange={onModeChange}

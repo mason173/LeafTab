@@ -20,6 +20,12 @@ export default {
         label: "新标签页打开",
         description: "快捷方式默认在新标签页中打开"
       },
+      preventDuplicateNewTab: {
+        label: "避免重复打开 LeafTab",
+        description: "新建标签页时，若当前窗口已有 LeafTab，则直接切换过去并关闭新开的重复页",
+        permissionDenied: "未授予标签页权限，无法启用避免重复打开 LeafTab。",
+        permissionFailed: "申请标签页权限失败，请重试。"
+      },
       searchEngineTabSwitch: {
         label: "Tab 切换搜索引擎",
         description: "聚焦搜索框时，按 Tab 在搜索引擎间循环切换"
@@ -62,6 +68,38 @@ export default {
           }
         }
       },
+      shortcutGuide: {
+        label: "快捷键与操作",
+        description: "查看常用快捷方式和对应操作",
+        open: "查看",
+        title: "快捷键与操作",
+        dialogDescription: "LeafTab 快捷键与操作说明",
+        helper: "以下内容只展示当前版本已经支持的快捷操作，方便随时查阅。",
+        countSuffix: "项",
+        columns: {
+          shortcut: "快捷键",
+          action: "对应操作"
+        },
+        sections: {
+          search: "搜索",
+          results: "结果列表",
+          tabs: "标签页面板"
+        },
+        items: {
+          focusSearch: "聚焦搜索框并选中当前内容",
+          switchEngine: "在搜索框中按 Tab 或 Shift+Tab 切换搜索引擎",
+          bookmarksMode: "进入书签搜索模式，首次使用时可能会请求书签权限",
+          tabsMode: "进入标签页搜索模式，首次使用时可能会请求标签页权限",
+          navigateResults: "在结果列表中上下移动选择",
+          openResult: "打开当前选中的结果",
+          closePanel: "关闭当前结果面板",
+          showNumberHints: "在结果列表中显示数字提示",
+          openNumberedResult: "按对应数字直接打开结果",
+          closeTab: "在 /tabs 面板关闭当前选中的标签页",
+          closeOtherTabs: "在 /tabs 面板关闭除当前项外的其他标签页"
+        },
+        footer: "提示：数字提示和数字直达只在结果列表打开时生效；/t 与 /b 模式依赖浏览器权限。"
+      },
       timeFormat: {
         label: "24 小时制",
         description: "使用 24 小时制显示时间"
@@ -69,6 +107,20 @@ export default {
       showSeconds: {
         label: "显示秒数",
         description: "在时间组件中显示秒数"
+      },
+      showLunar: {
+        label: "显示农历",
+        description: "在时间下方显示农历日期"
+      },
+      timeAnimation: {
+        label: "动画效果",
+        description: "时间切换滚动动画",
+        followSystemBadge: "跟随系统",
+        followSystemAction: "恢复跟随系统",
+        followSystemEnabled: "当前跟随系统：已开启",
+        followSystemReduced: "当前跟随系统：已关闭",
+        overrideOn: "已单独开启，不受系统限制",
+        overrideOff: "已单独关闭"
       },
       visualEffectsLevel: {
         label: "系统特效强度",
@@ -81,9 +133,9 @@ export default {
         label: "显示时间",
         description: "在页面中显示时间组件"
       },
-      timeFont: {
-        title: "时间字体",
-        description: "选择时间显示使用的字体"
+      timeDisplay: {
+        title: "时间显示",
+        description: "设置时间样式与显示内容"
       },
       autoFocusSearch: {
         label: "自动聚焦搜索框",
@@ -495,7 +547,9 @@ export default {
         customDesc: "上传您自己的图片作为壁纸。",
         customUploaded: "您上传的壁纸。",
         imageSupport: "支持 JPG, PNG, WEBP 格式",
-        maskOpacity: "黑色遮罩"
+        maskOpacity: "黑色遮罩",
+        autoDimInDarkMode: "深色模式自动调暗壁纸",
+        autoDimInDarkModeDesc: "深色模式下自动额外增加黑色遮罩，提升可读性。"
       },
       codes: {
         0: "晴",
@@ -567,7 +621,9 @@ export default {
       prefixEngineInlineHint: "用{{engine}}搜索",
       historyTitle: "搜索历史",
       clearHistory: "清空",
-      noHistory: "暂无搜索记录"
+      noHistory: "暂无搜索记录",
+      tabClosed: "已关闭标签页",
+      tabsClosed: "已关闭 {{count}} 个标签页"
     },
     groups: {
       edit: "编辑",

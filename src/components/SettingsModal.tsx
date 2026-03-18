@@ -51,7 +51,7 @@ import {
   SyncToggleField,
 } from "./sync/SyncSettingsFields";
 import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
-import { DISPLAY_MODE_OPTIONS, type DisplayMode, shouldShowTimeDetailControls } from "@/displayMode/config";
+import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import type { WallpaperMode } from "@/wallpaper/types";
 import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
 
@@ -110,11 +110,9 @@ interface SettingsModalProps {
   onShortcutGridColumnsChange: (columns: number) => void;
   openInNewTab: boolean;
   onOpenInNewTabChange: (checked: boolean) => void;
+  preventDuplicateNewTab: boolean;
+  onPreventDuplicateNewTabChange: (checked: boolean) => void;
   onOpenSearchSettings?: () => void;
-  is24Hour: boolean;
-  onIs24HourChange: (checked: boolean) => void;
-  showSeconds: boolean;
-  onShowSecondsChange: (checked: boolean) => void;
   visualEffectsLevel: VisualEffectsLevel;
   onVisualEffectsLevelChange: (level: VisualEffectsLevel) => void;
   disableSyncCardAccentAnimation: boolean;
@@ -143,6 +141,7 @@ interface SettingsModalProps {
   onOpenAdminModal?: () => void;
   onOpenAboutModal?: (tab?: AboutLeafTabModalTab) => void;
   onOpenWallpaperSettings?: () => void;
+  onOpenShortcutGuide?: () => void;
   onOpenShortcutStyleSettings?: () => void;
 }
 
@@ -163,11 +162,9 @@ export default function SettingsModal({
   onShortcutGridColumnsChange,
   openInNewTab,
   onOpenInNewTabChange,
+  preventDuplicateNewTab,
+  onPreventDuplicateNewTabChange,
   onOpenSearchSettings,
-  is24Hour,
-  onIs24HourChange,
-  showSeconds,
-  onShowSecondsChange,
   visualEffectsLevel,
   onVisualEffectsLevelChange,
   disableSyncCardAccentAnimation,
@@ -196,6 +193,7 @@ export default function SettingsModal({
   onOpenAdminModal,
   onOpenAboutModal,
   onOpenWallpaperSettings,
+  onOpenShortcutGuide,
   onOpenShortcutStyleSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
@@ -619,6 +617,11 @@ export default function SettingsModal({
     onOpenSearchSettings?.();
   };
 
+  const handleOpenShortcutGuide = () => {
+    onOpenChange(false);
+    onOpenShortcutGuide?.();
+  };
+
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -897,6 +900,20 @@ export default function SettingsModal({
                 {t('settings.searchSettings.open')}
               </Button>
             </div>
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.shortcutGuide.label')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutGuide.description')}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                onClick={handleOpenShortcutGuide}
+              >
+                {t('settings.shortcutGuide.open')}
+              </Button>
+            </div>
 
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
@@ -942,6 +959,20 @@ export default function SettingsModal({
                 <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
               </Switch>
             </div>
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.preventDuplicateNewTab.label')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.preventDuplicateNewTab.description')}</span>
+              </div>
+              <Switch
+                id="prevent-duplicate-newtab"
+                checked={preventDuplicateNewTab}
+                onCheckedChange={onPreventDuplicateNewTabChange}
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              >
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+              </Switch>
+            </div>
 
             {displayMode !== 'panoramic' && (
               <div className="flex items-center justify-between space-x-2">
@@ -960,55 +991,6 @@ export default function SettingsModal({
               </div>
             )}
 
-            {shouldShowTimeDetailControls(displayMode, showTime) && (
-              <>
-                <div className="flex items-center justify-between space-x-2">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t('settings.timeFormat.label')}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t('settings.timeFormat.description')}</span>
-                  </div>
-                  <Switch
-                    id="time-format"
-                    checked={is24Hour}
-                    onCheckedChange={onIs24HourChange}
-                    className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                  >
-                    <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
-                  </Switch>
-                </div>
-                <div className="flex items-center justify-between space-x-2">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t('settings.showSeconds.label')}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t('settings.showSeconds.description')}</span>
-                  </div>
-                  <Switch
-                    id="show-seconds"
-                    checked={showSeconds}
-                    onCheckedChange={onShowSecondsChange}
-                    className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                  >
-                    <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
-                  </Switch>
-                </div>
-                <div className="flex items-center justify-between space-x-2">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t('settings.visualEffectsLevel.label')}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
-                  </div>
-                  <Select value={visualEffectsLevel} onValueChange={(value) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
-                    <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover border-border text-popover-foreground">
-                      <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
-                      <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
-                      <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
-          
           {username && (
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
@@ -1042,6 +1024,22 @@ export default function SettingsModal({
                 <SelectItem value="vi" className="focus:bg-accent focus:text-accent-foreground">{t('languages.vi')}</SelectItem>
                 <SelectItem value="ja" className="focus:bg-accent focus:text-accent-foreground">{t('languages.ja')}</SelectItem>
                 <SelectItem value="ko" className="focus:bg-accent focus:text-accent-foreground">{t('languages.ko')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between space-x-2">
+            <div className="flex flex-col space-y-1 items-start">
+              <span className="text-sm font-medium leading-none">{t('settings.visualEffectsLevel.label')}</span>
+              <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
+            </div>
+            <Select value={visualEffectsLevel} onValueChange={(value) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
+              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border text-popover-foreground">
+                <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
+                <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
+                <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
               </SelectContent>
             </Select>
           </div>

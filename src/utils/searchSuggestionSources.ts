@@ -157,18 +157,20 @@ export function buildLocalHistorySuggestionItems(
 export function buildSearchSuggestionSourceItems(args: {
   deferredSearchValue: string;
   filteredHistoryItems: readonly SearchHistoryLikeEntry[];
-  scenarioShortcuts: ScenarioShortcuts;
+  shortcutSearchIndex?: IndexedShortcutSuggestion[];
+  scenarioShortcuts?: ScenarioShortcuts;
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
 }): SearchSuggestionSourceItems {
   const {
     deferredSearchValue,
     filteredHistoryItems,
+    shortcutSearchIndex,
     scenarioShortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   } = args;
-  const shortcutSearchIndex = buildShortcutSearchIndex(scenarioShortcuts);
+  const resolvedShortcutSearchIndex = shortcutSearchIndex ?? buildShortcutSearchIndex(scenarioShortcuts || {});
 
   return {
     localHistorySuggestionItems: buildLocalHistorySuggestionItems(filteredHistoryItems),
@@ -179,7 +181,7 @@ export function buildSearchSuggestionSourceItems(args: {
     }),
     shortcutSuggestionItems: buildShortcutSuggestionItems({
       deferredSearchValue,
-      shortcutSearchIndex,
+      shortcutSearchIndex: resolvedShortcutSearchIndex,
       suggestionUsageMap,
     }),
   };

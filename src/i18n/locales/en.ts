@@ -20,6 +20,12 @@ export default {
         label: "Open in New Tab",
         description: "Shortcuts open in a new tab by default"
       },
+      preventDuplicateNewTab: {
+        label: "Avoid Duplicate LeafTab Tabs",
+        description: "When opening a new tab, switch to the existing LeafTab in this window and close the duplicate one",
+        permissionDenied: "Tabs permission is required to enable duplicate LeafTab prevention.",
+        permissionFailed: "Failed to request tabs permission. Please try again."
+      },
       searchEngineTabSwitch: {
         label: "Tab Engine Switch",
         description: "When the search box is focused, press Tab to cycle search engines"
@@ -62,6 +68,38 @@ export default {
           }
         }
       },
+      shortcutGuide: {
+        label: "Shortcuts & Actions",
+        description: "View common shortcuts and what they do",
+        open: "View",
+        title: "Shortcuts & Actions",
+        dialogDescription: "LeafTab shortcut and interaction guide",
+        helper: "This panel only lists shortcuts that are already supported in the current version.",
+        countSuffix: "items",
+        columns: {
+          shortcut: "Shortcut",
+          action: "Action"
+        },
+        sections: {
+          search: "Search",
+          results: "Results",
+          tabs: "Tabs Panel"
+        },
+        items: {
+          focusSearch: "Focus the search box and select the current text",
+          switchEngine: "Press Tab or Shift+Tab in the search box to switch engines",
+          bookmarksMode: "Enter bookmark search mode; browser permission may be requested on first use",
+          tabsMode: "Enter tab search mode; browser permission may be requested on first use",
+          navigateResults: "Move selection up or down in the results list",
+          openResult: "Open the currently selected result",
+          closePanel: "Close the current results panel",
+          showNumberHints: "Show number hints in the results list",
+          openNumberedResult: "Open the result using its number",
+          closeTab: "Close the currently selected tab in the /tabs panel",
+          closeOtherTabs: "Close every other tab except the current item in the /tabs panel"
+        },
+        footer: "Tip: number hints and number shortcuts only work while the results list is open; /t and /b depend on browser permissions."
+      },
       timeFormat: {
         label: "24-Hour Clock",
         description: "Display time in 24-hour format"
@@ -69,6 +107,20 @@ export default {
       showSeconds: {
         label: "Show Seconds",
         description: "Display seconds in the time component"
+      },
+      showLunar: {
+        label: "Show Lunar",
+        description: "Display the lunar date below the time"
+      },
+      timeAnimation: {
+        label: "Animation",
+        description: "Rolling time transition",
+        followSystemBadge: "Follow system",
+        followSystemAction: "Follow system again",
+        followSystemEnabled: "Following system: currently on",
+        followSystemReduced: "Following system: currently off",
+        overrideOn: "Individually enabled",
+        overrideOff: "Individually disabled"
       },
       visualEffectsLevel: {
         label: "Smoothness Level",
@@ -81,9 +133,9 @@ export default {
         label: "Show Time",
         description: "Display time on the page"
       },
-      timeFont: {
-        title: "Time Font",
-        description: "Choose the font used for time display"
+      timeDisplay: {
+        title: "Time Display",
+        description: "Customize the time style and visible details"
       },
       autoFocusSearch: {
         label: "Auto-focus Search Box",
@@ -495,7 +547,9 @@ export default {
         customDesc: "Upload your own image to use as wallpaper.",
         customUploaded: "Your uploaded wallpaper.",
         imageSupport: "Supports JPG, PNG, WEBP",
-        maskOpacity: "Black Overlay"
+        maskOpacity: "Black Overlay",
+        autoDimInDarkMode: "Auto-dim in Dark Mode",
+        autoDimInDarkModeDesc: "When dark mode is on, increase wallpaper overlay automatically for readability."
       },
       codes: {
         0: "Sunny",
@@ -567,7 +621,9 @@ export default {
       prefixEngineInlineHint: "Search with {{engine}}",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
-      noHistory: "No recent searches"
+      noHistory: "No recent searches",
+      tabClosed: "Tab closed",
+      tabsClosed: "Closed {{count}} tabs"
     },
     groups: {
       edit: "Edit",
