@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'next-themes';
 import { RiArrowRightSLine, RiHistoryFill, RiLinkM, RiSearchLine } from '@/icons/ri-compat';
 import { extractDomainFromUrl, isUrl } from '../utils';
 import { Input } from './ui/input';
@@ -17,6 +18,157 @@ import {
   SearchEngineSwitcherTrigger,
 } from './search/SearchEngineSwitcher';
 
+type SearchBarTheme = {
+  surfaceClassName: string;
+  triggerToneClassName: string;
+  clearButtonClassName: string;
+  inputClassName: string;
+  placeholderClassName: string;
+  linkIconClassName: string;
+  dropdownSurfaceClassName: string;
+  dropdownRowClassName: string;
+  dropdownRowSelectedClassName: string;
+  dropdownSecondaryTextClassName: string;
+  engineDropdownSurfaceClassName: string;
+  engineDropdownItemClassName: string;
+  engineDropdownItemSelectedClassName: string;
+  dropdownStatusLoadingContainerClassName: string;
+  dropdownStatusInfoContainerClassName: string;
+  dropdownStatusDotClassName: string;
+  dropdownStatusTextClassName: string;
+  dropdownStatusButtonClassName: string;
+  dropdownClearButtonClassName: string;
+  dropdownEmptyStateClassName: string;
+  dropdownFooterClassName: string;
+};
+
+function resolveSearchBarTheme(args: {
+  blankMode?: boolean;
+  forceWhiteTheme?: boolean;
+  subtleDarkTone?: boolean;
+  resolvedTheme?: string;
+}): SearchBarTheme {
+  const { blankMode, forceWhiteTheme, subtleDarkTone, resolvedTheme } = args;
+  const useDarkThemedDropdown = resolvedTheme === 'dark' && (forceWhiteTheme || blankMode);
+
+  if (useDarkThemedDropdown) {
+    const darkSurfaceClassName = blankMode
+      ? 'bg-black/20 backdrop-blur-md text-white/80'
+      : 'bg-secondary text-foreground';
+    const darkTriggerToneClassName = blankMode ? 'text-white/70' : 'text-foreground/70';
+    const darkClearButtonClassName = blankMode
+      ? 'text-white/50 hover:text-white/90'
+      : 'text-muted-foreground hover:text-foreground';
+    const darkInputClassName = blankMode
+      ? 'bg-transparent dark:bg-transparent text-white/90 placeholder:text-white/45'
+      : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground';
+    const darkPlaceholderClassName = blankMode ? 'text-white/45' : 'text-muted-foreground';
+    const darkLinkIconClassName = blankMode ? 'text-white/45' : 'text-muted-foreground';
+
+    return {
+      surfaceClassName: darkSurfaceClassName,
+      triggerToneClassName: darkTriggerToneClassName,
+      clearButtonClassName: darkClearButtonClassName,
+      inputClassName: darkInputClassName,
+      placeholderClassName: darkPlaceholderClassName,
+      linkIconClassName: darkLinkIconClassName,
+      dropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
+      dropdownRowClassName: 'text-popover-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+      dropdownRowSelectedClassName: 'bg-accent text-accent-foreground',
+      dropdownSecondaryTextClassName: 'text-muted-foreground',
+      engineDropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
+      engineDropdownItemClassName: 'text-popover-foreground hover:bg-accent hover:text-accent-foreground',
+      engineDropdownItemSelectedClassName: 'bg-accent text-accent-foreground',
+      dropdownStatusLoadingContainerClassName: 'bg-accent/70',
+      dropdownStatusInfoContainerClassName: 'bg-accent/70',
+      dropdownStatusDotClassName: 'bg-primary',
+      dropdownStatusTextClassName: 'text-popover-foreground',
+      dropdownStatusButtonClassName: 'bg-accent text-foreground hover:bg-accent/80',
+      dropdownClearButtonClassName: 'text-muted-foreground hover:text-foreground',
+      dropdownEmptyStateClassName: 'text-muted-foreground',
+      dropdownFooterClassName: 'border-border text-muted-foreground',
+    };
+  }
+
+  if (forceWhiteTheme) {
+    return {
+      surfaceClassName: 'bg-white text-black/85',
+      triggerToneClassName: subtleDarkTone ? 'text-black/35' : 'text-black/55',
+      clearButtonClassName: 'text-black/45 hover:text-black/80',
+      inputClassName: subtleDarkTone
+        ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/30'
+        : 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40',
+      placeholderClassName: subtleDarkTone ? 'text-black/30' : 'text-black/40',
+      linkIconClassName: subtleDarkTone ? 'text-black/20' : 'text-black/45',
+      dropdownSurfaceClassName: 'bg-white text-black/85 border-black/10 shadow-lg',
+      dropdownRowClassName: 'text-black/85 hover:bg-black/5 hover:text-black focus:bg-black/5 focus:text-black',
+      dropdownRowSelectedClassName: 'bg-black/8 text-black',
+      dropdownSecondaryTextClassName: 'text-black/40',
+      engineDropdownSurfaceClassName: 'bg-white text-black/85 border-black/10 shadow-lg',
+      engineDropdownItemClassName: 'text-black/85 hover:bg-black/5 hover:text-black',
+      engineDropdownItemSelectedClassName: 'bg-black/8 text-black',
+      dropdownStatusLoadingContainerClassName: 'bg-black/6',
+      dropdownStatusInfoContainerClassName: 'bg-black/5',
+      dropdownStatusDotClassName: 'bg-black/45',
+      dropdownStatusTextClassName: 'text-black/65',
+      dropdownStatusButtonClassName: 'bg-black/10 text-black/75 hover:bg-black/15',
+      dropdownClearButtonClassName: 'text-black/45 hover:text-black/80',
+      dropdownEmptyStateClassName: 'text-black/45',
+      dropdownFooterClassName: 'border-black/10 text-black/45',
+    };
+  }
+
+  if (blankMode) {
+    return {
+      surfaceClassName: 'bg-black/20 backdrop-blur-md text-white/56',
+      triggerToneClassName: 'text-white/60',
+      clearButtonClassName: 'text-white/40 hover:text-white/80',
+      inputClassName: 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40',
+      placeholderClassName: 'text-white/40',
+      linkIconClassName: 'text-white/40',
+      dropdownSurfaceClassName: 'bg-background/15 backdrop-blur-xl border-white/10 text-white/80',
+      dropdownRowClassName: 'text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white',
+      dropdownRowSelectedClassName: 'bg-white/10 text-white',
+      dropdownSecondaryTextClassName: 'text-white/50',
+      engineDropdownSurfaceClassName: 'bg-black/20 backdrop-blur-md text-white/80 border-white/10 shadow-lg',
+      engineDropdownItemClassName: 'text-white/80 hover:bg-white/10 hover:text-white',
+      engineDropdownItemSelectedClassName: 'bg-white/10 text-white',
+      dropdownStatusLoadingContainerClassName: 'bg-white/12',
+      dropdownStatusInfoContainerClassName: 'bg-white/10',
+      dropdownStatusDotClassName: 'bg-white/65',
+      dropdownStatusTextClassName: 'text-white/80',
+      dropdownStatusButtonClassName: 'bg-white/15 text-white hover:bg-white/20',
+      dropdownClearButtonClassName: 'text-white/60 hover:text-white/90',
+      dropdownEmptyStateClassName: 'text-white/60',
+      dropdownFooterClassName: 'border-white/10 text-white/60',
+    };
+  }
+
+  return {
+    surfaceClassName: 'bg-secondary text-foreground',
+    triggerToneClassName: 'text-foreground/70',
+    clearButtonClassName: 'text-muted-foreground hover:text-foreground',
+    inputClassName: 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground',
+    placeholderClassName: 'text-muted-foreground',
+    linkIconClassName: 'text-muted-foreground',
+    dropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border',
+    dropdownRowClassName: 'text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground',
+    dropdownRowSelectedClassName: 'bg-accent text-foreground',
+    dropdownSecondaryTextClassName: 'text-muted-foreground',
+    engineDropdownSurfaceClassName: 'bg-secondary text-foreground border-border shadow-lg',
+    engineDropdownItemClassName: 'text-foreground hover:bg-accent hover:text-foreground',
+    engineDropdownItemSelectedClassName: 'bg-accent text-foreground',
+    dropdownStatusLoadingContainerClassName: 'bg-primary/10',
+    dropdownStatusInfoContainerClassName: 'bg-primary/10',
+    dropdownStatusDotClassName: 'bg-primary',
+    dropdownStatusTextClassName: 'text-primary',
+    dropdownStatusButtonClassName: 'bg-primary/15 text-primary hover:bg-primary/25',
+    dropdownClearButtonClassName: 'text-muted-foreground hover:text-foreground',
+    dropdownEmptyStateClassName: 'text-muted-foreground',
+    dropdownFooterClassName: 'border-border text-muted-foreground',
+  };
+}
+
 function Frame3({
   value,
   onChange,
@@ -26,9 +178,7 @@ function Frame3({
   calculatorInlinePreview,
   onKeyDown,
   disablePlaceholderAnimation,
-  blankMode,
-  forceWhiteTheme,
-  subtleDarkTone,
+  theme,
   inputFontSize = 18,
 }: {
   value: string;
@@ -39,9 +189,7 @@ function Frame3({
   calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   disablePlaceholderAnimation?: boolean;
-  blankMode?: boolean;
-  forceWhiteTheme?: boolean;
-  subtleDarkTone?: boolean;
+  theme: SearchBarTheme;
   inputFontSize?: number;
 }) {
   const { t } = useTranslation();
@@ -55,11 +203,6 @@ function Frame3({
   const commandSuffixText = value.slice(highlightedCommandPrefix.length);
   const inputDisplayValue = commandPrefixHighlighted ? commandSuffixText : value;
   const placeholderText = placeholder || t('search.placeholder');
-  const placeholderTextClass = subtleDarkTone
-    ? 'text-black/30'
-    : (forceWhiteTheme
-      ? 'text-black/40'
-      : (blankMode ? 'text-white/40' : 'text-muted-foreground'));
   const inputLineHeight = Math.round(inputFontSize * 1.35);
   const placeholderFontSize = Math.max(14, Math.round(inputFontSize * 0.88));
   const placeholderLineHeight = Math.round(placeholderFontSize * 1.35);
@@ -114,11 +257,7 @@ function Frame3({
   return (
     <div className="content-stretch flex items-center relative flex-1 min-w-0 gap-2">
       {showLinkIcon && (
-        <RiLinkM className={`size-4 shrink-0 ${
-          subtleDarkTone
-            ? 'text-black/20'
-            : (forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/40' : 'text-muted-foreground'))
-        }`} />
+        <RiLinkM className={`size-4 shrink-0 ${theme.linkIconClassName}`} />
       )}
       {commandPrefixHighlighted ? (
         <span
@@ -165,15 +304,7 @@ function Frame3({
           }
         }}
         placeholder=""
-        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto pl-0 pr-0 py-0 caret-primary focus:placeholder:text-transparent font-['PingFang_SC:Regular',sans-serif] font-normal placeholder:font-normal not-italic w-full rounded-none ${value.length === 0 ? 'focus:caret-transparent' : ''} ${
-          subtleDarkTone
-            ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/30'
-            : (forceWhiteTheme
-              ? 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40'
-              : (blankMode
-                ? 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40'
-                : 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground'))
-        }`}
+        className={`border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto pl-0 pr-0 py-0 caret-primary focus:placeholder:text-transparent font-['PingFang_SC:Regular',sans-serif] font-normal placeholder:font-normal not-italic w-full rounded-none ${value.length === 0 ? 'focus:caret-transparent' : ''} ${theme.inputClassName}`}
         style={{
           fontSize: inputFontSize,
           lineHeight: `${inputLineHeight}px`,
@@ -194,7 +325,7 @@ function Frame3({
       {value.length === 0 ? (
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute left-2 right-0 top-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap ${placeholderTextClass}`}
+          className={`pointer-events-none absolute left-2 right-0 top-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap ${theme.placeholderClassName}`}
           style={{ fontSize: placeholderFontSize, lineHeight: `${placeholderLineHeight}px` }}
         >
           {disablePlaceholderAnimation ? (
@@ -236,9 +367,7 @@ function Frame2({
   calculatorInlinePreview,
   onKeyDown,
   disablePlaceholderAnimation,
-  blankMode,
-  forceWhiteTheme,
-  subtleDarkTone,
+  theme,
   height = 52,
   inputFontSize = 18,
   horizontalPadding = 24,
@@ -258,9 +387,7 @@ function Frame2({
   calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   disablePlaceholderAnimation?: boolean;
-  blankMode?: boolean;
-  forceWhiteTheme?: boolean;
-  subtleDarkTone?: boolean;
+  theme: SearchBarTheme;
   height?: number;
   inputFontSize?: number;
   horizontalPadding?: number;
@@ -278,11 +405,7 @@ function Frame2({
   
   return (
     <div
-      className={`content-stretch flex items-center relative rounded-[999px] self-stretch w-full min-w-0 group cursor-text ${
-        forceWhiteTheme
-          ? 'bg-white text-black/85'
-          : (blankMode ? 'bg-black/20 backdrop-blur-md text-white/56' : 'bg-secondary text-foreground')
-      }`}
+      className={`content-stretch flex items-center relative rounded-[999px] self-stretch w-full min-w-0 group cursor-text ${theme.surfaceClassName}`}
       style={{
         height,
         paddingLeft: leftPadding,
@@ -300,9 +423,7 @@ function Frame2({
         <SearchEngineSwitcherTrigger
           engine={searchEngine}
           onClick={() => onEngineClick()}
-          blankMode={blankMode}
-          forceWhiteTheme={forceWhiteTheme}
-          subtleDarkTone={subtleDarkTone}
+          toneClassName={theme.triggerToneClassName}
         />
       ) : null}
       <Frame3
@@ -314,9 +435,7 @@ function Frame2({
         calculatorInlinePreview={calculatorInlinePreview}
         onKeyDown={onKeyDown}
         disablePlaceholderAnimation={disablePlaceholderAnimation}
-        blankMode={blankMode}
-        forceWhiteTheme={forceWhiteTheme}
-        subtleDarkTone={subtleDarkTone}
+        theme={theme}
         inputFontSize={inputFontSize}
       />
       {value.length > 0 && (
@@ -324,13 +443,7 @@ function Frame2({
           type="button"
           aria-label={t('common.clear')}
           title={t('common.clear')}
-          className={`flex items-center justify-center relative rounded-[999px] shrink-0 transition-colors ${
-            forceWhiteTheme
-              ? 'text-black/45 hover:text-black/80'
-              : (blankMode
-                ? 'text-white/40 hover:text-white/80'
-                : 'text-muted-foreground hover:text-foreground')
-          }`}
+          className={`flex items-center justify-center relative rounded-[999px] shrink-0 transition-colors ${theme.clearButtonClassName}`}
           style={{ width: clearButtonSize, height: clearButtonSize }}
           onClick={(e) => {
             e.stopPropagation();
@@ -352,13 +465,12 @@ function SearchHistoryDropdown({
   onClear,
   onHighlight,
   selectedIndex = -1,
-  blankMode,
-  forceWhiteTheme,
-  showHistoryPermissionBanner = false,
-  onRequestHistoryPermission,
+  theme,
+  statusNotice,
   showNumberHints = false,
   tabsPanelActive = false,
   currentBrowserTabId = null,
+  emptyStateLabel,
 }: {
   items: SearchSuggestionItem[];
   isOpen: boolean;
@@ -366,13 +478,17 @@ function SearchHistoryDropdown({
   onClear: () => void;
   onHighlight?: (index: number) => void;
   selectedIndex?: number;
-  blankMode?: boolean;
-  forceWhiteTheme?: boolean;
-  showHistoryPermissionBanner?: boolean;
-  onRequestHistoryPermission?: () => void;
+  theme: SearchBarTheme;
+  statusNotice?: {
+    tone?: 'info' | 'loading';
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  };
   showNumberHints?: boolean;
   tabsPanelActive?: boolean;
   currentBrowserTabId?: number | null;
+  emptyStateLabel?: string;
 }) {
   const { t, i18n } = useTranslation();
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
@@ -446,15 +562,8 @@ function SearchHistoryDropdown({
   }, []);
 
   if (!isOpen) return null;
-
-  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${
-    forceWhiteTheme
-      ? `text-black/85 hover:bg-black/5 hover:text-black focus:bg-black/5 focus:text-black ${index === selectedIndex ? 'bg-black/8 text-black' : ''}`
-      : (blankMode
-        ? `text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white ${index === selectedIndex ? 'bg-white/10 text-white' : ''}`
-        : `text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground ${index === selectedIndex ? 'bg-accent text-foreground' : ''}`)
-  }`;
-  const secondaryTextClass = forceWhiteTheme ? 'text-black/40' : (blankMode ? 'text-white/50' : 'text-muted-foreground');
+  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${theme.dropdownRowClassName} ${index === selectedIndex ? theme.dropdownRowSelectedClassName : ''}`;
+  const secondaryTextClass = theme.dropdownSecondaryTextClassName;
   const formatRelativeTime = (timestamp?: number) => {
     if (!timestamp || !Number.isFinite(timestamp) || timestamp <= 0) return '';
     const diffSeconds = Math.round((timestamp - Date.now()) / 1000);
@@ -568,58 +677,48 @@ function SearchHistoryDropdown({
 
   return (
     <div className={`absolute left-0 right-0 p-[8px] rounded-[20px] top-[calc(100%+8px)] z-[500] border ${
-      forceWhiteTheme
-        ? 'bg-white text-black/85 border-black/10 shadow-lg'
-        : (blankMode
-          ? 'bg-background/15 backdrop-blur-xl border-white/10 text-white/80'
-          : 'bg-popover text-popover-foreground border-border')
+      theme.dropdownSurfaceClassName
     }`}>
-      {showHistoryPermissionBanner ? (
+      {statusNotice ? (
         <div
           className={`mb-2 flex items-center justify-between gap-2 rounded-[12px] px-2 py-1.5 ${
-            forceWhiteTheme
-              ? 'bg-black/5'
-              : (blankMode ? 'bg-white/10' : 'bg-primary/10')
+            statusNotice.tone === 'loading'
+              ? theme.dropdownStatusLoadingContainerClassName
+              : theme.dropdownStatusInfoContainerClassName
           }`}
         >
-          <span
-            className={`text-[12px] ${
-              forceWhiteTheme ? 'text-black/65' : (blankMode ? 'text-white/80' : 'text-primary')
-            }`}
-          >
-            {t('search.historyPermissionBanner', {
-              defaultValue: '授权后可显示浏览器历史记录',
-            })}
-          </span>
-          <button
-            type="button"
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] transition-colors ${
-              forceWhiteTheme
-                ? 'bg-black/10 text-black/75 hover:bg-black/15'
-                : (blankMode
-                  ? 'bg-white/15 text-white hover:bg-white/20'
-                  : 'bg-primary/15 text-primary hover:bg-primary/25')
-            }`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRequestHistoryPermission?.();
-            }}
-          >
-            {t('search.authorizeHistoryPermission', { defaultValue: '去授权' })}
-          </button>
+          <div className="flex min-w-0 items-center gap-2">
+            {statusNotice.tone === 'loading' ? (
+              <span
+                aria-hidden="true"
+                className={`size-2 shrink-0 rounded-full animate-pulse ${theme.dropdownStatusDotClassName}`}
+              />
+            ) : null}
+            <span
+              className={`text-[12px] ${theme.dropdownStatusTextClassName}`}
+            >
+              {statusNotice.message}
+            </span>
+          </div>
+          {statusNotice.actionLabel && statusNotice.onAction ? (
+            <button
+              type="button"
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] transition-colors ${theme.dropdownStatusButtonClassName}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                statusNotice.onAction?.();
+              }}
+            >
+              {statusNotice.actionLabel}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {hasLocalHistoryRows ? (
         <div className="mb-2 flex items-center justify-end px-2">
           <button
             type="button"
-            className={`text-[12px] transition-colors ${
-              forceWhiteTheme
-                ? 'text-black/45 hover:text-black/80'
-                : (blankMode
-                  ? 'text-white/60 hover:text-white/90'
-                  : 'text-muted-foreground hover:text-foreground')
-            }`}
+            className={`text-[12px] transition-colors ${theme.dropdownClearButtonClassName}`}
             onClick={onClear}
           >
             {t('search.clearHistory')}
@@ -627,9 +726,7 @@ function SearchHistoryDropdown({
         </div>
       ) : null}
       {items.length === 0 ? (
-        <div className={`flex justify-center px-3 py-2 text-[12px] ${
-          forceWhiteTheme ? 'text-black/45' : (blankMode ? 'text-white/60' : 'text-muted-foreground')
-        }`}>{t('search.noHistory')}</div>
+        <div className={`flex justify-center px-3 py-2 text-[12px] ${theme.dropdownEmptyStateClassName}`}>{emptyStateLabel || t('search.noHistory')}</div>
       ) : (
         <ScrollArea
           ref={scrollAreaRef}
@@ -646,12 +743,8 @@ function SearchHistoryDropdown({
         </ScrollArea>
       )}
 
-      {items.length > 0 || tabsPanelActive ? (
-        <div className={`mt-2 border-t px-2 pt-2 text-[12px] flex items-center justify-between gap-4 ${
-          forceWhiteTheme
-            ? 'border-black/10 text-black/45'
-            : (blankMode ? 'border-white/10 text-white/60' : 'border-border text-muted-foreground')
-        }`}>
+      {items.length > 0 ? (
+        <div className={`mt-2 border-t px-2 pt-2 text-[12px] flex items-center justify-between gap-4 ${theme.dropdownFooterClassName}`}>
           <div className="flex items-center gap-4">
             <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
             <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
@@ -701,8 +794,13 @@ interface SearchBarProps {
   searchSurfaceStyle?: React.CSSProperties;
   subtleDarkTone?: boolean;
   showEngineSwitcher?: boolean;
-  showHistoryPermissionBanner?: boolean;
-  onRequestHistoryPermission?: () => void;
+  statusNotice?: {
+    tone?: 'info' | 'loading';
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  };
+  emptyStateLabel?: string;
   showSuggestionNumberHints?: boolean;
   tabsPanelActive?: boolean;
   currentBrowserTabId?: number | null;
@@ -740,12 +838,19 @@ export function SearchBar({
   searchSurfaceStyle,
   subtleDarkTone,
   showEngineSwitcher = true,
-  showHistoryPermissionBanner = false,
-  onRequestHistoryPermission,
+  statusNotice,
+  emptyStateLabel,
   showSuggestionNumberHints = false,
   tabsPanelActive = false,
   currentBrowserTabId = null,
 }: SearchBarProps) {
+  const { resolvedTheme } = useTheme();
+  const theme = useMemo(() => resolveSearchBarTheme({
+    blankMode,
+    forceWhiteTheme,
+    subtleDarkTone,
+    resolvedTheme,
+  }), [blankMode, forceWhiteTheme, resolvedTheme, subtleDarkTone]);
   const isImeComposingEvent = (e: React.KeyboardEvent) => {
     const isModifierDigitHotkey = (e.metaKey || e.ctrlKey) && /^[0-9]$/.test(e.key);
     if (isModifierDigitHotkey) return false;
@@ -777,13 +882,17 @@ export function SearchBar({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isImeComposingEvent(e)) return;
     if (e.defaultPrevented) return;
-    
-    if (e.key === 'Enter') {
-      onSubmit();
-    }
-    // Only trigger if not from input, as input already handles it directly
+
+    // Non-input targets (suggestion rows, panel actions) rely on the shared
+    // suggestion keyboard controller first, so Enter behaves like other row actions.
     if ((e.target as HTMLElement).tagName !== 'INPUT') {
       onKeyDown?.(e);
+      if (e.defaultPrevented) return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit();
     }
   };
 
@@ -802,9 +911,7 @@ export function SearchBar({
             calculatorInlinePreview={calculatorInlinePreview}
             onKeyDown={onKeyDown} 
             disablePlaceholderAnimation={disablePlaceholderAnimation}
-            blankMode={blankMode}
-            forceWhiteTheme={forceWhiteTheme}
-            subtleDarkTone={subtleDarkTone}
+            theme={theme}
             height={searchHeight}
             inputFontSize={searchInputFontSize}
             horizontalPadding={searchHorizontalPadding}
@@ -821,17 +928,23 @@ export function SearchBar({
             onHighlight={onSuggestionHighlight}
             onClear={onHistoryClear} 
             selectedIndex={historySelectedIndex} 
-            blankMode={blankMode}
-            forceWhiteTheme={forceWhiteTheme}
-            showHistoryPermissionBanner={showHistoryPermissionBanner}
-            onRequestHistoryPermission={onRequestHistoryPermission}
+            theme={theme}
+            statusNotice={statusNotice}
             showNumberHints={showSuggestionNumberHints}
             tabsPanelActive={tabsPanelActive}
             currentBrowserTabId={currentBrowserTabId}
+            emptyStateLabel={emptyStateLabel}
           />
         </div>
         {showEngineSwitcher ? (
-          <SearchEngineSwitcherDropdown currentEngine={searchEngine} onSelect={onEngineSelect} isOpen={dropdownOpen} />
+          <SearchEngineSwitcherDropdown
+            currentEngine={searchEngine}
+            onSelect={onEngineSelect}
+            isOpen={dropdownOpen}
+            surfaceClassName={theme.engineDropdownSurfaceClassName}
+            itemClassName={theme.engineDropdownItemClassName}
+            itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
+          />
         ) : null}
       </div>
     </div>

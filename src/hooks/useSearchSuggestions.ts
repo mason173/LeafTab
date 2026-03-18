@@ -3,8 +3,12 @@ import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
 import { buildSearchSuggestionItems } from '@/utils/searchSuggestionEngine';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
-import { useSearchSuggestionSources } from '@/hooks/useSearchSuggestionSources';
+import {
+  useSearchSuggestionSources,
+  type SearchSuggestionSourceStatus,
+} from '@/hooks/useSearchSuggestionSources';
 import type { SearchQueryModel } from '@/utils/searchQueryModel';
+import type { SearchCommandPermission } from '@/utils/searchCommands';
 
 type UseSearchSuggestionsOptions = {
   searchValue: string;
@@ -14,6 +18,14 @@ type UseSearchSuggestionsOptions = {
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
+  bookmarksPermissionGranted: boolean;
+  tabsPermissionGranted: boolean;
+  permissionWarmup: SearchCommandPermission | null;
+};
+
+export type SearchSuggestionsResult = {
+  items: SearchSuggestionItem[];
+  sourceStatus: SearchSuggestionSourceStatus;
 };
 
 export function useSearchSuggestions({
@@ -24,7 +36,10 @@ export function useSearchSuggestions({
   searchSiteShortcutEnabled,
   suggestionUsageMap,
   historyPermissionGranted,
-}: UseSearchSuggestionsOptions): SearchSuggestionItem[] {
+  bookmarksPermissionGranted,
+  tabsPermissionGranted,
+  permissionWarmup,
+}: UseSearchSuggestionsOptions): SearchSuggestionsResult {
   const {
     suggestionDisplayMode,
     localHistorySuggestionItems,
@@ -33,6 +48,7 @@ export function useSearchSuggestions({
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    sourceStatus,
   } = useSearchSuggestionSources({
     searchValue,
     queryModel,
@@ -41,9 +57,12 @@ export function useSearchSuggestions({
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     historyPermissionGranted,
+    bookmarksPermissionGranted,
+    tabsPermissionGranted,
+    permissionWarmup,
   });
 
-  return useMemo(() => buildSearchSuggestionItems({
+  const items = useMemo(() => buildSearchSuggestionItems({
     mode: suggestionDisplayMode,
     searchValue,
     bookmarkSuggestionItems,
@@ -64,4 +83,9 @@ export function useSearchSuggestions({
     suggestionDisplayMode,
     tabSuggestionItems,
   ]);
+
+  return useMemo(() => ({
+    items,
+    sourceStatus,
+  }), [items, sourceStatus]);
 }

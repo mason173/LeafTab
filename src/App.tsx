@@ -77,10 +77,11 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
-import { matchSearchCommandAliasInput } from '@/utils/searchCommands';
+import { matchSearchCommandAliasInput, type SearchCommandPermission } from '@/utils/searchCommands';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { createSearchQueryModel } from '@/utils/searchQueryModel';
+import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import {
   INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -107,6 +108,7 @@ const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
+const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
 type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
 type PersistedWebdavConflict = {
   localPayload: WebdavPayload;
@@ -601,7 +603,16 @@ export default function App() {
 
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
-  const [historyPermissionGranted, setHistoryPermissionGranted] = useState<boolean>(true);
+  const [searchPermissions, setSearchPermissions] = useState<Record<SearchCommandPermission, boolean>>(() => ({
+    bookmarks: typeof chrome === 'undefined' || !chrome.runtime?.id,
+    history: typeof chrome === 'undefined' || !chrome.runtime?.id,
+    tabs: typeof chrome === 'undefined' || !chrome.runtime?.id,
+  }));
+  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => (
+    typeof chrome === 'undefined' || !chrome.runtime?.id
+  ));
+  const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
+  const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const searchQueryModel = useMemo(() => createSearchQueryModel(searchValue, {
     prefixEnabled: searchPrefixEnabled,
@@ -613,14 +624,20 @@ export default function App() {
     searchSiteDirectEnabled,
     searchValue,
   ]);
-  const mergedSuggestionItems = useSearchSuggestions({
+  const {
+    items: mergedSuggestionItems,
+    sourceStatus: suggestionSourceStatus,
+  } = useSearchSuggestions({
     searchValue,
     queryModel: searchQueryModel,
     filteredHistoryItems,
     scenarioShortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
-    historyPermissionGranted,
+    historyPermissionGranted: searchPermissions.history,
+    bookmarksPermissionGranted: searchPermissions.bookmarks,
+    tabsPermissionGranted: searchPermissions.tabs,
+    permissionWarmup,
   });
   const calculatorPreview = searchQueryModel.calculatorPreview;
   const calculatorInlinePreview = useMemo(() => {
@@ -655,9 +672,6 @@ export default function App() {
     });
   }, [searchQueryModel.command.active, searchQueryModel.enginePrefix, t]);
   const searchInlinePreview = siteDirectInlinePreview || enginePrefixInlinePreview || calculatorInlinePreview;
-  const shouldShowHistoryPermissionBanner = useMemo(() => {
-    return !historyPermissionGranted && !searchQueryModel.command.active;
-  }, [historyPermissionGranted, searchQueryModel.command.active]);
 
   const copyTextToClipboard = useCallback(async (copyText: string) => {
     if (navigator.clipboard?.writeText) {
@@ -716,19 +730,63 @@ export default function App() {
     }
   }, [t]);
 
-  const refreshHistoryPermissionStatus = useCallback(() => {
-    void ensureExtensionPermission('history', { requestIfNeeded: false })
-      .then((granted) => {
-        setHistoryPermissionGranted(granted);
-      })
-      .catch(() => {
-        setHistoryPermissionGranted(false);
+  const setSearchPermissionGranted = useCallback((permission: SearchCommandPermission, granted: boolean) => {
+    setSearchPermissions((prev) => {
+      if (prev[permission] === granted) return prev;
+      return {
+        ...prev,
+        [permission]: granted,
+      };
+    });
+    setSearchPermissionsReady(true);
+  }, []);
+
+  const activateSuggestionItem = useCallback((item: SearchSuggestionItem) => {
+    if (item.type === 'tab') {
+      if (!searchPermissions.tabs) {
+        showSearchCommandPermissionDeniedToast('tabs');
+        return;
+      }
+      openSuggestionItem(item);
+      return;
+    }
+
+    if (item.type === 'bookmark') {
+      if (!searchPermissions.bookmarks) {
+        showSearchCommandPermissionDeniedToast('bookmarks');
+        return;
+      }
+      openSuggestionItem(item);
+      return;
+    }
+
+    openSuggestionItem(item);
+  }, [openSuggestionItem, searchPermissions.bookmarks, searchPermissions.tabs, showSearchCommandPermissionDeniedToast]);
+
+  const refreshSearchPermissionStatus = useCallback((permissions: SearchCommandPermission[] = SEARCH_PERMISSION_KEYS) => {
+    void Promise.all(
+      permissions.map((permission) => ensureExtensionPermission(permission, { requestIfNeeded: false })
+        .then((granted) => ({ permission, granted }))
+        .catch(() => ({ permission, granted: false }))),
+    ).then((results) => {
+      setSearchPermissions((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        results.forEach(({ permission, granted }) => {
+          if (next[permission] !== granted) {
+            next[permission] = granted;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
       });
-  }, [setHistoryPermissionGranted]);
+      setSearchPermissionsReady(true);
+    });
+  }, []);
 
   useEffect(() => {
-    refreshHistoryPermissionStatus();
-  }, [refreshHistoryPermissionStatus]);
+    refreshSearchPermissionStatus();
+  }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
     const tabsApi = globalThis.chrome?.tabs;
@@ -766,7 +824,7 @@ export default function App() {
     if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
 
     const handlePermissionsChanged = () => {
-      refreshHistoryPermissionStatus();
+      refreshSearchPermissionStatus();
     };
     permissionsApi.onAdded.addListener(handlePermissionsChanged);
     permissionsApi.onRemoved.addListener(handlePermissionsChanged);
@@ -774,21 +832,30 @@ export default function App() {
       permissionsApi.onAdded.removeListener(handlePermissionsChanged);
       permissionsApi.onRemoved.removeListener(handlePermissionsChanged);
     };
-  }, [refreshHistoryPermissionStatus]);
+  }, [refreshSearchPermissionStatus]);
 
   const runAfterSearchCommandPermission = useCallback((
     permission: 'bookmarks' | 'history' | 'tabs',
     onGranted: () => void,
   ) => {
+    if (searchPermissions[permission]) {
+      onGranted();
+      return;
+    }
+    if (permissionRequestInFlight === permission) return;
+
     const chromeApi = (globalThis as any)?.chrome;
     const runtime = chromeApi?.runtime;
     const permissionsApi = chromeApi?.permissions;
     if (!runtime?.id || !permissionsApi?.request) {
+      setSearchPermissionGranted(permission, true);
       onGranted();
       return;
     }
 
+    setPermissionRequestInFlight(permission);
     permissionsApi.request({ permissions: [permission] }, (allowed: boolean) => {
+      setPermissionRequestInFlight((current) => (current === permission ? null : current));
       const lastError = runtime.lastError;
       if (lastError) {
         toast.error(t('search.permissionRequestFailed', {
@@ -797,12 +864,25 @@ export default function App() {
         return;
       }
       if (!allowed) {
+        setSearchPermissionGranted(permission, false);
         showSearchCommandPermissionDeniedToast(permission);
         return;
       }
-      onGranted();
+      setSearchPermissionGranted(permission, true);
+      setPermissionWarmup(permission);
+      scheduleAfterInteractivePaint(() => {
+        setPermissionWarmup((current) => (current === permission ? null : current));
+        onGranted();
+      });
     });
-  }, [showSearchCommandPermissionDeniedToast, t]);
+  }, [
+    permissionRequestInFlight,
+    scheduleAfterInteractivePaint,
+    searchPermissions,
+    setSearchPermissionGranted,
+    showSearchCommandPermissionDeniedToast,
+    t,
+  ]);
 
   const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const nextValue = e.target.value;
@@ -825,11 +905,17 @@ export default function App() {
     pointerHighlightLockUntilRef.current = Date.now() + POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS;
   }, []);
 
+  const requestBookmarksPermissionFromDropdown = useCallback(() => {
+    runAfterSearchCommandPermission('bookmarks', () => {});
+  }, [runAfterSearchCommandPermission]);
+
+  const requestTabsPermissionFromDropdown = useCallback(() => {
+    runAfterSearchCommandPermission('tabs', () => {});
+  }, [runAfterSearchCommandPermission]);
+
   const requestHistoryPermissionFromDropdown = useCallback(() => {
-    runAfterSearchCommandPermission('history', () => {
-      setHistoryPermissionGranted(true);
-    });
-  }, [runAfterSearchCommandPermission, setHistoryPermissionGranted]);
+    runAfterSearchCommandPermission('history', () => {});
+  }, [runAfterSearchCommandPermission]);
 
   const closeSelectedTabSuggestion = useCallback((item: SearchSuggestionItem) => {
     if (item.type !== 'tab' || !Number.isFinite(item.tabId)) return;
@@ -895,40 +981,26 @@ export default function App() {
     if (searchQueryModel.command.id === 'tabs') {
       const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
       if (!selectedItem || selectedItem.type !== 'tab') return;
-      void ensureExtensionPermission('tabs', { requestIfNeeded: false }).then((granted) => {
-        if (!granted) {
-          showSearchCommandPermissionDeniedToast('tabs');
-          return;
-        }
-        openSuggestionItem(selectedItem);
-      });
+      activateSuggestionItem(selectedItem);
       return;
     }
 
     if (searchQueryModel.command.id === 'bookmarks') {
       const selectedItem = historySelectedIndex !== -1 ? mergedSuggestionItems[historySelectedIndex] : null;
       if (!selectedItem || selectedItem.type !== 'bookmark') return;
-      void ensureExtensionPermission('bookmarks', { requestIfNeeded: false }).then((granted) => {
-        if (!granted) {
-          showSearchCommandPermissionDeniedToast('bookmarks');
-          return;
-        }
-        openSuggestionItem(selectedItem);
-      });
+      activateSuggestionItem(selectedItem);
       return;
     }
 
     handleSearch();
   }, [
+    activateSuggestionItem,
     calculatorPreview,
     copyTextToClipboard,
-    ensureExtensionPermission,
     handleSearch,
     historySelectedIndex,
     mergedSuggestionItems,
-    openSuggestionItem,
     searchQueryModel.command.id,
-    showSearchCommandPermissionDeniedToast,
     closeHistoryPanel,
     setSearchValue,
     t,
@@ -944,7 +1016,7 @@ export default function App() {
     historySelectedIndex,
     setHistorySelectedIndex,
     mergedSuggestionItems,
-    openSuggestionItem,
+    activateSuggestionItem,
     tabSwitchSearchEngine,
     enableSearchEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
     cycleSearchEngine,
@@ -1680,8 +1752,8 @@ export default function App() {
     setDropdownOpen(false);
     pointerHighlightLockUntilRef.current = 0;
     openHistoryPanel({ select: 'none' });
-    refreshHistoryPermissionStatus();
-  }, [openHistoryPanel, refreshHistoryPermissionStatus, setDropdownOpen]);
+    refreshSearchPermissionStatus();
+  }, [openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     if (Date.now() < pointerHighlightLockUntilRef.current) return;
     setHistorySelectedIndex((prev) => (prev === index ? prev : index));
@@ -1824,6 +1896,120 @@ export default function App() {
     rotatingPlaceholderItems,
     3000,
   );
+  const searchDropdownStatusNotice = useMemo(() => {
+    const authorizationLabel = t('search.authorizeHistoryPermission', { defaultValue: '去授权' });
+
+    if (searchQueryModel.command.id === 'bookmarks') {
+      if (permissionRequestInFlight === 'bookmarks') {
+        return {
+          tone: 'loading' as const,
+          message: t('search.bookmarksPermissionPending', {
+            defaultValue: '正在等待书签权限确认...',
+          }),
+        };
+      }
+      if (permissionWarmup === 'bookmarks' || suggestionSourceStatus.bookmarkLoading) {
+        return {
+          tone: 'loading' as const,
+          message: t('search.bookmarksPreparing', {
+            defaultValue: '正在整理书签，请稍候...',
+          }),
+        };
+      }
+      if (searchPermissionsReady && !searchPermissions.bookmarks) {
+        return {
+          tone: 'info' as const,
+          message: t('search.bookmarksPermissionBanner', {
+            defaultValue: '授权后可搜索浏览器书签',
+          }),
+          actionLabel: authorizationLabel,
+          onAction: requestBookmarksPermissionFromDropdown,
+        };
+      }
+      return undefined;
+    }
+
+    if (searchQueryModel.command.id === 'tabs') {
+      if (permissionRequestInFlight === 'tabs') {
+        return {
+          tone: 'loading' as const,
+          message: t('search.tabsPermissionPending', {
+            defaultValue: '正在等待标签页权限确认...',
+          }),
+        };
+      }
+      if (permissionWarmup === 'tabs' || suggestionSourceStatus.tabLoading) {
+        return {
+          tone: 'loading' as const,
+          message: t('search.tabsPreparing', {
+            defaultValue: '正在整理已打开标签页，请稍候...',
+          }),
+        };
+      }
+      if (searchPermissionsReady && !searchPermissions.tabs) {
+        return {
+          tone: 'info' as const,
+          message: t('search.tabsPermissionBanner', {
+            defaultValue: '授权后可搜索已打开标签页',
+          }),
+          actionLabel: authorizationLabel,
+          onAction: requestTabsPermissionFromDropdown,
+        };
+      }
+      return undefined;
+    }
+
+    if (permissionRequestInFlight === 'history') {
+      return {
+        tone: 'loading' as const,
+        message: t('search.historyPermissionPending', {
+          defaultValue: '正在等待历史记录权限确认...',
+        }),
+      };
+    }
+    if (permissionWarmup === 'history' || suggestionSourceStatus.browserHistoryLoading) {
+      return {
+        tone: 'loading' as const,
+        message: t('search.historyPreparing', {
+          defaultValue: '正在加载浏览器历史记录...',
+        }),
+      };
+    }
+    if (searchPermissionsReady && !searchPermissions.history && !searchQueryModel.command.active) {
+      return {
+        tone: 'info' as const,
+        message: t('search.historyPermissionBanner', {
+          defaultValue: '授权后可显示浏览器历史记录',
+        }),
+        actionLabel: authorizationLabel,
+        onAction: requestHistoryPermissionFromDropdown,
+      };
+    }
+    return undefined;
+  }, [
+    permissionRequestInFlight,
+    permissionWarmup,
+    requestBookmarksPermissionFromDropdown,
+    requestHistoryPermissionFromDropdown,
+    requestTabsPermissionFromDropdown,
+    searchPermissions,
+    searchPermissionsReady,
+    searchQueryModel.command.active,
+    searchQueryModel.command.id,
+    suggestionSourceStatus.bookmarkLoading,
+    suggestionSourceStatus.browserHistoryLoading,
+    suggestionSourceStatus.tabLoading,
+    t,
+  ]);
+  const searchDropdownEmptyStateLabel = useMemo(() => {
+    if (searchQueryModel.command.id === 'bookmarks') {
+      return t('search.noBookmarks', { defaultValue: '没有找到匹配的书签' });
+    }
+    if (searchQueryModel.command.id === 'tabs') {
+      return t('search.noTabs', { defaultValue: '没有找到匹配的标签页' });
+    }
+    return t('search.noHistory');
+  }, [searchQueryModel.command.id, t]);
 
   const searchBarProps = useMemo(() => ({
     value: searchValue,
@@ -1837,7 +2023,7 @@ export default function App() {
     suggestionItems: mergedSuggestionItems,
     historyOpen,
     onHistoryOpen: handleSearchHistoryOpen,
-    onSuggestionSelect: openSuggestionItem,
+    onSuggestionSelect: activateSuggestionItem,
     onSuggestionHighlight: handleSearchSuggestionHighlight,
     onHistoryClear: handleSearchHistoryClear,
     onClear: handleSearchClear,
@@ -1853,8 +2039,8 @@ export default function App() {
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
     showEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
-    showHistoryPermissionBanner: shouldShowHistoryPermissionBanner,
-    onRequestHistoryPermission: requestHistoryPermissionFromDropdown,
+    statusNotice: searchDropdownStatusNotice,
+    emptyStateLabel: searchDropdownEmptyStateLabel,
     showSuggestionNumberHints: historyOpen && suggestionModifierHeld,
     tabsPanelActive: searchQueryModel.command.id === 'tabs',
     currentBrowserTabId,
@@ -1872,16 +2058,16 @@ export default function App() {
     handleSuggestionKeyDown,
     historyOpen,
     historySelectedIndex,
-    shouldShowHistoryPermissionBanner,
     suggestionModifierHeld,
     mergedSuggestionItems,
-    openSuggestionItem,
-    requestHistoryPermissionFromDropdown,
+    activateSuggestionItem,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,
     responsiveLayout.searchHorizontalPadding,
     responsiveLayout.searchInputFontSize,
     rotatingSearchPlaceholder,
+    searchDropdownEmptyStateLabel,
+    searchDropdownStatusNotice,
     searchEngine,
     searchInlinePreview,
     searchQueryModel.command.id,

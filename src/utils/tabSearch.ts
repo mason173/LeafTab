@@ -4,6 +4,7 @@ import {
   getShortcutSuggestionScoreFromCandidates,
   normalizeSearchQuery,
 } from '@/utils/searchHelpers';
+import { yieldToMainThread } from '@/utils/mainThreadScheduler';
 
 type TabsApi = typeof chrome.tabs;
 
@@ -21,6 +22,7 @@ type IndexedTab = {
 
 const TAB_QUERY_CACHE_TTL_MS = 10_000;
 const TAB_QUERY_CACHE_LIMIT = 50;
+const TAB_SEARCH_YIELD_INTERVAL = 250;
 let tabIndexCache: IndexedTab[] | null = null;
 let tabIndexPromise: Promise<IndexedTab[]> | null = null;
 let tabListenersAttached = false;
@@ -205,20 +207,25 @@ export async function getTabSuggestionsFromApi(
   const normalizedQuery = normalizeSearchQuery(query);
   if (!normalizedQuery) return [];
 
-  const rankedItems = tabs
-    .map((tab) => ({
-      tab,
-      score: getShortcutSuggestionScoreFromCandidates({
-        titleCandidates: tab.titleCandidates,
-        urlCandidates: tab.urlCandidates,
-        normalizedQuery,
-      }),
-    }))
-    .filter((entry) => entry.score > 0)
-    // Omni-like behavior: filter by query but keep natural tab order.
-    .sort((a, b) => a.tab.order - b.tab.order)
-    .slice(0, Math.max(safeLimit, TAB_QUERY_CACHE_LIMIT))
-    .map(({ tab }) => toSuggestion(tab));
+  const rankedItems: SearchSuggestionItem[] = [];
+  const desiredCount = Math.max(safeLimit, TAB_QUERY_CACHE_LIMIT);
+  let processedCount = 0;
+  for (const tab of tabs) {
+    const score = getShortcutSuggestionScoreFromCandidates({
+      titleCandidates: tab.titleCandidates,
+      urlCandidates: tab.urlCandidates,
+      normalizedQuery,
+    });
+    if (score > 0) {
+      rankedItems.push(toSuggestion(tab));
+      if (rankedItems.length >= desiredCount) break;
+    }
+
+    processedCount += 1;
+    if (processedCount % TAB_SEARCH_YIELD_INTERVAL === 0) {
+      await yieldToMainThread();
+    }
+  }
 
   writeTabQueryCache(query, rankedItems);
   return rankedItems.slice(0, safeLimit);
