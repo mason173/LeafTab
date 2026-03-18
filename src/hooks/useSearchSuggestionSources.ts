@@ -2,13 +2,13 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
-import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 import type { SearchQueryModel } from '@/utils/searchQueryModel';
 import { buildSearchSuggestionSourceItems } from '@/utils/searchSuggestionSources';
+import type { SearchCommandPermission } from '@/utils/searchCommands';
 
 type UseSearchSuggestionSourcesOptions = {
   searchValue: string;
@@ -18,6 +18,9 @@ type UseSearchSuggestionSourcesOptions = {
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
+  bookmarksPermissionGranted: boolean;
+  tabsPermissionGranted: boolean;
+  permissionWarmup: SearchCommandPermission | null;
 };
 
 type SuggestionCacheEntry = {
@@ -62,6 +65,7 @@ function useAsyncSearchSuggestionSource(args: {
 }) {
   const { enabled, query, debounceMs = SEARCH_ASYNC_DEBOUNCE_MS, getCachedItems, load } = args;
   const [items, setItems] = useState<SearchSuggestionItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const debouncedQuery = useDebouncedValue(
     query,
     enabled && query ? debounceMs : 0,
@@ -70,6 +74,7 @@ function useAsyncSearchSuggestionSource(args: {
   useEffect(() => {
     if (!enabled) {
       setItems([]);
+      setLoading(false);
       return;
     }
 
@@ -77,15 +82,23 @@ function useAsyncSearchSuggestionSource(args: {
     const cachedItems = getCachedItems?.(debouncedQuery);
     if (cachedItems) {
       setItems(cachedItems);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
     void load(debouncedQuery)
       .then((nextItems) => {
-        if (!canceled) setItems(nextItems);
+        if (!canceled) {
+          setItems(nextItems);
+          setLoading(false);
+        }
       })
       .catch(() => {
-        if (!canceled) setItems([]);
+        if (!canceled) {
+          setItems([]);
+          setLoading(false);
+        }
       });
 
     return () => {
@@ -93,8 +106,15 @@ function useAsyncSearchSuggestionSource(args: {
     };
   }, [debouncedQuery, enabled, getCachedItems, load]);
 
-  return items;
+  return { items, loading };
 }
+
+export type SearchSuggestionSourceStatus = {
+  suggestionDisplayMode: ReturnType<typeof resolveSearchSuggestionDisplayMode>;
+  bookmarkLoading: boolean;
+  tabLoading: boolean;
+  browserHistoryLoading: boolean;
+};
 
 export function useSearchSuggestionSources({
   searchValue,
@@ -104,6 +124,9 @@ export function useSearchSuggestionSources({
   searchSiteShortcutEnabled,
   suggestionUsageMap,
   historyPermissionGranted,
+  bookmarksPermissionGranted,
+  tabsPermissionGranted,
+  permissionWarmup,
 }: UseSearchSuggestionSourcesOptions) {
   const deferredSearchValue = useDeferredValue(searchValue);
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
@@ -125,10 +148,11 @@ export function useSearchSuggestionSources({
   const browserHistoryMaxResults = debouncedBrowserHistoryQuery ? BROWSER_HISTORY_QUERY_LIMIT : BROWSER_HISTORY_EMPTY_QUERY_LIMIT;
   const shouldFetchBrowserHistory = useMemo(() => {
     if (!historyPermissionGranted) return false;
+    if (permissionWarmup === 'history') return false;
     if (!searchValue.trimStart()) return true;
     if (!normalizedDeferredQuery) return false;
     return !searchValue.trimStart().startsWith('/');
-  }, [historyPermissionGranted, normalizedDeferredQuery, searchValue]);
+  }, [historyPermissionGranted, normalizedDeferredQuery, permissionWarmup, searchValue]);
 
   const syncSourceItems = useMemo(() => buildSearchSuggestionSourceItems({
     deferredSearchValue: searchValue,
@@ -144,33 +168,36 @@ export function useSearchSuggestionSources({
     suggestionUsageMap,
   ]);
 
-  const bookmarkSuggestionItems = useAsyncSearchSuggestionSource({
-    enabled: suggestionDisplayMode === 'bookmarks',
+  const {
+    items: bookmarkSuggestionItems,
+    loading: bookmarkLoading,
+  } = useAsyncSearchSuggestionSource({
+    enabled: suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
     query: commandQuery,
     getCachedItems: (query) => getCachedBookmarkSuggestions(query, 30),
     load: async (query) => {
       const bookmarksApi = globalThis.chrome?.bookmarks;
       if (!bookmarksApi) return [];
-      const granted = await ensureExtensionPermission('bookmarks', { requestIfNeeded: false }).catch(() => false);
-      if (!granted) return [];
       return getBookmarkSuggestionsFromApi(bookmarksApi, query, 30);
     },
   });
 
-  const tabSuggestionItems = useAsyncSearchSuggestionSource({
-    enabled: suggestionDisplayMode === 'tabs',
+  const {
+    items: tabSuggestionItems,
+    loading: tabLoading,
+  } = useAsyncSearchSuggestionSource({
+    enabled: suggestionDisplayMode === 'tabs' && tabsPermissionGranted && permissionWarmup !== 'tabs',
     query: commandQuery,
     getCachedItems: (query) => getCachedTabSuggestions(query, 50),
     load: async (query) => {
       const tabsApi = globalThis.chrome?.tabs;
       if (!tabsApi) return [];
-      const granted = await ensureExtensionPermission('tabs', { requestIfNeeded: false }).catch(() => false);
-      if (!granted) return [];
       return getTabSuggestionsFromApi(tabsApi, query, 50);
     },
   });
 
   const [browserHistorySuggestionItems, setBrowserHistorySuggestionItems] = useState<SearchSuggestionItem[]>([]);
+  const [browserHistoryLoading, setBrowserHistoryLoading] = useState(false);
   useEffect(() => {
     const historyApi = globalThis.chrome?.history;
     if (!historyApi?.onVisited || !historyApi.onVisitRemoved) return;
@@ -191,12 +218,14 @@ export function useSearchSuggestionSources({
   useEffect(() => {
     if (!shouldFetchBrowserHistory) {
       setBrowserHistorySuggestionItems([]);
+      setBrowserHistoryLoading(false);
       return;
     }
 
     const historyApi = globalThis.chrome?.history;
     if (!historyApi) {
       setBrowserHistorySuggestionItems([]);
+      setBrowserHistoryLoading(false);
       return;
     }
 
@@ -205,16 +234,12 @@ export function useSearchSuggestionSources({
     const cachedEntry = browserHistoryCacheRef.current.get(cacheKey);
     if (cachedEntry && Date.now() - cachedEntry.cachedAt <= BROWSER_HISTORY_CACHE_TTL_MS) {
       setBrowserHistorySuggestionItems(cachedEntry.items);
+      setBrowserHistoryLoading(false);
       return;
     }
 
+    setBrowserHistoryLoading(true);
     void (async () => {
-      const granted = await ensureExtensionPermission('history', { requestIfNeeded: false }).catch(() => false);
-      if (!granted) {
-        if (!canceled) setBrowserHistorySuggestionItems([]);
-        return;
-      }
-
       historyApi.search({
         text: debouncedBrowserHistoryQuery,
         maxResults: browserHistoryMaxResults,
@@ -223,6 +248,7 @@ export function useSearchSuggestionSources({
         if (canceled) return;
         if (globalThis.chrome?.runtime?.lastError) {
           setBrowserHistorySuggestionItems([]);
+          setBrowserHistoryLoading(false);
           return;
         }
 
@@ -246,6 +272,7 @@ export function useSearchSuggestionSources({
           items: nextItems,
         });
         setBrowserHistorySuggestionItems(nextItems);
+        setBrowserHistoryLoading(false);
       });
     })();
 
@@ -263,5 +290,11 @@ export function useSearchSuggestionSources({
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    sourceStatus: {
+      suggestionDisplayMode,
+      bookmarkLoading,
+      tabLoading,
+      browserHistoryLoading,
+    },
   };
 }

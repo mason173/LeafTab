@@ -4,6 +4,7 @@ import {
   getShortcutSuggestionScoreFromCandidates,
   normalizeSearchQuery,
 } from '@/utils/searchHelpers';
+import { yieldToMainThread } from '@/utils/mainThreadScheduler';
 
 type BookmarkApi = typeof chrome.bookmarks;
 
@@ -19,6 +20,8 @@ type BookmarkIndexEntry = {
 const BOOKMARK_INDEX_CACHE_TTL_MS = 60_000;
 const BOOKMARK_QUERY_CACHE_TTL_MS = 30_000;
 const BOOKMARK_QUERY_CACHE_LIMIT = 50;
+const BOOKMARK_INDEX_YIELD_INTERVAL = 250;
+const BOOKMARK_RANK_YIELD_INTERVAL = 400;
 let bookmarkIndexCache: { builtAt: number; entries: BookmarkIndexEntry[] } | null = null;
 let bookmarkIndexPromise: Promise<BookmarkIndexEntry[]> | null = null;
 let bookmarkListenersAttached = false;
@@ -60,17 +63,32 @@ function dedupeBookmarkSuggestionItems(
   return next;
 }
 
-function flattenBookmarkTree(
+async function flattenBookmarkTree(
   nodes: chrome.bookmarks.BookmarkTreeNode[] | undefined,
-  out: chrome.bookmarks.BookmarkTreeNode[] = [],
-): chrome.bookmarks.BookmarkTreeNode[] {
-  if (!nodes || nodes.length === 0) return out;
-  for (const node of nodes) {
+): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+  if (!nodes || nodes.length === 0) return [];
+
+  const out: chrome.bookmarks.BookmarkTreeNode[] = [];
+  const stack = [...nodes].reverse();
+  let processedCount = 0;
+
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!node) continue;
+
     if (node.url) out.push(node);
     if (node.children && node.children.length > 0) {
-      flattenBookmarkTree(node.children, out);
+      for (let index = node.children.length - 1; index >= 0; index -= 1) {
+        stack.push(node.children[index]);
+      }
+    }
+
+    processedCount += 1;
+    if (processedCount % BOOKMARK_INDEX_YIELD_INTERVAL === 0) {
+      await yieldToMainThread();
     }
   }
+
   return out;
 }
 
@@ -174,7 +192,7 @@ async function getBookmarkIndex(bookmarksApi: BookmarkApi): Promise<BookmarkInde
 
   bookmarkIndexPromise = (async () => {
     const tree = await getBookmarkTree(bookmarksApi);
-    const flatNodes = flattenBookmarkTree(tree);
+    const flatNodes = await flattenBookmarkTree(tree);
     const dedupedByUrl = new Map<string, BookmarkIndexEntry>();
 
     let order = 0;
@@ -191,6 +209,10 @@ async function getBookmarkIndex(bookmarksApi: BookmarkApi): Promise<BookmarkInde
         urlCandidates: buildSearchMatchCandidates(url),
       });
       order += 1;
+
+      if (order % BOOKMARK_INDEX_YIELD_INTERVAL === 0) {
+        await yieldToMainThread();
+      }
     }
 
     const entries = Array.from(dedupedByUrl.values());
@@ -205,6 +227,35 @@ async function getBookmarkIndex(bookmarksApi: BookmarkApi): Promise<BookmarkInde
     return await bookmarkIndexPromise;
   } finally {
     bookmarkIndexPromise = null;
+  }
+}
+
+type RankedBookmarkCandidate = {
+  entry: BookmarkIndexEntry;
+  score: number;
+};
+
+function insertRankedBookmarkCandidate(
+  list: RankedBookmarkCandidate[],
+  next: RankedBookmarkCandidate,
+  limit: number,
+) {
+  let insertAt = list.length;
+  for (let index = 0; index < list.length; index += 1) {
+    const current = list[index];
+    if (
+      next.score > current.score ||
+      (next.score === current.score && next.entry.dateAdded > current.entry.dateAdded) ||
+      (next.score === current.score && next.entry.dateAdded === current.entry.dateAdded && next.entry.order < current.entry.order)
+    ) {
+      insertAt = index;
+      break;
+    }
+  }
+
+  list.splice(insertAt, 0, next);
+  if (list.length > limit) {
+    list.pop();
   }
 }
 
@@ -250,22 +301,27 @@ export async function getBookmarkSuggestionsFromApi(
   }
 
   const bookmarkIndex = await getBookmarkIndex(bookmarksApi);
-  const ranked = bookmarkIndex
-    .filter((entry) => !seenUrls.has(entry.url))
-    .map((entry) => ({
-      entry,
-      score: getShortcutSuggestionScoreFromCandidates({
-        titleCandidates: entry.titleCandidates,
-        urlCandidates: entry.urlCandidates,
-        normalizedQuery,
-      }),
-    }))
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => (
-      b.score - a.score
-      || b.entry.dateAdded - a.entry.dateAdded
-      || a.entry.order - b.entry.order
-    ));
+  const remainingLimit = Math.max(0, desiredCacheLimit - directItems.length);
+  const ranked: RankedBookmarkCandidate[] = [];
+  let processedCount = 0;
+
+  for (const entry of bookmarkIndex) {
+    if (seenUrls.has(entry.url)) continue;
+
+    const score = getShortcutSuggestionScoreFromCandidates({
+      titleCandidates: entry.titleCandidates,
+      urlCandidates: entry.urlCandidates,
+      normalizedQuery,
+    });
+    if (score > 0 && remainingLimit > 0) {
+      insertRankedBookmarkCandidate(ranked, { entry, score }, remainingLimit);
+    }
+
+    processedCount += 1;
+    if (processedCount % BOOKMARK_RANK_YIELD_INTERVAL === 0) {
+      await yieldToMainThread();
+    }
+  }
 
   const merged = directItems.slice();
   for (const candidate of ranked) {

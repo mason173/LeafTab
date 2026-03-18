@@ -19,7 +19,7 @@ type UseSearchInteractionControllerArgs = {
   historySelectedIndex: number;
   setHistorySelectedIndex: (next: number | ((prev: number) => number)) => void;
   mergedSuggestionItems: SearchSuggestionItem[];
-  openSuggestionItem: (item: SearchSuggestionItem) => void;
+  activateSuggestionItem: (item: SearchSuggestionItem) => void;
   tabSwitchSearchEngine: boolean;
   enableSearchEngineSwitcher: boolean;
   cycleSearchEngine: (direction: 1 | -1) => void;
@@ -48,7 +48,7 @@ export function useSearchInteractionController({
   historySelectedIndex,
   setHistorySelectedIndex,
   mergedSuggestionItems,
-  openSuggestionItem,
+  activateSuggestionItem,
   tabSwitchSearchEngine,
   enableSearchEngineSwitcher,
   cycleSearchEngine,
@@ -102,7 +102,7 @@ export function useSearchInteractionController({
         e.stopPropagation();
         const suggestion = mergedSuggestionItems[hotkeyIndex];
         if (suggestion) {
-          openSuggestionItem(suggestion);
+          activateSuggestionItem(suggestion);
         }
         return;
       }
@@ -176,17 +176,18 @@ export function useSearchInteractionController({
     if (e.key === 'Enter') {
       if (historySelectedIndex !== -1 && mergedSuggestionItems[historySelectedIndex]) {
         e.preventDefault();
-        openSuggestionItem(mergedSuggestionItems[historySelectedIndex]);
+        e.stopPropagation();
+        activateSuggestionItem(mergedSuggestionItems[historySelectedIndex]);
       }
     }
   }, [
+    activateSuggestionItem,
     cycleSearchEngine,
     dropdownOpen,
     enableSearchEngineSwitcher,
     historyOpen,
     historySelectedIndex,
     mergedSuggestionItems,
-    openSuggestionItem,
     openHistoryPanel,
     setDropdownOpen,
     closeHistoryPanel,

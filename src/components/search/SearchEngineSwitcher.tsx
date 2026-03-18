@@ -40,15 +40,11 @@ export const getEngineIcon = (engine: SearchEngine) => {
 export function SearchEngineSwitcherTrigger({
   engine,
   onClick,
-  blankMode,
-  forceWhiteTheme,
-  subtleDarkTone,
+  toneClassName,
 }: {
   engine: SearchEngine;
   onClick?: () => void;
-  blankMode?: boolean;
-  forceWhiteTheme?: boolean;
-  subtleDarkTone?: boolean;
+  toneClassName?: string;
 }) {
   return (
     <button
@@ -57,15 +53,7 @@ export function SearchEngineSwitcherTrigger({
         event.stopPropagation();
         onClick?.();
       }}
-      className={`mr-1 flex items-center gap-1.5 rounded-[10px] px-1.5 py-1 shrink-0 cursor-pointer ${
-        subtleDarkTone
-          ? 'text-black/35'
-          : (forceWhiteTheme
-            ? 'text-black/55'
-            : (blankMode
-              ? 'text-white/60'
-              : 'text-foreground/70'))
-      }`}
+      className={`mr-1 flex items-center gap-1.5 rounded-[10px] px-1.5 py-1 shrink-0 cursor-pointer ${toneClassName || 'text-foreground/70'}`}
     >
       <img alt="" className="size-[18px] object-contain pointer-events-none shrink-0" src={getEngineIcon(engine)} />
       <RiArrowRightSLine className="size-3.5 opacity-70" />
@@ -77,10 +65,16 @@ export function SearchEngineSwitcherDropdown({
   currentEngine,
   onSelect,
   isOpen,
+  surfaceClassName,
+  itemClassName,
+  itemSelectedClassName,
 }: {
   currentEngine: SearchEngine;
   onSelect: (engine: SearchEngine) => void;
   isOpen: boolean;
+  surfaceClassName?: string;
+  itemClassName?: string;
+  itemSelectedClassName?: string;
 }) {
   const { t } = useTranslation();
   if (!isOpen) return null;
@@ -95,15 +89,15 @@ export function SearchEngineSwitcherDropdown({
   const engines = SEARCH_ENGINE_ORDER.map((engine) => engineOptionMap[engine]);
 
   return (
-    <div className="absolute left-0 top-[calc(100%+8px)] z-[520] w-[232px] max-h-[300px] overflow-y-auto rounded-[16px] border border-border bg-popover p-1.5 text-popover-foreground shadow-lg" data-name="DropDown">
+    <div className={`absolute left-0 top-[calc(100%+8px)] z-[520] w-[232px] max-h-[300px] overflow-y-auto rounded-[16px] border p-1.5 ${surfaceClassName || 'border-border bg-popover text-popover-foreground shadow-lg'}`} data-name="DropDown">
       {engines.map((engine) => (
         <button
           type="button"
           key={engine.id}
           className={`flex w-full items-center gap-2 rounded-[14px] px-2 py-1.5 text-sm transition-colors ${
             currentEngine === engine.id
-              ? 'bg-accent text-accent-foreground'
-              : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+              ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
+              : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
           }`}
           onClick={() => onSelect(engine.id)}
         >
