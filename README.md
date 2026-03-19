@@ -4,9 +4,9 @@
     <br />
   </h1>
   <p>
-    Minimal · Clean · Distraction-Free
+    Minimal by Design. Powerful in Use.
     <br />
-    极简 · 纯净 · 无干扰
+    设计极简，使用强大
   </p>
   <p>
     <a href="https://github.com/mason173/LeafTab/releases">下载 Release / Download</a>
@@ -42,12 +42,14 @@
   </p>
 </div>
 
-LeafTab，一个由 AI 协助开发的、极简主义的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是回归“新标签页”这一动作的本质——一个高效的起点。它不追求花哨，而是追求稳定、顺手、可控。
+LeafTab，一个极简但不简单的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是把“打开新标签页”重新打磨成一个高效起点: 干净的界面、顺手的快捷方式，以及一套支持快捷键、标签页、书签、历史记录、搜索引擎切换的强大搜索体验。它不追求花哨，而是追求稳定、顺手、可控。
 
-LeafTab is a minimalist new-tab extension built with AI assistance. It does not try to become a bloated browser operating system. Instead, it returns to the essence of opening a new tab: an efficient starting point. It does not chase flashy effects; it focuses on stability, smoothness, and control.
+LeafTab is a minimalist but capable new-tab extension. Instead of turning the browser into a bloated operating system, it refines the act of opening a new tab into an efficient starting point: a clean interface, fast shortcuts, and a powerful keyboard-first search experience across tabs, bookmarks, history, and multiple search engines. It does not chase flashy effects; it focuses on stability, smoothness, and control.
 
 ## 功能亮点 / Features
 
+- **强大的快捷键搜索系统 / Powerful keyboard-first search**
+- **标签页 / 书签 / 历史记录 / 搜索引擎一体化搜索 / Unified search across tabs, bookmarks, history, and search engines**
 - **快捷方式管理与多布局模式 / Shortcut management with multiple layout modes**
 - **壁纸与天气组件 / Wallpaper and weather widgets**
 - **登录同步（后端可自托管）/ Cloud sync (Self-hostable backend)**
@@ -83,6 +85,12 @@ LeafTab is a minimalist new-tab extension built with AI assistance. It does not 
   <br />
   <br />
   <img alt="LeafTab preview 2" src="./Preview%202.png" style="width: 100%; max-width: 1100px;" />
+  <br />
+  <br />
+  <img alt="LeafTab preview 3" src="./Preview%203.png" style="width: 100%; max-width: 1100px;" />
+  <br />
+  <br />
+  <img alt="LeafTab preview 4" src="./Preview%204.png" style="width: 100%; max-width: 1100px;" />
 </div>
 
 ## 安装 / Installation
