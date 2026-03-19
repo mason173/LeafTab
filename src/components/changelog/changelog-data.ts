@@ -8,6 +8,15 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.8",
+    date: "2026-03-19",
+    notes: [
+      t("changelog.items.release138WeatherAssets", { defaultValue: "天气视频统一压缩为更轻量的 WebM，并进一步下调到 45 帧率" }),
+      t("changelog.items.release138WallpaperAssets", { defaultValue: "默认壁纸继续压缩，整体资源体积进一步下降" }),
+      t("changelog.items.release138Cleanup", { defaultValue: "清理未使用素材与冗余文件，安装包体积显著缩小" }),
+    ],
+  },
+  {
     version: "1.3.7",
     date: "2026-03-19",
     notes: [
