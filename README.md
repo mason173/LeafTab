@@ -27,6 +27,9 @@
     </a>
   </p>
   <p>
+    <img alt="LeafTab demo" src="./src/assets/leaftab-readme.gif" style="width: 100%; max-width: 1100px;" />
+  </p>
+  <p>
     <a href="https://github.com/mason173/LeafTab/releases">
       <img alt="release" src="https://img.shields.io/github/v/release/mason173/LeafTab?style=flat" />
     </a>
