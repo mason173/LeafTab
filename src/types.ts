@@ -11,18 +11,52 @@ export type ScenarioShortcuts = Record<string, Shortcut[]>;
 
 export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
 
-export type SearchSuggestionItem = {
-  type: 'history' | 'shortcut' | 'bookmark' | 'tab' | 'engine-prefix' | 'calculator';
+type SearchSuggestionBase = {
   label: string;
   value: string;
-  icon?: string;
-  timestamp?: number;
-  historySource?: 'local' | 'browser';
-  engine?: SearchEngine;
-  formattedValue?: string;
-  tabId?: number;
+};
+
+export type HistorySearchSuggestionItem = SearchSuggestionBase & {
+  type: 'history';
+  timestamp: number;
+  historySource: 'local' | 'browser';
+};
+
+export type ShortcutSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'shortcut';
+  icon: string;
+};
+
+export type BookmarkSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'bookmark';
+  icon: string;
+};
+
+export type TabSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'tab';
+  icon: string;
+  tabId: number;
   windowId?: number;
 };
+
+export type EnginePrefixSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'engine-prefix';
+  engine: SearchEngine;
+  formattedValue?: string;
+};
+
+export type CalculatorSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'calculator';
+  formattedValue: string;
+};
+
+export type SearchSuggestionItem =
+  | HistorySearchSuggestionItem
+  | ShortcutSearchSuggestionItem
+  | BookmarkSearchSuggestionItem
+  | TabSearchSuggestionItem
+  | EnginePrefixSearchSuggestionItem
+  | CalculatorSearchSuggestionItem;
 
 export interface SearchEngineConfig {
   name: string;

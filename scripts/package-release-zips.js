@@ -1,11 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const {
+  CHANNELS,
+  detectChannelByManifest,
+  readChannelMarkerFromDir,
+  resolveChannel,
+} = require('./channel-utils');
 
 const root = path.resolve(__dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
 const version = String(pkg.version || '0.0.0');
-const CHANNELS = new Set(['community', 'store']);
 
 const buildDir = path.join(root, 'build');
 const firefoxDir = path.join(root, 'build-firefox');
@@ -26,20 +31,16 @@ function readManifest(dir) {
   return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 }
 
-function has(value, target) {
-  return Array.isArray(value) && value.includes(target);
-}
-
-function detectChannelByManifest(manifest) {
-  const hasHttpsAllHosts = has(manifest.host_permissions, 'https://*/*');
-  const hasHttpAllHosts = has(manifest.host_permissions, 'http://*/*');
-  if (hasHttpsAllHosts && hasHttpAllHosts) return 'community';
-  return 'store';
-}
-
 function resolveExpectedChannel(raw) {
-  const normalized = String(raw || '').trim().toLowerCase();
+  if (raw === undefined || raw === null || String(raw).trim() === '') return '';
+  const normalized = resolveChannel(raw);
   return CHANNELS.has(normalized) ? normalized : '';
+}
+
+function detectChannelFromBuild(dir) {
+  const markedChannel = readChannelMarkerFromDir(dir);
+  if (markedChannel) return markedChannel;
+  return detectChannelByManifest(readManifest(dir));
 }
 
 function packZip(cwd, outFile) {
@@ -50,8 +51,8 @@ function packZip(cwd, outFile) {
 assertBuild(buildDir, 'Chrome/Edge');
 assertBuild(firefoxDir, 'Firefox');
 
-const chromeChannel = detectChannelByManifest(readManifest(buildDir));
-const firefoxChannel = detectChannelByManifest(readManifest(firefoxDir));
+const chromeChannel = detectChannelFromBuild(buildDir);
+const firefoxChannel = detectChannelFromBuild(firefoxDir);
 if (chromeChannel !== firefoxChannel) {
   console.error('[pack] Channel mismatch between build and build-firefox outputs.');
   console.error(`[pack] build: ${chromeChannel}, build-firefox: ${firefoxChannel}`);

@@ -385,7 +385,6 @@ export default function SettingsModal({
     setCloudLastSyncAt(
       localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
         || localStorage.getItem('cloud_shortcuts_updated_at')
-        || localStorage.getItem('cloud_shortcuts_fetched_at')
         || ''
     );
     setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
@@ -405,7 +404,6 @@ export default function SettingsModal({
       setCloudLastSyncAt(
         localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
           || localStorage.getItem('cloud_shortcuts_updated_at')
-          || localStorage.getItem('cloud_shortcuts_fetched_at')
           || ''
       );
       setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
@@ -424,7 +422,6 @@ export default function SettingsModal({
       setCloudLastSyncAt(
         localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
           || localStorage.getItem('cloud_shortcuts_updated_at')
-          || localStorage.getItem('cloud_shortcuts_fetched_at')
           || ''
       );
       setCloudNextSyncAt(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt) || '');
@@ -452,6 +449,10 @@ export default function SettingsModal({
     if (Number.isNaN(ts)) return t('settings.backup.webdav.notSynced');
     const diff = Math.max(0, relativeNow - ts);
     if (diff < 60 * 1000) return t('settings.backup.webdav.justSynced');
+    if (diff >= 60 * 60 * 1000) {
+      const hours = Math.max(1, Math.floor(diff / (60 * 60 * 1000)));
+      return t('settings.backup.webdav.hoursAgo', { count: hours });
+    }
     const minutes = Math.max(1, Math.floor(diff / (60 * 1000)));
     return t('settings.backup.webdav.minutesAgo', { count: minutes });
   };

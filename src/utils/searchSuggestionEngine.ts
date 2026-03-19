@@ -1,11 +1,12 @@
 import type { SearchSuggestionItem } from '@/types';
+import { buildSearchActions, type SearchAction } from '@/utils/searchActions';
 import type { SearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import {
   buildSearchMatchCandidates,
   getSearchMatchPriorityFromCandidates,
 } from '@/utils/searchHelpers';
 
-type BuildSearchSuggestionItemsArgs = {
+type BuildSearchSuggestionActionsArgs = {
   mode: SearchSuggestionDisplayMode;
   searchValue: string;
   bookmarkSuggestionItems: SearchSuggestionItem[];
@@ -22,27 +23,47 @@ function normalizeSuggestionQuery(rawValue: string): string {
   return rawValue.trim().toLowerCase();
 }
 
-function getSuggestionKey(item: SearchSuggestionItem): string {
-  if (item.type === 'shortcut') return `shortcut|${item.value}`;
-  if (item.type === 'bookmark') return `bookmark|${item.value}`;
-  if (item.type === 'tab') return `tab|${item.tabId ?? item.value}`;
-  if (item.type === 'history') return `history|${item.value}`;
-  if (item.type === 'engine-prefix') return `engine-prefix|${item.engine || ''}|${item.value}`;
-  return `${item.type}|${item.value}`;
+function looksLikeUrlTarget(rawValue: string): boolean {
+  const value = rawValue.trim();
+  if (!value) return false;
+  return /^(https?:\/\/|www\.)/i.test(value) || /^[a-z0-9-]+\.[a-z]{2,}(\/|$)/i.test(value);
 }
 
-function mergeUniqueSuggestions(...groups: Array<readonly SearchSuggestionItem[]>): SearchSuggestionItem[] {
-  const seen = new Set<string>();
-  const merged: SearchSuggestionItem[] = [];
-  for (const group of groups) {
-    for (const item of group) {
-      const key = getSuggestionKey(item);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(item);
-    }
+function normalizeUrlTarget(rawValue: string): string {
+  return rawValue
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '');
+}
+
+function getSuggestionDedupKey(item: SearchSuggestionItem): string {
+  const rawValue = item.value || '';
+  if (
+    item.type === 'shortcut'
+    || item.type === 'bookmark'
+    || item.type === 'tab'
+    || looksLikeUrlTarget(rawValue)
+  ) {
+    return `target|${normalizeUrlTarget(rawValue)}`;
   }
-  return merged;
+  return `${item.type}|${rawValue.trim().toLowerCase()}`;
+}
+
+function appendUniqueSuggestions(args: {
+  target: SearchSuggestionItem[];
+  seenKeys: Set<string>;
+  items: readonly SearchSuggestionItem[];
+  limit: number;
+}) {
+  const { target, seenKeys, items, limit } = args;
+  for (const item of items) {
+    if (target.length >= limit) return;
+    const dedupKey = getSuggestionDedupKey(item);
+    if (seenKeys.has(dedupKey)) continue;
+    seenKeys.add(dedupKey);
+    target.push(item);
+  }
 }
 
 function matchesSuggestionQuery(item: SearchSuggestionItem, normalizedQuery: string): boolean {
@@ -61,20 +82,12 @@ function matchesSuggestionQuery(item: SearchSuggestionItem, normalizedQuery: str
   return valuePriority > 0;
 }
 
-function buildMergedHistoryGroup(
-  localHistorySuggestionItems: SearchSuggestionItem[],
-  browserHistorySuggestionItems: SearchSuggestionItem[],
+function filterMatchedSuggestions(
+  items: readonly SearchSuggestionItem[],
+  normalizedQuery: string,
 ): SearchSuggestionItem[] {
-  const mergedHistoryItems = mergeUniqueSuggestions(
-    localHistorySuggestionItems,
-    browserHistorySuggestionItems,
-  );
-
-  return mergedHistoryItems.sort((a, b) => {
-    const aTimestamp = a.type === 'history' ? Number(a.timestamp || 0) : 0;
-    const bTimestamp = b.type === 'history' ? Number(b.timestamp || 0) : 0;
-    return bTimestamp - aTimestamp;
-  });
+  if (!normalizedQuery) return [...items];
+  return items.filter((item) => matchesSuggestionQuery(item, normalizedQuery));
 }
 
 function buildDefaultModeSuggestions(args: {
@@ -97,27 +110,57 @@ function buildDefaultModeSuggestions(args: {
   } = args;
 
   const normalizedQuery = normalizeSuggestionQuery(searchValue);
-  const mergedHistoryItems = buildMergedHistoryGroup(
-    localHistorySuggestionItems,
-    browserHistorySuggestionItems,
-  );
 
   if (!normalizedQuery) {
-    return mergedHistoryItems.slice(0, emptyStateLimit);
+    const items: SearchSuggestionItem[] = [];
+    const seenKeys = new Set<string>();
+    appendUniqueSuggestions({
+      target: items,
+      seenKeys,
+      items: localHistorySuggestionItems,
+      limit: emptyStateLimit,
+    });
+    appendUniqueSuggestions({
+      target: items,
+      seenKeys,
+      items: browserHistorySuggestionItems,
+      limit: emptyStateLimit,
+    });
+    return items;
   }
 
-  const shortcutGroup = shortcutSuggestionItems.filter((item) => matchesSuggestionQuery(item, normalizedQuery));
-  const siteGroup = builtinSiteSuggestionItems.filter((item) => matchesSuggestionQuery(item, normalizedQuery));
-  const historyGroup = mergedHistoryItems.filter((item) => matchesSuggestionQuery(item, normalizedQuery));
+  const items: SearchSuggestionItem[] = [];
+  const seenKeys = new Set<string>();
 
-  return mergeUniqueSuggestions(
-    shortcutGroup,
-    siteGroup,
-    historyGroup,
-  ).slice(0, queryStateLimit);
+  appendUniqueSuggestions({
+    target: items,
+    seenKeys,
+    items: filterMatchedSuggestions(shortcutSuggestionItems, normalizedQuery),
+    limit: queryStateLimit,
+  });
+  appendUniqueSuggestions({
+    target: items,
+    seenKeys,
+    items: filterMatchedSuggestions(localHistorySuggestionItems, normalizedQuery),
+    limit: queryStateLimit,
+  });
+  appendUniqueSuggestions({
+    target: items,
+    seenKeys,
+    items: filterMatchedSuggestions(browserHistorySuggestionItems, normalizedQuery),
+    limit: queryStateLimit,
+  });
+  appendUniqueSuggestions({
+    target: items,
+    seenKeys,
+    items: filterMatchedSuggestions(builtinSiteSuggestionItems, normalizedQuery),
+    limit: queryStateLimit,
+  });
+
+  return items;
 }
 
-export function buildSearchSuggestionItems({
+export function buildSearchSuggestionActions({
   mode,
   searchValue,
   bookmarkSuggestionItems,
@@ -128,22 +171,26 @@ export function buildSearchSuggestionItems({
   shortcutSuggestionItems,
   emptyStateLimit = 30,
   queryStateLimit = 15,
-}: BuildSearchSuggestionItemsArgs): SearchSuggestionItem[] {
+}: BuildSearchSuggestionActionsArgs): SearchAction[] {
+  const items = (() => {
   if (mode === 'tabs') {
-    return tabSuggestionItems;
+      return tabSuggestionItems;
   }
 
   if (mode === 'bookmarks') {
-    return bookmarkSuggestionItems;
+      return bookmarkSuggestionItems;
   }
 
-  return buildDefaultModeSuggestions({
-    searchValue,
-    localHistorySuggestionItems,
-    browserHistorySuggestionItems,
-    builtinSiteSuggestionItems,
-    shortcutSuggestionItems,
-    emptyStateLimit,
-    queryStateLimit,
-  });
+    return buildDefaultModeSuggestions({
+      searchValue,
+      localHistorySuggestionItems,
+      browserHistorySuggestionItems,
+      builtinSiteSuggestionItems,
+      shortcutSuggestionItems,
+      emptyStateLimit,
+      queryStateLimit,
+    });
+  })();
+
+  return buildSearchActions(items);
 }

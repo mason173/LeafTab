@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type React from 'react';
-import type { SearchSuggestionItem } from '@/types';
+import type { SearchAction } from '@/utils/searchActions';
 
 const MAX_NUMBER_HOTKEY_SLOTS = 10;
 
@@ -18,8 +18,8 @@ type UseSearchInteractionControllerArgs = {
   closeHistoryPanel: (reason?: 'manual' | 'escape' | 'outside' | 'submit' | 'selection' | 'hotkey') => void;
   historySelectedIndex: number;
   setHistorySelectedIndex: (next: number | ((prev: number) => number)) => void;
-  mergedSuggestionItems: SearchSuggestionItem[];
-  activateSuggestionItem: (item: SearchSuggestionItem) => void;
+  searchActions: SearchAction[];
+  activateSearchAction: (action: SearchAction) => void;
   tabSwitchSearchEngine: boolean;
   enableSearchEngineSwitcher: boolean;
   cycleSearchEngine: (direction: 1 | -1) => void;
@@ -29,11 +29,6 @@ type UseSearchInteractionControllerArgs = {
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   setSearchValue: (next: string | ((prev: string) => string)) => void;
   onKeyboardNavigate?: () => void;
-  tabsPanelActive: boolean;
-  protectedTabId?: number | null;
-  onProtectedTabCloseAttempt: () => void;
-  closeSelectedTabSuggestion: (item: SearchSuggestionItem) => void;
-  closeOtherTabsSuggestions: (item: SearchSuggestionItem) => void;
 };
 
 type UseSearchInteractionControllerResult = {
@@ -47,8 +42,8 @@ export function useSearchInteractionController({
   closeHistoryPanel,
   historySelectedIndex,
   setHistorySelectedIndex,
-  mergedSuggestionItems,
-  activateSuggestionItem,
+  searchActions,
+  activateSearchAction,
   tabSwitchSearchEngine,
   enableSearchEngineSwitcher,
   cycleSearchEngine,
@@ -58,11 +53,6 @@ export function useSearchInteractionController({
   searchInputRef,
   setSearchValue,
   onKeyboardNavigate,
-  tabsPanelActive,
-  protectedTabId,
-  onProtectedTabCloseAttempt,
-  closeSelectedTabSuggestion,
-  closeOtherTabsSuggestions,
 }: UseSearchInteractionControllerArgs): UseSearchInteractionControllerResult {
   const [suggestionModifierHeld, setSuggestionModifierHeld] = useState(false);
 
@@ -100,37 +90,12 @@ export function useSearchInteractionController({
       if (hotkeyIndex !== null && hotkeyIndex < MAX_NUMBER_HOTKEY_SLOTS) {
         e.preventDefault();
         e.stopPropagation();
-        const suggestion = mergedSuggestionItems[hotkeyIndex];
-        if (suggestion) {
-          activateSuggestionItem(suggestion);
+        const action = searchActions[hotkeyIndex];
+        if (action) {
+          activateSearchAction(action);
         }
         return;
       }
-    }
-
-    const selectedSuggestion = historySelectedIndex !== -1
-      ? mergedSuggestionItems[historySelectedIndex]
-      : null;
-    const activeTabSuggestion = selectedSuggestion?.type === 'tab' ? selectedSuggestion : null;
-    const deleteKeyPressed = e.key === 'Backspace' || e.key === 'Delete';
-    if (
-      tabsPanelActive &&
-      historyOpen &&
-      deleteKeyPressed &&
-      activeTabSuggestion
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!e.shiftKey && activeTabSuggestion.tabId === protectedTabId) {
-        onProtectedTabCloseAttempt();
-        return;
-      }
-      if (e.shiftKey) {
-        closeOtherTabsSuggestions(activeTabSuggestion);
-      } else {
-        closeSelectedTabSuggestion(activeTabSuggestion);
-      }
-      return;
     }
 
     if (e.key === 'Escape' && historyOpen) {
@@ -154,50 +119,37 @@ export function useSearchInteractionController({
       if (!historyOpen) {
         openHistoryPanel({
           select: 'first',
-          itemCount: mergedSuggestionItems.length,
+          itemCount: searchActions.length,
         });
-      } else if (mergedSuggestionItems.length > 0) {
-        setHistorySelectedIndex((prev) => (prev + 1) % mergedSuggestionItems.length);
+      } else if (searchActions.length > 0) {
+        setHistorySelectedIndex((prev) => (prev + 1) % searchActions.length);
       }
       return;
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       onKeyboardNavigate?.();
-      if (historyOpen && mergedSuggestionItems.length > 0) {
+      if (historyOpen && searchActions.length > 0) {
         setHistorySelectedIndex((prev) => (
           prev === -1
-            ? mergedSuggestionItems.length - 1
-            : (prev - 1 + mergedSuggestionItems.length) % mergedSuggestionItems.length
+            ? searchActions.length - 1
+            : (prev - 1 + searchActions.length) % searchActions.length
         ));
       }
       return;
     }
-    if (e.key === 'Enter') {
-      if (historySelectedIndex !== -1 && mergedSuggestionItems[historySelectedIndex]) {
-        e.preventDefault();
-        e.stopPropagation();
-        activateSuggestionItem(mergedSuggestionItems[historySelectedIndex]);
-      }
-    }
   }, [
-    activateSuggestionItem,
+    activateSearchAction,
     cycleSearchEngine,
     dropdownOpen,
     enableSearchEngineSwitcher,
     historyOpen,
-    historySelectedIndex,
-    mergedSuggestionItems,
+    searchActions,
     openHistoryPanel,
     setDropdownOpen,
     closeHistoryPanel,
-    closeOtherTabsSuggestions,
-    closeSelectedTabSuggestion,
     onKeyboardNavigate,
-    onProtectedTabCloseAttempt,
-    protectedTabId,
     setHistorySelectedIndex,
-    tabsPanelActive,
     tabSwitchSearchEngine,
   ]);
 
@@ -236,7 +188,7 @@ export function useSearchInteractionController({
         onKeyboardNavigate?.();
         openHistoryPanel({
           select: 'first',
-          itemCount: mergedSuggestionItems.length,
+          itemCount: searchActions.length,
         });
         return;
       }
@@ -251,7 +203,7 @@ export function useSearchInteractionController({
     window.addEventListener('keydown', handleGlobalSearchHotkey);
     return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
   }, [
-    mergedSuggestionItems.length,
+    searchActions.length,
     openHistoryPanel,
     onKeyboardNavigate,
     searchAnyKeyCaptureEnabled,

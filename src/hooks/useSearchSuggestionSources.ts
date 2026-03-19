@@ -1,12 +1,12 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
-import type { SearchQueryModel } from '@/utils/searchQueryModel';
+import type { SearchSessionModel } from '@/utils/searchSessionModel';
 import {
   buildSearchSuggestionSourceItems,
   buildShortcutSearchIndex,
@@ -16,9 +16,9 @@ import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 type UseSearchSuggestionSourcesOptions = {
   searchValue: string;
-  queryModel: SearchQueryModel;
+  queryModel: SearchSessionModel;
   filteredHistoryItems: SearchHistoryEntry[];
-  scenarioShortcuts: ScenarioShortcuts;
+  shortcuts: Shortcut[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
@@ -124,7 +124,7 @@ export function useSearchSuggestionSources({
   searchValue,
   queryModel,
   filteredHistoryItems,
-  scenarioShortcuts,
+  shortcuts,
   searchSiteShortcutEnabled,
   suggestionUsageMap,
   historyPermissionGranted,
@@ -133,7 +133,6 @@ export function useSearchSuggestionSources({
   permissionWarmup,
 }: UseSearchSuggestionSourcesOptions) {
   const isDocumentVisible = useDocumentVisibility();
-  const deferredSearchValue = useDeferredValue(searchValue);
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
   const [browserHistoryCacheVersion, setBrowserHistoryCacheVersion] = useState(0);
   const suggestionDisplayMode = useMemo(
@@ -141,45 +140,47 @@ export function useSearchSuggestionSources({
     [queryModel.command.id],
   );
   const commandQuery = queryModel.commandQuery;
-  const normalizedDeferredQuery = useMemo(
-    () => normalizeSearchQuery(deferredSearchValue),
-    [deferredSearchValue],
+  const normalizedSearchQuery = useMemo(
+    () => normalizeSearchQuery(searchValue),
+    [searchValue],
   );
-  const trimmedDeferredSearchValue = deferredSearchValue.trim();
+  const trimmedSearchValue = searchValue.trim();
   const debouncedBrowserHistoryQuery = useDebouncedValue(
-    trimmedDeferredSearchValue,
-    trimmedDeferredSearchValue ? SEARCH_ASYNC_DEBOUNCE_MS : 0,
+    trimmedSearchValue,
+    trimmedSearchValue ? SEARCH_ASYNC_DEBOUNCE_MS : 0,
   );
   const browserHistoryMaxResults = debouncedBrowserHistoryQuery ? BROWSER_HISTORY_QUERY_LIMIT : BROWSER_HISTORY_EMPTY_QUERY_LIMIT;
   const shouldFetchBrowserHistory = useMemo(() => {
     if (!isDocumentVisible) return false;
     if (!historyPermissionGranted) return false;
     if (permissionWarmup === 'history') return false;
-    if (!trimmedDeferredSearchValue) return true;
-    if (!normalizedDeferredQuery) return false;
-    return !trimmedDeferredSearchValue.startsWith('/');
+    if (queryModel.mode !== 'default') return false;
+    if (!trimmedSearchValue) return true;
+    if (!normalizedSearchQuery) return false;
+    return true;
   }, [
     historyPermissionGranted,
     isDocumentVisible,
-    normalizedDeferredQuery,
+    normalizedSearchQuery,
     permissionWarmup,
-    trimmedDeferredSearchValue,
+    queryModel.mode,
+    trimmedSearchValue,
   ]);
 
   const shortcutSearchIndex = useMemo(
-    () => buildShortcutSearchIndex(scenarioShortcuts),
-    [scenarioShortcuts],
+    () => buildShortcutSearchIndex(shortcuts),
+    [shortcuts],
   );
 
   const syncSourceItems = useMemo(() => buildSearchSuggestionSourceItems({
-    deferredSearchValue,
+    searchValue,
     filteredHistoryItems,
     shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   }), [
-    deferredSearchValue,
     filteredHistoryItems,
+    searchValue,
     searchSiteShortcutEnabled,
     shortcutSearchIndex,
     suggestionUsageMap,
@@ -277,7 +278,6 @@ export function useSearchSuggestionSources({
             type: 'history',
             label: (node.title || url).trim() || url,
             value: url,
-            icon: '',
             historySource: 'browser',
             timestamp: Number(node.lastVisitTime || Date.now()),
           });

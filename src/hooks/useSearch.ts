@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useDeferredValue, useReducer } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
 import { SearchEngine } from '../types';
 import { isUrl } from '../utils';
 import {
@@ -8,7 +8,7 @@ import {
   normalizeSearchQuery,
 } from '../utils/searchHelpers';
 import {
-  isSearchCommandTokenValue,
+  isSearchCommandShellValue,
   resolveSearchCommandAutocomplete,
 } from '@/utils/searchCommands';
 import {
@@ -17,7 +17,7 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
-import { createSearchQueryModel } from '@/utils/searchQueryModel';
+import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
 
 const SEARCH_HISTORY_KEY = 'search_history';
@@ -219,7 +219,6 @@ export function useSearch(
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const historyOpen = searchPanelState.open;
-  const deferredSearchValue = useDeferredValue(searchValue);
   const historyUsageMap = useMemo(
     () => (personalizationEnabled ? readSuggestionUsageMap() : {}),
     [personalizationEnabled, historyUsageVersion],
@@ -272,22 +271,20 @@ export function useSearch(
     });
   }, []);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const nativeEvent = e.nativeEvent as InputEvent | undefined;
-    const inputType = nativeEvent?.inputType || '';
+  const handleSearchChange = (rawValue: string, nativeEvent?: Event) => {
+    const inputNativeEvent = nativeEvent as InputEvent | undefined;
+    const inputType = inputNativeEvent?.inputType || '';
     let nextValue = rawValue;
 
     // 对齐命令补全交互：
-    // 1) 输入 /b 自动补全为 /bookmarks，输入 /t 自动补全为 /tabs（不自动补空格）
-    // 2) 当只剩命令 token 时，再按一次退格可整段清空
-    const loweredRawValue = rawValue.toLowerCase();
+    // 1) 输入 /b 自动补全为 /bookmarks ，输入 /t 自动补全为 /tabs
+    // 2) 命令壳（token + 可选尾随空格）在退格时按整段处理
     if (inputType === 'deleteContentBackward') {
-      if (isSearchCommandTokenValue(searchValue)) {
+      if (isSearchCommandShellValue(searchValue)) {
         nextValue = '';
       }
     } else {
-      const autocompletedCommandToken = resolveSearchCommandAutocomplete(loweredRawValue);
+      const autocompletedCommandToken = resolveSearchCommandAutocomplete(rawValue);
       if (autocompletedCommandToken) {
         nextValue = autocompletedCommandToken;
       }
@@ -308,7 +305,7 @@ export function useSearch(
   );
 
   const filteredHistoryItems = useMemo(() => {
-    const normalizedQuery = normalizeSearchQuery(deferredSearchValue);
+    const normalizedQuery = normalizeSearchQuery(searchValue);
     const now = Date.now();
     if (!normalizedQuery) {
       return indexedSearchHistory
@@ -340,7 +337,7 @@ export function useSearch(
       query: item.query,
       timestamp: item.timestamp,
     }));
-  }, [deferredSearchValue, fuzzyMatchEnabled, historyUsageMap, indexedSearchHistory, personalizationEnabled]);
+  }, [fuzzyMatchEnabled, historyUsageMap, indexedSearchHistory, personalizationEnabled, searchValue]);
 
   const addSearchHistoryEntry = useCallback((rawQuery: string) => {
     const query = rawQuery.trim();
@@ -356,7 +353,7 @@ export function useSearch(
   }, []);
 
   const openSearchWithQuery = useCallback((rawQuery: string) => {
-    const queryModel = createSearchQueryModel(rawQuery, {
+    const queryModel = createSearchSessionModel(rawQuery, {
       prefixEnabled,
       siteDirectEnabled,
       calculatorEnabled: false,

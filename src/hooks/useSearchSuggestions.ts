@@ -1,20 +1,21 @@
 import { useMemo } from 'react';
-import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
+import type { Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
-import { buildSearchSuggestionItems } from '@/utils/searchSuggestionEngine';
+import type { SearchAction } from '@/utils/searchActions';
+import { buildSearchSuggestionActions } from '@/utils/searchSuggestionEngine';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 import {
   useSearchSuggestionSources,
   type SearchSuggestionSourceStatus,
 } from '@/hooks/useSearchSuggestionSources';
-import type { SearchQueryModel } from '@/utils/searchQueryModel';
+import type { SearchSessionModel } from '@/utils/searchSessionModel';
 import type { SearchCommandPermission } from '@/utils/searchCommands';
 
 type UseSearchSuggestionsOptions = {
   searchValue: string;
-  queryModel: SearchQueryModel;
+  queryModel: SearchSessionModel;
   filteredHistoryItems: SearchHistoryEntry[];
-  scenarioShortcuts: ScenarioShortcuts;
+  shortcuts: Shortcut[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
@@ -24,7 +25,7 @@ type UseSearchSuggestionsOptions = {
 };
 
 export type SearchSuggestionsResult = {
-  items: SearchSuggestionItem[];
+  actions: SearchAction[];
   sourceStatus: SearchSuggestionSourceStatus;
 };
 
@@ -32,7 +33,7 @@ export function useSearchSuggestions({
   searchValue,
   queryModel,
   filteredHistoryItems,
-  scenarioShortcuts,
+  shortcuts,
   searchSiteShortcutEnabled,
   suggestionUsageMap,
   historyPermissionGranted,
@@ -53,7 +54,7 @@ export function useSearchSuggestions({
     searchValue,
     queryModel,
     filteredHistoryItems,
-    scenarioShortcuts,
+    shortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     historyPermissionGranted,
@@ -62,7 +63,7 @@ export function useSearchSuggestions({
     permissionWarmup,
   });
 
-  const items = useMemo(() => buildSearchSuggestionItems({
+  const actions = useMemo(() => buildSearchSuggestionActions({
     mode: suggestionDisplayMode,
     searchValue,
     bookmarkSuggestionItems,
@@ -85,7 +86,7 @@ export function useSearchSuggestions({
   ]);
 
   return useMemo(() => ({
-    items,
+    actions,
     sourceStatus,
-  }), [items, sourceStatus]);
+  }), [actions, sourceStatus]);
 }

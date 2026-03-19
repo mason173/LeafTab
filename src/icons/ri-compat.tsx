@@ -18,6 +18,7 @@ import {
   CloudRain,
   CloudSnow,
   Code,
+  CornerDownLeft,
   Download,
   Ellipsis,
   ExternalLink,
@@ -98,6 +99,7 @@ export const RiCloseLine = X;
 export const RiCloudFill = Cloud;
 export const RiCodeSSlashFill = Code;
 export const RiComputerFill = Monitor;
+export const RiCornerDownLeftLine = CornerDownLeft;
 export const RiDashboardFill = LayoutDashboard;
 export const RiDeleteBin6Fill = Trash2;
 export const RiDeleteBinLine = Trash2;

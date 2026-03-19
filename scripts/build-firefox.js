@@ -1,5 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const {
+  detectChannelByManifest,
+  readChannelMarkerFromDir,
+  writeChannelMarkerToDir,
+  resolveChannel,
+} = require('./channel-utils');
 
 const root = path.resolve(__dirname, '..');
 const buildDir = path.join(root, 'build');
@@ -49,6 +55,11 @@ fs.rmSync(firefoxDir, { recursive: true, force: true });
 copyDir(buildDir, firefoxDir);
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+const buildChannel = readChannelMarkerFromDir(buildDir)
+  || (process.env.VITE_DIST_CHANNEL ? resolveChannel(process.env.VITE_DIST_CHANNEL) : '')
+  || detectChannelByManifest(manifest);
+writeChannelMarkerToDir(firefoxDir, buildChannel);
+
 const filteredPermissions = Array.isArray(manifest.permissions)
   ? manifest.permissions.filter((p) => !['topSites', 'favicon', 'search', 'permissions'].includes(p))
   : manifest.permissions;

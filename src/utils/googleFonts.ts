@@ -5,7 +5,8 @@ export interface GoogleFont {
 }
 
 export const googleFonts: GoogleFont[] = [
-  { name: 'Default', family: 'PingFang SC', category: 'sans-serif' },
+  { name: 'Default', family: 'Pacifico', category: 'handwriting' },
+  { name: 'PingFang SC', family: 'PingFang SC', category: 'sans-serif' },
   { name: 'Inter', family: 'Inter', category: 'sans-serif' },
   { name: 'Bebas Neue', family: 'Bebas Neue', category: 'display' },
   { name: 'Orbitron', family: 'Orbitron', category: 'sans-serif' },
@@ -15,7 +16,6 @@ export const googleFonts: GoogleFont[] = [
   { name: 'Cormorant Garamond', family: 'Cormorant Garamond', category: 'serif' },
   { name: 'Space Mono', family: 'Space Mono', category: 'monospace' },
   { name: 'Caveat', family: 'Caveat', category: 'handwriting' },
-  { name: 'Pacifico', family: 'Pacifico', category: 'handwriting' },
   { name: 'Monoton', family: 'Monoton', category: 'display' },
   { name: 'Bangers', family: 'Bangers', category: 'display' },
   { name: 'Press Start 2P', family: 'Press Start 2P', category: 'display' },

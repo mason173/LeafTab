@@ -103,15 +103,12 @@ export function resolveSearchCommandAutocomplete(rawValue: string): string | nul
   const matchedId = matchSearchCommandAliasInput(rawValue);
   if (!matchedId) return null;
   const matched = SEARCH_COMMAND_DEFINITIONS.find((definition) => definition.id === matchedId);
-  return matched?.token || null;
+  if (!matched) return null;
+  const leadingWhitespace = rawValue.match(/^\s*/)?.[0] ?? '';
+  return `${leadingWhitespace}${matched.token} `;
 }
 
-export function isSearchCommandTokenValue(rawValue: string): boolean {
-  return SEARCH_COMMAND_TOKEN_SET.has(rawValue.toLowerCase());
-}
-
-export function getHighlightedSearchCommandToken(rawValue: string): string {
-  const lowered = rawValue.toLowerCase();
-  const matched = SEARCH_COMMAND_DEFINITIONS.find((definition) => lowered.startsWith(definition.token));
-  return matched?.token || '';
+export function isSearchCommandShellValue(rawValue: string): boolean {
+  const trimmedTrailingValue = rawValue.trimEnd().toLowerCase();
+  return SEARCH_COMMAND_TOKEN_SET.has(trimmedTrailingValue);
 }

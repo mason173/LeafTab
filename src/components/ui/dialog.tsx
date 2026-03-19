@@ -43,7 +43,6 @@ function DialogOverlay({ className, ...props }: DialogOverlayProps) {
 }
 
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
-  from?: "top" | "bottom" | "left" | "right";
   overlayClassName?: string;
   overlayStyle?: React.CSSProperties;
 };

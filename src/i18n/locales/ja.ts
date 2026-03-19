@@ -435,12 +435,12 @@ export default {
       loggedOut: "ログアウトしました"
     },
     search: {
-      placeholder: "検索したい内容を入力...",
-      placeholderDynamic: "検索したい内容またはURLを入力...",
-      placeholderHintTabSwitch: "Tabキーで検索エンジンを切り替え",
-      placeholderHintCalculator: "数式を直接入力して計算",
-      placeholderHintSiteDirect: "サイト直指定：例 github react",
-      placeholderHintPrefix: "Prefix検索：例 g AI",
+      placeholder: "探したいものをそのまま入力",
+      placeholderDynamic: "探したいものを入力。URLでもOK",
+      placeholderHintTabSwitch: "検索方法を変えたいときは Tab",
+      placeholderHintCalculator: "12*8 のように入力すると計算できます",
+      placeholderHintSiteDirect: "github react と入力すると GitHub を探せます",
+      placeholderHintPrefix: "g AI と入力すると Google で検索できます",
       systemEngine: "システム既定",
       useEngineSearch: "{{engine}} で検索",
       prefixEngineInlineHint: "{{engine}}で検索",
@@ -573,7 +573,8 @@ export default {
       toast: {
         created: "シナリオを作成しました",
         updated: "シナリオを更新しました",
-        deleted: "シナリオを削除しました"
+        deleted: "シナリオを削除しました",
+        switched: "切り替え先: {{name}}"
       }
     },
     toast: {

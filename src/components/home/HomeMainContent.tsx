@@ -37,7 +37,6 @@ interface HomeMainContentProps {
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
-  disableBottomGradualBlur: boolean;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
@@ -71,7 +70,6 @@ export const HomeMainContent = memo(function HomeMainContent({
   onShowLunarChange,
   timeAnimationEnabled,
   onTimeAnimationModeChange,
-  disableBottomGradualBlur,
   timeFont,
   onTimeFontChange,
   layout,
@@ -100,10 +98,7 @@ export const HomeMainContent = memo(function HomeMainContent({
     topContentSafeGapPx: HOME_DRAWER_WALLPAPER_SAFE_GAP_PX,
   });
 
-  const drawerShortcutFadeHeight = shortcutGridProps.cardVariant === 'compact'
-    ? Math.max(66, Math.round(((shortcutGridProps.compactIconSize ?? 72) + 24) * 0.92))
-    : Math.max(58, Math.round(((shortcutGridProps.defaultIconSize ?? 36) + (shortcutGridProps.defaultVerticalPadding ?? 8) * 2) * 1.05));
-  const drawerShortcutBottomInset = drawerShortcutFadeHeight + 16;
+  const drawerShortcutBottomInset = 16;
 
   const homeWallpaperBlockTranslateYPx = -HOME_WALLPAPER_BLOCK_LIFT_PX * drawer.drawerLayoutProgress;
   const homeInitialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
@@ -192,11 +187,9 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerContentTopPaddingPx={drawer.drawerContentTopPaddingPx}
         drawerContentBackdropBlurPx={drawer.drawerContentBackdropBlurPx}
         drawerPanelHeightVh={drawer.drawerPanelHeightVh}
-        drawerShortcutFadeHeight={drawerShortcutFadeHeight}
         drawerShortcutBottomInset={drawerShortcutBottomInset}
         drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
         drawerScrollLocked={drawerScrollLocked}
-        disableBottomGradualBlur={disableBottomGradualBlur}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}

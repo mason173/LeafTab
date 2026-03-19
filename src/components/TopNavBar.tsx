@@ -1,36 +1,6 @@
-import React, { Suspense, memo } from 'react';
+import React, { memo } from 'react';
 import { RiSettings4Fill } from '@/icons/ri-compat';
-import { Magnetic } from '@/components/motion-primitives/magnetic';
-import { LazyWeatherCard } from '@/lazy/components';
-
-function WeatherCardFallback({
-  variant,
-  disableBackdropBlur = false,
-}: {
-  variant: 'inverted' | 'default';
-  disableBackdropBlur?: boolean;
-}) {
-  return (
-    <div
-      className={`content-stretch flex items-center justify-center p-[3px] relative rounded-[999px] shrink-0 ${
-        variant === 'inverted'
-          ? (disableBackdropBlur ? 'bg-white/10' : 'bg-white/10 backdrop-blur-md')
-          : 'bg-secondary'
-      }`}
-      aria-hidden="true"
-    >
-      <div
-        className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
-          variant === 'inverted' ? 'border-white/10' : 'border-border'
-        }`}
-      />
-      <div className={`h-[34px] w-[150px] rounded-[999px] animate-pulse ${
-        variant === 'inverted' ? 'bg-white/10' : 'bg-secondary/70'
-      }`}
-      />
-    </div>
-  );
-}
+import { WeatherCard } from '@/components/WeatherCard';
 
 function SettingsButton({
   onClick,
@@ -66,6 +36,7 @@ interface TopNavBarProps {
   onSettingsClick?: () => void;
   hideWeather?: boolean;
   settingsRevealOnHover?: boolean;
+  keepControlsVisible?: boolean;
   fadeOnIdle?: boolean;
   onWeatherUpdate?: (code: number) => void;
   variant?: 'inverted' | 'default';
@@ -78,6 +49,7 @@ export const TopNavBar = memo(function TopNavBar({
   onSettingsClick,
   hideWeather = false,
   settingsRevealOnHover = false,
+  keepControlsVisible = false,
   fadeOnIdle = false,
   onWeatherUpdate,
   className = "",
@@ -86,17 +58,13 @@ export const TopNavBar = memo(function TopNavBar({
   reduceVisualEffects = false,
 }: TopNavBarProps) {
   const weatherContent = (
-    <Suspense fallback={<WeatherCardFallback variant={variant} disableBackdropBlur={reduceVisualEffects} />}>
-      <LazyWeatherCard
-        onWeatherUpdate={onWeatherUpdate}
-        variant={variant}
-        disableBackdropBlur={reduceVisualEffects}
-      />
-    </Suspense>
+    <WeatherCard
+      onWeatherUpdate={onWeatherUpdate}
+      variant={variant}
+      disableBackdropBlur={reduceVisualEffects}
+    />
   );
-  const weatherNode = reduceVisualEffects
-    ? weatherContent
-    : <Magnetic intensity={0.32} range={110}>{weatherContent}</Magnetic>;
+  const weatherNode = weatherContent;
   const settingsButton = onSettingsClick
     ? (
       <SettingsButton
@@ -107,7 +75,7 @@ export const TopNavBar = memo(function TopNavBar({
     )
     : null;
   const settingsNode = settingsButton
-    ? (reduceVisualEffects ? settingsButton : <Magnetic intensity={0.32} range={110}>{settingsButton}</Magnetic>)
+    ? settingsButton
     : null;
 
   return (
@@ -121,8 +89,8 @@ export const TopNavBar = memo(function TopNavBar({
       <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
         <div
           className={`flex items-center gap-3 transition-opacity duration-300 transform-gpu ${
-            settingsRevealOnHover
-              ? 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+            settingsRevealOnHover && !keepControlsVisible
+              ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
               : 'opacity-100'
           }`}
         >

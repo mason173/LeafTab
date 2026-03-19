@@ -1,13 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-
-const CHANNELS = new Set(['community', 'store']);
-
-function resolveChannel(raw) {
-  const normalized = String(raw || '').trim().toLowerCase();
-  if (CHANNELS.has(normalized)) return normalized;
-  return 'community';
-}
+const { resolveChannel } = require('./channel-utils');
 
 const channel = resolveChannel(process.argv[2] || process.env.VITE_DIST_CHANNEL);
 const root = path.resolve(__dirname, '..');

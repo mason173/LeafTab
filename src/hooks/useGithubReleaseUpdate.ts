@@ -1,7 +1,4 @@
-/// <reference types="chrome" />
-
 import { useEffect, useMemo, useState } from 'react';
-import { IS_STORE_BUILD } from '@/config/distribution';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/mason173/LeafTab/releases/latest';
 const LATEST_RELEASE_WEB = 'https://github.com/mason173/LeafTab/releases/latest';
@@ -237,7 +234,7 @@ export function useGithubReleaseUpdate(apiBase: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (IS_STORE_BUILD || (import.meta as any).env?.DEV) {
+    if ((import.meta as any).env?.DEV) {
       setLoading(false);
       return;
     }

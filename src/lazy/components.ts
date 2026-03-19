@@ -11,7 +11,3 @@ export const LazyUpdateAvailableDialog = lazy(() =>
 export const LazyRoleSelector = lazy(() =>
   import('../components/RoleSelector').then((module) => ({ default: module.RoleSelector })),
 );
-
-export const LazyWeatherCard = lazy(() =>
-  import('../components/WeatherCard').then((module) => ({ default: module.WeatherCard })),
-);

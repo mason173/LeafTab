@@ -4,7 +4,7 @@ import { TimeDisplayDialog } from './TimeDisplayDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
 import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
-import imgImage from "../assets/Default_wallpaper.png";
+import imgImage from "../assets/Default_wallpaper.jpg";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useClock } from '@/hooks/useClock';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
@@ -37,6 +37,7 @@ interface WallpaperClockProps {
   wallpaperMode: WallpaperMode;
   weatherCode: number;
   onWeatherUpdate?: (code: number) => void;
+  customWallpaperLoaded?: boolean;
   customWallpaper: string | null;
   colorWallpaperId: string;
   wallpaperMaskOpacity: number;
@@ -71,6 +72,7 @@ export const WallpaperClock = memo(function WallpaperClock({
   wallpaperMode,
   weatherCode,
   onWeatherUpdate,
+  customWallpaperLoaded = true,
   customWallpaper,
   colorWallpaperId,
   wallpaperMaskOpacity,
@@ -109,12 +111,20 @@ export const WallpaperClock = memo(function WallpaperClock({
     >
       <div className="absolute inset-0 bg-muted">
         <div className="w-full h-full transition-transform duration-[3000ms] ease-out transform-gpu group-hover:scale-[1.1]">
-          {wallpaperMode === 'custom' && customWallpaper ? (
-            <img 
-              alt="" 
-              className="w-full h-full object-cover" 
-              src={customWallpaper} 
-            />
+          {wallpaperMode === 'custom' ? (
+            customWallpaper ? (
+              <img
+                alt=""
+                className="w-full h-full object-cover"
+                src={customWallpaper}
+              />
+            ) : customWallpaperLoaded ? (
+              <img
+                alt=""
+                className="w-full h-full object-cover"
+                src={imgImage}
+              />
+            ) : null
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : wallpaperMode === 'bing' ? (
@@ -147,6 +157,7 @@ export const WallpaperClock = memo(function WallpaperClock({
       <div className="absolute z-20 transform-gpu" style={{ left: edgeInset, right: edgeInset, top: edgeInset }}>
         <TopNavBar 
           settingsRevealOnHover
+          keepControlsVisible={scenarioModeOpen}
           onSettingsClick={onSettingsClick}
           onWeatherUpdate={onWeatherUpdate}
           reduceVisualEffects={resolvedReduceTopControlsEffects}

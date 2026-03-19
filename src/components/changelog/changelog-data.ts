@@ -8,6 +8,15 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.7",
+    date: "2026-03-19",
+    notes: [
+      t("changelog.items.release137PermissionsAndSearch", { defaultValue: "统一商店版与社区版权限策略，搜索引擎切换与提示文案同步优化" }),
+      t("changelog.items.release137WallpaperAndMotion", { defaultValue: "默认壁纸、自定义壁纸与首屏动画节奏重新对齐，减少刷新闪动" }),
+      t("changelog.items.release137ScenarioAndSync", { defaultValue: "新增情景模式快捷切换，并修复下拉与同步时间显示问题" }),
+    ],
+  },
+  {
     version: "1.3.6",
     date: "2026-03-17",
     notes: [
