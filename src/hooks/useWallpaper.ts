@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob, saveWallpaper } from '../db';
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
-import defaultWallpaperImage from '../assets/Default_wallpaper.jpg?url';
+import defaultWallpaperImage from '../assets/Default_wallpaper.webp?url';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';

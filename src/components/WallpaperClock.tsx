@@ -4,7 +4,7 @@ import { TimeDisplayDialog } from './TimeDisplayDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
 import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
-import imgImage from "../assets/Default_wallpaper.jpg";
+import imgImage from "../assets/Default_wallpaper.webp";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useClock } from '@/hooks/useClock';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';

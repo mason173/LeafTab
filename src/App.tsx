@@ -16,7 +16,7 @@ import {
   RiSunFill,
   RiThunderstormsFill,
 } from '@/icons/ri-compat';
-import imgImage from "./assets/Default_wallpaper.jpg?url";
+import imgImage from "./assets/Default_wallpaper.webp?url";
 
 // Hooks
 import { useAuth } from './hooks/useAuth';

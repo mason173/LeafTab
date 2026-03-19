@@ -1,9 +1,9 @@
-import cloudyVideo from '@/assets/weather/Cloudy.mp4';
-import foggyVideo from '@/assets/weather/Foggy day.mp4';
-import sunnyVideo from '@/assets/weather/Sunny day.mp4';
-import thunderstormVideo from '@/assets/weather/Thunderstorm.mp4';
-import rainingVideo from '@/assets/weather/raining.mp4';
-import snowingVideo from '@/assets/weather/snowing.mp4';
+import cloudyVideo from '@/assets/weather/Cloudy.webm';
+import foggyVideo from '@/assets/weather/Foggy day.webm';
+import sunnyVideo from '@/assets/weather/Sunny day.webm';
+import thunderstormVideo from '@/assets/weather/Thunderstorm.webm';
+import rainingVideo from '@/assets/weather/raining.webm';
+import snowingVideo from '@/assets/weather/snowing.webm';
 
 export const sunnyWeatherVideo = sunnyVideo;
 

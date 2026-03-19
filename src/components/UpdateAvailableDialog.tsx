@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import leaftabUpdateImage from '@/assets/leaftabupdate.svg?url';
+import leaftabUpdateImage from '@/assets/leaftabupdate.png?url';
 
 type UpdateAvailableDialogProps = {
   open: boolean;
