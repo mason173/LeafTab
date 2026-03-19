@@ -2,7 +2,7 @@ import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { RiCheckFill, RiDownload2Fill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
-import imgImage from "@/assets/Default_wallpaper.jpg";
+import imgImage from "@/assets/Default_wallpaper.webp";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";
 import { WallpaperMaskOpacitySlider } from "@/components/wallpaper/WallpaperMaskOpacitySlider";
 import type { WallpaperMode } from "@/wallpaper/types";
