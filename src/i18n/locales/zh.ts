@@ -82,21 +82,19 @@ export default {
         },
         sections: {
           search: "搜索",
-          results: "结果列表",
-          tabs: "标签页面板"
+          results: "结果列表"
         },
         items: {
           focusSearch: "聚焦搜索框并选中当前内容",
           switchEngine: "在搜索框中按 Tab 或 Shift+Tab 切换搜索引擎",
+          switchScenarioNext: "不在输入状态时，循环切换到下一个情景模式",
           bookmarksMode: "进入书签搜索模式，首次使用时可能会请求书签权限",
           tabsMode: "进入标签页搜索模式，首次使用时可能会请求标签页权限",
           navigateResults: "在结果列表中上下移动选择",
           openResult: "打开当前选中的结果",
           closePanel: "关闭当前结果面板",
           showNumberHints: "在结果列表中显示数字提示",
-          openNumberedResult: "按对应数字直接打开结果",
-          closeTab: "在 /tabs 面板关闭当前选中的标签页",
-          closeOtherTabs: "在 /tabs 面板关闭除当前项外的其他标签页"
+          openNumberedResult: "按对应数字直接打开结果"
         },
         footer: "提示：数字提示和数字直达只在结果列表打开时生效；/t 与 /b 模式依赖浏览器权限。"
       },
@@ -282,9 +280,9 @@ export default {
           notConfigured: "未配置，请先填写 WebDAV 信息",
           lastSyncAt: "上次同步时间",
           notSynced: "未同步",
-          justSynced: "刚刚同步",
-          minutesAgo: "{{count}} 分钟前",
-          hoursAgo: "{{count}} 小时前",
+          justSynced: "刚刚已同步",
+          minutesAgo: "{{count}} 分钟前同步",
+          hoursAgo: "{{count}} 小时前同步",
           lastAttemptFailed: "最近尝试同步失败",
           scheduleRunning: "定时同步运行中",
           nextSyncAtLabel: "下次同步：{{time}}",
@@ -400,6 +398,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release137PermissionsAndSearch: "统一商店版与社区版权限策略，搜索引擎切换与提示文案同步优化",
+        release137WallpaperAndMotion: "默认壁纸、自定义壁纸与首屏动画节奏重新对齐，减少刷新闪动",
+        release137ScenarioAndSync: "新增情景模式快捷切换，并修复下拉与同步时间显示问题",
         release135UiPolish: "优化界面效果",
         release135VisualRefine: "优化交互与视觉细节",
         release135KnownIssuesFix: "修复一些已知问题",
@@ -610,20 +611,18 @@ export default {
       logoutOfflineWarning: "当前处于离线状态或有未同步的更改，退出登录将导致未保存的数据丢失。确定要退出吗？"
     },
     search: {
-      placeholder: "按任意键开始搜索，也可输入网址直达",
-      placeholderDynamic: "按任意键开始搜索，也可输入网址直达",
-      placeholderHintTabSwitch: "按 Tab 或 Shift+Tab 切换搜索引擎",
-      placeholderHintCalculator: "输入算式可直接计算，例如 12*8",
-      placeholderHintSiteDirect: "输入“站点+关键词”直达站内搜索，如 github react",
-      placeholderHintPrefix: "先输入引擎简称再空格，例如 g AI、bd 天气",
+      placeholder: "想找什么？直接输入就行",
+      placeholderDynamic: "想找什么？直接输入，网址也可以",
+      placeholderHintTabSwitch: "想换搜索方式？按 Tab 试试",
+      placeholderHintCalculator: "输入 12*8 这样也能直接算",
+      placeholderHintSiteDirect: "输入 bilibili 动画，可直接搜 Bilibili",
+      placeholderHintPrefix: "想用 Google 搜？先输入 g，再空一格后输入内容",
       systemEngine: "系统默认",
       useEngineSearch: "使用{{engine}} 搜索",
       prefixEngineInlineHint: "用{{engine}}搜索",
       historyTitle: "搜索历史",
       clearHistory: "清空",
-      noHistory: "暂无搜索记录",
-      tabClosed: "已关闭标签页",
-      tabsClosed: "已关闭 {{count}} 个标签页"
+      noHistory: "暂无搜索记录"
     },
     groups: {
       edit: "编辑",
@@ -766,7 +765,8 @@ export default {
       toast: {
         created: "已添加情景模式",
         updated: "已更新情景模式",
-        deleted: "已删除情景模式"
+        deleted: "已删除情景模式",
+        switched: "已切换到：{{name}}"
       }
     },
     toast: {

@@ -4,7 +4,6 @@ import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/sw
 import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
 import { forwardRef, useEffect, useState } from "react";
-import { Magnetic } from "@/components/motion-primitives/magnetic";
 import type { WallpaperMode } from "@/wallpaper/types";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
@@ -14,17 +13,15 @@ import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
     return (
-      <Magnetic intensity={0.34} range={116}>
-        <div
-          ref={ref}
-          className={`bg-white/10 content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/20 transition-colors text-white/90 backdrop-blur-md transform-gpu ${className}`}
-          data-name="Wallpaper"
-          {...props}
-        >
-          <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
-          <RiImageFill className="size-5" />
-        </div>
-      </Magnetic>
+      <div
+        ref={ref}
+        className={`bg-white/10 content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/20 transition-colors text-white/90 backdrop-blur-md transform-gpu ${className}`}
+        data-name="Wallpaper"
+        {...props}
+      >
+        <div aria-hidden="true" className="absolute border border-white/10 border-solid inset-0 pointer-events-none rounded-[999px]" />
+        <RiImageFill className="size-5" />
+      </div>
     );
   },
 );

@@ -1,17 +1,16 @@
-export type ShortcutGuideSectionId = 'search' | 'results' | 'tabs';
+export type ShortcutGuideSectionId = 'search' | 'results';
 
 export type ShortcutGuideItemId =
   | 'focusSearch'
   | 'switchEngine'
+  | 'switchScenarioNext'
   | 'bookmarksMode'
   | 'tabsMode'
   | 'navigateResults'
   | 'openResult'
   | 'closePanel'
   | 'showNumberHints'
-  | 'openNumberedResult'
-  | 'closeTab'
-  | 'closeOtherTabs';
+  | 'openNumberedResult';
 
 export type ShortcutGuideEntry = {
   id: ShortcutGuideItemId;
@@ -29,6 +28,7 @@ export const SHORTCUT_GUIDE_SECTIONS: readonly ShortcutGuideSection[] = [
     items: [
       { id: 'focusSearch', combos: [['Cmd / Ctrl', 'K']] },
       { id: 'switchEngine', combos: [['Tab'], ['Shift', 'Tab']] },
+      { id: 'switchScenarioNext', combos: [['Cmd / Ctrl', 'Alt', 'S']] },
       { id: 'bookmarksMode', combos: [['/b'], ['/bookmarks']] },
       { id: 'tabsMode', combos: [['/t'], ['/tabs']] },
     ],
@@ -41,13 +41,6 @@ export const SHORTCUT_GUIDE_SECTIONS: readonly ShortcutGuideSection[] = [
       { id: 'closePanel', combos: [['Esc']] },
       { id: 'showNumberHints', combos: [['Cmd / Ctrl']] },
       { id: 'openNumberedResult', combos: [['Cmd / Ctrl', '数字键']] },
-    ],
-  },
-  {
-    id: 'tabs',
-    items: [
-      { id: 'closeTab', combos: [['Delete'], ['Backspace']] },
-      { id: 'closeOtherTabs', combos: [['Shift', 'Delete'], ['Shift', 'Backspace']] },
     ],
   },
 ] as const;

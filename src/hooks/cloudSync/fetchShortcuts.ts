@@ -122,8 +122,6 @@ export const fetchShortcutsWithDeps = async ({
     const response = await adapter.pull();
 
     if (response.status === 200) {
-      localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
-      emitCloudSyncStatusChanged();
       const meta = response.meta || {};
       if (meta.createdAt) localStorage.setItem('user_created_at', meta.createdAt);
       if (meta.updatedAt) {
@@ -249,7 +247,6 @@ export const fetchShortcutsWithDeps = async ({
         persistLocalProfileSnapshot(cloudPayload);
         clearLocalNeedsCloudReconcile();
         localStorage.setItem('leaf_tab_shortcuts_cache', cloudJson);
-        try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
         if (!silent) toast.success(t('toast.cloudSynced'));
         setCloudSyncInitialized(true);
         clearPendingConflict();
@@ -283,7 +280,6 @@ export const fetchShortcutsWithDeps = async ({
           }
           setCloudSyncInitialized(true);
           lastSavedShortcutsJson.current = toSyncPayloadJson(payload);
-          try { localStorage.setItem('cloud_shortcuts_fetched_at', new Date().toISOString()); } catch {}
           clearPendingConflict();
           return 'success';
         }

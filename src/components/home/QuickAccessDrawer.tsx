@@ -34,11 +34,9 @@ interface QuickAccessDrawerProps {
   drawerContentTopPaddingPx: number;
   drawerContentBackdropBlurPx: number;
   drawerPanelHeightVh: number;
-  drawerShortcutFadeHeight: number;
   drawerShortcutBottomInset: number;
   drawerShortcutForceWhiteText: boolean;
   drawerScrollLocked: boolean;
-  disableBottomGradualBlur?: boolean;
   drawerSearchSurfaceStyle?: CSSProperties;
   subtleDarkTone?: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
@@ -50,7 +48,6 @@ interface QuickAccessDrawerProps {
 }
 
 const SHORTCUTS_FADE_DURATION_MS = 220;
-const DRAWER_BOTTOM_FADE_REVEAL_MS = 1000;
 
 export function QuickAccessDrawer({
   initialRevealReady,
@@ -68,11 +65,9 @@ export function QuickAccessDrawer({
   drawerContentTopPaddingPx,
   drawerContentBackdropBlurPx,
   drawerPanelHeightVh,
-  drawerShortcutFadeHeight,
   drawerShortcutBottomInset,
   drawerShortcutForceWhiteText,
   drawerScrollLocked,
-  disableBottomGradualBlur = false,
   drawerSearchSurfaceStyle,
   subtleDarkTone,
   drawerWheelAreaRef,
@@ -93,7 +88,6 @@ export function QuickAccessDrawer({
   const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(modeFlags.showShortcuts);
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
-  const [bottomFadeRevealReady, setBottomFadeRevealReady] = useState(false);
   const shortcutsVisibilityInitializedRef = useRef(false);
 
   const enableInteractiveTransitions = useCallback(() => {
@@ -135,21 +129,6 @@ export function QuickAccessDrawer({
       if (timerId) window.clearTimeout(timerId);
     };
   }, [modeFlags.showShortcuts]);
-
-  useEffect(() => {
-    if (!(quickAccessOpen && renderShortcuts)) {
-      setBottomFadeRevealReady(false);
-      return;
-    }
-    setBottomFadeRevealReady(false);
-    let rafId = 0;
-    rafId = window.requestAnimationFrame(() => {
-      setBottomFadeRevealReady(true);
-    });
-    return () => {
-      if (rafId) window.cancelAnimationFrame(rafId);
-    };
-  }, [quickAccessOpen, renderShortcuts]);
 
   return (
     <>
@@ -299,20 +278,6 @@ export function QuickAccessDrawer({
         </section>
       </div>
 
-      {quickAccessOpen && renderShortcuts && (
-        <div
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-[14015] transition-opacity ease-out"
-          style={{
-            height: drawerShortcutFadeHeight,
-            opacity: (shortcutsVisible ? 1 : 0) * initialRevealOpacity * (bottomFadeRevealReady ? 1 : 0),
-            transition: `opacity ${DRAWER_BOTTOM_FADE_REVEAL_MS}ms ease-out`,
-          }}
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/0 to-black/10" />
-          {!disableBottomGradualBlur ? <div className="absolute inset-0 backdrop-blur-[1.4px]" /> : null}
-        </div>
-      )}
     </>
   );
 }

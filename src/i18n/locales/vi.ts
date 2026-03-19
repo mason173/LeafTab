@@ -410,12 +410,12 @@ export default {
       loggedOut: "Đã đăng xuất"
     },
     search: {
-      placeholder: "Tìm kiếm nội dung...",
-      placeholderDynamic: "Tìm kiếm nội dung hoặc nhập URL...",
-      placeholderHintTabSwitch: "Nhấn Tab để đổi công cụ tìm kiếm",
-      placeholderHintCalculator: "Nhập biểu thức để tính nhanh",
-      placeholderHintSiteDirect: "Tìm theo site: ví dụ github react",
-      placeholderHintPrefix: "Tìm bằng prefix: ví dụ g AI",
+      placeholder: "Gõ điều bạn muốn tìm",
+      placeholderDynamic: "Gõ điều bạn muốn tìm, hoặc dán địa chỉ web",
+      placeholderHintTabSwitch: "Muốn đổi cách tìm? Hãy nhấn Tab",
+      placeholderHintCalculator: "Gõ 12*8 để tính nhanh",
+      placeholderHintSiteDirect: "Gõ github react để tìm trên GitHub",
+      placeholderHintPrefix: "Gõ g AI để tìm bằng Google",
       systemEngine: "Mặc định hệ thống",
       useEngineSearch: "Tìm kiếm bằng {{engine}}",
       prefixEngineInlineHint: "Tìm bằng {{engine}}",
@@ -545,7 +545,8 @@ export default {
       toast: {
         created: "Đã tạo chế độ kịch bản",
         updated: "Đã cập nhật chế độ kịch bản",
-        deleted: "Đã xóa chế độ kịch bản"
+        deleted: "Đã xóa chế độ kịch bản",
+        switched: "Đã chuyển sang: {{name}}"
       }
     },
     toast: {

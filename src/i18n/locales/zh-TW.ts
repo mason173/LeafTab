@@ -199,9 +199,9 @@ export default {
           disabled: "已關閉，WebDAV 同步已停用",
           lastSyncAt: "上次同步時間",
           notSynced: "未同步",
-          justSynced: "剛剛同步",
-          minutesAgo: "{{count}} 分鐘前",
-          hoursAgo: "{{count}} 小時前",
+          justSynced: "剛剛已同步",
+          minutesAgo: "{{count}} 分鐘前同步",
+          hoursAgo: "{{count}} 小時前同步",
           lastAttemptFailed: "最近一次同步嘗試失敗",
           scheduleRunning: "定時同步執行中",
           nextSyncAtLabel: "下次同步：{{time}}",
@@ -415,12 +415,12 @@ export default {
       loggedOut: "已登出"
     },
     search: {
-      placeholder: "搜尋你想找的內容...",
-      placeholderDynamic: "搜尋你想找的內容或輸入網址...",
-      placeholderHintTabSwitch: "按 Tab 鍵切換搜尋引擎",
-      placeholderHintCalculator: "可直接輸入算式進行計算",
-      placeholderHintSiteDirect: "站點直達：例如 github react",
-      placeholderHintPrefix: "前綴搜尋：例如 g AI",
+      placeholder: "想找什麼？直接輸入就好",
+      placeholderDynamic: "想找什麼？直接輸入，網址也可以",
+      placeholderHintTabSwitch: "想換搜尋方式？按 Tab 試試",
+      placeholderHintCalculator: "輸入 12*8 這樣也能直接算",
+      placeholderHintSiteDirect: "輸入 bilibili 動畫，可直接搜 Bilibili",
+      placeholderHintPrefix: "想用 Google 搜？先輸入 g，再空一格後輸入內容",
       systemEngine: "系統預設",
       useEngineSearch: "使用{{engine}} 搜尋",
       prefixEngineInlineHint: "使用{{engine}}搜尋",
@@ -550,7 +550,8 @@ export default {
       toast: {
         created: "已新增情景模式",
         updated: "已更新情景模式",
-        deleted: "已刪除情景模式"
+        deleted: "已刪除情景模式",
+        switched: "已切換到：{{name}}"
       }
     },
     toast: {

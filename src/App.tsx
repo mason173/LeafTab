@@ -16,7 +16,7 @@ import {
   RiSunFill,
   RiThunderstormsFill,
 } from '@/icons/ri-compat';
-import imgImage from "./assets/Default_wallpaper.png?url";
+import imgImage from "./assets/Default_wallpaper.jpg?url";
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
@@ -165,6 +165,24 @@ const clearPersistedWebdavConflict = () => {
   try {
     localStorage.removeItem(WEBDAV_CONFLICT_CACHE_KEY);
   } catch {}
+};
+
+const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
+  if (target instanceof Element) return target;
+  if (target instanceof Node) return target.parentElement;
+  return null;
+};
+
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  const element = resolveEventTargetElement(target);
+  if (!element) return false;
+  if (element instanceof HTMLElement && element.isContentEditable) return true;
+
+  return Boolean(
+    element.closest(
+      'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]',
+    ),
+  );
 };
 
 function useKeepMountedAfterFirstOpen(open: boolean) {
@@ -358,13 +376,6 @@ export default function App() {
   const responsiveLayout = useResponsiveLayout();
 
   useEffect(() => {
-    document.documentElement.dataset.reduceEffects = visualEffectsPolicy.reduceVisualEffects ? 'on' : 'off';
-    return () => {
-      delete document.documentElement.dataset.reduceEffects;
-    };
-  }, [visualEffectsPolicy.reduceVisualEffects]);
-
-  useEffect(() => {
     let idleTimer: number | null = null;
 
     const clearIdleTimer = () => {
@@ -501,6 +512,41 @@ export default function App() {
     () => scenarioModes.filter((mode) => mode.id !== selectedScenarioId),
     [scenarioModes, selectedScenarioId],
   );
+
+  useEffect(() => {
+    const handleSwitchScenarioShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.isComposing) return;
+      if (!(event.metaKey || event.ctrlKey) || !event.altKey || event.shiftKey) return;
+      const pressedScenarioHotkey = event.code === 'KeyS' || event.key.toLowerCase() === 's';
+      if (!pressedScenarioHotkey) return;
+      if (scenarioModes.length <= 1) return;
+
+      const activeElement = document.activeElement;
+      const activeElementIsSearchInput = activeElement === searchInputRef.current;
+      const searchInputBusy = searchInteractionState.historyOpen
+        || searchInteractionState.dropdownOpen
+        || searchInteractionState.typingBurst;
+
+      if (!activeElementIsSearchInput && (isEditableTarget(event.target) || isEditableTarget(activeElement))) return;
+      if (activeElementIsSearchInput && searchInputBusy) return;
+
+      const currentIndex = scenarioModes.findIndex((mode) => mode.id === selectedScenarioId);
+      const nextMode = currentIndex < 0
+        ? scenarioModes[0]
+        : scenarioModes[(currentIndex + 1) % scenarioModes.length];
+      if (!nextMode) return;
+
+      event.preventDefault();
+      setSelectedScenarioId(nextMode.id);
+      toast(t('scenario.toast.switched', { name: nextMode.name }));
+    };
+
+    window.addEventListener('keydown', handleSwitchScenarioShortcut, true);
+    return () => {
+      window.removeEventListener('keydown', handleSwitchScenarioShortcut, true);
+    };
+  }, [scenarioModes, searchInteractionState, selectedScenarioId, setSelectedScenarioId, t]);
 
   const clearShortcutMultiSelect = useCallback(() => {
     setShortcutMultiSelectMode(false);
@@ -745,6 +791,7 @@ export default function App() {
 
   const {
     bingWallpaper,
+    customWallpaperLoaded,
     customWallpaper, setCustomWallpaper,
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
@@ -763,8 +810,8 @@ export default function App() {
   ), [darkModeAutoDimWallpaperEnabled, isDarkTheme, wallpaperMaskOpacity]);
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
-  const freshWallpaperSrc = wallpaperMode === 'custom' && customWallpaper
-    ? customWallpaper
+  const freshWallpaperSrc = wallpaperMode === 'custom'
+    ? (customWallpaper || '')
     : wallpaperMode === 'bing'
       ? bingWallpaper
       : (bingWallpaper || imgImage);
@@ -1372,7 +1419,6 @@ export default function App() {
   const webdavLocalCount = countPayload(webdavPendingLocalPayload);
   const cloudTimeRaw = typeof window !== 'undefined'
     ? (localStorage.getItem('cloud_shortcuts_updated_at')
-      || localStorage.getItem('cloud_shortcuts_fetched_at')
       || '')
     : '';
   const localTimeRaw = typeof window !== 'undefined' ? localStorage.getItem('local_shortcuts_updated_at') || '' : '';
@@ -1393,7 +1439,7 @@ export default function App() {
   const overlayBackgroundImageSrc = displayMode === 'fresh'
     ? freshWallpaperSrc
     : wallpaperMode === 'custom'
-      ? (customWallpaper || imgImage)
+      ? (customWallpaper || '')
       : wallpaperMode === 'bing'
         ? bingWallpaper
         : (bingWallpaper || imgImage);
@@ -1499,6 +1545,7 @@ export default function App() {
     wallpaperMode,
     weatherCode,
     onWeatherUpdate: setWeatherCode,
+    customWallpaperLoaded,
     customWallpaper,
     colorWallpaperId,
     wallpaperMaskOpacity: effectiveWallpaperMaskOpacity,
@@ -1510,6 +1557,7 @@ export default function App() {
   }), [
     bingWallpaper,
     colorWallpaperId,
+    customWallpaperLoaded,
     customWallpaper,
     handleDeleteScenarioMode,
     handleOpenEditScenarioMode,
@@ -1541,14 +1589,13 @@ export default function App() {
   const searchExperienceProps = useMemo(() => ({
     inputRef: searchInputRef,
     openInNewTab,
-    scenarioShortcuts,
+    shortcuts,
     tabSwitchSearchEngine,
     searchPrefixEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
-    disablePlaceholderAnimation: visualEffectsPolicy.disableSearchPlaceholderAnimation,
     searchHeight: responsiveLayout.searchHeight,
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
@@ -1561,14 +1608,13 @@ export default function App() {
     responsiveLayout.searchHeight,
     responsiveLayout.searchHorizontalPadding,
     responsiveLayout.searchInputFontSize,
-    scenarioShortcuts,
+    shortcuts,
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
     searchPrefixEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
     tabSwitchSearchEngine,
-    visualEffectsPolicy.disableSearchPlaceholderAnimation,
   ]);
   const shortcutGridProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
@@ -1699,7 +1745,6 @@ export default function App() {
     <div
       ref={pageFocusRef}
       tabIndex={-1}
-      data-reduce-effects={visualEffectsPolicy.reduceVisualEffects ? 'on' : 'off'}
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
       style={panoramicSurfaceRevealStyle}
     >
@@ -1723,7 +1768,6 @@ export default function App() {
         onShowLunarChange={setShowLunar}
         timeAnimationEnabled={effectiveTopTimeAnimationEnabled}
         onTimeAnimationModeChange={setTimeAnimationMode}
-        disableBottomGradualBlur={visualEffectsPolicy.disableBottomGradualBlur}
         timeFont={timeFont}
         onTimeFontChange={setTimeFont}
         layout={responsiveLayout}

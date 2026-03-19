@@ -1,4 +1,4 @@
-import type { ScenarioShortcuts, SearchSuggestionItem } from '@/types';
+import type { SearchSuggestionItem, Shortcut } from '@/types';
 import {
   buildSearchMatchCandidates,
   getShortcutSuggestionScoreFromCandidates,
@@ -32,6 +32,21 @@ type RankedSuggestion = {
   order: number;
 };
 
+function mergeSearchMatchCandidates(
+  baseCandidates: string[],
+  nextCandidates: readonly string[],
+): string[] {
+  if (nextCandidates.length === 0) return baseCandidates;
+  const seen = new Set(baseCandidates);
+  const merged = [...baseCandidates];
+  nextCandidates.forEach((candidate) => {
+    if (seen.has(candidate)) return;
+    seen.add(candidate);
+    merged.push(candidate);
+  });
+  return merged;
+}
+
 export type SearchSuggestionSourceItems = {
   localHistorySuggestionItems: SearchSuggestionItem[];
   builtinSiteSuggestionItems: SearchSuggestionItem[];
@@ -58,39 +73,50 @@ function insertRankedSuggestion(
 }
 
 export function buildShortcutSearchIndex(
-  scenarioShortcuts: ScenarioShortcuts,
+  shortcuts: readonly Shortcut[],
 ): IndexedShortcutSuggestion[] {
   const dedupedByUrl = new Map<string, IndexedShortcutSuggestion>();
   let order = 0;
 
-  Object.values(scenarioShortcuts).forEach((list) => {
-    (list || []).forEach((shortcut) => {
-      const url = shortcut.url.trim();
-      if (!url || dedupedByUrl.has(url)) return;
+  shortcuts.forEach((shortcut) => {
+    const url = shortcut.url.trim();
+    if (!url) return;
 
-      dedupedByUrl.set(url, {
-        label: shortcut.title || url,
-        url,
-        icon: shortcut.icon || '',
-        order,
-        usageKey: buildShortcutUsageKey(url),
-        titleCandidates: buildSearchMatchCandidates(shortcut.title || ''),
-        urlCandidates: buildSearchMatchCandidates(url),
-      });
-      order += 1;
+    const titleCandidates = buildSearchMatchCandidates(shortcut.title || '');
+    const existing = dedupedByUrl.get(url);
+    if (existing) {
+      existing.titleCandidates = mergeSearchMatchCandidates(existing.titleCandidates, titleCandidates);
+      if ((!existing.label || existing.label === existing.url) && shortcut.title) {
+        existing.label = shortcut.title;
+      }
+      if (!existing.icon && shortcut.icon) {
+        existing.icon = shortcut.icon;
+      }
+      return;
+    }
+
+    dedupedByUrl.set(url, {
+      label: shortcut.title || url,
+      url,
+      icon: shortcut.icon || '',
+      order,
+      usageKey: buildShortcutUsageKey(url),
+      titleCandidates,
+      urlCandidates: buildSearchMatchCandidates(url),
     });
+    order += 1;
   });
 
   return Array.from(dedupedByUrl.values());
 }
 
 export function buildShortcutSuggestionItems(args: {
-  deferredSearchValue: string;
+  searchValue: string;
   shortcutSearchIndex: IndexedShortcutSuggestion[];
   suggestionUsageMap: SuggestionUsageMap;
 }): SearchSuggestionItem[] {
-  const { deferredSearchValue, shortcutSearchIndex, suggestionUsageMap } = args;
-  const normalizedQuery = normalizeSearchQuery(deferredSearchValue);
+  const { searchValue, shortcutSearchIndex, suggestionUsageMap } = args;
+  const normalizedQuery = normalizeSearchQuery(searchValue);
   if (!normalizedQuery) return [];
 
   const topMatches: RankedSuggestion[] = [];
@@ -118,13 +144,13 @@ export function buildShortcutSuggestionItems(args: {
 }
 
 export function buildBuiltinSiteSuggestionItems(args: {
-  deferredSearchValue: string;
+  searchValue: string;
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
 }): SearchSuggestionItem[] {
-  const { deferredSearchValue, searchSiteShortcutEnabled, suggestionUsageMap } = args;
+  const { searchValue, searchSiteShortcutEnabled, suggestionUsageMap } = args;
   if (!searchSiteShortcutEnabled) return [];
-  const sites = getBuiltinSiteShortcutSuggestions(deferredSearchValue, 8);
+  const sites = getBuiltinSiteShortcutSuggestions(searchValue, 8);
   if (sites.length === 0) return [];
 
   return sites
@@ -134,7 +160,7 @@ export function buildBuiltinSiteSuggestionItems(args: {
         label: site.label,
         value: site.url,
         icon: '',
-      } as SearchSuggestionItem,
+      },
       score: (sites.length - index) * 100 + getSuggestionUsageBoost(suggestionUsageMap, buildShortcutUsageKey(site.url)),
       order: index,
     }))
@@ -151,36 +177,36 @@ export function buildLocalHistorySuggestionItems(
     value: historyItem.query,
     timestamp: historyItem.timestamp,
     historySource: 'local',
-  } as SearchSuggestionItem));
+  }));
 }
 
 export function buildSearchSuggestionSourceItems(args: {
-  deferredSearchValue: string;
+  searchValue: string;
   filteredHistoryItems: readonly SearchHistoryLikeEntry[];
   shortcutSearchIndex?: IndexedShortcutSuggestion[];
-  scenarioShortcuts?: ScenarioShortcuts;
+  shortcuts?: readonly Shortcut[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
 }): SearchSuggestionSourceItems {
   const {
-    deferredSearchValue,
+    searchValue,
     filteredHistoryItems,
     shortcutSearchIndex,
-    scenarioShortcuts,
+    shortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   } = args;
-  const resolvedShortcutSearchIndex = shortcutSearchIndex ?? buildShortcutSearchIndex(scenarioShortcuts || {});
+  const resolvedShortcutSearchIndex = shortcutSearchIndex ?? buildShortcutSearchIndex(shortcuts || []);
 
   return {
     localHistorySuggestionItems: buildLocalHistorySuggestionItems(filteredHistoryItems),
     builtinSiteSuggestionItems: buildBuiltinSiteSuggestionItems({
-      deferredSearchValue,
+      searchValue,
       searchSiteShortcutEnabled,
       suggestionUsageMap,
     }),
     shortcutSuggestionItems: buildShortcutSuggestionItems({
-      deferredSearchValue,
+      searchValue,
       shortcutSearchIndex: resolvedShortcutSearchIndex,
       suggestionUsageMap,
     }),

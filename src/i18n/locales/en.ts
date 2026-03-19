@@ -82,21 +82,19 @@ export default {
         },
         sections: {
           search: "Search",
-          results: "Results",
-          tabs: "Tabs Panel"
+          results: "Results"
         },
         items: {
           focusSearch: "Focus the search box and select the current text",
           switchEngine: "Press Tab or Shift+Tab in the search box to switch engines",
+          switchScenarioNext: "When not typing, cycle to the next scenario mode",
           bookmarksMode: "Enter bookmark search mode; browser permission may be requested on first use",
           tabsMode: "Enter tab search mode; browser permission may be requested on first use",
           navigateResults: "Move selection up or down in the results list",
           openResult: "Open the currently selected result",
           closePanel: "Close the current results panel",
           showNumberHints: "Show number hints in the results list",
-          openNumberedResult: "Open the result using its number",
-          closeTab: "Close the currently selected tab in the /tabs panel",
-          closeOtherTabs: "Close every other tab except the current item in the /tabs panel"
+          openNumberedResult: "Open the result using its number"
         },
         footer: "Tip: number hints and number shortcuts only work while the results list is open; /t and /b depend on browser permissions."
       },
@@ -399,6 +397,9 @@ export default {
       version: "Version",
       date: "Date",
       items: {
+        release137PermissionsAndSearch: "Unified store/community permission strategy and refined search engine switching with clearer hints",
+        release137WallpaperAndMotion: "Aligned default wallpaper, custom wallpaper, and first-screen reveal timing to reduce refresh flicker",
+        release137ScenarioAndSync: "Added scenario mode hotkey switching and fixed the dropdown plus sync-time display issues",
         release135UiPolish: "Optimized interface effects",
         release135VisualRefine: "Refined interaction and visual details",
         release135KnownIssuesFix: "Fixed some known issues",
@@ -610,20 +611,18 @@ export default {
       logoutOfflineWarning: "You are offline or have unsynced changes. Logging out will cause data loss. Are you sure?"
     },
     search: {
-      placeholder: "Search for content...",
-      placeholderDynamic: "Search for content or enter URL...",
-      placeholderHintTabSwitch: "Press Tab to switch search engines",
-      placeholderHintCalculator: "Type an expression to calculate instantly",
-      placeholderHintSiteDirect: "Site search: e.g. github react",
-      placeholderHintPrefix: "Prefix search: e.g. g AI",
+      placeholder: "Type what you want to find",
+      placeholderDynamic: "Type what you want to find, or paste a web address",
+      placeholderHintTabSwitch: "Want a different search engine? Press Tab",
+      placeholderHintCalculator: "Type 12*8 to calculate",
+      placeholderHintSiteDirect: "Type github react to search GitHub",
+      placeholderHintPrefix: "Type g AI to search with Google",
       systemEngine: "System default",
       useEngineSearch: "Search with {{engine}}",
       prefixEngineInlineHint: "Search with {{engine}}",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
-      noHistory: "No recent searches",
-      tabClosed: "Tab closed",
-      tabsClosed: "Closed {{count}} tabs"
+      noHistory: "No recent searches"
     },
     groups: {
       edit: "Edit",
@@ -766,7 +765,8 @@ export default {
       toast: {
         created: "Scenario mode created",
         updated: "Scenario mode updated",
-        deleted: "Scenario mode deleted"
+        deleted: "Scenario mode deleted",
+        switched: "Switched to: {{name}}"
       }
     },
     toast: {

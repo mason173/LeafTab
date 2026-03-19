@@ -1,13 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-
-const CHANNELS = new Set(['community', 'store']);
-
-function resolveChannel(raw) {
-  const normalized = String(raw || '').trim().toLowerCase();
-  return CHANNELS.has(normalized) ? normalized : 'community';
-}
+const {
+  detectChannelByManifest,
+  readChannelMarkerFromZip,
+  resolveChannel,
+} = require('./channel-utils');
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -22,23 +20,12 @@ function readManifestFromZip(zipPath) {
   }
 }
 
-function has(value, target) {
-  return Array.isArray(value) && value.includes(target);
-}
-
-function detectChannelByManifest(manifest) {
-  const hasHttpsAllHosts = has(manifest.host_permissions, 'https://*/*');
-  const hasHttpAllHosts = has(manifest.host_permissions, 'http://*/*');
-  if (hasHttpsAllHosts && hasHttpAllHosts) return 'community';
-  return 'store';
-}
-
 function verifyZip({ zipPath, expectedChannel, expectedVersion }) {
   if (!fs.existsSync(zipPath)) {
     throw new Error(`Zip not found: ${zipPath}`);
   }
   const manifest = readManifestFromZip(zipPath);
-  const actualChannel = detectChannelByManifest(manifest);
+  const actualChannel = readChannelMarkerFromZip(zipPath) || detectChannelByManifest(manifest);
   const actualVersion = String(manifest.version || '');
 
   if (actualChannel !== expectedChannel) {
@@ -47,7 +34,7 @@ function verifyZip({ zipPath, expectedChannel, expectedVersion }) {
         `Channel mismatch in ${path.basename(zipPath)}.`,
         `Expected: ${expectedChannel}`,
         `Actual: ${actualChannel}`,
-        'Hint: run `npm run build` (community) before `npm run pack:release`.',
+        `Hint: run \`npm run build:${expectedChannel}\` before packing this channel.`,
       ].join(' ')
     );
   }
@@ -77,8 +64,8 @@ function main() {
   const expectedChannel = resolveChannel(process.argv[2] || 'community');
   const args = process.argv.slice(3);
   const defaultZips = [
-    path.join(root, `LeafTab-chrome-edge-v${expectedVersion}.zip`),
-    path.join(root, `LeafTab-firefox-v${expectedVersion}.zip`),
+    path.join(root, `LeafTab-${expectedChannel}-chrome-edge-v${expectedVersion}.zip`),
+    path.join(root, `LeafTab-${expectedChannel}-firefox-v${expectedVersion}.zip`),
   ];
   const zipPaths = args.length > 0 ? args.map((p) => path.resolve(root, p)) : defaultZips;
 

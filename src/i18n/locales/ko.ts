@@ -410,12 +410,12 @@ export default {
       loggedOut: "로그아웃됨"
     },
     search: {
-      placeholder: "검색할 내용 입력...",
-      placeholderDynamic: "검색할 내용 또는 URL 입력...",
-      placeholderHintTabSwitch: "Tab 키로 검색엔진 전환",
-      placeholderHintCalculator: "수식을 바로 입력해 계산",
-      placeholderHintSiteDirect: "사이트 직접 검색: 예 github react",
-      placeholderHintPrefix: "Prefix 검색: 예 g AI",
+      placeholder: "찾고 싶은 내용을 바로 입력하세요",
+      placeholderDynamic: "찾고 싶은 내용을 입력하세요. 주소도 가능해요",
+      placeholderHintTabSwitch: "검색 방식을 바꾸려면 Tab",
+      placeholderHintCalculator: "12*8 처럼 입력하면 바로 계산돼요",
+      placeholderHintSiteDirect: "github react 를 입력하면 GitHub에서 찾을 수 있어요",
+      placeholderHintPrefix: "g AI 를 입력하면 Google로 검색돼요",
       systemEngine: "시스템 기본",
       useEngineSearch: "{{engine}}로 검색",
       prefixEngineInlineHint: "{{engine}}로 검색",
@@ -545,7 +545,8 @@ export default {
       toast: {
         created: "시나리오가 생성되었습니다",
         updated: "시나리오가 업데이트되었습니다",
-        deleted: "시나리오가 삭제되었습니다"
+        deleted: "시나리오가 삭제되었습니다",
+        switched: "{{name}}(으)로 전환됨"
       }
     },
     toast: {

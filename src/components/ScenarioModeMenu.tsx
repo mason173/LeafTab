@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { Magnetic } from "@/components/motion-primitives/magnetic";
 import { getScenarioIconByKey, type ScenarioMode } from "@/scenario/scenario";
 
 function ScenarioModeChevronDown({ open }: { open: boolean }) {
@@ -51,8 +50,7 @@ const ScenarioModeButton = forwardRef<
       </div>
     </button>
   );
-  if (reduceVisualEffects) return buttonNode;
-  return <Magnetic intensity={0.34} range={116}>{buttonNode}</Magnetic>;
+  return buttonNode;
 });
 
 function ScenarioModeMenu({

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob } from '../db';
+import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob, saveWallpaper } from '../db';
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
+import defaultWallpaperImage from '../assets/Default_wallpaper.jpg?url';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
@@ -165,16 +166,23 @@ const getInitialBingWallpaper = (): string => {
 
 export function useWallpaper() {
   const initialBingWallpaper = getInitialBingWallpaper();
+  const [hasStoredWallpaperMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('wallpaperMode');
+    return saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom' || saved === 'dynamic';
+  });
   const [bingWallpaper, setBingWallpaper] = useState<string>(() => initialBingWallpaper);
   const hasBingWallpaperRef = useRef(Boolean(initialBingWallpaper));
   const ownedBingObjectUrlRef = useRef<string | null>(null);
-  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => (
+    hasStoredWallpaperMode ? null : defaultWallpaperImage
+  ));
+  const [customWallpaperLoaded, setCustomWallpaperLoaded] = useState(false);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
     if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') return saved;
     // Backward compatibility: old versions may persist "dynamic".
     if (saved === 'dynamic') return 'bing';
-    return 'bing';
+    return 'custom';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -206,10 +214,38 @@ export function useWallpaper() {
   }, [colorWallpaperId]);
 
   useEffect(() => {
-    getWallpaper().then((wallpaper) => {
-      if (wallpaper) setCustomWallpaper(wallpaper);
-    });
-  }, []);
+    let cancelled = false;
+    getWallpaper()
+      .then(async (wallpaper) => {
+        if (cancelled) return;
+        if (wallpaper) {
+          setCustomWallpaper(wallpaper);
+          setCustomWallpaperLoaded(true);
+          return;
+        }
+        if (!hasStoredWallpaperMode) {
+          try {
+            await saveWallpaper(defaultWallpaperImage);
+          } catch {}
+          if (cancelled) return;
+          setCustomWallpaper(defaultWallpaperImage);
+        } else {
+          setCustomWallpaper(null);
+        }
+        setCustomWallpaperLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        if (!hasStoredWallpaperMode) {
+          void saveWallpaper(defaultWallpaperImage).catch(() => {});
+          setCustomWallpaper(defaultWallpaperImage);
+        }
+        setCustomWallpaperLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasStoredWallpaperMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,6 +388,7 @@ export function useWallpaper() {
 
   return {
     bingWallpaper, setBingWallpaper,
+    customWallpaperLoaded,
     customWallpaper, setCustomWallpaper,
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,

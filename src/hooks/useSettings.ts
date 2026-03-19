@@ -135,7 +135,7 @@ export function useSettings() {
   const [is24Hour, setIs24Hour] = useState(true);
   const [showLunar, setShowLunar] = useState<boolean>(() => readStoredBoolean(SHOW_LUNAR_KEY, true));
   const [timeAnimationMode, setTimeAnimationMode] = useState<TimeAnimationMode>(() => readTimeAnimationMode());
-  const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'PingFang SC');
+  const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'Pacifico');
   const [showSeconds, setShowSeconds] = useState(() => {
     const storedShowSeconds = localStorage.getItem('showSeconds');
     if (storedShowSeconds === null) return true;
@@ -265,7 +265,7 @@ export function useSettings() {
     queueLocalStorageRemoveItem('time_animation_enabled');
     queueLocalStorageSetItem('showSeconds', JSON.stringify(showSeconds));
     queueLocalStorageSetItem(VISUAL_EFFECTS_LEVEL_KEY, visualEffectsLevel);
-    queueLocalStorageSetItem(REDUCE_VISUAL_EFFECTS_KEY, JSON.stringify(visualEffectsLevel === 'low'));
+    queueLocalStorageRemoveItem(REDUCE_VISUAL_EFFECTS_KEY);
     queueLocalStorageSetItem('showTime', JSON.stringify(showTime));
     queueLocalStorageSetItem('shortcutCardVariant', shortcutCardVariant);
     queueLocalStorageSetItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
