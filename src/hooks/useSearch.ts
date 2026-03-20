@@ -404,10 +404,6 @@ export function useSearch(
     closeHistoryPanel('submit');
   }, [closeHistoryPanel, historySelectedIndex, filteredHistoryItems, openSearchWithQuery, searchValue]);
 
-  const handleEngineClick = () => {
-    setDropdownOpen(!dropdownOpen);
-  };
-
   const handleEngineSelect = (engine: SearchEngine) => {
     setSearchEngine(engine);
     setDropdownOpen(false);
@@ -436,7 +432,6 @@ export function useSearch(
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
-    handleEngineClick,
     handleEngineSelect,
     cycleSearchEngine,
     openSearchWithQuery,

@@ -31,6 +31,13 @@ import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
 const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
+const SEARCH_FOCUS_BLOCKING_SELECTOR = [
+  '[data-slot="dialog-content"]',
+  '[data-slot="alert-dialog-content"]',
+  '[data-slot="sheet-content"]',
+  '[data-slot="popover-content"]',
+  '[data-slot="dropdown-menu-content"]',
+].join(', ');
 
 export type SearchInteractionState = {
   historyOpen: boolean;
@@ -61,11 +68,7 @@ export interface SearchExperienceProps {
 }
 
 function hasOpenBlockingLayer() {
-  return Boolean(
-    document.querySelector(
-      '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"], [data-slot="popover-content"]',
-    ),
-  );
+  return Boolean(document.querySelector(SEARCH_FOCUS_BLOCKING_SELECTOR));
 }
 
 function isEditableElement(el: Element | null) {
@@ -87,9 +90,14 @@ function isFocusProtectedElement(el: Element | null) {
         'button',
         'a[href]',
         '[role="button"]',
+        '[role="menu"]',
+        '[role="menuitem"]',
         '[role="dialog"]',
         '[data-slot="popover-trigger"]',
         '[data-slot="popover-content"]',
+        '[data-slot="dropdown-menu-trigger"]',
+        '[data-slot="dropdown-menu-content"]',
+        '[data-slot="dropdown-menu-item"]',
         '[data-slot="dialog-content"]',
         '[data-slot="alert-dialog-content"]',
         '[data-slot="sheet-content"]',
@@ -140,7 +148,6 @@ export const SearchExperience = memo(function SearchExperience({
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
   const searchAreaRef = useRef<HTMLDivElement>(null);
-  const searchDropdownRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
   const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
@@ -174,7 +181,6 @@ export const SearchExperience = memo(function SearchExperience({
     handleSearchChange,
     filteredHistoryItems,
     handleSearch,
-    handleEngineClick,
     handleEngineSelect,
     cycleSearchEngine,
     openSearchWithQuery,
@@ -252,7 +258,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const focusSearchInput = () => {
       clearScheduledFocus();
-      if (document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
+      if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
       const input = inputRef.current;
       if (!input) return;
       if (document.activeElement === input) {
@@ -284,6 +290,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const scheduleFocusSearchInput = () => {
       clearScheduledFocus();
+      if (dropdownOpen) return;
       focusTimer = window.setTimeout(() => {
         focusTimer = null;
         focusSearchInput();
@@ -301,7 +308,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const handleDocumentFocusIn = (event: FocusEvent) => {
       const input = inputRef.current;
-      if (!input || hasOpenBlockingLayer()) return;
+      if (!input || dropdownOpen || hasOpenBlockingLayer()) return;
       const target = event.target;
       if (target === input) {
         captureInputSelection();
@@ -340,7 +347,7 @@ export const SearchExperience = memo(function SearchExperience({
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [inputRef]);
+  }, [dropdownOpen, inputRef]);
 
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const searchSessionModel = useMemo(() => createSearchSessionModel(searchValue, {
@@ -682,24 +689,6 @@ export const SearchExperience = memo(function SearchExperience({
   }, [closeHistoryPanel, historyOpen]);
 
   useEffect(() => {
-    const handleEngineOutside = (event: PointerEvent) => {
-      if (!dropdownOpen) return;
-      const root = searchDropdownRef.current;
-      if (!root) {
-        setDropdownOpen(false);
-        return;
-      }
-      const target = event.target as Node | null;
-      const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
-      const clickedInside = (target ? root.contains(target) : false) || path.includes(root);
-      if (!clickedInside) setDropdownOpen(false);
-    };
-
-    window.addEventListener('pointerdown', handleEngineOutside, true);
-    return () => window.removeEventListener('pointerdown', handleEngineOutside, true);
-  }, [dropdownOpen, setDropdownOpen]);
-
-  useEffect(() => {
     if (!historyOpen) return;
     syncHistorySelectionByCount(searchActions.length);
   }, [historyOpen, searchActions.length, syncHistorySelectionByCount]);
@@ -871,10 +860,9 @@ export const SearchExperience = memo(function SearchExperience({
       onValueChange={handleSearchInputChange}
       onSubmit={handleSearchSubmit}
       searchEngine={searchEngine}
-      onEngineClick={handleEngineClick}
       dropdownOpen={dropdownOpen}
+      onEngineOpenChange={setDropdownOpen}
       onEngineSelect={handleEngineSelect}
-      dropdownRef={searchDropdownRef}
       searchActions={searchActions}
       historyOpen={historyOpen}
       onHistoryOpen={handleSearchHistoryOpen}

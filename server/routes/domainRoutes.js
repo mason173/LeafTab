@@ -140,14 +140,36 @@ const registerDomainRoutes = ({
     if (!isAdminRequest(req)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    const sql = `
+    const summarySql = `
       SELECT
-        (SELECT COUNT(*) FROM users) AS users_total,
+        COUNT(*) AS users_total,
+        COALESCE(SUM(CASE WHEN date(created_at, 'localtime') = date('now', 'localtime') THEN 1 ELSE 0 END), 0) AS users_today,
+        COALESCE(SUM(CASE WHEN date(created_at, 'localtime') = date('now', 'localtime', '-1 day') THEN 1 ELSE 0 END), 0) AS users_yesterday,
+        COALESCE(SUM(CASE WHEN datetime(created_at) >= datetime('now', '-6 days') THEN 1 ELSE 0 END), 0) AS users_last_7d,
+        COALESCE(SUM(CASE WHEN datetime(created_at) >= datetime('now', '-29 days') THEN 1 ELSE 0 END), 0) AS users_last_30d,
+        COALESCE(SUM(CASE WHEN COALESCE(privacy_consent, 0) = 1 THEN 1 ELSE 0 END), 0) AS privacy_consent_users,
         (SELECT COUNT(DISTINCT registrable_domain) FROM domain_user_stats) AS domains_unique
+      FROM users
     `;
-    db.get(sql, [], (err, row) => {
-      if (err) return res.status(500).json({ error: err.message });
-      return res.json({ summary: row || {} });
+    const topDomainsSql = `
+      SELECT
+        registrable_domain AS domain,
+        COUNT(*) AS count,
+        MAX(last_seen) AS last_seen
+      FROM domain_user_stats
+      GROUP BY registrable_domain
+      ORDER BY count DESC, last_seen DESC
+      LIMIT 120
+    `;
+    db.get(summarySql, [], (summaryErr, summaryRow) => {
+      if (summaryErr) return res.status(500).json({ error: summaryErr.message });
+      db.all(topDomainsSql, [], (topErr, topRows) => {
+        if (topErr) return res.status(500).json({ error: topErr.message });
+        return res.json({
+          summary: summaryRow || {},
+          top_domains: topRows || [],
+        });
+      });
     });
   });
 

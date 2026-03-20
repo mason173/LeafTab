@@ -28,7 +28,9 @@ const cleanupBootstrapFocusParam = () => {
 };
 
 const hasOpenModal = () => Boolean(
-  document.querySelector('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"]')
+  document.querySelector(
+    '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"]',
+  )
 );
 
 const isEditableElement = (el: Element | null) => {

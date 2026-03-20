@@ -15,7 +15,6 @@ export function AdminModal({
   open,
   onOpenChange,
   onExportDomains,
-  onFetchAdminStats,
   weatherDebugEnabled,
   onWeatherDebugEnabledChange,
   customApiUrl,
@@ -27,7 +26,6 @@ export function AdminModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExportDomains: () => void;
-  onFetchAdminStats: () => Promise<any>;
   weatherDebugEnabled: boolean;
   onWeatherDebugEnabledChange: (enabled: boolean) => void;
   customApiUrl: string;
@@ -46,8 +44,6 @@ export function AdminModal({
   const [iconLibraryUrlDraft, setIconLibraryUrlDraft] = useState<string>(() => (getIconLibraryUrl() || "").trim());
   const [domainQueueCount, setDomainQueueCount] = useState<number>(0);
   const [domainLastFlushAt, setDomainLastFlushAt] = useState<string>("");
-  const [adminStats, setAdminStats] = useState<any>(null);
-  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
 
   const refreshLocal = () => {
     try {
@@ -69,27 +65,9 @@ export function AdminModal({
     setIconLibraryUrlDraft(currentIconLibrary);
   };
 
-  const refreshAdminStats = async () => {
-    if (!adminKey) {
-      setAdminStats(null);
-      return;
-    }
-    setAdminStatsLoading(true);
-    try {
-      const data = await onFetchAdminStats();
-      setAdminStats(data || null);
-    } catch {
-      setAdminStats(null);
-      toast.error(t("settings.adminPanel.statsLoadFailed"));
-    } finally {
-      setAdminStatsLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!open) return;
     refreshLocal();
-    refreshAdminStats();
     setCustomApiUrlDraft((customApiUrl || "").trim());
     setCustomApiNameDraft((customApiName || "").trim());
     setIconLibraryUrlDraft((getIconLibraryUrl() || "").trim());
@@ -140,7 +118,6 @@ export function AdminModal({
       setAdminKey(next);
       setAdminKeyDraft(next);
       toast.success(t("settings.iconAssistant.adminKeySaved"));
-      refreshAdminStats();
     } catch {}
   };
 
@@ -255,33 +232,6 @@ export function AdminModal({
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t("settings.adminPanel.statsTitle")}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t("settings.adminPanel.statsDesc")}</span>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                    disabled={adminStatsLoading}
-                    onClick={refreshAdminStats}
-                  >
-                    {adminStatsLoading ? t("settings.adminPanel.loading") : t("settings.adminPanel.refresh")}
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 px-3 py-2">
-                    <span className="text-muted-foreground">{t("settings.adminPanel.usersTotal")}</span>
-                    <span className="font-medium">{adminStats?.summary?.users_total ?? "—"}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl bg-secondary/30 px-3 py-2">
-                    <span className="text-muted-foreground">{t("settings.adminPanel.domainsUnique")}</span>
-                    <span className="font-medium">{adminStats?.summary?.domains_unique ?? "—"}</span>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between space-x-2">
                   <div className="flex flex-col space-y-1 items-start">
                     <span className="text-sm font-medium leading-none">{t("settings.adminPanel.weatherDebugLabel")}</span>

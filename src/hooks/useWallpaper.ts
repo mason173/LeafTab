@@ -7,6 +7,7 @@ import defaultWallpaperImage from '../assets/Default_wallpaper.webp?url';
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
 const BING_REFRESH_DELAY_MINUTES = 20;
+const MANUAL_BING_REFRESH_COOLDOWN_MS = 15_000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 9000;
 
@@ -16,6 +17,8 @@ type BingCacheMeta = {
   sourceUrl: string;
   fetchedAt: string;
 };
+
+export type BingWallpaperRefreshResult = 'updated' | 'already-latest' | 'throttled' | 'failed';
 
 const toLocalDateSlot = (date: Date): string => {
   const y = date.getFullYear();
@@ -173,6 +176,10 @@ export function useWallpaper() {
   const [bingWallpaper, setBingWallpaper] = useState<string>(() => initialBingWallpaper);
   const hasBingWallpaperRef = useRef(Boolean(initialBingWallpaper));
   const ownedBingObjectUrlRef = useRef<string | null>(null);
+  const refreshBingWallpaperRef = useRef<((force?: boolean) => Promise<boolean>) | null>(null);
+  const manualBingRefreshPromiseRef = useRef<Promise<void> | null>(null);
+  const manualBingRefreshAtRef = useRef(0);
+  const [isBingWallpaperRefreshing, setIsBingWallpaperRefreshing] = useState(false);
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => (
     hasStoredWallpaperMode ? null : defaultWallpaperImage
   ));
@@ -316,11 +323,11 @@ export function useWallpaper() {
       return { blob: null, sourceUrl: firstCandidate };
     };
 
-    const refreshBingWallpaper = async (force = false) => {
+    const refreshBingWallpaper = async (force = false): Promise<boolean> => {
       const market = navigator.language?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
       const slot = getCurrentBingSlot(new Date());
       const meta = readBingCacheMeta();
-      if (!force && meta?.slot === slot && hasBingWallpaperRef.current) return;
+      if (!force && meta?.slot === slot && hasBingWallpaperRef.current) return true;
 
       try {
         const { blob, sourceUrl } = await fetchBingImageSource(market);
@@ -341,10 +348,14 @@ export function useWallpaper() {
             fetchedAt: new Date().toISOString(),
           });
         }
+        return true;
       } catch {
         if (!cancelled) clearBingSourceIfMissing();
+        return false;
       }
     };
+
+    refreshBingWallpaperRef.current = refreshBingWallpaper;
 
     (async () => {
       try {
@@ -380,14 +391,61 @@ export function useWallpaper() {
 
     return () => {
       cancelled = true;
+      refreshBingWallpaperRef.current = null;
       if (onceTimer !== null) window.clearTimeout(onceTimer);
       if (dailyTimer !== null) window.clearInterval(dailyTimer);
       revokeOwnedBingObjectUrl();
     };
   }, []);
 
+  useEffect(() => {
+    if (wallpaperMode !== 'bing') return;
+
+    const currentSlot = getCurrentBingSlot(new Date());
+    const meta = readBingCacheMeta();
+    const missingCurrentSource = !hasBingWallpaperRef.current || !bingWallpaper;
+    const staleSlot = meta?.slot !== currentSlot;
+    if (!missingCurrentSource && !staleSlot) return;
+
+    void refreshBingWallpaperRef.current?.(staleSlot);
+  }, [bingWallpaper, wallpaperMode]);
+
+  const refreshBingWallpaper = async (force = true): Promise<BingWallpaperRefreshResult> => {
+    if (manualBingRefreshPromiseRef.current) return 'throttled';
+
+    const currentSlot = getCurrentBingSlot(new Date());
+    const meta = readBingCacheMeta();
+    const hasCurrentSource = Boolean(hasBingWallpaperRef.current && bingWallpaper);
+    const isAlreadyLatest = !force && meta?.slot === currentSlot && hasCurrentSource;
+    if (isAlreadyLatest || (meta?.slot === currentSlot && hasCurrentSource)) {
+      return 'already-latest';
+    }
+
+    const now = Date.now();
+    if (manualBingRefreshAtRef.current > 0 && now - manualBingRefreshAtRef.current < MANUAL_BING_REFRESH_COOLDOWN_MS) {
+      return 'throttled';
+    }
+
+    const task = (async () => {
+      setIsBingWallpaperRefreshing(true);
+      try {
+        const success = await refreshBingWallpaperRef.current?.(true);
+        manualBingRefreshAtRef.current = Date.now();
+        return success ? 'updated' : 'failed';
+      } finally {
+        setIsBingWallpaperRefreshing(false);
+        manualBingRefreshPromiseRef.current = null;
+      }
+    })();
+
+    manualBingRefreshPromiseRef.current = task.then(() => {});
+    return task;
+  };
+
   return {
     bingWallpaper, setBingWallpaper,
+    isBingWallpaperRefreshing,
+    refreshBingWallpaper,
     customWallpaperLoaded,
     customWallpaper, setCustomWallpaper,
     wallpaperMode, setWallpaperMode,

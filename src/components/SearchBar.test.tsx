@@ -43,10 +43,9 @@ function renderSearchBar(props?: Partial<React.ComponentProps<typeof SearchBar>>
       onValueChange={vi.fn()}
       onSubmit={onSubmit}
       searchEngine="system"
-      onEngineClick={vi.fn()}
       dropdownOpen={false}
+      onEngineOpenChange={vi.fn()}
       onEngineSelect={vi.fn()}
-      dropdownRef={{ current: null }}
       searchActions={[searchAction]}
       historyOpen
       onHistoryOpen={vi.fn()}

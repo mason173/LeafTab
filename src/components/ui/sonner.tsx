@@ -116,7 +116,7 @@ toast.dismiss = dismissToast;
 const getTypeClassName = (type: ToastType) => {
   if (type === "error") return "bg-primary text-primary-foreground ring-primary/35";
   if (type === "success") return "bg-primary text-primary-foreground ring-primary/35";
-  if (type === "info") return "bg-secondary text-secondary-foreground ring-border/60";
+  if (type === "info") return "bg-primary text-primary-foreground ring-primary/35";
   return "bg-primary text-primary-foreground ring-primary/35";
 };
 

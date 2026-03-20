@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useTheme } from 'next-themes';
 import type React from 'react';
-import { SearchEngineSwitcherDropdown } from '@/components/search/SearchEngineSwitcher';
 import { SearchField, type SearchFieldValueChangeHandler } from '@/components/search/SearchField';
 import { SearchSuggestionsPanel } from '@/components/search/SearchSuggestionsPanel';
 import { shouldBlockSearchSubmitForIme } from '@/components/search/searchInputKeyboard';
@@ -14,10 +13,9 @@ interface SearchBarProps {
   onValueChange: SearchFieldValueChangeHandler;
   onSubmit: () => void;
   searchEngine: SearchEngine;
-  onEngineClick: () => void;
   dropdownOpen: boolean;
+  onEngineOpenChange: (open: boolean) => void;
   onEngineSelect: (engine: SearchEngine) => void;
-  dropdownRef: React.RefObject<HTMLDivElement | null>;
   searchActions: SearchAction[];
   historyOpen: boolean;
   onHistoryOpen: () => void;
@@ -58,10 +56,9 @@ export function SearchBar({
   onValueChange,
   onSubmit,
   searchEngine,
-  onEngineClick,
   dropdownOpen,
+  onEngineOpenChange,
   onEngineSelect,
-  dropdownRef,
   searchActions,
   historyOpen,
   onHistoryOpen,
@@ -116,7 +113,7 @@ export function SearchBar({
 
   return (
     <div className="relative content-stretch flex w-full items-start" onKeyDown={handleKeyDown}>
-      <div className="relative flex-1 min-w-0" ref={dropdownRef}>
+      <div className="relative flex-1 min-w-0">
         <div className="relative" ref={historyRef}>
           <SearchField
             value={value}
@@ -135,7 +132,9 @@ export function SearchBar({
             searchActionSize={searchActionSize}
             surfaceStyle={searchSurfaceStyle}
             searchEngine={searchEngine}
-            onEngineClick={onEngineClick}
+            onEngineSelect={onEngineSelect}
+            dropdownOpen={dropdownOpen}
+            onEngineOpenChange={onEngineOpenChange}
             showEngineSwitcher={showEngineSwitcher}
           />
           <SearchSuggestionsPanel
@@ -152,16 +151,6 @@ export function SearchBar({
             emptyStateLabel={emptyStateLabel}
           />
         </div>
-        {showEngineSwitcher ? (
-          <SearchEngineSwitcherDropdown
-            currentEngine={searchEngine}
-            onSelect={onEngineSelect}
-            isOpen={dropdownOpen}
-            surfaceClassName={theme.engineDropdownSurfaceClassName}
-            itemClassName={theme.engineDropdownItemClassName}
-            itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
-          />
-        ) : null}
       </div>
     </div>
   );
