@@ -23,7 +23,8 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@target/*": ["src/targets/chromium/*"]
     }
   },
   "include": ["src"],

@@ -1,10 +1,11 @@
-import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useEffect, useMemo, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
 import { SearchExperience } from '@/components/search/SearchExperience';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
   INITIAL_REVEAL_TIMING,
   resolveInitialRevealOpacity,
@@ -40,6 +41,7 @@ interface HomeMainContentProps {
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
+  reduceMotionVisuals?: boolean;
   wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
   searchExperienceProps: ComponentProps<typeof SearchExperience>;
   searchInteractionLocked: boolean;
@@ -73,12 +75,14 @@ export const HomeMainContent = memo(function HomeMainContent({
   timeFont,
   onTimeFontChange,
   layout,
+  reduceMotionVisuals = false,
   wallpaperClockProps,
   searchExperienceProps,
   searchInteractionLocked,
   shortcutGridProps,
   onDrawerExpandedChange,
 }: HomeMainContentProps) {
+  const firefox = isFirefoxBuildTarget();
   const { resolvedTheme } = useTheme();
 
   const homeTopOffsetPercent = Math.max(
@@ -125,7 +129,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   return (
     <>
       <div
-        className="flex flex-col items-center flex-1 w-full transform-gpu will-change-transform"
+        className={`flex flex-col items-center flex-1 w-full ${firefox ? '' : 'transform-gpu will-change-transform'}`}
         style={{
           marginTop: `${homeTopOffsetPercent}vh`,
           opacity: homeInitialRevealOpacity,
@@ -141,16 +145,16 @@ export const HomeMainContent = memo(function HomeMainContent({
             transform: `translate3d(0, ${homeWallpaperBlockTranslateYPx}px, 0)`,
             transformOrigin: 'center top',
             transition: `transform ${HOME_DRAWER_LINKED_TRANSITION}`,
-            willChange: 'transform',
+            willChange: firefox ? undefined : 'transform',
           }}
         >
           {modeFlags.showHeroWallpaperClock ? (
-            <div className="w-full transform-gpu will-change-transform">
+            <div className={`w-full ${firefox ? '' : 'transform-gpu will-change-transform'}`}>
               <WallpaperClock {...wallpaperClockProps} />
             </div>
           ) : (
             showTime && (
-              <div className="w-full transform-gpu will-change-transform">
+              <div className={`w-full ${firefox ? '' : 'transform-gpu will-change-transform'}`}>
                 <InlineTime
                   is24Hour={is24Hour}
                   onIs24HourChange={onIs24HourChange}
@@ -187,9 +191,11 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerContentTopPaddingPx={drawer.drawerContentTopPaddingPx}
         drawerContentBackdropBlurPx={drawer.drawerContentBackdropBlurPx}
         drawerPanelHeightVh={drawer.drawerPanelHeightVh}
+        drawerPanelTranslateYPx={drawer.drawerPanelTranslateYPx}
         drawerShortcutBottomInset={drawerShortcutBottomInset}
         drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
         drawerScrollLocked={drawerScrollLocked}
+        reduceMotionVisuals={reduceMotionVisuals}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}

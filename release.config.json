@@ -5,6 +5,6 @@
       "community"
     ],
     "defaultTitlePrefix": "v",
-    "defaultNotes": "## 更新内容\n- 搜索设置独立弹窗与入口优化\n- 搜索体验升级：前缀搜索、站点直达、计算结果一键复制\n- 优化占位提示动效与中文输入法回车交互"
+    "defaultNotes": "## 更新内容\n- 优化低特效模式下的搜索与抽屉动效\n- 改进 Firefox 与 Chrome 的构建隔离\n- 提升整体稳定性"
   }
 }

@@ -11,7 +11,16 @@ import {
 import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
 import { toast } from '@/components/ui/sonner';
+import { getExtensionPermissionSupport } from '@/platform/permissions';
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
+import {
+  getExtensionRuntime,
+  getPermissionsApi,
+  getTabsApi,
+  getWindowsApi,
+  isExtensionRuntime,
+} from '@/platform/runtime';
+import { getDefaultSearchEngineForPlatform } from '@/platform/search';
 import { useRotatingText } from '@/hooks/useRotatingText';
 import { useSearch } from '@/hooks/useSearch';
 import { useSearchInteractionController } from '@/hooks/useSearchInteractionController';
@@ -27,9 +36,11 @@ import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
+import { SEARCH_ENGINE_SWITCHER_INTERACT_EVENT } from '@/components/search/SearchEngineSwitcher';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
+const SEARCH_ENGINE_SWITCHER_FOCUS_GUARD_MS = 420;
 const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
 const SEARCH_FOCUS_BLOCKING_SELECTOR = [
   '[data-slot="dialog-content"]',
@@ -56,6 +67,7 @@ export interface SearchExperienceProps {
   searchAnyKeyCaptureEnabled: boolean;
   searchCalculatorEnabled: boolean;
   disablePlaceholderAnimation?: boolean;
+  lightweightSearchUi?: boolean;
   searchHeight: number;
   searchInputFontSize: number;
   searchHorizontalPadding: number;
@@ -136,6 +148,7 @@ export const SearchExperience = memo(function SearchExperience({
   searchAnyKeyCaptureEnabled,
   searchCalculatorEnabled,
   disablePlaceholderAnimation = false,
+  lightweightSearchUi = false,
   searchHeight,
   searchInputFontSize,
   searchHorizontalPadding,
@@ -147,19 +160,19 @@ export const SearchExperience = memo(function SearchExperience({
   onInteractionStateChange,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
+  const extensionRuntimeActive = isExtensionRuntime();
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
+  const suppressAutoFocusUntilRef = useRef(0);
   const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [searchPermissions, setSearchPermissions] = useState<Record<SearchCommandPermission, boolean>>(() => ({
-    bookmarks: typeof chrome === 'undefined' || !chrome.runtime?.id,
-    history: typeof chrome === 'undefined' || !chrome.runtime?.id,
-    tabs: typeof chrome === 'undefined' || !chrome.runtime?.id,
+    bookmarks: !extensionRuntimeActive,
+    history: !extensionRuntimeActive,
+    tabs: !extensionRuntimeActive,
   }));
-  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => (
-    typeof chrome === 'undefined' || !chrome.runtime?.id
-  ));
+  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => !extensionRuntimeActive);
   const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
   const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
 
@@ -188,6 +201,7 @@ export const SearchExperience = memo(function SearchExperience({
     prefixEnabled: searchPrefixEnabled,
     siteDirectEnabled: searchSiteDirectEnabled,
   });
+  const dropdownOpenRef = useRef(false);
 
   const [isSearchTypingBurst, setIsSearchTypingBurst] = useState(false);
   const searchTypingBurstTimerRef = useRef<number | null>(null);
@@ -233,8 +247,13 @@ export const SearchExperience = memo(function SearchExperience({
   useEffect(() => {
     if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
     if (dropdownOpen) setDropdownOpen(false);
-    if (searchEngine !== 'system') setSearchEngine('system');
+    const fallbackEngine = getDefaultSearchEngineForPlatform();
+    if (searchEngine !== fallbackEngine) setSearchEngine(fallbackEngine);
   }, [dropdownOpen, searchEngine, setDropdownOpen, setSearchEngine]);
+
+  useEffect(() => {
+    dropdownOpenRef.current = dropdownOpen;
+  }, [dropdownOpen]);
 
   useEffect(() => {
     let focusTimer: number | null = null;
@@ -258,7 +277,8 @@ export const SearchExperience = memo(function SearchExperience({
 
     const focusSearchInput = () => {
       clearScheduledFocus();
-      if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
+      if (Date.now() < suppressAutoFocusUntilRef.current) return;
+      if (dropdownOpenRef.current || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
       const input = inputRef.current;
       if (!input) return;
       if (document.activeElement === input) {
@@ -290,7 +310,8 @@ export const SearchExperience = memo(function SearchExperience({
 
     const scheduleFocusSearchInput = () => {
       clearScheduledFocus();
-      if (dropdownOpen) return;
+      if (Date.now() < suppressAutoFocusUntilRef.current) return;
+      if (dropdownOpenRef.current) return;
       focusTimer = window.setTimeout(() => {
         focusTimer = null;
         focusSearchInput();
@@ -308,7 +329,8 @@ export const SearchExperience = memo(function SearchExperience({
 
     const handleDocumentFocusIn = (event: FocusEvent) => {
       const input = inputRef.current;
-      if (!input || dropdownOpen || hasOpenBlockingLayer()) return;
+      if (Date.now() < suppressAutoFocusUntilRef.current) return;
+      if (!input || dropdownOpenRef.current || hasOpenBlockingLayer()) return;
       const target = event.target;
       if (target === input) {
         captureInputSelection();
@@ -333,12 +355,17 @@ export const SearchExperience = memo(function SearchExperience({
     const handleSelectionChange = () => {
       captureInputSelection();
     };
+    const handleEngineSwitcherInteract = () => {
+      suppressAutoFocusUntilRef.current = Date.now() + SEARCH_ENGINE_SWITCHER_FOCUS_GUARD_MS;
+      clearScheduledFocus();
+    };
 
     scheduleFocusSearchInput();
     document.addEventListener('focusin', handleDocumentFocusIn, true);
     document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener(SEARCH_ENGINE_SWITCHER_INTERACT_EVENT, handleEngineSwitcherInteract);
 
     return () => {
       clearScheduledFocus();
@@ -346,6 +373,7 @@ export const SearchExperience = memo(function SearchExperience({
       document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener(SEARCH_ENGINE_SWITCHER_INTERACT_EVENT, handleEngineSwitcherInteract);
     };
   }, [dropdownOpen, inputRef]);
 
@@ -430,6 +458,22 @@ export const SearchExperience = memo(function SearchExperience({
     }
   }, [t]);
 
+  const showSearchCommandUnsupportedToast = useCallback((permission: 'bookmarks' | 'history' | 'tabs') => {
+    if (permission === 'bookmarks') {
+      toast.error(t('search.permissionBookmarksUnsupported', {
+        defaultValue: '当前环境暂不支持浏览器书签搜索。',
+      }));
+    } else if (permission === 'tabs') {
+      toast.error(t('search.permissionTabsUnsupported', {
+        defaultValue: '当前环境暂不支持已打开标签页搜索。',
+      }));
+    } else {
+      toast.error(t('search.permissionHistoryUnsupported', {
+        defaultValue: '当前环境暂不支持浏览器历史记录搜索。',
+      }));
+    }
+  }, [t]);
+
   const setSearchPermissionGranted = useCallback((permission: SearchCommandPermission, granted: boolean) => {
     setSearchPermissions((prev) => {
       if (prev[permission] === granted) return prev;
@@ -444,11 +488,11 @@ export const SearchExperience = memo(function SearchExperience({
   const executeSearchAction = useCallback((action: SearchAction) => {
     const { item } = action;
     if (action.kind === 'focus-tab' && item.type === 'tab' && Number.isFinite(item.tabId)) {
-      const tabsApi = globalThis.chrome?.tabs;
+      const tabsApi = getTabsApi();
       if (tabsApi?.update && typeof item.tabId === 'number') {
         tabsApi.update(item.tabId, { active: true }, () => {});
       }
-      const windowsApi = globalThis.chrome?.windows;
+      const windowsApi = getWindowsApi();
       if (windowsApi?.update && typeof item.windowId === 'number') {
         windowsApi.update(item.windowId, { focused: true }, () => {});
       }
@@ -474,11 +518,22 @@ export const SearchExperience = memo(function SearchExperience({
     executeSearchAction(action);
   }, [executeSearchAction, searchPermissions, showSearchCommandPermissionDeniedToast]);
 
+  const searchPermissionSupport = useMemo<Record<SearchCommandPermission, ReturnType<typeof getExtensionPermissionSupport>>>(() => ({
+    bookmarks: getExtensionPermissionSupport('bookmarks'),
+    history: getExtensionPermissionSupport('history'),
+    tabs: getExtensionPermissionSupport('tabs'),
+  }), []);
+
   const refreshSearchPermissionStatus = useCallback((permissions: SearchCommandPermission[] = SEARCH_PERMISSION_KEYS) => {
     void Promise.all(
-      permissions.map((permission) => ensureExtensionPermission(permission, { requestIfNeeded: false })
-        .then((granted) => ({ permission, granted }))
-        .catch(() => ({ permission, granted: false }))),
+      permissions.map((permission) => {
+        if (searchPermissionSupport[permission] === 'unsupported') {
+          return Promise.resolve({ permission, granted: false });
+        }
+        return ensureExtensionPermission(permission, { requestIfNeeded: false })
+          .then((granted) => ({ permission, granted }))
+          .catch(() => ({ permission, granted: false }));
+      }),
     ).then((results) => {
       setSearchPermissions((prev) => {
         let changed = false;
@@ -493,14 +548,14 @@ export const SearchExperience = memo(function SearchExperience({
       });
       setSearchPermissionsReady(true);
     });
-  }, []);
+  }, [searchPermissionSupport]);
 
   useEffect(() => {
     refreshSearchPermissionStatus();
   }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
-    const permissionsApi = globalThis.chrome?.permissions;
+    const permissionsApi = getPermissionsApi();
     if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
 
     const handlePermissionsChanged = () => {
@@ -515,13 +570,14 @@ export const SearchExperience = memo(function SearchExperience({
   }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
-    const tabsApi = globalThis.chrome?.tabs;
-    const windowsApi = globalThis.chrome?.windows;
+    const tabsApi = getTabsApi();
+    const windowsApi = getWindowsApi();
+    const runtime = getExtensionRuntime();
     if (!tabsApi?.query) return;
 
     const syncCurrentBrowserTabId = () => {
       tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
-        if (globalThis.chrome?.runtime?.lastError) {
+        if (runtime?.lastError) {
           setCurrentBrowserTabId(null);
           return;
         }
@@ -548,44 +604,42 @@ export const SearchExperience = memo(function SearchExperience({
       return;
     }
     if (permissionRequestInFlight === permission) return;
-
-    const chromeApi = (globalThis as typeof globalThis & { chrome?: typeof chrome }).chrome;
-    const runtime = chromeApi?.runtime;
-    const permissionsApi = chromeApi?.permissions;
-    if (!runtime?.id || !permissionsApi?.request) {
-      setSearchPermissionGranted(permission, true);
-      onGranted();
+    if (searchPermissionSupport[permission] === 'unsupported') {
+      setSearchPermissionGranted(permission, false);
+      showSearchCommandUnsupportedToast(permission);
       return;
     }
 
     setPermissionRequestInFlight(permission);
-    permissionsApi.request({ permissions: [permission] }, (allowed: boolean) => {
-      setPermissionRequestInFlight((current) => (current === permission ? null : current));
-      const lastError = runtime.lastError;
-      if (lastError) {
+    void ensureExtensionPermission(permission, { requestIfNeeded: true })
+      .then((allowed) => {
+        setPermissionRequestInFlight((current) => (current === permission ? null : current));
+        if (!allowed) {
+          setSearchPermissionGranted(permission, false);
+          showSearchCommandPermissionDeniedToast(permission);
+          return;
+        }
+        setSearchPermissionGranted(permission, true);
+        setPermissionWarmup(permission);
+        scheduleAfterInteractivePaint(() => {
+          setPermissionWarmup((current) => (current === permission ? null : current));
+          onGranted();
+        });
+      })
+      .catch(() => {
+        setPermissionRequestInFlight((current) => (current === permission ? null : current));
         toast.error(t('search.permissionRequestFailed', {
           defaultValue: '权限申请失败，请重试。',
         }));
-        return;
-      }
-      if (!allowed) {
-        setSearchPermissionGranted(permission, false);
-        showSearchCommandPermissionDeniedToast(permission);
-        return;
-      }
-      setSearchPermissionGranted(permission, true);
-      setPermissionWarmup(permission);
-      scheduleAfterInteractivePaint(() => {
-        setPermissionWarmup((current) => (current === permission ? null : current));
-        onGranted();
       });
-    });
   }, [
     permissionRequestInFlight,
     scheduleAfterInteractivePaint,
     searchPermissions,
+    searchPermissionSupport,
     setSearchPermissionGranted,
     showSearchCommandPermissionDeniedToast,
+    showSearchCommandUnsupportedToast,
     t,
   ]);
 
@@ -761,6 +815,14 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
+      if (searchPermissionSupport.bookmarks === 'unsupported') {
+        return {
+          tone: 'info' as const,
+          message: t('search.bookmarksPermissionUnsupportedBanner', {
+            defaultValue: '当前环境暂不支持浏览器书签搜索',
+          }),
+        };
+      }
       if (searchPermissionsReady && !searchPermissions.bookmarks) {
         return {
           tone: 'info' as const,
@@ -788,6 +850,14 @@ export const SearchExperience = memo(function SearchExperience({
           tone: 'loading' as const,
           message: t('search.tabsPreparing', {
             defaultValue: '正在整理已打开标签页，请稍候...',
+          }),
+        };
+      }
+      if (searchPermissionSupport.tabs === 'unsupported') {
+        return {
+          tone: 'info' as const,
+          message: t('search.tabsPermissionUnsupportedBanner', {
+            defaultValue: '当前环境暂不支持已打开标签页搜索',
           }),
         };
       }
@@ -820,6 +890,14 @@ export const SearchExperience = memo(function SearchExperience({
         }),
       };
     }
+    if (searchPermissionSupport.history === 'unsupported' && searchSessionModel.mode === 'default') {
+      return {
+        tone: 'info' as const,
+        message: t('search.historyPermissionUnsupportedBanner', {
+          defaultValue: '当前环境暂不支持浏览器历史记录搜索',
+        }),
+      };
+    }
     if (searchPermissionsReady && !searchPermissions.history && searchSessionModel.mode === 'default') {
       return {
         tone: 'info' as const,
@@ -837,6 +915,9 @@ export const SearchExperience = memo(function SearchExperience({
     runAfterSearchCommandPermission,
     searchPermissions,
     searchPermissionsReady,
+    searchPermissionSupport.bookmarks,
+    searchPermissionSupport.history,
+    searchPermissionSupport.tabs,
     searchSessionModel.mode,
     suggestionSourceStatus.bookmarkLoading,
     suggestionSourceStatus.browserHistoryLoading,
@@ -881,6 +962,7 @@ export const SearchExperience = memo(function SearchExperience({
       subtleDarkTone={subtleDarkTone}
       searchSurfaceStyle={searchSurfaceStyle}
       disablePlaceholderAnimation={disablePlaceholderAnimation}
+      lightweightSearchUi={lightweightSearchUi}
       searchHeight={searchHeight}
       searchInputFontSize={searchInputFontSize}
       searchHorizontalPadding={searchHorizontalPadding}

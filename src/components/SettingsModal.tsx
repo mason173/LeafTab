@@ -54,6 +54,7 @@ import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import type { WallpaperMode } from "@/wallpaper/types";
 import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
+import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
 function RollingNumber({
   value,
@@ -197,6 +198,7 @@ export default function SettingsModal({
   onOpenShortcutStyleSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
+  const firefox = isFirefoxBuildTarget();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [accentColor, setAccentColor] = useState<string>('green');
@@ -1028,22 +1030,24 @@ export default function SettingsModal({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex flex-col space-y-1 items-start">
-              <span className="text-sm font-medium leading-none">{t('settings.visualEffectsLevel.label')}</span>
-              <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
+          {!firefox ? (
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.visualEffectsLevel.label')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
+              </div>
+              <Select value={visualEffectsLevel} onValueChange={(value) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
+                <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border text-popover-foreground">
+                  <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
+                  <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
+                  <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={visualEffectsLevel} onValueChange={(value) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
-              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
-                <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
-                <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
-                <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          ) : null}
           <div className="flex items-center justify-between space-x-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.theme.label')}</span>

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
 import { Button } from "./ui/button";
@@ -8,6 +8,7 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from ".
 import { toast } from "./ui/sonner";
 import { useCitySearch } from "@/hooks/useCitySearch";
 import { fetchWeatherCitySuggestions, useWeatherLocation } from "@/hooks/useWeatherLocation";
+import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
 function WeatherCity({ city, variant }: { city: string; variant: "inverted" | "default" }) {
   return (
@@ -49,6 +50,7 @@ export function WeatherCard({
   variant = "inverted",
   disableBackdropBlur = false,
 }: WeatherCardProps) {
+  const firefox = isFirefoxBuildTarget();
   const { t, i18n } = useTranslation();
   const {
     weatherData,
@@ -121,9 +123,13 @@ export function WeatherCard({
   return (
     <>
       <div
-        className={`content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors transform-gpu backface-hidden ${
+        className={`content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${firefox ? '' : 'transform-gpu backface-hidden'} ${
           variant === "inverted"
-            ? (disableBackdropBlur ? "hover:bg-white/10" : "hover:bg-white/10 backdrop-blur-md")
+            ? (disableBackdropBlur
+                ? "hover:bg-white/10"
+                : firefox
+                  ? "bg-white/12 hover:bg-white/16"
+                  : "hover:bg-white/10 backdrop-blur-md")
             : "hover:bg-secondary"
         }`}
         data-name="Weather"

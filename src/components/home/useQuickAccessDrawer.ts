@@ -61,6 +61,7 @@ interface UseQuickAccessDrawerResult {
   drawerContentTopPaddingPx: number;
   drawerContentBackdropBlurPx: number;
   drawerPanelHeightVh: number;
+  drawerPanelTranslateYPx: number;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   handleDrawerOpenChange: () => void;
@@ -113,7 +114,9 @@ export function useQuickAccessDrawer({
   const drawerOverlayOpacity = Math.min(drawerLayoutProgress * 1.35, 1) * DRAWER_OVERLAY_MAX_OPACITY;
   const drawerContentTopPaddingPx = DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX;
   const drawerContentBackdropBlurPx = drawerSurfaceOpacity * DRAWER_CONTENT_BACKDROP_BLUR_MAX_PX;
-  const drawerPanelHeightVh = collapsedHeightVh + (expandedHeightVh - collapsedHeightVh) * drawerLayoutProgress;
+  const drawerVisibleHeightVh = collapsedHeightVh + (expandedHeightVh - collapsedHeightVh) * drawerLayoutProgress;
+  const drawerPanelHeightVh = expandedHeightVh;
+  const drawerPanelTranslateYPx = Math.max(0, ((expandedHeightVh - drawerVisibleHeightVh) / 100) * viewportHeight);
 
   const setDrawerSurfaceOpacityImmediate = useCallback((value: number) => {
     const clamped = Math.max(0, Math.min(1, value));
@@ -435,6 +438,7 @@ export function useQuickAccessDrawer({
     drawerContentTopPaddingPx,
     drawerContentBackdropBlurPx,
     drawerPanelHeightVh,
+    drawerPanelTranslateYPx,
     drawerWheelAreaRef,
     drawerShortcutScrollRef,
     handleDrawerOpenChange,

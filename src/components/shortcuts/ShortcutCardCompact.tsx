@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 interface ShortcutCardCompactProps {
   shortcut: Shortcut;
@@ -21,6 +22,7 @@ export function ShortcutCardCompact({
   onOpen,
   onContextMenu,
 }: ShortcutCardCompactProps) {
+  const firefox = isFirefoxBuildTarget();
   const titleBlockHeight = 24;
   const totalHeight = iconSize + titleBlockHeight;
   return (
@@ -32,7 +34,7 @@ export function ShortcutCardCompact({
     >
       <div className="flex flex-col items-center justify-start gap-[4px]" style={{ width: iconSize, height: totalHeight }}>
         <div
-          className="shrink-0 transform-gpu origin-center transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]"
+          className={`shrink-0 origin-center ${firefox ? '' : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]'}`}
           style={{ height: iconSize, width: iconSize }}
         >
           <ShortcutIcon

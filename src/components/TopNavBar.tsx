@@ -1,6 +1,7 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { RiSettings4Fill } from '@/icons/ri-compat';
 import { WeatherCard } from '@/components/WeatherCard';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 function SettingsButton({
   onClick,
@@ -11,12 +12,15 @@ function SettingsButton({
   variant?: 'inverted' | 'default';
   disableBackdropBlur?: boolean;
 }) {
+  const firefox = isFirefoxBuildTarget();
   const invertedClass = disableBackdropBlur
     ? 'bg-white/10 hover:bg-white/20 text-white/90'
-    : 'bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-md';
+    : firefox
+      ? 'bg-white/12 hover:bg-white/18 text-white/90'
+      : 'bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-md';
   return (
     <div 
-      className={`content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors transform-gpu ${
+      className={`content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${
         variant === 'inverted' 
           ? invertedClass
           : 'bg-secondary hover:bg-secondary/80 text-muted-foreground'
@@ -57,6 +61,7 @@ export const TopNavBar = memo(function TopNavBar({
   rightSlot,
   reduceVisualEffects = false,
 }: TopNavBarProps) {
+  const firefox = isFirefoxBuildTarget();
   const weatherContent = (
     <WeatherCard
       onWeatherUpdate={onWeatherUpdate}
@@ -88,7 +93,7 @@ export const TopNavBar = memo(function TopNavBar({
       
       <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
         <div
-          className={`flex items-center gap-3 transition-opacity duration-300 transform-gpu ${
+          className={`flex items-center gap-3 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${
             settingsRevealOnHover && !keepControlsVisible
               ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
               : 'opacity-100'

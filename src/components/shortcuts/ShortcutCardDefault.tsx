@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
@@ -32,6 +33,12 @@ function ScrollingText({
   const [scrollDistance, setScrollDistance] = useState(0);
 
   useEffect(() => {
+    if (!allowScroll) {
+      setIsOverflow(false);
+      setScrollDistance(0);
+      return;
+    }
+
     const checkOverflow = () => {
       if (containerRef.current && textRef.current) {
         const distance = textRef.current.scrollWidth - containerRef.current.offsetWidth;
@@ -41,11 +48,12 @@ function ScrollingText({
     };
 
     checkOverflow();
+    if (typeof ResizeObserver !== 'function') return;
     const observer = new ResizeObserver(checkOverflow);
     if (containerRef.current) observer.observe(containerRef.current);
 
     return () => observer.disconnect();
-  }, [text]);
+  }, [allowScroll, text]);
 
   const duration = Math.max(2, scrollDistance / 50);
 
@@ -84,9 +92,13 @@ export function ShortcutCardDefault({
   onOpen,
   onContextMenu,
 }: ShortcutCardDefaultProps) {
+  const firefox = isFirefoxBuildTarget();
+
   return (
     <div
-      className="relative rounded-xl shrink-0 w-full cursor-pointer transition-[background-color] select-none group/shortcut hover:bg-accent/40"
+      className={`relative rounded-xl shrink-0 w-full cursor-pointer select-none group/shortcut ${
+        firefox ? 'hover:bg-accent/25' : 'transition-[background-color] hover:bg-accent/40'
+      }`}
       onClick={onOpen}
       onContextMenu={onContextMenu}
     >
@@ -109,6 +121,7 @@ export function ShortcutCardDefault({
               text={shortcut.title}
               textClassName={`font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
               textStyle={{ fontSize: titleFontSize }}
+              allowScroll={!firefox}
             />
             <ScrollingText
               text={shortcut.url}

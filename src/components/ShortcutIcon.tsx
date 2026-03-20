@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -37,6 +38,17 @@ const isIowenFaviconUrl = (value: string) => /^https:\/\/api\.iowen\.cn\/favicon
 const isDuckDuckGoIp3Url = (value: string) => /^https:\/\/icons\.duckduckgo\.com\/ip3\/.+\.ico$/i.test((value || '').trim());
 const isGoogleS2FaviconUrl = (value: string) => /^https:\/\/www\.google\.com\/s2\/favicons\?.+$/i.test((value || '').trim());
 const isGoogleGstaticFaviconV2Url = (value: string) => /^https:\/\/t\d*\.gstatic\.com\/faviconV2\?.+$/i.test((value || '').trim());
+
+function buildFirefoxFaviconCandidates(domain: string, preferSingleCandidate: boolean) {
+  const safeDomain = domain.trim();
+  if (preferSingleCandidate) {
+    return [`https://${safeDomain}/favicon.ico`];
+  }
+  return [
+    `https://${safeDomain}/favicon.ico`,
+    `https://${safeDomain}/apple-touch-icon.png`,
+  ];
+}
 
 const registrableDomain = (domain: string) => {
   const parts = normalizeDomain(domain).split('.');
@@ -246,28 +258,63 @@ export default function ShortcutIcon({
   fallbackLabel?: string;
   fallbackLetterSize?: number;
 }) {
-  const domain = extractDomainFromUrl(url);
-  const cached = domain ? getCachedFavicon(domain) : '';
+  const firefox = isFirefoxBuildTarget();
+  const domain = useMemo(() => extractDomainFromUrl(url), [url]);
+  const cached = useMemo(() => (domain ? getCachedFavicon(domain) : ''), [domain]);
+  const skipDomainCandidates = useMemo(() => (domain ? shouldSkipDomainCandidates(domain) : false), [domain]);
   const [customIconUrl, setCustomIconUrl] = useState<string>(() => {
     if (!domain) return '';
     return resolveCustomIconFromCache(domain)?.url || '';
   });
   const [libraryTick, setLibraryTick] = useState(0);
+  const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
+
+  useEffect(() => {
+    if (!firefox) {
+      setFirefoxDomainCandidatesReady(true);
+      return;
+    }
+    if (!domain || skipDomainCandidates) {
+      setFirefoxDomainCandidatesReady(false);
+      return;
+    }
+    const hasImmediateCandidate =
+      !!customIconUrl ||
+      !!cached ||
+      (!!icon && !isIowenFaviconUrl(icon));
+    if (hasImmediateCandidate) {
+      setFirefoxDomainCandidatesReady(true);
+      return;
+    }
+
+    setFirefoxDomainCandidatesReady(false);
+    const timer = window.setTimeout(() => {
+      setFirefoxDomainCandidatesReady(true);
+    }, 180);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [cached, customIconUrl, domain, firefox, icon, skipDomainCandidates]);
 
   const candidates = useMemo(() => {
     const list: string[] = [];
-    const skipDomainCandidates = domain ? shouldSkipDomainCandidates(domain) : false;
     if (customIconUrl) list.push(customIconUrl);
     if (cached && (fallbackStyle !== 'emptyicon' || cached.startsWith('data:'))) list.push(cached);
     // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
     if (icon && !isIowenFaviconUrl(icon)) list.push(icon);
-    if (domain && !skipDomainCandidates) list.push(...buildFaviconCandidates(domain));
+    if (domain && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
+      list.push(
+        ...(firefox
+          ? buildFirefoxFaviconCandidates(domain, exact || size <= 36)
+          : buildFaviconCandidates(domain)),
+      );
+    }
     const unique = Array.from(new Set(list));
     if (fallbackStyle === 'emptyicon') {
       return unique.filter((src) => !isDuckDuckGoIp3Url(src) && !isGoogleS2FaviconUrl(src) && !isGoogleGstaticFaviconV2Url(src));
     }
     return unique;
-  }, [cached, customIconUrl, icon, domain, fallbackStyle]);
+  }, [cached, customIconUrl, domain, exact, fallbackStyle, firefox, firefoxDomainCandidatesReady, icon, size, skipDomainCandidates]);
 
   const [index, setIndex] = useState(0);
 
@@ -297,6 +344,13 @@ export default function ShortcutIcon({
         if (!cancelled) setCustomIconUrl('');
         return;
       }
+      if (firefox) {
+        if (!cancelled) {
+          const cachedResolved = resolveCustomIconFromCache(domain);
+          setCustomIconUrl(cachedResolved?.url || '');
+        }
+        return;
+      }
       const resolved = await resolveCustomIcon(domain);
       if (cancelled) return;
       if (!resolved?.url) {
@@ -315,7 +369,7 @@ export default function ShortcutIcon({
     return () => {
       cancelled = true;
     };
-  }, [domain, libraryTick]);
+  }, [domain, firefox, libraryTick]);
 
   const src = candidates[index] || '';
   const labelSeed = (fallbackLabel || domain || '').trim();
@@ -333,7 +387,7 @@ export default function ShortcutIcon({
 
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);
-    if (domain && src && src !== cached) {
+    if (!firefox && domain && src && src !== cached) {
       cacheFaviconData(domain, src);
     }
   };

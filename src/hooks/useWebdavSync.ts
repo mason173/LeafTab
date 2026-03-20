@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { parseLeafTabBackup } from "../utils/backupData";
 import type { SyncConflictPolicy } from "@/sync/core";
+import { ensureOriginPermission } from "@/utils/extensionPermissions";
 import { WebdavHttpError } from "@/utils/webdavError";
 
 export type WebdavConfig = {
@@ -103,55 +104,13 @@ export function useWebdavSync({ buildBackupData, applyImportedData }: UseWebdavS
     }
   }, [isMissingBackgroundProxyError]);
 
-  const resolveWebdavOriginPattern = useCallback((target: string) => {
-    try {
-      const parsed = new URL(target);
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
-      return `${parsed.origin}/*`;
-    } catch {
-      return null;
-    }
-  }, []);
-
   const ensureWebdavOriginPermission = useCallback(async (config: WebdavConfig) => {
-    const runtime = (globalThis as any)?.chrome?.runtime;
-    const permissionsApi = (globalThis as any)?.chrome?.permissions;
-    if (!runtime?.id || !permissionsApi?.contains || !permissionsApi?.request) return;
-    const declaredPermissions = runtime.getManifest?.()?.permissions || [];
-    if (!Array.isArray(declaredPermissions) || !declaredPermissions.includes("permissions")) return;
-
     const target = resolveWebdavTarget(config);
-    const originPattern = resolveWebdavOriginPattern(target);
-    if (!originPattern) return;
-
-    const hasPermission = await new Promise<boolean>((resolve, reject) => {
-      permissionsApi.contains({ origins: [originPattern] }, (granted: boolean) => {
-        const lastError = runtime.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message || "WebDAV permission check failed"));
-          return;
-        }
-        resolve(Boolean(granted));
-      });
-    });
-
-    if (hasPermission) return;
-
-    const granted = await new Promise<boolean>((resolve, reject) => {
-      permissionsApi.request({ origins: [originPattern] }, (allowed: boolean) => {
-        const lastError = runtime.lastError;
-        if (lastError) {
-          reject(new Error(lastError.message || "WebDAV permission request failed"));
-          return;
-        }
-        resolve(Boolean(allowed));
-      });
-    });
-
+    const granted = await ensureOriginPermission(target, { requestIfNeeded: true });
     if (!granted) {
       throw new Error("WebDAV origin permission denied");
     }
-  }, [resolveWebdavOriginPattern, resolveWebdavTarget]);
+  }, [resolveWebdavTarget]);
 
   const requestWebdav = useCallback(async (
     config: WebdavConfig,

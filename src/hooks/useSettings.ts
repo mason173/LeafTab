@@ -14,6 +14,7 @@ import {
   queueLocalStorageRemoveItem,
   queueLocalStorageSetItem,
 } from '@/utils/storageWriteQueue';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 export type TimeAnimationMode = 'inherit' | 'on' | 'off';
 
@@ -62,10 +63,13 @@ function readStoredBoolean(key: string, defaultValue: boolean): boolean {
 }
 
 function readVisualEffectsLevel(): VisualEffectsLevel {
+  if (isFirefoxBuildTarget()) return 'low';
+
   const stored = (localStorage.getItem(VISUAL_EFFECTS_LEVEL_KEY) || '').trim();
   if (stored === 'low' || stored === 'medium' || stored === 'high') return stored;
   const legacyReduced = readStoredBoolean(REDUCE_VISUAL_EFFECTS_KEY, false);
-  return legacyReduced ? 'low' : 'high';
+  if (legacyReduced) return 'low';
+  return 'high';
 }
 
 function readTimeAnimationMode(): TimeAnimationMode {
@@ -122,6 +126,7 @@ function readShortcutGridColumns(variant: ShortcutCardVariant): number {
 }
 
 export function useSettings() {
+  const firefox = isFirefoxBuildTarget();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readInitialDisplayMode());
   const [openInNewTab, setOpenInNewTab] = useState(true);
@@ -182,6 +187,11 @@ export function useSettings() {
       return null;
     }
   });
+
+  useEffect(() => {
+    if (!firefox || visualEffectsLevel === 'low') return;
+    setVisualEffectsLevel('low');
+  }, [firefox, visualEffectsLevel]);
 
   useEffect(() => {
     loadGoogleFont(timeFont);

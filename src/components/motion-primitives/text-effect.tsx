@@ -11,6 +11,7 @@ import type {
   Variants,
 } from 'motion/react'
 import React from 'react';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 export type PresetType = 'blur' | 'fade-in-blur' | 'scale' | 'fade' | 'slide';
 
@@ -224,11 +225,18 @@ export function TextEffect({
   segmentTransition,
   style,
 }: TextEffectProps) {
+  const firefox = isFirefoxBuildTarget();
   const segments = splitText(children, per);
   const MotionTag = motion[as as keyof typeof motion] as typeof motion.div;
+  const effectivePreset = React.useMemo<PresetType>(() => {
+    if (!firefox) return preset;
+    if (preset === 'fade-in-blur') return 'slide';
+    if (preset === 'blur') return 'fade';
+    return preset;
+  }, [firefox, preset]);
 
-  const baseVariants = preset
-    ? presetVariants[preset]
+  const baseVariants = effectivePreset
+    ? presetVariants[effectivePreset]
     : { container: defaultContainerVariants, item: defaultItemVariants };
 
   const stagger = defaultStaggerTimes[per] / speedReveal;

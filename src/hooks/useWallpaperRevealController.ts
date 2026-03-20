@@ -7,6 +7,7 @@ import {
   WALLPAPER_INITIAL_SCALE,
   WALLPAPER_SCALE_REVEAL_DURATION_MS,
 } from '@/config/animationTokens';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 interface UseWallpaperRevealControllerOptions {
   wallpaperMode: WallpaperMode;
@@ -31,6 +32,7 @@ export function useWallpaperRevealController({
   hasWeatherVisual,
   disableRevealAnimation = false,
 }: UseWallpaperRevealControllerOptions): UseWallpaperRevealControllerResult {
+  const firefox = isFirefoxBuildTarget();
   const [wallpaperImageLoaded, setWallpaperImageLoaded] = useState(false);
   const [wallpaperFadeRevealReady, setWallpaperFadeRevealReady] = useState(false);
   const [wallpaperColorRevealReady, setWallpaperColorRevealReady] = useState(false);
@@ -96,12 +98,13 @@ export function useWallpaperRevealController({
 
     wallpaperBootRevealStartedRef.current = true;
     setWallpaperFadeRevealReady(false);
-    setWallpaperColorRevealReady(false);
+    setWallpaperColorRevealReady(firefox);
 
     wallpaperFadeRafRef.current = window.requestAnimationFrame(() => {
       setWallpaperFadeRevealReady(true);
       wallpaperFadeRafRef.current = null;
     });
+    if (firefox) return;
     wallpaperColorTimerRef.current = window.setTimeout(() => {
       setWallpaperColorRevealReady(true);
       wallpaperColorTimerRef.current = null;
@@ -109,6 +112,7 @@ export function useWallpaperRevealController({
   }, [
     disableRevealAnimation,
     displayedOverlayWallpaperSrc,
+    firefox,
     hasWeatherVisual,
     overlayBackgroundImageSrc,
     showOverlayWallpaperLayer,
@@ -133,6 +137,15 @@ export function useWallpaperRevealController({
         transition: 'none',
       };
     }
+    if (firefox) {
+      return {
+        opacity: wallpaperFadeRevealReady ? 1 : 0,
+        filter: 'none',
+        transform: 'scale(1)',
+        transformOrigin: 'center center',
+        transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear`,
+      };
+    }
     const wallpaperImageRevealOpacity = wallpaperFadeRevealReady ? 1 : 0;
     const wallpaperImageRevealFilter = wallpaperColorRevealReady
       ? 'grayscale(0) saturate(1) brightness(1)'
@@ -145,7 +158,7 @@ export function useWallpaperRevealController({
       transformOrigin: 'center center',
       transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear, transform ${WALLPAPER_SCALE_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${WALLPAPER_COLOR_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1) ${WALLPAPER_COLOR_REVEAL_DELAY_MS}ms`,
     };
-  }, [disableRevealAnimation, wallpaperColorRevealReady, wallpaperFadeRevealReady]);
+  }, [disableRevealAnimation, firefox, wallpaperColorRevealReady, wallpaperFadeRevealReady]);
 
   return {
     effectiveOverlayWallpaperSrc,

@@ -3,8 +3,8 @@ import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@
 import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
 import { RiCheckFill } from '@/icons/ri-compat';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { Shortcut } from '../types';
 import { ShortcutCardRenderer } from './shortcuts/ShortcutCardRenderer';
 import {
@@ -16,16 +16,126 @@ import {
 const DRAG_DROP_ANIMATION_MS = 320;
 const DRAG_DROP_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const CARD_SETTLE_TRANSITION = 'transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1.12)';
-const CARD_LAYOUT_SHIFT_TRANSITION = {
-  layout: {
-    duration: 0.24,
-    ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-  },
-};
 // Keep drag preview above the expanded drawer surface/overlay.
 const DRAG_OVERLAY_Z_INDEX = 14030;
 const DRAG_AUTO_SCROLL_EDGE_PX = 88;
 const DRAG_AUTO_SCROLL_MAX_SPEED_PX = 26;
+
+function DragPreviewIcon({
+  shortcut,
+  size,
+}: {
+  shortcut: Shortcut;
+  size: number;
+}) {
+  const iconSrc = (shortcut.icon || '').trim();
+  const label = (shortcut.title || shortcut.url || '?').trim();
+  const fallbackText = (label.charAt(0) || '?').toUpperCase();
+
+  if (iconSrc) {
+    return (
+      <img
+        src={iconSrc}
+        alt=""
+        draggable={false}
+        className="shrink-0 rounded-[20%] object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="flex shrink-0 items-center justify-center rounded-[20%] bg-primary/12 text-primary"
+      style={{ width: size, height: size, fontSize: Math.max(14, Math.round(size * 0.38)), fontWeight: 600 }}
+    >
+      {fallbackText}
+    </span>
+  );
+}
+
+function LightweightDragPreview({
+  shortcut,
+  cardVariant,
+  firefox,
+  compactShowTitle,
+  compactIconSize,
+  compactTitleFontSize,
+  defaultIconSize,
+  defaultTitleFontSize,
+  defaultUrlFontSize,
+  defaultVerticalPadding,
+  forceTextWhite,
+}: {
+  shortcut: Shortcut;
+  cardVariant: ShortcutCardVariant;
+  firefox: boolean;
+  compactShowTitle: boolean;
+  compactIconSize: number;
+  compactTitleFontSize: number;
+  defaultIconSize: number;
+  defaultTitleFontSize: number;
+  defaultUrlFontSize: number;
+  defaultVerticalPadding: number;
+  forceTextWhite: boolean;
+}) {
+  if (cardVariant === 'compact') {
+    const titleVisible = compactShowTitle;
+    return (
+      <div
+        className="pointer-events-none select-none"
+        style={{
+          width: compactIconSize,
+          contain: 'layout paint style',
+          willChange: firefox ? undefined : 'transform',
+        }}
+      >
+        <div className="flex flex-col items-center gap-1.5">
+          <DragPreviewIcon shortcut={shortcut} size={compactIconSize} />
+          {titleVisible ? (
+            <p
+              className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+              style={{ width: compactIconSize, fontSize: compactTitleFontSize }}
+            >
+              {shortcut.title}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="pointer-events-none select-none rounded-xl border border-border/40 bg-background/95 shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
+      style={{
+        width: 'min(280px, 72vw)',
+        padding: `${defaultVerticalPadding}px 8px`,
+        contain: 'layout paint style',
+        willChange: firefox ? undefined : 'transform',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <DragPreviewIcon shortcut={shortcut} size={defaultIconSize} />
+        <div className="min-w-0 flex-1 leading-none">
+          <p
+            className={`truncate font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+            style={{ fontSize: defaultTitleFontSize }}
+          >
+            {shortcut.title}
+          </p>
+          <p
+            className={`truncate font-['PingFang_SC:Regular',sans-serif] ${forceTextWhite ? 'text-white/80' : 'text-muted-foreground'}`}
+            style={{ fontSize: defaultUrlFontSize, marginTop: 3 }}
+          >
+            {shortcut.url}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function findScrollableParent(node: HTMLElement | null): HTMLElement | null {
   let current = node?.parentElement ?? null;
@@ -60,6 +170,7 @@ function SortableShortcut({
   selectionMode,
   dragDisabled,
   disableReorderAnimation,
+  firefox,
 }: {
   sortId: string;
   activeDragId: string | null;
@@ -80,6 +191,7 @@ function SortableShortcut({
   selectionMode: boolean;
   dragDisabled: boolean;
   disableReorderAnimation: boolean;
+  firefox: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: sortId,
@@ -92,20 +204,17 @@ function SortableShortcut({
   const draggableProps = dragDisabled ? {} : { ...attributes, ...listeners };
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    // Keep slot-shift animation for other cards; only the actively dragged card skips transition.
     transition: disableReorderAnimation
       ? undefined
-      : (isActiveDragItem ? undefined : (transition ? CARD_SETTLE_TRANSITION : undefined)),
+      : (isActiveDragItem ? undefined : (transition || CARD_SETTLE_TRANSITION)),
+    willChange: !firefox && (isActiveDragItem || Boolean(transform)) ? 'transform' : undefined,
   };
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
-      initial={false}
-      layout={disableReorderAnimation ? false : !isActiveDragItem}
-      transition={disableReorderAnimation ? undefined : CARD_LAYOUT_SHIFT_TRANSITION}
       style={style}
       {...draggableProps}
-      className={`relative will-change-transform ${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'} ${
+      className={`relative ${!firefox ? 'will-change-transform ' : ''}${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'} ${
         selectionMode && !selected ? 'opacity-75' : ''
       }`}
       data-shortcut-grid-columns={gridColumns}
@@ -149,7 +258,7 @@ function SortableShortcut({
           ) : null}
         </div>
       ) : null}
-    </motion.div>
+    </div>
   );
 }
 interface ShortcutGridProps {
@@ -207,6 +316,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   selectedShortcutIndexes,
   onToggleShortcutSelection,
 }: ShortcutGridProps) {
+  const firefox = isFirefoxBuildTarget();
   const compactLayout = cardVariant === 'compact';
   const rowGap = cardVariant === 'compact'
     ? (layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20)
@@ -459,31 +569,48 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
                 selectionMode={selectionMode}
                 dragDisabled={selectionMode}
                 disableReorderAnimation={disableReorderAnimation}
+                firefox={firefox}
               />
             ))}
           </div>
         </SortableContext>
         {typeof document !== 'undefined' ? createPortal(
           <DragOverlay
-            dropAnimation={disableReorderAnimation ? null : { duration: DRAG_DROP_ANIMATION_MS, easing: DRAG_DROP_EASING }}
+            dropAnimation={disableReorderAnimation || firefox ? null : { duration: DRAG_DROP_ANIMATION_MS, easing: DRAG_DROP_EASING }}
             zIndex={DRAG_OVERLAY_Z_INDEX}
           >
             {activeDragItem ? (
               <div className={`pointer-events-none ${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'}`}>
-                <ShortcutCardRenderer
-                  variant={cardVariant}
-                  compactShowTitle={compactShowTitle}
-                  compactIconSize={compactIconSize}
-                  compactTitleFontSize={compactTitleFontSize}
-                  defaultIconSize={defaultIconSize}
-                  defaultTitleFontSize={defaultTitleFontSize}
-                  defaultUrlFontSize={defaultUrlFontSize}
-                  defaultVerticalPadding={defaultVerticalPadding}
-                  forceTextWhite={forceTextWhite}
-                  shortcut={activeDragItem.shortcut}
-                  onOpen={() => {}}
-                  onContextMenu={() => {}}
-                />
+                {firefox ? (
+                  <LightweightDragPreview
+                    shortcut={activeDragItem.shortcut}
+                    cardVariant={cardVariant}
+                    firefox={firefox}
+                    compactShowTitle={compactShowTitle}
+                    compactIconSize={compactIconSize}
+                    compactTitleFontSize={compactTitleFontSize}
+                    defaultIconSize={defaultIconSize}
+                    defaultTitleFontSize={defaultTitleFontSize}
+                    defaultUrlFontSize={defaultUrlFontSize}
+                    defaultVerticalPadding={defaultVerticalPadding}
+                    forceTextWhite={forceTextWhite}
+                  />
+                ) : (
+                  <ShortcutCardRenderer
+                    variant={cardVariant}
+                    compactShowTitle={compactShowTitle}
+                    compactIconSize={compactIconSize}
+                    compactTitleFontSize={compactTitleFontSize}
+                    defaultIconSize={defaultIconSize}
+                    defaultTitleFontSize={defaultTitleFontSize}
+                    defaultUrlFontSize={defaultUrlFontSize}
+                    defaultVerticalPadding={defaultVerticalPadding}
+                    forceTextWhite={forceTextWhite}
+                    shortcut={activeDragItem.shortcut}
+                    onOpen={() => {}}
+                    onContextMenu={() => {}}
+                  />
+                )}
               </div>
             ) : null}
           </DragOverlay>,

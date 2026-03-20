@@ -3,6 +3,7 @@ import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob, saveWallpape
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
 import defaultWallpaperImage from '../assets/Default_wallpaper.webp?url';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
@@ -168,6 +169,7 @@ const getInitialBingWallpaper = (): string => {
 };
 
 export function useWallpaper() {
+  const firefox = isFirefoxBuildTarget();
   const initialBingWallpaper = getInitialBingWallpaper();
   const [hasStoredWallpaperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('wallpaperMode');
@@ -186,7 +188,9 @@ export function useWallpaper() {
   const [customWallpaperLoaded, setCustomWallpaperLoaded] = useState(false);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') return saved;
+    if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') {
+      return firefox && saved === 'weather' ? 'bing' : saved;
+    }
     // Backward compatibility: old versions may persist "dynamic".
     if (saved === 'dynamic') return 'bing';
     return 'custom';
@@ -205,8 +209,13 @@ export function useWallpaper() {
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
   });
   useEffect(() => {
-    localStorage.setItem('wallpaperMode', wallpaperMode);
-  }, [wallpaperMode]);
+    const persistedMode = firefox && wallpaperMode === 'weather' ? 'bing' : wallpaperMode;
+    if (persistedMode !== wallpaperMode) {
+      setWallpaperMode(persistedMode);
+      return;
+    }
+    localStorage.setItem('wallpaperMode', persistedMode);
+  }, [firefox, wallpaperMode]);
 
   useEffect(() => {
     localStorage.setItem('wallpaperMaskOpacity', String(wallpaperMaskOpacity));
