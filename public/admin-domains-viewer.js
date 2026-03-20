@@ -478,9 +478,24 @@
     render();
   }
 
+  function createElementWithText(tagName, className, text) {
+    const node = document.createElement(tagName);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+  }
+
+  function createTableCell(text, options) {
+    const cell = document.createElement("td");
+    if (options && options.className) cell.className = options.className;
+    if (options && options.title) cell.title = options.title;
+    cell.textContent = String(text);
+    return cell;
+  }
+
   function renderUnsupportedList(rows) {
     if (!el.unsupportedList || !el.unsupportedEmpty) return;
-    el.unsupportedList.innerHTML = "";
+    el.unsupportedList.replaceChildren();
 
     if (!rows.length) {
       el.unsupportedEmpty.style.display = "block";
@@ -491,17 +506,23 @@
     rows.forEach((row, index) => {
       const item = document.createElement("div");
       item.className = "unsupported-item";
-      item.innerHTML = [
-        "<div class=\"unsupported-rank\">" + String(index + 1) + "</div>",
-        "<div class=\"unsupported-main\">",
-        "<div class=\"unsupported-domain\">" + row.domain + "</div>",
-        "<div class=\"unsupported-meta\">" + tr("unsupportedLastSeen", { time: formatSeen(row.last_seen) }) + "</div>",
-        "</div>",
-        "<div class=\"unsupported-count\">",
-        "<div class=\"v\">" + safeNum(row.count).toLocaleString() + "</div>",
-        "<div class=\"k\">" + tr("unsupportedUsers") + "</div>",
-        "</div>"
-      ].join("");
+
+      const rank = createElementWithText("div", "unsupported-rank", index + 1);
+      const main = createElementWithText("div", "unsupported-main");
+      main.appendChild(createElementWithText("div", "unsupported-domain", row.domain));
+      main.appendChild(createElementWithText(
+        "div",
+        "unsupported-meta",
+        tr("unsupportedLastSeen", { time: formatSeen(row.last_seen) })
+      ));
+
+      const count = createElementWithText("div", "unsupported-count");
+      count.appendChild(createElementWithText("div", "v", safeNum(row.count).toLocaleString()));
+      count.appendChild(createElementWithText("div", "k", tr("unsupportedUsers")));
+
+      item.appendChild(rank);
+      item.appendChild(main);
+      item.appendChild(count);
       el.unsupportedList.appendChild(item);
     });
   }
@@ -515,7 +536,7 @@
     const end = Math.min(total, start + pageSize);
     const rows = filteredRows.slice(start, end);
 
-    el.tbody.innerHTML = "";
+    el.tbody.replaceChildren();
     if (rows.length === 0) {
       el.tableEmpty.style.display = "block";
       el.tableEmpty.textContent = tr("noData");
@@ -524,14 +545,33 @@
       rows.forEach((row, index) => {
         const rowEl = document.createElement("tr");
         const absoluteIndex = start + index + 1;
-        rowEl.innerHTML = [
-          "<td>" + absoluteIndex + "</td>",
-          "<td class=\"domain\" title=\"" + row.domain + "\">" + row.domain + "</td>",
-          "<td class=\"num\">" + safeNum(row.count).toLocaleString() + "</td>",
-          "<td title=\"" + (row.first_seen || "") + "\">" + formatSeen(row.first_seen) + "</td>",
-          "<td title=\"" + (row.last_seen || "") + "\">" + formatSeen(row.last_seen) + "</td>",
-          "<td><div class=\"row-actions\"><button class=\"small-btn copy-one\" data-domain=\"" + row.domain + "\">" + tr("copyOne") + "</button><button class=\"small-btn btn-ghost open-one\" data-domain=\"" + row.domain + "\">" + tr("openOne") + "</button></div></td>"
-        ].join("");
+
+        rowEl.appendChild(createTableCell(absoluteIndex));
+        rowEl.appendChild(createTableCell(row.domain, {
+          className: "domain",
+          title: row.domain,
+        }));
+        rowEl.appendChild(createTableCell(safeNum(row.count).toLocaleString(), {
+          className: "num",
+        }));
+        rowEl.appendChild(createTableCell(formatSeen(row.first_seen), {
+          title: row.first_seen || "",
+        }));
+        rowEl.appendChild(createTableCell(formatSeen(row.last_seen), {
+          title: row.last_seen || "",
+        }));
+
+        const actionCell = document.createElement("td");
+        const actionWrap = createElementWithText("div", "row-actions");
+        const copyBtn = createElementWithText("button", "small-btn copy-one", tr("copyOne"));
+        copyBtn.setAttribute("data-domain", row.domain);
+        const openBtn = createElementWithText("button", "small-btn btn-ghost open-one", tr("openOne"));
+        openBtn.setAttribute("data-domain", row.domain);
+        actionWrap.appendChild(copyBtn);
+        actionWrap.appendChild(openBtn);
+        actionCell.appendChild(actionWrap);
+        rowEl.appendChild(actionCell);
+
         el.tbody.appendChild(rowEl);
       });
     }

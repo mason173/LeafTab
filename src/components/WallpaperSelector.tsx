@@ -3,19 +3,21 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import type { WallpaperMode } from "@/wallpaper/types";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
+import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
+    const firefox = isFirefoxBuildTarget();
     return (
       <div
         ref={ref}
-        className={`bg-white/10 content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer hover:bg-white/20 transition-colors text-white/90 backdrop-blur-md transform-gpu ${className}`}
+        className={`${firefox ? 'bg-white/12 hover:bg-white/18' : 'bg-white/10 hover:bg-white/20 backdrop-blur-md transform-gpu'} content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors text-white/90 ${className}`}
         data-name="Wallpaper"
         {...props}
       >
@@ -70,6 +72,7 @@ export default function WallpaperSelector({
   open,
   onOpenChange,
 }: WallpaperSelectorProps) {
+  const firefox = isFirefoxBuildTarget();
   const { t } = useTranslation();
   const [isMaskSliderInteracting, setIsMaskSliderInteracting] = useState(false);
   const isMaskSliderIsolation = isMaskSliderInteracting && (mode === "bing" || mode === "custom" || mode === "weather");
@@ -96,7 +99,13 @@ export default function WallpaperSelector({
       </DialogTrigger>
       <DialogContent
         overlayClassName={`transition-opacity duration-220 ease-out ${isMaskSliderIsolation ? "!opacity-0 !bg-black/0" : ""}`}
-        className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${isMaskSliderIsolation ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none" : "bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"}`}
+        className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
+          isMaskSliderIsolation
+            ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none"
+            : firefox
+              ? "bg-popover/98 border-white/10 shadow-lg [&>button]:opacity-70 [&>button:hover]:opacity-100"
+              : "bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"
+        }`}
       >
         <div className="flex flex-col h-full">
           <DialogHeader className={`px-6 pt-6 pb-2 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>

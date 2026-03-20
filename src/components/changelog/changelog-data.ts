@@ -8,6 +8,15 @@ export interface ChangelogItem {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.3.9",
+    date: "2026-03-20",
+    notes: [
+      t("changelog.items.release139LowEffectsMotion", { defaultValue: "优化低特效模式下的搜索与抽屉动效" }),
+      t("changelog.items.release139BuildIsolation", { defaultValue: "改进 Firefox 与 Chrome 的构建隔离" }),
+      t("changelog.items.release139Stability", { defaultValue: "提升整体稳定性" }),
+    ],
+  },
+  {
     version: "1.3.8",
     date: "2026-03-19",
     notes: [

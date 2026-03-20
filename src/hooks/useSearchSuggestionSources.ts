@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
+import {
+  getBookmarksApi,
+  getExtensionRuntime,
+  getHistoryApi,
+  getTabsApi,
+} from '@/platform/runtime';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
@@ -133,6 +139,7 @@ export function useSearchSuggestionSources({
   permissionWarmup,
 }: UseSearchSuggestionSourcesOptions) {
   const isDocumentVisible = useDocumentVisibility();
+  const extensionRuntime = getExtensionRuntime();
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
   const [browserHistoryCacheVersion, setBrowserHistoryCacheVersion] = useState(0);
   const suggestionDisplayMode = useMemo(
@@ -194,7 +201,7 @@ export function useSearchSuggestionSources({
     query: commandQuery,
     getCachedItems: (query) => getCachedBookmarkSuggestions(query, 30),
     load: async (query) => {
-      const bookmarksApi = globalThis.chrome?.bookmarks;
+      const bookmarksApi = getBookmarksApi();
       if (!bookmarksApi) return [];
       return getBookmarkSuggestionsFromApi(bookmarksApi, query, 30);
     },
@@ -208,7 +215,7 @@ export function useSearchSuggestionSources({
     query: commandQuery,
     getCachedItems: (query) => getCachedTabSuggestions(query, 50),
     load: async (query) => {
-      const tabsApi = globalThis.chrome?.tabs;
+      const tabsApi = getTabsApi();
       if (!tabsApi) return [];
       return getTabSuggestionsFromApi(tabsApi, query, 50);
     },
@@ -217,7 +224,7 @@ export function useSearchSuggestionSources({
   const [browserHistorySuggestionItems, setBrowserHistorySuggestionItems] = useState<SearchSuggestionItem[]>([]);
   const [browserHistoryLoading, setBrowserHistoryLoading] = useState(false);
   useEffect(() => {
-    const historyApi = globalThis.chrome?.history;
+    const historyApi = getHistoryApi();
     if (!historyApi?.onVisited || !historyApi.onVisitRemoved) return;
 
     const invalidate = () => {
@@ -240,7 +247,7 @@ export function useSearchSuggestionSources({
       return;
     }
 
-    const historyApi = globalThis.chrome?.history;
+    const historyApi = getHistoryApi();
     if (!historyApi) {
       setBrowserHistorySuggestionItems([]);
       setBrowserHistoryLoading(false);
@@ -264,7 +271,7 @@ export function useSearchSuggestionSources({
         startTime: 0,
       }, (nodes) => {
         if (canceled) return;
-        if (globalThis.chrome?.runtime?.lastError) {
+        if (extensionRuntime?.lastError) {
           setBrowserHistorySuggestionItems([]);
           setBrowserHistoryLoading(false);
           return;
@@ -296,7 +303,7 @@ export function useSearchSuggestionSources({
     return () => {
       canceled = true;
     };
-  }, [browserHistoryCacheVersion, browserHistoryMaxResults, debouncedBrowserHistoryQuery, shouldFetchBrowserHistory]);
+  }, [browserHistoryCacheVersion, browserHistoryMaxResults, debouncedBrowserHistoryQuery, extensionRuntime, shouldFetchBrowserHistory]);
 
   return {
     queryModel,

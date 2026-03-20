@@ -1,8 +1,8 @@
 import type { SearchEngine } from '@/types';
+import { getAvailableSearchEngineOrder } from '@/platform/search';
 import { parseSearchCommandById } from '@/utils/searchCommands';
 
 type SearchEngineOverride = Exclude<SearchEngine, 'system'>;
-export const SEARCH_ENGINE_ORDER: SearchEngine[] = ['system', 'bing', 'google', 'duckduckgo', 'baidu'];
 
 const URL_PROTOCOL_PREFIX_RE = /^https?:\/\//i;
 const URL_WWW_PREFIX_RE = /^www\./i;
@@ -252,9 +252,10 @@ export function parseTabSearchCommand(rawQuery: string): {
 }
 
 export function getNextSearchEngine(current: SearchEngine, direction: 1 | -1 = 1): SearchEngine {
-  const total = SEARCH_ENGINE_ORDER.length;
-  const currentIndex = SEARCH_ENGINE_ORDER.indexOf(current);
-  if (currentIndex < 0) return SEARCH_ENGINE_ORDER[0];
+  const availableOrder = getAvailableSearchEngineOrder();
+  const total = availableOrder.length;
+  const currentIndex = availableOrder.indexOf(current);
+  if (currentIndex < 0) return availableOrder[0];
   const nextIndex = (currentIndex + direction + total) % total;
-  return SEARCH_ENGINE_ORDER[nextIndex];
+  return availableOrder[nextIndex];
 }

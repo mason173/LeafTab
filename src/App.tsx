@@ -76,6 +76,7 @@ import {
   resolveInitialRevealOpacity,
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -199,6 +200,7 @@ function useKeepMountedAfterFirstOpen(open: boolean) {
 
 export default function App() {
   const { t, i18n } = useTranslation();
+  const firefox = isFirefoxBuildTarget();
   const pageFocusRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -812,13 +814,28 @@ export default function App() {
       autoDimEnabled: darkModeAutoDimWallpaperEnabled,
     })
   ), [darkModeAutoDimWallpaperEnabled, isDarkTheme, wallpaperMaskOpacity]);
+  const effectiveWallpaperMode = firefox && wallpaperMode === 'weather' ? 'bing' : wallpaperMode;
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
-  const freshWallpaperSrc = wallpaperMode === 'custom'
+  const freshWallpaperSrc = effectiveWallpaperMode === 'custom'
     ? (customWallpaper || '')
-    : wallpaperMode === 'bing'
+    : effectiveWallpaperMode === 'bing'
       ? bingWallpaper
       : (bingWallpaper || imgImage);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-browser-target', firefox ? 'firefox' : 'chromium');
+    return () => {
+      document.documentElement.removeAttribute('data-browser-target');
+    };
+  }, [firefox]);
+
+  useEffect(() => {
+    if (firefox && wallpaperMode === 'weather') {
+      setWallpaperMode('bing');
+    }
+  }, [firefox, wallpaperMode, setWallpaperMode]);
+
   useEffect(() => {
     const syncAccentColorSetting = () => {
       setAccentColorSetting(readAccentColorSetting());
@@ -837,7 +854,7 @@ export default function App() {
     let canceled = false;
     document.documentElement.setAttribute('data-accent-color', 'dynamic');
     resolveDynamicAccentColor({
-      wallpaperMode,
+      wallpaperMode: effectiveWallpaperMode,
       bingWallpaper,
       customWallpaper,
       weatherCode,
@@ -855,7 +872,7 @@ export default function App() {
     return () => {
       canceled = true;
     };
-  }, [accentColorSetting, wallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
+  }, [accentColorSetting, effectiveWallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
 
   const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
     user, setUserRole, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, API_URL
@@ -1428,23 +1445,23 @@ export default function App() {
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
     ? freshWallpaperSrc
-    : wallpaperMode === 'custom'
+    : effectiveWallpaperMode === 'custom'
       ? (customWallpaper || '')
-      : wallpaperMode === 'bing'
+      : effectiveWallpaperMode === 'bing'
         ? bingWallpaper
         : (bingWallpaper || imgImage);
-  const usesImageWallpaperLayer = wallpaperMode !== 'weather' && wallpaperMode !== 'color';
+  const usesImageWallpaperLayer = effectiveWallpaperMode !== 'weather' && effectiveWallpaperMode !== 'color';
   const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
   const {
     effectiveOverlayWallpaperSrc,
     wallpaperAnimatedLayerStyle,
     handleOverlayImageReady,
   } = useWallpaperRevealController({
-    wallpaperMode,
+    wallpaperMode: effectiveWallpaperMode,
     overlayBackgroundImageSrc,
     usesImageWallpaperLayer,
     showOverlayWallpaperLayer,
-    hasWeatherVisual: Boolean(freshWeatherVideo),
+    hasWeatherVisual: effectiveWallpaperMode === 'weather' && Boolean(freshWeatherVideo),
     disableRevealAnimation: visualEffectsPolicy.disableWallpaperRevealMotion,
   });
   const handleOpenSettings = useCallback(() => {
@@ -1477,7 +1494,7 @@ export default function App() {
     setSelectedScenarioId,
   ]);
   const wallpaperSelectorLayerProps = useMemo(() => ({
-    mode: wallpaperMode,
+    mode: effectiveWallpaperMode,
     onModeChange: setWallpaperMode,
     bingWallpaper,
     isBingWallpaperRefreshing,
@@ -1506,7 +1523,7 @@ export default function App() {
     setWallpaperMaskOpacity,
     setWallpaperMode,
     wallpaperMaskOpacity,
-    wallpaperMode,
+    effectiveWallpaperMode,
     weatherCode,
   ]);
   const topNavModeProps = useMemo(() => ({
@@ -1536,7 +1553,7 @@ export default function App() {
     onScenarioModeCreate: handleScenarioModeCreate,
     onScenarioModeEdit: handleOpenEditScenarioMode,
     onScenarioModeDelete: handleDeleteScenarioMode,
-    wallpaperMode,
+    wallpaperMode: effectiveWallpaperMode,
     weatherCode,
     onWeatherUpdate: setWeatherCode,
     customWallpaperLoaded,
@@ -1577,7 +1594,7 @@ export default function App() {
     visualEffectsPolicy.disableBackdropBlur,
     effectiveWallpaperMaskOpacity,
     shouldFreezeDynamicWallpaper,
-    wallpaperMode,
+    effectiveWallpaperMode,
     weatherCode,
   ]);
   const searchExperienceProps = useMemo(() => ({
@@ -1590,6 +1607,8 @@ export default function App() {
     searchSiteShortcutEnabled,
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
+    disablePlaceholderAnimation: visualEffectsLevel === 'low',
+    lightweightSearchUi: visualEffectsLevel === 'low',
     searchHeight: responsiveLayout.searchHeight,
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
@@ -1609,6 +1628,7 @@ export default function App() {
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
     tabSwitchSearchEngine,
+    visualEffectsLevel,
   ]);
   const shortcutGridProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
@@ -1676,9 +1696,9 @@ export default function App() {
         }}
       >
         <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
-          {wallpaperMode === 'weather' ? (
+          {effectiveWallpaperMode === 'weather' ? (
             <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
-          ) : wallpaperMode === 'color' ? (
+          ) : effectiveWallpaperMode === 'color' ? (
             <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
           ) : effectiveOverlayWallpaperSrc ? (
             <img
@@ -1703,7 +1723,7 @@ export default function App() {
     shouldFreezeDynamicWallpaper,
     showOverlayWallpaperLayer,
     wallpaperAnimatedLayerStyle,
-    wallpaperMode,
+    effectiveWallpaperMode,
   ]);
   const fixedTopNavLayer = useMemo(() => {
     if (!(modeLayersVisible && displayModeFlags.showInlineTopNav)) return null;
@@ -1765,6 +1785,7 @@ export default function App() {
         timeFont={timeFont}
         onTimeFontChange={setTimeFont}
         layout={responsiveLayout}
+        reduceMotionVisuals={visualEffectsLevel === 'low'}
         wallpaperClockProps={wallpaperClockProps}
         searchExperienceProps={searchExperienceProps}
         searchInteractionLocked={searchInteractionState.historyOpen || searchInteractionState.dropdownOpen}
@@ -1774,8 +1795,8 @@ export default function App() {
       {shouldMountWallpaperSelector ? (
         <WallpaperSelector
           {...wallpaperSelectorLayerProps}
-          mode={displayMode === 'minimalist' && wallpaperMode === 'weather' ? 'bing' : wallpaperMode}
-          hideWeather={displayMode === 'minimalist'}
+          mode={effectiveWallpaperMode}
+          hideWeather={displayMode === 'minimalist' || firefox}
           open={wallpaperSettingsOpen}
           onOpenChange={setWallpaperSettingsOpen}
           trigger={<span className="hidden" aria-hidden="true" />}
@@ -2062,7 +2083,7 @@ export default function App() {
               onShowTimeChange: setShowTime,
               onExportData: handleExportData,
               onImportData: handleImportData,
-              wallpaperMode,
+              wallpaperMode: effectiveWallpaperMode,
               onWallpaperModeChange: setWallpaperMode,
               bingWallpaper,
               customWallpaper,

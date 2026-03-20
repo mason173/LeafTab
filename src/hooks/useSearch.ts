@@ -8,6 +8,10 @@ import {
   normalizeSearchQuery,
 } from '../utils/searchHelpers';
 import {
+  getDefaultSearchEngineForPlatform,
+  normalizeSearchEngineForPlatform,
+} from '@/platform/search';
+import {
   isSearchCommandShellValue,
   resolveSearchCommandAutocomplete,
 } from '@/utils/searchCommands';
@@ -23,7 +27,7 @@ import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
 const SEARCH_HISTORY_KEY = 'search_history';
 const SEARCH_ENGINE_KEY = 'search_engine';
 const MAX_SEARCH_HISTORY = 15;
-const DEFAULT_SEARCH_ENGINE: SearchEngine = 'system';
+const DEFAULT_SEARCH_ENGINE: SearchEngine = getDefaultSearchEngineForPlatform();
 export type SearchHistoryEntry = {
   query: string;
   timestamp: number;
@@ -211,7 +215,7 @@ export function useSearch(
     try {
       const saved = (localStorage.getItem(SEARCH_ENGINE_KEY) || '').trim();
       if (saved === 'system' || saved === 'google' || saved === 'bing' || saved === 'duckduckgo' || saved === 'baidu') {
-        return saved;
+        return normalizeSearchEngineForPlatform(saved);
       }
     } catch {}
     return DEFAULT_SEARCH_ENGINE;
@@ -228,6 +232,13 @@ export function useSearch(
     try {
       queueLocalStorageSetItem(SEARCH_ENGINE_KEY, searchEngine);
     } catch {}
+  }, [searchEngine]);
+
+  useEffect(() => {
+    const normalizedEngine = normalizeSearchEngineForPlatform(searchEngine);
+    if (normalizedEngine !== searchEngine) {
+      setSearchEngine(normalizedEngine);
+    }
   }, [searchEngine]);
 
   useEffect(() => {
@@ -357,9 +368,10 @@ export function useSearch(
       prefixEnabled,
       siteDirectEnabled,
       calculatorEnabled: false,
-      defaultEngine: searchEngine,
+      defaultEngine: normalizeSearchEngineForPlatform(searchEngine),
     });
-    const { query, queryForSearch, historyEntryValue, effectiveEngine } = queryModel.submission;
+    const { query, queryForSearch, historyEntryValue } = queryModel.submission;
+    const effectiveEngine = normalizeSearchEngineForPlatform(queryModel.submission.effectiveEngine);
     if (!query) return;
 
     addSearchHistoryEntry(historyEntryValue);

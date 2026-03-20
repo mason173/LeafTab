@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiLinkM } from '@/icons/ri-compat';
-import { TextScramble } from '@/components/motion-primitives/text-scramble';
+import { SearchPlaceholderText } from '@/components/search/SearchPlaceholderText';
 import { isSearchCommandShellValue } from '@/utils/searchCommands';
 import { isUrl } from '@/utils';
 import type { SearchEngine } from '@/types';
@@ -21,6 +21,7 @@ interface SearchFieldProps {
   placeholder?: string;
   inlinePreview?: string;
   disablePlaceholderAnimation?: boolean;
+  lightweightPlaceholderAnimation?: boolean;
   theme: SearchBarTheme;
   height?: number;
   inputFontSize?: number;
@@ -42,6 +43,7 @@ function SearchFieldInput({
   placeholder,
   inlinePreview,
   disablePlaceholderAnimation,
+  lightweightPlaceholderAnimation,
   theme,
   inputFontSize = 18,
 }: {
@@ -52,6 +54,7 @@ function SearchFieldInput({
   placeholder?: string;
   inlinePreview?: string;
   disablePlaceholderAnimation?: boolean;
+  lightweightPlaceholderAnimation?: boolean;
   theme: SearchBarTheme;
   inputFontSize?: number;
 }) {
@@ -136,25 +139,16 @@ function SearchFieldInput({
           className={`pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 overflow-hidden text-ellipsis whitespace-nowrap ${theme.placeholderClassName}`}
           style={{
             left: `${inputTextInsetPx}px`,
-            fontSize: placeholderFontSize,
-            lineHeight: `${placeholderLineHeight}px`,
           }}
         >
-          {disablePlaceholderAnimation ? (
-            <span key={placeholderText} className="block truncate">
-              {placeholderText}
-            </span>
-          ) : (
-            <TextScramble
-              key={placeholderText}
-              as="span"
-              className="block truncate"
-              duration={0.52}
-              speed={0.02}
-            >
-              {placeholderText}
-            </TextScramble>
-          )}
+          <SearchPlaceholderText
+            text={placeholderText}
+            className="block truncate"
+            fontSize={placeholderFontSize}
+            lineHeight={placeholderLineHeight}
+            disableAnimation={disablePlaceholderAnimation}
+            lightweight={lightweightPlaceholderAnimation}
+          />
         </span>
       ) : null}
       {isFocused && value.length === 0 ? (
@@ -182,6 +176,7 @@ export function SearchField({
   placeholder,
   inlinePreview,
   disablePlaceholderAnimation,
+  lightweightPlaceholderAnimation,
   theme,
   height = 52,
   inputFontSize = 18,
@@ -236,6 +231,7 @@ export function SearchField({
         placeholder={placeholder}
         inlinePreview={inlinePreview}
         disablePlaceholderAnimation={disablePlaceholderAnimation}
+        lightweightPlaceholderAnimation={lightweightPlaceholderAnimation}
         theme={theme}
         inputFontSize={inputFontSize}
       />

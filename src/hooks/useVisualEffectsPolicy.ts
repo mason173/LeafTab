@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 export type VisualEffectsLevel = 'low' | 'medium' | 'high';
 
@@ -13,26 +14,28 @@ export interface VisualEffectsPolicy {
 }
 
 export function useVisualEffectsPolicy(level: VisualEffectsLevel): VisualEffectsPolicy {
+  const firefox = isFirefoxBuildTarget();
+
   return useMemo(() => {
     if (level === 'high') {
       return {
         disableInitialRevealMotion: false,
-        disableWallpaperRevealMotion: false,
-        disableBackdropBlur: false,
+        disableWallpaperRevealMotion: firefox,
+        disableBackdropBlur: firefox,
         freezeDynamicWallpaper: false,
         disableShortcutReorderMotion: false,
         disableSecondTickMotion: false,
-        disableSyncCardAccentAnimation: false,
+        disableSyncCardAccentAnimation: firefox,
       };
     }
 
     if (level === 'medium') {
       return {
         disableInitialRevealMotion: false,
-        disableWallpaperRevealMotion: false,
+        disableWallpaperRevealMotion: firefox,
         disableBackdropBlur: true,
         freezeDynamicWallpaper: true,
-        disableShortcutReorderMotion: false,
+        disableShortcutReorderMotion: firefox,
         disableSecondTickMotion: false,
         disableSyncCardAccentAnimation: true,
       };
@@ -47,5 +50,5 @@ export function useVisualEffectsPolicy(level: VisualEffectsLevel): VisualEffects
       disableSecondTickMotion: true,
       disableSyncCardAccentAnimation: true,
     };
-  }, [level]);
+  }, [firefox, level]);
 }

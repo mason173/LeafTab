@@ -1,4 +1,6 @@
 /// <reference types="vite/client" />
+declare const __BROWSER_TARGET__: 'chromium' | 'firefox';
+
 declare module 'figma:asset/*' {
   const content: string;
   export default content;

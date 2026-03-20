@@ -21,6 +21,7 @@ import {
   AutoHeight,
   type AutoHeightProps,
 } from "@/components/animate-ui/primitives/effects/auto-height";
+import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
 type TabsContextType = {
   value: string | undefined;
@@ -97,8 +98,12 @@ function TabsContent({
   transition = { duration: 0.5, ease: "easeInOut" },
   ...props
 }: TabsContentProps) {
+  const firefox = isFirefoxBuildTarget();
   const { value: activeValue } = useTabs();
   const isActive = activeValue === value;
+  const contentInitial = firefox ? { opacity: 0, y: 8 } : { opacity: 0, filter: "blur(4px)" };
+  const contentAnimate = firefox ? { opacity: 1, y: 0 } : { opacity: 1, filter: "blur(0px)" };
+  const contentExit = firefox ? { opacity: 0, y: 8 } : { opacity: 0, filter: "blur(4px)" };
 
   if (disableAnimation) {
     if (forceMount) {
@@ -123,9 +128,9 @@ function TabsContent({
           data-slot="tabs-content"
           layout
           layoutDependency={value}
-          initial={{ opacity: 0, filter: "blur(4px)" }}
-          animate={{ opacity: 1, filter: "blur(0px)" }}
-          exit={{ opacity: 0, filter: "blur(4px)" }}
+          initial={contentInitial}
+          animate={contentAnimate}
+          exit={contentExit}
           transition={transition}
           {...props}
         />
@@ -142,9 +147,9 @@ function TabsContent({
             data-slot="tabs-content"
             layout
             layoutDependency={value}
-            initial={{ opacity: 0, filter: "blur(4px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, filter: "blur(4px)" }}
+            initial={contentInitial}
+            animate={contentAnimate}
+            exit={contentExit}
             transition={transition}
             {...props}
           />

@@ -155,9 +155,14 @@ function resolveManualChunk(id: string): string | undefined {
 
 export default defineConfig(async () => {
   const { default: tailwindcss } = await import('@tailwindcss/vite');
+  const browserTarget = process.env.VITE_BROWSER_TARGET === 'firefox' ? 'firefox' : 'chromium';
+  const outDir = process.env.VITE_BUILD_OUT_DIR || (browserTarget === 'firefox' ? 'build-firefox' : 'build');
   return {
   base: './',
   plugins: [react(), tailwindcss()],
+    define: {
+      __BROWSER_TARGET__: JSON.stringify(browserTarget),
+    },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -205,12 +210,13 @@ export default defineConfig(async () => {
         '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
         '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
         '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
+        '@target': path.resolve(__dirname, `./src/targets/${browserTarget}`),
         '@': path.resolve(__dirname, './src'),
       },
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir,
       modulePreload: {
         resolveDependencies: (_filename, deps, context) => {
           if (context.hostType === 'html') {

@@ -28,6 +28,7 @@ interface SearchBarProps {
   calculatorInlinePreview?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   disablePlaceholderAnimation?: boolean;
+  lightweightSearchUi?: boolean;
   historySelectedIndex?: number;
   inputRef: React.RefObject<HTMLInputElement | null>;
   blankMode?: boolean;
@@ -71,6 +72,7 @@ export function SearchBar({
   calculatorInlinePreview,
   onKeyDown,
   disablePlaceholderAnimation = false,
+  lightweightSearchUi = false,
   historySelectedIndex,
   inputRef,
   blankMode,
@@ -125,6 +127,7 @@ export function SearchBar({
             placeholder={placeholder}
             inlinePreview={calculatorInlinePreview}
             disablePlaceholderAnimation={disablePlaceholderAnimation}
+            lightweightPlaceholderAnimation={lightweightSearchUi}
             theme={theme}
             height={searchHeight}
             inputFontSize={searchInputFontSize}
@@ -149,6 +152,7 @@ export function SearchBar({
             showNumberHints={showSuggestionNumberHints}
             currentBrowserTabId={currentBrowserTabId}
             emptyStateLabel={emptyStateLabel}
+            lightweight={lightweightSearchUi}
           />
         </div>
       </div>

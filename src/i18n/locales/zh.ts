@@ -409,6 +409,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release139LowEffectsMotion: "优化低特效模式下的搜索与抽屉动效",
+        release139BuildIsolation: "改进 Firefox 与 Chrome 的构建隔离",
+        release139Stability: "提升整体稳定性",
         release137PermissionsAndSearch: "统一商店版与社区版权限策略，搜索引擎切换与提示文案同步优化",
         release137WallpaperAndMotion: "默认壁纸、自定义壁纸与首屏动画节奏重新对齐，减少刷新闪动",
         release137ScenarioAndSync: "新增情景模式快捷切换，并修复下拉与同步时间显示问题",

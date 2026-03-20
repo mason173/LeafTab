@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/utils";
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from "@/utils/dynamicAccentColor";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 interface RoleSelectorProps {
   open: boolean;
@@ -34,10 +35,8 @@ interface RoleSelectorProps {
 
 const STEP_ORDER = ['appearance', 'role', 'layout'] as const;
 type StepType = (typeof STEP_ORDER)[number];
-const STAGED_REVEAL_HIDDEN = { opacity: 0, y: 20, filter: "blur(12px)" };
-const STAGED_REVEAL_SHOWN = { opacity: 1, y: 0, filter: "blur(0px)" };
-
 export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
+  const firefox = isFirefoxBuildTarget();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('panoramic');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('system');
@@ -49,6 +48,14 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const stepRevealTimerRef = useRef<number | null>(null);
   const { i18n, t } = useTranslation();
   const { setTheme } = useTheme();
+  const stagedRevealHidden = useMemo(
+    () => (firefox ? { opacity: 0, y: 16 } : { opacity: 0, y: 20, filter: "blur(12px)" }),
+    [firefox],
+  );
+  const stagedRevealShown = useMemo(
+    () => (firefox ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, filter: "blur(0px)" }),
+    [firefox],
+  );
   const roleOptions = [
     {
       id: 'programmer',
@@ -264,7 +271,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="text-center space-y-2"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.32, ease: "easeOut", delay: 0.02 }}
               >
                 <TextEffect
@@ -289,7 +296,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.34, ease: "easeOut", delay: 0.14 }}
               >
                 <button
@@ -344,7 +351,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="w-full"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.3, ease: "easeOut", delay: 0.26 }}
               >
                 <div className="flex items-center justify-center w-full px-[6px] gap-3 flex-wrap">
@@ -367,7 +374,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="w-full space-y-2"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.3, ease: "easeOut", delay: 0.38 }}
               >
                 <div className="text-left text-xs text-muted-foreground">{t('settings.language.label')}</div>
@@ -388,7 +395,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="flex items-center justify-center gap-2"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.5 }}
               >
                 {STEP_ORDER.map((item, index) => (
@@ -408,7 +415,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               <motion.div
                 className="w-full"
                 initial={false}
-                animate={appearanceRevealReady ? STAGED_REVEAL_SHOWN : STAGED_REVEAL_HIDDEN}
+                animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.28, ease: "easeOut", delay: 0.58 }}
               >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={() => goToStep('role')}>
@@ -428,8 +435,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 >
               <motion.div
                 className="absolute left-0 top-0"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.24, ease: "easeOut", delay: 0.02 }}
               >
                 <Button
@@ -443,8 +450,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="text-center space-y-2"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.32, ease: "easeOut", delay: 0.08 }}
               >
                 <TextEffect
@@ -468,8 +475,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="grid grid-cols-2 md:grid-cols-4 gap-4"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.34, ease: "easeOut", delay: 0.2 }}
               >
                 {roleOptions.map((role) => {
@@ -495,8 +502,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="flex items-center justify-center gap-2"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.34 }}
               >
                 {STEP_ORDER.map((item, index) => (
@@ -514,8 +521,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="w-full"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.28, ease: "easeOut", delay: 0.42 }}
               >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={() => goToStep('layout')} disabled={!selectedRole}>
@@ -535,8 +542,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                 >
               <motion.div
                 className="absolute left-0 top-0"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.24, ease: "easeOut", delay: 0.02 }}
               >
                 <Button
@@ -550,8 +557,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="text-center space-y-2"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.32, ease: "easeOut", delay: 0.08 }}
               >
                 <TextEffect
@@ -575,8 +582,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.34, ease: "easeOut", delay: 0.2 }}
               >
                 {DISPLAY_MODE_OPTIONS.map((option) => (
@@ -601,16 +608,16 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="text-center text-sm text-muted-foreground"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.34 }}
               >
                 {t('onboarding.layoutTip')}
               </motion.div>
               <motion.div
                 className="flex items-center justify-center gap-2"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.42 }}
               >
                 {STEP_ORDER.map((item, index) => (
@@ -628,8 +635,8 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
               </motion.div>
               <motion.div
                 className="w-full"
-                initial={STAGED_REVEAL_HIDDEN}
-                animate={STAGED_REVEAL_SHOWN}
+                initial={stagedRevealHidden}
+                animate={stagedRevealShown}
                 transition={{ duration: 0.28, ease: "easeOut", delay: 0.5 }}
               >
                 <Button className="w-full h-12 rounded-xl text-base" onClick={handleLayoutConfirm}>

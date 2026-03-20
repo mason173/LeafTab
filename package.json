@@ -1,6 +1,6 @@
 {
       "name": "leaftab",
-      "version": "1.3.8",
+      "version": "1.3.9",
       "private": true,
       "dependencies": {
             "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
@@ -88,11 +88,15 @@
             "test:watch": "vitest",
             "build:community": "node scripts/build-channel.js community",
             "build:store": "node scripts/build-channel.js store",
+            "lint:firefox": "npx --yes web-ext lint -s build-firefox --output json",
+            "verify:firefox:community": "npm run build:community && npm run lint:firefox",
+            "verify:firefox:store": "npm run build:store && npm run lint:firefox",
             "pack:release": "node scripts/package-release-zips.js",
             "pack:release:community": "npm run build:community && node scripts/package-release-zips.js community",
             "pack:release:store": "npm run build:store && node scripts/package-release-zips.js store",
             "pack:release:all": "npm run pack:release:community && npm run pack:release:store",
             "verify:release:community": "node scripts/verify-release-channel.js community",
+            "verify:release:store": "node scripts/verify-release-channel.js store",
             "publish:github": "node scripts/publish-github-release.js"
       },
       "license": "GPL-3.0-or-later"

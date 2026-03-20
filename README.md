@@ -125,6 +125,16 @@ npm run dev
 npm run build
 ```
 
+Firefox 校验 / Firefox validation:
+
+```bash
+# community 包：构建 Chrome/Firefox 产物并跑 web-ext lint
+npm run verify:firefox:community
+
+# store 包：构建 Chrome/Firefox 产物并跑 web-ext lint
+npm run verify:firefox:store
+```
+
 ## 本地运行（后端）/ Local Run (Backend)
 
 ```bash
