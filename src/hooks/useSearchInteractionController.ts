@@ -170,7 +170,9 @@ export function useSearchInteractionController({
         if (isEditable) return;
       }
       const hasOpenModal = Boolean(
-        document.querySelector('[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"]')
+        document.querySelector(
+          '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"]',
+        )
       );
       if (hasOpenModal && target !== input) return;
 

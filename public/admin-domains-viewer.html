@@ -57,9 +57,45 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .grid {
+    .section {
+      margin-bottom: 12px;
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .section-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: 0.1px;
+    }
+    .section-desc {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -80,6 +116,77 @@
       font-weight: 700;
       line-height: 1;
       letter-spacing: 0.2px;
+    }
+    .card .meta-line {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .unsupported-panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .unsupported-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .unsupported-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: #f8fbff;
+      border: 1px solid rgba(216, 225, 238, 0.7);
+    }
+    .unsupported-rank {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #4a5d7a;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .unsupported-main {
+      min-width: 0;
+      flex: 1;
+    }
+    .unsupported-domain {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.2;
+      word-break: break-all;
+    }
+    .unsupported-meta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .unsupported-count {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .unsupported-count .v {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .unsupported-count .k {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
     }
     .toolbar {
       background: var(--card);
@@ -198,17 +305,25 @@
     .small-btn {
       font-size: 12px;
       padding: 6px 8px;
+      white-space: nowrap;
+    }
+    .row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     @media (max-width: 1040px) {
-      .grid { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+      .stats-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
       .toolbar { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 680px) {
       .page { padding: 16px 10px 20px; }
       .head h1 { font-size: 21px; }
-      .grid { grid-template-columns: 1fr 1fr; }
+      .section-title { font-size: 19px; }
+      .stats-grid { grid-template-columns: 1fr; }
       .table-wrap { overflow-x: auto; }
-      table { min-width: 920px; }
+      table { min-width: 980px; }
+      .unsupported-item { align-items: flex-start; }
     }
   </style>
 </head>
@@ -222,11 +337,39 @@
       <div class="meta" id="apiMeta">API: --</div>
     </div>
 
-    <div class="grid">
-      <div class="card"><span class="k" id="labelUsersTotal">Total Users</span><div class="v" id="usersTotal">--</div></div>
-      <div class="card"><span class="k" id="labelDomainsUnique">Unique Domains</span><div class="v" id="domainsUnique">--</div></div>
-      <div class="card"><span class="k" id="labelDomainsFiltered">Filtered Domains</span><div class="v" id="domainsFiltered">--</div></div>
-      <div class="card"><span class="k" id="labelUsersFiltered">Total Users (Filtered Domains)</span><div class="v" id="usersFiltered">--</div></div>
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title" id="overviewTitle">Platform Overview</h2>
+          <div class="section-desc" id="overviewDesc">Aggregated, non-sensitive metrics only.</div>
+        </div>
+        <button id="overviewRefreshBtn" class="btn-ghost">Refresh</button>
+      </div>
+      <div class="stats-grid">
+        <div class="card"><span class="k" id="labelUsersTotal">Total Users</span><div class="v" id="usersTotal">--</div></div>
+        <div class="card"><span class="k" id="labelUsersToday">New Users Today</span><div class="v" id="usersToday">--</div></div>
+        <div class="card"><span class="k" id="labelUsersYesterday">New Users Yesterday</span><div class="v" id="usersYesterday">--</div></div>
+        <div class="card"><span class="k" id="labelUsersLast7d">New Users (Last 7d)</span><div class="v" id="usersLast7d">--</div></div>
+        <div class="card"><span class="k" id="labelUsersLast30d">New Users (Last 30d)</span><div class="v" id="usersLast30d">--</div></div>
+        <div class="card">
+          <span class="k" id="labelPrivacyConsentRate">Anonymous Analytics Opt-in</span>
+          <div class="v" id="privacyConsentRate">--</div>
+          <div class="meta-line" id="privacyConsentMeta">--</div>
+        </div>
+        <div class="card"><span class="k" id="labelDomainsUnique">Unique Domains</span><div class="v" id="domainsUnique">--</div></div>
+      </div>
+    </div>
+
+    <div class="section unsupported-panel">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title" id="unsupportedTitle">Top 10 Unsupported Domains</h2>
+          <div class="section-desc" id="unsupportedDesc">Sorted by user reach so icon support can be prioritized.</div>
+        </div>
+        <div class="section-tag">Top 10</div>
+      </div>
+      <div class="unsupported-list" id="unsupportedList"></div>
+      <div class="empty" id="unsupportedEmpty" style="display:none;">No data</div>
     </div>
 
     <div class="toolbar">
@@ -264,12 +407,12 @@
             <th id="thUsers" style="width:124px;" class="num">Users</th>
             <th id="thFirstSeen" style="width:190px;">First Seen</th>
             <th id="thLastSeen" style="width:190px;">Last Seen</th>
-            <th id="thAction" style="width:96px;">Action</th>
+            <th id="thAction" style="width:152px;">Action</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
-      <div class="empty" id="empty" style="display:none;">No data</div>
+      <div class="empty" id="tableEmpty" style="display:none;">No data</div>
     </div>
 
     <div class="pager">

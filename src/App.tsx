@@ -448,8 +448,10 @@ export default function App() {
     dropdownOpen: false,
     typingBurst: false,
   });
+  // Keep the lightweight engine switcher from downgrading the clock/wallpaper rendering.
+  // Otherwise opening the menu flips the time between animated and plain rendering paths,
+  // which is especially noticeable with decorative fonts like Pacifico.
   const searchPerformanceModeActive = searchInteractionState.historyOpen
-    || searchInteractionState.dropdownOpen
     || searchInteractionState.typingBurst;
   const effectiveTopTimeAnimationEnabled = effectiveTimeAnimationEnabled && !searchPerformanceModeActive;
   const shouldFreezeDynamicWallpaper = visualEffectsPolicy.freezeDynamicWallpaper
@@ -791,6 +793,8 @@ export default function App() {
 
   const {
     bingWallpaper,
+    isBingWallpaperRefreshing,
+    refreshBingWallpaper,
     customWallpaperLoaded,
     customWallpaper, setCustomWallpaper,
     wallpaperMode, setWallpaperMode,
@@ -1344,20 +1348,6 @@ export default function App() {
     }
   }, [API_URL, i18n.language, t]);
 
-  const handleFetchAdminStats = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('missing_token');
-    const adminKey = (localStorage.getItem('admin_api_key') || '').trim();
-    if (!adminKey) throw new Error('missing_admin_key');
-    const resp = await fetch(`${API_URL}/admin/stats`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'X-Admin-Key': adminKey }
-    });
-    if (!resp.ok) {
-      throw new Error(`admin_stats_${resp.status}`);
-    }
-    return await resp.json();
-  }, []);
-
   const handleOpenAdminModal = useCallback(() => {
     setSettingsOpen(false);
     setAdminModalOpen(true);
@@ -1490,6 +1480,8 @@ export default function App() {
     mode: wallpaperMode,
     onModeChange: setWallpaperMode,
     bingWallpaper,
+    isBingWallpaperRefreshing,
+    onRefreshBingWallpaper: refreshBingWallpaper,
     weatherCode,
     customWallpaper,
     onCustomWallpaperChange: setCustomWallpaper,
@@ -1502,10 +1494,12 @@ export default function App() {
     onDarkModeAutoDimWallpaperEnabledChange: setDarkModeAutoDimWallpaperEnabled,
   }), [
     bingWallpaper,
+    isBingWallpaperRefreshing,
     colorWallpaperId,
     customWallpaper,
     darkModeAutoDimWallpaperEnabled,
     effectiveWallpaperMaskOpacity,
+    refreshBingWallpaper,
     setDarkModeAutoDimWallpaperEnabled,
     setColorWallpaperId,
     setCustomWallpaper,
@@ -2128,7 +2122,6 @@ export default function App() {
               open: adminModalOpen,
               onOpenChange: setAdminModalOpen,
               onExportDomains: handleExportDomains,
-              onFetchAdminStats: handleFetchAdminStats,
               weatherDebugEnabled: weatherDebugVisible,
               onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
               customApiUrl,

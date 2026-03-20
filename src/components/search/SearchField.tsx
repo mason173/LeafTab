@@ -6,9 +6,7 @@ import { TextScramble } from '@/components/motion-primitives/text-scramble';
 import { isSearchCommandShellValue } from '@/utils/searchCommands';
 import { isUrl } from '@/utils';
 import type { SearchEngine } from '@/types';
-import {
-  SearchEngineSwitcherTrigger,
-} from '@/components/search/SearchEngineSwitcher';
+import { SearchEngineSwitcher } from '@/components/search/SearchEngineSwitcher';
 import type { SearchBarTheme } from '@/components/search/searchBarTheme';
 
 export type SearchFieldValueChangeHandler = (nextValue: string, nativeEvent?: Event) => void;
@@ -30,7 +28,9 @@ interface SearchFieldProps {
   searchActionSize?: number;
   surfaceStyle?: React.CSSProperties;
   searchEngine: SearchEngine;
-  onEngineClick: () => void;
+  onEngineSelect: (engine: SearchEngine) => void;
+  dropdownOpen: boolean;
+  onEngineOpenChange: (open: boolean) => void;
   showEngineSwitcher?: boolean;
 }
 
@@ -189,7 +189,9 @@ export function SearchField({
   searchActionSize = 42,
   surfaceStyle,
   searchEngine,
-  onEngineClick,
+  onEngineSelect,
+  dropdownOpen,
+  onEngineOpenChange,
   showEngineSwitcher = true,
 }: SearchFieldProps) {
   const { t } = useTranslation();
@@ -215,10 +217,15 @@ export function SearchField({
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[999px] transition-colors" />
       {showEngineSwitcher ? (
-        <SearchEngineSwitcherTrigger
+        <SearchEngineSwitcher
           engine={searchEngine}
-          onClick={onEngineClick}
+          isOpen={dropdownOpen}
+          onOpenChange={onEngineOpenChange}
+          onSelect={onEngineSelect}
           toneClassName={theme.triggerToneClassName}
+          surfaceClassName={theme.engineDropdownSurfaceClassName}
+          itemClassName={theme.engineDropdownItemClassName}
+          itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
         />
       ) : null}
       <SearchFieldInput

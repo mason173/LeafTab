@@ -1,6 +1,8 @@
 import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { RiCheckFill, RiDownload2Fill } from "@/icons/ri-compat";
+import { RiCheckFill, RiDownload2Fill, RiRefreshFill } from "@/icons/ri-compat";
+import { toast } from "@/components/ui/sonner";
+import type { BingWallpaperRefreshResult } from "@/hooks/useWallpaper";
 import { useTranslation } from "react-i18next";
 import imgImage from "@/assets/Default_wallpaper.webp";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";
@@ -10,6 +12,8 @@ import type { WallpaperMode } from "@/wallpaper/types";
 interface BingWallpaperPanelProps {
   mode: WallpaperMode;
   bingWallpaper: string;
+  isRefreshing?: boolean;
+  onRefresh?: () => Promise<BingWallpaperRefreshResult> | BingWallpaperRefreshResult;
   wallpaperMaskOpacity: number;
   wallpaperMaskPreviewOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
@@ -22,6 +26,8 @@ interface BingWallpaperPanelProps {
 export function BingWallpaperPanel({
   mode,
   bingWallpaper,
+  isRefreshing = false,
+  onRefresh,
   wallpaperMaskOpacity,
   wallpaperMaskPreviewOpacity,
   onWallpaperMaskOpacityChange,
@@ -35,6 +41,24 @@ export function BingWallpaperPanel({
   const isolateMaskSlider = isMaskSliderIsolation && showBingMaskSlider;
   const fadeClass = "transition-opacity duration-220 ease-out";
   const previewOpacity = wallpaperMaskPreviewOpacity ?? wallpaperMaskOpacity;
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    const result = await onRefresh();
+    if (result === "updated") {
+      toast.success(t("weather.wallpaper.refreshSuccess", { defaultValue: "Bing 壁纸已刷新" }));
+      return;
+    }
+    if (result === "already-latest") {
+      toast.info(t("weather.wallpaper.alreadyLatest", { defaultValue: "已经是最新壁纸了" }));
+      return;
+    }
+    if (result === "throttled") {
+      toast.info(t("weather.wallpaper.refreshTooFrequent", { defaultValue: "请求太频繁了，请稍后再试" }));
+      return;
+    }
+    toast.error(t("weather.wallpaper.refreshFailed", { defaultValue: "刷新 Bing 壁纸失败，请稍后再试" }));
+  };
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -100,6 +124,18 @@ export function BingWallpaperPanel({
               />
             </div>
           ) : null}
+          <div className={`absolute bottom-3 left-3 flex gap-2 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"}`}>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-md hover:bg-white/40 text-white border-none"
+              onClick={() => void handleRefresh()}
+              title={t("common.refresh", { defaultValue: "刷新" })}
+              disabled={isRefreshing}
+            >
+              <RiRefreshFill className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
           <div className={`absolute bottom-3 right-3 flex gap-2 ${fadeClass} ${isolateMaskSlider ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100"}`}>
             <Button
               size="icon"

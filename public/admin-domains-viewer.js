@@ -20,10 +20,20 @@
       apiMeta: "API: {{api}}",
       title: "域名后台管理",
       subtitle: "查看全站收集域名，支持搜索、排序、分页与快捷操作。",
+      overviewTitle: "平台概览",
+      overviewDesc: "这里只展示聚合后的非敏感统计数据。",
       labelUsersTotal: "总用户数",
+      labelUsersToday: "今日新增用户",
+      labelUsersYesterday: "昨日新增用户",
+      labelUsersLast7d: "近 7 天新增用户",
+      labelUsersLast30d: "近 30 天新增用户",
+      labelPrivacyConsentRate: "匿名统计开启率",
       labelDomainsUnique: "收集域名数",
-      labelDomainsFiltered: "筛选后域名数",
-      labelUsersFiltered: "筛选后用户总计",
+      privacyConsentUsers: "{{count}} / {{total}} 位用户已开启",
+      unsupportedTitle: "热门未适配域名 Top 10",
+      unsupportedDesc: "按用户覆盖排序，方便优先补齐高价值站点图标。",
+      unsupportedUsers: "受影响用户",
+      unsupportedLastSeen: "最近出现：{{time}}",
       searchPlaceholder: "搜索域名...",
       hideSupportedLabel: "隐藏已适配域名",
       sortCountDesc: "排序：用户数（高到低）",
@@ -45,9 +55,11 @@
       thLastSeen: "最近出现",
       thAction: "操作",
       noData: "暂无数据",
+      noUnsupportedData: "当前没有未适配域名数据",
       prev: "上一页",
       next: "下一页",
       copyOne: "复制",
+      openOne: "打开",
       pagerInfo: "显示 {{from}}-{{to}} / {{total}} | 第 {{page}}/{{totalPages}} 页",
       statusMissingToken: "缺少登录令牌，请先在 LeafTab 登录。",
       statusMissingAdminKey: "缺少管理员密钥，请先在 LeafTab 管理设置中保存。",
@@ -68,10 +80,20 @@
       apiMeta: "API: {{api}}",
       title: "Domain Admin Board",
       subtitle: "Browse collected domains with search, sorting, paging, and quick actions.",
+      overviewTitle: "Platform Overview",
+      overviewDesc: "Only aggregated, non-sensitive metrics are shown here.",
       labelUsersTotal: "Total Users",
+      labelUsersToday: "New Users Today",
+      labelUsersYesterday: "New Users Yesterday",
+      labelUsersLast7d: "New Users (Last 7d)",
+      labelUsersLast30d: "New Users (Last 30d)",
+      labelPrivacyConsentRate: "Anonymous Analytics Opt-in",
       labelDomainsUnique: "Unique Domains",
-      labelDomainsFiltered: "Filtered Domains",
-      labelUsersFiltered: "Total Users (Filtered Domains)",
+      privacyConsentUsers: "{{count}} of {{total}} users opted in",
+      unsupportedTitle: "Top 10 Unsupported Domains",
+      unsupportedDesc: "Sorted by user reach so icon support can be prioritized.",
+      unsupportedUsers: "Affected users",
+      unsupportedLastSeen: "Last seen: {{time}}",
       searchPlaceholder: "Search domain...",
       hideSupportedLabel: "Hide already-supported domains",
       sortCountDesc: "Sort: Users (high to low)",
@@ -93,9 +115,11 @@
       thLastSeen: "Last Seen",
       thAction: "Action",
       noData: "No data",
+      noUnsupportedData: "No unsupported domains yet",
       prev: "Prev",
       next: "Next",
       copyOne: "Copy",
+      openOne: "Open",
       pagerInfo: "Showing {{from}}-{{to}} / {{total}} | Page {{page}}/{{totalPages}}",
       statusMissingToken: "Missing login token. Please sign in from LeafTab first.",
       statusMissingAdminKey: "Missing admin key. Please save admin key in LeafTab admin settings first.",
@@ -128,10 +152,17 @@
   apiMeta.textContent = tr("apiMeta", { api: apiBase });
 
   const el = {
+    overviewRefreshBtn: document.getElementById("overviewRefreshBtn"),
     usersTotal: document.getElementById("usersTotal"),
+    usersToday: document.getElementById("usersToday"),
+    usersYesterday: document.getElementById("usersYesterday"),
+    usersLast7d: document.getElementById("usersLast7d"),
+    usersLast30d: document.getElementById("usersLast30d"),
+    privacyConsentRate: document.getElementById("privacyConsentRate"),
+    privacyConsentMeta: document.getElementById("privacyConsentMeta"),
     domainsUnique: document.getElementById("domainsUnique"),
-    domainsFiltered: document.getElementById("domainsFiltered"),
-    usersFiltered: document.getElementById("usersFiltered"),
+    unsupportedList: document.getElementById("unsupportedList"),
+    unsupportedEmpty: document.getElementById("unsupportedEmpty"),
     searchInput: document.getElementById("searchInput"),
     hideSupportedToggle: document.getElementById("hideSupportedToggle"),
     sortSelect: document.getElementById("sortSelect"),
@@ -141,7 +172,7 @@
     csvBtn: document.getElementById("csvBtn"),
     status: document.getElementById("status"),
     tbody: document.getElementById("tbody"),
-    empty: document.getElementById("empty"),
+    tableEmpty: document.getElementById("tableEmpty"),
     pagerInfo: document.getElementById("pagerInfo"),
     prevBtn: document.getElementById("prevBtn"),
     nextBtn: document.getElementById("nextBtn")
@@ -164,10 +195,17 @@
     document.title = tr("pageTitle");
     setText("titleText", tr("title"));
     setText("subtitleText", tr("subtitle"));
+    setText("overviewTitle", tr("overviewTitle"));
+    setText("overviewDesc", tr("overviewDesc"));
     setText("labelUsersTotal", tr("labelUsersTotal"));
+    setText("labelUsersToday", tr("labelUsersToday"));
+    setText("labelUsersYesterday", tr("labelUsersYesterday"));
+    setText("labelUsersLast7d", tr("labelUsersLast7d"));
+    setText("labelUsersLast30d", tr("labelUsersLast30d"));
+    setText("labelPrivacyConsentRate", tr("labelPrivacyConsentRate"));
     setText("labelDomainsUnique", tr("labelDomainsUnique"));
-    setText("labelDomainsFiltered", tr("labelDomainsFiltered"));
-    setText("labelUsersFiltered", tr("labelUsersFiltered"));
+    setText("unsupportedTitle", tr("unsupportedTitle"));
+    setText("unsupportedDesc", tr("unsupportedDesc"));
     setText("hideSupportedLabel", tr("hideSupportedLabel"));
     setText("sortCountDesc", tr("sortCountDesc"));
     setText("sortCountAsc", tr("sortCountAsc"));
@@ -178,6 +216,7 @@
     setText("pageSize50", tr("pageSize50"));
     setText("pageSize100", tr("pageSize100"));
     setText("pageSize200", tr("pageSize200"));
+    setText("overviewRefreshBtn", tr("refresh"));
     setText("refreshBtn", tr("refresh"));
     setText("copyBtn", tr("copyDomains"));
     setText("csvBtn", tr("exportCsv"));
@@ -187,7 +226,8 @@
     setText("thFirstSeen", tr("thFirstSeen"));
     setText("thLastSeen", tr("thLastSeen"));
     setText("thAction", tr("thAction"));
-    setText("empty", tr("noData"));
+    setText("tableEmpty", tr("noData"));
+    setText("unsupportedEmpty", tr("noUnsupportedData"));
     setText("prevBtn", tr("prev"));
     setText("nextBtn", tr("next"));
     if (el.searchInput) {
@@ -233,6 +273,11 @@
   function safeNum(n) {
     const v = Number(n);
     return Number.isFinite(v) ? v : 0;
+  }
+
+  function formatPercent(part, total) {
+    if (!total) return "0%";
+    return ((safeNum(part) / safeNum(total)) * 100).toFixed(1).replace(/\.0$/, "") + "%";
   }
 
   function normalizeDomain(domain) {
@@ -433,6 +478,34 @@
     render();
   }
 
+  function renderUnsupportedList(rows) {
+    if (!el.unsupportedList || !el.unsupportedEmpty) return;
+    el.unsupportedList.innerHTML = "";
+
+    if (!rows.length) {
+      el.unsupportedEmpty.style.display = "block";
+      return;
+    }
+
+    el.unsupportedEmpty.style.display = "none";
+    rows.forEach((row, index) => {
+      const item = document.createElement("div");
+      item.className = "unsupported-item";
+      item.innerHTML = [
+        "<div class=\"unsupported-rank\">" + String(index + 1) + "</div>",
+        "<div class=\"unsupported-main\">",
+        "<div class=\"unsupported-domain\">" + row.domain + "</div>",
+        "<div class=\"unsupported-meta\">" + tr("unsupportedLastSeen", { time: formatSeen(row.last_seen) }) + "</div>",
+        "</div>",
+        "<div class=\"unsupported-count\">",
+        "<div class=\"v\">" + safeNum(row.count).toLocaleString() + "</div>",
+        "<div class=\"k\">" + tr("unsupportedUsers") + "</div>",
+        "</div>"
+      ].join("");
+      el.unsupportedList.appendChild(item);
+    });
+  }
+
   function render() {
     const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -444,10 +517,10 @@
 
     el.tbody.innerHTML = "";
     if (rows.length === 0) {
-      el.empty.style.display = "block";
-      el.empty.textContent = tr("noData");
+      el.tableEmpty.style.display = "block";
+      el.tableEmpty.textContent = tr("noData");
     } else {
-      el.empty.style.display = "none";
+      el.tableEmpty.style.display = "none";
       rows.forEach((row, index) => {
         const rowEl = document.createElement("tr");
         const absoluteIndex = start + index + 1;
@@ -457,15 +530,12 @@
           "<td class=\"num\">" + safeNum(row.count).toLocaleString() + "</td>",
           "<td title=\"" + (row.first_seen || "") + "\">" + formatSeen(row.first_seen) + "</td>",
           "<td title=\"" + (row.last_seen || "") + "\">" + formatSeen(row.last_seen) + "</td>",
-          "<td><button class=\"small-btn copy-one\" data-domain=\"" + row.domain + "\">" + tr("copyOne") + "</button></td>"
+          "<td><div class=\"row-actions\"><button class=\"small-btn copy-one\" data-domain=\"" + row.domain + "\">" + tr("copyOne") + "</button><button class=\"small-btn btn-ghost open-one\" data-domain=\"" + row.domain + "\">" + tr("openOne") + "</button></div></td>"
         ].join("");
         el.tbody.appendChild(rowEl);
       });
     }
 
-    const users = filteredRows.reduce((sum, r) => sum + safeNum(r.count), 0);
-    el.domainsFiltered.textContent = total.toLocaleString();
-    el.usersFiltered.textContent = users.toLocaleString();
     el.pagerInfo.textContent =
       tr("pagerInfo", {
         from: total === 0 ? 0 : start + 1,
@@ -494,6 +564,12 @@
       ].join(","));
     });
     return lines.join("\n");
+  }
+
+  function buildDomainUrl(domain) {
+    const normalized = normalizeDomain(domain);
+    if (!normalized) return "";
+    return "https://" + normalized;
   }
 
   async function loadData() {
@@ -538,11 +614,40 @@
       if (statsResp.ok) {
         const statsData = await statsResp.json();
         const summary = (statsData && statsData.summary) || {};
+        const topDomains = Array.isArray(statsData && statsData.top_domains) ? statsData.top_domains : [];
+        const usersTotal = safeNum(summary.users_total);
+        const privacyConsentUsers = safeNum(summary.privacy_consent_users);
         el.usersTotal.textContent = safeNum(summary.users_total).toLocaleString();
+        el.usersToday.textContent = safeNum(summary.users_today).toLocaleString();
+        el.usersYesterday.textContent = safeNum(summary.users_yesterday).toLocaleString();
+        el.usersLast7d.textContent = safeNum(summary.users_last_7d).toLocaleString();
+        el.usersLast30d.textContent = safeNum(summary.users_last_30d).toLocaleString();
+        el.privacyConsentRate.textContent = formatPercent(privacyConsentUsers, usersTotal);
+        el.privacyConsentMeta.textContent = tr("privacyConsentUsers", {
+          count: privacyConsentUsers.toLocaleString(),
+          total: usersTotal.toLocaleString()
+        });
         el.domainsUnique.textContent = safeNum(summary.domains_unique).toLocaleString();
+        renderUnsupportedList(
+          topDomains
+            .map((item) => ({
+              domain: String(item && item.domain ? item.domain : ""),
+              count: safeNum(item && item.count),
+              last_seen: item && item.last_seen ? item.last_seen : ""
+            }))
+            .filter((item) => item.domain && !isSupportedDomain(item.domain))
+            .slice(0, 10)
+        );
       } else {
         el.usersTotal.textContent = "--";
+        el.usersToday.textContent = "--";
+        el.usersYesterday.textContent = "--";
+        el.usersLast7d.textContent = "--";
+        el.usersLast30d.textContent = "--";
+        el.privacyConsentRate.textContent = "--";
+        el.privacyConsentMeta.textContent = "--";
         el.domainsUnique.textContent = allRows.length.toLocaleString();
+        renderUnsupportedList([]);
       }
 
       setStatus("", false);
@@ -569,6 +674,9 @@
     render();
   });
 
+  if (el.overviewRefreshBtn) {
+    el.overviewRefreshBtn.addEventListener("click", loadData);
+  }
   el.refreshBtn.addEventListener("click", loadData);
   el.prevBtn.addEventListener("click", () => { if (page > 1) { page -= 1; render(); } });
   el.nextBtn.addEventListener("click", () => {
@@ -602,9 +710,16 @@
 
   el.tbody.addEventListener("click", async (event) => {
     const target = event.target;
-    if (!target || !target.classList || !target.classList.contains("copy-one")) return;
+    if (!target || !target.classList) return;
     const domain = target.getAttribute("data-domain") || "";
     if (!domain) return;
+    if (target.classList.contains("open-one")) {
+      const url = buildDomainUrl(domain);
+      if (!url) return;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (!target.classList.contains("copy-one")) return;
     try {
       await navigator.clipboard.writeText(domain);
       setStatus(tr("statusCopiedOne", { domain: domain }), true);

@@ -30,6 +30,8 @@ interface WallpaperSelectorProps {
   mode: WallpaperMode;
   onModeChange: (mode: WallpaperMode) => void;
   bingWallpaper: string;
+  isBingWallpaperRefreshing?: boolean;
+  onRefreshBingWallpaper?: () => Promise<void> | void;
   weatherCode: number;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
@@ -51,6 +53,8 @@ export default function WallpaperSelector({
   mode,
   onModeChange,
   bingWallpaper,
+  isBingWallpaperRefreshing = false,
+  onRefreshBingWallpaper,
   customWallpaper,
   onCustomWallpaperChange,
   colorWallpaperId,
@@ -160,6 +164,8 @@ export default function WallpaperSelector({
               <BingWallpaperPanel
                 mode={mode}
                 bingWallpaper={bingWallpaper}
+                isRefreshing={isBingWallpaperRefreshing}
+                onRefresh={onRefreshBingWallpaper}
                 wallpaperMaskOpacity={wallpaperMaskOpacity}
                 wallpaperMaskPreviewOpacity={previewWallpaperMaskOpacity}
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}

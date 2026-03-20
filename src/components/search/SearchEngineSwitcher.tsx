@@ -1,5 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { SearchEngine } from '@/types';
 import { SEARCH_ENGINE_ORDER } from '@/utils/searchHelpers';
 
@@ -37,47 +43,26 @@ export const getEngineIcon = (engine: SearchEngine) => {
   }
 };
 
-export function SearchEngineSwitcherTrigger({
+export function SearchEngineSwitcher({
   engine,
-  onClick,
-  toneClassName,
-}: {
-  engine: SearchEngine;
-  onClick?: () => void;
-  toneClassName?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick?.();
-      }}
-      className={`mr-1 flex items-center gap-1.5 rounded-[10px] px-1.5 py-1 shrink-0 cursor-pointer ${toneClassName || 'text-foreground/70'}`}
-    >
-      <img alt="" className="size-[18px] object-contain pointer-events-none shrink-0" src={getEngineIcon(engine)} />
-      <RiArrowRightSLine className="size-3.5 opacity-70" />
-    </button>
-  );
-}
-
-export function SearchEngineSwitcherDropdown({
-  currentEngine,
+  onOpenChange,
   onSelect,
   isOpen,
+  toneClassName,
   surfaceClassName,
   itemClassName,
   itemSelectedClassName,
 }: {
-  currentEngine: SearchEngine;
-  onSelect: (engine: SearchEngine) => void;
+  engine: SearchEngine;
   isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (engine: SearchEngine) => void;
+  toneClassName?: string;
   surfaceClassName?: string;
   itemClassName?: string;
   itemSelectedClassName?: string;
 }) {
   const { t } = useTranslation();
-  if (!isOpen) return null;
 
   const engineOptionMap: Record<SearchEngine, SearchEngineOption> = {
     system: { id: 'system', name: t('search.systemEngine'), icon: searchIcon },
@@ -89,23 +74,40 @@ export function SearchEngineSwitcherDropdown({
   const engines = SEARCH_ENGINE_ORDER.map((engine) => engineOptionMap[engine]);
 
   return (
-    <div className={`absolute left-0 top-[calc(100%+8px)] z-[520] w-[232px] max-h-[300px] overflow-y-auto rounded-[16px] border p-1.5 ${surfaceClassName || 'border-border bg-popover text-popover-foreground shadow-lg'}`} data-name="DropDown">
-      {engines.map((engine) => (
+    <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
+      <DropdownMenuTrigger asChild>
         <button
           type="button"
-          key={engine.id}
-          className={`flex w-full items-center gap-2 rounded-[14px] px-2 py-1.5 text-sm transition-colors ${
-            currentEngine === engine.id
-              ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
-              : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
-          }`}
-          onClick={() => onSelect(engine.id)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          className={`mr-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-[12px] px-2 py-1.5 ${toneClassName || 'text-foreground/70'}`}
         >
-          <img alt="" className="size-5 shrink-0 object-contain pointer-events-none" src={engine.icon} />
-          <span className="truncate text-sm leading-none">{engine.name}</span>
-          <RiCheckFill className={`ml-auto size-4 ${currentEngine === engine.id ? 'opacity-100 text-primary' : 'opacity-0'}`} />
+          <img alt="" className="pointer-events-none size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
+          <RiArrowRightSLine className="size-4 opacity-70" />
         </button>
-      ))}
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        side="bottom"
+        sideOffset={10}
+        className={`z-[520] w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] border p-2 ${surfaceClassName || 'border-border bg-popover text-popover-foreground shadow-lg'}`}
+      >
+        {engines.map((option) => (
+          <DropdownMenuItem
+            key={option.id}
+            className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
+              engine === option.id
+                ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
+                : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
+            }`}
+            onSelect={() => onSelect(option.id)}
+          >
+            <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
+            <span className="truncate text-sm leading-5">{option.name}</span>
+            <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-primary' : 'opacity-0'}`} />
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
