@@ -1,4 +1,4 @@
-import type { WebdavConfig } from "@/hooks/useWebdavSync";
+import type { WebdavConfig } from "@/types/webdav";
 import type { SyncConflictPolicy } from "@/sync/core";
 
 export type WebdavConflictPolicy = SyncConflictPolicy;

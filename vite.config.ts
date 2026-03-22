@@ -226,6 +226,10 @@ export default defineConfig(async () => {
         },
       },
       rollupOptions: {
+        input: {
+          index: path.resolve(__dirname, 'index.html'),
+          'ai-sandbox': path.resolve(__dirname, 'ai-sandbox.html'),
+        },
         output: {
           manualChunks: resolveManualChunk,
         },

@@ -12,7 +12,9 @@ import { ShortcutGuideDialog } from './ShortcutGuideDialog';
 import { ShortcutStyleSettingsDialog } from './ShortcutStyleSettingsDialog';
 import ShortcutModal from './ShortcutModal';
 import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
+import { BackupScopeDialog } from './BackupScopeDialog';
 import { WebdavConfigDialog } from './WebdavConfigDialog';
+import { CloudSyncConfigDialog } from './CloudSyncConfigDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import {
@@ -35,6 +37,8 @@ type ShortcutStyleSettingsDialogProps = ComponentProps<typeof ShortcutStyleSetti
 type AdminModalProps = ComponentProps<typeof AdminModal>;
 type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
+type CloudSyncConfigDialogProps = ComponentProps<typeof CloudSyncConfigDialog>;
+type BackupScopeDialogProps = ComponentProps<typeof BackupScopeDialog>;
 
 type SyncChoice = 'cloud' | 'local' | 'merge' | null;
 
@@ -91,9 +95,11 @@ interface AppDialogsProps {
   shortcutStyleSettingsDialogProps: ShortcutStyleSettingsDialogProps;
   adminModalProps: AdminModalProps;
   aboutModalProps: AboutLeafTabModalProps;
+  exportBackupDialogProps: BackupScopeDialogProps;
+  importBackupDialogProps: BackupScopeDialogProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
+  cloudSyncConfigDialogProps: CloudSyncConfigDialogProps;
   confirmSyncDialog: ConfirmSyncDialogProps;
-  webdavConfirmSyncDialog: ConfirmSyncDialogProps;
   importConfirmDialog: ImportConfirmDialogProps;
   disableConsentDialog: DisableConsentDialogProps;
 }
@@ -122,9 +128,11 @@ export function AppDialogs({
   shortcutStyleSettingsDialogProps,
   adminModalProps,
   aboutModalProps,
+  exportBackupDialogProps,
+  importBackupDialogProps,
   webdavConfigDialogProps,
+  cloudSyncConfigDialogProps,
   confirmSyncDialog,
-  webdavConfirmSyncDialog,
   importConfirmDialog,
   disableConsentDialog,
 }: AppDialogsProps) {
@@ -139,9 +147,11 @@ export function AppDialogs({
   const shouldMountShortcutStyleDialog = useKeepMountedAfterFirstOpen(shortcutStyleSettingsDialogProps.open);
   const shouldMountAdminModal = useKeepMountedAfterFirstOpen(adminModalProps.open);
   const shouldMountAboutModal = useKeepMountedAfterFirstOpen(aboutModalProps.open);
+  const shouldMountExportBackupDialog = useKeepMountedAfterFirstOpen(exportBackupDialogProps.open);
+  const shouldMountImportBackupDialog = useKeepMountedAfterFirstOpen(importBackupDialogProps.open);
   const shouldMountWebdavConfigDialog = useKeepMountedAfterFirstOpen(webdavConfigDialogProps.open);
+  const shouldMountCloudSyncConfigDialog = useKeepMountedAfterFirstOpen(cloudSyncConfigDialogProps.open);
   const shouldMountConfirmSyncDialog = useKeepMountedAfterFirstOpen(confirmSyncDialog.open);
-  const shouldMountWebdavConfirmSyncDialog = useKeepMountedAfterFirstOpen(webdavConfirmSyncDialog.open);
 
   return (
     <>
@@ -162,14 +172,16 @@ export function AppDialogs({
       {shouldMountShortcutStyleDialog ? <ShortcutStyleSettingsDialog {...shortcutStyleSettingsDialogProps} /> : null}
       {shouldMountAdminModal ? <AdminModal {...adminModalProps} /> : null}
       {shouldMountAboutModal ? <AboutLeafTabModal {...aboutModalProps} /> : null}
+      {shouldMountExportBackupDialog ? <BackupScopeDialog {...exportBackupDialogProps} /> : null}
+      {shouldMountImportBackupDialog ? <BackupScopeDialog {...importBackupDialogProps} /> : null}
       {shouldMountWebdavConfigDialog ? <WebdavConfigDialog {...webdavConfigDialogProps} /> : null}
+      {shouldMountCloudSyncConfigDialog ? <CloudSyncConfigDialog {...cloudSyncConfigDialogProps} /> : null}
 
       {shouldMountConfirmSyncDialog ? <SyncPreviewConfirmDialog {...confirmSyncDialog} /> : null}
-      {shouldMountWebdavConfirmSyncDialog ? <SyncPreviewConfirmDialog {...webdavConfirmSyncDialog} /> : null}
 
       <Dialog
         open={importConfirmDialog.open}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           importConfirmDialog.setOpen(open);
           if (!open) {
             importConfirmDialog.setPayload(null);
@@ -196,24 +208,27 @@ export function AppDialogs({
             </Button>
             <Button
               disabled={importConfirmDialog.busy || !importConfirmDialog.payload}
-              onClick={async () => {
-                if (!importConfirmDialog.payload) return;
+              onClick={() => {
+                const payload = importConfirmDialog.payload;
+                if (!payload) return;
                 importConfirmDialog.setBusy(true);
-                try {
-                  await importConfirmDialog.downloadCloudBackupEnvelope();
-                  const synced = await importConfirmDialog.applyUndoPayload(importConfirmDialog.payload);
-                  toast.success(t('settings.backup.importSuccess'));
-                  if (!synced) {
-                    toast.error(t('toast.cloudSyncFailed'));
+                importConfirmDialog.setOpen(false);
+                importConfirmDialog.setPayload(null);
+                void (async () => {
+                  try {
+                    await importConfirmDialog.downloadCloudBackupEnvelope();
+                    const synced = await importConfirmDialog.applyUndoPayload(payload);
+                    toast.success(t('settings.backup.importSuccess'));
+                    if (!synced) {
+                      toast.error(t('toast.cloudSyncFailed'));
+                    }
+                    importConfirmDialog.onSuccess();
+                  } catch {
+                    toast.error(t('settings.backup.importError'));
+                  } finally {
+                    importConfirmDialog.setBusy(false);
                   }
-                  importConfirmDialog.onSuccess();
-                  importConfirmDialog.setOpen(false);
-                  importConfirmDialog.setPayload(null);
-                } catch {
-                  toast.error(t('settings.backup.importError'));
-                } finally {
-                  importConfirmDialog.setBusy(false);
-                }
+                })();
               }}
             >
               {t('settings.backup.importConfirmAction')}

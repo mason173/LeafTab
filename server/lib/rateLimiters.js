@@ -8,12 +8,20 @@ const createRateLimiters = ({
   apiLimitMax,
   shortcutsLimitWindowMs,
   shortcutsLimitMax,
+  syncIpLimitWindowMs,
+  syncIpLimitMax,
   captchaLimitWindowMs,
   captchaLimitMax,
   updateLimitWindowMs,
   updateLimitMax,
   isAdminRequest,
 }) => {
+  const createJsonRateLimiter = (options) => rateLimit({
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...options,
+  });
+
   const authLimiter = rateLimit({
     windowMs: authLimitWindowMs,
     max: authLimitMax,
@@ -23,12 +31,10 @@ const createRateLimiters = ({
     skip: () => false,
   });
 
-  const apiLimiter = rateLimit({
+  const apiLimiter = createJsonRateLimiter({
     windowMs: apiLimitWindowMs,
     max: apiLimitMax,
     message: { error: 'Too many requests, please try again later.' },
-    standardHeaders: true,
-    legacyHeaders: false,
     keyGenerator: (req) => {
       const ipKey = ipKeyGenerator(req);
       if (req.user && req.user.id) return `${req.user.id}:${ipKey}`;
@@ -37,16 +43,22 @@ const createRateLimiters = ({
     skip: (req) => isAdminRequest(req),
   });
 
-  const shortcutsLimiter = rateLimit({
+  const syncUserLimiter = createJsonRateLimiter({
     windowMs: shortcutsLimitWindowMs,
     max: shortcutsLimitMax,
-    message: { error: 'Too many shortcut sync requests, please try again shortly.' },
-    standardHeaders: true,
-    legacyHeaders: false,
+    message: { error: 'Too many sync requests for this account, please try again shortly.' },
     keyGenerator: (req) => {
       if (req.user && req.user.id) return `shortcuts:${req.user.id}`;
       return ipKeyGenerator(req);
     },
+    skip: (req) => isAdminRequest(req),
+  });
+
+  const syncIpLimiter = createJsonRateLimiter({
+    windowMs: syncIpLimitWindowMs,
+    max: syncIpLimitMax,
+    message: { error: 'Too many sync requests from this network, please try again shortly.' },
+    keyGenerator: (req) => `sync-ip:${ipKeyGenerator(req)}`,
     skip: (req) => isAdminRequest(req),
   });
 
@@ -70,7 +82,9 @@ const createRateLimiters = ({
   return {
     authLimiter,
     apiLimiter,
-    shortcutsLimiter,
+    shortcutsLimiter: syncUserLimiter,
+    syncUserLimiter,
+    syncIpLimiter,
     captchaLimiter,
     updateLimiter,
   };
