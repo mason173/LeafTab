@@ -17,7 +17,15 @@ const initializeDatabase = (dbPath) => {
               shortcuts_updated_at DATETIME,
               shortcuts_version INTEGER DEFAULT 0,
               privacy_consent INTEGER DEFAULT 0,
-              privacy_consent_ts DATETIME
+              privacy_consent_ts DATETIME,
+              leaftab_sync_head TEXT,
+              leaftab_sync_commit TEXT,
+              leaftab_sync_snapshot TEXT,
+              leaftab_sync_updated_at DATETIME,
+              leaftab_sync_version INTEGER DEFAULT 0,
+              leaftab_sync_lock_device_id TEXT,
+              leaftab_sync_lock_acquired_at DATETIME,
+              leaftab_sync_lock_expires_at DATETIME
           )`, (createErr) => {
         if (createErr) {
           console.error('Error creating table', createErr.message);
@@ -80,6 +88,70 @@ const initializeDatabase = (dbPath) => {
               db.run('ALTER TABLE users ADD COLUMN privacy_consent_ts DATETIME', (alterErr) => {
                 if (alterErr) console.error('Error adding privacy_consent_ts column', alterErr);
                 else console.log('privacy_consent_ts column added successfully');
+              });
+            }
+            const hasLeafTabSyncHead = rows.some((row) => row.name === 'leaftab_sync_head');
+            if (!hasLeafTabSyncHead) {
+              console.log('Adding leaftab_sync_head column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_head TEXT', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_head column', alterErr);
+                else console.log('leaftab_sync_head column added successfully');
+              });
+            }
+            const hasLeafTabSyncCommit = rows.some((row) => row.name === 'leaftab_sync_commit');
+            if (!hasLeafTabSyncCommit) {
+              console.log('Adding leaftab_sync_commit column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_commit TEXT', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_commit column', alterErr);
+                else console.log('leaftab_sync_commit column added successfully');
+              });
+            }
+            const hasLeafTabSyncSnapshot = rows.some((row) => row.name === 'leaftab_sync_snapshot');
+            if (!hasLeafTabSyncSnapshot) {
+              console.log('Adding leaftab_sync_snapshot column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_snapshot TEXT', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_snapshot column', alterErr);
+                else console.log('leaftab_sync_snapshot column added successfully');
+              });
+            }
+            const hasLeafTabSyncUpdatedAt = rows.some((row) => row.name === 'leaftab_sync_updated_at');
+            if (!hasLeafTabSyncUpdatedAt) {
+              console.log('Adding leaftab_sync_updated_at column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_updated_at DATETIME', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_updated_at column', alterErr);
+                else console.log('leaftab_sync_updated_at column added successfully');
+              });
+            }
+            const hasLeafTabSyncVersion = rows.some((row) => row.name === 'leaftab_sync_version');
+            if (!hasLeafTabSyncVersion) {
+              console.log('Adding leaftab_sync_version column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_version INTEGER DEFAULT 0', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_version column', alterErr);
+                else console.log('leaftab_sync_version column added successfully');
+              });
+            }
+            const hasLeafTabSyncLockDeviceId = rows.some((row) => row.name === 'leaftab_sync_lock_device_id');
+            if (!hasLeafTabSyncLockDeviceId) {
+              console.log('Adding leaftab_sync_lock_device_id column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_lock_device_id TEXT', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_lock_device_id column', alterErr);
+                else console.log('leaftab_sync_lock_device_id column added successfully');
+              });
+            }
+            const hasLeafTabSyncLockAcquiredAt = rows.some((row) => row.name === 'leaftab_sync_lock_acquired_at');
+            if (!hasLeafTabSyncLockAcquiredAt) {
+              console.log('Adding leaftab_sync_lock_acquired_at column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_lock_acquired_at DATETIME', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_lock_acquired_at column', alterErr);
+                else console.log('leaftab_sync_lock_acquired_at column added successfully');
+              });
+            }
+            const hasLeafTabSyncLockExpiresAt = rows.some((row) => row.name === 'leaftab_sync_lock_expires_at');
+            if (!hasLeafTabSyncLockExpiresAt) {
+              console.log('Adding leaftab_sync_lock_expires_at column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN leaftab_sync_lock_expires_at DATETIME', (alterErr) => {
+                if (alterErr) console.error('Error adding leaftab_sync_lock_expires_at column', alterErr);
+                else console.log('leaftab_sync_lock_expires_at column added successfully');
               });
             }
           });

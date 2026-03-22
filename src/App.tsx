@@ -25,8 +25,9 @@ import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
 import { useRole } from './hooks/useRole';
 import { useResponsiveLayout } from './hooks/useResponsiveLayout';
-import { useWebdavSync, type ApplyImportedDataOptions, type WebdavConfig } from './hooks/useWebdavSync';
-import { useWebdavAutoSync } from './hooks/useWebdavAutoSync';
+import { useLeafTabSyncEngine } from './hooks/useLeafTabSyncEngine';
+import { useLeafTabWebdavAutoSync } from './hooks/useLeafTabWebdavAutoSync';
+import { useLongTaskIndicator } from './hooks/useLongTaskIndicator';
 import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
@@ -39,21 +40,28 @@ import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
 import { HomeMainContent } from './components/home/HomeMainContent';
 import type { SearchInteractionState } from './components/search/SearchExperience';
+import type { ScenarioShortcuts } from './types';
 import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
-import { readWebdavConfigFromStorage, WEBDAV_STORAGE_KEYS } from '@/utils/webdavConfig';
+import { LongTaskIndicator } from './components/LongTaskIndicator';
+import {
+  hasWebdavUrlConfiguredFromStorage,
+  isWebdavSyncEnabledFromStorage,
+  readWebdavConfigFromStorage,
+  WEBDAV_STORAGE_KEYS,
+} from '@/utils/webdavConfig';
 import { isWebdavAuthError } from '@/utils/webdavError';
+import {
+  CLOUD_SYNC_STORAGE_KEYS,
+  emitCloudSyncStatusChanged,
+  readCloudSyncConfigFromStorage,
+} from '@/utils/cloudSyncConfig';
 import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import {
-  buildBackupDataV4,
   clampShortcutsRowsPerColumn,
-  mergeWebdavPayload,
-  type WebdavPayload,
 } from './utils/backupData';
-import { areSyncPayloadsEqual } from '@/sync/core';
-import { createCloudSyncAdapter } from '@/hooks/cloudSync/cloudSyncAdapter';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
@@ -77,6 +85,101 @@ import {
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import { defaultScenarioModes } from '@/scenario/scenario';
+import {
+  buildLeafTabSyncSnapshot,
+  captureLeafTabBookmarkTreeDraft,
+  createLeafTabSyncEncryptionMetadata,
+  deriveLeafTabSyncKey,
+  LeafTabSyncCloudEncryptedTransport,
+  LeafTabSyncEncryptedRemoteStore,
+  LeafTabSyncEncryptionRequiredError,
+  LeafTabSyncWebdavEncryptedTransport,
+  LeafTabSyncWebdavStore,
+  parseLeafTabSyncKeyBytes,
+  serializeLeafTabSyncKeyBytes,
+  verifyLeafTabSyncKey,
+  createLeafTabLocalBackupBundle,
+  createLeafTabSyncBuildState,
+  filterLeafTabLocalBackupSnapshot,
+  formatLeafTabBookmarkSyncScopeLabel,
+  getLeafTabLocalBackupAvailableScope,
+  LEAFTAB_SYNC_SCHEMA_VERSION,
+  mergeLeafTabLocalBackupSnapshotWithBase,
+  restrictLeafTabLocalBackupImportScope,
+  type LeafTabLocalBackupExportScope,
+  type LeafTabLocalBackupImportData,
+  type LeafTabSyncEngineProgress,
+  type LeafTabSyncSnapshot,
+  normalizeLeafTabSyncSnapshot,
+  projectLeafTabSyncSnapshotToAppState,
+  readLeafTabBookmarkSyncScope,
+  replaceLeafTabBookmarkTree,
+} from '@/sync/leaftab';
+import type { WebdavConfig } from '@/types/webdav';
+import { flushQueuedLocalStorageWrites } from '@/utils/storageWriteQueue';
+import { LeafTabSyncDialog } from '@/components/sync/LeafTabSyncDialog';
+import { LeafTabSyncEncryptionDialog } from '@/components/sync/LeafTabSyncEncryptionDialog';
+import {
+  clearLeafTabSyncEncryptionConfig,
+  createLeafTabCloudEncryptionScopeKey,
+  createLeafTabWebdavEncryptionScopeKey,
+  emitLeafTabSyncEncryptionChanged,
+  hasLeafTabSyncEncryptionConfig,
+  readLeafTabSyncEncryptionConfig,
+  writeLeafTabSyncEncryptionConfig,
+  type LeafTabSyncEncryptionMetadata,
+} from '@/utils/leafTabSyncEncryption';
+
+type ApplyImportedDataOptions = {
+  closeSettings?: boolean;
+  successKey?: string;
+  silentSuccess?: boolean;
+};
+
+type ApplyImportedBackupOptions = ApplyImportedDataOptions & {
+  syncCloudIfSignedIn?: boolean;
+  onProgress?: (options: {
+    title?: string;
+    detail?: string;
+    progress?: number;
+  }) => void;
+  skipLongTaskIndicator?: boolean;
+};
+
+type LeafTabSyncEncryptionDialogState = {
+  open: boolean;
+  mode: 'setup' | 'unlock';
+  scopeKey: string;
+  scopeLabel: string;
+  providerLabel: string;
+  metadata: LeafTabSyncEncryptionMetadata | null;
+};
+
+const formatLeafTabSyncErrorMessage = (error: unknown) => {
+  if (error && typeof error === 'object') {
+    const status = Number((error as { status?: unknown }).status);
+    const operation = String((error as { operation?: unknown }).operation || '');
+    const relativePath = String((error as { relativePath?: unknown }).relativePath || '');
+    if (Number.isInteger(status) && status > 0 && operation) {
+      const actionLabel = operation === 'mkcol'
+        ? '创建目录'
+        : operation === 'upload'
+          ? '写入'
+          : operation === 'download'
+            ? '读取'
+            : operation === 'delete'
+              ? '删除'
+              : operation;
+
+      return relativePath
+        ? `WebDAV ${actionLabel}失败（${status}）：${relativePath}`
+        : `WebDAV ${actionLabel}失败（${status}）`;
+    }
+  }
+
+  return String((error as Error)?.message || 'LeafTab sync failed');
+};
 
 const getApiBase = () => {
   const envApi = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL)
@@ -92,18 +195,68 @@ const getApiBase = () => {
   return '/api';
 };
 
-const WEBDAV_CONFLICT_CACHE_KEY = 'leaftab_webdav_conflict_cache_v1';
+const LEAFTAB_SYNC_DEFAULT_ROOT_PATH = 'leaftab/v1';
+const LEAFTAB_CLOUD_SYNC_BASELINE_PREFIX = 'leaftab_cloud_sync_v1_baseline';
 const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const DARK_MODE_AUTO_DIM_OPACITY = 12;
 const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
 const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 4 * 60 * 1000;
-type WebdavConflictChoice = 'cloud' | 'local' | 'merge';
-type PersistedWebdavConflict = {
-  localPayload: WebdavPayload;
-  remotePayload: WebdavPayload;
-  choice: WebdavConflictChoice;
+const resolveLeafTabSyncRootPath = (config: WebdavConfig | null) => {
+  const rawPath = (config?.filePath || '').trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  if (!rawPath) return LEAFTAB_SYNC_DEFAULT_ROOT_PATH;
+
+  const segments = rawPath.split('/').filter(Boolean);
+  if (segments.length <= 1) return LEAFTAB_SYNC_DEFAULT_ROOT_PATH;
+  segments.pop();
+  return `${segments.join('/')}/${LEAFTAB_SYNC_DEFAULT_ROOT_PATH}`;
+};
+
+const createLeafTabSyncBaselineStorageKey = (rootPath: string) => {
+  const suffix = (rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH).replace(/[^a-zA-Z0-9_-]+/g, '_');
+  return `leaftab_sync_v1_baseline:${suffix}`;
+};
+
+const createLeafTabCloudBaselineStorageKey = (username: string | null) => {
+  const suffix = (username || 'anonymous').replace(/[^a-zA-Z0-9_-]+/g, '_');
+  return `${LEAFTAB_CLOUD_SYNC_BASELINE_PREFIX}:${suffix}`;
+};
+
+const getOrCreateLeafTabSyncDeviceId = (storageKey = 'leaftab_sync_v1_device_id') => {
+  try {
+    const existing = localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const created = `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(storageKey, created);
+    return created;
+  } catch {
+    return `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+};
+
+const readLeafTabSyncBaselineSnapshot = (storageKey: string): LeafTabSyncSnapshot | null => {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { snapshot?: LeafTabSyncSnapshot };
+    return normalizeLeafTabSyncSnapshot(parsed?.snapshot || null);
+  } catch {
+    return null;
+  }
+};
+
+const formatLeafTabSyncTimestamp = (value: string | null | undefined) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleString('zh-CN', {
+    hour12: false,
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 const clampMaskOpacity = (value: number): number => {
@@ -137,36 +290,6 @@ function readAccentColorSetting(): string {
     return 'green';
   }
 }
-
-const readPersistedWebdavConflict = (): PersistedWebdavConflict | null => {
-  try {
-    const raw = localStorage.getItem(WEBDAV_CONFLICT_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedWebdavConflict;
-    if (!parsed || typeof parsed !== 'object') return null;
-    if (!parsed.localPayload || !parsed.remotePayload) return null;
-    const choice: WebdavConflictChoice = parsed.choice === 'cloud' || parsed.choice === 'merge' ? parsed.choice : 'local';
-    return {
-      localPayload: parsed.localPayload,
-      remotePayload: parsed.remotePayload,
-      choice,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const persistWebdavConflict = (conflict: PersistedWebdavConflict) => {
-  try {
-    localStorage.setItem(WEBDAV_CONFLICT_CACHE_KEY, JSON.stringify(conflict));
-  } catch {}
-};
-
-const clearPersistedWebdavConflict = () => {
-  try {
-    localStorage.removeItem(WEBDAV_CONFLICT_CACHE_KEY);
-  } catch {}
-};
 
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
   if (target instanceof Element) return target;
@@ -267,17 +390,25 @@ export default function App() {
     };
   }, []);
 
-  const [confirmChoice, setConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>('merge');
-  const [webdavConfirmSyncOpen, setWebdavConfirmSyncOpen] = useState(false);
-  const [webdavConfirmChoice, setWebdavConfirmChoice] = useState<'cloud' | 'local' | 'merge' | null>(null);
-  const [webdavPendingLocalPayload, setWebdavPendingLocalPayload] = useState<WebdavPayload | null>(null);
-  const [webdavPendingRemotePayload, setWebdavPendingRemotePayload] = useState<WebdavPayload | null>(null);
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
-  const [importPendingPayload, setImportPendingPayload] = useState<any | null>(null);
+  const [importPendingPayload, setImportPendingPayload] = useState<LeafTabLocalBackupImportData | null>(null);
   const [importConfirmBusy, setImportConfirmBusy] = useState(false);
+  const [exportBackupDialogOpen, setExportBackupDialogOpen] = useState(false);
+  const [importBackupDialogOpen, setImportBackupDialogOpen] = useState(false);
+  const [importBackupScopePayload, setImportBackupScopePayload] = useState<LeafTabLocalBackupImportData | null>(null);
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
+  const [confirmDisableWebdavSyncOpen, setConfirmDisableWebdavSyncOpen] = useState(false);
+  const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
+  const [cloudSyncConfigOpen, setCloudSyncConfigOpen] = useState(false);
+  const [cloudSyncConfigVersion, setCloudSyncConfigVersion] = useState(0);
+  const [cloudLoginSyncPendingUser, setCloudLoginSyncPendingUser] = useState<string | null>(null);
+  const [syncEncryptionVersion, setSyncEncryptionVersion] = useState(0);
+  const [syncEncryptionDialogState, setSyncEncryptionDialogState] = useState<LeafTabSyncEncryptionDialogState | null>(null);
+  const [syncEncryptionDialogBusy, setSyncEncryptionDialogBusy] = useState(false);
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
+  const [leafTabSyncDialogOpen, setLeafTabSyncDialogOpen] = useState(false);
+  const [leafTabSyncConfigVersion, setLeafTabSyncConfigVersion] = useState(0);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
@@ -295,37 +426,36 @@ export default function App() {
   });
   const weatherDebugTapCountRef = useRef(0);
   const weatherDebugTapTimerRef = useRef<number | null>(null);
-  const webdavEnableConflictRef = useRef<{
-    config: WebdavConfig;
-    localPayload: WebdavPayload;
-    remotePayload: WebdavPayload;
-  } | null>(null);
-  const webdavConflictHydratedRef = useRef(false);
+  const syncEncryptionDialogResolverRef = useRef<((value: boolean) => void) | null>(null);
+  const openLeafTabSyncConfig = useCallback(() => {
+    setWebdavEnableAfterConfigSave(false);
+    setWebdavDialogOpen(true);
+  }, []);
   useEffect(() => () => {
     if (weatherDebugTapTimerRef.current) window.clearTimeout(weatherDebugTapTimerRef.current);
   }, []);
   useEffect(() => {
-    if (!webdavConflictHydratedRef.current) return;
-    if (webdavPendingLocalPayload && webdavPendingRemotePayload) {
-      const choice: WebdavConflictChoice = webdavConfirmChoice === 'cloud' || webdavConfirmChoice === 'merge' ? webdavConfirmChoice : 'merge';
-      persistWebdavConflict({
-        localPayload: webdavPendingLocalPayload,
-        remotePayload: webdavPendingRemotePayload,
-        choice,
-      });
-      return;
-    }
-    clearPersistedWebdavConflict();
-  }, [webdavConfirmChoice, webdavPendingLocalPayload, webdavPendingRemotePayload]);
-  useEffect(() => {
-    const restored = readPersistedWebdavConflict();
-    if (restored) {
-      setWebdavPendingLocalPayload(restored.localPayload);
-      setWebdavPendingRemotePayload(restored.remotePayload);
-      setWebdavConfirmChoice(restored.choice);
-      setWebdavConfirmSyncOpen(true);
-    }
-    webdavConflictHydratedRef.current = true;
+    const handleCloudConfigChanged = () => {
+      setCloudSyncConfigVersion((value) => value + 1);
+    };
+    const handleWebdavConfigChanged = () => {
+      setLeafTabSyncConfigVersion((value) => value + 1);
+    };
+    const handleSyncEncryptionChanged = () => {
+      setSyncEncryptionVersion((value) => value + 1);
+    };
+    window.addEventListener('cloud-sync-config-changed', handleCloudConfigChanged);
+    window.addEventListener('cloud-sync-status-changed', handleCloudConfigChanged);
+    window.addEventListener('webdav-config-changed', handleWebdavConfigChanged);
+    window.addEventListener('webdav-sync-status-changed', handleWebdavConfigChanged);
+    window.addEventListener('leaftab-sync-encryption-changed', handleSyncEncryptionChanged);
+    return () => {
+      window.removeEventListener('cloud-sync-config-changed', handleCloudConfigChanged);
+      window.removeEventListener('cloud-sync-status-changed', handleCloudConfigChanged);
+      window.removeEventListener('webdav-config-changed', handleWebdavConfigChanged);
+      window.removeEventListener('webdav-sync-status-changed', handleWebdavConfigChanged);
+      window.removeEventListener('leaftab-sync-encryption-changed', handleSyncEncryptionChanged);
+    };
   }, []);
   // Initialize Hooks
   const { 
@@ -372,10 +502,52 @@ export default function App() {
     : timeAnimationMode === 'off'
       ? false
       : !visualEffectsPolicy.disableSecondTickMotion;
+  const {
+    task: longTaskIndicator,
+    startTask: startLongTaskIndicator,
+    updateTask: updateLongTaskIndicator,
+    finishTask: finishLongTaskIndicator,
+    clearTask: clearLongTaskIndicator,
+  } = useLongTaskIndicator();
   const [isDynamicWallpaperIdleFrozen, setIsDynamicWallpaperIdleFrozen] = useState(false);
   const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
+  const leafTabSyncDeviceId = useMemo(() => getOrCreateLeafTabSyncDeviceId(), []);
+
+  const runLongTask = useCallback(async (
+    initial: {
+      title: string;
+      detail?: string;
+      progress?: number;
+    },
+    runner: (helpers: {
+      update: (options: {
+        title?: string;
+        detail?: string;
+        progress?: number;
+      }) => void;
+    }) => Promise<any>,
+  ) => {
+    const taskId = startLongTaskIndicator(initial);
+    try {
+      const result = await runner({
+        update: (options) => {
+          updateLongTaskIndicator(taskId, options);
+        },
+      });
+      finishLongTaskIndicator(taskId);
+      return result;
+    } catch (error) {
+      clearLongTaskIndicator(taskId);
+      throw error;
+    }
+  }, [
+    clearLongTaskIndicator,
+    finishLongTaskIndicator,
+    startLongTaskIndicator,
+    updateLongTaskIndicator,
+  ]);
 
   useEffect(() => {
     let idleTimer: number | null = null;
@@ -467,14 +639,8 @@ export default function App() {
     scenarioModes, setScenarioModes,
     selectedScenarioId, setSelectedScenarioId,
     scenarioShortcuts, setScenarioShortcuts,
-    cloudSyncInitialized, setCloudSyncInitialized,
     userRole, setUserRole,
     totalShortcuts,
-    conflictModalOpen, setConflictModalOpen,
-    pendingLocalPayload,
-    pendingCloudPayload,
-    cloudConflictPending,
-    triggerCloudSyncNow,
     contextMenu, setContextMenu,
     shortcutEditOpen, setShortcutEditOpen,
     shortcutModalMode, setShortcutModalMode,
@@ -491,8 +657,6 @@ export default function App() {
     handleShortcutOpen, handleShortcutContextMenu, handleGridContextMenu,
     handleSaveShortcutEdit, handleConfirmDeleteShortcut, handleConfirmDeleteShortcuts,
     contextMenuRef,
-    resolveWithCloud, resolveWithLocal, resolveWithMerge,
-    applyUndoPayload,
     scenarioModeOpen, setScenarioModeOpen,
     scenarioCreateOpen, setScenarioCreateOpen,
     scenarioEditOpen, setScenarioEditOpen,
@@ -503,6 +667,9 @@ export default function App() {
     openInNewTab,
     API_URL,
     handleLogout,
+    {
+      legacyCloudRuntimeEnabled: false,
+    },
   );
 
   const [shortcutMultiSelectMode, setShortcutMultiSelectMode] = useState(false);
@@ -647,50 +814,54 @@ export default function App() {
     clearShortcutMultiSelect();
   }, [clearShortcutMultiSelect, selectedScenarioId]);
 
-  useEffect(() => {
-    if (conflictModalOpen && !confirmChoice) {
-      setConfirmChoice('merge');
-    }
-  }, [confirmChoice, conflictModalOpen]);
-
-  const downloadBackupPayload = useCallback((payload: any, source: 'cloud' | 'local') => {
-    try {
-      const envelope = buildBackupDataV4({
-        scenarioModes: payload.scenarioModes,
-        selectedScenarioId: payload.selectedScenarioId,
-        scenarioShortcuts: payload.scenarioShortcuts,
-      });
-      const now = new Date();
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `leaftab_backup_${source}_${ts}.leaftab`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {}
-  }, []);
-
   const downloadCloudBackupEnvelope = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const response = await fetch(`${API_URL}/user/shortcuts`, {
+      const bookmarkSyncScope = readLeafTabBookmarkSyncScope();
+
+      const response = await fetch(`${API_URL}/user/leaftab-sync/state`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) return;
-      const data = await response.json();
-      const shortcutsRaw = data?.shortcuts;
-      if (!shortcutsRaw) return;
-      const shortcutsStr = typeof shortcutsRaw === 'string' ? shortcutsRaw : JSON.stringify(shortcutsRaw);
+      let backupContent = '';
+
+      if (response.ok) {
+        const data = await response.json();
+        const remoteSnapshot = normalizeLeafTabSyncSnapshot(data?.snapshot || null);
+        if (remoteSnapshot) {
+          const projected = projectLeafTabSyncSnapshotToAppState(remoteSnapshot);
+          const projectedScenarioModes = projected.scenarioModes.length > 0
+            ? projected.scenarioModes
+            : defaultScenarioModes;
+          const backupBundle = createLeafTabLocalBackupBundle({
+            snapshot: remoteSnapshot,
+            selectedScenarioId: projectedScenarioModes.some((mode) => mode.id === selectedScenarioId)
+              ? selectedScenarioId
+              : projectedScenarioModes[0]?.id || '',
+            bookmarkScope: bookmarkSyncScope,
+            exportScope: { shortcuts: true, bookmarks: true },
+            rootPath: 'cloud',
+            appVersion: globalThis.chrome?.runtime?.getManifest?.().version || '',
+          });
+          backupContent = JSON.stringify(backupBundle, null, 2);
+        }
+      }
+
+      if (!backupContent) {
+        const legacyResponse = await fetch(`${API_URL}/user/shortcuts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!legacyResponse.ok) return;
+        const legacyData = await legacyResponse.json();
+        const shortcutsRaw = legacyData?.shortcuts;
+        if (!shortcutsRaw) return;
+        backupContent = typeof shortcutsRaw === 'string' ? shortcutsRaw : JSON.stringify(shortcutsRaw);
+      }
+
       const now = new Date();
       const pad = (n: number) => String(n).padStart(2, '0');
       const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      const blob = new Blob([shortcutsStr], { type: 'application/json' });
+      const blob = new Blob([backupContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -701,7 +872,7 @@ export default function App() {
       URL.revokeObjectURL(url);
       toast.success(t('settings.backup.cloudBackupDownloaded'));
     } catch {}
-  }, [API_URL, t]);
+  }, [API_URL, selectedScenarioId, t]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
@@ -897,6 +1068,7 @@ export default function App() {
 
   const onLoginSuccess = useCallback((username: string, role?: string | null, consent?: boolean | null) => {
     handleLoginSuccess(username);
+    setCloudLoginSyncPendingUser(username);
     if (typeof consent !== 'undefined') {
       setPrivacyConsent(consent as any);
       try { localStorage.setItem('privacy_consent', JSON.stringify(consent)); } catch {}
@@ -929,114 +1101,45 @@ export default function App() {
     setShortcutStyleSettingsOpen(true);
   }, []);
 
-  const buildBackupData = useCallback(() => {
-    return buildBackupDataV4({ scenarioModes, selectedScenarioId, scenarioShortcuts });
-  }, [scenarioModes, selectedScenarioId, scenarioShortcuts]);
-
-  const applyImportedData = useCallback((data: any, options?: ApplyImportedDataOptions) => {
-    const closeSettings = options?.closeSettings ?? true;
-    const successKey = options?.successKey || 'settings.backup.importSuccess';
-    const silentSuccess = options?.silentSuccess ?? false;
-    try {
-      const snapshot = {
-        scenarioModes: Array.isArray(data.scenarioModes) ? data.scenarioModes : scenarioModes,
-        selectedScenarioId: typeof data.selectedScenarioId === 'string' ? data.selectedScenarioId : selectedScenarioId,
-        scenarioShortcuts: data.scenarioShortcuts,
-      };
-      if (snapshot.scenarioModes) setScenarioModes(snapshot.scenarioModes);
-      if (snapshot.selectedScenarioId) setSelectedScenarioId(snapshot.selectedScenarioId);
-      if (snapshot.scenarioShortcuts) {
-        setScenarioShortcuts(snapshot.scenarioShortcuts);
-        persistLocalProfileSnapshot(snapshot);
-        if (user) {
-          const payload = {
-            version: 3 as const,
-            scenarioModes: snapshot.scenarioModes,
-            selectedScenarioId: snapshot.selectedScenarioId,
-            scenarioShortcuts: snapshot.scenarioShortcuts,
-          };
-          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
-          localStorage.setItem('leaf_tab_sync_pending', 'true');
-          clearLocalNeedsCloudReconcile();
-        } else {
-          const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
-          if (!hasStoredCloudSession) {
-            markLocalNeedsCloudReconcile('signed_out_edit');
-          }
-        }
-      } else {
-        throw new Error('invalid_scenario_shortcuts');
-      }
-      if (!user) localDirtyRef.current = true;
-      if (!silentSuccess) {
-        toast.success(t(successKey));
-      }
-      if (closeSettings) setSettingsOpen(false);
-    } catch (error) {
-      toast.error(t('settings.backup.importError'));
-      throw error;
-    }
-  }, [user, t, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, setSettingsOpen]);
-
-  const handleExportData = useCallback(() => {
-    const backupData = buildBackupData();
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `leaftab_backup_${new Date().toISOString().split('T')[0]}.leaftab`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(t('settings.backup.exportSuccess'));
-  }, [buildBackupData, t]);
-
-  const handleImportData = useCallback((data: any) => {
-    if (user) {
-      setImportPendingPayload(data);
-      setImportConfirmOpen(true);
-      return;
-    }
-    applyImportedData(data, { closeSettings: true });
-  }, [applyImportedData, user]);
-
-  const applyImportedDataWithoutClose = useCallback((data: any) => {
-    applyImportedData(data, { closeSettings: false });
-  }, [applyImportedData]);
-
-  const {
-    uploadToWebdav: handleWebdavUpload,
-    uploadDataToWebdav,
-    fetchWebdavData,
-  } = useWebdavSync({
-    buildBackupData,
-    applyImportedData: applyImportedDataWithoutClose,
-  });
-
-  const buildLocalWebdavPayload = useCallback((): WebdavPayload => {
-    return {
-      scenarioModes,
-      selectedScenarioId,
-      scenarioShortcuts,
-    };
-  }, [scenarioShortcuts, scenarioModes, selectedScenarioId]);
-
   const emitWebdavSyncStatusChanged = useCallback(() => {
     window.dispatchEvent(new Event('webdav-config-changed'));
     window.dispatchEvent(new CustomEvent('webdav-sync-status-changed'));
+  }, []);
+
+  const markCloudSyncSuccess = useCallback(() => {
+    localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt, new Date().toISOString());
+    localStorage.removeItem('cloud_last_error_at');
+    localStorage.removeItem('cloud_last_error_message');
+    emitCloudSyncStatusChanged();
+  }, []);
+
+  const markCloudSyncError = useCallback((error: unknown) => {
+    localStorage.setItem('cloud_last_error_at', new Date().toISOString());
+    localStorage.setItem('cloud_last_error_message', String((error as Error)?.message || error || 'unknown'));
+    emitCloudSyncStatusChanged();
+  }, []);
+
+  const setCloudNextSyncAt = useCallback((nextMs: number | null) => {
+    if (nextMs && Number.isFinite(nextMs)) {
+      localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt, new Date(nextMs).toISOString());
+    } else {
+      localStorage.removeItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt);
+    }
+    emitCloudSyncStatusChanged();
   }, []);
 
   const markWebdavSyncSuccess = useCallback(() => {
     localStorage.setItem('webdav_last_sync_at', new Date().toISOString());
     localStorage.removeItem('webdav_last_error_at');
     localStorage.removeItem('webdav_last_error_message');
-  }, []);
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
 
   const markWebdavSyncError = useCallback((error: unknown) => {
     localStorage.setItem('webdav_last_error_at', new Date().toISOString());
     localStorage.setItem('webdav_last_error_message', String((error as any)?.message || 'unknown'));
-  }, []);
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
 
   const setWebdavSyncEnabledInStorage = useCallback((enabled: boolean) => {
     localStorage.setItem(WEBDAV_STORAGE_KEYS.syncEnabled, String(enabled));
@@ -1049,47 +1152,1061 @@ export default function App() {
     emitWebdavSyncStatusChanged();
   }, [emitWebdavSyncStatusChanged]);
 
-  const clearWebdavEnableConflictState = useCallback((options?: { closeDialog?: boolean }) => {
-    webdavEnableConflictRef.current = null;
-    setWebdavConfirmChoice(null);
-    setWebdavPendingLocalPayload(null);
-    setWebdavPendingRemotePayload(null);
-    clearPersistedWebdavConflict();
-    if (options?.closeDialog !== false) {
-      setWebdavConfirmSyncOpen(false);
+  const leafTabSyncWebdavConfig = useMemo(() => {
+    const config = readWebdavConfigFromStorage({ allowDisabled: true });
+    if (!config?.url) return null;
+    return {
+      url: config.url,
+      username: config.username,
+      password: config.password,
+      rootPath: resolveLeafTabSyncRootPath(config),
+      requestPermission: true,
+    };
+  }, [leafTabSyncConfigVersion]);
+  const leafTabSyncBaselineStorageKey = useMemo(() => {
+    return createLeafTabSyncBaselineStorageKey(
+      leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+    );
+  }, [leafTabSyncWebdavConfig?.rootPath]);
+  const leafTabWebdavEncryptionScopeKey = useMemo(() => {
+    return createLeafTabWebdavEncryptionScopeKey(
+      leafTabSyncWebdavConfig?.url || '',
+      leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+    );
+  }, [leafTabSyncWebdavConfig?.rootPath, leafTabSyncWebdavConfig?.url]);
+  const leafTabWebdavEncryptionReady = useMemo(
+    () => hasLeafTabSyncEncryptionConfig(leafTabWebdavEncryptionScopeKey),
+    [leafTabWebdavEncryptionScopeKey, syncEncryptionVersion],
+  );
+  const leafTabWebdavBaseStore = useMemo(() => {
+    if (!leafTabSyncWebdavConfig?.url) return null;
+    return new LeafTabSyncWebdavStore({
+      url: leafTabSyncWebdavConfig.url,
+      username: leafTabSyncWebdavConfig.username,
+      password: leafTabSyncWebdavConfig.password,
+      rootPath: leafTabSyncWebdavConfig.rootPath,
+      requestPermission: true,
+    });
+  }, [
+    leafTabSyncWebdavConfig?.password,
+    leafTabSyncWebdavConfig?.rootPath,
+    leafTabSyncWebdavConfig?.url,
+    leafTabSyncWebdavConfig?.username,
+  ]);
+  const leafTabWebdavEncryptedTransport = useMemo(() => {
+    if (!leafTabWebdavBaseStore || !leafTabWebdavEncryptionScopeKey) return null;
+    return new LeafTabSyncWebdavEncryptedTransport({
+      webdavStore: leafTabWebdavBaseStore,
+      rootPath: leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+    });
+  }, [
+    leafTabSyncWebdavConfig?.rootPath,
+    leafTabWebdavBaseStore,
+    leafTabWebdavEncryptionScopeKey,
+  ]);
+  const leafTabSyncRemoteStore = useMemo(() => {
+    if (!leafTabWebdavEncryptedTransport || !leafTabWebdavEncryptionScopeKey) return null;
+    return new LeafTabSyncEncryptedRemoteStore({
+      transport: leafTabWebdavEncryptedTransport,
+      scopeKey: leafTabWebdavEncryptionScopeKey,
+      scopeLabel: 'WebDAV 同步',
+      rootPath: leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+    });
+  }, [
+    leafTabSyncWebdavConfig?.rootPath,
+    leafTabWebdavEncryptedTransport,
+    leafTabWebdavEncryptionScopeKey,
+  ]);
+  const cloudSyncToken = useMemo(() => (
+    user ? (localStorage.getItem('token') || '') : ''
+  ), [user]);
+  const cloudSyncBaselineStorageKey = useMemo(
+    () => createLeafTabCloudBaselineStorageKey(user),
+    [user],
+  );
+  const cloudSyncEncryptionScopeKey = useMemo(
+    () => createLeafTabCloudEncryptionScopeKey(user),
+    [user],
+  );
+  const cloudSyncEncryptionReady = useMemo(
+    () => hasLeafTabSyncEncryptionConfig(cloudSyncEncryptionScopeKey),
+    [cloudSyncEncryptionScopeKey, syncEncryptionVersion],
+  );
+  const cloudSyncEncryptedTransport = useMemo(() => {
+    if (!user || !cloudSyncToken) return null;
+    return new LeafTabSyncCloudEncryptedTransport({
+      apiUrl: API_URL,
+      token: cloudSyncToken,
+    });
+  }, [API_URL, cloudSyncToken, user]);
+  const cloudSyncRemoteStore = useMemo(() => {
+    if (!cloudSyncEncryptedTransport || !cloudSyncEncryptionScopeKey) return null;
+    return new LeafTabSyncEncryptedRemoteStore({
+      transport: cloudSyncEncryptedTransport,
+      scopeKey: cloudSyncEncryptionScopeKey,
+      scopeLabel: '云同步',
+      rootPath: LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+    });
+  }, [cloudSyncEncryptedTransport, cloudSyncEncryptionScopeKey]);
+
+  const resolveSyncEncryptionDialog = useCallback((confirmed: boolean) => {
+    const resolver = syncEncryptionDialogResolverRef.current;
+    syncEncryptionDialogResolverRef.current = null;
+    setSyncEncryptionDialogState((current) => (current ? { ...current, open: false } : null));
+    if (resolver) {
+      resolver(confirmed);
     }
   }, []);
 
-  const executeWebdavEnableChoice = useCallback(async (
-    mode: 'merge' | 'prefer_remote' | 'prefer_local',
-    pendingOverride?: { localPayload: WebdavPayload; remotePayload: WebdavPayload },
-  ) => {
-    const pending = webdavEnableConflictRef.current;
-    const config = pending?.config || readWebdavConfigFromStorage({ allowDisabled: true });
-    const localPayload = pendingOverride?.localPayload || pending?.localPayload || webdavPendingLocalPayload;
-    const remotePayload = pendingOverride?.remotePayload || pending?.remotePayload || webdavPendingRemotePayload;
-    if (!config || !localPayload || !remotePayload) return;
+  const requestSyncEncryptionDialog = useCallback((params: {
+    mode: 'setup' | 'unlock';
+    scopeKey: string;
+    scopeLabel: string;
+    providerLabel: string;
+    metadata?: LeafTabSyncEncryptionMetadata | null;
+  }) => {
+    return new Promise<boolean>((resolve) => {
+      syncEncryptionDialogResolverRef.current = resolve;
+      setSettingsOpen(false);
+      setLeafTabSyncDialogOpen(false);
+      setWebdavDialogOpen(false);
+      setCloudSyncConfigOpen(false);
+      setSyncEncryptionDialogState({
+        open: true,
+        mode: params.mode,
+        scopeKey: params.scopeKey,
+        scopeLabel: params.scopeLabel,
+        providerLabel: params.providerLabel,
+        metadata: params.metadata || null,
+      });
+    });
+  }, []);
+
+  const handleSyncEncryptionDialogOpenChange = useCallback((open: boolean) => {
+    if (open) return;
+    resolveSyncEncryptionDialog(false);
+  }, [resolveSyncEncryptionDialog]);
+
+  const handleSubmitSyncEncryptionDialog = useCallback(async (payload: { passphrase: string }) => {
+    const request = syncEncryptionDialogState;
+    if (!request) return;
+    setSyncEncryptionDialogBusy(true);
     try {
-      if (mode === 'prefer_remote') {
-        applyImportedDataWithoutClose(remotePayload, { closeSettings: false, silentSuccess: true });
-      } else if (mode === 'merge') {
-        const mergedPayload = mergeWebdavPayload(localPayload, remotePayload);
-        applyImportedDataWithoutClose(mergedPayload, { closeSettings: false, silentSuccess: true });
-        await uploadDataToWebdav(config, mergedPayload);
+      let metadata = request.metadata;
+      let keyBytes: Uint8Array;
+      if (request.mode === 'setup') {
+        const created = await createLeafTabSyncEncryptionMetadata(payload.passphrase);
+        metadata = created.metadata;
+        keyBytes = created.keyBytes;
       } else {
-        await uploadDataToWebdav(config, localPayload);
+        if (!metadata) {
+          throw new Error('缺少同步加密元数据');
+        }
+        keyBytes = await deriveLeafTabSyncKey(payload.passphrase, metadata);
+        const valid = await verifyLeafTabSyncKey(keyBytes, metadata);
+        if (!valid) {
+          throw new Error('同步口令不正确');
+        }
       }
-      markWebdavSyncSuccess();
-      setWebdavSyncEnabledInStorage(true);
-      toast.success(t('settings.backup.webdav.syncSuccess'));
+      if (!metadata) {
+        throw new Error('同步加密配置无效');
+      }
+      writeLeafTabSyncEncryptionConfig(
+        request.scopeKey,
+        metadata,
+        serializeLeafTabSyncKeyBytes(keyBytes),
+      );
+      emitLeafTabSyncEncryptionChanged();
+      toast.success(request.mode === 'setup' ? '同步口令已保存' : '同步数据已解锁');
+      resolveSyncEncryptionDialog(true);
     } catch (error) {
-      markWebdavSyncError(error);
-      emitWebdavSyncStatusChanged();
-      toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t('settings.backup.webdav.syncError'));
+      toast.error(String((error as Error)?.message || '保存同步口令失败'));
     } finally {
-      clearWebdavEnableConflictState();
+      setSyncEncryptionDialogBusy(false);
     }
-  }, [applyImportedDataWithoutClose, clearWebdavEnableConflictState, emitWebdavSyncStatusChanged, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, webdavPendingLocalPayload, webdavPendingRemotePayload]);
+  }, [resolveSyncEncryptionDialog, syncEncryptionDialogState]);
+
+  const ensureSyncEncryptionAccess = useCallback(async (params: {
+    providerLabel: string;
+    scopeKey: string;
+    transport: { readEncryptionState: () => Promise<{ metadata: LeafTabSyncEncryptionMetadata | null }> } | null;
+  }) => {
+    if (!params.scopeKey) return false;
+    const localConfig = readLeafTabSyncEncryptionConfig(params.scopeKey);
+    if (localConfig?.cachedKey && localConfig?.metadata) {
+      const keyBytes = parseLeafTabSyncKeyBytes(localConfig.cachedKey);
+      const valid = await verifyLeafTabSyncKey(keyBytes, localConfig.metadata).catch(() => false);
+      if (valid) return true;
+      clearLeafTabSyncEncryptionConfig(params.scopeKey);
+      emitLeafTabSyncEncryptionChanged();
+    }
+
+    let remoteMetadata: LeafTabSyncEncryptionMetadata | null = null;
+    if (params.transport) {
+      try {
+        const remoteState = await params.transport.readEncryptionState();
+        remoteMetadata = remoteState.metadata || null;
+      } catch {}
+    }
+
+    return requestSyncEncryptionDialog({
+      mode: remoteMetadata ? 'unlock' : 'setup',
+      scopeKey: params.scopeKey,
+      scopeLabel: params.providerLabel,
+      providerLabel: params.providerLabel,
+      metadata: remoteMetadata,
+    });
+  }, [requestSyncEncryptionDialog]);
+  const handleManageWebdavSyncEncryption = useCallback(async () => {
+    setLeafTabSyncDialogOpen(false);
+    setWebdavDialogOpen(false);
+    return ensureSyncEncryptionAccess({
+      providerLabel: 'WebDAV 同步',
+      scopeKey: leafTabWebdavEncryptionScopeKey,
+      transport: leafTabWebdavEncryptedTransport,
+    });
+  }, [
+    ensureSyncEncryptionAccess,
+    leafTabWebdavEncryptedTransport,
+    leafTabWebdavEncryptionScopeKey,
+  ]);
+  const handleManageCloudSyncEncryption = useCallback(async () => {
+    setLeafTabSyncDialogOpen(false);
+    setCloudSyncConfigOpen(false);
+    return ensureSyncEncryptionAccess({
+      providerLabel: '云同步',
+      scopeKey: cloudSyncEncryptionScopeKey,
+      transport: cloudSyncEncryptedTransport,
+    });
+  }, [
+    cloudSyncEncryptedTransport,
+    cloudSyncEncryptionScopeKey,
+    ensureSyncEncryptionAccess,
+  ]);
+
+  const leafTabBookmarkSyncScope = useMemo(() => readLeafTabBookmarkSyncScope(), []);
+  const leafTabBookmarkSyncScopeLabel = useMemo(
+    () => formatLeafTabBookmarkSyncScopeLabel(leafTabBookmarkSyncScope),
+    [leafTabBookmarkSyncScope],
+  );
+
+  const buildLeafTabSyncSnapshotFromCurrentState = useCallback(async (options?: {
+    requestBookmarkPermission?: boolean;
+    baselineStorageKey?: string;
+  }) => {
+    flushQueuedLocalStorageWrites();
+    const generatedAt = new Date().toISOString();
+    const baselineSnapshot = readLeafTabSyncBaselineSnapshot(
+      options?.baselineStorageKey || leafTabSyncBaselineStorageKey,
+    );
+    const bookmarkTree = await captureLeafTabBookmarkTreeDraft({
+      scope: leafTabBookmarkSyncScope,
+      requestPermission: options?.requestBookmarkPermission === true,
+    });
+    const state = createLeafTabSyncBuildState({
+      previousSnapshot: baselineSnapshot,
+      scenarioModes,
+      scenarioShortcuts,
+      bookmarkTree,
+      deviceId: leafTabSyncDeviceId,
+      generatedAt,
+    });
+    return buildLeafTabSyncSnapshot({
+      scenarioModes,
+      scenarioShortcuts,
+      bookmarkTree,
+      deviceId: leafTabSyncDeviceId,
+      generatedAt,
+      state,
+    });
+  }, [leafTabBookmarkSyncScope, leafTabSyncBaselineStorageKey, leafTabSyncDeviceId, scenarioModes, scenarioShortcuts]);
+
+  const buildLocalLeafTabSyncSnapshot = useCallback(async () => {
+    return buildLeafTabSyncSnapshotFromCurrentState({
+      baselineStorageKey: leafTabSyncBaselineStorageKey,
+    });
+  }, [buildLeafTabSyncSnapshotFromCurrentState, leafTabSyncBaselineStorageKey]);
+
+  const buildCloudLeafTabSyncSnapshot = useCallback(async () => {
+    return buildLeafTabSyncSnapshotFromCurrentState({
+      baselineStorageKey: cloudSyncBaselineStorageKey,
+    });
+  }, [buildLeafTabSyncSnapshotFromCurrentState, cloudSyncBaselineStorageKey]);
+
+  const createEmptyLeafTabSyncSnapshot = useCallback((): LeafTabSyncSnapshot => {
+    const emptyTimestamp = '1970-01-01T00:00:00.000Z';
+    return {
+      meta: {
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        deviceId: leafTabSyncDeviceId,
+        generatedAt: emptyTimestamp,
+      },
+      scenarios: {},
+      shortcuts: {},
+      bookmarkFolders: {},
+      bookmarkItems: {},
+      scenarioOrder: {
+        type: 'scenario-order',
+        ids: [],
+        updatedAt: emptyTimestamp,
+        updatedBy: leafTabSyncDeviceId,
+        revision: 1,
+      },
+      shortcutOrders: {},
+      bookmarkOrders: {
+        __root__: {
+          type: 'bookmark-order',
+          parentId: null,
+          ids: [],
+          updatedAt: emptyTimestamp,
+          updatedBy: leafTabSyncDeviceId,
+          revision: 1,
+        },
+      },
+      tombstones: {},
+    };
+  }, [leafTabSyncDeviceId]);
+
+  const applyLeafTabSyncSnapshotToLocalState = useCallback(async (
+    snapshot: LeafTabSyncSnapshot,
+    options?: {
+      preferredSelectedScenarioId?: string | null;
+    },
+  ) => {
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+    const nextScenarioModes = projected.scenarioModes.length > 0
+      ? projected.scenarioModes
+      : defaultScenarioModes;
+    const nextScenarioShortcuts = nextScenarioModes.reduce<ScenarioShortcuts>((acc, mode) => {
+      acc[mode.id] = projected.scenarioShortcuts[mode.id] || [];
+      return acc;
+    }, {});
+    const preferredSelectedScenarioId = options?.preferredSelectedScenarioId || '';
+    const nextSelectedScenarioId = nextScenarioModes.some((mode) => mode.id === preferredSelectedScenarioId)
+      ? preferredSelectedScenarioId
+      : nextScenarioModes.some((mode) => mode.id === selectedScenarioId)
+        ? selectedScenarioId
+        : nextScenarioModes[0]?.id || '';
+
+    setScenarioModes(nextScenarioModes);
+    setSelectedScenarioId(nextSelectedScenarioId);
+    setScenarioShortcuts(nextScenarioShortcuts);
+    await replaceLeafTabBookmarkTree({
+      scope: leafTabBookmarkSyncScope,
+      folderLookup: Object.fromEntries(
+        Object.values(projected.bookmarkFolders).map((folder) => [
+          folder.id,
+          {
+            title: folder.title,
+            parentId: folder.parentId,
+          },
+        ]),
+      ),
+      itemLookup: Object.fromEntries(
+        Object.values(projected.bookmarkItems).map((item) => [
+          item.id,
+          {
+            title: item.title,
+            parentId: item.parentId,
+            url: item.url,
+          },
+        ]),
+      ),
+      orderIdsByParent: Object.fromEntries(
+        Object.entries(projected.bookmarkOrders).map(([key, order]) => [key, order.ids.slice()]),
+      ),
+      requestPermission: false,
+    });
+
+    const nextProfileSnapshot = {
+      scenarioModes: nextScenarioModes,
+      selectedScenarioId: nextSelectedScenarioId,
+      scenarioShortcuts: nextScenarioShortcuts,
+    };
+    persistLocalProfileSnapshot(nextProfileSnapshot);
+
+    if (user) {
+      const payload = {
+        version: 3 as const,
+        ...nextProfileSnapshot,
+      };
+      localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
+      localStorage.setItem('leaf_tab_sync_pending', 'true');
+      clearLocalNeedsCloudReconcile();
+    } else {
+      const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
+      if (!hasStoredCloudSession) {
+        markLocalNeedsCloudReconcile('signed_out_edit');
+      }
+      localDirtyRef.current = true;
+    }
+  }, [
+    localDirtyRef,
+    selectedScenarioId,
+    setScenarioModes,
+    setScenarioShortcuts,
+    setSelectedScenarioId,
+    user,
+    leafTabBookmarkSyncScope,
+  ]);
+
+  const applyLeafTabSyncSnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
+    await applyLeafTabSyncSnapshotToLocalState(snapshot);
+  }, [applyLeafTabSyncSnapshotToLocalState]);
+  const cloudSyncRunnerRef = useRef<(options?: {
+    silentSuccess?: boolean;
+    allowWhenDisabled?: boolean;
+    requestBookmarkPermission?: boolean;
+  }) => Promise<unknown>>(async () => null);
+
+  const applyImportedLegacyBackup = useCallback(async (
+    payload: {
+      scenarioModes: any[];
+      selectedScenarioId: string;
+      scenarioShortcuts: ScenarioShortcuts;
+    },
+    options?: ApplyImportedBackupOptions,
+  ) => {
+    const closeSettings = options?.closeSettings ?? true;
+    const successKey = options?.successKey || 'settings.backup.importSuccess';
+    const silentSuccess = options?.silentSuccess ?? false;
+    const performImport = async (
+      reportProgress?: (options: {
+        title?: string;
+        detail?: string;
+        progress?: number;
+      }) => void,
+    ) => {
+      reportProgress?.({
+        title: '正在整理快捷方式数据',
+        detail: '正在校验导入文件内容',
+        progress: 16,
+      });
+      if (!Array.isArray(payload.scenarioModes) || !payload.scenarioShortcuts || typeof payload.scenarioShortcuts !== 'object') {
+        throw new Error('invalid_legacy_backup_payload');
+      }
+
+      const nextSnapshot = {
+        scenarioModes: payload.scenarioModes,
+        selectedScenarioId: typeof payload.selectedScenarioId === 'string'
+          ? payload.selectedScenarioId
+          : payload.scenarioModes[0]?.id || '',
+        scenarioShortcuts: payload.scenarioShortcuts,
+      };
+
+      reportProgress?.({
+        title: '正在写入本地快捷方式',
+        detail: '正在把导入数据应用到当前设备',
+        progress: 52,
+      });
+      setScenarioModes(nextSnapshot.scenarioModes);
+      setSelectedScenarioId(nextSnapshot.selectedScenarioId);
+      setScenarioShortcuts(nextSnapshot.scenarioShortcuts);
+      persistLocalProfileSnapshot(nextSnapshot);
+
+      if (user) {
+        localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify({
+          version: 3 as const,
+          ...nextSnapshot,
+        }));
+        localStorage.setItem('leaf_tab_sync_pending', 'true');
+        clearLocalNeedsCloudReconcile();
+      } else {
+        const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
+        if (!hasStoredCloudSession) {
+          markLocalNeedsCloudReconcile('signed_out_edit');
+        }
+        localDirtyRef.current = true;
+      }
+
+      let synced = true;
+      if (user && options?.syncCloudIfSignedIn !== false) {
+        reportProgress?.({
+          title: '正在同步导入结果',
+          detail: '正在把最新快捷方式写回账号云端',
+          progress: 82,
+        });
+        synced = Boolean(await cloudSyncRunnerRef.current({
+          silentSuccess: true,
+          allowWhenDisabled: true,
+        }));
+      }
+
+      if (!silentSuccess) {
+        toast.success(t(successKey));
+      }
+      if (closeSettings) setSettingsOpen(false);
+      return synced;
+    };
+
+    try {
+      if (options?.skipLongTaskIndicator) {
+        return await performImport(options?.onProgress);
+      }
+      return await runLongTask({
+        title: '正在导入快捷方式',
+        detail: '正在写入本地数据，请稍候',
+        progress: 8,
+      }, async ({ update }) => {
+        return performImport(update);
+      });
+    } catch (error) {
+      toast.error(t('settings.backup.importError'));
+      throw error;
+    }
+  }, [
+    localDirtyRef,
+    runLongTask,
+    setScenarioModes,
+    setScenarioShortcuts,
+    setSelectedScenarioId,
+    setSettingsOpen,
+    t,
+    user,
+  ]);
+
+  const applyImportedLeafTabBackup = useCallback(async (
+    data: LeafTabLocalBackupImportData,
+    options?: ApplyImportedBackupOptions,
+  ) => {
+    if (data.kind === 'legacy-backup') {
+      return applyImportedLegacyBackup(data.payload, options);
+    }
+
+    const closeSettings = options?.closeSettings ?? true;
+    const successKey = options?.successKey || 'settings.backup.importSuccess';
+    const silentSuccess = options?.silentSuccess ?? false;
+    const performImport = async (
+      reportProgress?: (options: {
+        title?: string;
+        detail?: string;
+        progress?: number;
+      }) => void,
+    ) => {
+      reportProgress?.({
+        title: '正在读取当前本地数据',
+        detail: '正在准备合并导入内容',
+        progress: 18,
+      });
+      const baseSnapshot = await buildLeafTabSyncSnapshotFromCurrentState({
+        requestBookmarkPermission: false,
+      });
+      reportProgress?.({
+        title: '正在合并导入数据',
+        detail: '正在对齐快捷方式与书签的最新状态',
+        progress: 40,
+      });
+      const mergedSnapshot = mergeLeafTabLocalBackupSnapshotWithBase({
+        baseSnapshot,
+        importedSnapshot: data.snapshot,
+        exportScope: data.exportScope,
+      });
+      const mergedProjected = projectLeafTabSyncSnapshotToAppState(mergedSnapshot);
+      const nextScenarioModes = mergedProjected.scenarioModes.length > 0
+        ? mergedProjected.scenarioModes
+        : defaultScenarioModes;
+      const nextSelectedScenarioId = nextScenarioModes.some((mode) => mode.id === data.selectedScenarioId)
+        ? data.selectedScenarioId
+        : nextScenarioModes[0]?.id || '';
+
+      reportProgress?.({
+        title: '正在写入本地数据',
+        detail: '正在把导入结果应用到当前设备',
+        progress: 68,
+      });
+      await applyLeafTabSyncSnapshotToLocalState(mergedSnapshot, {
+        preferredSelectedScenarioId: nextSelectedScenarioId,
+      });
+
+      let synced = true;
+      if (user && options?.syncCloudIfSignedIn !== false) {
+        reportProgress?.({
+          title: '正在同步导入结果',
+          detail: '正在把最新数据写回账号云端',
+          progress: 86,
+        });
+        synced = Boolean(await cloudSyncRunnerRef.current({
+          silentSuccess: true,
+          allowWhenDisabled: true,
+        }));
+      }
+
+      if (!silentSuccess) {
+        toast.success(t(successKey));
+      }
+      if (closeSettings) setSettingsOpen(false);
+      return synced;
+    };
+
+    try {
+      if (options?.skipLongTaskIndicator) {
+        return await performImport(options?.onProgress);
+      }
+      return await runLongTask({
+        title: '正在导入数据',
+        detail: '正在处理快捷方式和书签内容',
+        progress: 8,
+      }, async ({ update }) => {
+        return performImport(update);
+      });
+    } catch (error) {
+      toast.error(t('settings.backup.importError'));
+      throw error;
+    }
+  }, [
+    applyImportedLegacyBackup,
+    applyLeafTabSyncSnapshotToLocalState,
+    buildLeafTabSyncSnapshotFromCurrentState,
+    runLongTask,
+    setSettingsOpen,
+    t,
+    user,
+  ]);
+
+  const executeExportData = useCallback(async (exportScope?: LeafTabLocalBackupExportScope) => {
+    await runLongTask({
+      title: '正在导出数据',
+      detail: '正在准备快捷方式与书签内容',
+      progress: 8,
+    }, async ({ update }) => {
+      update({
+        title: '正在读取本地数据',
+        detail: '正在收集当前设备上的快捷方式与书签',
+        progress: 24,
+      });
+      const snapshot = await buildLeafTabSyncSnapshotFromCurrentState({
+        requestBookmarkPermission: true,
+      });
+      update({
+        title: '正在整理导出内容',
+        detail: '正在组装 LeafTab 备份文件',
+        progress: 58,
+      });
+      const bundle = createLeafTabLocalBackupBundle({
+        snapshot: filterLeafTabLocalBackupSnapshot(snapshot, exportScope),
+        selectedScenarioId: exportScope?.shortcuts === false ? '' : selectedScenarioId,
+        bookmarkScope: leafTabBookmarkSyncScope,
+        exportScope,
+        rootPath: leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
+        appVersion: globalThis.chrome?.runtime?.getManifest?.().version || '',
+      });
+      update({
+        title: '正在生成导出文件',
+        detail: '马上就可以保存到本地',
+        progress: 84,
+      });
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `leaftab_backup_${new Date().toISOString().split('T')[0]}.leaftab`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+    toast.success(t('settings.backup.exportSuccess'));
+  }, [
+    buildLeafTabSyncSnapshotFromCurrentState,
+    leafTabBookmarkSyncScope,
+    leafTabSyncWebdavConfig?.rootPath,
+    runLongTask,
+    selectedScenarioId,
+    t,
+  ]);
+
+  const handleExportData = useCallback(async () => {
+    setExportBackupDialogOpen(true);
+  }, []);
+
+  const proceedImportData = useCallback(async (data: LeafTabLocalBackupImportData) => {
+    if (user) {
+      setImportPendingPayload(data);
+      setImportConfirmOpen(true);
+      return;
+    }
+    await applyImportedLeafTabBackup(data, {
+      closeSettings: true,
+      syncCloudIfSignedIn: false,
+    });
+  }, [applyImportedLeafTabBackup, user]);
+
+  const handleImportData = useCallback(async (data: LeafTabLocalBackupImportData) => {
+    const availableScope = getLeafTabLocalBackupAvailableScope(data);
+    const hasBothSections = availableScope.shortcuts && availableScope.bookmarks;
+    if (hasBothSections) {
+      setSettingsOpen(false);
+      setImportBackupScopePayload(data);
+      setImportBackupDialogOpen(true);
+      return;
+    }
+    setSettingsOpen(false);
+    await proceedImportData(data);
+  }, [proceedImportData, setSettingsOpen]);
+
+  const handleImportConfirmApply = useCallback(async (payload: LeafTabLocalBackupImportData) => {
+    return runLongTask({
+      title: '正在备份云端当前数据',
+      detail: '导入前会先保存一份当前账号云端副本',
+      progress: 6,
+    }, async ({ update }) => {
+      update({
+        title: '正在读取云端当前数据',
+        detail: '正在生成导入前备份，避免误覆盖',
+        progress: 18,
+      });
+      await downloadCloudBackupEnvelope();
+      update({
+        title: '正在导入备份数据',
+        detail: '正在把你选择的数据写入当前设备',
+        progress: 34,
+      });
+      return applyImportedLeafTabBackup(payload, {
+        closeSettings: false,
+        silentSuccess: true,
+        skipLongTaskIndicator: true,
+        onProgress: update,
+      });
+    });
+  }, [applyImportedLeafTabBackup, downloadCloudBackupEnvelope, runLongTask]);
+
+  const {
+    analysis: leafTabSyncAnalysis,
+    hasConfig: leafTabSyncHasConfig,
+    isReady: leafTabSyncReady,
+    lastResult: leafTabSyncLastResult,
+    refreshAnalysis: refreshLeafTabSyncAnalysis,
+    runSync: runLeafTabSync,
+    syncState: leafTabSyncState,
+  } = useLeafTabSyncEngine({
+    deviceId: leafTabSyncDeviceId,
+    webdav: null,
+    remoteStore: leafTabSyncRemoteStore,
+    legacyCompat: null,
+    buildLocalSnapshot: buildLocalLeafTabSyncSnapshot,
+    applyLocalSnapshot: applyLeafTabSyncSnapshot,
+    createEmptySnapshot: createEmptyLeafTabSyncSnapshot,
+    baselineStorageKey: leafTabSyncBaselineStorageKey,
+  });
+
+  const {
+    analysis: cloudLeafTabSyncAnalysis,
+    hasConfig: cloudLeafTabSyncHasConfig,
+    lastResult: cloudLeafTabSyncLastResult,
+    refreshAnalysis: refreshCloudLeafTabSyncAnalysis,
+    runSync: runCloudLeafTabSync,
+    syncState: cloudLeafTabSyncState,
+  } = useLeafTabSyncEngine({
+    enabled: Boolean(user && cloudSyncToken),
+    deviceId: leafTabSyncDeviceId,
+    webdav: null,
+    remoteStore: cloudSyncRemoteStore,
+    legacyCompat: null,
+    buildLocalSnapshot: buildCloudLeafTabSyncSnapshot,
+    applyLocalSnapshot: applyLeafTabSyncSnapshot,
+    createEmptySnapshot: createEmptyLeafTabSyncSnapshot,
+    baselineStorageKey: cloudSyncBaselineStorageKey,
+  });
+
+  const leafTabWebdavConfigured = useMemo(
+    () => hasWebdavUrlConfiguredFromStorage(),
+    [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt, leafTabSyncState.lastErrorAt],
+  );
+  const leafTabWebdavEnabled = useMemo(
+    () => isWebdavSyncEnabledFromStorage(),
+    [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt, leafTabSyncState.lastErrorAt],
+  );
+  const leafTabWebdavProfileLabel = useMemo(() => {
+    const config = readWebdavConfigFromStorage({ allowDisabled: true });
+    if (!config?.url) return '';
+    try {
+      return new URL(config.url).host;
+    } catch {
+      return config.url;
+    }
+  }, [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt, leafTabSyncState.lastErrorAt]);
+  const leafTabWebdavLastSyncLabel = useMemo(
+    () => formatLeafTabSyncTimestamp(localStorage.getItem('webdav_last_sync_at')),
+    [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt],
+  );
+  const leafTabWebdavNextSyncLabel = useMemo(
+    () => formatLeafTabSyncTimestamp(localStorage.getItem(WEBDAV_STORAGE_KEYS.nextSyncAt)),
+    [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt, leafTabSyncState.lastErrorAt],
+  );
+  const cloudSyncConfig = useMemo(
+    () => readCloudSyncConfigFromStorage(),
+    [cloudLeafTabSyncState.lastErrorAt, cloudLeafTabSyncState.lastSuccessAt, cloudSyncConfigVersion, user],
+  );
+  const cloudSyncEnabled = useMemo(
+    () => Boolean(user) && cloudSyncConfig.enabled,
+    [cloudSyncConfig.enabled, user],
+  );
+  const cloudLastSyncLabel = useMemo(
+    () => formatLeafTabSyncTimestamp(
+      localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.lastSyncAt)
+        || localStorage.getItem('cloud_shortcuts_updated_at'),
+    ),
+    [cloudLeafTabSyncState.lastSuccessAt, cloudSyncConfigVersion],
+  );
+  const cloudNextSyncLabel = useMemo(
+    () => formatLeafTabSyncTimestamp(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt)),
+    [cloudLeafTabSyncState.lastErrorAt, cloudLeafTabSyncState.lastSuccessAt, cloudSyncConfigVersion],
+  );
+  const webdavEncryptionLabel = useMemo(() => {
+    if (!leafTabWebdavConfigured) return '配置后设置';
+    return leafTabWebdavEncryptionReady ? '当前设备已解锁' : '需要设置口令';
+  }, [leafTabWebdavConfigured, leafTabWebdavEncryptionReady]);
+  const cloudEncryptionLabel = useMemo(() => {
+    if (!user) return '登录后设置';
+    return cloudSyncEncryptionReady ? '当前设备已解锁' : '需要输入口令';
+  }, [cloudSyncEncryptionReady, user]);
+  const resolveSyncEncryptionError = useCallback(async (
+    providerLabel: string,
+    error: unknown,
+  ) => {
+    if (!(error instanceof LeafTabSyncEncryptionRequiredError)) {
+      return false;
+    }
+    return requestSyncEncryptionDialog({
+      mode: error.mode,
+      scopeKey: error.scopeKey,
+      scopeLabel: error.scopeLabel,
+      providerLabel,
+      metadata: error.metadata,
+    });
+  }, [requestSyncEncryptionDialog]);
+  const handleLeafTabSync = useCallback(async (
+    options?: {
+      enableAfterSuccess?: boolean;
+      silentSuccess?: boolean;
+      requestBookmarkPermission?: boolean;
+      showProgressIndicator?: boolean;
+      progressTaskId?: string | null;
+      progressDetail?: string;
+      onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+      allowEncryptionPrompt?: boolean;
+      _retriedAfterUnlock?: boolean;
+    },
+  ) => {
+    if (!leafTabSyncHasConfig) {
+      openLeafTabSyncConfig();
+      return null;
+    }
+    const progressTaskId = options?.progressTaskId
+      ?? (options?.showProgressIndicator === true
+      ? startLongTaskIndicator({
+          title: '正在准备同步数据',
+          detail: '正在读取本地与云端状态',
+          progress: 6,
+        })
+      : null);
+    const shouldManageProgressIndicator = !options?.progressTaskId && options?.showProgressIndicator === true;
+    const updateSyncIndicator = (progress: LeafTabSyncEngineProgress) => {
+      options?.onProgress?.(progress);
+      if (!progressTaskId) return;
+      updateLongTaskIndicator(progressTaskId, {
+        title: progress.message,
+        detail: options?.progressDetail || '正在后台同步，你可以继续进行其他操作',
+        progress: progress.progress,
+      });
+    };
+    try {
+      if (options?.requestBookmarkPermission) {
+        options?.onProgress?.({
+          stage: 'reading-state',
+          message: '正在检查书签权限',
+          progress: 10,
+        });
+        if (progressTaskId) {
+          updateLongTaskIndicator(progressTaskId, {
+            title: '正在检查书签权限',
+            detail: options?.progressDetail || '需要确认当前浏览器允许访问书签数据',
+            progress: 10,
+          });
+        }
+        await ensureExtensionPermission('bookmarks', { requestIfNeeded: true }).catch(() => false);
+      }
+
+      const result = await runLeafTabSync('auto', {
+        onProgress: updateSyncIndicator,
+      });
+      if (!result) return null;
+
+      markWebdavSyncSuccess();
+      if (options?.enableAfterSuccess) {
+        setWebdavSyncEnabledInStorage(true);
+      }
+      if (shouldManageProgressIndicator && progressTaskId) {
+        finishLongTaskIndicator(progressTaskId, {
+          title: '同步完成',
+          detail: result.summaryText || '本地与云端已经处理完成',
+        });
+      }
+      const successText = result.summaryText || '同步完成';
+      if (!options?.silentSuccess) {
+        toast.success(successText);
+      }
+      await refreshLeafTabSyncAnalysis();
+      return result;
+    } catch (error) {
+      if (options?.allowEncryptionPrompt !== false && !options?._retriedAfterUnlock) {
+        const resolved = await resolveSyncEncryptionError('WebDAV 同步', error);
+        if (resolved) {
+          return handleLeafTabSync({
+            ...options,
+            _retriedAfterUnlock: true,
+          });
+        }
+      }
+      if (shouldManageProgressIndicator && progressTaskId) {
+        clearLongTaskIndicator(progressTaskId);
+      }
+      markWebdavSyncError(error);
+      toast.error(
+        isWebdavAuthError(error)
+          ? t('settings.backup.webdav.authFailed')
+          : formatLeafTabSyncErrorMessage(error),
+      );
+      return null;
+    }
+  }, [
+    leafTabSyncHasConfig,
+    clearLongTaskIndicator,
+    finishLongTaskIndicator,
+    markWebdavSyncError,
+    markWebdavSyncSuccess,
+    openLeafTabSyncConfig,
+    refreshLeafTabSyncAnalysis,
+    runLeafTabSync,
+    setWebdavSyncEnabledInStorage,
+    t,
+    updateLongTaskIndicator,
+    startLongTaskIndicator,
+    resolveSyncEncryptionError,
+  ]);
+
+  const handleCloudLeafTabSync = useCallback(async (
+    options?: {
+      silentSuccess?: boolean;
+      requestBookmarkPermission?: boolean;
+      showProgressIndicator?: boolean;
+      progressTaskId?: string | null;
+      progressDetail?: string;
+      onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+      allowWhenDisabled?: boolean;
+      allowEncryptionPrompt?: boolean;
+      _retriedAfterUnlock?: boolean;
+    },
+  ) => {
+    if (!user) {
+      const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
+      if (webdavEnabled) {
+        toast.error(t('settings.backup.webdav.disableWebdavBeforeCloudLogin'));
+      } else {
+        setIsAuthModalOpen(true);
+      }
+      return null;
+    }
+    if (!cloudLeafTabSyncHasConfig) {
+      return null;
+    }
+    if (!options?.allowWhenDisabled && !cloudSyncEnabled) {
+      setLeafTabSyncDialogOpen(false);
+      setCloudSyncConfigOpen(true);
+      return null;
+    }
+
+    const progressTaskId = options?.progressTaskId
+      ?? (options?.showProgressIndicator === true
+      ? startLongTaskIndicator({
+          title: '正在准备云同步',
+          detail: '正在读取本地与账号云端状态',
+          progress: 6,
+        })
+      : null);
+    const shouldManageProgressIndicator = !options?.progressTaskId && options?.showProgressIndicator === true;
+
+    const updateSyncIndicator = (progress: LeafTabSyncEngineProgress) => {
+      options?.onProgress?.(progress);
+      if (!progressTaskId) return;
+      updateLongTaskIndicator(progressTaskId, {
+        title: progress.message,
+        detail: options?.progressDetail || '正在后台同步，你可以继续进行其他操作',
+        progress: progress.progress,
+      });
+    };
+
+    try {
+      if (options?.requestBookmarkPermission) {
+        options?.onProgress?.({
+          stage: 'reading-state',
+          message: '正在检查书签权限',
+          progress: 10,
+        });
+        if (progressTaskId) {
+          updateLongTaskIndicator(progressTaskId, {
+            title: '正在检查书签权限',
+            detail: options?.progressDetail || '需要确认当前浏览器允许访问书签数据',
+            progress: 10,
+          });
+        }
+        await ensureExtensionPermission('bookmarks', { requestIfNeeded: true }).catch(() => false);
+      }
+
+      const result = await runCloudLeafTabSync('auto', {
+        onProgress: updateSyncIndicator,
+      });
+      if (!result) return null;
+
+      markCloudSyncSuccess();
+      if (shouldManageProgressIndicator && progressTaskId) {
+        finishLongTaskIndicator(progressTaskId, {
+          title: '同步完成',
+          detail: result.summaryText || '本地与账号云端已经处理完成',
+        });
+      }
+      if (!options?.silentSuccess) {
+        toast.success(result.summaryText || '同步完成');
+      }
+      await refreshCloudLeafTabSyncAnalysis();
+      return result;
+    } catch (error) {
+      if (options?.allowEncryptionPrompt !== false && !options?._retriedAfterUnlock) {
+        const resolved = await resolveSyncEncryptionError('云同步', error);
+        if (resolved) {
+          return handleCloudLeafTabSync({
+            ...options,
+            _retriedAfterUnlock: true,
+          });
+        }
+      }
+      if (shouldManageProgressIndicator && progressTaskId) {
+        clearLongTaskIndicator(progressTaskId);
+      }
+      markCloudSyncError(error);
+      toast.error(String((error as Error)?.message || '云同步失败'));
+      return null;
+    }
+  }, [
+    clearLongTaskIndicator,
+    cloudLeafTabSyncHasConfig,
+    cloudSyncEnabled,
+    finishLongTaskIndicator,
+    markCloudSyncError,
+    markCloudSyncSuccess,
+    refreshCloudLeafTabSyncAnalysis,
+    runCloudLeafTabSync,
+    setIsAuthModalOpen,
+    startLongTaskIndicator,
+    t,
+    updateLongTaskIndicator,
+    user,
+    resolveSyncEncryptionError,
+  ]);
+
+  useEffect(() => {
+    cloudSyncRunnerRef.current = handleCloudLeafTabSync;
+  }, [handleCloudLeafTabSync]);
 
   const handleEnableWebdavSync = useCallback(async () => {
     if (user) {
@@ -1101,191 +2218,320 @@ export default function App() {
       toast.error(t('settings.backup.webdav.urlRequired'));
       return;
     }
-    try {
-      const remotePayload = await fetchWebdavData(config);
-      const localPayload = buildLocalWebdavPayload();
-      if (!remotePayload) {
-        await uploadDataToWebdav(config, localPayload);
-        markWebdavSyncSuccess();
-        setWebdavSyncEnabledInStorage(true);
-        toast.success(t('settings.backup.webdav.syncSuccess'));
-        return;
-      }
-      if (areSyncPayloadsEqual(localPayload, remotePayload)) {
-        markWebdavSyncSuccess();
-        setWebdavSyncEnabledInStorage(true);
-        toast.success(t('settings.backup.webdav.syncSuccess'));
-        return;
-      }
-      webdavEnableConflictRef.current = { config, localPayload, remotePayload };
-      setWebdavPendingLocalPayload(localPayload);
-      setWebdavPendingRemotePayload(remotePayload);
-      setWebdavConfirmChoice('merge');
-      setWebdavConfirmSyncOpen(true);
-    } catch (error) {
-      markWebdavSyncError(error);
-      emitWebdavSyncStatusChanged();
-      toast.error(isWebdavAuthError(error) ? t('settings.backup.webdav.authFailed') : t('settings.backup.webdav.syncError'));
+    const encryptionReady = await ensureSyncEncryptionAccess({
+      providerLabel: 'WebDAV 同步',
+      scopeKey: leafTabWebdavEncryptionScopeKey,
+      transport: leafTabWebdavEncryptedTransport,
+    });
+    if (!encryptionReady) {
+      return;
     }
-  }, [buildLocalWebdavPayload, emitWebdavSyncStatusChanged, fetchWebdavData, markWebdavSyncError, markWebdavSyncSuccess, setWebdavSyncEnabledInStorage, t, uploadDataToWebdav, user]);
+    await handleLeafTabSync({
+      enableAfterSuccess: true,
+      requestBookmarkPermission: true,
+      showProgressIndicator: true,
+    });
+  }, [
+    ensureSyncEncryptionAccess,
+    handleLeafTabSync,
+    leafTabWebdavEncryptedTransport,
+    leafTabWebdavEncryptionScopeKey,
+    t,
+    user,
+  ]);
 
   const handleDisableWebdavSync = useCallback(async (options?: { clearLocal?: boolean }) => {
     const currentlyEnabled = (localStorage.getItem(WEBDAV_STORAGE_KEYS.syncEnabled) ?? 'false') === 'true';
     if (!currentlyEnabled) return;
-    let forceSyncFailed = false;
-    const config = readWebdavConfigFromStorage();
-    if (config) {
-      try {
-        await handleWebdavUpload(config);
-        markWebdavSyncSuccess();
-      } catch (error) {
-        forceSyncFailed = true;
-        markWebdavSyncError(error);
-      }
-    }
-    setWebdavSyncEnabledInStorage(false);
-    if (options?.clearLocal === true) {
-      await resetLocalShortcutsByRole(localStorage.getItem('role'));
-    }
-    if (forceSyncFailed) {
-      toast.error(t('settings.backup.webdav.disableFinalSyncFailed'));
-    }
-    toast.success(t('settings.backup.webdav.syncDisabled'));
-  }, [handleWebdavUpload, markWebdavSyncError, markWebdavSyncSuccess, resetLocalShortcutsByRole, setWebdavSyncEnabledInStorage, t]);
+    await runLongTask(
+      {
+        title: '正在停用同步',
+        detail: '正在处理最后一次同步和关闭操作',
+        progress: 8,
+      },
+      async ({ update }) => {
+        let forceSyncFailed = false;
+
+        if (leafTabSyncHasConfig) {
+          update({
+            title: '正在同步最后的变更',
+            progress: 18,
+          });
+          try {
+            const result = await handleLeafTabSync({
+              silentSuccess: true,
+              progressDetail: '正在处理最后一次同步和关闭操作',
+              onProgress: (progress) => {
+                update({
+                  title: progress.message,
+                  progress: progress.progress,
+                });
+              },
+            });
+            if (!result) {
+              forceSyncFailed = true;
+            }
+          } catch (error) {
+            forceSyncFailed = true;
+          }
+        }
+
+        update({
+          title: '正在关闭同步',
+          progress: 92,
+        });
+        setWebdavSyncEnabledInStorage(false);
+
+        if (options?.clearLocal === true) {
+          update({
+            title: '正在清理本地数据',
+            progress: 96,
+          });
+          await resetLocalShortcutsByRole(localStorage.getItem('role'));
+        }
+
+        update({
+          title: '同步已停用',
+          progress: 100,
+        });
+
+        if (forceSyncFailed) {
+          toast.error(t('settings.backup.webdav.disableFinalSyncFailed'));
+        }
+        toast.success(t('settings.backup.webdav.syncDisabled'));
+      },
+    );
+  }, [
+    handleLeafTabSync,
+    leafTabSyncHasConfig,
+    resetLocalShortcutsByRole,
+    runLongTask,
+    setWebdavSyncEnabledInStorage,
+    t,
+  ]);
   const handleOpenWebdavConfig = useCallback((options?: { enableAfterSave?: boolean }) => {
-    setWebdavEnableAfterConfigSave(Boolean(options?.enableAfterSave));
+    if (cloudSyncEnabled) {
+      toast.error('当前已启用云同步，请先退出云同步后再配置 WebDAV 同步');
+      return false;
+    }
+    const shouldEnableAfterSave = options?.enableAfterSave ?? !leafTabWebdavConfigured;
+    setWebdavEnableAfterConfigSave(Boolean(shouldEnableAfterSave));
     setWebdavDialogOpen(true);
+    return true;
+  }, [cloudSyncEnabled, leafTabWebdavConfigured]);
+  const handleOpenWebdavConfigFromSyncCenter = useCallback((options?: { enableAfterSave?: boolean }) => {
+    const opened = handleOpenWebdavConfig(options);
+    if (!opened) {
+      return;
+    }
+    setLeafTabSyncDialogOpen(false);
+  }, [handleOpenWebdavConfig]);
+  const handleLeafTabSyncDialogOpenChange = useCallback((open: boolean) => {
+    setLeafTabSyncDialogOpen(open);
   }, []);
+  const handleLeafTabAutoSync = useCallback(async () => {
+    const result = await handleLeafTabSync({
+      silentSuccess: true,
+    });
+    return Boolean(result);
+  }, [handleLeafTabSync]);
 
-  const handleConfirmCloudSyncChoice = useCallback(() => {
-    const chosen = confirmChoice;
-    if (!chosen) {
-      return;
-    }
-    if (chosen === 'merge') {
-      if (pendingLocalPayload) downloadBackupPayload(pendingLocalPayload, 'local');
-      if (pendingCloudPayload) downloadBackupPayload(pendingCloudPayload, 'cloud');
-      toast.success(t('syncUndo.backupToastBoth'));
-      resolveWithMerge();
-      return;
-    }
-    const backupTarget = chosen === 'cloud' ? 'local' : 'cloud';
-    const backupPayload = chosen === 'cloud' ? pendingLocalPayload : pendingCloudPayload;
-    if (backupPayload) {
-      downloadBackupPayload(backupPayload, backupTarget);
-      toast.success(t('syncUndo.backupToast', { backup: t(backupTarget === 'cloud' ? 'sync.cloud' : 'sync.local') }));
-    }
-    if (chosen === 'cloud') resolveWithCloud();
-    else resolveWithLocal();
-  }, [confirmChoice, downloadBackupPayload, pendingCloudPayload, pendingLocalPayload, resolveWithCloud, resolveWithLocal, resolveWithMerge, t]);
-
-  const handleConfirmWebdavSyncChoice = useCallback(async () => {
-    const chosen = webdavConfirmChoice;
-    const pending = webdavEnableConflictRef.current;
-    const localPayload = pending?.localPayload || webdavPendingLocalPayload;
-    const remotePayload = pending?.remotePayload || webdavPendingRemotePayload;
-    if (!chosen || !localPayload || !remotePayload) {
-      setWebdavConfirmSyncOpen(false);
-      return;
-    }
-    if (chosen === 'cloud') {
-      downloadBackupPayload(localPayload, 'local');
-      toast.success(t('syncUndo.backupToast', { backup: t('sync.local') }));
-      await executeWebdavEnableChoice('prefer_remote', { localPayload, remotePayload });
-      return;
-    }
-    if (chosen === 'local') {
-      downloadBackupPayload(remotePayload, 'cloud');
-      toast.success(t('syncUndo.backupToast', { backup: t('sync.cloud') }));
-      await executeWebdavEnableChoice('prefer_local', { localPayload, remotePayload });
-      return;
-    }
-    downloadBackupPayload(localPayload, 'local');
-    downloadBackupPayload(remotePayload, 'cloud');
-    toast.success(t('syncUndo.backupToastBoth'));
-    await executeWebdavEnableChoice('merge', { localPayload, remotePayload });
-  }, [downloadBackupPayload, executeWebdavEnableChoice, t, webdavConfirmChoice, webdavPendingLocalPayload, webdavPendingRemotePayload]);
-
-  const handleWebdavConfirmDialogOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      setWebdavConfirmSyncOpen(true);
-      return;
-    }
-    // For first-conflict onboarding, user must choose one option before leaving this dialog.
-    setWebdavConfirmSyncOpen(true);
-  }, []);
-
-  const handleCancelWebdavConfirmDialog = useCallback(() => {
-    // Keep dialog open: conflict decision is required.
-    setWebdavConfirmSyncOpen(true);
-  }, []);
-
-  const webdavConflictPending = Boolean(webdavPendingLocalPayload && webdavPendingRemotePayload);
-
-  const { resolveWebdavConflict } = useWebdavAutoSync({
-    conflictModalOpen: conflictModalOpen || cloudConflictPending || webdavConflictPending,
+  useLeafTabWebdavAutoSync({
+    conflictModalOpen: false,
     isDragging,
-    buildLocalPayload: buildLocalWebdavPayload,
-    uploadToWebdav: handleWebdavUpload,
-    uploadDataToWebdav,
-    fetchWebdavData,
+    syncing: leafTabSyncState.status === 'syncing',
+    onSync: handleLeafTabAutoSync,
   });
+
+  useEffect(() => {
+    if (!user || !cloudSyncEnabled || !cloudLeafTabSyncHasConfig) {
+      setCloudNextSyncAt(null);
+      return;
+    }
+
+    let disposed = false;
+    let timer: number | null = null;
+    const intervalMs = Math.max(1, cloudSyncConfig.intervalMinutes) * 60 * 1000;
+
+    const schedule = (delayMs: number) => {
+      if (disposed) return;
+      const safeDelayMs = Math.max(1200, delayMs);
+      setCloudNextSyncAt(Date.now() + safeDelayMs);
+      timer = window.setTimeout(async () => {
+        if (disposed) return;
+        const result = await handleCloudLeafTabSync({
+          silentSuccess: true,
+        });
+        if (result && cloudSyncConfig.autoSyncToastEnabled) {
+          toast.success(t('toast.cloudAutoSyncSuccess'));
+        }
+        if (disposed) return;
+        schedule(intervalMs);
+      }, safeDelayMs);
+    };
+
+    schedule(intervalMs);
+
+    return () => {
+      disposed = true;
+      if (timer) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [
+    cloudLeafTabSyncHasConfig,
+    cloudSyncConfig.autoSyncToastEnabled,
+    cloudSyncConfig.intervalMinutes,
+    cloudSyncEnabled,
+    handleCloudLeafTabSync,
+    setCloudNextSyncAt,
+    t,
+    user,
+  ]);
+  useEffect(() => {
+    if (!cloudLoginSyncPendingUser || !user || cloudLoginSyncPendingUser !== user) {
+      return;
+    }
+    setCloudLoginSyncPendingUser(null);
+    if (!cloudSyncEnabled || !cloudLeafTabSyncHasConfig) {
+      return;
+    }
+    window.setTimeout(() => {
+      void runLongTask({
+        title: '正在同步账号数据',
+        detail: '正在处理快捷方式和书签数据',
+        progress: 8,
+      }, async ({ update }) => {
+        await handleCloudLeafTabSync({
+          silentSuccess: true,
+          requestBookmarkPermission: true,
+          progressTaskId: null,
+          onProgress: (progress) => {
+            update({
+              title: progress.message,
+              progress: progress.progress,
+            });
+          },
+        });
+      });
+    }, 180);
+  }, [
+    cloudLeafTabSyncHasConfig,
+    cloudLoginSyncPendingUser,
+    cloudSyncEnabled,
+    handleCloudLeafTabSync,
+    runLongTask,
+    user,
+  ]);
+
+  const resolveWebdavConflict = useCallback(async (_config: WebdavConfig) => {
+    await handleLeafTabSync({
+      requestBookmarkPermission: true,
+      showProgressIndicator: true,
+    });
+  }, [handleLeafTabSync]);
 
   const handleRequestCloudLogin = useCallback(() => {
     const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
     if (webdavEnabled) {
-      toast.error(t('settings.backup.webdav.disableWebdavBeforeCloudLogin'));
+      toast.error('当前已启用 WebDAV 同步，请先停用 WebDAV 同步后再登录云同步');
       return false;
     }
     setIsAuthModalOpen(true);
     return true;
-  }, [t]);
+  }, []);
+  const handleOpenCloudSyncConfig = useCallback(() => {
+    const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
+    if (webdavEnabled) {
+      toast.error('当前已启用 WebDAV 同步，请先停用 WebDAV 同步后再管理云同步');
+      return;
+    }
+    setLeafTabSyncDialogOpen(false);
+    setCloudSyncConfigOpen(true);
+  }, []);
+  const handleCloudSyncNowFromCenter = useCallback(async () => {
+    if (!user) {
+      handleRequestCloudLogin();
+      return false;
+    }
+    const encryptionReady = await ensureSyncEncryptionAccess({
+      providerLabel: '云同步',
+      scopeKey: cloudSyncEncryptionScopeKey,
+      transport: cloudSyncEncryptedTransport,
+    });
+    if (!encryptionReady) {
+      return false;
+    }
+    return runLongTask({
+      title: '正在同步到云端',
+      detail: '正在处理快捷方式和书签数据',
+      progress: 8,
+    }, async ({ update }) => {
+      const result = await handleCloudLeafTabSync({
+        requestBookmarkPermission: true,
+        silentSuccess: true,
+        progressTaskId: null,
+        onProgress: (progress) => {
+          update({
+            title: progress.message,
+            progress: progress.progress,
+          });
+        },
+      });
+      if (result) {
+        toast.success(t('toast.cloudAutoSyncSuccess'));
+        return true;
+      }
+      toast.error(t('toast.cloudSyncFailed'));
+      return false;
+    });
+  }, [
+    cloudSyncEncryptedTransport,
+    cloudSyncEncryptionScopeKey,
+    ensureSyncEncryptionAccess,
+    handleCloudLeafTabSync,
+    handleRequestCloudLogin,
+    runLongTask,
+    t,
+    user,
+  ]);
+  const handleCloudSyncConfigSaved = useCallback(async () => {
+    if (!user) return;
+    if (!readCloudSyncConfigFromStorage().enabled) {
+      setCloudNextSyncAt(null);
+      return;
+    }
+    const encryptionReady = await ensureSyncEncryptionAccess({
+      providerLabel: '云同步',
+      scopeKey: cloudSyncEncryptionScopeKey,
+      transport: cloudSyncEncryptedTransport,
+    });
+    if (!encryptionReady) {
+      return;
+    }
+    await handleCloudSyncNowFromCenter();
+  }, [
+    cloudSyncEncryptedTransport,
+    cloudSyncEncryptionScopeKey,
+    ensureSyncEncryptionAccess,
+    handleCloudSyncNowFromCenter,
+    setCloudNextSyncAt,
+    user,
+  ]);
   const syncLocalToCloudBeforeLogout = useCallback(async () => {
     if (!user) return false;
-    const token = localStorage.getItem('token');
-    if (!token) return false;
     if (!navigator.onLine) return false;
-    const hasPendingSync = localStorage.getItem('leaf_tab_sync_pending') === 'true' || localDirtyRef.current;
-    if (!hasPendingSync) return true;
+    if (!readCloudSyncConfigFromStorage().enabled) return true;
     try {
-      const payload = {
-        version: 3 as const,
-        scenarioModes,
-        selectedScenarioId,
-        scenarioShortcuts,
-      };
-      const adapter = createCloudSyncAdapter({
-        API_URL,
-        token,
-        normalizeCloudShortcutsPayload: () => null,
+      const result = await handleCloudLeafTabSync({
+        silentSuccess: true,
+        allowWhenDisabled: true,
       });
-      let pushResult = await adapter.push(payload, {
-        mode: 'prefer_local',
-      });
-      if (!pushResult.ok && pushResult.status === 409) {
-        const retryPull = await adapter.pull();
-        if (retryPull.status === 401 || retryPull.status === 403) {
-          return false;
-        }
-        const retryExpectedVersion = Number.isFinite(retryPull.version as number)
-          ? Number(retryPull.version)
-          : undefined;
-        pushResult = await adapter.push(payload, {
-          expectedVersion: retryExpectedVersion,
-          mode: 'prefer_local',
-        });
-      }
-      if (pushResult.ok) {
-        try {
-          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
-          localStorage.removeItem('leaf_tab_sync_pending');
-        } catch {}
-      }
-      return pushResult.ok;
+      return Boolean(result);
     } catch {
       return false;
     }
-  }, [API_URL, localDirtyRef, scenarioModes, scenarioShortcuts, selectedScenarioId, user]);
+  }, [handleCloudLeafTabSync, user]);
   const handleLogoutWithOptions = useCallback(async (options?: { clearLocal?: boolean }) => {
     const shouldClearLocal = options?.clearLocal === true;
     const syncTask = syncLocalToCloudBeforeLogout();
@@ -1321,6 +2567,11 @@ export default function App() {
       await resetLocalShortcutsByRole(localStorage.getItem('role'));
     }
   }, [clearLocalNeedsCloudReconcile, handleLogout, localDirtyRef, resetLocalShortcutsByRole, scenarioModes, scenarioShortcuts, selectedScenarioId, syncLocalToCloudBeforeLogout]);
+  const requestLogoutConfirmation = useCallback(() => {
+    setLeafTabSyncDialogOpen(false);
+    setSettingsOpen(false);
+    setConfirmLogoutOpen(true);
+  }, []);
   const handleVersionTap = useCallback(() => {
     weatherDebugTapCountRef.current += 1;
     if (weatherDebugTapTimerRef.current) {
@@ -1412,35 +2663,6 @@ export default function App() {
   }, [multiSelectMoveOpen]);
 
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
-  const countPayload = (payload: any) => {
-    if (!payload || !payload.scenarioShortcuts) return 0;
-    let c = 0;
-    Object.values(payload.scenarioShortcuts).forEach((list: any) => {
-      if (Array.isArray(list)) c += list.length;
-    });
-    return c;
-  };
-  const cloudCount = countPayload(pendingCloudPayload);
-  const localCount = countPayload(pendingLocalPayload);
-  const webdavCloudCount = countPayload(webdavPendingRemotePayload);
-  const webdavLocalCount = countPayload(webdavPendingLocalPayload);
-  const cloudTimeRaw = typeof window !== 'undefined'
-    ? (localStorage.getItem('cloud_shortcuts_updated_at')
-      || '')
-    : '';
-  const localTimeRaw = typeof window !== 'undefined' ? localStorage.getItem('local_shortcuts_updated_at') || '' : '';
-  const webdavCloudTimeRaw = typeof window !== 'undefined' ? (localStorage.getItem('webdav_last_sync_at') || '') : '';
-  const webdavLocalTimeRaw = localTimeRaw;
-  const formatTime = (s: string) => {
-    if (!s) return '';
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return s;
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
-  const cloudTime = formatTime(cloudTimeRaw);
-  const localTime = formatTime(localTimeRaw);
-  const webdavCloudTime = formatTime(webdavCloudTimeRaw);
-  const webdavLocalTime = formatTime(webdavLocalTimeRaw);
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
@@ -1526,13 +2748,27 @@ export default function App() {
     effectiveWallpaperMode,
     weatherCode,
   ]);
+  const topNavSyncStatus = useMemo(() => {
+    if (leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing') {
+      return 'syncing' as const;
+    }
+    if (leafTabSyncState.status === 'error' || cloudLeafTabSyncState.status === 'error') {
+      return 'error' as const;
+    }
+    if (leafTabSyncState.status === 'conflict' || cloudLeafTabSyncState.status === 'conflict') {
+      return 'conflict' as const;
+    }
+    return 'idle' as const;
+  }, [cloudLeafTabSyncState.status, leafTabSyncState.status]);
   const topNavModeProps = useMemo(() => ({
     fadeOnIdle: true,
     onSettingsClick: handleOpenSettings,
+    onSyncClick: () => setLeafTabSyncDialogOpen(true),
+    syncStatus: topNavSyncStatus,
     onWeatherUpdate: setWeatherCode,
     reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur,
     rightSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur} />,
-  }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, visualEffectsPolicy.disableBackdropBlur]);
+  }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, topNavSyncStatus, visualEffectsPolicy.disableBackdropBlur]);
   const wallpaperClockProps = useMemo(() => ({
     is24Hour,
     onIs24HourChange: setIs24Hour,
@@ -1544,6 +2780,8 @@ export default function App() {
     onTimeAnimationModeChange: setTimeAnimationMode,
     bingWallpaperUrl: bingWallpaper,
     onSettingsClick: handleOpenSettings,
+    onSyncClick: () => setLeafTabSyncDialogOpen(true),
+    syncStatus: topNavSyncStatus,
     showScenarioMode: true,
     scenarioModes,
     selectedScenarioId,
@@ -1591,6 +2829,7 @@ export default function App() {
     showLunar,
     timeFont,
     effectiveTopTimeAnimationEnabled,
+    topNavSyncStatus,
     visualEffectsPolicy.disableBackdropBlur,
     effectiveWallpaperMaskOpacity,
     shouldFreezeDynamicWallpaper,
@@ -2007,6 +3246,37 @@ export default function App() {
         confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
       />
 
+      <ConfirmDialog
+        open={confirmDisableWebdavSyncOpen}
+        onOpenChange={setConfirmDisableWebdavSyncOpen}
+        title={t('settings.backup.webdav.disableConfirmTitle')}
+        description={t('settings.backup.webdav.disableConfirmDesc')}
+        cancelText={t('common.cancel')}
+        confirmText={t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
+        onConfirm={() => {
+          setConfirmDisableWebdavSyncOpen(false);
+          setLeafTabSyncDialogOpen(false);
+          void handleDisableWebdavSync();
+        }}
+        confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      />
+
+      <ConfirmDialog
+        open={confirmLogoutOpen}
+        onOpenChange={setConfirmLogoutOpen}
+        title={t('logoutConfirm.title')}
+        description={t('user.logoutOfflineWarning', {
+          defaultValue: t('logoutConfirm.description'),
+        })}
+        cancelText={t('logoutConfirm.cancel')}
+        confirmText={t('logoutConfirm.confirm')}
+        onConfirm={() => {
+          setConfirmLogoutOpen(false);
+          void handleLogoutWithOptions();
+        }}
+        confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      />
+
       <AppDialogs
             shortcutModalProps={{
               isOpen: shortcutEditOpen,
@@ -2061,7 +3331,7 @@ export default function App() {
               onOpenChange: setSettingsOpen,
               username: user,
               onLogin: handleRequestCloudLogin,
-              onLogout: handleLogoutWithOptions,
+              onLogout: requestLogoutConfirmation,
               shortcutsCount: totalShortcuts,
               displayMode,
               onDisplayModeChange: setDisplayMode,
@@ -2098,7 +3368,11 @@ export default function App() {
 	              onPrivacyConsentChange: handlePrivacySwitchChange,
 	              onOpenAdminModal: handleOpenAdminModal,
 	              onOpenAboutModal: handleOpenAboutModal,
-	              onCloudSyncNow: triggerCloudSyncNow,
+	              onCloudSyncNow: handleCloudSyncNowFromCenter,
+                onOpenSyncCenter: () => {
+                  setSettingsOpen(false);
+                  setLeafTabSyncDialogOpen(true);
+                },
 	              onOpenWebdavConfig: handleOpenWebdavConfig,
 	              onWebdavSync: resolveWebdavConflict,
 	              onWebdavEnable: handleEnableWebdavSync,
@@ -2156,6 +3430,40 @@ export default function App() {
               onOpenChange: setAboutModalOpen,
               defaultTab: aboutModalDefaultTab,
             }}
+            exportBackupDialogProps={{
+              open: exportBackupDialogOpen,
+              onOpenChange: setExportBackupDialogOpen,
+              mode: 'export',
+              availableScope: {
+                shortcuts: true,
+                bookmarks: true,
+              },
+              onConfirm: async (scope) => {
+                await executeExportData(scope);
+              },
+            }}
+            importBackupDialogProps={{
+              open: importBackupDialogOpen,
+              onOpenChange: (open) => {
+                setImportBackupDialogOpen(open);
+                if (!open) {
+                  setImportBackupScopePayload(null);
+                }
+              },
+              mode: 'import',
+              availableScope: importBackupScopePayload
+                ? getLeafTabLocalBackupAvailableScope(importBackupScopePayload)
+                : {
+                    shortcuts: true,
+                    bookmarks: true,
+                  },
+              onConfirm: async (scope) => {
+                if (!importBackupScopePayload) return;
+                const narrowedImport = restrictLeafTabLocalBackupImportScope(importBackupScopePayload, scope);
+                setImportBackupScopePayload(null);
+                await proceedImportData(narrowedImport);
+              },
+            }}
             webdavConfigDialogProps={{
               open: webdavDialogOpen,
               onOpenChange: (open: boolean) => {
@@ -2170,51 +3478,33 @@ export default function App() {
                 setWebdavEnableAfterConfigSave(false);
               },
             }}
-            confirmSyncDialog={{
-              open: conflictModalOpen,
-              onOpenChange: setConflictModalOpen,
-              confirmChoice,
-              onChoiceChange: setConfirmChoice,
-              enableChoiceSwitch: true,
-              requireDecision: true,
-              title: t('syncConflict.title'),
-              description: t('syncConflict.description'),
-              confirmCloudLabel: t('syncConflict.useCloud'),
-              confirmLocalLabel: t('syncConflict.useLocal'),
-              confirmMergeLabel: t('syncConflict.merge'),
-              cloudCount,
-              cloudTime,
-              cloudPayload: pendingCloudPayload,
-              localCount,
-              localTime,
-              localPayload: pendingLocalPayload,
-              onConfirm: handleConfirmCloudSyncChoice,
-              onCancel: () => {
-                setConflictModalOpen(false);
-              },
+            cloudSyncConfigDialogProps={{
+              open: cloudSyncConfigOpen,
+              onOpenChange: setCloudSyncConfigOpen,
+              encryptionReady: cloudSyncEncryptionReady,
+              onManageEncryption: handleManageCloudSyncEncryption,
+              onSaveSuccess: handleCloudSyncConfigSaved,
             }}
-            webdavConfirmSyncDialog={{
-              open: webdavConfirmSyncOpen,
-              onOpenChange: handleWebdavConfirmDialogOpenChange,
-              confirmChoice: webdavConfirmChoice,
-              onChoiceChange: setWebdavConfirmChoice,
-              enableChoiceSwitch: true,
-              requireDecision: true,
+            confirmSyncDialog={{
+              open: false,
+              onOpenChange: () => {},
+              confirmChoice: null,
+              onChoiceChange: () => {},
+              enableChoiceSwitch: false,
+              requireDecision: false,
               title: t('syncConflict.title'),
               description: t('syncConflict.description'),
               confirmCloudLabel: t('syncConflict.useCloud'),
               confirmLocalLabel: t('syncConflict.useLocal'),
               confirmMergeLabel: t('syncConflict.merge'),
-              cloudCount: webdavCloudCount,
-              cloudTime: webdavCloudTime,
-              cloudPayload: webdavPendingRemotePayload,
-              localCount: webdavLocalCount,
-              localTime: webdavLocalTime,
-              localPayload: webdavPendingLocalPayload,
-              onConfirm: () => {
-                void handleConfirmWebdavSyncChoice();
-              },
-              onCancel: handleCancelWebdavConfirmDialog,
+              cloudCount: 0,
+              cloudTime: '',
+              cloudPayload: null,
+              localCount: 0,
+              localTime: '',
+              localPayload: null,
+              onConfirm: () => {},
+              onCancel: () => {},
             }}
             importConfirmDialog={{
               open: importConfirmOpen,
@@ -2223,8 +3513,8 @@ export default function App() {
               setPayload: setImportPendingPayload,
               busy: importConfirmBusy,
               setBusy: setImportConfirmBusy,
-              downloadCloudBackupEnvelope,
-              applyUndoPayload,
+              downloadCloudBackupEnvelope: async () => {},
+              applyUndoPayload: handleImportConfirmApply,
               onSuccess: () => setSettingsOpen(false),
             }}
             disableConsentDialog={{
@@ -2240,6 +3530,72 @@ export default function App() {
               },
             }}
           />
+      <LeafTabSyncDialog
+        open={leafTabSyncDialogOpen}
+        onOpenChange={handleLeafTabSyncDialogOpenChange}
+        analysis={cloudLeafTabSyncAnalysis || leafTabSyncAnalysis}
+        syncState={leafTabSyncState}
+        cloudSyncState={cloudLeafTabSyncState}
+        ready={leafTabSyncReady}
+        hasConfig={leafTabSyncHasConfig}
+        busy={leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing'}
+        bookmarkScopeLabel={leafTabBookmarkSyncScopeLabel}
+        summaryText={cloudLeafTabSyncLastResult?.summaryText || leafTabSyncLastResult?.summaryText || ''}
+        cloudSignedIn={Boolean(user)}
+        cloudEnabled={cloudSyncEnabled}
+        cloudUsername={user || ''}
+        cloudLastSyncLabel={cloudLastSyncLabel}
+        cloudNextSyncLabel={cloudNextSyncLabel}
+        cloudEncryptionLabel={cloudEncryptionLabel}
+        webdavConfigured={leafTabWebdavConfigured}
+        webdavEnabled={leafTabWebdavEnabled}
+        webdavProfileLabel={leafTabWebdavProfileLabel}
+        webdavUrlLabel={leafTabSyncWebdavConfig?.url || ''}
+        webdavLastSyncLabel={leafTabWebdavLastSyncLabel}
+        webdavNextSyncLabel={leafTabWebdavNextSyncLabel}
+        webdavEncryptionLabel={webdavEncryptionLabel}
+        onCloudSyncNow={() => {
+          setLeafTabSyncDialogOpen(false);
+          void handleCloudSyncNowFromCenter();
+        }}
+        onOpenCloudConfig={handleOpenCloudSyncConfig}
+        onCloudLogin={() => {
+          const shouldOpenLogin = handleRequestCloudLogin();
+          if (shouldOpenLogin) {
+            setLeafTabSyncDialogOpen(false);
+          }
+        }}
+        onCloudLogout={() => {
+          requestLogoutConfirmation();
+        }}
+        onSyncNow={() => {
+          setLeafTabSyncDialogOpen(false);
+          void handleLeafTabSync({
+            requestBookmarkPermission: true,
+            showProgressIndicator: true,
+          });
+        }}
+        onEnableSync={() => {
+          setLeafTabSyncDialogOpen(false);
+          void handleEnableWebdavSync();
+        }}
+        onDisableSync={() => {
+          setConfirmDisableWebdavSyncOpen(true);
+        }}
+        onOpenConfig={() => {
+          handleOpenWebdavConfigFromSyncCenter({
+            enableAfterSave: true,
+          });
+        }}
+      />
+      <LeafTabSyncEncryptionDialog
+        open={Boolean(syncEncryptionDialogState?.open)}
+        mode={syncEncryptionDialogState?.mode || 'setup'}
+        providerLabel={syncEncryptionDialogState?.providerLabel || '同步'}
+        busy={syncEncryptionDialogBusy}
+        onOpenChange={handleSyncEncryptionDialogOpenChange}
+        onSubmit={handleSubmitSyncEncryptionDialog}
+      />
       {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>
           <LazyUpdateAvailableDialog
@@ -2252,7 +3608,8 @@ export default function App() {
           />
         </Suspense>
       ) : null}
-      <Toaster />
+      <LongTaskIndicator task={longTaskIndicator} />
+      <Toaster offset={longTaskIndicator ? 96 : 16} />
       {roleSelectorOpen ? (
         <Suspense fallback={null}>
           <LazyRoleSelector

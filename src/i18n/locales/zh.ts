@@ -1,7 +1,7 @@
 export default {
   translation: {logoutConfirm: {
         title: "确认退出",
-        description: "您确定要退出登录吗？退出后，本地未同步的快捷方式更改可能会丢失。",
+        description: "退出前会先尝试同步一次；如果当前离线或未能完成同步，本地改动会保留到下次继续。",
       clearLocalLabel: "清除本地数据并恢复初始",
       clearLocalDesc: "将本地快捷方式恢复为角色初始配置",
         confirm: "退出登录",
@@ -144,6 +144,9 @@ export default {
         description: "选择界面显示语言",
         selectPlaceholder: "选择语言"
       },
+      openSyncCenter: "打开同步中心",
+      syncCenterMoved: "同步入口已从设置中拆出。现在可以在主页右上角直接打开同步中心，处理手动同步和书签同步状态。",
+      syncCenterShortcut: "完整同步状态与书签同步范围，请直接从主页右上角进入同步中心。",
       theme: {
         label: "主题",
         description: "切换浅色/深色主题，或跟随系统自动切换",
@@ -273,11 +276,11 @@ export default {
           urlRequired: "请先填写 WebDAV 地址",
           defaultProfileName: "默认配置",
           configured: "已配置，可同步到 WebDAV",
-          disabled: "已关闭，WebDAV 同步已停用",
+          disabled: "已停用",
           syncOffTitle: "WebDAV 未开启",
           configureAction: "去配置",
           enableSyncAction: "开启同步",
-          notConfigured: "未配置，请先填写 WebDAV 信息",
+          notConfigured: "未配置，先去配置",
           lastSyncAt: "上次同步时间",
           notSynced: "未同步",
           justSynced: "刚刚已同步",
@@ -606,6 +609,8 @@ export default {
       cancel: "取消",
       close: "关闭",
       confirm: "确定",
+      settings: "设置",
+      sync: "同步",
       delete: "删除",
       save: "保存",
       current: "当前使用",
@@ -622,7 +627,82 @@ export default {
       loggedOut: "已退出登录",
       days: "天",
       shortcutsCount: "个快捷方式",
-      logoutOfflineWarning: "当前处于离线状态或有未同步的更改，退出登录将导致未保存的数据丢失。确定要退出吗？"
+      logoutOfflineWarning: "退出前会先尝试同步一次；如果当前离线或未能完成同步，本地改动会保留到下次继续。确定要退出吗？"
+    },
+    leaftabSyncCenter: {
+      title: "同步中心",
+      description: "基于 WebDAV 的同步中心，当前重点支持场景、快捷方式和书签同步。",
+      bookmarkScope: "书签同步范围：{{scope}}",
+      summary: "{{shortcuts}} 个快捷方式，{{scenarios}} 个场景，{{bookmarks}} 个书签",
+      stateLabel: "状态",
+      initAction: "初始化同步",
+      nav: {
+        syncing: "同步中",
+        attention: "同步异常"
+      },
+      status: {
+        syncing: "同步中",
+        conflict: "需要处理",
+        error: "同步失败",
+        ready: "就绪"
+      },
+      state: {
+        analyzing: "正在分析同步状态...",
+        syncing: "正在后台同步",
+        syncingDescription: "LeafTab 正在后台比对本地与云端差异，并写回需要更新的数据。界面没有卡住，等待完成即可。",
+        initRequired: "需要初始化",
+        initDescription: "本地和云端都已经有数据，请先选择首次初始化方式，再开启后台同步。",
+        ready: "合并同步已就绪",
+        readyDescription: "新的同步引擎已经可以对场景、快捷方式，以及浏览器真实书签根执行推送、拉取与合并同步。"
+      },
+      actions: {
+        syncing: "后台同步中..."
+      }
+    },
+    leaftabSyncDialog: {
+      description: "这里单独管理 LeafTab 的同步状态、手动同步与 WebDAV 配置。",
+      scopeTitle: "当前纳入同步的数据",
+      scopeDescription: "当前重点同步场景、快捷方式，以及浏览器里的书签栏和其他书签。",
+      scopeBadge: "新引擎",
+      scopeScenarios: "场景 {{count}}",
+      scopeShortcuts: "快捷方式 {{count}}",
+      scopeBookmarks: "书签 {{count}}",
+      bookmarkScopeNote: "书签同步范围：{{scope}}",
+      runtimeTitle: "运行状态",
+      runtimeBusy: "正在后台执行同步，请等待当前轮次完成。",
+      runtimeIdle: "当前界面可随时查看状态、手动触发同步，或调整 WebDAV 配置。",
+      runtimeBusyNote: "如果你刚刚点了“立即同步”或“启用同步”，现在不是卡住了，而是在后台读取本地数据、对比云端快照并写回差异。",
+      runtimeReadyNote: "建议先完成 WebDAV 配置。之后所有同步都会默认自动合并本地与云端数据。",
+      webdavPath: "地址：{{value}}",
+      webdavLastSync: "上次同步：{{value}}",
+      lastError: "最近一次错误",
+      disableSync: "停用同步",
+      enableSync: "启用同步"
+    },
+    leaftabFirstSync: {
+      title: "初始化同步",
+      description: "选择第一次 LeafTab 同步时，应该如何处理当前浏览器书签、本地 LeafTab 数据与云端数据。",
+      recommended: "推荐",
+      processingToastTitle: "正在处理初始化同步...",
+      processingToastDescription: "LeafTab 正在后台同步浏览器书签与云端数据，完成前这个提示会一直保留。",
+      processingBadge: "处理中",
+      processingInline: "正在后台执行初始化同步，请稍候...",
+      processingFooter: "正在后台初始化同步，请不要关闭当前窗口。完成后会自动返回正常同步状态。",
+      footer: "这一步只在首次同步时出现。初始化完成后，LeafTab 会继续基于合并模型同步浏览器书签、快捷方式与场景。",
+      choice: {
+        push: {
+          title: "上传本地数据",
+          description: "以当前设备为准，把现在的 LeafTab 数据和浏览器书签写入 WebDAV。"
+        },
+        pull: {
+          title: "下载云端数据",
+          description: "用 WebDAV 上最新的远端快照覆盖当前本地 LeafTab 数据和浏览器书签。"
+        },
+        merge: {
+          title: "智能合并",
+          description: "合并本地和云端数据，保留双方各自独有的 LeafTab 数据与浏览器书签，并自动处理大多数冲突。"
+        }
+      }
     },
     search: {
       placeholder: "想找什么？直接输入就行",
@@ -683,6 +763,19 @@ export default {
       stepRoleDesc: "用于初始化推荐快捷方式与布局",
       stepLayoutTitle: "选择布局样式",
       stepLayoutDesc: "确定首页展示的排布方式",
+      stepPermissionsTitle: "授权访问权限",
+      stepPermissionsDesc: "完成历史记录与书签授权后，搜索与直达能力会更完整",
+      historyPermissionTitle: "访问历史记录",
+      historyPermissionDesc: "授权后可在 LeafTab 中显示最近浏览与相关搜索建议",
+      bookmarksPermissionTitle: "访问书签",
+      bookmarksPermissionDesc: "授权后可直接搜索和打开浏览器书签内容",
+      tabsPermissionTitle: "访问浏览器标签页",
+      tabsPermissionDesc: "授权后可启用标签页搜索，并避免重复打开 LeafTab 新标签页",
+      authorize: "去授权",
+      authorizing: "授权中...",
+      authorized: "已授权",
+      unsupported: "暂不支持",
+      permissionTip: "这两项都可以稍后在使用过程中再授权，不会影响先进入主页。",
       enterHome: "进入首页"
     },
     auth: {

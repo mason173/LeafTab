@@ -1,14 +1,19 @@
-import React, { memo, useMemo } from 'react';
-import { RiSettings4Fill } from '@/icons/ri-compat';
+import React, { memo } from 'react';
+import { RiCloudFill, RiErrorWarningFill, RiRefreshFill, RiSettings4Fill } from '@/icons/ri-compat';
 import { WeatherCard } from '@/components/WeatherCard';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import { useTranslation } from 'react-i18next';
 
-function SettingsButton({
+function ActionButton({
   onClick,
+  icon,
+  label,
   variant = 'inverted',
   disableBackdropBlur = false,
 }: {
   onClick: () => void;
+  icon: React.ReactNode;
+  label?: string;
   variant?: 'inverted' | 'default';
   disableBackdropBlur?: boolean;
 }) {
@@ -19,25 +24,30 @@ function SettingsButton({
       ? 'bg-white/12 hover:bg-white/18 text-white/90'
       : 'bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-md';
   return (
-    <div 
-      className={`content-stretch flex items-center justify-center p-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${
+    <button
+      type="button"
+      className={`content-stretch flex items-center justify-center gap-2 px-[10px] py-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${
         variant === 'inverted' 
           ? invertedClass
           : 'bg-secondary hover:bg-secondary/80 text-muted-foreground'
-      }`} 
-      data-name="Settings"
+      }`}
       onClick={onClick}
+      title={label}
+      aria-label={label}
     >
       <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
         variant === 'inverted' ? 'border-white/10' : 'border-border'
       }`} />
-      <RiSettings4Fill className="size-5" />
-    </div>
+      {icon}
+      {label ? <span className="text-sm font-medium leading-none">{label}</span> : null}
+    </button>
   );
 }
 
 interface TopNavBarProps {
   onSettingsClick?: () => void;
+  onSyncClick?: () => void;
+  syncStatus?: 'idle' | 'syncing' | 'conflict' | 'error';
   hideWeather?: boolean;
   settingsRevealOnHover?: boolean;
   keepControlsVisible?: boolean;
@@ -51,6 +61,8 @@ interface TopNavBarProps {
 
 export const TopNavBar = memo(function TopNavBar({ 
   onSettingsClick,
+  onSyncClick,
+  syncStatus = 'idle',
   hideWeather = false,
   settingsRevealOnHover = false,
   keepControlsVisible = false,
@@ -61,6 +73,7 @@ export const TopNavBar = memo(function TopNavBar({
   rightSlot,
   reduceVisualEffects = false,
 }: TopNavBarProps) {
+  const { t } = useTranslation();
   const firefox = isFirefoxBuildTarget();
   const weatherContent = (
     <WeatherCard
@@ -70,10 +83,33 @@ export const TopNavBar = memo(function TopNavBar({
     />
   );
   const weatherNode = weatherContent;
+  const syncIcon = syncStatus === 'syncing'
+    ? <RiRefreshFill className="size-4.5 animate-spin" />
+    : syncStatus === 'conflict' || syncStatus === 'error'
+      ? <RiErrorWarningFill className="size-4.5" />
+      : <RiCloudFill className="size-4.5" />;
+  const syncLabel = syncStatus === 'syncing'
+    ? t('leaftabSyncCenter.nav.syncing', { defaultValue: '同步中' })
+    : syncStatus === 'conflict' || syncStatus === 'error'
+      ? t('leaftabSyncCenter.nav.attention', { defaultValue: '同步异常' })
+      : t('leaftabSyncCenter.title', { defaultValue: '同步中心' });
+  const syncButton = onSyncClick
+    ? (
+      <ActionButton
+        onClick={onSyncClick}
+        icon={syncIcon}
+        label={syncLabel}
+        variant={variant}
+        disableBackdropBlur={reduceVisualEffects}
+      />
+    )
+    : null;
   const settingsButton = onSettingsClick
     ? (
-      <SettingsButton
+      <ActionButton
         onClick={onSettingsClick}
+        icon={<RiSettings4Fill className="size-4.5" />}
+        label={t('common.settings', { defaultValue: '设置' })}
         variant={variant}
         disableBackdropBlur={reduceVisualEffects}
       />
@@ -100,6 +136,7 @@ export const TopNavBar = memo(function TopNavBar({
           }`}
         >
           {rightSlot}
+          {syncButton}
           {settingsNode}
         </div>
       </div>

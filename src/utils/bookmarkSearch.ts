@@ -1,4 +1,6 @@
 import type { SearchSuggestionItem } from '@/types';
+import { ENABLE_AI_BOOKMARK_SEARCH } from '@/config/featureFlags';
+import { getSemanticBookmarkSuggestions } from '@/features/ai-bookmarks';
 import {
   buildSearchMatchCandidates,
   getShortcutSuggestionScoreFromCandidates,
@@ -266,7 +268,7 @@ export function getCachedBookmarkSuggestions(
   return readBookmarkQueryCache(rawQuery, limit);
 }
 
-export async function getBookmarkSuggestionsFromApi(
+async function getKeywordBookmarkSuggestionsFromApi(
   bookmarksApi: BookmarkApi,
   rawQuery: string,
   limit = 30,
@@ -337,4 +339,30 @@ export async function getBookmarkSuggestionsFromApi(
 
   writeBookmarkQueryCache(query, merged);
   return merged.slice(0, safeLimit);
+}
+
+export async function getBookmarkSuggestionsFromApi(
+  bookmarksApi: BookmarkApi,
+  rawQuery: string,
+  limit = 30,
+): Promise<SearchSuggestionItem[]> {
+  const keywordItems = await getKeywordBookmarkSuggestionsFromApi(
+    bookmarksApi,
+    rawQuery,
+    limit,
+  );
+
+  const trimmedQuery = rawQuery.trim();
+  if (!ENABLE_AI_BOOKMARK_SEARCH || !trimmedQuery) {
+    return keywordItems;
+  }
+
+  const mergedItems = await getSemanticBookmarkSuggestions({
+    bookmarksApi,
+    query: trimmedQuery,
+    limit,
+    fallbackItems: keywordItems,
+  });
+  writeBookmarkQueryCache(trimmedQuery, mergedItems);
+  return mergedItems.slice(0, Math.max(1, limit));
 }

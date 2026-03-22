@@ -25,6 +25,8 @@ interface WallpaperClockProps {
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   bingWallpaperUrl: string;
   onSettingsClick?: () => void;
+  onSyncClick?: () => void;
+  syncStatus?: 'idle' | 'syncing' | 'conflict' | 'error';
   showScenarioMode: boolean;
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
@@ -60,6 +62,8 @@ export const WallpaperClock = memo(function WallpaperClock({
   onTimeAnimationModeChange,
   bingWallpaperUrl,
   onSettingsClick,
+  onSyncClick,
+  syncStatus = 'idle',
   showScenarioMode,
   scenarioModes,
   selectedScenarioId,
@@ -159,6 +163,8 @@ export const WallpaperClock = memo(function WallpaperClock({
           settingsRevealOnHover
           keepControlsVisible={scenarioModeOpen}
           onSettingsClick={onSettingsClick}
+          onSyncClick={onSyncClick}
+          syncStatus={syncStatus}
           onWeatherUpdate={onWeatherUpdate}
           reduceVisualEffects={resolvedReduceTopControlsEffects}
           rightSlot={

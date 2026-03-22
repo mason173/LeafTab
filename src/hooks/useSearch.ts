@@ -21,17 +21,18 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
+import {
+  MAX_SEARCH_HISTORY,
+  readSearchHistoryFromStorage,
+  SEARCH_HISTORY_KEY,
+  type SearchHistoryEntry,
+} from '@/utils/searchHistory';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
 
-const SEARCH_HISTORY_KEY = 'search_history';
 const SEARCH_ENGINE_KEY = 'search_engine';
-const MAX_SEARCH_HISTORY = 15;
 const DEFAULT_SEARCH_ENGINE: SearchEngine = getDefaultSearchEngineForPlatform();
-export type SearchHistoryEntry = {
-  query: string;
-  timestamp: number;
-};
+export type { SearchHistoryEntry } from '@/utils/searchHistory';
 
 type IndexedSearchHistoryEntry = SearchHistoryEntry & {
   usageKey: string;
@@ -149,42 +150,6 @@ function reduceSearchPanelState(
   return state;
 }
 
-const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] => {
-  if (!Array.isArray(parsed)) return [];
-  const now = Date.now();
-  const normalized: SearchHistoryEntry[] = [];
-  const seen = new Set<string>();
-
-  parsed.forEach((entry, index) => {
-    if (typeof entry === 'string') {
-      const query = entry.trim();
-      if (!query || seen.has(query)) return;
-      seen.add(query);
-      normalized.push({
-        query,
-        timestamp: now - index * 60_000,
-      });
-      return;
-    }
-
-    if (!entry || typeof entry !== 'object') return;
-    const rawQuery = (entry as { query?: unknown }).query;
-    const rawTimestamp = (entry as { timestamp?: unknown }).timestamp;
-    const query = typeof rawQuery === 'string' ? rawQuery.trim() : '';
-    if (!query || seen.has(query)) return;
-    seen.add(query);
-    const parsedTimestamp = Number(rawTimestamp);
-    normalized.push({
-      query,
-      timestamp: Number.isFinite(parsedTimestamp) && parsedTimestamp > 0
-        ? parsedTimestamp
-        : now - index * 60_000,
-    });
-  });
-
-  return normalized.slice(0, MAX_SEARCH_HISTORY);
-};
-
 export function useSearch(
   openInNewTab: boolean,
   options?: SearchFeatureOptions,
@@ -194,16 +159,7 @@ export function useSearch(
   const personalizationEnabled = options?.personalizationEnabled ?? true;
   const fuzzyMatchEnabled = options?.fuzzyMatchEnabled ?? true;
   const [searchValue, setSearchValue] = useState('');
-  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>(() => {
-    try {
-      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
-      if (!raw) return [];
-      const parsed: unknown = JSON.parse(raw);
-      return normalizeSearchHistory(parsed);
-    } catch {
-      return [];
-    }
-  });
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryEntry[]>(() => readSearchHistoryFromStorage());
   const [searchPanelState, dispatchSearchPanel] = useReducer(
     reduceSearchPanelState,
     SEARCH_PANEL_INITIAL_STATE,
@@ -371,7 +327,9 @@ export function useSearch(
       defaultEngine: normalizeSearchEngineForPlatform(searchEngine),
     });
     const { query, queryForSearch, historyEntryValue } = queryModel.submission;
-    const effectiveEngine = normalizeSearchEngineForPlatform(queryModel.submission.effectiveEngine);
+    const effectiveEngine = normalizeSearchEngineForPlatform(
+      queryModel.submission.effectiveEngine || searchEngine || DEFAULT_SEARCH_ENGINE,
+    );
     if (!query) return;
 
     addSearchHistoryEntry(historyEntryValue);

@@ -41,7 +41,9 @@ const createApp = () => {
   const apiLimitWindowMs = parseIntEnv('API_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
   const apiLimitMax = parseIntEnv('API_LIMIT_MAX', 100, 1);
   const shortcutsLimitWindowMs = parseIntEnv('SHORTCUTS_LIMIT_WINDOW_MS', 60 * 1000, 1000);
-  const shortcutsLimitMax = parseIntEnv('SHORTCUTS_LIMIT_MAX', 50, 1);
+  const shortcutsLimitMax = parseIntEnv('SHORTCUTS_LIMIT_MAX', 24, 1);
+  const syncIpLimitWindowMs = parseIntEnv('SYNC_IP_LIMIT_WINDOW_MS', 60 * 1000, 1000);
+  const syncIpLimitMax = parseIntEnv('SYNC_IP_LIMIT_MAX', 90, 1);
   const captchaLimitWindowMs = parseIntEnv('CAPTCHA_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
   const captchaLimitMax = parseIntEnv('CAPTCHA_LIMIT_MAX', 30, 1);
   const updateLimitWindowMs = parseIntEnv('UPDATE_LIMIT_WINDOW_MS', 60 * 1000, 1000);
@@ -69,6 +71,7 @@ const createApp = () => {
     authLimiter,
     apiLimiter,
     shortcutsLimiter,
+    syncIpLimiter,
     captchaLimiter,
     updateLimiter,
   } = createRateLimiters({
@@ -78,6 +81,8 @@ const createApp = () => {
     apiLimitMax,
     shortcutsLimitWindowMs,
     shortcutsLimitMax,
+    syncIpLimitWindowMs,
+    syncIpLimitMax,
     captchaLimitWindowMs,
     captchaLimitMax,
     updateLimitWindowMs,
@@ -124,7 +129,7 @@ const createApp = () => {
     origin: corsOrigin,
     credentials: true,
   }));
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({ limit: '10mb' }));
 
   if (requestLogEnabled) {
     app.use((req, _res, next) => {
@@ -168,6 +173,7 @@ const createApp = () => {
     db,
     apiLimiter,
     shortcutsLimiter,
+    syncIpLimiter,
     authenticateToken,
     isAdminRequest,
   });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { buildFaviconCandidates, extractDomainFromUrl } from '../utils';
+import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
@@ -146,6 +146,12 @@ function shouldSkipDomainCandidates(domain: string) {
   return Date.now() - failAt < FAVICON_FAIL_TTL_MS;
 }
 
+function isHttpFaviconEligible(url: string, domain: string) {
+  const safeDomain = domain.trim().toLowerCase();
+  if (!safeDomain) return false;
+  return shouldProbeRemoteFaviconForUrl(url);
+}
+
 function readEmptyIconColorMap() {
   try {
     const raw = localStorage.getItem(EMPTY_ICON_COLOR_MAP_KEY);
@@ -177,6 +183,11 @@ function getPersistedEmptyIconColor(seed: string) {
 }
 
 const ICON_META_PREFIX = 'favicon_cache_v2_meta:';
+type IconCandidateKind = 'custom' | 'favicon' | 'provided';
+type IconCandidate = {
+  src: string;
+  kind: IconCandidateKind;
+};
 
 function getCachedIconSignature(domain: string) {
   try {
@@ -200,43 +211,17 @@ function setCachedIconSignature(domain: string, signature: string) {
   } catch {}
 }
 
-// Helper to convert blob to base64
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
 async function cacheFaviconData(domain: string, src: string) {
   if (!src) return;
-  
+
   if (src.startsWith('data:')) {
-      setCachedFavicon(domain, src);
-      return;
+    setCachedFavicon(domain, src);
+    return;
   }
 
-  try {
-    const response = await fetch(src, { mode: 'cors', credentials: 'omit' });
-    if (!response.ok) throw new Error('Network response was not ok');
-    
-    const blob = await response.blob();
-    const base64 = await blobToBase64(blob);
-    
-    setCachedFavicon(domain, base64);
-  } catch (error) {
-    try {
-      const proxyUrl = `https://icon.horse/icon/${domain}`;
-      const resp = await fetch(proxyUrl, { mode: 'cors', credentials: 'omit' });
-      if (!resp.ok) throw new Error('Icon proxy failed');
-      const blob = await resp.blob();
-      const base64 = await blobToBase64(blob);
-      setCachedFavicon(domain, base64);
-    } catch (proxyError) {
-    }
-  }
+  // Persist the resolved URL directly. Re-fetching cross-origin icons from the extension
+  // creates extra CORS noise in DevTools and isn't necessary for display.
+  setCachedFavicon(domain, src);
 }
 
 export default function ShortcutIcon({
@@ -260,14 +245,19 @@ export default function ShortcutIcon({
 }) {
   const firefox = isFirefoxBuildTarget();
   const domain = useMemo(() => extractDomainFromUrl(url), [url]);
-  const cached = useMemo(() => (domain ? getCachedFavicon(domain) : ''), [domain]);
+  const canProbeRemoteFavicon = useMemo(() => isHttpFaviconEligible(url, domain), [domain, url]);
   const skipDomainCandidates = useMemo(() => (domain ? shouldSkipDomainCandidates(domain) : false), [domain]);
+  const [cachedFavicon, setCachedFavicon] = useState<string>(() => (domain ? getCachedFavicon(domain) : ''));
   const [customIconUrl, setCustomIconUrl] = useState<string>(() => {
     if (!domain) return '';
     return resolveCustomIconFromCache(domain)?.url || '';
   });
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
+
+  useEffect(() => {
+    setCachedFavicon(domain ? getCachedFavicon(domain) : '');
+  }, [domain]);
 
   useEffect(() => {
     if (!firefox) {
@@ -280,7 +270,7 @@ export default function ShortcutIcon({
     }
     const hasImmediateCandidate =
       !!customIconUrl ||
-      !!cached ||
+      !!cachedFavicon ||
       (!!icon && !isIowenFaviconUrl(icon));
     if (hasImmediateCandidate) {
       setFirefoxDomainCandidatesReady(true);
@@ -294,33 +284,48 @@ export default function ShortcutIcon({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [cached, customIconUrl, domain, firefox, icon, skipDomainCandidates]);
+  }, [cachedFavicon, customIconUrl, domain, firefox, icon, skipDomainCandidates]);
 
-  const candidates = useMemo(() => {
-    const list: string[] = [];
-    if (customIconUrl) list.push(customIconUrl);
-    if (cached && (fallbackStyle !== 'emptyicon' || cached.startsWith('data:'))) list.push(cached);
+  const candidates = useMemo<IconCandidate[]>(() => {
+    const list: IconCandidate[] = [];
+    if (customIconUrl) {
+      list.push({ src: customIconUrl, kind: 'custom' });
+    }
+    if (cachedFavicon && (fallbackStyle !== 'emptyicon' || cachedFavicon.startsWith('data:'))) {
+      list.push({ src: cachedFavicon, kind: 'favicon' });
+    }
     // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
-    if (icon && !isIowenFaviconUrl(icon)) list.push(icon);
-    if (domain && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
+    if (icon && !isIowenFaviconUrl(icon)) {
+      list.push({ src: icon, kind: 'provided' });
+    }
+    if (domain && canProbeRemoteFavicon && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
       list.push(
         ...(firefox
           ? buildFirefoxFaviconCandidates(domain, exact || size <= 36)
-          : buildFaviconCandidates(domain)),
+          : buildFaviconCandidates(domain)).map((src) => ({ src, kind: 'favicon' as const })),
       );
     }
-    const unique = Array.from(new Set(list));
+    const uniqueBySrc = new Map<string, IconCandidate>();
+    for (const candidate of list) {
+      if (!candidate.src || uniqueBySrc.has(candidate.src)) continue;
+      uniqueBySrc.set(candidate.src, candidate);
+    }
+    const unique = Array.from(uniqueBySrc.values());
     if (fallbackStyle === 'emptyicon') {
-      return unique.filter((src) => !isDuckDuckGoIp3Url(src) && !isGoogleS2FaviconUrl(src) && !isGoogleGstaticFaviconV2Url(src));
+      return unique.filter(({ src }) => (
+        !isDuckDuckGoIp3Url(src)
+        && !isGoogleS2FaviconUrl(src)
+        && !isGoogleGstaticFaviconV2Url(src)
+      ));
     }
     return unique;
-  }, [cached, customIconUrl, domain, exact, fallbackStyle, firefox, firefoxDomainCandidatesReady, icon, size, skipDomainCandidates]);
+  }, [cachedFavicon, canProbeRemoteFavicon, customIconUrl, domain, exact, fallbackStyle, firefox, firefoxDomainCandidatesReady, icon, size, skipDomainCandidates]);
 
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     setIndex(0);
-  }, [candidates.join('|')]);
+  }, [candidates.map(({ kind, src }) => `${kind}:${src}`).join('|')]);
 
   useEffect(() => {
     const onChanged = () => setLibraryTick((v) => v + 1);
@@ -360,6 +365,7 @@ export default function ShortcutIcon({
       const prevSig = getCachedIconSignature(domain);
       if (resolved.signature && prevSig && prevSig !== resolved.signature) {
         clearCachedFavicon(domain);
+        setCachedFavicon('');
       }
       if (resolved.signature && prevSig !== resolved.signature) {
         setCachedIconSignature(domain, resolved.signature);
@@ -371,12 +377,13 @@ export default function ShortcutIcon({
     };
   }, [domain, firefox, libraryTick]);
 
-  const src = candidates[index] || '';
+  const activeCandidate = candidates[index] || null;
+  const src = activeCandidate?.src || '';
   const labelSeed = (fallbackLabel || domain || '').trim();
   const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
   const emptyIconColorSeed = (domain || url || fallbackLabel || '').trim().toLowerCase();
   const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getPersistedEmptyIconColor(emptyIconColorSeed));
-  const isCustomActive = !!customIconUrl && src === customIconUrl;
+  const isCustomActive = activeCandidate?.kind === 'custom';
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = 24;
@@ -387,8 +394,11 @@ export default function ShortcutIcon({
 
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);
-    if (!firefox && domain && src && src !== cached) {
-      cacheFaviconData(domain, src);
+    const shouldPersistAsFavicon = activeCandidate?.kind === 'favicon' || activeCandidate?.kind === 'provided';
+    if (!firefox && domain && src && shouldPersistAsFavicon && src !== cachedFavicon) {
+      void cacheFaviconData(domain, src).then(() => {
+        setCachedFavicon(getCachedFavicon(domain));
+      });
     }
   };
 

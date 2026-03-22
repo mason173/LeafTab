@@ -27,14 +27,6 @@ export function useAuth() {
 
   const handleLogout = useCallback((input?: string | LogoutOptions | React.MouseEvent | React.TouchEvent) => {
     const options = typeof input === 'string' ? { message: input } : (input as LogoutOptions | undefined);
-    if (typeof input !== 'string') {
-        const isOffline = !navigator.onLine;
-        const hasPendingSync = localStorage.getItem('leaf_tab_sync_pending');
-        if (isOffline || hasPendingSync) {
-             if (!window.confirm(t('user.logoutOfflineWarning'))) return;
-        }
-    }
-
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('leaf_tab_sync_pending');

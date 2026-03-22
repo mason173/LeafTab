@@ -12,8 +12,17 @@ import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
 import { toast } from '@/components/ui/sonner';
 import { getExtensionPermissionSupport } from '@/platform/permissions';
-import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import {
+  ENABLE_AI_BOOKMARK_SEARCH,
+  ENABLE_SEARCH_ENGINE_SWITCHER,
+} from '@/config/featureFlags';
+import {
+  getSemanticBookmarkSearchStatus,
+  subscribeSemanticBookmarkSearchStatus,
+  warmSemanticBookmarkIndex,
+} from '@/features/ai-bookmarks';
+import {
+  getBookmarksApi,
   getExtensionRuntime,
   getPermissionsApi,
   getTabsApi,
@@ -37,6 +46,7 @@ import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 import { SEARCH_ENGINE_SWITCHER_INTERACT_EVENT } from '@/components/search/SearchEngineSwitcher';
+import type { BookmarkSemanticSearchStatus } from '@/features/ai-bookmarks/types';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
@@ -175,6 +185,9 @@ export const SearchExperience = memo(function SearchExperience({
   const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => !extensionRuntimeActive);
   const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
   const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
+  const [semanticBookmarkStatus, setSemanticBookmarkStatus] = useState<BookmarkSemanticSearchStatus>(
+    () => getSemanticBookmarkSearchStatus(),
+  );
 
   const {
     searchValue,
@@ -570,6 +583,26 @@ export const SearchExperience = memo(function SearchExperience({
   }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
+    if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
+    return subscribeSemanticBookmarkSearchStatus(setSemanticBookmarkStatus);
+  }, []);
+
+  useEffect(() => {
+    if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
+    if (!searchPermissions.bookmarks) return undefined;
+
+    const bookmarksApi = getBookmarksApi();
+    if (!bookmarksApi) return undefined;
+
+    return scheduleAfterInteractivePaint(() => {
+      void warmSemanticBookmarkIndex(bookmarksApi);
+    }, {
+      delayMs: 180,
+      idleTimeoutMs: 800,
+    });
+  }, [searchPermissions.bookmarks]);
+
+  useEffect(() => {
     const tabsApi = getTabsApi();
     const windowsApi = getWindowsApi();
     const runtime = getExtensionRuntime();
@@ -815,6 +848,24 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
+      if (searchPermissions.bookmarks && ENABLE_AI_BOOKMARK_SEARCH) {
+        if (semanticBookmarkStatus.modelState === 'loading' || semanticBookmarkStatus.indexState === 'syncing') {
+          return {
+            tone: 'loading' as const,
+            message: t('search.bookmarksSemanticPreparing', {
+              defaultValue: '正在建立 AI 书签语义索引...',
+            }),
+          };
+        }
+        if (semanticBookmarkStatus.indexState === 'error' && semanticBookmarkStatus.lastError && !semanticBookmarkStatus.lastError.includes('local_model_assets_missing:')) {
+          return {
+            tone: 'info' as const,
+            message: t('search.bookmarksSemanticFallback', {
+              defaultValue: 'AI 书签索引暂时不可用，已自动回退到普通书签搜索。',
+            }),
+          };
+        }
+      }
       if (searchPermissionSupport.bookmarks === 'unsupported') {
         return {
           tone: 'info' as const,
@@ -922,6 +973,9 @@ export const SearchExperience = memo(function SearchExperience({
     suggestionSourceStatus.bookmarkLoading,
     suggestionSourceStatus.browserHistoryLoading,
     suggestionSourceStatus.tabLoading,
+    semanticBookmarkStatus.indexState,
+    semanticBookmarkStatus.lastError,
+    semanticBookmarkStatus.modelState,
     t,
   ]);
 

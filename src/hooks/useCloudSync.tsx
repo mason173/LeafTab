@@ -10,6 +10,7 @@ import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged, readCloudSyncConfi
 import { clearLocalNeedsCloudReconcile, persistLocalProfileSnapshot, readLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { syncPayloadToCloudWithDeps } from './cloudSync/syncPayloadToCloud';
 import { fetchShortcutsWithDeps } from './cloudSync/fetchShortcuts';
+import { normalizeCloudShortcutsPayload as normalizeCloudShortcutsPayloadRaw } from '@/utils/shortcutsPayload';
 
 const RATE_LIMIT_TOAST_COOLDOWN_MS = 30 * 1000;
 const CLOUD_CONFLICT_CACHE_KEY = 'leaftab_cloud_conflict_cache_v1';
@@ -44,6 +45,7 @@ type BuildPayloadArgs = {
 };
 
 type UseCloudSyncParams = {
+  runtimeEnabled?: boolean;
   user: string | null;
   API_URL: string;
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void;
@@ -61,6 +63,7 @@ type UseCloudSyncParams = {
 };
 
 export function useCloudSync({
+  runtimeEnabled = true,
   user,
   API_URL,
   handleLogout,
@@ -87,7 +90,7 @@ export function useCloudSync({
     markSyncIdle,
   } = useSyncState();
 
-  const [cloudSyncInitialized, setCloudSyncInitialized] = useState(false);
+  const [cloudSyncInitialized, setCloudSyncInitialized] = useState(() => (runtimeEnabled ? false : Boolean(user)));
   const [conflictModalOpen, setConflictModalOpen] = useState(Boolean(initialPersistedConflictRef.current && user));
   const [pendingLocalPayload, setPendingLocalPayload] = useState<CloudShortcutsPayloadV3 | null>(initialPersistedConflictRef.current?.localPayload ?? null);
   const [pendingCloudPayload, setPendingCloudPayload] = useState<CloudShortcutsPayloadV3 | null>(initialPersistedConflictRef.current?.cloudPayload ?? null);
@@ -150,29 +153,16 @@ export function useCloudSync({
   }, [scenarioModes, scenarioShortcuts, selectedScenarioId]);
 
   const normalizeCloudShortcutsPayload = useCallback((raw: unknown) => {
-    const isEnvelope = !!(
-      raw &&
-      typeof raw === 'object' &&
-      !Array.isArray(raw) &&
-      (raw as Record<string, unknown>).type === 'leaftab_backup'
-    );
-    const candidate = unwrapLeafTabBackupData(raw);
-    if (!candidate) return null;
-    const normalizedCandidate = (isEnvelope ? { version: 3, ...candidate } : candidate) as Record<string, unknown>;
-    if (normalizedCandidate.version !== 3) return null;
-    const modes = normalizeScenarioModesList(normalizedCandidate.scenarioModes);
-    const shortcutsValue = normalizeScenarioShortcuts(normalizedCandidate.scenarioShortcuts);
-    const selectedIdCandidate = typeof normalizedCandidate.selectedScenarioId === 'string'
-      ? normalizedCandidate.selectedScenarioId
-      : modes[0]?.id ?? defaultScenarioModes[0].id;
-    const finalSelectedId = modes.some((m) => m.id === selectedIdCandidate) ? selectedIdCandidate : modes[0]?.id ?? defaultScenarioModes[0].id;
+    const candidate = unwrapLeafTabBackupData(raw) || raw;
+    const normalized = normalizeCloudShortcutsPayloadRaw(candidate, t('scenario.unnamed'));
+    if (!normalized) return null;
     return {
       version: 3,
-      scenarioModes: modes,
-      selectedScenarioId: finalSelectedId,
-      scenarioShortcuts: shortcutsValue,
+      scenarioModes: normalizeScenarioModesList(normalized.scenarioModes),
+      selectedScenarioId: normalized.selectedScenarioId,
+      scenarioShortcuts: normalizeScenarioShortcuts(normalized.scenarioShortcuts),
     } satisfies CloudShortcutsPayloadV3;
-  }, [normalizeScenarioModesList, normalizeScenarioShortcuts]);
+  }, [normalizeScenarioModesList, normalizeScenarioShortcuts, t]);
 
   const loadLocalProfileSnapshotSafe = useCallback(() => {
     const snapshot = readLocalProfileSnapshot();
@@ -211,17 +201,30 @@ export function useCloudSync({
   }, [pendingCloudPayload, pendingLocalPayload]);
 
   useEffect(() => {
+    if (runtimeEnabled) return;
+    setCloudSyncInitialized(Boolean(user));
+    setConflictModalOpen(false);
+    setPendingLocalPayload(null);
+    setPendingCloudPayload(null);
+    pendingCloudVersionRef.current = null;
+    clearPendingCloudConflict();
+    markSyncIdle();
+  }, [clearPendingCloudConflict, markSyncIdle, runtimeEnabled, user]);
+
+  useEffect(() => {
+    if (!runtimeEnabled) return;
     if (!user) return;
     if (!pendingLocalPayload || !pendingCloudPayload) return;
     setCloudSyncInitialized(true);
     markSyncConflict();
-  }, [markSyncConflict, pendingCloudPayload, pendingLocalPayload, setCloudSyncInitialized, user]);
+  }, [markSyncConflict, pendingCloudPayload, pendingLocalPayload, runtimeEnabled, setCloudSyncInitialized, user]);
 
   useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
 
   useEffect(() => {
+    if (!runtimeEnabled) return;
     if (!user) {
       clearPendingCloudConflict();
       if (pendingLocalPayload || pendingCloudPayload) {
@@ -252,6 +255,7 @@ export function useCloudSync({
     normalizeCloudShortcutsPayload,
     pendingCloudPayload,
     pendingLocalPayload,
+    runtimeEnabled,
     user,
   ]);
 
@@ -345,6 +349,15 @@ export function useCloudSync({
   }, [loadLocalProfileSnapshotSafe]);
 
   useEffect(() => {
+    if (!runtimeEnabled) {
+      if (cloudPullDelayTimerRef.current) {
+        window.clearTimeout(cloudPullDelayTimerRef.current);
+        cloudPullDelayTimerRef.current = null;
+      }
+      clearCloudNextSyncAt();
+      return;
+    }
+
     const clearCloudPullTimers = () => {
       if (cloudPullDelayTimerRef.current) {
         window.clearTimeout(cloudPullDelayTimerRef.current);
@@ -438,6 +451,7 @@ export function useCloudSync({
   }, [clearCloudNextSyncAt, cloudSyncConfigVersion, getNextScheduledCloudSyncAt, markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, setCloudNextSyncAt, t, user]);
 
   const triggerCloudSyncNow = useCallback(async () => {
+    if (!runtimeEnabled) return false;
     if (!user) return false;
     if (hasPendingCloudConflictRef.current) {
       setConflictModalOpen(true);
@@ -458,7 +472,7 @@ export function useCloudSync({
     }
     markSyncError('cloud_manual_sync_failed');
     return false;
-  }, [markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, user]);
+  }, [markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, runtimeEnabled, user]);
 
   const resolveWithCloud = useCallback(() => {
     if (!pendingCloudPayload) {
