@@ -28,3 +28,7 @@ deployment/leaftab-backend.env
 # Local-only admin helper scripts (do not publish)
 scripts/get-admin-api-key.sh
 scripts/local/get-admin-api-key.sh
+
+# Embedded reference repos should stay local only
+.references/GitSyncMarks/
+.references/floccus/
