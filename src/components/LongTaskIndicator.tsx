@@ -24,8 +24,15 @@ export function LongTaskIndicator({ task, className }: LongTaskIndicatorProps) {
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
             <RiRefreshFill className="size-4 animate-spin" />
           </div>
-          <div className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-foreground">
-            {task.title}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium leading-5 text-foreground">
+              {task.title}
+            </div>
+            {task.detail ? (
+              <div className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
+                {task.detail}
+              </div>
+            ) : null}
           </div>
           <div className="shrink-0 text-right">
             <div className="text-sm font-semibold tabular-nums text-muted-foreground">

@@ -15,12 +15,20 @@ export type AiBookmarkSandboxEmbedRequest = {
   isQuery?: boolean;
 };
 
+export type AiBookmarkSandboxEmbedProgressEvent = {
+  kind: 'progress';
+  progress: number;
+  label?: string;
+};
+
 export type AiBookmarkSandboxEmbedResponse =
   | {
+      kind: 'result';
       ok: true;
       embeddings: number[][];
     }
   | {
+      kind: 'result';
       ok: false;
       error: string;
     };

@@ -1,4 +1,5 @@
 import type { SearchSuggestionItem } from '@/types';
+import { preloadBookmarkModel } from '@/features/ai-bookmarks/model';
 import {
   AI_BOOKMARK_DEFAULT_MODEL_ID,
   AI_BOOKMARK_FALLBACK_SUPPLEMENT_LIMIT,
@@ -70,6 +71,7 @@ let attachedListeners = false;
 const AI_BOOKMARK_WARM_COOLDOWN_KEY = 'leaftab_ai_bookmark_warm_cooldown_at';
 const AI_BOOKMARK_WARM_COOLDOWN_MS = 10 * 60 * 1000;
 let status: BookmarkSemanticSearchStatus = {
+  activity: 'idle',
   modelState: 'idle',
   indexState: 'idle',
   available: false,
@@ -114,6 +116,7 @@ function invalidateSemanticBookmarkIndex() {
   syncPromise = null;
   clearQueryCache();
   setStatus({
+    activity: 'idle',
     modelState: 'idle',
     indexState: 'idle',
     available: false,
@@ -558,6 +561,7 @@ async function syncSemanticBookmarkIndex(
       && existingEntries.length > 0
     ) {
       setStatus({
+        activity: 'ready',
         modelState: 'ready',
         indexState: 'ready',
         available: true,
@@ -569,24 +573,53 @@ async function syncSemanticBookmarkIndex(
       });
     } else {
       setStatus({
-        indexState: 'syncing',
+        activity: 'downloading-model',
+        modelState: 'loading',
+        indexState: 'idle',
         lastError: null,
-        progress: 6,
-        progressLabel: '正在检查 AI 书签索引...',
+        progress: 2,
+        progressLabel: '首次使用将联网下载 AI 模型...',
       });
     }
 
     setStatus({
+      activity: 'downloading-model',
+      modelState: 'loading',
+      indexState: 'idle',
+      lastError: null,
+      progress: 4,
+      progressLabel: '首次使用将联网下载 AI 模型...',
+    });
+
+    await preloadBookmarkModel({
+      modelId: AI_BOOKMARK_DEFAULT_MODEL_ID,
+      onProgress: ({ progress, label }) => {
+        setStatus({
+          activity: 'downloading-model',
+          modelState: 'loading',
+          indexState: 'idle',
+          lastError: null,
+          progress: Math.min(42, 4 + Math.round(progress * 0.38)),
+          progressLabel: label || '首次使用将联网下载 AI 模型...',
+        });
+      },
+    });
+
+    setStatus({
+      activity: 'reading-bookmarks',
+      modelState: 'ready',
       indexState: 'syncing',
       lastError: null,
-      progress: 14,
+      progress: 44,
       progressLabel: '正在读取浏览器书签...',
     });
 
     const rawDocuments = await loadBookmarkSemanticDocuments(bookmarksApi, {
       onProgress: ({ processed }) => {
-        const progress = Math.min(34, 14 + Math.round(Math.log10(processed + 1) * 10));
+        const progress = Math.min(58, 44 + Math.round(Math.log10(processed + 1) * 10));
         setStatus({
+          activity: 'reading-bookmarks',
+          modelState: 'ready',
           indexState: 'syncing',
           progress,
           progressLabel: '正在读取浏览器书签...',
@@ -608,7 +641,8 @@ async function syncSemanticBookmarkIndex(
       && existingEntries.length === rawDocuments.length
     ) {
       setStatus({
-        modelState: existingEntries.length > 0 ? 'ready' : status.modelState,
+        activity: 'ready',
+        modelState: 'ready',
         indexState: 'ready',
         available: existingEntries.length > 0,
         indexedCount: existingEntries.length,
@@ -624,30 +658,34 @@ async function syncSemanticBookmarkIndex(
     }
 
     setStatus({
+      activity: 'building-index',
       indexState: 'syncing',
-      modelState: 'loading',
+      modelState: 'ready',
       lastError: null,
-      progress: 38,
-      progressLabel: '正在准备 AI 书签索引数据...',
+      progress: 62,
+      progressLabel: '模型已就绪，正在准备 AI 书签索引数据...',
     });
 
     const entries = await buildIndexEntries({
       documents: hydratedDocuments,
       existingEntries,
       onProgress: (progress, label) => {
+        const normalizedProgress = Math.max(42, Math.min(88, progress));
         setStatus({
-          modelState: 'loading',
+          activity: 'building-index',
+          modelState: 'ready',
           indexState: 'syncing',
-          progress,
+          progress: Math.min(94, 62 + Math.round(((normalizedProgress - 42) / 46) * 30)),
           progressLabel: label || '正在建立 AI 书签语义索引...',
         });
       },
     });
     const timestamp = Date.now();
     setStatus({
-      modelState: 'loading',
+      activity: 'saving-index',
+      modelState: 'ready',
       indexState: 'syncing',
-      progress: 92,
+      progress: 96,
       progressLabel: '正在保存 AI 书签索引...',
     });
     const meta: BookmarkSemanticIndexMeta = {
@@ -661,6 +699,7 @@ async function syncSemanticBookmarkIndex(
     await replaceBookmarkSemanticIndex({ entries, meta });
 
     setStatus({
+      activity: 'ready',
       modelState: 'ready',
       indexState: 'ready',
       available: entries.length > 0,
@@ -679,6 +718,7 @@ async function syncSemanticBookmarkIndex(
     const message = String((error as Error)?.message || error || 'semantic_bookmark_index_failed');
     console.error('[ai-bookmarks] semantic index failed', error);
     setStatus({
+      activity: 'error',
       modelState: isMissingLocalModelAssetsError(message) ? 'idle' : 'error',
       indexState: isMissingLocalModelAssetsError(message) ? 'idle' : 'error',
       available: false,
