@@ -39,6 +39,8 @@ type SuggestionCacheEntry = {
 };
 
 const SEARCH_ASYNC_DEBOUNCE_MS = 120;
+const BOOKMARK_ASYNC_DEBOUNCE_MS = 220;
+const SEARCH_ASYNC_LOADING_DELAY_MS = 180;
 const BROWSER_HISTORY_CACHE_TTL_MS = 15_000;
 const BROWSER_HISTORY_EMPTY_QUERY_LIMIT = 20;
 const BROWSER_HISTORY_QUERY_LIMIT = 30;
@@ -70,10 +72,18 @@ function useAsyncSearchSuggestionSource(args: {
   enabled: boolean;
   query: string;
   debounceMs?: number;
+  loadingDelayMs?: number;
   getCachedItems?: (query: string) => SearchSuggestionItem[] | null;
   load: (query: string) => Promise<SearchSuggestionItem[]>;
 }) {
-  const { enabled, query, debounceMs = SEARCH_ASYNC_DEBOUNCE_MS, getCachedItems, load } = args;
+  const {
+    enabled,
+    query,
+    debounceMs = SEARCH_ASYNC_DEBOUNCE_MS,
+    loadingDelayMs = SEARCH_ASYNC_LOADING_DELAY_MS,
+    getCachedItems,
+    load,
+  } = args;
   const [items, setItems] = useState<SearchSuggestionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const debouncedQuery = useDebouncedValue(
@@ -89,6 +99,7 @@ function useAsyncSearchSuggestionSource(args: {
     }
 
     let canceled = false;
+    let loadingDelayTimer: number | null = null;
     const cachedItems = getCachedItems?.(debouncedQuery);
     if (cachedItems) {
       setItems(cachedItems);
@@ -96,16 +107,31 @@ function useAsyncSearchSuggestionSource(args: {
       return;
     }
 
-    setLoading(true);
+    if (loadingDelayMs <= 0) {
+      setLoading(true);
+    } else {
+      loadingDelayTimer = window.setTimeout(() => {
+        if (!canceled) {
+          setLoading(true);
+        }
+      }, loadingDelayMs);
+    }
+
     void load(debouncedQuery)
       .then((nextItems) => {
         if (!canceled) {
+          if (loadingDelayTimer !== null) {
+            window.clearTimeout(loadingDelayTimer);
+          }
           setItems(nextItems);
           setLoading(false);
         }
       })
       .catch(() => {
         if (!canceled) {
+          if (loadingDelayTimer !== null) {
+            window.clearTimeout(loadingDelayTimer);
+          }
           setItems([]);
           setLoading(false);
         }
@@ -113,8 +139,11 @@ function useAsyncSearchSuggestionSource(args: {
 
     return () => {
       canceled = true;
+      if (loadingDelayTimer !== null) {
+        window.clearTimeout(loadingDelayTimer);
+      }
     };
-  }, [debouncedQuery, enabled, getCachedItems, load]);
+  }, [debouncedQuery, enabled, getCachedItems, load, loadingDelayMs]);
 
   return { items, loading };
 }
@@ -199,6 +228,8 @@ export function useSearchSuggestionSources({
   } = useAsyncSearchSuggestionSource({
     enabled: isDocumentVisible && suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
     query: commandQuery,
+    debounceMs: BOOKMARK_ASYNC_DEBOUNCE_MS,
+    loadingDelayMs: SEARCH_ASYNC_LOADING_DELAY_MS,
     getCachedItems: (query) => getCachedBookmarkSuggestions(query, 30),
     load: async (query) => {
       const bookmarksApi = getBookmarksApi();

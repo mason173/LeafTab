@@ -73,6 +73,14 @@ function resolveManualChunk(id: string): string | undefined {
   }
 
   if (
+    pkg === '@electric-sql/pglite'
+    || pkg === '@electric-sql/pglite/vector'
+    || pkg.startsWith('@electric-sql/pglite/')
+  ) {
+    return 'vendor-pglite';
+  }
+
+  if (
     pkg === 'framer-motion' ||
     pkg === 'motion'
   ) {

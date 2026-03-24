@@ -1,95 +1,129 @@
+import type {
+  BookmarkSemanticIndexEntry,
+  BookmarkSemanticIndexMeta,
+  BookmarkSemanticSearchCandidate,
+} from '@/features/ai-bookmarks/types';
+import { requestBookmarkStorageWithSandbox } from '@/features/ai-bookmarks/sandboxClient';
+import { isExtensionRuntime } from '@/platform/runtime';
 import {
-  AI_BOOKMARK_INDEX_DB_NAME,
-  AI_BOOKMARK_INDEX_DB_VERSION,
-  AI_BOOKMARK_INDEX_ENTRIES_STORE,
-  AI_BOOKMARK_INDEX_META_STORE,
-} from '@/features/ai-bookmarks/constants';
-import type { BookmarkSemanticIndexEntry, BookmarkSemanticIndexMeta } from '@/features/ai-bookmarks/types';
+  clearPersistedBookmarkSemanticIndex,
+  readPersistedBookmarkSemanticIndexEntries,
+  readPersistedBookmarkSemanticIndexMeta,
+  replacePersistedBookmarkSemanticIndex,
+} from '@/features/ai-bookmarks/storagePersistence';
 
-type BookmarkIndexDb = IDBDatabase;
-
-function openBookmarkIndexDb(): Promise<BookmarkIndexDb> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(AI_BOOKMARK_INDEX_DB_NAME, AI_BOOKMARK_INDEX_DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(AI_BOOKMARK_INDEX_ENTRIES_STORE)) {
-        db.createObjectStore(AI_BOOKMARK_INDEX_ENTRIES_STORE, { keyPath: 'bookmarkId' });
-      }
-      if (!db.objectStoreNames.contains(AI_BOOKMARK_INDEX_META_STORE)) {
-        db.createObjectStore(AI_BOOKMARK_INDEX_META_STORE, { keyPath: 'id' });
-      }
-    };
-  });
+async function getStorageBackend() {
+  return import('@/features/ai-bookmarks/storageBackend');
 }
 
-function readAllFromStore<T>(db: BookmarkIndexDb, storeName: string): Promise<T[]> {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
-    const request = transaction.objectStore(storeName).getAll();
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve((request.result || []) as T[]);
-  });
-}
+let sandboxHydrationPromise: Promise<void> | null = null;
+let sandboxHydratedSourceSignature = '';
 
-function readValueFromStore<T>(db: BookmarkIndexDb, storeName: string, key: string): Promise<T | null> {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
-    const request = transaction.objectStore(storeName).get(key);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve((request.result as T | undefined) ?? null);
+async function ensureSandboxIndexReady(): Promise<void> {
+  if (!isExtensionRuntime()) return;
+  if (sandboxHydrationPromise) return sandboxHydrationPromise;
+
+  sandboxHydrationPromise = (async () => {
+    const meta = await readPersistedBookmarkSemanticIndexMeta();
+    if (!meta) {
+      const response = await requestBookmarkStorageWithSandbox({
+        operation: 'clear-index',
+      });
+      if (!response.ok) {
+        throw new Error(response.error || 'ai_bookmark_storage_clear_failed');
+      }
+      sandboxHydratedSourceSignature = '';
+      return;
+    }
+
+    if (sandboxHydratedSourceSignature === meta.sourceSignature) return;
+
+    const entries = await readPersistedBookmarkSemanticIndexEntries();
+    const response = await requestBookmarkStorageWithSandbox({
+      operation: 'replace-index',
+      entries,
+      meta,
+    });
+    if (!response.ok) {
+      throw new Error(response.error || 'ai_bookmark_storage_replace_failed');
+    }
+    sandboxHydratedSourceSignature = meta.sourceSignature;
+  })().finally(() => {
+    sandboxHydrationPromise = null;
   });
+
+  return sandboxHydrationPromise;
 }
 
 export async function readBookmarkSemanticIndexEntries(): Promise<BookmarkSemanticIndexEntry[]> {
-  const db = await openBookmarkIndexDb();
-  return readAllFromStore<BookmarkSemanticIndexEntry>(db, AI_BOOKMARK_INDEX_ENTRIES_STORE);
+  if (!isExtensionRuntime()) {
+    return (await getStorageBackend()).readBookmarkSemanticIndexEntries();
+  }
+  return readPersistedBookmarkSemanticIndexEntries();
 }
 
 export async function readBookmarkSemanticIndexMeta(): Promise<BookmarkSemanticIndexMeta | null> {
-  const db = await openBookmarkIndexDb();
-  return readValueFromStore<BookmarkSemanticIndexMeta>(db, AI_BOOKMARK_INDEX_META_STORE, 'meta');
+  if (!isExtensionRuntime()) {
+    return (await getStorageBackend()).readBookmarkSemanticIndexMeta();
+  }
+  return readPersistedBookmarkSemanticIndexMeta();
+}
+
+export async function searchBookmarkSemanticIndex(args: {
+  embeddingModel: BookmarkSemanticIndexEntry['embeddingModel'];
+  queryEmbedding: readonly number[];
+  limit: number;
+}): Promise<BookmarkSemanticSearchCandidate[]> {
+  if (!isExtensionRuntime()) {
+    return (await getStorageBackend()).searchBookmarkSemanticIndex(args);
+  }
+
+  await ensureSandboxIndexReady();
+  const response = await requestBookmarkStorageWithSandbox({
+    operation: 'search-index',
+    embeddingModel: args.embeddingModel,
+    queryEmbedding: [...args.queryEmbedding],
+    limit: args.limit,
+  });
+  if (response.ok && response.operation === 'search-index') {
+    return response.entries;
+  }
+  throw new Error(response.error || 'ai_bookmark_storage_search_failed');
 }
 
 export async function replaceBookmarkSemanticIndex(args: {
   entries: BookmarkSemanticIndexEntry[];
   meta: BookmarkSemanticIndexMeta;
 }): Promise<void> {
-  const db = await openBookmarkIndexDb();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(
-      [AI_BOOKMARK_INDEX_ENTRIES_STORE, AI_BOOKMARK_INDEX_META_STORE],
-      'readwrite',
-    );
-    const entriesStore = transaction.objectStore(AI_BOOKMARK_INDEX_ENTRIES_STORE);
-    const metaStore = transaction.objectStore(AI_BOOKMARK_INDEX_META_STORE);
+  if (!isExtensionRuntime()) {
+    await (await getStorageBackend()).replaceBookmarkSemanticIndex(args);
+    return;
+  }
 
-    entriesStore.clear();
-    metaStore.clear();
-    for (const entry of args.entries) {
-      entriesStore.put(entry);
-    }
-    metaStore.put(args.meta);
-
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error);
-    transaction.oncomplete = () => resolve();
+  await replacePersistedBookmarkSemanticIndex(args);
+  const response = await requestBookmarkStorageWithSandbox({
+    operation: 'replace-index',
+    entries: args.entries,
+    meta: args.meta,
   });
+  if (!response.ok) {
+    throw new Error(response.error || 'ai_bookmark_storage_replace_failed');
+  }
+  sandboxHydratedSourceSignature = args.meta.sourceSignature;
 }
 
 export async function clearBookmarkSemanticIndex(): Promise<void> {
-  const db = await openBookmarkIndexDb();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(
-      [AI_BOOKMARK_INDEX_ENTRIES_STORE, AI_BOOKMARK_INDEX_META_STORE],
-      'readwrite',
-    );
-    transaction.objectStore(AI_BOOKMARK_INDEX_ENTRIES_STORE).clear();
-    transaction.objectStore(AI_BOOKMARK_INDEX_META_STORE).clear();
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(transaction.error);
-    transaction.oncomplete = () => resolve();
+  if (!isExtensionRuntime()) {
+    await (await getStorageBackend()).clearBookmarkSemanticIndex();
+    return;
+  }
+
+  await clearPersistedBookmarkSemanticIndex();
+  const response = await requestBookmarkStorageWithSandbox({
+    operation: 'clear-index',
   });
+  if (!response.ok) {
+    throw new Error(response.error || 'ai_bookmark_storage_clear_failed');
+  }
+  sandboxHydratedSourceSignature = '';
 }

@@ -1,6 +1,10 @@
-export type AiBookmarkModelLanguage = 'zh' | 'en';
+export type AiBookmarkModelLanguage = 'zh' | 'en' | 'multi';
 
-export type AiBookmarkModelId = 'bge-small-zh-v1.5' | 'english-small-reserved';
+export type AiBookmarkModelId =
+  | 'paraphrase-multilingual-minilm-l12-v2'
+  | 'bge-small-zh-v1.5'
+  | 'english-small-reserved';
+export type BookmarkPageMetadataState = 'pending' | 'success' | 'empty' | 'failed' | 'blocked';
 
 export type AiBookmarkModelDefinition = {
   id: AiBookmarkModelId;
@@ -9,6 +13,7 @@ export type AiBookmarkModelDefinition = {
   modelFileName: string;
   vectorSize: number;
   queryInstruction: string;
+  remoteModelBaseUrl?: string;
 };
 
 export type BookmarkSemanticDocument = {
@@ -20,6 +25,9 @@ export type BookmarkSemanticDocument = {
   pageTitle: string;
   metaDescription: string;
   bodyPreview: string;
+  pageMetadataState: BookmarkPageMetadataState;
+  pageMetadataFetchedAt: number;
+  pageMetadataRetryAt: number;
   faviconUrl: string;
   searchText: string;
   contentHash: string;
@@ -45,6 +53,10 @@ export type BookmarkSemanticSearchResult = {
   url: string;
   label: string;
   score: number;
+};
+
+export type BookmarkSemanticSearchCandidate = Omit<BookmarkSemanticIndexEntry, 'embedding'> & {
+  semanticScore: number;
 };
 
 export type BookmarkSemanticSearchStatus = {
