@@ -1,18 +1,45 @@
 import type { AiBookmarkModelId } from '@/features/ai-bookmarks/types';
 import {
+  AI_BOOKMARK_MODEL_ASSET_OVERRIDE_QUERY_PARAM,
+  AI_BOOKMARK_MODEL_ASSET_OVERRIDE_STORAGE_KEY,
+} from '@/features/ai-bookmarks/constants';
+import {
   AI_BOOKMARK_SANDBOX_EMBED_TYPE,
   AI_BOOKMARK_SANDBOX_READY_TYPE,
+  AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
   type AiBookmarkSandboxEmbedRequest,
   type AiBookmarkSandboxEmbedResponse,
+  type AiBookmarkSandboxStorageRequest,
+  type AiBookmarkSandboxStorageResponse,
 } from '@/features/ai-bookmarks/sandboxShared';
 import { isExtensionRuntime, getExtensionRuntime } from '@/platform/runtime';
 
 let sandboxFramePromise: Promise<HTMLIFrameElement> | null = null;
 
+function isAiSandboxPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /\/ai-sandbox\.html$/i.test(window.location.pathname);
+}
+
 function resolveSandboxUrl(): string {
+  let query = '';
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(AI_BOOKMARK_MODEL_ASSET_OVERRIDE_STORAGE_KEY) || '';
+      if (raw) {
+        query = `?${new URLSearchParams({
+          [AI_BOOKMARK_MODEL_ASSET_OVERRIDE_QUERY_PARAM]: raw,
+        }).toString()}`;
+      }
+    } catch {}
+  }
+
+  if (typeof window !== 'undefined') {
+    return `ai-sandbox.html${query}`;
+  }
   const runtime = getExtensionRuntime();
-  if (runtime?.getURL) return runtime.getURL('ai-sandbox.html');
-  return new URL('/ai-sandbox.html', window.location.href).toString();
+  if (runtime?.getURL) return `${runtime.getURL('ai-sandbox.html')}${query}`;
+  return `/ai-sandbox.html${query}`;
 }
 
 function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
@@ -21,6 +48,7 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
   sandboxFramePromise = new Promise((resolve, reject) => {
     const frame = document.createElement('iframe');
     frame.src = resolveSandboxUrl();
+    frame.setAttribute('sandbox', 'allow-scripts');
     frame.setAttribute('aria-hidden', 'true');
     frame.tabIndex = -1;
     frame.style.position = 'fixed';
@@ -71,34 +99,28 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
   return sandboxFramePromise;
 }
 
-async function requestSandboxEmbeddings(
-  payload: AiBookmarkSandboxEmbedRequest,
-): Promise<number[][]> {
+async function requestSandboxMessage<TResponse>(
+  type: string,
+  payload: unknown,
+): Promise<TResponse> {
   const frame = await ensureSandboxFrame();
 
-  return new Promise<number[][]>((resolve, reject) => {
+  return new Promise<TResponse>((resolve, reject) => {
     const channel = new MessageChannel();
     const timeoutId = window.setTimeout(() => {
       channel.port1.close();
       reject(new Error('ai_bookmark_sandbox_request_timeout'));
     }, 30_000);
 
-    channel.port1.onmessage = (event: MessageEvent<AiBookmarkSandboxEmbedResponse>) => {
+    channel.port1.onmessage = (event: MessageEvent<TResponse>) => {
       window.clearTimeout(timeoutId);
       channel.port1.close();
-
-      const response = event.data;
-      if (response?.ok) {
-        resolve(response.embeddings);
-        return;
-      }
-
-      reject(new Error(response?.error || 'ai_bookmark_sandbox_request_failed'));
+      resolve(event.data);
     };
 
     frame.contentWindow?.postMessage(
       {
-        type: AI_BOOKMARK_SANDBOX_EMBED_TYPE,
+        type,
         payload,
       },
       '*',
@@ -107,12 +129,82 @@ async function requestSandboxEmbeddings(
   });
 }
 
+async function requestSandboxEmbeddings(
+  payload: AiBookmarkSandboxEmbedRequest,
+): Promise<number[][]> {
+  const response = await requestSandboxMessage<AiBookmarkSandboxEmbedResponse>(
+    AI_BOOKMARK_SANDBOX_EMBED_TYPE,
+    payload,
+  );
+  if (response?.ok) return response.embeddings;
+  throw new Error(response?.error || 'ai_bookmark_sandbox_request_failed');
+}
+
+export async function requestBookmarkStorageWithSandbox(
+  payload: AiBookmarkSandboxStorageRequest,
+): Promise<AiBookmarkSandboxStorageResponse> {
+  if (isAiSandboxPage()) {
+    const storage = await import('@/features/ai-bookmarks/storageBackend');
+    try {
+      switch (payload.operation) {
+        case 'read-index-entries':
+          return {
+            ok: true,
+            operation: 'read-index-entries',
+            entries: await storage.readBookmarkSemanticIndexEntries(),
+          };
+        case 'read-index-meta':
+          return {
+            ok: true,
+            operation: 'read-index-meta',
+            meta: await storage.readBookmarkSemanticIndexMeta(),
+          };
+        case 'replace-index':
+          await storage.replaceBookmarkSemanticIndex({
+            entries: payload.entries,
+            meta: payload.meta,
+          });
+          return {
+            ok: true,
+            operation: 'replace-index',
+          };
+        case 'clear-index':
+          await storage.clearBookmarkSemanticIndex();
+          return {
+            ok: true,
+            operation: 'clear-index',
+          };
+        case 'search-index':
+          return {
+            ok: true,
+            operation: 'search-index',
+            entries: await storage.searchBookmarkSemanticIndex({
+              embeddingModel: payload.embeddingModel,
+              queryEmbedding: payload.queryEmbedding,
+              limit: payload.limit,
+            }),
+          };
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        error: String((error as Error)?.message || error || 'ai_bookmark_sandbox_request_failed'),
+      };
+    }
+  }
+
+  return requestSandboxMessage<AiBookmarkSandboxStorageResponse>(
+    AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
+    payload,
+  );
+}
+
 export async function embedTextsWithBookmarkModel(args: {
   modelId: AiBookmarkModelId;
   texts: string[];
   isQuery?: boolean;
 }): Promise<number[][]> {
-  if (!isExtensionRuntime()) {
+  if (!isExtensionRuntime() || isAiSandboxPage()) {
     const { embedTextsWithBookmarkModel: embedDirectly } = await import('@/features/ai-bookmarks/model');
     return embedDirectly(args);
   }

@@ -32,3 +32,6 @@ scripts/local/get-admin-api-key.sh
 # Embedded reference repos should stay local only
 .references/GitSyncMarks/
 .references/floccus/
+
+# Large optional model assets are downloaded locally and should not be committed
+public/models/paraphrase-multilingual-MiniLM-L12-v2/
