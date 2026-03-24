@@ -35,7 +35,7 @@ import { getExtensionPermissionSupport } from '@/platform/permissions';
 
 interface RoleSelectorProps {
   open: boolean;
-  onSelect: (roleFile: string, roleId: string, displayMode?: DisplayMode) => void;
+  onSelect: (roleId: string, displayMode?: DisplayMode) => void;
   onBookmarksPermissionGranted?: () => void;
 }
 
@@ -75,49 +75,41 @@ export function RoleSelector({ open, onSelect, onBookmarksPermissionGranted }: R
       id: 'programmer',
       title: t('roles.programmer'),
       icon: RiCodeSSlashFill,
-      file: 'leaftab_backup_Programmer.leaftab'
     },
     {
       id: 'product_manager',
       title: t('roles.product_manager'),
       icon: RiBriefcase4Fill,
-      file: 'leaftab_backup_product_manager.leaftab'
     },
     {
       id: 'designer',
       title: t('roles.designer'),
       icon: RiPaletteFill,
-      file: 'leaftab_backup_designer.leaftab'
     },
     {
       id: 'student',
       title: t('roles.student'),
       icon: RiGraduationCapFill,
-      file: 'leaftab_backup_student.leaftab'
     },
     {
       id: 'marketer',
       title: t('roles.marketer'),
       icon: RiMegaphoneFill,
-      file: 'leaftab_backup_marketer.leaftab'
     },
     {
       id: 'finance',
       title: t('roles.finance'),
       icon: RiBankFill,
-      file: 'leaftab_backup_finance.leaftab'
     },
     {
       id: 'hr',
       title: t('roles.hr'),
       icon: RiTeamFill,
-      file: 'leaftab_backup_hr.leaftab'
     },
     {
       id: 'admin',
       title: t('roles.admin'),
       icon: RiFolderChartFill,
-      file: 'leaftab_backup_admin.leaftab'
     }
   ];
   const permissionSupport = useMemo(
@@ -161,12 +153,7 @@ export function RoleSelector({ open, onSelect, onBookmarksPermissionGranted }: R
     if (selectedRole) {
       const role = roleOptions.find(r => r.id === selectedRole);
       if (role) {
-        let roleFile = role.file;
-        // If language is not Simplified Chinese, load the English version of the profile
-        if (i18n.language !== 'zh' && i18n.language !== 'zh-CN') {
-          roleFile = roleFile.replace('.leaftab', '_en.leaftab');
-        }
-        onSelect(roleFile, role.id, selectedLayout);
+        onSelect(role.id, selectedLayout);
       }
     }
   };

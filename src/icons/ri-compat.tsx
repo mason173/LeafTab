@@ -73,6 +73,7 @@ import {
   User,
   Users,
   Utensils,
+  Wrench,
   X,
 } from 'lucide-react';
 
@@ -156,5 +157,6 @@ export const RiSubtractLine = Minus;
 export const RiSunFill = Sun;
 export const RiTeamFill = Users;
 export const RiThunderstormsFill = CloudLightning;
+export const RiToolsFill = Wrench;
 export const RiUpload2Fill = Upload;
 export const RiUserFill = User;

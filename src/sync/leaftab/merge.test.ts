@@ -95,7 +95,7 @@ describe('mergeLeafTabSyncSnapshot', () => {
 
     expect(result.snapshot.shortcuts.github.title).toBe('GitHub Home');
     expect(result.snapshot.shortcuts.github.icon).toBe('github-fill');
-    expect(result.entitySources.github).toBe('merged');
+    expect(result.entitySources.github).toBe('local');
   });
 
   it('lets a newer tombstone beat an older update', () => {
@@ -141,6 +141,65 @@ describe('mergeLeafTabSyncSnapshot', () => {
     expect(result.snapshot.scenarios.work).toBeUndefined();
     expect(result.snapshot.tombstones.work?.type).toBe('scenario');
     expect(result.entitySources.work).toBe('tombstone');
+  });
+
+  it('keeps a remote tombstone when the remote entity is already absent and baseline is empty', () => {
+    const base = createEmptySnapshot('base', '2026-03-21T10:00:00.000Z');
+
+    const local = createEmptySnapshot('local', '2026-03-21T10:01:00.000Z');
+    local.scenarios.work = {
+      id: 'work',
+      type: 'scenario',
+      name: 'Work',
+      color: '#000000',
+      icon: 'briefcase',
+      archived: false,
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'local',
+      revision: 1,
+    };
+    local.shortcuts.github = {
+      id: 'github',
+      type: 'shortcut',
+      scenarioId: 'work',
+      title: 'GitHub',
+      url: 'https://github.com',
+      icon: '',
+      description: '',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'local',
+      revision: 1,
+    };
+    local.scenarioOrder.ids = ['work'];
+    local.shortcutOrders.work = {
+      type: 'shortcut-order',
+      scenarioId: 'work',
+      ids: ['github'],
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'local',
+      revision: 1,
+    };
+
+    const remote = createEmptySnapshot('remote', '2026-03-21T10:02:00.000Z');
+    remote.tombstones.github = {
+      id: 'github',
+      type: 'shortcut',
+      deletedAt: '2026-03-21T10:02:00.000Z',
+      deletedBy: 'remote',
+      lastKnownRevision: 1,
+    };
+
+    const result = mergeLeafTabSyncSnapshot(base, local, remote, {
+      deviceId: 'merge-device',
+      generatedAt: '2026-03-21T10:03:00.000Z',
+    });
+
+    expect(result.snapshot.shortcuts.github).toBeUndefined();
+    expect(result.snapshot.tombstones.github?.type).toBe('shortcut');
+    expect(result.entitySources.github).toBe('tombstone');
+    expect(result.snapshot.shortcutOrders.work.ids).toEqual([]);
   });
 
   it('merges order files without dropping independent additions', () => {

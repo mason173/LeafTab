@@ -4,13 +4,32 @@ import { cn } from '@/components/ui/utils';
 
 interface SyncEncryptionStatusCardProps {
   ready?: boolean;
+  title?: string;
+  description?: string;
+  pillLabel?: string;
 }
 
 export function SyncEncryptionStatusCard({
   ready = false,
+  title,
+  description,
+  pillLabel,
 }: SyncEncryptionStatusCardProps) {
   const { t } = useTranslation();
   const ShieldIcon = ready ? RiShieldCheckFill : RiShieldCrossFill;
+  const resolvedTitle = title || (ready
+    ? t('leaftabSyncEncryption.statusReadyTitle', { defaultValue: '端到端加密已开启' })
+    : t('leaftabSyncEncryption.statusMissingTitle', { defaultValue: '同步口令尚未设置' }));
+  const resolvedDescription = description || (ready
+    ? t('leaftabSyncEncryption.statusReadyDescription', {
+        defaultValue: '只有已解锁设备才能读取同步内容。',
+      })
+    : t('leaftabSyncEncryption.statusMissingDescription', {
+        defaultValue: '启用同步前，需要先设置这组同步口令。',
+      }));
+  const resolvedPillLabel = pillLabel || (ready
+    ? t('leaftabSyncEncryption.statusReadyPill', { defaultValue: '已保护' })
+    : t('leaftabSyncEncryption.statusMissingPill', { defaultValue: '未设置' }));
 
   return (
     <div
@@ -36,18 +55,10 @@ export function SyncEncryptionStatusCard({
 
           <div className="min-w-0">
             <div className={cn('text-sm font-semibold', ready ? 'text-black dark:text-white' : 'text-foreground')}>
-              {ready
-                ? t('leaftabSyncEncryption.statusReadyTitle', { defaultValue: '端到端加密已开启' })
-                : t('leaftabSyncEncryption.statusMissingTitle', { defaultValue: '同步口令尚未设置' })}
+              {resolvedTitle}
             </div>
             <div className={cn('mt-1 text-xs leading-5', ready ? 'text-black/72 dark:text-white/78' : 'text-muted-foreground')}>
-              {ready
-                ? t('leaftabSyncEncryption.statusReadyDescription', {
-                    defaultValue: '只有已解锁设备才能读取同步内容。',
-                  })
-                : t('leaftabSyncEncryption.statusMissingDescription', {
-                    defaultValue: '启用同步前，需要先设置这组同步口令。',
-                  })}
+              {resolvedDescription}
             </div>
           </div>
         </div>
@@ -67,9 +78,7 @@ export function SyncEncryptionStatusCard({
                 ready ? 'bg-black shadow-[0_0_10px_rgba(0,0,0,0.12)] dark:bg-white dark:shadow-[0_0_10px_rgba(255,255,255,0.2)]' : 'bg-muted-foreground/45',
               )}
             />
-            {ready
-              ? t('leaftabSyncEncryption.statusReadyPill', { defaultValue: '已保护' })
-              : t('leaftabSyncEncryption.statusMissingPill', { defaultValue: '未设置' })}
+            {resolvedPillLabel}
           </div>
         </div>
       </div>

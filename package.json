@@ -1,6 +1,6 @@
 {
       "name": "leaftab",
-      "version": "1.4.0-alpha.1",
+      "version": "1.4.0-alpha.2",
       "private": true,
       "dependencies": {
             "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",

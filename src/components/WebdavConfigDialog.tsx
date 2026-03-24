@@ -273,7 +273,7 @@ export function WebdavConfigDialog({
               }}
               disabled={saving}
             >
-              {t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
+              {t('leaftabSyncDialog.disableSync', { defaultValue: '关闭 WebDAV 同步' })}
             </button>
           ) : null}
         </div>

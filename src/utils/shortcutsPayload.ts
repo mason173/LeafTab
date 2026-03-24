@@ -1,6 +1,24 @@
 import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts, Shortcut } from '../types';
 import { defaultScenarioModes, makeScenarioId, type ScenarioIconKey } from '@/scenario/scenario';
 
+const shortHash = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+};
+
+const createFallbackShortcutId = (
+  scenarioId: string,
+  title: string,
+  url: string,
+  occurrence: number,
+) => {
+  return `sht_${shortHash(`${scenarioId}|${title}|${url}|${occurrence}`)}`;
+};
+
 export const normalizeScenarioModesList = (raw: unknown, unnamedLabel: string): ScenarioMode[] => {
   if (!Array.isArray(raw)) return defaultScenarioModes;
   const normalized = raw
@@ -19,9 +37,42 @@ export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const obj = raw as Record<string, unknown>;
   const next: ScenarioShortcuts = {};
+  const usedShortcutIds = new Set<string>();
   Object.entries(obj).forEach(([scenarioId, value]) => {
-    if (Array.isArray(value)) next[scenarioId] = value as Shortcut[];
-    else if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+    if (Array.isArray(value)) {
+      const nextShortcuts: Shortcut[] = [];
+      const localIdentityCounts = new Map<string, number>();
+
+      value.forEach((item, index) => {
+        if (!item || typeof item !== 'object') return;
+        const candidate = item as Partial<Shortcut>;
+        const title = typeof candidate.title === 'string' ? candidate.title : '';
+        const url = typeof candidate.url === 'string' ? candidate.url : '';
+        const icon = typeof candidate.icon === 'string' ? candidate.icon : '';
+        const seed = `${title}|${url}`;
+        const occurrence = (localIdentityCounts.get(seed) || 0) + 1;
+        localIdentityCounts.set(seed, occurrence);
+
+        const requestedId = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+        let nextId = requestedId;
+        if (!nextId || usedShortcutIds.has(nextId)) {
+          nextId = createFallbackShortcutId(scenarioId, title, url, occurrence);
+          while (usedShortcutIds.has(nextId)) {
+            nextId = createFallbackShortcutId(scenarioId, title, url, occurrence + index + 1);
+          }
+        }
+
+        usedShortcutIds.add(nextId);
+        nextShortcuts.push({
+          id: nextId,
+          title,
+          url,
+          icon,
+        });
+      });
+
+      next[scenarioId] = nextShortcuts;
+    } else if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
       next[scenarioId] = [];
     }
   });
