@@ -316,6 +316,7 @@ export class LeafTabSyncCloudEncryptedTransport implements LeafTabSyncEncryptedR
 
   private async request<T>(path: string, init?: RequestInit, allowNotFound = false): Promise<T | null> {
     const response = await fetch(`${this.apiUrl}${path}`, {
+      cache: 'no-store',
       ...init,
       headers: {
         'Content-Type': 'application/json',

@@ -60,6 +60,11 @@ export default {
             label: "計算器預覽",
             description: "輸入算式時顯示即時計算結果建議",
             tooltip: "例如輸入 12*8，會在下拉建議中顯示結果。"
+          },
+          rotatingPlaceholder: {
+            label: "搜尋框提示輪播",
+            description: "讓搜尋框提示自動切換\n關閉後固定顯示預設提示",
+            tooltip: "關閉後，搜尋框只會固定顯示「想找什麼？直接輸入，網址也可以」這一條提示。"
           }
         }
       },

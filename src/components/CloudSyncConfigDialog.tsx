@@ -20,6 +20,7 @@ interface CloudSyncConfigDialogProps {
   onSaveSuccess?: () => void | Promise<void>;
   encryptionReady?: boolean;
   onManageEncryption?: () => void | Promise<void>;
+  onLogout?: () => void | Promise<void>;
 }
 
 export function CloudSyncConfigDialog({
@@ -28,6 +29,7 @@ export function CloudSyncConfigDialog({
   onSaveSuccess,
   encryptionReady = false,
   onManageEncryption,
+  onLogout,
 }: CloudSyncConfigDialogProps) {
   const { t } = useTranslation();
   const syncIntervalOptions = [5, 10, 15, 30, 60];
@@ -76,14 +78,31 @@ export function CloudSyncConfigDialog({
       })}
       contentClassName="sm:max-w-[500px]"
       footer={(
-        <SyncSettingsActionButtons
-          cancelLabel={t('common.cancel')}
-          saveLabel={t('common.save')}
-          onCancel={() => onOpenChange(false)}
-          onSave={() => void handleSave()}
-          cancelDisabled={saving}
-          saveDisabled={saving}
-        />
+        <div className="flex w-full flex-col gap-3">
+          <div className="flex w-full gap-4 sm:gap-4">
+            <SyncSettingsActionButtons
+              cancelLabel={t('common.cancel')}
+              saveLabel={t('common.save')}
+              onCancel={() => onOpenChange(false)}
+              onSave={() => void handleSave()}
+              cancelDisabled={saving}
+              saveDisabled={saving}
+            />
+          </div>
+          {onLogout ? (
+            <button
+              type="button"
+              className="w-full text-center text-sm font-medium text-red-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                onOpenChange(false);
+                void onLogout();
+              }}
+              disabled={saving}
+            >
+              {t('settings.profile.logout', { defaultValue: '退出账号' })}
+            </button>
+          ) : null}
+        </div>
       )}
     >
       <div className="flex flex-col gap-4">

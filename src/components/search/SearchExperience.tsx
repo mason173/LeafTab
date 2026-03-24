@@ -76,6 +76,7 @@ export interface SearchExperienceProps {
   searchSiteShortcutEnabled: boolean;
   searchAnyKeyCaptureEnabled: boolean;
   searchCalculatorEnabled: boolean;
+  searchRotatingPlaceholderEnabled: boolean;
   disablePlaceholderAnimation?: boolean;
   lightweightSearchUi?: boolean;
   searchHeight: number;
@@ -158,6 +159,7 @@ export const SearchExperience = memo(function SearchExperience({
   searchSiteShortcutEnabled,
   searchAnyKeyCaptureEnabled,
   searchCalculatorEnabled,
+  searchRotatingPlaceholderEnabled,
   disablePlaceholderAnimation = false,
   lightweightSearchUi = false,
   searchHeight,
@@ -824,7 +826,11 @@ export const SearchExperience = memo(function SearchExperience({
     tabSwitchSearchEngine,
   ]);
 
-  const rotatingSearchPlaceholder = useRotatingText(rotatingPlaceholderItems, 3000);
+  const rotatingSearchPlaceholder = useRotatingText(
+    rotatingPlaceholderItems,
+    3000,
+    !searchRotatingPlaceholderEnabled,
+  );
 
   const searchDropdownStatusNotice = useMemo(() => {
     const authorizationLabel = t('search.authorizeHistoryPermission', { defaultValue: '去授权' });
@@ -852,6 +858,14 @@ export const SearchExperience = memo(function SearchExperience({
             tone: 'loading' as const,
             message: t('search.bookmarksSemanticModelDownloading', {
               defaultValue: '首次使用正在联网下载 AI 模型，完成后会自动建立索引...',
+            }),
+          };
+        }
+        if (semanticBookmarkStatus.activity === 'loading-model') {
+          return {
+            tone: 'loading' as const,
+            message: t('search.bookmarksSemanticModelLoadingLocal', {
+              defaultValue: '正在加载已缓存的本地 AI 模型，完成后会自动建立索引...',
             }),
           };
         }

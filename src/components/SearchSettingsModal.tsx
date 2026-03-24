@@ -7,6 +7,7 @@ import {
   RiCodeSSlashFill,
   RiComputerFill,
   RiDashboardFill,
+  RiFileTextFill,
   RiLinkM,
   RiQuestionLine,
   RiRefreshFill,
@@ -99,6 +100,8 @@ interface SearchSettingsModalProps {
   onSearchAnyKeyCaptureEnabledChange: (checked: boolean) => void;
   searchCalculatorEnabled: boolean;
   onSearchCalculatorEnabledChange: (checked: boolean) => void;
+  searchRotatingPlaceholderEnabled: boolean;
+  onSearchRotatingPlaceholderEnabledChange: (checked: boolean) => void;
 }
 
 export function SearchSettingsModal({
@@ -116,6 +119,8 @@ export function SearchSettingsModal({
   onSearchAnyKeyCaptureEnabledChange,
   searchCalculatorEnabled,
   onSearchCalculatorEnabledChange,
+  searchRotatingPlaceholderEnabled,
+  onSearchRotatingPlaceholderEnabledChange,
 }: SearchSettingsModalProps) {
   const { t } = useTranslation();
 
@@ -186,6 +191,16 @@ export function SearchSettingsModal({
               tooltip={t('settings.searchSettings.items.calculator.tooltip')}
               checked={searchCalculatorEnabled}
               onCheckedChange={onSearchCalculatorEnabledChange}
+            />
+
+            <SearchSettingRow
+              id="search-rotating-placeholder-enabled"
+              icon={RiFileTextFill}
+              label={t('settings.searchSettings.items.rotatingPlaceholder.label')}
+              description={t('settings.searchSettings.items.rotatingPlaceholder.description')}
+              tooltip={t('settings.searchSettings.items.rotatingPlaceholder.tooltip')}
+              checked={searchRotatingPlaceholderEnabled}
+              onCheckedChange={onSearchRotatingPlaceholderEnabledChange}
             />
           </div>
         </ScrollArea>

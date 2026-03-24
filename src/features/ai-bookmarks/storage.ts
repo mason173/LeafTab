@@ -12,6 +12,10 @@ import {
   replacePersistedBookmarkSemanticIndex,
 } from '@/features/ai-bookmarks/storagePersistence';
 
+// Storage truth:
+// 1. Local/dev runtime reads and writes directly against the storage backend.
+// 2. Extension runtime persists the canonical snapshot in IndexedDB.
+// 3. The sandbox hydrates a searchable replica from that snapshot before queries run.
 async function getStorageBackend() {
   return import('@/features/ai-bookmarks/storageBackend');
 }
@@ -24,6 +28,8 @@ async function ensureSandboxIndexReady(): Promise<void> {
   if (sandboxHydrationPromise) return sandboxHydrationPromise;
 
   sandboxHydrationPromise = (async () => {
+    // In the extension runtime, IndexedDB is the persisted source of truth.
+    // The sandbox only holds a searchable replica that gets hydrated from that persisted copy.
     const meta = await readPersistedBookmarkSemanticIndexMeta();
     if (!meta) {
       const response = await requestBookmarkStorageWithSandbox({
@@ -79,6 +85,7 @@ export async function searchBookmarkSemanticIndex(args: {
   }
 
   await ensureSandboxIndexReady();
+  // Searches always execute against the sandbox replica after hydration.
   const response = await requestBookmarkStorageWithSandbox({
     operation: 'search-index',
     embeddingModel: args.embeddingModel,
@@ -100,6 +107,7 @@ export async function replaceBookmarkSemanticIndex(args: {
     return;
   }
 
+  // Replace persisted data first, then refresh the sandbox replica from the same snapshot.
   await replacePersistedBookmarkSemanticIndex(args);
   const response = await requestBookmarkStorageWithSandbox({
     operation: 'replace-index',

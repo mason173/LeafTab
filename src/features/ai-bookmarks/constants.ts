@@ -23,6 +23,7 @@ export const AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE = 0.28;
 export const AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE_CJK = 0.34;
 export const AI_BOOKMARK_MODEL_ASSET_OVERRIDE_STORAGE_KEY = 'leaftab_ai_bookmark_model_asset_overrides_v1';
 export const AI_BOOKMARK_MODEL_ASSET_OVERRIDE_QUERY_PARAM = 'aiBookmarkModelAssetOverrides';
+export const AI_BOOKMARK_MODEL_CACHE_NAME = 'leaftab-transformers-cache-v1';
 
 export const AI_BOOKMARK_DEFAULT_MODEL_ID: AiBookmarkModelId = 'paraphrase-multilingual-minilm-l12-v2';
 

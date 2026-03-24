@@ -61,7 +61,7 @@ export type BookmarkSemanticSearchCandidate = Omit<BookmarkSemanticIndexEntry, '
 };
 
 export type BookmarkSemanticSearchStatus = {
-  activity: 'idle' | 'downloading-model' | 'reading-bookmarks' | 'building-index' | 'saving-index' | 'ready' | 'error';
+  activity: 'idle' | 'downloading-model' | 'loading-model' | 'reading-bookmarks' | 'building-index' | 'saving-index' | 'ready' | 'error';
   modelState: 'idle' | 'loading' | 'ready' | 'error';
   indexState: 'idle' | 'syncing' | 'ready' | 'error';
   available: boolean;

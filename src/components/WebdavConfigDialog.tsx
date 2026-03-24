@@ -32,6 +32,7 @@ interface WebdavConfigDialogProps {
   onOpenChange: (open: boolean) => void;
   enableAfterSave?: boolean;
   onEnableAfterSave?: () => void | Promise<void>;
+  onDisableSync?: () => void | Promise<void>;
 }
 
 export function WebdavConfigDialog({
@@ -39,6 +40,7 @@ export function WebdavConfigDialog({
   onOpenChange,
   enableAfterSave = false,
   onEnableAfterSave,
+  onDisableSync,
 }: WebdavConfigDialogProps) {
   const { t } = useTranslation();
   const syncIntervalOptions = [5, 10, 15, 30, 60];
@@ -53,6 +55,7 @@ export function WebdavConfigDialog({
   const [webdavProvider, setWebdavProvider] = useState("custom");
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+  const canDisableSync = !enableAfterSave && isWebdavSyncEnabledFromStorage();
 
   const webdavProviders = useMemo(() => ([
     { id: "custom", label: t("settings.backup.webdav.providerCustom") },
@@ -249,14 +252,31 @@ export function WebdavConfigDialog({
       description={t("settings.backup.webdav.entryDesc")}
       contentClassName="sm:max-w-[500px]"
       footer={(
-        <SyncSettingsActionButtons
-          cancelLabel={t('common.cancel')}
-          saveLabel={t('common.save')}
-          onCancel={() => onOpenChange(false)}
-          onSave={() => void handleSaveSyncSettings()}
-          cancelDisabled={saving}
-          saveDisabled={saving}
-        />
+        <div className="flex w-full flex-col gap-3">
+          <div className="flex w-full gap-4 sm:gap-4">
+            <SyncSettingsActionButtons
+              cancelLabel={t('common.cancel')}
+              saveLabel={t('common.save')}
+              onCancel={() => onOpenChange(false)}
+              onSave={() => void handleSaveSyncSettings()}
+              cancelDisabled={saving}
+              saveDisabled={saving}
+            />
+          </div>
+          {canDisableSync && onDisableSync ? (
+            <button
+              type="button"
+              className="w-full text-center text-sm font-medium text-red-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                onOpenChange(false);
+                void onDisableSync();
+              }}
+              disabled={saving}
+            >
+              {t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
+            </button>
+          ) : null}
+        </div>
       )}
     >
       <div className="grid gap-3">

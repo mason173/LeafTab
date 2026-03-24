@@ -60,6 +60,11 @@ export default {
             label: "計算プレビュー",
             description: "式を入力すると計算結果を候補に表示",
             tooltip: "例: `12*8` でドロップダウンに計算結果を表示します。"
+          },
+          rotatingPlaceholder: {
+            label: "検索ヒントの切り替え表示",
+            description: "検索ボックスのヒントを自動で切り替えます",
+            tooltip: "オフにすると、検索ボックスには固定のヒントだけを表示します。"
           }
         }
       },

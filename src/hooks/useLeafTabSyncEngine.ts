@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSyncState } from '@/sync/useSyncState';
 import type { CloudShortcutsPayloadV3 } from '@/types';
 import type { WebdavPayload } from '@/utils/backupData';
 import {
   LeafTabLegacyCloudCompat,
+  LeafTabSyncCloudRemoteStoreError,
   LeafTabSyncEngine,
   LeafTabSyncEncryptionRequiredError,
   LeafTabLegacyWebdavCompat,
@@ -71,6 +72,14 @@ const getOrCreateLeafTabSyncDeviceId = (storageKey = 'leaftab_sync_v1_device_id'
 const createBaselineStorageKey = (prefix: string, rootPath?: string) => {
   const suffix = (rootPath || 'leaftab/v1').replace(/[^a-zA-Z0-9_-]+/g, '_');
   return `${prefix}:${suffix}`;
+};
+
+const isRetryableLeafTabSyncConflictError = (error: unknown) => {
+  if (!(error instanceof LeafTabSyncCloudRemoteStoreError) || error.status !== 409) {
+    return false;
+  }
+
+  return !/lock is held by another device/i.test(error.message || '');
 };
 
 export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
@@ -191,6 +200,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   const [analysis, setAnalysis] = useState<LeafTabSyncAnalysis | null>(null);
   const [lastResult, setLastResult] = useState<LeafTabSyncEngineResult | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const syncInFlightRef = useRef<Promise<LeafTabSyncEngineResult | null> | null>(null);
 
   const refreshAnalysis = useCallback(async (options?: LeafTabSyncEngineAnalyzeOptions) => {
     if (!enabled || !engine) {
@@ -221,48 +231,69 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     if (!enabled || !engine) {
       return null;
     }
-    markSyncStart();
-    try {
-      let preparedLegacy = null;
-      if (legacyCompat) {
-        const localSnapshot = await options.buildLocalSnapshot();
-        preparedLegacy = await legacyCompat.prepareLocalSnapshot(localSnapshot);
-      }
 
-      const result = await engine.sync(
-        choice,
-        preparedLegacy
-          ? { localSnapshotOverride: preparedLegacy.snapshot, onProgress: progressOptions?.onProgress }
-          : { onProgress: progressOptions?.onProgress },
-      );
-
-      if (
-        legacyCompat
-        && preparedLegacy?.importedLegacy
-        && (result.kind === 'noop' || result.kind === 'push')
-      ) {
-        await options.applyLocalSnapshot(result.snapshot);
-      }
-
-      if (legacyCompat && result.kind !== 'conflict') {
-        await legacyCompat.writeLegacyMirrorFromSnapshot(result.snapshot, {
-          importedLegacyHash: preparedLegacy?.importedLegacy
-            ? preparedLegacy.legacyHash
-            : null,
-        });
-      }
-      setLastResult(result);
-      if (result.kind === 'conflict') {
-        markSyncConflict();
-      } else {
-        markSyncSuccess();
-      }
-      await refreshAnalysis();
-      return result;
-    } catch (error) {
-      markSyncError(String((error as Error)?.message || error || 'Sync failed'));
-      throw error;
+    if (syncInFlightRef.current) {
+      return syncInFlightRef.current;
     }
+
+    const executeSync = async (
+      allowConflictRetry = true,
+    ): Promise<LeafTabSyncEngineResult | null> => {
+      markSyncStart();
+      try {
+        let preparedLegacy = null;
+        if (legacyCompat) {
+          const localSnapshot = await options.buildLocalSnapshot();
+          preparedLegacy = await legacyCompat.prepareLocalSnapshot(localSnapshot);
+        }
+
+        const result = await engine.sync(
+          choice,
+          preparedLegacy
+            ? { localSnapshotOverride: preparedLegacy.snapshot, onProgress: progressOptions?.onProgress }
+            : { onProgress: progressOptions?.onProgress },
+        );
+
+        if (
+          legacyCompat
+          && preparedLegacy?.importedLegacy
+          && (result.kind === 'noop' || result.kind === 'push')
+        ) {
+          await options.applyLocalSnapshot(result.snapshot);
+        }
+
+        if (legacyCompat && result.kind !== 'conflict') {
+          await legacyCompat.writeLegacyMirrorFromSnapshot(result.snapshot, {
+            importedLegacyHash: preparedLegacy?.importedLegacy
+              ? preparedLegacy.legacyHash
+              : null,
+          });
+        }
+        setLastResult(result);
+        if (result.kind === 'conflict') {
+          markSyncConflict();
+        } else {
+          markSyncSuccess();
+        }
+        await refreshAnalysis();
+        return result;
+      } catch (error) {
+        if (allowConflictRetry && isRetryableLeafTabSyncConflictError(error)) {
+          return executeSync(false);
+        }
+
+        markSyncError(String((error as Error)?.message || error || 'Sync failed'));
+        throw error;
+      }
+    };
+
+    const syncPromise = executeSync().finally(() => {
+      if (syncInFlightRef.current === syncPromise) {
+        syncInFlightRef.current = null;
+      }
+    });
+    syncInFlightRef.current = syncPromise;
+    return syncPromise;
   }, [
     enabled,
     engine,
@@ -274,6 +305,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     options.applyLocalSnapshot,
     options.buildLocalSnapshot,
     refreshAnalysis,
+    syncInFlightRef,
   ]);
 
   const resetBaseline = useCallback(async () => {

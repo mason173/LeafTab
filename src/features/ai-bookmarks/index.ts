@@ -1,6 +1,6 @@
+export { warmSemanticBookmarkIndex } from '@/features/ai-bookmarks/indexSync';
+export { getSemanticBookmarkSuggestions } from '@/features/ai-bookmarks/service';
 export {
   getSemanticBookmarkSearchStatus,
-  getSemanticBookmarkSuggestions,
   subscribeSemanticBookmarkSearchStatus,
-  warmSemanticBookmarkIndex,
-} from '@/features/ai-bookmarks/service';
+} from '@/features/ai-bookmarks/statusStore';

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,15 +7,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   RiCheckboxCircleFill,
-  RiCloseCircleFill,
   RiCloudFill,
   RiErrorWarningFill,
+  RiFolderTransferLine,
   RiHardDrive3Fill,
   RiLoginBoxFill,
-  RiLogoutBoxRFill,
   RiRefreshFill,
   RiSettings4Fill,
 } from '@/icons/ri-compat';
@@ -27,7 +27,8 @@ import { cn } from '@/components/ui/utils';
 export interface LeafTabSyncDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  analysis: LeafTabSyncAnalysis | null;
+  cloudAnalysis: LeafTabSyncAnalysis | null;
+  webdavAnalysis: LeafTabSyncAnalysis | null;
   syncState: SyncState;
   cloudSyncState: SyncState;
   ready?: boolean;
@@ -51,31 +52,27 @@ export interface LeafTabSyncDialogProps {
   onCloudSyncNow?: () => void;
   onOpenCloudConfig?: () => void;
   onCloudLogin?: () => void;
-  onCloudLogout?: () => void;
+  onCloudRepairPull?: () => void;
+  onCloudRepairPush?: () => void;
   onSyncNow: () => void;
   onEnableSync?: () => void;
-  onDisableSync?: () => void;
   onOpenConfig?: () => void;
+  onWebdavRepairPull?: () => void;
+  onWebdavRepairPush?: () => void;
 }
 
 type ProviderTab = 'cloud' | 'webdav';
 type StatusTone = 'neutral' | 'info' | 'success' | 'danger';
 
-type ProviderAction = {
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  variant?: 'default' | 'outline' | 'ghost';
-  onClick?: () => void;
-  disabled?: boolean;
-  spin?: boolean;
-};
-
 type ProviderModel = {
   icon: ComponentType<{ className?: string }>;
   title: string;
   subtitle: string;
-  shortcutCount: string;
-  bookmarkCount: string;
+  remoteLabel: string;
+  localShortcutCount: string;
+  localBookmarkCount: string;
+  remoteShortcutCount: string;
+  remoteBookmarkCount: string;
   lastSyncLabel: string;
   nextSyncLabel: string;
   statusLabel: string;
@@ -84,7 +81,6 @@ type ProviderModel = {
   statusSpin?: boolean;
   scopeLabel: string;
   encryptionLabel: string;
-  actions: ProviderAction[];
 };
 
 const toneClasses: Record<StatusTone, string> = {
@@ -102,9 +98,9 @@ function MetricTile({
   value: string;
 }) {
   return (
-    <div className="rounded-[20px] border border-border/70 bg-background/70 px-4 py-4">
+    <div className="min-w-0 text-center">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="mt-2 text-[24px] font-semibold tracking-tight text-foreground">{value}</div>
+      <div className="mt-1 text-[24px] font-semibold tracking-tight text-foreground">{value}</div>
     </div>
   );
 }
@@ -147,18 +143,111 @@ function DetailRow({
   );
 }
 
-function ProviderCard({ model }: { model: ProviderModel }) {
+function IconActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled = false,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50 dark:border-border/70 dark:bg-background dark:hover:bg-accent/50"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+    >
+      <Icon className="size-4" />
+    </button>
+  );
+}
+
+function RepairPopover({
+  label,
+  disabled = false,
+  overwriteRemoteLabel,
+  overwriteLocalLabel,
+  onOverwriteRemote,
+  onOverwriteLocal,
+}: {
+  label: string;
+  disabled?: boolean;
+  overwriteRemoteLabel: string;
+  overwriteLocalLabel: string;
+  onOverwriteRemote?: () => void;
+  onOverwriteLocal?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (callback?: () => void) => {
+    setOpen(false);
+    callback?.();
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50 dark:border-border/70 dark:bg-background dark:hover:bg-accent/50"
+          disabled={disabled}
+          aria-label={label}
+          title={label}
+        >
+          <RiFolderTransferLine className="size-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[220px] rounded-[20px] p-2">
+        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+          {label}
+        </div>
+        <div className="mt-1 grid gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            className="justify-start rounded-[14px] px-3 text-sm"
+            onClick={() => handleSelect(onOverwriteLocal)}
+          >
+            {overwriteLocalLabel}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="justify-start rounded-[14px] px-3 text-sm"
+            onClick={() => handleSelect(onOverwriteRemote)}
+          >
+            {overwriteRemoteLabel}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ProviderCard({
+  model,
+  actionArea,
+}: {
+  model: ProviderModel;
+  actionArea?: ReactNode;
+}) {
   const ProviderIcon = model.icon;
 
   return (
     <section className="overflow-hidden">
       <div className="flex flex-col gap-4 px-5 py-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-4">
+        <div className="mx-auto grid w-full max-w-[520px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-border/60 bg-background/70 text-primary">
               <ProviderIcon className="size-5" />
             </div>
-            <div className="min-w-0">
+            <div className="flex min-w-0 min-h-12 flex-col justify-center">
               <div className="truncate text-lg font-semibold tracking-tight text-foreground">
                 {model.title}
               </div>
@@ -167,17 +256,21 @@ function ProviderCard({ model }: { model: ProviderModel }) {
               </div>
             </div>
           </div>
-          <StatusBadge
-            tone={model.statusTone}
-            icon={model.statusIcon}
-            label={model.statusLabel}
-            spin={model.statusSpin}
-          />
+          <div className="flex items-center justify-end self-center">
+            <StatusBadge
+              tone={model.statusTone}
+              icon={model.statusIcon}
+              label={model.statusLabel}
+              spin={model.statusSpin}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <MetricTile label="快捷方式" value={model.shortcutCount} />
-          <MetricTile label="书签" value={model.bookmarkCount} />
+        <div className="mx-auto grid w-full max-w-[520px] grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <MetricTile label="本地快捷方式" value={model.localShortcutCount} />
+          <MetricTile label="本地书签" value={model.localBookmarkCount} />
+          <MetricTile label={`${model.remoteLabel}快捷方式`} value={model.remoteShortcutCount} />
+          <MetricTile label={`${model.remoteLabel}书签`} value={model.remoteBookmarkCount} />
         </div>
       </div>
 
@@ -190,28 +283,9 @@ function ProviderCard({ model }: { model: ProviderModel }) {
         </div>
       </div>
 
-      {model.actions.length > 0 ? (
+      {actionArea ? (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 px-5 pt-4">
-          {model.actions.map((action, index) => {
-            const Icon = action.icon;
-            const isPrimary = action.variant === 'default' || (!action.variant && index === 0);
-            return (
-              <Button
-                key={action.label}
-                type="button"
-                variant={action.variant ?? (index === 0 ? 'default' : 'outline')}
-                className={cn(
-                  'h-11',
-                  isPrimary ? 'min-w-[160px] flex-1' : 'border-border/70 bg-background text-foreground hover:bg-accent/60 hover:text-foreground dark:border-border/70 dark:bg-background dark:hover:bg-accent/50 px-4',
-                )}
-                onClick={action.onClick}
-                disabled={action.disabled}
-              >
-                <Icon className={cn('size-4', action.spin ? 'animate-spin' : '')} />
-                {action.label}
-              </Button>
-            );
-          })}
+          {actionArea}
         </div>
       ) : null}
     </section>
@@ -221,7 +295,8 @@ function ProviderCard({ model }: { model: ProviderModel }) {
 export function LeafTabSyncDialog({
   open,
   onOpenChange,
-  analysis,
+  cloudAnalysis,
+  webdavAnalysis,
   syncState,
   cloudSyncState,
   ready = false,
@@ -245,11 +320,13 @@ export function LeafTabSyncDialog({
   onCloudSyncNow,
   onOpenCloudConfig,
   onCloudLogin,
-  onCloudLogout,
+  onCloudRepairPull,
+  onCloudRepairPush,
   onSyncNow,
   onEnableSync,
-  onDisableSync,
   onOpenConfig,
+  onWebdavRepairPull,
+  onWebdavRepairPush,
 }: LeafTabSyncDialogProps) {
   const { t } = useTranslation();
   void hasConfig;
@@ -269,9 +346,6 @@ export function LeafTabSyncDialog({
     }
   }, [cloudSignedIn, open, webdavConfigured, webdavEnabled]);
 
-  const shortcutCount = String(analysis?.localSummary.shortcuts ?? 0);
-  const bookmarkCount = String(analysis?.localSummary.bookmarkItems ?? 0);
-
   const cloudModel = useMemo<ProviderModel>(() => {
     const syncing = cloudSyncState.status === 'syncing';
     const error = cloudSyncState.status === 'error';
@@ -287,8 +361,11 @@ export function LeafTabSyncDialog({
           ? t('leaftabSyncDialog.cloud.connectedSubtitle', { defaultValue: '已登录，可同步 LeafTab 数据' })
           : t('leaftabSyncDialog.cloud.disabledSubtitle', { defaultValue: '已登录，可在云同步设置里开启同步' })
         : t('leaftabSyncDialog.cloud.unsignedSubtitle', { defaultValue: '登录以同步数据' }),
-      shortcutCount,
-      bookmarkCount,
+      remoteLabel: '云端',
+      localShortcutCount: String(cloudAnalysis?.localSummary.shortcuts ?? 0),
+      localBookmarkCount: String(cloudAnalysis?.localSummary.bookmarkItems ?? 0),
+      remoteShortcutCount: String(cloudAnalysis?.remoteSummary.shortcuts ?? 0),
+      remoteBookmarkCount: String(cloudAnalysis?.remoteSummary.bookmarkItems ?? 0),
       lastSyncLabel: cloudSignedIn
         ? (cloudLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
         : t('leaftabSyncDialog.lastSyncUnavailable', { defaultValue: '未同步' }),
@@ -317,43 +394,9 @@ export function LeafTabSyncDialog({
       scopeLabel: t('leaftabSyncDialog.cloud.scopeRich', {
         defaultValue: '快捷方式、书签',
       }),
-      actions: cloudSignedIn ? [
-        ...(enabled ? [{
-          label: syncing
-            ? t('leaftabSyncCenter.actions.syncing', { defaultValue: '同步中' })
-            : t('settings.backup.webdav.sync', { defaultValue: '立即同步' }),
-          icon: RiRefreshFill,
-          variant: 'default' as const,
-          onClick: onCloudSyncNow,
-          disabled: syncing,
-          spin: syncing,
-        }] : [{
-          label: t('leaftabSyncDialog.cloud.enableViaSettings', { defaultValue: '前往开启同步' }),
-          icon: RiSettings4Fill,
-          variant: 'default' as const,
-          onClick: onOpenCloudConfig,
-        }]),
-        {
-          label: t('leaftabSyncDialog.cloud.manage', { defaultValue: '管理云同步' }),
-          icon: RiSettings4Fill,
-          variant: 'outline' as const,
-          onClick: onOpenCloudConfig,
-        },
-        {
-          label: t('settings.profile.logout', { defaultValue: '退出账号' }),
-          icon: RiLogoutBoxRFill,
-          variant: 'ghost' as const,
-          onClick: onCloudLogout,
-        },
-      ] : [{
-        label: t('auth.buttons.login', { defaultValue: '登录' }),
-        icon: RiLoginBoxFill,
-        variant: 'default' as const,
-        onClick: onCloudLogin,
-      }],
     };
   }, [
-    bookmarkCount,
+    cloudAnalysis,
     cloudEnabled,
     cloudEncryptionLabel,
     cloudLastSyncLabel,
@@ -361,11 +404,6 @@ export function LeafTabSyncDialog({
     cloudSignedIn,
     cloudSyncState.status,
     cloudUsername,
-    onCloudLogin,
-    onCloudLogout,
-    onCloudSyncNow,
-    onOpenCloudConfig,
-    shortcutCount,
     t,
   ]);
 
@@ -383,8 +421,11 @@ export function LeafTabSyncDialog({
         : webdavEnabled
           ? t('leaftabSyncDialog.webdav.enabledSubtitle', { defaultValue: '已配置，可同步到 WebDAV' })
           : t('leaftabSyncDialog.webdav.disabledSubtitle', { defaultValue: '已配置，尚未启用同步' }),
-      shortcutCount,
-      bookmarkCount,
+      remoteLabel: 'WebDAV',
+      localShortcutCount: String(webdavAnalysis?.localSummary.shortcuts ?? 0),
+      localBookmarkCount: String(webdavAnalysis?.localSummary.bookmarkItems ?? 0),
+      remoteShortcutCount: String(webdavAnalysis?.remoteSummary.shortcuts ?? 0),
+      remoteBookmarkCount: String(webdavAnalysis?.remoteSummary.bookmarkItems ?? 0),
       lastSyncLabel: webdavConfigured
         ? (webdavLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
         : t('leaftabSyncDialog.lastSyncUnavailable', { defaultValue: '未同步' }),
@@ -405,7 +446,7 @@ export function LeafTabSyncDialog({
               ? t('settings.backup.webdav.enabled', { defaultValue: '已启用' })
               : t('settings.backup.webdav.disabled', { defaultValue: '未启用' }),
       statusTone: !webdavConfigured ? 'neutral' : error ? 'danger' : syncing ? 'info' : webdavEnabled ? 'success' : 'neutral',
-      statusIcon: !webdavConfigured ? RiHardDrive3Fill : error ? RiErrorWarningFill : syncing ? RiRefreshFill : webdavEnabled ? RiCheckboxCircleFill : RiHardDrive3Fill,
+      statusIcon: !webdavConfigured ? RiHardDrive3Fill : error ? RiErrorWarningFill : syncing ? RiRefreshFill : RiCheckboxCircleFill,
       statusSpin: syncing,
       encryptionLabel: webdavConfigured
         ? (webdavEncryptionLabel || t('leaftabSyncEncryption.missingShortLabel', { defaultValue: '未设置' }))
@@ -418,66 +459,12 @@ export function LeafTabSyncDialog({
         : t('leaftabSyncDialog.webdav.scope', {
             defaultValue: '快捷方式、书签',
           }),
-      actions: !webdavConfigured ? [{
-        label: t('settings.backup.webdav.configureAction', { defaultValue: '去配置' }),
-        icon: RiSettings4Fill,
-        variant: 'default' as const,
-        onClick: onOpenConfig,
-        disabled: busy,
-      }] : webdavEnabled ? [
-        {
-          label: syncing
-            ? t('leaftabSyncCenter.actions.syncing', { defaultValue: '同步中' })
-            : t('settings.backup.webdav.sync', { defaultValue: '立即同步' }),
-          icon: RiRefreshFill,
-          variant: 'default' as const,
-          onClick: onSyncNow,
-          disabled: busy || !ready,
-          spin: syncing,
-        },
-        {
-          label: t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' }),
-          icon: RiSettings4Fill,
-          variant: 'outline' as const,
-          onClick: onOpenConfig,
-          disabled: busy,
-        },
-        {
-          label: t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' }),
-          icon: RiCloseCircleFill,
-          variant: 'ghost' as const,
-          onClick: onDisableSync,
-          disabled: busy,
-        },
-      ] : [
-        {
-          label: t('leaftabSyncDialog.enableSync', { defaultValue: '启用同步' }),
-          icon: RiCheckboxCircleFill,
-          variant: 'default' as const,
-          onClick: onEnableSync,
-          disabled: busy || !ready,
-        },
-        {
-          label: t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' }),
-          icon: RiSettings4Fill,
-          variant: 'outline' as const,
-          onClick: onOpenConfig,
-          disabled: busy,
-        },
-      ],
     };
   }, [
-    bookmarkCount,
     bookmarkScopeLabel,
-    busy,
-    onDisableSync,
-    onEnableSync,
-    onOpenConfig,
-    onSyncNow,
-    ready,
-    shortcutCount,
     syncState.status,
     t,
+    webdavAnalysis,
     webdavConfigured,
     webdavEncryptionLabel,
     webdavEnabled,
@@ -488,9 +475,92 @@ export function LeafTabSyncDialog({
 
   const activeModel = activeTab === 'cloud' ? cloudModel : webdavModel;
 
+  const actionArea = activeTab === 'cloud'
+    ? (
+      cloudSignedIn ? (
+        <>
+          <Button
+            type="button"
+            className="h-11 min-w-[160px] flex-1"
+            onClick={cloudEnabled ? onCloudSyncNow : onOpenCloudConfig}
+            disabled={busy || (cloudEnabled && cloudSyncState.status === 'syncing')}
+          >
+            <RiRefreshFill className={cn('size-4', cloudSyncState.status === 'syncing' ? 'animate-spin' : '')} />
+            {cloudEnabled
+              ? (cloudSyncState.status === 'syncing'
+                ? t('leaftabSyncCenter.actions.syncing', { defaultValue: '同步中' })
+                : t('settings.backup.webdav.sync', { defaultValue: '立即同步' }))
+              : t('leaftabSyncDialog.cloud.enableViaSettings', { defaultValue: '前往开启同步' })}
+          </Button>
+          <IconActionButton
+            icon={RiSettings4Fill}
+            label={t('leaftabSyncDialog.cloud.manage', { defaultValue: '管理云同步' })}
+            onClick={onOpenCloudConfig}
+            disabled={busy}
+          />
+          <RepairPopover
+            label={t('leaftabSyncDialog.repair', { defaultValue: '修复同步' })}
+            disabled={busy}
+            overwriteLocalLabel={t('leaftabSyncDialog.cloudOverwriteLocal', { defaultValue: '云端覆盖本地' })}
+            overwriteRemoteLabel={t('leaftabSyncDialog.localOverwriteCloud', { defaultValue: '本地覆盖云端' })}
+            onOverwriteLocal={onCloudRepairPull}
+            onOverwriteRemote={onCloudRepairPush}
+          />
+        </>
+      ) : (
+        <Button type="button" className="h-11 min-w-[160px] flex-1" onClick={onCloudLogin}>
+          <RiLoginBoxFill className="size-4" />
+          {t('auth.buttons.login', { defaultValue: '登录' })}
+        </Button>
+      )
+    )
+    : (
+      <>
+        <Button
+          type="button"
+          className="h-11 min-w-[160px] flex-1"
+          onClick={!webdavConfigured ? onOpenConfig : webdavEnabled ? onSyncNow : onEnableSync}
+          disabled={busy || (webdavEnabled && !ready)}
+        >
+          {!webdavConfigured ? (
+            <RiSettings4Fill className="size-4" />
+          ) : webdavEnabled ? (
+            <RiRefreshFill className={cn('size-4', syncState.status === 'syncing' ? 'animate-spin' : '')} />
+          ) : (
+            <RiCheckboxCircleFill className="size-4" />
+          )}
+          {!webdavConfigured
+            ? t('settings.backup.webdav.configureAction', { defaultValue: '去配置' })
+            : webdavEnabled
+              ? (syncState.status === 'syncing'
+                ? t('leaftabSyncCenter.actions.syncing', { defaultValue: '同步中' })
+                : t('settings.backup.webdav.sync', { defaultValue: '立即同步' }))
+              : t('leaftabSyncDialog.enableSync', { defaultValue: '启用同步' })}
+        </Button>
+        {webdavConfigured ? (
+          <IconActionButton
+            icon={RiSettings4Fill}
+            label={t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' })}
+            onClick={onOpenConfig}
+            disabled={busy}
+          />
+        ) : null}
+        {webdavConfigured && webdavEnabled ? (
+          <RepairPopover
+            label={t('leaftabSyncDialog.repair', { defaultValue: '修复同步' })}
+            disabled={busy}
+            overwriteLocalLabel={t('leaftabSyncDialog.remoteOverwriteLocal', { defaultValue: 'WebDAV 覆盖本地' })}
+            overwriteRemoteLabel={t('leaftabSyncDialog.localOverwriteRemote', { defaultValue: '本地覆盖 WebDAV' })}
+            onOverwriteLocal={onWebdavRepairPull}
+            onOverwriteRemote={onWebdavRepairPush}
+          />
+        ) : null}
+      </>
+    );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
+      <DialogContent className="overflow-visible rounded-[32px] border-border bg-background text-foreground sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t('leaftabSyncCenter.title', { defaultValue: '同步中心' })}</DialogTitle>
           <DialogDescription>
@@ -510,7 +580,7 @@ export function LeafTabSyncDialog({
             </TabsList>
           </Tabs>
 
-          <ProviderCard model={activeModel} />
+          <ProviderCard model={activeModel} actionArea={actionArea} />
         </div>
       </DialogContent>
     </Dialog>
