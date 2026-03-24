@@ -140,16 +140,32 @@ async function requestSandboxEmbeddings(
 
   return new Promise<number[][]>((resolve, reject) => {
     const channel = new MessageChannel();
-    const timeoutId = window.setTimeout(() => {
-      channel.port1.close();
-      reject(new Error('ai_bookmark_sandbox_request_timeout'));
-    }, 120_000);
+    let timeoutId: number | null = null;
+
+    const clearRequestTimeout = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const armRequestTimeout = (delayMs: number) => {
+      clearRequestTimeout();
+      timeoutId = window.setTimeout(() => {
+        channel.port1.close();
+        reject(new Error('ai_bookmark_sandbox_request_timeout'));
+      }, delayMs);
+    };
+
+    // First-time model downloads can take several minutes on slower networks.
+    armRequestTimeout(10 * 60 * 1000);
 
     channel.port1.onmessage = (
       event: MessageEvent<AiBookmarkSandboxEmbedResponse | AiBookmarkSandboxEmbedProgressEvent>,
     ) => {
       const data = event.data;
       if (data?.kind === 'progress') {
+        armRequestTimeout(90_000);
         options?.onProgress?.({
           progress: data.progress,
           label: data.label,
@@ -157,7 +173,7 @@ async function requestSandboxEmbeddings(
         return;
       }
 
-      window.clearTimeout(timeoutId);
+      clearRequestTimeout();
       channel.port1.close();
       if (data?.ok) {
         resolve(data.embeddings);
