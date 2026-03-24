@@ -58,7 +58,10 @@ import {
   subscribeSemanticBookmarkSearchStatus,
   warmSemanticBookmarkIndex,
 } from '@/features/ai-bookmarks';
-import { ENABLE_AI_BOOKMARK_SEARCH } from '@/config/featureFlags';
+import {
+  ENABLE_AI_BOOKMARK_AUTO_WARMUP,
+  ENABLE_AI_BOOKMARK_SEARCH,
+} from '@/config/featureFlags';
 import {
   hasWebdavUrlConfiguredFromStorage,
   isWebdavSyncEnabledFromStorage,
@@ -584,6 +587,7 @@ export default function App() {
   const semanticBookmarkIndexTaskIdRef = useRef<string | null>(null);
   const scheduleSemanticBookmarkWarmup = useCallback((options?: { immediate?: boolean }) => {
     if (!ENABLE_AI_BOOKMARK_SEARCH) return;
+    if (!ENABLE_AI_BOOKMARK_AUTO_WARMUP) return;
     const bookmarksApi = getBookmarksApi();
     if (!bookmarksApi) return;
     if (options?.immediate) {

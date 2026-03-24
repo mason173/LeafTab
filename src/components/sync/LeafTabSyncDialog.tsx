@@ -487,11 +487,18 @@ export function LeafTabSyncDialog({
       />
     )
     : (
-      webdavConfigured ? (
         <SyncEncryptionStatusCard
-          ready={webdavEncryptionReady}
+          ready={webdavConfigured ? webdavEncryptionReady : false}
+          title={webdavConfigured
+            ? undefined
+            : t('leaftabSyncEncryption.webdavNotEnabledTitle', { defaultValue: '当前未开启 WebDAV 同步' })}
+          description={webdavConfigured
+            ? undefined
+            : t('leaftabSyncEncryption.webdavNotEnabledDescription', { defaultValue: '启用 WebDAV 同步后，即可受端到端加密保护。' })}
+          pillLabel={webdavConfigured
+            ? undefined
+            : t('leaftabSyncEncryption.webdavNotEnabledPill', { defaultValue: '未开启' })}
         />
-      ) : null
     );
 
   const actionArea = activeTab === 'cloud'
