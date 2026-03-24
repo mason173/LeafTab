@@ -5,11 +5,14 @@ import {
 } from '@/features/ai-bookmarks/constants';
 import {
   AI_BOOKMARK_SANDBOX_EMBED_TYPE,
+  AI_BOOKMARK_SANDBOX_PRELOAD_TYPE,
   AI_BOOKMARK_SANDBOX_READY_TYPE,
   AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
   type AiBookmarkSandboxEmbedRequest,
   type AiBookmarkSandboxEmbedProgressEvent,
   type AiBookmarkSandboxEmbedResponse,
+  type AiBookmarkSandboxPreloadRequest,
+  type AiBookmarkSandboxPreloadResponse,
   type AiBookmarkSandboxStorageRequest,
   type AiBookmarkSandboxStorageResponse,
 } from '@/features/ai-bookmarks/sandboxShared';
@@ -44,6 +47,10 @@ function resolveSandboxUrl(): string {
 }
 
 function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
+  if (isAiSandboxPage()) {
+    return Promise.reject(new Error('ai_bookmark_sandbox_nested_request'));
+  }
+
   if (sandboxFramePromise) return sandboxFramePromise;
 
   sandboxFramePromise = new Promise((resolve, reject) => {
@@ -193,6 +200,68 @@ async function requestSandboxEmbeddings(
   });
 }
 
+async function requestSandboxPreload(
+  payload: AiBookmarkSandboxPreloadRequest,
+  options?: {
+    onProgress?: (progress: { progress: number; label?: string }) => void;
+  },
+): Promise<void> {
+  const frame = await ensureSandboxFrame();
+
+  return new Promise<void>((resolve, reject) => {
+    const channel = new MessageChannel();
+    let timeoutId: number | null = null;
+
+    const clearRequestTimeout = () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    const armRequestTimeout = (delayMs: number) => {
+      clearRequestTimeout();
+      timeoutId = window.setTimeout(() => {
+        channel.port1.close();
+        reject(new Error('ai_bookmark_sandbox_request_timeout'));
+      }, delayMs);
+    };
+
+    armRequestTimeout(10 * 60 * 1000);
+
+    channel.port1.onmessage = (
+      event: MessageEvent<AiBookmarkSandboxPreloadResponse | AiBookmarkSandboxEmbedProgressEvent>,
+    ) => {
+      const data = event.data;
+      if (data?.kind === 'progress') {
+        armRequestTimeout(90_000);
+        options?.onProgress?.({
+          progress: data.progress,
+          label: data.label,
+        });
+        return;
+      }
+
+      clearRequestTimeout();
+      channel.port1.close();
+      if (data?.ok) {
+        resolve();
+        return;
+      }
+      reject(new Error(data?.error || 'ai_bookmark_sandbox_request_failed'));
+    };
+
+    frame.contentWindow?.postMessage(
+      {
+        type: AI_BOOKMARK_SANDBOX_PRELOAD_TYPE,
+        payload,
+      },
+      '*',
+      [channel.port2],
+    );
+  });
+}
+
 export async function requestBookmarkStorageWithSandbox(
   payload: AiBookmarkSandboxStorageRequest,
 ): Promise<AiBookmarkSandboxStorageResponse> {
@@ -268,6 +337,25 @@ export async function embedTextsWithBookmarkModel(args: {
       modelId: args.modelId,
       texts: args.texts,
       isQuery: args.isQuery,
+    },
+    {
+      onProgress: args.onProgress,
+    },
+  );
+}
+
+export async function preloadBookmarkModel(args: {
+  modelId: AiBookmarkModelId;
+  onProgress?: (progress: { progress: number; label?: string }) => void;
+}): Promise<void> {
+  if (!isExtensionRuntime() || isAiSandboxPage()) {
+    const { preloadBookmarkModel: preloadDirectly } = await import('@/features/ai-bookmarks/model');
+    return preloadDirectly(args);
+  }
+
+  return requestSandboxPreload(
+    {
+      modelId: args.modelId,
     },
     {
       onProgress: args.onProgress,

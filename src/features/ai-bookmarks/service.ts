@@ -1,5 +1,4 @@
 import type { SearchSuggestionItem } from '@/types';
-import { preloadBookmarkModel } from '@/features/ai-bookmarks/model';
 import {
   AI_BOOKMARK_DEFAULT_MODEL_ID,
   AI_BOOKMARK_FALLBACK_SUPPLEMENT_LIMIT,
@@ -16,7 +15,7 @@ import {
   AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE_CJK,
 } from '@/features/ai-bookmarks/constants';
 import { loadBookmarkSemanticDocuments } from '@/features/ai-bookmarks/bookmarks';
-import { embedTextsWithBookmarkModel } from '@/features/ai-bookmarks/sandboxClient';
+import { embedTextsWithBookmarkModel, preloadBookmarkModel } from '@/features/ai-bookmarks/sandboxClient';
 import {
   enrichBookmarkDocumentsWithPageMetadata,
   shouldAttemptPageMetadataRefresh,
@@ -553,25 +552,37 @@ async function syncSemanticBookmarkIndex(
   syncPromise = (async () => {
     const existingMeta = await readBookmarkSemanticIndexMeta();
     const existingEntries = await readBookmarkSemanticIndexEntries();
-
-    if (
+    const hasReusableExistingIndex = Boolean(
       existingMeta
       && existingMeta.schemaVersion === AI_BOOKMARK_INDEX_SCHEMA_VERSION
       && existingMeta.embeddingModel === AI_BOOKMARK_DEFAULT_MODEL_ID
-      && existingEntries.length > 0
-    ) {
-      setStatus({
-        activity: 'ready',
-        modelState: 'ready',
-        indexState: 'ready',
-        available: true,
-        indexedCount: existingEntries.length,
-        builtAt: existingMeta.builtAt,
-        lastError: null,
-        progress: null,
-        progressLabel: null,
-      });
-    } else {
+      && existingEntries.length > 0,
+    );
+
+    if (hasReusableExistingIndex) {
+      if (
+        status.activity !== 'ready'
+        || status.indexState !== 'ready'
+        || status.indexedCount !== existingEntries.length
+        || status.builtAt !== existingMeta?.builtAt
+        || !status.available
+      ) {
+        setStatus({
+          activity: 'ready',
+          modelState: 'ready',
+          indexState: 'ready',
+          available: true,
+          indexedCount: existingEntries.length,
+          builtAt: existingMeta?.builtAt ?? null,
+          lastError: null,
+          progress: null,
+          progressLabel: null,
+        });
+      }
+      return existingEntries;
+    }
+
+    {
       setStatus({
         activity: 'downloading-model',
         modelState: 'loading',
@@ -716,6 +727,7 @@ async function syncSemanticBookmarkIndex(
     return entries;
   })().catch((error) => {
     const message = String((error as Error)?.message || error || 'semantic_bookmark_index_failed');
+    const failedDuringModelLoad = status.activity === 'downloading-model' || status.modelState === 'loading';
     console.error('[ai-bookmarks] semantic index failed', error);
     setStatus({
       activity: 'error',
@@ -723,8 +735,8 @@ async function syncSemanticBookmarkIndex(
       indexState: isMissingLocalModelAssetsError(message) ? 'idle' : 'error',
       available: false,
       lastError: message,
-      progress: null,
-      progressLabel: null,
+      progress: status.progress,
+      progressLabel: failedDuringModelLoad ? 'AI 模型下载失败' : 'AI 书签语义索引建立失败',
     });
     throw error;
   }).finally(() => {

@@ -5,18 +5,21 @@ export interface LongTaskIndicatorState {
   title: string;
   detail?: string;
   progress: number;
+  tone: 'info' | 'success' | 'error';
 }
 
 type StartLongTaskOptions = {
   title: string;
   detail?: string;
   progress?: number;
+  tone?: 'info' | 'success' | 'error';
 };
 
 type UpdateLongTaskOptions = {
   title?: string;
   detail?: string;
   progress?: number;
+  tone?: 'info' | 'success' | 'error';
 };
 
 const clampProgress = (value?: number) => {
@@ -49,6 +52,7 @@ export function useLongTaskIndicator() {
       title: options.title,
       detail: options.detail,
       progress: clampProgress(options.progress ?? 0),
+      tone: options.tone ?? 'info',
     });
     return id;
   }, [clearPendingTimer]);
@@ -63,6 +67,7 @@ export function useLongTaskIndicator() {
         progress: typeof options.progress === 'number'
           ? clampProgress(options.progress)
           : current.progress,
+        tone: options.tone ?? current.tone,
       };
     });
   }, []);
@@ -71,6 +76,7 @@ export function useLongTaskIndicator() {
     title?: string;
     detail?: string;
     delayMs?: number;
+    tone?: 'info' | 'success' | 'error';
   }) => {
     clearPendingTimer();
     setTask((current) => {
@@ -80,6 +86,7 @@ export function useLongTaskIndicator() {
         title: typeof options?.title === 'string' ? options.title : current.title,
         detail: typeof options?.detail === 'string' ? options.detail : current.detail,
         progress: 100,
+        tone: options?.tone ?? 'success',
       };
     });
     clearTimerRef.current = window.setTimeout(() => {

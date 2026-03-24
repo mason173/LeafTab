@@ -78,6 +78,9 @@ export async function loadBookmarkSemanticDocuments(
           pageTitle,
           metaDescription,
           bodyPreview,
+          pageMetadataState: 'pending' as const,
+          pageMetadataFetchedAt: 0,
+          pageMetadataRetryAt: 0,
           faviconUrl,
           searchText,
         };
