@@ -66,4 +66,6 @@ export type BookmarkSemanticSearchStatus = {
   indexedCount: number;
   builtAt: number | null;
   lastError: string | null;
+  progress: number | null;
+  progressLabel: string | null;
 };

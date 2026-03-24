@@ -22,6 +22,13 @@ type ModelAssetSource = {
   localFilesOnly: boolean;
 };
 
+type ModelLoadOptions = {
+  model: string;
+  localFilesOnly: boolean;
+  remoteHost?: string;
+  remotePathTemplate?: string;
+};
+
 let transformersImportPromise: Promise<typeof import('@huggingface/transformers')> | null = null;
 const pipelineCache = new Map<string, Promise<FeatureExtractionPipeline>>();
 const modelAvailabilityCache = new Map<string, Promise<boolean>>();
@@ -116,14 +123,7 @@ function getModelAssetSourceCandidates(modelId: AiBookmarkModelId): ModelAssetSo
     }];
   }
 
-  const candidates: ModelAssetSource[] = [
-    {
-      baseUrl: resolveRuntimeAssetUrl(definition.modelPath).replace(/\/+$/, ''),
-      cacheKey: `${modelId}::local`,
-      localFilesOnly: true,
-    },
-  ];
-
+  const candidates: ModelAssetSource[] = [];
   if (definition.remoteModelBaseUrl) {
     candidates.push({
       baseUrl: definition.remoteModelBaseUrl.replace(/\/+$/, ''),
@@ -131,6 +131,12 @@ function getModelAssetSourceCandidates(modelId: AiBookmarkModelId): ModelAssetSo
       localFilesOnly: false,
     });
   }
+
+  candidates.push({
+    baseUrl: resolveRuntimeAssetUrl(definition.modelPath).replace(/\/+$/, ''),
+    cacheKey: `${modelId}::local`,
+    localFilesOnly: true,
+  });
 
   return candidates;
 }
@@ -141,8 +147,6 @@ function resolveModelAssetUrl(source: ModelAssetSource, relativePath: string): s
 
 async function configureTransformersEnvironment() {
   const { env } = await getTransformersModule();
-  env.allowLocalModels = true;
-  env.allowRemoteModels = true;
   env.useBrowserCache = false;
   env.backends.onnx.wasm.proxy = false;
   env.backends.onnx.wasm.numThreads = 1;
@@ -150,6 +154,8 @@ async function configureTransformersEnvironment() {
     mjs: resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.mjs'),
     wasm: resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.wasm'),
   };
+
+  return env;
 }
 
 async function fileExists(url: string): Promise<boolean> {
@@ -242,17 +248,56 @@ async function loadFeatureExtractionPipeline(
 ): Promise<FeatureExtractionPipeline> {
   const { pipeline } = await getTransformersModule();
   const source = await getModelAssetSource(modelId);
-  const modelUrl = source.baseUrl;
   const modelBaseName = definition.modelFileName
     .replace(/_quantized\.onnx$/i, '')
     .replace(/\.onnx$/i, '');
-  return pipeline('feature-extraction', modelUrl, {
-    local_files_only: source.localFilesOnly,
+  const modelLoadOptions = buildModelLoadOptions({
+    modelId,
+    definition,
+    source,
+  });
+  const env = await configureTransformersEnvironment();
+
+  env.allowLocalModels = modelLoadOptions.localFilesOnly;
+  env.allowRemoteModels = !modelLoadOptions.localFilesOnly;
+  if (modelLoadOptions.remoteHost) {
+    env.remoteHost = modelLoadOptions.remoteHost;
+  }
+  if (typeof modelLoadOptions.remotePathTemplate === 'string') {
+    env.remotePathTemplate = modelLoadOptions.remotePathTemplate;
+  }
+
+  return pipeline('feature-extraction', modelLoadOptions.model, {
+    local_files_only: modelLoadOptions.localFilesOnly,
     subfolder: 'onnx',
     model_file_name: modelBaseName,
     dtype: 'q8',
     device: 'wasm',
   }) as Promise<FeatureExtractionPipeline>;
+}
+
+function buildModelLoadOptions(args: {
+  modelId: AiBookmarkModelId;
+  definition: AiBookmarkModelDefinition;
+  source: ModelAssetSource;
+}): ModelLoadOptions {
+  if (args.source.localFilesOnly) {
+    return {
+      model: args.definition.modelPath,
+      localFilesOnly: true,
+    };
+  }
+
+  const remoteUrl = new URL(args.source.baseUrl);
+  const remotePath = remoteUrl.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  return {
+    // transformers.js requires a syntactically valid model id before it will
+    // attempt a remote fetch, even when the remote path template ignores it.
+    model: `leaftab/${args.modelId}`,
+    localFilesOnly: false,
+    remoteHost: `${remoteUrl.origin}/`,
+    remotePathTemplate: remotePath ? `${remotePath}/` : '',
+  };
 }
 
 function getEmbeddingDimensions(tensor: TensorLike, inputCount: number): {

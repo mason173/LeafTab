@@ -2,12 +2,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { buildChangelogItems } from "@/components/changelog/changelog-data";
+import { buildChangelogSections } from "@/components/changelog/changelog-data";
 import { ChangelogTimeline } from "@/components/changelog/ChangelogTimeline";
 
 export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { t, i18n } = useTranslation();
-  const items = buildChangelogItems(t);
+  const sections = buildChangelogSections(t);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -20,7 +20,19 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
           className="max-h-[66vh]"
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
         >
-          <ChangelogTimeline items={items} language={i18n.language} />
+          <div className="space-y-8 pr-1">
+            {sections.map((section) => (
+              <section key={section.id} className="space-y-3">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">{section.title}</h3>
+                  {section.description ? (
+                    <p className="text-xs leading-5 text-muted-foreground">{section.description}</p>
+                  ) : null}
+                </div>
+                <ChangelogTimeline items={section.items} language={i18n.language} />
+              </section>
+            ))}
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

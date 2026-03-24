@@ -87,6 +87,7 @@ export interface SearchExperienceProps {
   subtleDarkTone?: boolean;
   searchSurfaceStyle?: CSSProperties;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
+  onWarmSemanticBookmarkIndex?: (options?: { immediate?: boolean }) => void;
 }
 
 function hasOpenBlockingLayer() {
@@ -168,6 +169,7 @@ export const SearchExperience = memo(function SearchExperience({
   subtleDarkTone,
   searchSurfaceStyle,
   onInteractionStateChange,
+  onWarmSemanticBookmarkIndex,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
   const extensionRuntimeActive = isExtensionRuntime();
@@ -590,17 +592,9 @@ export const SearchExperience = memo(function SearchExperience({
   useEffect(() => {
     if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
     if (!searchPermissions.bookmarks) return undefined;
-
-    const bookmarksApi = getBookmarksApi();
-    if (!bookmarksApi) return undefined;
-
-    return scheduleAfterInteractivePaint(() => {
-      void warmSemanticBookmarkIndex(bookmarksApi);
-    }, {
-      delayMs: 180,
-      idleTimeoutMs: 800,
-    });
-  }, [searchPermissions.bookmarks]);
+    onWarmSemanticBookmarkIndex?.({ immediate: false });
+    return undefined;
+  }, [onWarmSemanticBookmarkIndex, searchPermissions.bookmarks]);
 
   useEffect(() => {
     const tabsApi = getTabsApi();
@@ -653,6 +647,9 @@ export const SearchExperience = memo(function SearchExperience({
           return;
         }
         setSearchPermissionGranted(permission, true);
+        if (permission === 'bookmarks') {
+          onWarmSemanticBookmarkIndex?.({ immediate: true });
+        }
         setPermissionWarmup(permission);
         scheduleAfterInteractivePaint(() => {
           setPermissionWarmup((current) => (current === permission ? null : current));
@@ -673,6 +670,7 @@ export const SearchExperience = memo(function SearchExperience({
     setSearchPermissionGranted,
     showSearchCommandPermissionDeniedToast,
     showSearchCommandUnsupportedToast,
+    onWarmSemanticBookmarkIndex,
     t,
   ]);
 

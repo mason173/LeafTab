@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
+import { AI_BOOKMARK_SUGGESTION_LIMIT } from '@/features/ai-bookmarks/constants';
 import {
   getBookmarksApi,
   getExtensionRuntime,
@@ -230,11 +231,11 @@ export function useSearchSuggestionSources({
     query: commandQuery,
     debounceMs: BOOKMARK_ASYNC_DEBOUNCE_MS,
     loadingDelayMs: SEARCH_ASYNC_LOADING_DELAY_MS,
-    getCachedItems: (query) => getCachedBookmarkSuggestions(query, 30),
+    getCachedItems: (query) => getCachedBookmarkSuggestions(query, AI_BOOKMARK_SUGGESTION_LIMIT),
     load: async (query) => {
       const bookmarksApi = getBookmarksApi();
       if (!bookmarksApi) return [];
-      return getBookmarkSuggestionsFromApi(bookmarksApi, query, 30);
+      return getBookmarkSuggestionsFromApi(bookmarksApi, query, AI_BOOKMARK_SUGGESTION_LIMIT);
     },
   });
 

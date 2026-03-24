@@ -22,6 +22,15 @@ function hasPageMetadata(document: BookmarkSemanticDocument): boolean {
   return Boolean(document.pageTitle || document.metaDescription || document.bodyPreview);
 }
 
+export function shouldAttemptPageMetadataRefresh(document: BookmarkSemanticDocument): boolean {
+  if (hasPageMetadata(document)) return false;
+
+  const retryAt = Number(document.pageMetadataRetryAt || 0);
+  if (retryAt > Date.now()) return false;
+
+  return document.pageMetadataState !== 'success' && document.pageMetadataState !== 'empty';
+}
+
 function extractMetaDescription(doc: Document): string {
   const selectors = [
     'meta[name="description"]',

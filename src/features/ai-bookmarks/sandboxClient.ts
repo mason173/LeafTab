@@ -22,6 +22,7 @@ function isAiSandboxPage(): boolean {
 }
 
 function resolveSandboxUrl(): string {
+  const runtime = getExtensionRuntime();
   let query = '';
   if (typeof window !== 'undefined') {
     try {
@@ -34,11 +35,10 @@ function resolveSandboxUrl(): string {
     } catch {}
   }
 
-  if (typeof window !== 'undefined') {
-    return `ai-sandbox.html${query}`;
-  }
-  const runtime = getExtensionRuntime();
   if (runtime?.getURL) return `${runtime.getURL('ai-sandbox.html')}${query}`;
+  if (typeof window !== 'undefined') {
+    return new URL(`ai-sandbox.html${query}`, window.location.href).toString();
+  }
   return `/ai-sandbox.html${query}`;
 }
 
@@ -48,7 +48,7 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
   sandboxFramePromise = new Promise((resolve, reject) => {
     const frame = document.createElement('iframe');
     frame.src = resolveSandboxUrl();
-    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
     frame.setAttribute('aria-hidden', 'true');
     frame.tabIndex = -1;
     frame.style.position = 'fixed';

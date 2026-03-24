@@ -235,7 +235,8 @@ export default function SettingsModal({
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
-        const v = chrome.runtime.getManifest().version || '—';
+        const manifest = chrome.runtime.getManifest();
+        const v = manifest.version_name || manifest.version || '—';
         setAppVersion(v);
         return;
       }
@@ -243,7 +244,7 @@ export default function SettingsModal({
     try {
       fetch('/manifest.json')
         .then((r) => r.json())
-        .then((m) => setAppVersion(m?.version || '—'))
+        .then((m) => setAppVersion(m?.version_name || m?.version || '—'))
         .catch(() => setAppVersion('1.2.1'));
     } catch {
       setAppVersion('1.2.1');
