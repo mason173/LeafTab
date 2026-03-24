@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/components/ui/sonner';
 import { SyncSettingsDialog } from './SyncSettingsDialog';
-import { SyncEncryptionStatusCard } from './sync/SyncEncryptionStatusCard';
 import {
   SyncIntervalSliderField,
   SyncSettingsActionButtons,
@@ -106,9 +105,6 @@ export function CloudSyncConfigDialog({
       )}
     >
       <div className="flex flex-col gap-4">
-        <SyncEncryptionStatusCard
-          ready={encryptionReady}
-        />
         <SyncToggleField
           label={t('settings.backup.cloud.autoSyncToastLabel')}
           description={t('settings.backup.cloud.autoSyncToastDesc')}

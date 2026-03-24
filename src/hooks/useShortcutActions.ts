@@ -52,6 +52,15 @@ export function useShortcutActions({
   setCurrentInsertIndex,
   setShortcutDeleteOpen,
 }: UseShortcutActionsParams) {
+  const createShortcutId = () => {
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch {}
+    return `sht_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  };
+
   const handleCreateScenarioMode = useCallback((mode: Omit<ScenarioMode, 'id'>) => {
     const newMode: ScenarioMode = { id: makeScenarioId(), ...mode };
     setScenarioModes((prev) => [...prev, newMode]);
@@ -141,7 +150,7 @@ export function useShortcutActions({
           duplicateFound = true;
           return current;
         }
-        const newShortcut: Shortcut = { id: Date.now().toString(), title: nextTitle, url: nextUrl, icon: '' };
+        const newShortcut: Shortcut = { id: createShortcutId(), title: nextTitle, url: nextUrl, icon: '' };
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
         saved = true;
         return [...current.slice(0, insertIndex), newShortcut, ...current.slice(insertIndex)];

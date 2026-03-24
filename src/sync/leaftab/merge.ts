@@ -315,14 +315,13 @@ const resolveEntityState = <T extends MergeableEntity>(params: {
   source: LeafTabSyncMergeSource;
   conflict: LeafTabSyncMergeConflict | null;
 } => {
-  const explicitLocalTomb = params.localEntity
-    ? params.localSnapshot.tombstones[params.localEntity.id]
-    : null;
-  const explicitRemoteTomb = params.remoteEntity
-    ? params.remoteSnapshot.tombstones[params.remoteEntity.id]
-    : null;
-
   const baseId = params.baseEntity?.id || params.localEntity?.id || params.remoteEntity?.id || '';
+  const explicitLocalTomb = baseId
+    ? params.localSnapshot.tombstones[baseId]
+    : null;
+  const explicitRemoteTomb = baseId
+    ? params.remoteSnapshot.tombstones[baseId]
+    : null;
   const localTomb =
     explicitLocalTomb ||
     (params.baseEntity && !params.localEntity

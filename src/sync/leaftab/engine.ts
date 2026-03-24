@@ -185,6 +185,32 @@ export class LeafTabSyncEngine {
       getLeafTabSyncBaselineSnapshot(baseline) || this.config.createEmptySnapshot();
     const remoteSnapshot = remoteState.snapshot || this.config.createEmptySnapshot();
     const hasBaseline = Boolean(baseline?.snapshot || baseline?.commitId);
+    const localMatchesBaseline = sameSnapshotContent(localSnapshot, baseSnapshot);
+    const remoteMatchesBaseline = sameSnapshotContent(remoteSnapshot, baseSnapshot);
+
+    if (mode === 'auto' && hasBaseline && localMatchesBaseline && remoteMatchesBaseline) {
+      reportProgress(runOptions?.onProgress, {
+        stage: 'finalizing',
+        progress: 92,
+        message: '未检测到变更，正在结束同步',
+      });
+      await this.config.baselineStore.save(createLeafTabSyncBaseline({
+        snapshot: baseSnapshot,
+        commitId: remoteState.commit?.id || baseline?.commitId || null,
+        rootPath: this.config.rootPath,
+      }));
+      reportProgress(runOptions?.onProgress, {
+        stage: 'completed',
+        progress: 100,
+        message: '同步完成',
+      });
+      return {
+        kind: 'noop',
+        remoteCommitId: remoteState.commit?.id || baseline?.commitId || null,
+        snapshot: baseSnapshot,
+        summaryText: '本地与远端均无新增变更',
+      };
+    }
 
     if (mode === 'push-local') {
       reportProgress(runOptions?.onProgress, {

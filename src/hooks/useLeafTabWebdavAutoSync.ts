@@ -9,6 +9,9 @@ import {
   WEBDAV_STORAGE_KEYS,
 } from '@/utils/webdavConfig';
 
+const AUTO_SYNC_BUSY_RETRY_DELAY_MS = 5 * 1000;
+const AUTO_SYNC_FAILURE_RETRY_DELAY_MS = 15 * 1000;
+
 type UseLeafTabWebdavAutoSyncParams = {
   conflictModalOpen: boolean;
   isDragging: boolean;
@@ -51,7 +54,6 @@ export function useLeafTabWebdavAutoSync({
   }, [t]);
 
   const emitStatusChanged = useCallback(() => {
-    window.dispatchEvent(new Event('webdav-config-changed'));
     window.dispatchEvent(new CustomEvent('webdav-sync-status-changed'));
   }, []);
 
@@ -102,27 +104,36 @@ export function useLeafTabWebdavAutoSync({
           return;
         }
 
-        const nextScheduled = getAlignedJitteredNextAt(getIntervalMinutes());
         const latestFlags = latestFlagsRef.current;
+        const retryAfterBusyAt = Date.now() + AUTO_SYNC_BUSY_RETRY_DELAY_MS;
+        const retryAfterFailureAt = Date.now() + AUTO_SYNC_FAILURE_RETRY_DELAY_MS;
         if (
-          !inFlightRef.current
-          && !latestFlags.syncing
-          && !latestFlags.conflictModalOpen
-          && !latestFlags.isDragging
+          inFlightRef.current
+          || latestFlags.syncing
+          || latestFlags.conflictModalOpen
+          || latestFlags.isDragging
         ) {
-          inFlightRef.current = true;
-          try {
-            const ok = await latestOnSyncRef.current();
-            if (ok && readWebdavStorageStateFromStorage().autoSyncToastEnabled) {
+          scheduleNext(retryAfterBusyAt);
+          return;
+        }
+
+        inFlightRef.current = true;
+        try {
+          const ok = await latestOnSyncRef.current();
+          if (disposed) return;
+          if (ok) {
+            if (readWebdavStorageStateFromStorage().autoSyncToastEnabled) {
               toast.success(latestTRef.current('settings.backup.webdav.syncSuccess'));
             }
-          } finally {
-            inFlightRef.current = false;
+            scheduleNext(getAlignedJitteredNextAt(getIntervalMinutes()));
+            return;
           }
+        } finally {
+          inFlightRef.current = false;
         }
 
         if (disposed) return;
-        scheduleNext(nextScheduled);
+        scheduleNext(retryAfterFailureAt);
       }, delay);
     };
 
