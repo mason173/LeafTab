@@ -7,12 +7,17 @@ import type {
 
 export const AI_BOOKMARK_SANDBOX_READY_TYPE = 'leaftab-ai-bookmarks:sandbox-ready';
 export const AI_BOOKMARK_SANDBOX_EMBED_TYPE = 'leaftab-ai-bookmarks:embed';
+export const AI_BOOKMARK_SANDBOX_PRELOAD_TYPE = 'leaftab-ai-bookmarks:preload';
 export const AI_BOOKMARK_SANDBOX_STORAGE_TYPE = 'leaftab-ai-bookmarks:storage';
 
 export type AiBookmarkSandboxEmbedRequest = {
   modelId: AiBookmarkModelId;
   texts: string[];
   isQuery?: boolean;
+};
+
+export type AiBookmarkSandboxPreloadRequest = {
+  modelId: AiBookmarkModelId;
 };
 
 export type AiBookmarkSandboxEmbedProgressEvent = {
@@ -26,6 +31,17 @@ export type AiBookmarkSandboxEmbedResponse =
       kind: 'result';
       ok: true;
       embeddings: number[][];
+    }
+  | {
+      kind: 'result';
+      ok: false;
+      error: string;
+    };
+
+export type AiBookmarkSandboxPreloadResponse =
+  | {
+      kind: 'result';
+      ok: true;
     }
   | {
       kind: 'result';

@@ -291,7 +291,7 @@ export async function replaceBookmarkSemanticIndex(args: {
     `);
 
     for (let index = 0; index < args.entries.length; index += 1) {
-      const entry = args.entries[index];
+      const entry = normalizeBookmarkSemanticIndexEntry(args.entries[index]);
       await tx.query(`
         INSERT INTO leaftab_ai_bookmark_index_entries (
           bookmark_id,

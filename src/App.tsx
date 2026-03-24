@@ -594,6 +594,35 @@ export default function App() {
             title: nextTitle,
             detail: nextDetail,
             progress: nextProgress,
+            tone: 'info',
+          });
+        }
+        return;
+      }
+
+      if (semanticStatus.activity === 'error') {
+        const nextTitle = semanticStatus.progressLabel || 'AI 书签语义索引建立失败';
+        const nextProgress = semanticStatus.progress ?? 0;
+        const nextDetail = semanticStatus.lastError === 'ai_bookmark_sandbox_request_timeout'
+          ? '模型下载或初始化超时，请检查网络后重试'
+          : semanticStatus.lastError === 'ai_bookmark_sandbox_nested_request'
+            ? 'AI 沙箱初始化异常，请刷新页面后重试'
+            : semanticStatus.lastError?.includes('no available backend found')
+              ? 'AI 推理后端初始化失败，请刷新页面后重试'
+              : (semanticStatus.lastError || '可以稍后重试建立 AI 书签语义索引');
+        if (!taskId) {
+          semanticBookmarkIndexTaskIdRef.current = startLongTaskIndicator({
+            title: nextTitle,
+            detail: nextDetail,
+            progress: nextProgress,
+            tone: 'error',
+          });
+        } else {
+          updateLongTaskIndicator(taskId, {
+            title: nextTitle,
+            detail: nextDetail,
+            progress: nextProgress,
+            tone: 'error',
           });
         }
         return;
@@ -609,7 +638,7 @@ export default function App() {
         return;
       }
 
-      if (taskId && semanticStatus.indexState !== 'ready') {
+      if (taskId && semanticStatus.activity === 'idle') {
         clearLongTaskIndicator(taskId);
         semanticBookmarkIndexTaskIdRef.current = null;
       }

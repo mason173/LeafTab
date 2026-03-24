@@ -1,11 +1,14 @@
-import { embedTextsWithBookmarkModel } from '@/features/ai-bookmarks/model';
+import { embedTextsWithBookmarkModel, preloadBookmarkModel } from '@/features/ai-bookmarks/model';
 import {
   AI_BOOKMARK_SANDBOX_EMBED_TYPE,
+  AI_BOOKMARK_SANDBOX_PRELOAD_TYPE,
   AI_BOOKMARK_SANDBOX_READY_TYPE,
   AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
   type AiBookmarkSandboxEmbedRequest,
   type AiBookmarkSandboxEmbedProgressEvent,
   type AiBookmarkSandboxEmbedResponse,
+  type AiBookmarkSandboxPreloadRequest,
+  type AiBookmarkSandboxPreloadResponse,
   type AiBookmarkSandboxStorageRequest,
   type AiBookmarkSandboxStorageResponse,
 } from '@/features/ai-bookmarks/sandboxShared';
@@ -61,6 +64,51 @@ window.addEventListener('message', (event: MessageEvent<{ type?: string; payload
       ok: false,
       error: 'ai_bookmark_sandbox_embed_failed',
     } satisfies AiBookmarkSandboxEmbedResponse);
+    port.close();
+  });
+});
+
+window.addEventListener('message', (event: MessageEvent<{ type?: string; payload?: AiBookmarkSandboxPreloadRequest }>) => {
+  if (event.data?.type !== AI_BOOKMARK_SANDBOX_PRELOAD_TYPE) return;
+
+  const port = event.ports?.[0];
+  const payload = event.data.payload;
+  if (!port || !payload) return;
+
+  (async () => {
+    let response: AiBookmarkSandboxPreloadResponse;
+
+    try {
+      await preloadBookmarkModel({
+        modelId: payload.modelId,
+        onProgress: (progress) => {
+          port.postMessage({
+            kind: 'progress',
+            progress: progress.progress,
+            label: progress.label,
+          } satisfies AiBookmarkSandboxEmbedProgressEvent);
+        },
+      });
+      response = {
+        kind: 'result',
+        ok: true,
+      };
+    } catch (error) {
+      response = {
+        kind: 'result',
+        ok: false,
+        error: String((error as Error)?.message || error || 'ai_bookmark_sandbox_preload_failed'),
+      };
+    }
+
+    port.postMessage(response);
+    port.close();
+  })().catch(() => {
+    port.postMessage({
+      kind: 'result',
+      ok: false,
+      error: 'ai_bookmark_sandbox_preload_failed',
+    } satisfies AiBookmarkSandboxPreloadResponse);
     port.close();
   });
 });

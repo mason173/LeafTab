@@ -81,7 +81,7 @@ export async function replacePersistedBookmarkSemanticIndex(args: {
     entriesStore.clear();
     metaStore.clear();
     for (const entry of args.entries) {
-      entriesStore.put(entry);
+      entriesStore.put(normalizeBookmarkSemanticIndexEntry(entry));
     }
     metaStore.put(args.meta);
 
