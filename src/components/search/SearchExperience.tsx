@@ -847,6 +847,14 @@ export const SearchExperience = memo(function SearchExperience({
         };
       }
       if (searchPermissions.bookmarks && ENABLE_AI_BOOKMARK_SEARCH) {
+        if (semanticBookmarkStatus.activity === 'downloading-model') {
+          return {
+            tone: 'loading' as const,
+            message: t('search.bookmarksSemanticModelDownloading', {
+              defaultValue: '首次使用正在联网下载 AI 模型，完成后会自动建立索引...',
+            }),
+          };
+        }
         if (semanticBookmarkStatus.modelState === 'loading' || semanticBookmarkStatus.indexState === 'syncing') {
           return {
             tone: 'loading' as const,

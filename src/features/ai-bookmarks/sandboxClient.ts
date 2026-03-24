@@ -8,6 +8,7 @@ import {
   AI_BOOKMARK_SANDBOX_READY_TYPE,
   AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
   type AiBookmarkSandboxEmbedRequest,
+  type AiBookmarkSandboxEmbedProgressEvent,
   type AiBookmarkSandboxEmbedResponse,
   type AiBookmarkSandboxStorageRequest,
   type AiBookmarkSandboxStorageResponse,
@@ -131,13 +132,49 @@ async function requestSandboxMessage<TResponse>(
 
 async function requestSandboxEmbeddings(
   payload: AiBookmarkSandboxEmbedRequest,
+  options?: {
+    onProgress?: (progress: { progress: number; label?: string }) => void;
+  },
 ): Promise<number[][]> {
-  const response = await requestSandboxMessage<AiBookmarkSandboxEmbedResponse>(
-    AI_BOOKMARK_SANDBOX_EMBED_TYPE,
-    payload,
-  );
-  if (response?.ok) return response.embeddings;
-  throw new Error(response?.error || 'ai_bookmark_sandbox_request_failed');
+  const frame = await ensureSandboxFrame();
+
+  return new Promise<number[][]>((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timeoutId = window.setTimeout(() => {
+      channel.port1.close();
+      reject(new Error('ai_bookmark_sandbox_request_timeout'));
+    }, 120_000);
+
+    channel.port1.onmessage = (
+      event: MessageEvent<AiBookmarkSandboxEmbedResponse | AiBookmarkSandboxEmbedProgressEvent>,
+    ) => {
+      const data = event.data;
+      if (data?.kind === 'progress') {
+        options?.onProgress?.({
+          progress: data.progress,
+          label: data.label,
+        });
+        return;
+      }
+
+      window.clearTimeout(timeoutId);
+      channel.port1.close();
+      if (data?.ok) {
+        resolve(data.embeddings);
+        return;
+      }
+      reject(new Error(data?.error || 'ai_bookmark_sandbox_request_failed'));
+    };
+
+    frame.contentWindow?.postMessage(
+      {
+        type: AI_BOOKMARK_SANDBOX_EMBED_TYPE,
+        payload,
+      },
+      '*',
+      [channel.port2],
+    );
+  });
 }
 
 export async function requestBookmarkStorageWithSandbox(
@@ -203,15 +240,21 @@ export async function embedTextsWithBookmarkModel(args: {
   modelId: AiBookmarkModelId;
   texts: string[];
   isQuery?: boolean;
+  onProgress?: (progress: { progress: number; label?: string }) => void;
 }): Promise<number[][]> {
   if (!isExtensionRuntime() || isAiSandboxPage()) {
     const { embedTextsWithBookmarkModel: embedDirectly } = await import('@/features/ai-bookmarks/model');
     return embedDirectly(args);
   }
 
-  return requestSandboxEmbeddings({
-    modelId: args.modelId,
-    texts: args.texts,
-    isQuery: args.isQuery,
-  });
+  return requestSandboxEmbeddings(
+    {
+      modelId: args.modelId,
+      texts: args.texts,
+      isQuery: args.isQuery,
+    },
+    {
+      onProgress: args.onProgress,
+    },
+  );
 }

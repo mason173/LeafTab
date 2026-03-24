@@ -14,6 +14,7 @@ export type AiBookmarkModelDefinition = {
   vectorSize: number;
   queryInstruction: string;
   remoteModelBaseUrl?: string;
+  remoteAssetFiles?: string[];
 };
 
 export type BookmarkSemanticDocument = {
@@ -60,6 +61,7 @@ export type BookmarkSemanticSearchCandidate = Omit<BookmarkSemanticIndexEntry, '
 };
 
 export type BookmarkSemanticSearchStatus = {
+  activity: 'idle' | 'downloading-model' | 'reading-bookmarks' | 'building-index' | 'saving-index' | 'ready' | 'error';
   modelState: 'idle' | 'loading' | 'ready' | 'error';
   indexState: 'idle' | 'syncing' | 'ready' | 'error';
   available: boolean;

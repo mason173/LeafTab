@@ -419,7 +419,8 @@ export default {
       },
       items: {
         release140AlphaAiBookmarkSearch: "新增 AI 书签语义搜索预览，可通过语义相关性检索书签",
-        release140AlphaIndexWarmup: "书签权限授权完成后会立即在后台建立语义索引，并显示长任务进度通知",
+        release140AlphaEncryptedBookmarkSync: "支持书签云同步、WebDAV 同步与书签端到端加密同步",
+        release140AlphaIndexWarmup: "首次启用 AI 书签会联网下载模型，并在顶部显示百分比进度；下载完成后自动建立语义索引",
         release140AlphaResultTuning: "收紧 AI 书签结果展示逻辑，减少低相关的凑数结果",
         release140AlphaKnownIssues: "已知问题：Alpha 版本仍可能继续调整模型加载、索引速度与文案表现",
         release139LowEffectsMotion: "优化低特效模式下的搜索与抽屉动效",

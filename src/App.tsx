@@ -580,16 +580,19 @@ export default function App() {
       if (inProgress) {
         const nextTitle = semanticStatus.progressLabel || '正在建立 AI 书签语义索引...';
         const nextProgress = semanticStatus.progress ?? 8;
+        const nextDetail = semanticStatus.activity === 'downloading-model'
+          ? '首次启用会联网下载模型，下载完成后会自动开始建立书签语义索引'
+          : '正在后台建立书签语义索引，你可以继续进行其他操作';
         if (!taskId) {
           semanticBookmarkIndexTaskIdRef.current = startLongTaskIndicator({
             title: nextTitle,
-            detail: '正在后台建立书签语义索引，你可以继续进行其他操作',
+            detail: nextDetail,
             progress: nextProgress,
           });
         } else {
           updateLongTaskIndicator(taskId, {
             title: nextTitle,
-            detail: '正在后台建立书签语义索引，你可以继续进行其他操作',
+            detail: nextDetail,
             progress: nextProgress,
           });
         }

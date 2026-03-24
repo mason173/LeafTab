@@ -29,10 +29,95 @@ type ModelLoadOptions = {
   remotePathTemplate?: string;
 };
 
+type TransformersProgressInfo = {
+  status?: string;
+  file?: string;
+  progress?: number;
+};
+
+export type AiBookmarkModelLoadProgress = {
+  progress: number;
+  label: string;
+};
+
 let transformersImportPromise: Promise<typeof import('@huggingface/transformers')> | null = null;
 const pipelineCache = new Map<string, Promise<FeatureExtractionPipeline>>();
 const modelAvailabilityCache = new Map<string, Promise<boolean>>();
 const modelSourceCache = new Map<string, Promise<ModelAssetSource>>();
+
+function normalizeAssetPath(value: string): string {
+  return String(value || '').trim().replace(/^\/+/, '');
+}
+
+function getAssetWeight(filePath: string): number {
+  const normalized = normalizeAssetPath(filePath);
+  if (normalized.endsWith('onnx/model_quantized.onnx')) return 0.78;
+  if (normalized.endsWith('tokenizer.json')) return 0.08;
+  if (normalized.endsWith('unigram.json') || normalized.endsWith('vocab.txt')) return 0.06;
+  if (normalized.endsWith('tokenizer_config.json')) return 0.04;
+  if (normalized.endsWith('config.json')) return 0.02;
+  if (normalized.endsWith('special_tokens_map.json')) return 0.02;
+  return 0.04;
+}
+
+function createModelLoadProgressReporter(
+  definition: AiBookmarkModelDefinition,
+  onProgress?: (progress: AiBookmarkModelLoadProgress) => void,
+) {
+  if (!onProgress) return undefined;
+
+  const assetProgress = new Map<string, number>();
+  (definition.remoteAssetFiles || []).forEach((file) => {
+    assetProgress.set(normalizeAssetPath(file), 0);
+  });
+
+  const emit = (progress: number, label: string) => {
+    onProgress({
+      progress: Math.max(0, Math.min(100, Math.round(progress))),
+      label,
+    });
+  };
+
+  return (event: TransformersProgressInfo) => {
+    const filePath = normalizeAssetPath(event.file || '');
+    if (filePath && !assetProgress.has(filePath)) {
+      assetProgress.set(filePath, 0);
+    }
+
+    if (event.status === 'download') {
+      emit(2, `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`);
+      return;
+    }
+
+    if (event.status === 'progress') {
+      if (filePath) {
+        assetProgress.set(filePath, Number.isFinite(event.progress) ? Number(event.progress) : 0);
+      }
+      let totalWeight = 0;
+      let weightedProgress = 0;
+      for (const [asset, assetPercent] of assetProgress.entries()) {
+        const weight = getAssetWeight(asset);
+        totalWeight += weight;
+        weightedProgress += weight * Math.max(0, Math.min(100, assetPercent));
+      }
+      const progress = totalWeight > 0 ? weightedProgress / totalWeight : Number(event.progress || 0);
+      emit(progress, `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`);
+      return;
+    }
+
+    if (event.status === 'done') {
+      if (filePath) assetProgress.set(filePath, 100);
+      const finishedCount = Array.from(assetProgress.values()).filter((value) => value >= 100).length;
+      const totalCount = Math.max(assetProgress.size, 1);
+      emit(Math.round((finishedCount / totalCount) * 100), 'AI 模型资源下载完成，正在准备索引环境...');
+      return;
+    }
+
+    if (event.status === 'ready') {
+      emit(100, 'AI 模型已就绪');
+    }
+  };
+}
 
 function getTransformersModule() {
   if (!transformersImportPromise) {
@@ -245,6 +330,9 @@ async function getModelAssetSource(modelId: AiBookmarkModelId): Promise<ModelAss
 async function loadFeatureExtractionPipeline(
   modelId: AiBookmarkModelId,
   definition: AiBookmarkModelDefinition,
+  options?: {
+    onProgress?: (progress: AiBookmarkModelLoadProgress) => void;
+  },
 ): Promise<FeatureExtractionPipeline> {
   const { pipeline } = await getTransformersModule();
   const source = await getModelAssetSource(modelId);
@@ -268,6 +356,7 @@ async function loadFeatureExtractionPipeline(
   }
 
   return pipeline('feature-extraction', modelLoadOptions.model, {
+    progress_callback: createModelLoadProgressReporter(definition, options?.onProgress),
     local_files_only: modelLoadOptions.localFilesOnly,
     subfolder: 'onnx',
     model_file_name: modelBaseName,
@@ -347,10 +436,16 @@ function normalizeEmbeddingInput(args: {
 
 async function getFeatureExtractionPipeline(
   modelId: AiBookmarkModelId,
+  options?: {
+    onProgress?: (progress: AiBookmarkModelLoadProgress) => void;
+  },
 ): Promise<FeatureExtractionPipeline> {
   const source = await getModelAssetSource(modelId);
   const cached = pipelineCache.get(source.cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    options?.onProgress?.({ progress: 100, label: 'AI 模型已就绪' });
+    return cached;
+  }
 
   const assetsReady = await hasModelAssets(modelId);
   if (!assetsReady) {
@@ -360,7 +455,7 @@ async function getFeatureExtractionPipeline(
   const definition = AI_BOOKMARK_MODEL_REGISTRY[modelId];
   const next = (async () => {
     await configureTransformersEnvironment();
-    return loadFeatureExtractionPipeline(modelId, definition);
+    return loadFeatureExtractionPipeline(modelId, definition, options);
   })();
   pipelineCache.set(source.cacheKey, next);
 
@@ -376,9 +471,12 @@ export async function embedTextsWithBookmarkModel(args: {
   modelId: AiBookmarkModelId;
   texts: string[];
   isQuery?: boolean;
+  onProgress?: (progress: AiBookmarkModelLoadProgress) => void;
 }): Promise<number[][]> {
   const definition = AI_BOOKMARK_MODEL_REGISTRY[args.modelId];
-  const pipeline = await getFeatureExtractionPipeline(args.modelId);
+  const pipeline = await getFeatureExtractionPipeline(args.modelId, {
+    onProgress: args.onProgress,
+  });
   const normalizedInputs = args.texts.map((text) => normalizeEmbeddingInput({
     definition,
     text,
@@ -389,4 +487,13 @@ export async function embedTextsWithBookmarkModel(args: {
     normalize: true,
   });
   return splitTensorEmbeddings(tensor, normalizedInputs.length);
+}
+
+export async function preloadBookmarkModel(args: {
+  modelId: AiBookmarkModelId;
+  onProgress?: (progress: AiBookmarkModelLoadProgress) => void;
+}): Promise<void> {
+  await getFeatureExtractionPipeline(args.modelId, {
+    onProgress: args.onProgress,
+  });
 }

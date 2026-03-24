@@ -4,6 +4,7 @@ import {
   AI_BOOKMARK_SANDBOX_READY_TYPE,
   AI_BOOKMARK_SANDBOX_STORAGE_TYPE,
   type AiBookmarkSandboxEmbedRequest,
+  type AiBookmarkSandboxEmbedProgressEvent,
   type AiBookmarkSandboxEmbedResponse,
   type AiBookmarkSandboxStorageRequest,
   type AiBookmarkSandboxStorageResponse,
@@ -29,13 +30,24 @@ window.addEventListener('message', (event: MessageEvent<{ type?: string; payload
     let response: AiBookmarkSandboxEmbedResponse;
 
     try {
-      const embeddings = await embedTextsWithBookmarkModel(payload);
+      const embeddings = await embedTextsWithBookmarkModel({
+        ...payload,
+        onProgress: (progress) => {
+          port.postMessage({
+            kind: 'progress',
+            progress: progress.progress,
+            label: progress.label,
+          } satisfies AiBookmarkSandboxEmbedProgressEvent);
+        },
+      });
       response = {
+        kind: 'result',
         ok: true,
         embeddings,
       };
     } catch (error) {
       response = {
+        kind: 'result',
         ok: false,
         error: String((error as Error)?.message || error || 'ai_bookmark_sandbox_embed_failed'),
       };
@@ -45,6 +57,7 @@ window.addEventListener('message', (event: MessageEvent<{ type?: string; payload
     port.close();
   })().catch(() => {
     port.postMessage({
+      kind: 'result',
       ok: false,
       error: 'ai_bookmark_sandbox_embed_failed',
     } satisfies AiBookmarkSandboxEmbedResponse);

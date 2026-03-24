@@ -35,6 +35,14 @@ export const AI_BOOKMARK_MODEL_REGISTRY: Record<AiBookmarkModelId, AiBookmarkMod
     vectorSize: 384,
     queryInstruction: '',
     remoteModelBaseUrl: 'https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main',
+    remoteAssetFiles: [
+      'config.json',
+      'tokenizer.json',
+      'tokenizer_config.json',
+      'special_tokens_map.json',
+      'unigram.json',
+      'onnx/model_quantized.onnx',
+    ],
   },
   'bge-small-zh-v1.5': {
     id: 'bge-small-zh-v1.5',
@@ -43,6 +51,14 @@ export const AI_BOOKMARK_MODEL_REGISTRY: Record<AiBookmarkModelId, AiBookmarkMod
     modelFileName: 'model_quantized.onnx',
     vectorSize: 512,
     queryInstruction: '为这个句子生成表示以用于检索相关书签：',
+    remoteAssetFiles: [
+      'config.json',
+      'tokenizer.json',
+      'tokenizer_config.json',
+      'special_tokens_map.json',
+      'vocab.txt',
+      'onnx/model_quantized.onnx',
+    ],
   },
   'english-small-reserved': {
     id: 'english-small-reserved',
@@ -51,5 +67,13 @@ export const AI_BOOKMARK_MODEL_REGISTRY: Record<AiBookmarkModelId, AiBookmarkMod
     modelFileName: 'model_quantized.onnx',
     vectorSize: 384,
     queryInstruction: 'Represent this sentence for retrieving related bookmarks:',
+    remoteAssetFiles: [
+      'config.json',
+      'tokenizer.json',
+      'tokenizer_config.json',
+      'special_tokens_map.json',
+      'vocab.txt',
+      'onnx/model_quantized.onnx',
+    ],
   },
 };
