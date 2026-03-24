@@ -411,7 +411,17 @@ export default {
       description: "记录最近的版本更新",
       version: "版本",
       date: "日期",
+      sections: {
+        stable: "正式版本",
+        stableDescription: "面向所有用户的稳定更新",
+        preview: "预览版本",
+        previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
+      },
       items: {
+        release140AlphaAiBookmarkSearch: "新增 AI 书签语义搜索预览，可通过语义相关性检索书签",
+        release140AlphaIndexWarmup: "书签权限授权完成后会立即在后台建立语义索引，并显示长任务进度通知",
+        release140AlphaResultTuning: "收紧 AI 书签结果展示逻辑，减少低相关的凑数结果",
+        release140AlphaKnownIssues: "已知问题：Alpha 版本仍可能继续调整模型加载、索引速度与文案表现",
         release139LowEffectsMotion: "优化低特效模式下的搜索与抽屉动效",
         release139BuildIsolation: "改进 Firefox 与 Chrome 的构建隔离",
         release139Stability: "提升整体稳定性",

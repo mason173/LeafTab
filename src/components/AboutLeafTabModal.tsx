@@ -61,7 +61,8 @@ export function AboutLeafTabModal({
     if (!open) return;
     try {
       if (typeof chrome !== "undefined" && chrome.runtime?.getManifest) {
-        const version = chrome.runtime.getManifest().version || "—";
+        const manifest = chrome.runtime.getManifest();
+        const version = manifest.version_name || manifest.version || "—";
         setAppVersion(version);
         return;
       }
@@ -70,7 +71,7 @@ export function AboutLeafTabModal({
     try {
       fetch("/manifest.json")
         .then((resp) => resp.json())
-        .then((manifest) => setAppVersion(manifest?.version || "—"))
+        .then((manifest) => setAppVersion(manifest?.version_name || manifest?.version || "—"))
         .catch(() => setAppVersion("—"));
     } catch {
       setAppVersion("—");

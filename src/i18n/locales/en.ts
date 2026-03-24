@@ -407,7 +407,17 @@ export default {
       description: "Recent version updates",
       version: "Version",
       date: "Date",
+      sections: {
+        stable: "Stable Releases",
+        stableDescription: "Production-ready updates for all users",
+        preview: "Preview Releases",
+        previewDescription: "Alpha / Beta builds for testing. Features and details may still change",
+      },
       items: {
+        release140AlphaAiBookmarkSearch: "Added an AI bookmark semantic search preview for relevance-based bookmark retrieval",
+        release140AlphaIndexWarmup: "Bookmark permission now triggers immediate background index creation with long-task progress feedback",
+        release140AlphaResultTuning: "Tightened AI bookmark result ranking to reduce low-relevance filler results",
+        release140AlphaKnownIssues: "Known issue: this Alpha build may still adjust model loading, indexing speed, and copy details",
         release137PermissionsAndSearch: "Unified store/community permission strategy and refined search engine switching with clearer hints",
         release137WallpaperAndMotion: "Aligned default wallpaper, custom wallpaper, and first-screen reveal timing to reduce refresh flicker",
         release137ScenarioAndSync: "Added scenario mode hotkey switching and fixed the dropdown plus sync-time display issues",

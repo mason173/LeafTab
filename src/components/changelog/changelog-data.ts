@@ -1,12 +1,36 @@
 import type { TFunction } from "i18next";
 
+export type ChangelogChannel = "stable" | "preview";
+
 export interface ChangelogItem {
   version: string;
   date: string;
   notes: string[];
+  channel?: ChangelogChannel;
+  tag?: "alpha" | "beta" | "rc";
+}
+
+export interface ChangelogSection {
+  id: ChangelogChannel;
+  title: string;
+  description?: string;
+  items: ChangelogItem[];
 }
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
+  {
+    version: "1.4.0",
+    date: "2026-03-24",
+    channel: "preview",
+    tag: "alpha",
+    notes: [
+      t("changelog.items.release140AlphaAiBookmarkSearch", { defaultValue: "新增 AI 书签语义搜索预览，可通过语义相关性检索书签" }),
+      t("changelog.items.release140AlphaEncryptedBookmarkSync", { defaultValue: "支持书签云同步、WebDAV 同步与书签端到端加密同步" }),
+      t("changelog.items.release140AlphaIndexWarmup", { defaultValue: "书签权限授权完成后会立即在后台建立语义索引，并显示长任务进度通知" }),
+      t("changelog.items.release140AlphaResultTuning", { defaultValue: "收紧 AI 书签结果展示逻辑，减少低相关的凑数结果" }),
+      t("changelog.items.release140AlphaKnownIssues", { defaultValue: "已知问题：Alpha 版本仍可能继续调整模型加载、索引速度与文案表现" }),
+    ],
+  },
   {
     version: "1.3.9",
     date: "2026-03-20",
@@ -201,3 +225,24 @@ export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
     ],
   },
 ];
+
+export const buildChangelogSections = (t: TFunction): ChangelogSection[] => {
+  const items = buildChangelogItems(t);
+  const stableItems = items.filter((item) => (item.channel || "stable") === "stable");
+  const previewItems = items.filter((item) => item.channel === "preview");
+
+  return [
+    {
+      id: "stable",
+      title: t("changelog.sections.stable", { defaultValue: "正式版本" }),
+      description: t("changelog.sections.stableDescription", { defaultValue: "面向所有用户的稳定更新" }),
+      items: stableItems,
+    },
+    {
+      id: "preview",
+      title: t("changelog.sections.preview", { defaultValue: "预览版本" }),
+      description: t("changelog.sections.previewDescription", { defaultValue: "Alpha / Beta 测试版本，功能和细节可能继续调整" }),
+      items: previewItems,
+    },
+  ].filter((section) => section.items.length > 0);
+};

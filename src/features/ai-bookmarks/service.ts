@@ -1,6 +1,9 @@
 import type { SearchSuggestionItem } from '@/types';
 import {
   AI_BOOKMARK_DEFAULT_MODEL_ID,
+  AI_BOOKMARK_FALLBACK_SUPPLEMENT_LIMIT,
+  AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE,
+  AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE_CJK,
   AI_BOOKMARK_INDEX_BATCH_SIZE,
   AI_BOOKMARK_INDEX_SCHEMA_VERSION,
   AI_BOOKMARK_MIN_QUERY_LENGTH,
@@ -8,6 +11,8 @@ import {
   AI_BOOKMARK_QUERY_CACHE_TTL_MS,
   AI_BOOKMARK_SEARCH_CANDIDATE_LIMIT_MULTIPLIER,
   AI_BOOKMARK_SEARCH_MIN_CANDIDATES,
+  AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE,
+  AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE_CJK,
 } from '@/features/ai-bookmarks/constants';
 import { loadBookmarkSemanticDocuments } from '@/features/ai-bookmarks/bookmarks';
 import { embedTextsWithBookmarkModel } from '@/features/ai-bookmarks/sandboxClient';
@@ -71,6 +76,8 @@ let status: BookmarkSemanticSearchStatus = {
   indexedCount: 0,
   builtAt: null,
   lastError: null,
+  progress: null,
+  progressLabel: null,
 };
 
 function setStatus(partial: Partial<BookmarkSemanticSearchStatus>) {
@@ -110,6 +117,8 @@ function invalidateSemanticBookmarkIndex() {
     modelState: 'idle',
     indexState: 'idle',
     available: false,
+    progress: null,
+    progressLabel: null,
   });
 }
 
@@ -272,6 +281,12 @@ function mergeSuggestions(args: {
   const normalizedQuery = normalizeSearchQuery(args.query);
   const preferSemantic = hasCjkText(args.query);
   const mergedByUrl = new Map<string, ScoredSuggestionItem>();
+  const semanticMinimumScore = preferSemantic
+    ? AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE_CJK
+    : AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE;
+  const fallbackMinimumScore = preferSemantic
+    ? AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE_CJK
+    : AI_BOOKMARK_FALLBACK_SUPPLEMENT_MIN_SCORE;
 
   const upsert = (item: ScoredSuggestionItem) => {
     const value = item.value.trim();
@@ -298,17 +313,18 @@ function mergeSuggestions(args: {
     }
   };
 
-  args.semanticResults.forEach((result, index) => {
-    upsert(toScoredSuggestionItem(
+  const semanticItems = args.semanticResults
+    .map((result, index) => toScoredSuggestionItem(
       toSearchSuggestionItem(result),
       result.score + (preferSemantic ? 0.02 : 0),
       'semantic',
       index,
-    ));
-  });
+    ))
+    .filter((item) => Number.isFinite(item.score) && item.score >= semanticMinimumScore)
+    .sort((left, right) => right.score - left.score || left.rank - right.rank);
 
-  args.fallbackItems.forEach((item, index) => {
-    upsert(toScoredSuggestionItem(
+  const fallbackItems = args.fallbackItems
+    .map((item, index) => toScoredSuggestionItem(
       item,
       buildFallbackSuggestionScore({
         item,
@@ -317,8 +333,19 @@ function mergeSuggestions(args: {
       }) + (preferSemantic ? 0 : 0.02),
       'keyword',
       index,
-    ));
-  });
+    ))
+    .sort((left, right) => right.score - left.score || left.rank - right.rank);
+
+  semanticItems.forEach(upsert);
+
+  if (semanticItems.length > 0) {
+    fallbackItems
+      .filter((item) => item.score >= fallbackMinimumScore)
+      .slice(0, AI_BOOKMARK_FALLBACK_SUPPLEMENT_LIMIT)
+      .forEach(upsert);
+  } else {
+    fallbackItems.forEach(upsert);
+  }
 
   return Array.from(mergedByUrl.values())
     .sort((left, right) => (
@@ -452,6 +479,7 @@ async function refreshPageMetadataInBackground(args: {
 async function buildIndexEntries(args: {
   documents: BookmarkSemanticDocument[];
   existingEntries: BookmarkSemanticIndexEntry[];
+  onProgress?: (progress: number, label?: string) => void;
 }): Promise<BookmarkSemanticIndexEntry[]> {
   const existingByUrl = new Map(
     args.existingEntries.map((entry) => [entry.url, entry] as const),
@@ -483,6 +511,10 @@ async function buildIndexEntries(args: {
 
   for (let start = 0; start < pendingEntries.length; start += AI_BOOKMARK_INDEX_BATCH_SIZE) {
     const batch = pendingEntries.slice(start, start + AI_BOOKMARK_INDEX_BATCH_SIZE);
+    args.onProgress?.(
+      42 + Math.round((start / Math.max(pendingEntries.length, 1)) * 46),
+      '正在生成书签语义向量...',
+    );
     const embeddings = await embedTextsWithBookmarkModel({
       modelId: AI_BOOKMARK_DEFAULT_MODEL_ID,
       texts: batch.map(({ document }) => document.searchText),
@@ -497,6 +529,11 @@ async function buildIndexEntries(args: {
         embeddingModel: AI_BOOKMARK_DEFAULT_MODEL_ID,
       };
     }
+    const completed = Math.min(start + batch.length, pendingEntries.length);
+    args.onProgress?.(
+      42 + Math.round((completed / Math.max(pendingEntries.length, 1)) * 46),
+      '正在生成书签语义向量...',
+    );
     await yieldToMainThread();
   }
 
@@ -527,15 +564,35 @@ async function syncSemanticBookmarkIndex(
         indexedCount: existingEntries.length,
         builtAt: existingMeta.builtAt,
         lastError: null,
+        progress: null,
+        progressLabel: null,
       });
     } else {
       setStatus({
         indexState: 'syncing',
         lastError: null,
+        progress: 6,
+        progressLabel: '正在检查 AI 书签索引...',
       });
     }
 
-    const rawDocuments = await loadBookmarkSemanticDocuments(bookmarksApi);
+    setStatus({
+      indexState: 'syncing',
+      lastError: null,
+      progress: 14,
+      progressLabel: '正在读取浏览器书签...',
+    });
+
+    const rawDocuments = await loadBookmarkSemanticDocuments(bookmarksApi, {
+      onProgress: ({ processed }) => {
+        const progress = Math.min(34, 14 + Math.round(Math.log10(processed + 1) * 10));
+        setStatus({
+          indexState: 'syncing',
+          progress,
+          progressLabel: '正在读取浏览器书签...',
+        });
+      },
+    });
     const contentHashes = rawDocuments.map((document) => document.contentHash);
     const sourceSignature = buildBookmarkSourceSignature(contentHashes);
     const hydratedDocuments = hydrateDocumentsFromExistingEntries({
@@ -556,6 +613,8 @@ async function syncSemanticBookmarkIndex(
         available: existingEntries.length > 0,
         indexedCount: existingEntries.length,
         builtAt: existingMeta.builtAt,
+        progress: null,
+        progressLabel: null,
       });
       void refreshPageMetadataInBackground({
         sourceSignature,
@@ -568,13 +627,29 @@ async function syncSemanticBookmarkIndex(
       indexState: 'syncing',
       modelState: 'loading',
       lastError: null,
+      progress: 38,
+      progressLabel: '正在准备 AI 书签索引数据...',
     });
 
     const entries = await buildIndexEntries({
       documents: hydratedDocuments,
       existingEntries,
+      onProgress: (progress, label) => {
+        setStatus({
+          modelState: 'loading',
+          indexState: 'syncing',
+          progress,
+          progressLabel: label || '正在建立 AI 书签语义索引...',
+        });
+      },
     });
     const timestamp = Date.now();
+    setStatus({
+      modelState: 'loading',
+      indexState: 'syncing',
+      progress: 92,
+      progressLabel: '正在保存 AI 书签索引...',
+    });
     const meta: BookmarkSemanticIndexMeta = {
       id: 'meta',
       schemaVersion: AI_BOOKMARK_INDEX_SCHEMA_VERSION,
@@ -592,6 +667,8 @@ async function syncSemanticBookmarkIndex(
       indexedCount: entries.length,
       builtAt: timestamp,
       lastError: null,
+      progress: null,
+      progressLabel: null,
     });
     void refreshPageMetadataInBackground({
       sourceSignature,
@@ -606,6 +683,8 @@ async function syncSemanticBookmarkIndex(
       indexState: isMissingLocalModelAssetsError(message) ? 'idle' : 'error',
       available: false,
       lastError: message,
+      progress: null,
+      progressLabel: null,
     });
     throw error;
   }).finally(() => {
@@ -633,6 +712,10 @@ async function searchSemanticEntries(args: {
   });
   if (!queryEmbedding || queryEmbedding.length <= 0) return [];
 
+  const semanticMinimumScore = preferSemantic
+    ? AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE_CJK
+    : AI_BOOKMARK_SEMANTIC_RESULT_MIN_SCORE;
+
   const candidateLimit = Math.max(
     args.limit * AI_BOOKMARK_SEARCH_CANDIDATE_LIMIT_MULTIPLIER,
     AI_BOOKMARK_SEARCH_MIN_CANDIDATES,
@@ -655,7 +738,7 @@ async function searchSemanticEntries(args: {
         semanticScore: entry.semanticScore,
       }),
     }))
-    .filter((entry) => Number.isFinite(entry.score) && entry.score > 0.12)
+    .filter((entry) => Number.isFinite(entry.score) && entry.score >= semanticMinimumScore)
     .sort((left, right) => right.score - left.score);
 
   return ranked.slice(0, args.limit);
@@ -723,3 +806,9 @@ export async function warmSemanticBookmarkIndex(
     // Search falls back to keyword matching when semantic indexing is unavailable.
   }
 }
+
+export const __testing__ = {
+  buildFallbackSuggestionScore,
+  buildSemanticHybridScore,
+  mergeSuggestions,
+};

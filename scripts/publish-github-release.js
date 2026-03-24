@@ -149,6 +149,7 @@ function main() {
   const tag = `${titlePrefix}${version}`;
   const title = tag;
   const notes = process.env.RELEASE_NOTES || String(ghConfig.defaultNotes || '').trim();
+  const isPrerelease = parseBoolean(process.env.RELEASE_PRERELEASE, false);
   if (!notes) {
     throw new Error('Missing release notes: set githubRelease.defaultNotes or RELEASE_NOTES');
   }
@@ -171,13 +172,16 @@ function main() {
 
   const exists = releaseExists(tag, repo, root);
   console.log(`[publish] target release: ${repo}@${tag}`);
+  console.log(`[publish] prerelease: ${isPrerelease ? 'yes' : 'no'}`);
   console.log(`[publish] upload strategy: ${shouldClobber ? 'clobber (overwrite existing assets)' : 'resume (skip existing assets)'}`);
   console.log(`[publish] retry config: attempts=${uploadRetries}, baseDelay=${retryDelayMs}ms, maxDelay=${maxRetryDelayMs}ms`);
 
   if (!exists) {
+    const createArgs = ['release', 'create', tag, '--title', title, '--notes', notes, '--repo', repo];
+    if (isPrerelease) createArgs.push('--prerelease');
     runWithRetry(
       'create release',
-      () => runCapture('gh', ['release', 'create', tag, '--title', title, '--notes', notes, '--repo', repo], { cwd: root }),
+      () => runCapture('gh', createArgs, { cwd: root }),
       {
         maxAttempts: uploadRetries,
         baseDelayMs: retryDelayMs,

@@ -36,13 +36,14 @@ import { getExtensionPermissionSupport } from '@/platform/permissions';
 interface RoleSelectorProps {
   open: boolean;
   onSelect: (roleFile: string, roleId: string, displayMode?: DisplayMode) => void;
+  onBookmarksPermissionGranted?: () => void;
 }
 
 const STEP_ORDER = ['appearance', 'role', 'layout', 'permissions'] as const;
 type StepType = (typeof STEP_ORDER)[number];
 type OnboardingPermission = 'history' | 'bookmarks' | 'tabs';
 
-export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
+export function RoleSelector({ open, onSelect, onBookmarksPermissionGranted }: RoleSelectorProps) {
   const firefox = isFirefoxBuildTarget();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('panoramic');
@@ -312,6 +313,9 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
       ...current,
       [permission]: current[permission] || granted,
     }));
+    if (permission === 'bookmarks' && granted) {
+      onBookmarksPermissionGranted?.();
+    }
     setPermissionRequesting((current) => (current === permission ? null : current));
   };
 

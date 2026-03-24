@@ -31,6 +31,9 @@ type BookmarkTreeCursor = {
 
 export async function loadBookmarkSemanticDocuments(
   bookmarksApi: BookmarkApi,
+  options?: {
+    onProgress?: (progress: { processed: number }) => void;
+  },
 ): Promise<BookmarkSemanticDocument[]> {
   const tree = await getBookmarkTree(bookmarksApi);
   const stack: BookmarkTreeCursor[] = tree
@@ -96,6 +99,7 @@ export async function loadBookmarkSemanticDocuments(
     }
 
     processedCount += 1;
+    options?.onProgress?.({ processed: processedCount });
     if (processedCount % BOOKMARK_TREE_YIELD_INTERVAL === 0) {
       await yieldToMainThread();
     }
