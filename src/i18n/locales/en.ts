@@ -65,6 +65,11 @@ export default {
             label: "Calculator Preview",
             description: "Show live math result suggestions while typing expressions",
             tooltip: "Example: `12*8` shows a computed result in the dropdown."
+          },
+          rotatingPlaceholder: {
+            label: "Rotating Search Hints",
+            description: "Rotate the search box placeholder hints automatically",
+            tooltip: "When turned off, the search box keeps a single fixed hint instead of rotating through multiple tips."
           }
         }
       },

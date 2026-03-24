@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { __testing__ } from '@/features/ai-bookmarks/service';
 import type { SearchSuggestionItem } from '@/types';
+import {
+  buildSemanticHybridScore,
+  mergeSuggestions,
+} from '@/features/ai-bookmarks/ranker';
 
-describe('ai bookmark search mergeSuggestions', () => {
+describe('ai bookmark ranker mergeSuggestions', () => {
   it('keeps semantic results focused and only adds a small number of strong fallback matches', () => {
     const fallbackItems: SearchSuggestionItem[] = Array.from({ length: 8 }, (_, index) => ({
       type: 'bookmark',
@@ -13,7 +16,7 @@ describe('ai bookmark search mergeSuggestions', () => {
       icon: '',
     }));
 
-    const merged = __testing__.mergeSuggestions({
+    const merged = mergeSuggestions({
       query: 'leaf search',
       limit: 12,
       semanticResults: [
@@ -48,7 +51,7 @@ describe('ai bookmark search mergeSuggestions', () => {
       },
     ];
 
-    const merged = __testing__.mergeSuggestions({
+    const merged = mergeSuggestions({
       query: 'leaftab',
       limit: 12,
       semanticResults: [],
@@ -59,5 +62,22 @@ describe('ai bookmark search mergeSuggestions', () => {
       'https://leaf.example/docs',
       'https://leaf.example/blog',
     ]);
+  });
+});
+
+describe('ai bookmark ranker buildSemanticHybridScore', () => {
+  it('drops weak semantic matches when there is no lexical evidence', () => {
+    expect(buildSemanticHybridScore({
+      entry: {
+        title: 'Completely unrelated page',
+        url: 'https://elsewhere.example/random',
+        domain: 'elsewhere.example',
+        folderPath: '',
+        pageTitle: '',
+      },
+      normalizedQuery: 'leaftab',
+      preferSemantic: false,
+      semanticScore: 0.11,
+    })).toBe(0);
   });
 });

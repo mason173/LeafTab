@@ -2,6 +2,10 @@ import type { SearchSuggestionItem } from '@/types';
 import { ENABLE_AI_BOOKMARK_SEARCH } from '@/config/featureFlags';
 import { getSemanticBookmarkSuggestions } from '@/features/ai-bookmarks';
 import {
+  listBookmarkCorpus,
+  subscribeBookmarkCorpusInvalidation,
+} from '@/features/ai-bookmarks/corpus';
+import {
   buildSearchMatchCandidates,
   getShortcutSuggestionScoreFromCandidates,
   normalizeSearchQuery,
@@ -22,11 +26,10 @@ type BookmarkIndexEntry = {
 const BOOKMARK_INDEX_CACHE_TTL_MS = 60_000;
 const BOOKMARK_QUERY_CACHE_TTL_MS = 30_000;
 const BOOKMARK_QUERY_CACHE_LIMIT = 50;
-const BOOKMARK_INDEX_YIELD_INTERVAL = 250;
 const BOOKMARK_RANK_YIELD_INTERVAL = 400;
 let bookmarkIndexCache: { builtAt: number; entries: BookmarkIndexEntry[] } | null = null;
 let bookmarkIndexPromise: Promise<BookmarkIndexEntry[]> | null = null;
-let bookmarkListenersAttached = false;
+let bookmarkInvalidationSubscribed = false;
 const bookmarkQueryCache = new Map<string, {
   cachedAt: number;
   items: SearchSuggestionItem[];
@@ -49,7 +52,7 @@ function toBookmarkSuggestionItem(node: chrome.bookmarks.BookmarkTreeNode): Sear
 }
 
 function dedupeBookmarkSuggestionItems(
-  nodes: chrome.bookmarks.BookmarkTreeNode[],
+  nodes: readonly chrome.bookmarks.BookmarkTreeNode[],
   limit: number,
   initialSeenUrls?: Set<string>,
 ): SearchSuggestionItem[] {
@@ -65,35 +68,6 @@ function dedupeBookmarkSuggestionItems(
   return next;
 }
 
-async function flattenBookmarkTree(
-  nodes: chrome.bookmarks.BookmarkTreeNode[] | undefined,
-): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
-  if (!nodes || nodes.length === 0) return [];
-
-  const out: chrome.bookmarks.BookmarkTreeNode[] = [];
-  const stack = [...nodes].reverse();
-  let processedCount = 0;
-
-  while (stack.length > 0) {
-    const node = stack.pop();
-    if (!node) continue;
-
-    if (node.url) out.push(node);
-    if (node.children && node.children.length > 0) {
-      for (let index = node.children.length - 1; index >= 0; index -= 1) {
-        stack.push(node.children[index]);
-      }
-    }
-
-    processedCount += 1;
-    if (processedCount % BOOKMARK_INDEX_YIELD_INTERVAL === 0) {
-      await yieldToMainThread();
-    }
-  }
-
-  return out;
-}
-
 function normalizeBookmarkQueryCacheKey(rawQuery: string): string {
   return normalizeSearchQuery(rawQuery);
 }
@@ -104,21 +78,10 @@ function invalidateBookmarkSearchCaches() {
   bookmarkQueryCache.clear();
 }
 
-function ensureBookmarkCacheListeners(bookmarksApi: BookmarkApi) {
-  if (bookmarkListenersAttached) return;
-
-  const invalidate = () => {
-    invalidateBookmarkSearchCaches();
-  };
-
-  bookmarksApi.onCreated?.addListener?.(invalidate);
-  bookmarksApi.onRemoved?.addListener?.(invalidate);
-  bookmarksApi.onChanged?.addListener?.(invalidate);
-  bookmarksApi.onMoved?.addListener?.(invalidate);
-  bookmarksApi.onChildrenReordered?.addListener?.(invalidate);
-  bookmarksApi.onImportBegan?.addListener?.(invalidate);
-  bookmarksApi.onImportEnded?.addListener?.(invalidate);
-  bookmarkListenersAttached = true;
+function ensureBookmarkCacheInvalidation(bookmarksApi: BookmarkApi) {
+  if (bookmarkInvalidationSubscribed) return;
+  subscribeBookmarkCorpusInvalidation(bookmarksApi, invalidateBookmarkSearchCaches);
+  bookmarkInvalidationSubscribed = true;
 }
 
 function readBookmarkQueryCache(rawQuery: string, limit: number): SearchSuggestionItem[] | null {
@@ -170,22 +133,8 @@ function getRecentBookmarks(
   });
 }
 
-function getBookmarkTree(
-  bookmarksApi: BookmarkApi,
-): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
-  return new Promise((resolve) => {
-    bookmarksApi.getTree((nodes) => {
-      if (hasBookmarkRuntimeError()) {
-        resolve([]);
-        return;
-      }
-      resolve(nodes || []);
-    });
-  });
-}
-
 async function getBookmarkIndex(bookmarksApi: BookmarkApi): Promise<BookmarkIndexEntry[]> {
-  ensureBookmarkCacheListeners(bookmarksApi);
+  ensureBookmarkCacheInvalidation(bookmarksApi);
   const now = Date.now();
   if (bookmarkIndexCache && now - bookmarkIndexCache.builtAt < BOOKMARK_INDEX_CACHE_TTL_MS) {
     return bookmarkIndexCache.entries;
@@ -193,31 +142,15 @@ async function getBookmarkIndex(bookmarksApi: BookmarkApi): Promise<BookmarkInde
   if (bookmarkIndexPromise) return bookmarkIndexPromise;
 
   bookmarkIndexPromise = (async () => {
-    const tree = await getBookmarkTree(bookmarksApi);
-    const flatNodes = await flattenBookmarkTree(tree);
-    const dedupedByUrl = new Map<string, BookmarkIndexEntry>();
-
-    let order = 0;
-    for (const node of flatNodes) {
-      const url = (node.url || '').trim();
-      if (!url || dedupedByUrl.has(url)) continue;
-      const label = (node.title || url).trim() || url;
-      dedupedByUrl.set(url, {
-        label,
-        url,
-        order,
-        dateAdded: Number(node.dateAdded || 0),
-        titleCandidates: buildSearchMatchCandidates(label),
-        urlCandidates: buildSearchMatchCandidates(url),
-      });
-      order += 1;
-
-      if (order % BOOKMARK_INDEX_YIELD_INTERVAL === 0) {
-        await yieldToMainThread();
-      }
-    }
-
-    const entries = Array.from(dedupedByUrl.values());
+    const corpusEntries = await listBookmarkCorpus(bookmarksApi);
+    const entries = corpusEntries.map((entry, order) => ({
+      label: entry.title,
+      url: entry.url,
+      order,
+      dateAdded: entry.dateAdded,
+      titleCandidates: buildSearchMatchCandidates(entry.title),
+      urlCandidates: buildSearchMatchCandidates(entry.url),
+    }));
     bookmarkIndexCache = {
       builtAt: Date.now(),
       entries,
@@ -275,7 +208,7 @@ async function getKeywordBookmarkSuggestionsFromApi(
 ): Promise<SearchSuggestionItem[]> {
   const query = rawQuery.trim();
   const safeLimit = Math.max(1, limit);
-  ensureBookmarkCacheListeners(bookmarksApi);
+  ensureBookmarkCacheInvalidation(bookmarksApi);
 
   const cachedItems = readBookmarkQueryCache(query, safeLimit);
   if (cachedItems) return cachedItems;

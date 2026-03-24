@@ -60,6 +60,11 @@ export default {
             label: "계산기 미리보기",
             description: "수식 입력 시 실시간 계산 결과를 추천에 표시",
             tooltip: "예: `12*8` 입력 시 드롭다운에 계산 결과가 표시됩니다."
+          },
+          rotatingPlaceholder: {
+            label: "검색창 안내 문구 순환",
+            description: "검색창 안내 문구를 자동으로 바꿔 보여줍니다",
+            tooltip: "끄면 검색창에는 하나의 고정된 안내 문구만 표시됩니다."
           }
         }
       },

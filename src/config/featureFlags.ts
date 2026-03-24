@@ -4,4 +4,4 @@ export const ENABLE_SEARCH_ENGINE_SWITCHER = true;
 
 // AI bookmark search is implemented as a read-only sidecar index.
 // Disable this to fall back to the classic bookmark search path instantly.
-export const ENABLE_AI_BOOKMARK_SEARCH = true;
+export const ENABLE_AI_BOOKMARK_SEARCH = false;

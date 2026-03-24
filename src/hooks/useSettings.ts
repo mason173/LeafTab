@@ -26,6 +26,7 @@ const SEARCH_SITE_DIRECT_ENABLED_KEY = 'search_site_direct_enabled';
 const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
+const SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY = 'search_rotating_placeholder_enabled';
 const PREVENT_DUPLICATE_NEWTAB_KEY = 'leaftab_prevent_duplicate_newtab';
 const SHOW_LUNAR_KEY = 'showLunar';
 const TIME_ANIMATION_MODE_KEY = 'time_animation_mode';
@@ -136,6 +137,7 @@ export function useSettings() {
   const [searchSiteShortcutEnabled, setSearchSiteShortcutEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
   const [searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
   const [searchCalculatorEnabled, setSearchCalculatorEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
+  const [searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
   const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
   const [is24Hour, setIs24Hour] = useState(true);
   const [showLunar, setShowLunar] = useState<boolean>(() => readStoredBoolean(SHOW_LUNAR_KEY, true));
@@ -217,6 +219,7 @@ export function useSettings() {
     setSearchSiteShortcutEnabled(readStoredBoolean(SEARCH_SITE_SHORTCUT_ENABLED_KEY, true));
     setSearchAnyKeyCaptureEnabled(readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
     setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
+    setSearchRotatingPlaceholderEnabled(readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
     setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
     setShowLunar(readStoredBoolean(SHOW_LUNAR_KEY, true));
     setTimeAnimationMode(readTimeAnimationMode());
@@ -268,6 +271,7 @@ export function useSettings() {
     queueLocalStorageSetItem(SEARCH_SITE_SHORTCUT_ENABLED_KEY, JSON.stringify(searchSiteShortcutEnabled));
     queueLocalStorageSetItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(searchAnyKeyCaptureEnabled));
     queueLocalStorageSetItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(searchCalculatorEnabled));
+    queueLocalStorageSetItem(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, JSON.stringify(searchRotatingPlaceholderEnabled));
     queueLocalStorageSetItem(PREVENT_DUPLICATE_NEWTAB_KEY, JSON.stringify(preventDuplicateNewTab));
     queueLocalStorageSetItem('is24Hour', JSON.stringify(is24Hour));
     queueLocalStorageSetItem(SHOW_LUNAR_KEY, JSON.stringify(showLunar));
@@ -291,6 +295,7 @@ export function useSettings() {
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
     searchPrefixEnabled,
+    searchRotatingPlaceholderEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
     shortcutCardVariant,
@@ -370,6 +375,8 @@ export function useSettings() {
     setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
     setSearchCalculatorEnabled,
+    searchRotatingPlaceholderEnabled,
+    setSearchRotatingPlaceholderEnabled,
     preventDuplicateNewTab,
     setPreventDuplicateNewTab,
     is24Hour,

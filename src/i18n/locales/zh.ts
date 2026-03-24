@@ -65,6 +65,11 @@ export default {
             label: "计算器预览",
             description: "输入算式会实时显示结果\n回车可填入并复制计算值",
             tooltip: "例如 12*8、(3+5)/2 会显示计算结果；按回车会把结果填入并复制到剪贴板。"
+          },
+          rotatingPlaceholder: {
+            label: "搜索框提示轮播",
+            description: "让搜索框占位提示自动切换\n关闭后固定显示默认提示",
+            tooltip: "关闭后，搜索框里只固定显示“想找什么？直接输入，网址也可以”这一条提示。"
           }
         }
       },

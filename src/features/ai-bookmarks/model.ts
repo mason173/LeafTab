@@ -1,4 +1,5 @@
 import {
+  AI_BOOKMARK_MODEL_CACHE_NAME,
   AI_BOOKMARK_MODEL_ASSET_OVERRIDE_QUERY_PARAM,
   AI_BOOKMARK_MODEL_ASSET_OVERRIDE_STORAGE_KEY,
   AI_BOOKMARK_MODEL_REGISTRY,
@@ -29,6 +30,11 @@ type ModelLoadOptions = {
   remotePathTemplate?: string;
 };
 
+export type AiBookmarkModelPersistenceState = {
+  cacheState: 'packaged-local' | 'persisted-cache' | 'remote-download';
+  persistedLocally: boolean;
+};
+
 type TransformersProgressInfo = {
   status?: string;
   file?: string;
@@ -43,7 +49,12 @@ export type AiBookmarkModelLoadProgress = {
 let transformersImportPromise: Promise<typeof import('@huggingface/transformers')> | null = null;
 const pipelineCache = new Map<string, Promise<FeatureExtractionPipeline>>();
 const modelAvailabilityCache = new Map<string, Promise<boolean>>();
-const modelSourceCache = new Map<string, Promise<ModelAssetSource>>();
+const modelSourceCache = new Map<string, Promise<{
+  source: ModelAssetSource;
+  persistedLocally: boolean;
+  cacheState: AiBookmarkModelPersistenceState['cacheState'];
+}>>();
+let modelAssetCachePromise: Promise<Cache | null> | null = null;
 
 function normalizeAssetPath(value: string): string {
   return String(value || '').trim().replace(/^\/+/, '');
@@ -62,12 +73,17 @@ function getAssetWeight(filePath: string): number {
 
 function createModelLoadProgressReporter(
   definition: AiBookmarkModelDefinition,
-  onProgress?: (progress: AiBookmarkModelLoadProgress) => void,
+  options?: {
+    persistedLocally?: boolean;
+    onProgress?: (progress: AiBookmarkModelLoadProgress) => void;
+  },
 ) {
+  const onProgress = options?.onProgress;
   if (!onProgress) return undefined;
+  const persistedLocally = Boolean(options?.persistedLocally);
 
   const assetProgress = new Map<string, number>();
-  (definition.remoteAssetFiles || []).forEach((file) => {
+  getRequiredModelAssetFiles(definition).forEach((file) => {
     assetProgress.set(normalizeAssetPath(file), 0);
   });
 
@@ -85,7 +101,12 @@ function createModelLoadProgressReporter(
     }
 
     if (event.status === 'download') {
-      emit(2, `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`);
+      emit(
+        persistedLocally ? 12 : 2,
+        persistedLocally
+          ? `正在加载本地 AI 模型资源：${filePath || '准备中'}...`
+          : `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`,
+      );
       return;
     }
 
@@ -101,7 +122,12 @@ function createModelLoadProgressReporter(
         weightedProgress += weight * Math.max(0, Math.min(100, assetPercent));
       }
       const progress = totalWeight > 0 ? weightedProgress / totalWeight : Number(event.progress || 0);
-      emit(progress, `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`);
+      emit(
+        progress,
+        persistedLocally
+          ? `正在加载本地 AI 模型资源：${filePath || '准备中'}...`
+          : `首次使用正在联网下载 AI 模型资源：${filePath || '准备中'}...`,
+      );
       return;
     }
 
@@ -109,12 +135,17 @@ function createModelLoadProgressReporter(
       if (filePath) assetProgress.set(filePath, 100);
       const finishedCount = Array.from(assetProgress.values()).filter((value) => value >= 100).length;
       const totalCount = Math.max(assetProgress.size, 1);
-      emit(Math.round((finishedCount / totalCount) * 100), 'AI 模型资源下载完成，正在准备索引环境...');
+      emit(
+        Math.round((finishedCount / totalCount) * 100),
+        persistedLocally
+          ? '本地 AI 模型加载完成，正在准备索引环境...'
+          : 'AI 模型资源下载完成，正在准备索引环境...',
+      );
       return;
     }
 
     if (event.status === 'ready') {
-      emit(100, 'AI 模型已就绪');
+      emit(100, persistedLocally ? '本地 AI 模型已就绪' : 'AI 模型已就绪');
     }
   };
 }
@@ -124,6 +155,24 @@ function getTransformersModule() {
     transformersImportPromise = import('@huggingface/transformers');
   }
   return transformersImportPromise;
+}
+
+function getRequiredModelAssetFiles(definition: AiBookmarkModelDefinition): string[] {
+  const files = definition.remoteAssetFiles?.length
+    ? definition.remoteAssetFiles
+    : [
+        'config.json',
+        'tokenizer.json',
+        'tokenizer_config.json',
+        'special_tokens_map.json',
+        `onnx/${definition.modelFileName}`,
+      ];
+
+  return Array.from(new Set(files.map(normalizeAssetPath).filter(Boolean)));
+}
+
+function isRemoteModelSource(source: ModelAssetSource): boolean {
+  return !source.localFilesOnly;
 }
 
 function resolveRuntimeAssetUrl(relativePath: string): string {
@@ -232,7 +281,10 @@ function resolveModelAssetUrl(source: ModelAssetSource, relativePath: string): s
 
 async function configureTransformersEnvironment() {
   const { env } = await getTransformersModule();
+  const customCache = await getModelAssetCacheAdapter();
   env.useBrowserCache = false;
+  env.useCustomCache = Boolean(customCache);
+  env.customCache = customCache;
   env.backends.onnx.wasm.proxy = false;
   env.backends.onnx.wasm.numThreads = 1;
   env.backends.onnx.wasm.wasmPaths = {
@@ -241,6 +293,51 @@ async function configureTransformersEnvironment() {
   };
 
   return env;
+}
+
+async function getModelAssetCache(): Promise<Cache | null> {
+  if (typeof caches === 'undefined') return null;
+  if (!modelAssetCachePromise) {
+    modelAssetCachePromise = (async () => {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => name.startsWith('leaftab-transformers-cache-') && name !== AI_BOOKMARK_MODEL_CACHE_NAME)
+            .map((name) => caches.delete(name)),
+        );
+        return await caches.open(AI_BOOKMARK_MODEL_CACHE_NAME);
+      } catch (error) {
+        console.warn('[ai-bookmarks] unable to open model cache', error);
+        return null;
+      }
+    })().catch((error) => {
+      modelAssetCachePromise = null;
+      throw error;
+    });
+  }
+
+  return modelAssetCachePromise;
+}
+
+async function getModelAssetCacheAdapter() {
+  const cache = await getModelAssetCache();
+  if (!cache) return null;
+
+  return {
+    async match(request: RequestInfo | URL) {
+      return (await cache.match(request)) ?? undefined;
+    },
+    async put(request: RequestInfo | URL, response: Response) {
+      await cache.put(request, response);
+    },
+  };
+}
+
+async function hasCachedRemoteAsset(url: string): Promise<boolean> {
+  const cache = await getModelAssetCache();
+  if (!cache) return false;
+  return (await cache.match(url)) !== undefined;
 }
 
 async function fileExists(url: string): Promise<boolean> {
@@ -266,23 +363,55 @@ async function fileExists(url: string): Promise<boolean> {
   }
 }
 
+async function hasBundledRuntimeAssets(): Promise<boolean> {
+  const checks = await Promise.all([
+    fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.mjs')),
+    fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.wasm')),
+    fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.jsep.mjs')),
+    fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.jsep.wasm')),
+  ]);
+  return checks.every(Boolean);
+}
+
+async function hasModelAssetsAtSource(
+  source: ModelAssetSource,
+  definition: AiBookmarkModelDefinition,
+): Promise<boolean> {
+  if (isRemoteModelSource(source)) return true;
+  const files = getRequiredModelAssetFiles(definition);
+  const checks = await Promise.all(
+    files.map((file) => fileExists(resolveModelAssetUrl(source, file))),
+  );
+  return checks.every(Boolean);
+}
+
+async function hasPersistedRemoteModelAssets(
+  source: ModelAssetSource,
+  definition: AiBookmarkModelDefinition,
+): Promise<boolean> {
+  if (!isRemoteModelSource(source)) return false;
+
+  const files = getRequiredModelAssetFiles(definition);
+  const checks = await Promise.all(
+    files.map((file) => hasCachedRemoteAsset(resolveModelAssetUrl(source, file))),
+  );
+  return checks.every(Boolean);
+}
+
 async function hasModelAssets(modelId: AiBookmarkModelId): Promise<boolean> {
   const source = await getModelAssetSource(modelId);
   const cached = modelAvailabilityCache.get(source.cacheKey);
   if (cached) return cached;
 
   const next = (async () => {
-    const checks = await Promise.all([
-      fileExists(resolveModelAssetUrl(source, 'config.json')),
-      fileExists(resolveModelAssetUrl(source, 'tokenizer.json')),
-      fileExists(resolveModelAssetUrl(source, 'onnx/model_quantized.onnx')),
-      fileExists(resolveModelAssetUrl(source, 'special_tokens_map.json')),
-      fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.mjs')),
-      fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.wasm')),
-      fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.jsep.mjs')),
-      fileExists(resolveRuntimeAssetUrl('ort/ort-wasm-simd-threaded.jsep.wasm')),
+    const definition = AI_BOOKMARK_MODEL_REGISTRY[modelId];
+    const [sourceReady, runtimeReady] = await Promise.all([
+      isRemoteModelSource(source)
+        ? true
+        : hasModelAssetsAtSource(source, definition),
+      hasBundledRuntimeAssets(),
     ]);
-    return checks.every(Boolean);
+    return sourceReady && runtimeReady;
   })();
   modelAvailabilityCache.set(source.cacheKey, next);
 
@@ -295,6 +424,14 @@ async function hasModelAssets(modelId: AiBookmarkModelId): Promise<boolean> {
 }
 
 async function getModelAssetSource(modelId: AiBookmarkModelId): Promise<ModelAssetSource> {
+  return (await inspectBookmarkModelPersistenceState(modelId)).source;
+}
+
+async function inspectBookmarkModelPersistenceState(modelId: AiBookmarkModelId): Promise<{
+  source: ModelAssetSource;
+  persistedLocally: boolean;
+  cacheState: AiBookmarkModelPersistenceState['cacheState'];
+}> {
   const cacheKey = [
     modelId,
     JSON.stringify(readModelAssetOverridesFromQuery()),
@@ -307,15 +444,30 @@ async function getModelAssetSource(modelId: AiBookmarkModelId): Promise<ModelAss
   const next = (async () => {
     const candidates = getModelAssetSourceCandidates(modelId);
     for (const source of candidates) {
-      const checks = await Promise.all([
-        fileExists(resolveModelAssetUrl(source, 'config.json')),
-        fileExists(resolveModelAssetUrl(source, 'tokenizer.json')),
-        fileExists(resolveModelAssetUrl(source, `onnx/${definition.modelFileName}`)),
-        fileExists(resolveModelAssetUrl(source, 'special_tokens_map.json')),
-      ]);
-      if (checks.every(Boolean)) {
-        return source;
+      if (source.localFilesOnly) {
+        if (await hasModelAssetsAtSource(source, definition)) {
+          return {
+            source,
+            persistedLocally: true,
+            cacheState: 'packaged-local' as const,
+          };
+        }
+        continue;
       }
+
+      if (await hasPersistedRemoteModelAssets(source, definition)) {
+        return {
+          source,
+          persistedLocally: true,
+          cacheState: 'persisted-cache' as const,
+        };
+      }
+
+      return {
+        source,
+        persistedLocally: false,
+        cacheState: 'remote-download' as const,
+      };
     }
     throw new Error(`local_model_assets_missing:${modelId}`);
   })().catch((error) => {
@@ -327,6 +479,16 @@ async function getModelAssetSource(modelId: AiBookmarkModelId): Promise<ModelAss
   return next;
 }
 
+export async function inspectBookmarkModelPersistence(
+  modelId: AiBookmarkModelId,
+): Promise<AiBookmarkModelPersistenceState> {
+  const result = await inspectBookmarkModelPersistenceState(modelId);
+  return {
+    cacheState: result.cacheState,
+    persistedLocally: result.persistedLocally,
+  };
+}
+
 async function loadFeatureExtractionPipeline(
   modelId: AiBookmarkModelId,
   definition: AiBookmarkModelDefinition,
@@ -335,7 +497,8 @@ async function loadFeatureExtractionPipeline(
   },
 ): Promise<FeatureExtractionPipeline> {
   const { pipeline } = await getTransformersModule();
-  const source = await getModelAssetSource(modelId);
+  const sourceState = await inspectBookmarkModelPersistenceState(modelId);
+  const source = sourceState.source;
   const modelBaseName = definition.modelFileName
     .replace(/_quantized\.onnx$/i, '')
     .replace(/\.onnx$/i, '');
@@ -356,7 +519,10 @@ async function loadFeatureExtractionPipeline(
   }
 
   return pipeline('feature-extraction', modelLoadOptions.model, {
-    progress_callback: createModelLoadProgressReporter(definition, options?.onProgress),
+    progress_callback: createModelLoadProgressReporter(definition, {
+      persistedLocally: sourceState.persistedLocally,
+      onProgress: options?.onProgress,
+    }),
     local_files_only: modelLoadOptions.localFilesOnly,
     subfolder: 'onnx',
     model_file_name: modelBaseName,

@@ -60,6 +60,11 @@ export default {
             label: "Xem trước máy tính",
             description: "Hiển thị kết quả phép tính theo thời gian thực trong gợi ý",
             tooltip: "Ví dụ nhập `12*8` sẽ hiện kết quả ngay trong danh sách gợi ý."
+          },
+          rotatingPlaceholder: {
+            label: "Gợi ý xoay vòng trong ô tìm kiếm",
+            description: "Tự động đổi các câu gợi ý trong ô tìm kiếm",
+            tooltip: "Khi tắt, ô tìm kiếm sẽ chỉ hiển thị một câu gợi ý cố định."
           }
         }
       },

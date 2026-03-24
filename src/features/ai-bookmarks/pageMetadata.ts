@@ -9,14 +9,33 @@ import {
   safeParseUrl,
   sanitizeBookmarkText,
 } from '@/features/ai-bookmarks/text';
-import type { BookmarkSemanticDocument } from '@/features/ai-bookmarks/types';
+import type {
+  BookmarkPageMetadataState,
+  BookmarkSemanticDocument,
+} from '@/features/ai-bookmarks/types';
 import { containsOriginPermission } from '@/platform/permissions';
 import { yieldToMainThread } from '@/utils/mainThreadScheduler';
 
 type BookmarkPageMetadata = Pick<
   BookmarkSemanticDocument,
-  'pageTitle' | 'metaDescription' | 'bodyPreview' | 'searchText' | 'contentHash'
+  'pageTitle' | 'metaDescription' | 'bodyPreview'
 >;
+
+type BookmarkPageMetadataFetchResult =
+  | {
+    state: 'success';
+    fetchedAt: number;
+    retryAt: number;
+    metadata: BookmarkPageMetadata;
+  }
+  | {
+    state: Exclude<BookmarkPageMetadataState, 'pending' | 'success'>;
+    fetchedAt: number;
+    retryAt: number;
+  };
+
+const PAGE_METADATA_FAILED_RETRY_MS = 30 * 60 * 1000;
+const PAGE_METADATA_BLOCKED_RETRY_MS = 6 * 60 * 60 * 1000;
 
 function hasPageMetadata(document: BookmarkSemanticDocument): boolean {
   return Boolean(document.pageTitle || document.metaDescription || document.bodyPreview);
@@ -24,11 +43,14 @@ function hasPageMetadata(document: BookmarkSemanticDocument): boolean {
 
 export function shouldAttemptPageMetadataRefresh(document: BookmarkSemanticDocument): boolean {
   if (hasPageMetadata(document)) return false;
-
-  const retryAt = Number(document.pageMetadataRetryAt || 0);
-  if (retryAt > Date.now()) return false;
-
-  return document.pageMetadataState !== 'success' && document.pageMetadataState !== 'empty';
+  if (document.pageMetadataState === 'success' || document.pageMetadataState === 'empty') return false;
+  if (
+    (document.pageMetadataState === 'failed' || document.pageMetadataState === 'blocked')
+    && Number(document.pageMetadataRetryAt || 0) > Date.now()
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function extractMetaDescription(doc: Document): string {
@@ -51,10 +73,27 @@ function extractBodyPreview(doc: Document): string {
   return bodyText.slice(0, 320);
 }
 
-async function fetchBookmarkPageMetadata(url: string): Promise<BookmarkPageMetadata | null> {
+function buildRetryAt(fetchedAt: number, retryDelayMs: number): number {
+  return fetchedAt + retryDelayMs;
+}
+
+async function fetchBookmarkPageMetadata(url: string): Promise<BookmarkPageMetadataFetchResult> {
+  const fetchedAt = Date.now();
   const parsedUrl = safeParseUrl(url);
-  if (!parsedUrl || !/^https?:$/i.test(parsedUrl.protocol)) return null;
-  if (!(await containsOriginPermission(url))) return null;
+  if (!parsedUrl || !/^https?:$/i.test(parsedUrl.protocol)) {
+    return {
+      state: 'empty',
+      fetchedAt,
+      retryAt: 0,
+    };
+  }
+  if (!(await containsOriginPermission(url))) {
+    return {
+      state: 'blocked',
+      fetchedAt,
+      retryAt: buildRetryAt(fetchedAt, PAGE_METADATA_BLOCKED_RETRY_MS),
+    };
+  }
 
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), AI_BOOKMARK_PAGE_FETCH_TIMEOUT_MS);
@@ -68,30 +107,60 @@ async function fetchBookmarkPageMetadata(url: string): Promise<BookmarkPageMetad
         Accept: 'text/html,application/xhtml+xml',
       },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return {
+        state: 'failed',
+        fetchedAt,
+        retryAt: buildRetryAt(fetchedAt, PAGE_METADATA_FAILED_RETRY_MS),
+      };
+    }
 
     const contentType = (response.headers.get('content-type') || '').toLowerCase();
     if (contentType && !contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
-      return null;
+      return {
+        state: 'failed',
+        fetchedAt,
+        retryAt: buildRetryAt(fetchedAt, PAGE_METADATA_FAILED_RETRY_MS),
+      };
     }
 
     const html = (await response.text()).slice(0, 150_000);
-    if (!html.trim()) return null;
+    if (!html.trim()) {
+      return {
+        state: 'empty',
+        fetchedAt,
+        retryAt: 0,
+      };
+    }
 
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const pageTitle = sanitizeBookmarkText(doc.title || '').slice(0, 160);
     const metaDescription = sanitizeBookmarkText(extractMetaDescription(doc)).slice(0, 240);
     const bodyPreview = extractBodyPreview(doc);
+    if (!pageTitle && !metaDescription && !bodyPreview) {
+      return {
+        state: 'empty',
+        fetchedAt,
+        retryAt: 0,
+      };
+    }
 
     return {
-      pageTitle,
-      metaDescription,
-      bodyPreview,
-      searchText: '',
-      contentHash: '',
+      state: 'success',
+      fetchedAt,
+      retryAt: 0,
+      metadata: {
+        pageTitle,
+        metaDescription,
+        bodyPreview,
+      },
     };
   } catch {
-    return null;
+    return {
+      state: 'failed',
+      fetchedAt,
+      retryAt: buildRetryAt(fetchedAt, PAGE_METADATA_FAILED_RETRY_MS),
+    };
   } finally {
     window.clearTimeout(timeoutId);
   }
@@ -99,16 +168,19 @@ async function fetchBookmarkPageMetadata(url: string): Promise<BookmarkPageMetad
 
 function applyPageMetadata(
   document: BookmarkSemanticDocument,
-  metadata: BookmarkPageMetadata | null,
+  result: BookmarkPageMetadataFetchResult,
 ): BookmarkSemanticDocument {
-  if (!metadata) return document;
-
   const nextDocument = {
     ...document,
-    pageTitle: metadata.pageTitle,
-    metaDescription: metadata.metaDescription,
-    bodyPreview: metadata.bodyPreview,
+    pageMetadataState: result.state,
+    pageMetadataFetchedAt: result.fetchedAt,
+    pageMetadataRetryAt: result.retryAt,
   };
+  if (result.state !== 'success') return nextDocument;
+
+  nextDocument.pageTitle = result.metadata.pageTitle;
+  nextDocument.metaDescription = result.metadata.metaDescription;
+  nextDocument.bodyPreview = result.metadata.bodyPreview;
   nextDocument.searchText = buildBookmarkSearchText({
     title: nextDocument.title,
     url: nextDocument.url,
@@ -128,7 +200,7 @@ export async function enrichBookmarkDocumentsWithPageMetadata(
   const out = [...documents];
   const candidateIndexes = out
     .map((document, index) => ({ document, index }))
-    .filter(({ document }) => !hasPageMetadata(document))
+    .filter(({ document }) => shouldAttemptPageMetadataRefresh(document))
     .slice(0, AI_BOOKMARK_PAGE_FETCH_LIMIT_PER_SYNC)
     .map(({ index }) => index);
 
@@ -138,13 +210,13 @@ export async function enrichBookmarkDocumentsWithPageMetadata(
     const batchIndexes = candidateIndexes.slice(start, start + AI_BOOKMARK_PAGE_FETCH_CONCURRENCY);
     const batchResults = await Promise.all(
       batchIndexes.map(async (index) => {
-        const metadata = await fetchBookmarkPageMetadata(out[index].url);
-        return { index, metadata };
+        const result = await fetchBookmarkPageMetadata(out[index].url);
+        return { index, result };
       }),
     );
 
     for (const result of batchResults) {
-      out[result.index] = applyPageMetadata(out[result.index], result.metadata);
+      out[result.index] = applyPageMetadata(out[result.index], result.result);
     }
     await yieldToMainThread();
   }
