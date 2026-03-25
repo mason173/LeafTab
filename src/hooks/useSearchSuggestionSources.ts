@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
-import { AI_BOOKMARK_SUGGESTION_LIMIT } from '@/features/ai-bookmarks/constants';
-import {
-  getBookmarksApi,
-  getExtensionRuntime,
-  getHistoryApi,
-  getTabsApi,
-} from '@/platform/runtime';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
@@ -40,11 +33,11 @@ type SuggestionCacheEntry = {
 };
 
 const SEARCH_ASYNC_DEBOUNCE_MS = 120;
-const BOOKMARK_ASYNC_DEBOUNCE_MS = 220;
-const SEARCH_ASYNC_LOADING_DELAY_MS = 180;
 const BROWSER_HISTORY_CACHE_TTL_MS = 15_000;
 const BROWSER_HISTORY_EMPTY_QUERY_LIMIT = 20;
 const BROWSER_HISTORY_QUERY_LIMIT = 30;
+const BOOKMARK_SUGGESTION_LIMIT = 30;
+const BROWSER_HISTORY_CACHE_KEY_LIMIT = 120;
 
 function normalizeSuggestionCacheKey(rawValue: string): string {
   return rawValue.trim().toLowerCase();
@@ -73,24 +66,26 @@ function useAsyncSearchSuggestionSource(args: {
   enabled: boolean;
   query: string;
   debounceMs?: number;
-  loadingDelayMs?: number;
   getCachedItems?: (query: string) => SearchSuggestionItem[] | null;
-  load: (query: string) => Promise<SearchSuggestionItem[]>;
+  load: (query: string, signal?: AbortSignal) => Promise<SearchSuggestionItem[]>;
 }) {
-  const {
-    enabled,
-    query,
-    debounceMs = SEARCH_ASYNC_DEBOUNCE_MS,
-    loadingDelayMs = SEARCH_ASYNC_LOADING_DELAY_MS,
-    getCachedItems,
-    load,
-  } = args;
+  const { enabled, query, debounceMs = SEARCH_ASYNC_DEBOUNCE_MS, getCachedItems, load } = args;
   const [items, setItems] = useState<SearchSuggestionItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const getCachedItemsRef = useRef(getCachedItems);
+  const loadRef = useRef(load);
   const debouncedQuery = useDebouncedValue(
     query,
     enabled && query ? debounceMs : 0,
   );
+
+  useEffect(() => {
+    getCachedItemsRef.current = getCachedItems;
+  }, [getCachedItems]);
+
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
     if (!enabled) {
@@ -100,38 +95,27 @@ function useAsyncSearchSuggestionSource(args: {
     }
 
     let canceled = false;
-    let loadingDelayTimer: number | null = null;
-    const cachedItems = getCachedItems?.(debouncedQuery);
+    const abortController = new AbortController();
+    const cachedItems = getCachedItemsRef.current?.(debouncedQuery);
     if (cachedItems) {
       setItems(cachedItems);
       setLoading(false);
       return;
     }
 
-    if (loadingDelayMs <= 0) {
-      setLoading(true);
-    } else {
-      loadingDelayTimer = window.setTimeout(() => {
-        if (!canceled) {
-          setLoading(true);
-        }
-      }, loadingDelayMs);
-    }
-
-    void load(debouncedQuery)
+    setLoading(true);
+    void loadRef.current(debouncedQuery, abortController.signal)
       .then((nextItems) => {
         if (!canceled) {
-          if (loadingDelayTimer !== null) {
-            window.clearTimeout(loadingDelayTimer);
-          }
           setItems(nextItems);
           setLoading(false);
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!canceled) {
-          if (loadingDelayTimer !== null) {
-            window.clearTimeout(loadingDelayTimer);
+          if (error instanceof Error && error.name === 'AbortError') {
+            setLoading(false);
+            return;
           }
           setItems([]);
           setLoading(false);
@@ -140,13 +124,28 @@ function useAsyncSearchSuggestionSource(args: {
 
     return () => {
       canceled = true;
-      if (loadingDelayTimer !== null) {
-        window.clearTimeout(loadingDelayTimer);
-      }
+      abortController.abort();
     };
-  }, [debouncedQuery, enabled, getCachedItems, load, loadingDelayMs]);
+  }, [debouncedQuery, enabled]);
 
   return { items, loading };
+}
+
+function upsertSuggestionCacheEntry(
+  cache: Map<string, SuggestionCacheEntry>,
+  key: string,
+  entry: SuggestionCacheEntry,
+  maxSize: number,
+) {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+  cache.set(key, entry);
+  while (cache.size > maxSize) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey !== 'string') break;
+    cache.delete(oldestKey);
+  }
 }
 
 export type SearchSuggestionSourceStatus = {
@@ -169,7 +168,6 @@ export function useSearchSuggestionSources({
   permissionWarmup,
 }: UseSearchSuggestionSourcesOptions) {
   const isDocumentVisible = useDocumentVisibility();
-  const extensionRuntime = getExtensionRuntime();
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
   const [browserHistoryCacheVersion, setBrowserHistoryCacheVersion] = useState(0);
   const suggestionDisplayMode = useMemo(
@@ -229,13 +227,11 @@ export function useSearchSuggestionSources({
   } = useAsyncSearchSuggestionSource({
     enabled: isDocumentVisible && suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
     query: commandQuery,
-    debounceMs: BOOKMARK_ASYNC_DEBOUNCE_MS,
-    loadingDelayMs: SEARCH_ASYNC_LOADING_DELAY_MS,
-    getCachedItems: (query) => getCachedBookmarkSuggestions(query, AI_BOOKMARK_SUGGESTION_LIMIT),
-    load: async (query) => {
-      const bookmarksApi = getBookmarksApi();
+    getCachedItems: (query) => getCachedBookmarkSuggestions(query, BOOKMARK_SUGGESTION_LIMIT),
+    load: async (query, signal) => {
+      const bookmarksApi = globalThis.chrome?.bookmarks;
       if (!bookmarksApi) return [];
-      return getBookmarkSuggestionsFromApi(bookmarksApi, query, AI_BOOKMARK_SUGGESTION_LIMIT);
+      return getBookmarkSuggestionsFromApi(bookmarksApi, query, BOOKMARK_SUGGESTION_LIMIT, { signal });
     },
   });
 
@@ -247,7 +243,7 @@ export function useSearchSuggestionSources({
     query: commandQuery,
     getCachedItems: (query) => getCachedTabSuggestions(query, 50),
     load: async (query) => {
-      const tabsApi = getTabsApi();
+      const tabsApi = globalThis.chrome?.tabs;
       if (!tabsApi) return [];
       return getTabSuggestionsFromApi(tabsApi, query, 50);
     },
@@ -256,7 +252,7 @@ export function useSearchSuggestionSources({
   const [browserHistorySuggestionItems, setBrowserHistorySuggestionItems] = useState<SearchSuggestionItem[]>([]);
   const [browserHistoryLoading, setBrowserHistoryLoading] = useState(false);
   useEffect(() => {
-    const historyApi = getHistoryApi();
+    const historyApi = globalThis.chrome?.history;
     if (!historyApi?.onVisited || !historyApi.onVisitRemoved) return;
 
     const invalidate = () => {
@@ -279,7 +275,7 @@ export function useSearchSuggestionSources({
       return;
     }
 
-    const historyApi = getHistoryApi();
+    const historyApi = globalThis.chrome?.history;
     if (!historyApi) {
       setBrowserHistorySuggestionItems([]);
       setBrowserHistoryLoading(false);
@@ -303,7 +299,7 @@ export function useSearchSuggestionSources({
         startTime: 0,
       }, (nodes) => {
         if (canceled) return;
-        if (extensionRuntime?.lastError) {
+        if (globalThis.chrome?.runtime?.lastError) {
           setBrowserHistorySuggestionItems([]);
           setBrowserHistoryLoading(false);
           return;
@@ -323,10 +319,10 @@ export function useSearchSuggestionSources({
         });
 
         const nextItems = Array.from(deduped.values()).slice(0, browserHistoryMaxResults);
-        browserHistoryCacheRef.current.set(cacheKey, {
+        upsertSuggestionCacheEntry(browserHistoryCacheRef.current, cacheKey, {
           cachedAt: Date.now(),
           items: nextItems,
-        });
+        }, BROWSER_HISTORY_CACHE_KEY_LIMIT);
         setBrowserHistorySuggestionItems(nextItems);
         setBrowserHistoryLoading(false);
       });
@@ -335,7 +331,7 @@ export function useSearchSuggestionSources({
     return () => {
       canceled = true;
     };
-  }, [browserHistoryCacheVersion, browserHistoryMaxResults, debouncedBrowserHistoryQuery, extensionRuntime, shouldFetchBrowserHistory]);
+  }, [browserHistoryCacheVersion, browserHistoryMaxResults, debouncedBrowserHistoryQuery, shouldFetchBrowserHistory]);
 
   return {
     queryModel,

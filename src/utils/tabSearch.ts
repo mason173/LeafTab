@@ -22,6 +22,7 @@ type IndexedTab = {
 
 const TAB_QUERY_CACHE_TTL_MS = 10_000;
 const TAB_QUERY_CACHE_LIMIT = 50;
+const TAB_QUERY_CACHE_KEY_LIMIT = 120;
 const TAB_SEARCH_YIELD_INTERVAL = 250;
 let tabIndexCache: IndexedTab[] | null = null;
 let tabIndexPromise: Promise<IndexedTab[]> | null = null;
@@ -161,15 +162,26 @@ function readTabQueryCache(rawQuery: string, limit: number): SearchSuggestionIte
     tabQueryCache.delete(key);
     return null;
   }
+  // Touch key for LRU-like eviction.
+  tabQueryCache.delete(key);
+  tabQueryCache.set(key, cached);
   return cached.items.slice(0, Math.max(1, limit));
 }
 
 function writeTabQueryCache(rawQuery: string, items: SearchSuggestionItem[]) {
   const key = normalizeTabQueryCacheKey(rawQuery);
+  if (tabQueryCache.has(key)) {
+    tabQueryCache.delete(key);
+  }
   tabQueryCache.set(key, {
     cachedAt: Date.now(),
     items: items.slice(0, TAB_QUERY_CACHE_LIMIT),
   });
+  while (tabQueryCache.size > TAB_QUERY_CACHE_KEY_LIMIT) {
+    const oldestKey = tabQueryCache.keys().next().value;
+    if (typeof oldestKey !== 'string') break;
+    tabQueryCache.delete(oldestKey);
+  }
 }
 
 export function getCachedTabSuggestions(

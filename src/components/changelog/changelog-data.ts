@@ -24,11 +24,9 @@ export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
     channel: "preview",
     tag: "alpha",
     notes: [
-      t("changelog.items.release140AlphaAiBookmarkSearch", { defaultValue: "新增 AI 书签语义搜索预览，可通过语义相关性检索书签" }),
       t("changelog.items.release140AlphaEncryptedBookmarkSync", { defaultValue: "支持书签云同步、WebDAV 同步与书签端到端加密同步" }),
-      t("changelog.items.release140AlphaIndexWarmup", { defaultValue: "首次启用 AI 书签会联网下载模型，并在顶部显示百分比进度；下载完成后自动建立语义索引" }),
-      t("changelog.items.release140AlphaResultTuning", { defaultValue: "收紧 AI 书签结果展示逻辑，减少低相关的凑数结果" }),
-      t("changelog.items.release140AlphaKnownIssues", { defaultValue: "已知问题：Alpha 版本仍可能继续调整模型加载、索引速度与文案表现" }),
+      t("changelog.items.release140AlphaBookmarkSearchPolish", { defaultValue: "回归更稳定的普通书签搜索，并继续优化搜索与同步体验" }),
+      t("changelog.items.release140AlphaKnownIssues", { defaultValue: "已知问题：Alpha 版本仍可能继续调整部分交互与文案表现" }),
     ],
   },
   {

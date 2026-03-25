@@ -12,7 +12,7 @@
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    "extension_pages": "script-src 'self'; object-src 'self';"
   },
   "permissions": [
     "search",
@@ -37,11 +37,6 @@
     "https://bing.biturl.top/*",
     "https://mason173.github.io/*",
     "https://raw.githubusercontent.com/*",
-    "https://huggingface.co/*",
-    "https://cas-bridge.xethub.hf.co/*",
-    "https://cdn-lfs.hf.co/*",
-    "https://cdn-lfs-us-1.hf.co/*",
-    "https://cdn-lfs-eu-1.hf.co/*",
     "https://fonts.googleapis.com/*",
     "https://fonts.gstatic.com/*",
     "https://ewebdav.pcloud.com/*",

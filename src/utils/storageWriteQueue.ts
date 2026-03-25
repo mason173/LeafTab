@@ -6,7 +6,7 @@ let lifecycleBound = false;
 
 function flushPendingWrites() {
   if (flushTimer !== null) {
-    window.clearTimeout(flushTimer);
+    clearTimeout(flushTimer);
     flushTimer = null;
   }
 
