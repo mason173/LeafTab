@@ -73,14 +73,6 @@ function resolveManualChunk(id: string): string | undefined {
   }
 
   if (
-    pkg === '@electric-sql/pglite'
-    || pkg === '@electric-sql/pglite/vector'
-    || pkg.startsWith('@electric-sql/pglite/')
-  ) {
-    return 'vendor-pglite';
-  }
-
-  if (
     pkg === 'framer-motion' ||
     pkg === 'motion'
   ) {
@@ -236,7 +228,6 @@ export default defineConfig(async () => {
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, 'index.html'),
-          'ai-sandbox': path.resolve(__dirname, 'ai-sandbox.html'),
         },
         output: {
           manualChunks: resolveManualChunk,

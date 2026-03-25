@@ -11,25 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
 import { toast } from '@/components/ui/sonner';
-import { getExtensionPermissionSupport } from '@/platform/permissions';
-import {
-  ENABLE_AI_BOOKMARK_SEARCH,
-  ENABLE_SEARCH_ENGINE_SWITCHER,
-} from '@/config/featureFlags';
-import {
-  getSemanticBookmarkSearchStatus,
-  subscribeSemanticBookmarkSearchStatus,
-  warmSemanticBookmarkIndex,
-} from '@/features/ai-bookmarks';
-import {
-  getBookmarksApi,
-  getExtensionRuntime,
-  getPermissionsApi,
-  getTabsApi,
-  getWindowsApi,
-  isExtensionRuntime,
-} from '@/platform/runtime';
-import { getDefaultSearchEngineForPlatform } from '@/platform/search';
+import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import { useRotatingText } from '@/hooks/useRotatingText';
 import { useSearch } from '@/hooks/useSearch';
 import { useSearchInteractionController } from '@/hooks/useSearchInteractionController';
@@ -40,17 +22,18 @@ import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
-import { matchSearchCommandAliasInput, type SearchCommandPermission } from '@/utils/searchCommands';
+import {
+  matchSearchCommandAliasInput,
+  parseSearchCommand,
+  type SearchCommandPermission,
+} from '@/utils/searchCommands';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
-import { SEARCH_ENGINE_SWITCHER_INTERACT_EVENT } from '@/components/search/SearchEngineSwitcher';
-import type { BookmarkSemanticSearchStatus } from '@/features/ai-bookmarks/types';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
-const SEARCH_ENGINE_SWITCHER_FOCUS_GUARD_MS = 420;
 const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
 const SEARCH_FOCUS_BLOCKING_SELECTOR = [
   '[data-slot="dialog-content"]',
@@ -88,7 +71,6 @@ export interface SearchExperienceProps {
   subtleDarkTone?: boolean;
   searchSurfaceStyle?: CSSProperties;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
-  onWarmSemanticBookmarkIndex?: (options?: { immediate?: boolean }) => void;
 }
 
 function hasOpenBlockingLayer() {
@@ -171,27 +153,23 @@ export const SearchExperience = memo(function SearchExperience({
   subtleDarkTone,
   searchSurfaceStyle,
   onInteractionStateChange,
-  onWarmSemanticBookmarkIndex,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
-  const extensionRuntimeActive = isExtensionRuntime();
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
-  const suppressAutoFocusUntilRef = useRef(0);
   const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [searchPermissions, setSearchPermissions] = useState<Record<SearchCommandPermission, boolean>>(() => ({
-    bookmarks: !extensionRuntimeActive,
-    history: !extensionRuntimeActive,
-    tabs: !extensionRuntimeActive,
+    bookmarks: typeof chrome === 'undefined' || !chrome.runtime?.id,
+    history: typeof chrome === 'undefined' || !chrome.runtime?.id,
+    tabs: typeof chrome === 'undefined' || !chrome.runtime?.id,
   }));
-  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => !extensionRuntimeActive);
+  const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => (
+    typeof chrome === 'undefined' || !chrome.runtime?.id
+  ));
   const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
   const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
-  const [semanticBookmarkStatus, setSemanticBookmarkStatus] = useState<BookmarkSemanticSearchStatus>(
-    () => getSemanticBookmarkSearchStatus(),
-  );
 
   const {
     searchValue,
@@ -218,7 +196,6 @@ export const SearchExperience = memo(function SearchExperience({
     prefixEnabled: searchPrefixEnabled,
     siteDirectEnabled: searchSiteDirectEnabled,
   });
-  const dropdownOpenRef = useRef(false);
 
   const [isSearchTypingBurst, setIsSearchTypingBurst] = useState(false);
   const searchTypingBurstTimerRef = useRef<number | null>(null);
@@ -264,13 +241,8 @@ export const SearchExperience = memo(function SearchExperience({
   useEffect(() => {
     if (ENABLE_SEARCH_ENGINE_SWITCHER) return;
     if (dropdownOpen) setDropdownOpen(false);
-    const fallbackEngine = getDefaultSearchEngineForPlatform();
-    if (searchEngine !== fallbackEngine) setSearchEngine(fallbackEngine);
+    if (searchEngine !== 'system') setSearchEngine('system');
   }, [dropdownOpen, searchEngine, setDropdownOpen, setSearchEngine]);
-
-  useEffect(() => {
-    dropdownOpenRef.current = dropdownOpen;
-  }, [dropdownOpen]);
 
   useEffect(() => {
     let focusTimer: number | null = null;
@@ -294,8 +266,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const focusSearchInput = () => {
       clearScheduledFocus();
-      if (Date.now() < suppressAutoFocusUntilRef.current) return;
-      if (dropdownOpenRef.current || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
+      if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
       const input = inputRef.current;
       if (!input) return;
       if (document.activeElement === input) {
@@ -327,8 +298,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const scheduleFocusSearchInput = () => {
       clearScheduledFocus();
-      if (Date.now() < suppressAutoFocusUntilRef.current) return;
-      if (dropdownOpenRef.current) return;
+      if (dropdownOpen) return;
       focusTimer = window.setTimeout(() => {
         focusTimer = null;
         focusSearchInput();
@@ -346,8 +316,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     const handleDocumentFocusIn = (event: FocusEvent) => {
       const input = inputRef.current;
-      if (Date.now() < suppressAutoFocusUntilRef.current) return;
-      if (!input || dropdownOpenRef.current || hasOpenBlockingLayer()) return;
+      if (!input || dropdownOpen || hasOpenBlockingLayer()) return;
       const target = event.target;
       if (target === input) {
         captureInputSelection();
@@ -372,17 +341,12 @@ export const SearchExperience = memo(function SearchExperience({
     const handleSelectionChange = () => {
       captureInputSelection();
     };
-    const handleEngineSwitcherInteract = () => {
-      suppressAutoFocusUntilRef.current = Date.now() + SEARCH_ENGINE_SWITCHER_FOCUS_GUARD_MS;
-      clearScheduledFocus();
-    };
 
     scheduleFocusSearchInput();
     document.addEventListener('focusin', handleDocumentFocusIn, true);
     document.addEventListener('selectionchange', handleSelectionChange);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener(SEARCH_ENGINE_SWITCHER_INTERACT_EVENT, handleEngineSwitcherInteract);
 
     return () => {
       clearScheduledFocus();
@@ -390,7 +354,6 @@ export const SearchExperience = memo(function SearchExperience({
       document.removeEventListener('selectionchange', handleSelectionChange);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener(SEARCH_ENGINE_SWITCHER_INTERACT_EVENT, handleEngineSwitcherInteract);
     };
   }, [dropdownOpen, inputRef]);
 
@@ -475,22 +438,6 @@ export const SearchExperience = memo(function SearchExperience({
     }
   }, [t]);
 
-  const showSearchCommandUnsupportedToast = useCallback((permission: 'bookmarks' | 'history' | 'tabs') => {
-    if (permission === 'bookmarks') {
-      toast.error(t('search.permissionBookmarksUnsupported', {
-        defaultValue: '当前环境暂不支持浏览器书签搜索。',
-      }));
-    } else if (permission === 'tabs') {
-      toast.error(t('search.permissionTabsUnsupported', {
-        defaultValue: '当前环境暂不支持已打开标签页搜索。',
-      }));
-    } else {
-      toast.error(t('search.permissionHistoryUnsupported', {
-        defaultValue: '当前环境暂不支持浏览器历史记录搜索。',
-      }));
-    }
-  }, [t]);
-
   const setSearchPermissionGranted = useCallback((permission: SearchCommandPermission, granted: boolean) => {
     setSearchPermissions((prev) => {
       if (prev[permission] === granted) return prev;
@@ -505,11 +452,11 @@ export const SearchExperience = memo(function SearchExperience({
   const executeSearchAction = useCallback((action: SearchAction) => {
     const { item } = action;
     if (action.kind === 'focus-tab' && item.type === 'tab' && Number.isFinite(item.tabId)) {
-      const tabsApi = getTabsApi();
+      const tabsApi = globalThis.chrome?.tabs;
       if (tabsApi?.update && typeof item.tabId === 'number') {
         tabsApi.update(item.tabId, { active: true }, () => {});
       }
-      const windowsApi = getWindowsApi();
+      const windowsApi = globalThis.chrome?.windows;
       if (windowsApi?.update && typeof item.windowId === 'number') {
         windowsApi.update(item.windowId, { focused: true }, () => {});
       }
@@ -535,22 +482,11 @@ export const SearchExperience = memo(function SearchExperience({
     executeSearchAction(action);
   }, [executeSearchAction, searchPermissions, showSearchCommandPermissionDeniedToast]);
 
-  const searchPermissionSupport = useMemo<Record<SearchCommandPermission, ReturnType<typeof getExtensionPermissionSupport>>>(() => ({
-    bookmarks: getExtensionPermissionSupport('bookmarks'),
-    history: getExtensionPermissionSupport('history'),
-    tabs: getExtensionPermissionSupport('tabs'),
-  }), []);
-
   const refreshSearchPermissionStatus = useCallback((permissions: SearchCommandPermission[] = SEARCH_PERMISSION_KEYS) => {
     void Promise.all(
-      permissions.map((permission) => {
-        if (searchPermissionSupport[permission] === 'unsupported') {
-          return Promise.resolve({ permission, granted: false });
-        }
-        return ensureExtensionPermission(permission, { requestIfNeeded: false })
-          .then((granted) => ({ permission, granted }))
-          .catch(() => ({ permission, granted: false }));
-      }),
+      permissions.map((permission) => ensureExtensionPermission(permission, { requestIfNeeded: false })
+        .then((granted) => ({ permission, granted }))
+        .catch(() => ({ permission, granted: false }))),
     ).then((results) => {
       setSearchPermissions((prev) => {
         let changed = false;
@@ -565,14 +501,14 @@ export const SearchExperience = memo(function SearchExperience({
       });
       setSearchPermissionsReady(true);
     });
-  }, [searchPermissionSupport]);
+  }, []);
 
   useEffect(() => {
     refreshSearchPermissionStatus();
   }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
-    const permissionsApi = getPermissionsApi();
+    const permissionsApi = globalThis.chrome?.permissions;
     if (!permissionsApi?.onAdded || !permissionsApi?.onRemoved) return;
 
     const handlePermissionsChanged = () => {
@@ -587,26 +523,13 @@ export const SearchExperience = memo(function SearchExperience({
   }, [refreshSearchPermissionStatus]);
 
   useEffect(() => {
-    if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
-    return subscribeSemanticBookmarkSearchStatus(setSemanticBookmarkStatus);
-  }, []);
-
-  useEffect(() => {
-    if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
-    if (!searchPermissions.bookmarks) return undefined;
-    onWarmSemanticBookmarkIndex?.({ immediate: false });
-    return undefined;
-  }, [onWarmSemanticBookmarkIndex, searchPermissions.bookmarks]);
-
-  useEffect(() => {
-    const tabsApi = getTabsApi();
-    const windowsApi = getWindowsApi();
-    const runtime = getExtensionRuntime();
+    const tabsApi = globalThis.chrome?.tabs;
+    const windowsApi = globalThis.chrome?.windows;
     if (!tabsApi?.query) return;
 
     const syncCurrentBrowserTabId = () => {
       tabsApi.query({ active: true, currentWindow: true }, (tabs) => {
-        if (runtime?.lastError) {
+        if (globalThis.chrome?.runtime?.lastError) {
           setCurrentBrowserTabId(null);
           return;
         }
@@ -633,54 +556,60 @@ export const SearchExperience = memo(function SearchExperience({
       return;
     }
     if (permissionRequestInFlight === permission) return;
-    if (searchPermissionSupport[permission] === 'unsupported') {
-      setSearchPermissionGranted(permission, false);
-      showSearchCommandUnsupportedToast(permission);
+
+    const chromeApi = (globalThis as typeof globalThis & { chrome?: typeof chrome }).chrome;
+    const runtime = chromeApi?.runtime;
+    const permissionsApi = chromeApi?.permissions;
+    if (!runtime?.id || !permissionsApi?.request) {
+      setSearchPermissionGranted(permission, true);
+      onGranted();
       return;
     }
 
     setPermissionRequestInFlight(permission);
-    void ensureExtensionPermission(permission, { requestIfNeeded: true })
-      .then((allowed) => {
-        setPermissionRequestInFlight((current) => (current === permission ? null : current));
-        if (!allowed) {
-          setSearchPermissionGranted(permission, false);
-          showSearchCommandPermissionDeniedToast(permission);
-          return;
-        }
-        setSearchPermissionGranted(permission, true);
-        if (permission === 'bookmarks') {
-          onWarmSemanticBookmarkIndex?.({ immediate: true });
-        }
-        setPermissionWarmup(permission);
-        scheduleAfterInteractivePaint(() => {
-          setPermissionWarmup((current) => (current === permission ? null : current));
-          onGranted();
-        });
-      })
-      .catch(() => {
-        setPermissionRequestInFlight((current) => (current === permission ? null : current));
+    permissionsApi.request({ permissions: [permission] }, (allowed: boolean) => {
+      setPermissionRequestInFlight((current) => (current === permission ? null : current));
+      const lastError = runtime.lastError;
+      if (lastError) {
         toast.error(t('search.permissionRequestFailed', {
           defaultValue: '权限申请失败，请重试。',
         }));
+        return;
+      }
+      if (!allowed) {
+        setSearchPermissionGranted(permission, false);
+        showSearchCommandPermissionDeniedToast(permission);
+        return;
+      }
+      setSearchPermissionGranted(permission, true);
+      setPermissionWarmup(permission);
+      scheduleAfterInteractivePaint(() => {
+        setPermissionWarmup((current) => (current === permission ? null : current));
+        onGranted();
       });
+    });
   }, [
     permissionRequestInFlight,
     scheduleAfterInteractivePaint,
     searchPermissions,
-    searchPermissionSupport,
     setSearchPermissionGranted,
     showSearchCommandPermissionDeniedToast,
-    showSearchCommandUnsupportedToast,
-    onWarmSemanticBookmarkIndex,
     t,
   ]);
 
   const handleSearchInputChange = useCallback((nextValue: string, nativeEvent?: Event) => {
     const matchedAlias = matchSearchCommandAliasInput(nextValue);
-    if (matchedAlias === 'bookmarks') {
+    const parsedCommand = parseSearchCommand(nextValue);
+    const trimmedInput = nextValue.trimStart().toLowerCase();
+    const commandId = (
+      trimmedInput === '/bookmarks'
+      || trimmedInput === '/tabs'
+      || matchedAlias !== null
+    ) ? (parsedCommand.id ?? matchedAlias) : null;
+
+    if (commandId === 'bookmarks') {
       runAfterSearchCommandPermission('bookmarks', () => {});
-    } else if (matchedAlias === 'tabs') {
+    } else if (commandId === 'tabs') {
       runAfterSearchCommandPermission('tabs', () => {});
     }
     pointerHighlightLockUntilRef.current = 0;
@@ -852,48 +781,6 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
-      if (searchPermissions.bookmarks && ENABLE_AI_BOOKMARK_SEARCH) {
-        if (semanticBookmarkStatus.activity === 'downloading-model') {
-          return {
-            tone: 'loading' as const,
-            message: t('search.bookmarksSemanticModelDownloading', {
-              defaultValue: '首次使用正在联网下载 AI 模型，完成后会自动建立索引...',
-            }),
-          };
-        }
-        if (semanticBookmarkStatus.activity === 'loading-model') {
-          return {
-            tone: 'loading' as const,
-            message: t('search.bookmarksSemanticModelLoadingLocal', {
-              defaultValue: '正在加载已缓存的本地 AI 模型，完成后会自动建立索引...',
-            }),
-          };
-        }
-        if (semanticBookmarkStatus.modelState === 'loading' || semanticBookmarkStatus.indexState === 'syncing') {
-          return {
-            tone: 'loading' as const,
-            message: t('search.bookmarksSemanticPreparing', {
-              defaultValue: '正在建立 AI 书签语义索引...',
-            }),
-          };
-        }
-        if (semanticBookmarkStatus.indexState === 'error' && semanticBookmarkStatus.lastError && !semanticBookmarkStatus.lastError.includes('local_model_assets_missing:')) {
-          return {
-            tone: 'info' as const,
-            message: t('search.bookmarksSemanticFallback', {
-              defaultValue: 'AI 书签索引暂时不可用，已自动回退到普通书签搜索。',
-            }),
-          };
-        }
-      }
-      if (searchPermissionSupport.bookmarks === 'unsupported') {
-        return {
-          tone: 'info' as const,
-          message: t('search.bookmarksPermissionUnsupportedBanner', {
-            defaultValue: '当前环境暂不支持浏览器书签搜索',
-          }),
-        };
-      }
       if (searchPermissionsReady && !searchPermissions.bookmarks) {
         return {
           tone: 'info' as const,
@@ -921,14 +808,6 @@ export const SearchExperience = memo(function SearchExperience({
           tone: 'loading' as const,
           message: t('search.tabsPreparing', {
             defaultValue: '正在整理已打开标签页，请稍候...',
-          }),
-        };
-      }
-      if (searchPermissionSupport.tabs === 'unsupported') {
-        return {
-          tone: 'info' as const,
-          message: t('search.tabsPermissionUnsupportedBanner', {
-            defaultValue: '当前环境暂不支持已打开标签页搜索',
           }),
         };
       }
@@ -961,14 +840,6 @@ export const SearchExperience = memo(function SearchExperience({
         }),
       };
     }
-    if (searchPermissionSupport.history === 'unsupported' && searchSessionModel.mode === 'default') {
-      return {
-        tone: 'info' as const,
-        message: t('search.historyPermissionUnsupportedBanner', {
-          defaultValue: '当前环境暂不支持浏览器历史记录搜索',
-        }),
-      };
-    }
     if (searchPermissionsReady && !searchPermissions.history && searchSessionModel.mode === 'default') {
       return {
         tone: 'info' as const,
@@ -986,16 +857,10 @@ export const SearchExperience = memo(function SearchExperience({
     runAfterSearchCommandPermission,
     searchPermissions,
     searchPermissionsReady,
-    searchPermissionSupport.bookmarks,
-    searchPermissionSupport.history,
-    searchPermissionSupport.tabs,
     searchSessionModel.mode,
     suggestionSourceStatus.bookmarkLoading,
     suggestionSourceStatus.browserHistoryLoading,
     suggestionSourceStatus.tabLoading,
-    semanticBookmarkStatus.indexState,
-    semanticBookmarkStatus.lastError,
-    semanticBookmarkStatus.modelState,
     t,
   ]);
 

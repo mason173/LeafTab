@@ -242,7 +242,7 @@ function ProviderCard({
   const ProviderIcon = model.icon;
 
   return (
-    <section className="overflow-hidden px-5">
+    <section className="overflow-hidden px-0">
       <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 py-2">
         <div className="mx-auto grid w-full max-w-[520px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
           <div className="flex min-w-0 items-center gap-4">
@@ -478,9 +478,6 @@ export function LeafTabSyncDialog({
         title={cloudSignedIn
           ? undefined
           : t('leaftabSyncEncryption.cloudNotEnabledTitle', { defaultValue: '当前未开启云同步' })}
-        description={cloudSignedIn
-          ? undefined
-          : t('leaftabSyncEncryption.cloudNotEnabledDescription', { defaultValue: '登录并开启云同步后，才会启用端到端加密保护。' })}
         pillLabel={cloudSignedIn
           ? undefined
           : t('leaftabSyncEncryption.cloudNotEnabledPill', { defaultValue: '未开启' })}
@@ -492,9 +489,6 @@ export function LeafTabSyncDialog({
           title={webdavConfigured
             ? undefined
             : t('leaftabSyncEncryption.webdavNotEnabledTitle', { defaultValue: '当前未开启 WebDAV 同步' })}
-          description={webdavConfigured
-            ? undefined
-            : t('leaftabSyncEncryption.webdavNotEnabledDescription', { defaultValue: '启用 WebDAV 同步后，即可受端到端加密保护。' })}
           pillLabel={webdavConfigured
             ? undefined
             : t('leaftabSyncEncryption.webdavNotEnabledPill', { defaultValue: '未开启' })}
@@ -576,24 +570,20 @@ export function LeafTabSyncDialog({
                 : t('settings.backup.webdav.sync', { defaultValue: '立即同步' }))
               : t('leaftabSyncDialog.enableSync', { defaultValue: '启用同步' })}
         </Button>
-        {webdavConfigured ? (
-          <IconActionButton
-            icon={RiSettings4Fill}
-            label={t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' })}
-            onClick={onOpenConfig}
-            disabled={busy || !webdavEnabled}
-          />
-        ) : null}
-        {webdavConfigured ? (
-          <RepairPopover
-            label={t('leaftabSyncDialog.repair', { defaultValue: '修复同步' })}
-            disabled={busy || !webdavEnabled}
-            overwriteLocalLabel={t('leaftabSyncDialog.remoteOverwriteLocal', { defaultValue: 'WebDAV 覆盖本地' })}
-            overwriteRemoteLabel={t('leaftabSyncDialog.localOverwriteRemote', { defaultValue: '本地覆盖 WebDAV' })}
-            onOverwriteLocal={onWebdavRepairPull}
-            onOverwriteRemote={onWebdavRepairPush}
-          />
-        ) : null}
+        <IconActionButton
+          icon={RiSettings4Fill}
+          label={t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' })}
+          onClick={onOpenConfig}
+          disabled={busy || !webdavEnabled}
+        />
+        <RepairPopover
+          label={t('leaftabSyncDialog.repair', { defaultValue: '修复同步' })}
+          disabled={busy || !webdavEnabled}
+          overwriteLocalLabel={t('leaftabSyncDialog.remoteOverwriteLocal', { defaultValue: 'WebDAV 覆盖本地' })}
+          overwriteRemoteLabel={t('leaftabSyncDialog.localOverwriteRemote', { defaultValue: '本地覆盖 WebDAV' })}
+          onOverwriteLocal={onWebdavRepairPull}
+          onOverwriteRemote={onWebdavRepairPush}
+        />
       </>
     );
 

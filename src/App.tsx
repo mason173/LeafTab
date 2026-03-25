@@ -55,14 +55,6 @@ import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLoc
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { LongTaskIndicator } from './components/LongTaskIndicator';
 import {
-  subscribeSemanticBookmarkSearchStatus,
-  warmSemanticBookmarkIndex,
-} from '@/features/ai-bookmarks';
-import {
-  ENABLE_AI_BOOKMARK_AUTO_WARMUP,
-  ENABLE_AI_BOOKMARK_SEARCH,
-} from '@/config/featureFlags';
-import {
   hasWebdavUrlConfiguredFromStorage,
   isWebdavSyncEnabledFromStorage,
   readWebdavConfigFromStorage,
@@ -102,8 +94,6 @@ import {
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import { getBookmarksApi } from '@/platform/runtime';
-import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
 import {
   LeafTabSyncCloudEncryptedTransport,
@@ -578,103 +568,6 @@ export default function App() {
       }
       throw error;
     }
-  }, [
-    clearLongTaskIndicator,
-    finishLongTaskIndicator,
-    startLongTaskIndicator,
-    updateLongTaskIndicator,
-  ]);
-  const semanticBookmarkIndexTaskIdRef = useRef<string | null>(null);
-  const scheduleSemanticBookmarkWarmup = useCallback((options?: { immediate?: boolean }) => {
-    if (!ENABLE_AI_BOOKMARK_SEARCH) return;
-    if (!ENABLE_AI_BOOKMARK_AUTO_WARMUP) return;
-    const bookmarksApi = getBookmarksApi();
-    if (!bookmarksApi) return;
-    if (options?.immediate) {
-      void warmSemanticBookmarkIndex(bookmarksApi);
-      return;
-    }
-    return scheduleAfterInteractivePaint(() => {
-      void warmSemanticBookmarkIndex(bookmarksApi);
-    }, {
-      delayMs: 180,
-      idleTimeoutMs: 800,
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!ENABLE_AI_BOOKMARK_SEARCH) return undefined;
-    return subscribeSemanticBookmarkSearchStatus((semanticStatus) => {
-      const taskId = semanticBookmarkIndexTaskIdRef.current;
-      const inProgress = semanticStatus.indexState === 'syncing' || semanticStatus.modelState === 'loading';
-      if (inProgress) {
-        const nextTitle = semanticStatus.progressLabel || '正在建立 AI 书签语义索引...';
-        const nextProgress = semanticStatus.progress ?? 8;
-        const nextDetail = semanticStatus.activity === 'downloading-model'
-          ? '首次启用会联网下载模型，下载完成后会自动开始建立书签语义索引'
-          : semanticStatus.activity === 'loading-model'
-            ? '正在加载已缓存的本地模型，完成后会自动开始建立书签语义索引'
-            : '正在后台建立书签语义索引，你可以继续进行其他操作';
-        if (!taskId) {
-          semanticBookmarkIndexTaskIdRef.current = startLongTaskIndicator({
-            title: nextTitle,
-            detail: nextDetail,
-            progress: nextProgress,
-          });
-        } else {
-          updateLongTaskIndicator(taskId, {
-            title: nextTitle,
-            detail: nextDetail,
-            progress: nextProgress,
-            tone: 'info',
-          });
-        }
-        return;
-      }
-
-      if (semanticStatus.activity === 'error') {
-        const nextTitle = semanticStatus.progressLabel || 'AI 书签语义索引建立失败';
-        const nextProgress = semanticStatus.progress ?? 0;
-        const nextDetail = semanticStatus.lastError === 'ai_bookmark_sandbox_request_timeout'
-          ? '模型下载或初始化超时，请检查网络后重试'
-          : semanticStatus.lastError === 'ai_bookmark_sandbox_nested_request'
-            ? 'AI 沙箱初始化异常，请刷新页面后重试'
-            : semanticStatus.lastError?.includes('no available backend found')
-              ? 'AI 推理后端初始化失败，请刷新页面后重试'
-              : (semanticStatus.lastError || '可以稍后重试建立 AI 书签语义索引');
-        if (!taskId) {
-          semanticBookmarkIndexTaskIdRef.current = startLongTaskIndicator({
-            title: nextTitle,
-            detail: nextDetail,
-            progress: nextProgress,
-            tone: 'error',
-          });
-        } else {
-          updateLongTaskIndicator(taskId, {
-            title: nextTitle,
-            detail: nextDetail,
-            progress: nextProgress,
-            tone: 'error',
-          });
-        }
-        return;
-      }
-
-      if (semanticStatus.indexState === 'ready' && taskId) {
-        finishLongTaskIndicator(taskId, {
-          title: 'AI 书签语义索引已准备完成',
-          detail: '现在可以直接使用更精准的书签语义搜索了',
-          delayMs: 900,
-        });
-        semanticBookmarkIndexTaskIdRef.current = null;
-        return;
-      }
-
-      if (taskId && semanticStatus.activity === 'idle') {
-        clearLongTaskIndicator(taskId);
-        semanticBookmarkIndexTaskIdRef.current = null;
-      }
-    });
   }, [
     clearLongTaskIndicator,
     finishLongTaskIndicator,
@@ -2282,7 +2175,6 @@ export default function App() {
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
     onInteractionStateChange: handleSearchInteractionStateChange,
-    onWarmSemanticBookmarkIndex: scheduleSemanticBookmarkWarmup,
   }), [
     handleSearchInteractionStateChange,
     openInNewTab,
@@ -2297,7 +2189,6 @@ export default function App() {
     searchPrefixEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
-    scheduleSemanticBookmarkWarmup,
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);
@@ -3057,9 +2948,6 @@ export default function App() {
               if (layout) {
                 setDisplayMode(layout);
               }
-            }}
-            onBookmarksPermissionGranted={() => {
-              scheduleSemanticBookmarkWarmup({ immediate: true });
             }}
           />
         </Suspense>
