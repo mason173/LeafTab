@@ -1,3 +1,8 @@
+import {
+  queueCachedLocalStorageSetItem,
+  readCachedLocalStorageItem,
+} from '@/utils/cachedLocalStorage';
+
 export type SuggestionUsageEntry = {
   count: number;
   lastUsedAt: number;
@@ -42,7 +47,7 @@ function normalizeUsageMap(raw: unknown): SuggestionUsageMap {
 
 export function readSuggestionUsageMap(): SuggestionUsageMap {
   try {
-    const raw = localStorage.getItem(USAGE_STATS_KEY);
+    const raw = readCachedLocalStorageItem(USAGE_STATS_KEY);
     if (!raw) return {};
     if (cachedUsageMapRaw === raw && cachedUsageMapParsed) {
       return cachedUsageMapParsed;
@@ -60,7 +65,7 @@ export function readSuggestionUsageMap(): SuggestionUsageMap {
 function writeSuggestionUsageMap(map: SuggestionUsageMap) {
   try {
     const serialized = JSON.stringify(map);
-    localStorage.setItem(USAGE_STATS_KEY, serialized);
+    queueCachedLocalStorageSetItem(USAGE_STATS_KEY, serialized);
     cachedUsageMapRaw = serialized;
     cachedUsageMapParsed = map;
   } catch {}

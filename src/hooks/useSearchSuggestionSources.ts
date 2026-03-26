@@ -1,26 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { SearchSuggestionItem, Shortcut } from '@/types';
-import type { SearchHistoryEntry } from '@/hooks/useSearch';
+import type { SearchSuggestionItem } from '@/types';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
-import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 import type { SearchSessionModel } from '@/utils/searchSessionModel';
-import {
-  buildSearchSuggestionSourceItems,
-  buildShortcutSearchIndex,
-} from '@/utils/searchSuggestionSources';
 import type { SearchCommandPermission } from '@/utils/searchCommands';
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 type UseSearchSuggestionSourcesOptions = {
   searchValue: string;
   queryModel: SearchSessionModel;
-  filteredHistoryItems: SearchHistoryEntry[];
-  shortcuts: Shortcut[];
-  searchSiteShortcutEnabled: boolean;
-  suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
   bookmarksPermissionGranted: boolean;
   tabsPermissionGranted: boolean;
@@ -158,10 +148,6 @@ export type SearchSuggestionSourceStatus = {
 export function useSearchSuggestionSources({
   searchValue,
   queryModel,
-  filteredHistoryItems,
-  shortcuts,
-  searchSiteShortcutEnabled,
-  suggestionUsageMap,
   historyPermissionGranted,
   bookmarksPermissionGranted,
   tabsPermissionGranted,
@@ -200,25 +186,6 @@ export function useSearchSuggestionSources({
     permissionWarmup,
     queryModel.mode,
     trimmedSearchValue,
-  ]);
-
-  const shortcutSearchIndex = useMemo(
-    () => buildShortcutSearchIndex(shortcuts),
-    [shortcuts],
-  );
-
-  const syncSourceItems = useMemo(() => buildSearchSuggestionSourceItems({
-    searchValue,
-    filteredHistoryItems,
-    shortcutSearchIndex,
-    searchSiteShortcutEnabled,
-    suggestionUsageMap,
-  }), [
-    filteredHistoryItems,
-    searchValue,
-    searchSiteShortcutEnabled,
-    shortcutSearchIndex,
-    suggestionUsageMap,
   ]);
 
   const {
@@ -334,11 +301,7 @@ export function useSearchSuggestionSources({
   }, [browserHistoryCacheVersion, browserHistoryMaxResults, debouncedBrowserHistoryQuery, shouldFetchBrowserHistory]);
 
   return {
-    queryModel,
     suggestionDisplayMode,
-    localHistorySuggestionItems: syncSourceItems.localHistorySuggestionItems,
-    builtinSiteSuggestionItems: syncSourceItems.builtinSiteSuggestionItems,
-    shortcutSuggestionItems: syncSourceItems.shortcutSuggestionItems,
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
