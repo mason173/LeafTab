@@ -29,7 +29,11 @@ import {
 } from '@/utils/searchHistory';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { SYNCABLE_PREFERENCES_APPLIED_EVENT } from '@/utils/syncablePreferences';
-import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
+import {
+  primeCachedLocalStorageItem,
+  queueCachedLocalStorageSetItem,
+  readCachedLocalStorageItem,
+} from '@/utils/cachedLocalStorage';
 
 const SEARCH_ENGINE_KEY = 'search_engine';
 const DEFAULT_SEARCH_ENGINE: SearchEngine = getDefaultSearchEngineForPlatform();
@@ -79,6 +83,20 @@ const SEARCH_PANEL_INITIAL_STATE: SearchPanelState = {
   selectedIndex: -1,
   lastCloseReason: null,
 };
+
+function readStoredSearchEngine(rawValue: string | null | undefined): SearchEngine {
+  const saved = (rawValue || '').trim();
+  if (
+    saved === 'system'
+    || saved === 'google'
+    || saved === 'bing'
+    || saved === 'duckduckgo'
+    || saved === 'baidu'
+  ) {
+    return normalizeSearchEngineForPlatform(saved);
+  }
+  return DEFAULT_SEARCH_ENGINE;
+}
 
 function normalizeSuggestionIndex(index: number): number {
   if (!Number.isFinite(index)) return -1;
@@ -170,10 +188,7 @@ export function useSearch(
 
   const [searchEngine, setSearchEngine] = useState<SearchEngine>(() => {
     try {
-      const saved = (localStorage.getItem(SEARCH_ENGINE_KEY) || '').trim();
-      if (saved === 'system' || saved === 'google' || saved === 'bing' || saved === 'duckduckgo' || saved === 'baidu') {
-        return normalizeSearchEngineForPlatform(saved);
-      }
+      return readStoredSearchEngine(readCachedLocalStorageItem(SEARCH_ENGINE_KEY));
     } catch {}
     return DEFAULT_SEARCH_ENGINE;
   });
@@ -187,7 +202,7 @@ export function useSearch(
 
   useEffect(() => {
     try {
-      queueLocalStorageSetItem(SEARCH_ENGINE_KEY, searchEngine);
+      queueCachedLocalStorageSetItem(SEARCH_ENGINE_KEY, searchEngine);
     } catch {}
   }, [searchEngine]);
 
@@ -199,9 +214,14 @@ export function useSearch(
   }, [searchEngine]);
 
   useEffect(() => {
-    const syncSearchEngine = () => {
+    const syncSearchEngine = (event?: Event) => {
       try {
-        const next = normalizeSearchEngineForPlatform((localStorage.getItem(SEARCH_ENGINE_KEY) || '').trim() as SearchEngine);
+        const customEvent = event as CustomEvent<{ preferences?: { searchEngine?: SearchEngine } }> | undefined;
+        const eventSearchEngine = customEvent?.detail?.preferences?.searchEngine;
+        const next = readStoredSearchEngine(typeof eventSearchEngine === 'string'
+          ? eventSearchEngine
+          : readCachedLocalStorageItem(SEARCH_ENGINE_KEY));
+        primeCachedLocalStorageItem(SEARCH_ENGINE_KEY, next);
         setSearchEngine((prev) => prev === next ? prev : next);
       } catch {}
     };
@@ -210,7 +230,7 @@ export function useSearch(
   }, []);
 
   useEffect(() => {
-    queueLocalStorageSetItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
+    queueCachedLocalStorageSetItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
   }, [searchHistory]);
 
   const openHistoryPanel = useCallback((options?: { select?: 'keep' | 'first' | 'none'; itemCount?: number }) => {

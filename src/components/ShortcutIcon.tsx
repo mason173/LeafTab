@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
@@ -8,6 +8,11 @@ import {
   shouldUseOfficialShortcutIcon,
 } from '@/utils/shortcutIconPreferences';
 import type { Shortcut } from '@/types';
+import {
+  queueCachedLocalStorageRemoveItem,
+  queueCachedLocalStorageSetItem,
+  readCachedLocalStorageItem,
+} from '@/utils/cachedLocalStorage';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -60,7 +65,7 @@ function getCachedFavicon(domain: string) {
     const d2 = registrableDomain(domain);
     const k1 = `${FAVICON_CACHE_PREFIX}${d1}`;
     const k2 = `${FAVICON_CACHE_PREFIX}${d2}`;
-    return localStorage.getItem(k1) || localStorage.getItem(k2) || '';
+    return readCachedLocalStorageItem(k1) || readCachedLocalStorageItem(k2) || '';
   } catch {
     return '';
   }
@@ -70,8 +75,8 @@ function setCachedFavicon(domain: string, data: string) {
   try {
     const d = normalizeDomain(domain);
     const key = `${FAVICON_CACHE_PREFIX}${d}`;
-    localStorage.setItem(key, data);
-    const raw = localStorage.getItem(FAVICON_CACHE_INDEX_KEY);
+    queueCachedLocalStorageSetItem(key, data);
+    const raw = readCachedLocalStorageItem(FAVICON_CACHE_INDEX_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
     const idx = list.indexOf(d);
     if (idx !== -1) list.splice(idx, 1);
@@ -79,10 +84,10 @@ function setCachedFavicon(domain: string, data: string) {
     while (list.length > MAX_CACHE_ITEMS) {
       const removed = list.pop();
       if (removed) {
-        localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${removed}`);
+        queueCachedLocalStorageRemoveItem(`${FAVICON_CACHE_PREFIX}${removed}`);
       }
     }
-    localStorage.setItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(list));
+    queueCachedLocalStorageSetItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(list));
   } catch {}
 }
 
@@ -90,12 +95,12 @@ function clearCachedFavicon(domain: string) {
   try {
     const d1 = normalizeDomain(domain);
     const d2 = registrableDomain(domain);
-    if (d1) localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${d1}`);
-    if (d2) localStorage.removeItem(`${FAVICON_CACHE_PREFIX}${d2}`);
-    const raw = localStorage.getItem(FAVICON_CACHE_INDEX_KEY);
+    if (d1) queueCachedLocalStorageRemoveItem(`${FAVICON_CACHE_PREFIX}${d1}`);
+    if (d2) queueCachedLocalStorageRemoveItem(`${FAVICON_CACHE_PREFIX}${d2}`);
+    const raw = readCachedLocalStorageItem(FAVICON_CACHE_INDEX_KEY);
     const list: string[] = raw ? JSON.parse(raw) : [];
     const filtered = list.filter((v) => v !== d1 && v !== d2);
-    localStorage.setItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(filtered));
+    queueCachedLocalStorageSetItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(filtered));
   } catch {}
 }
 
@@ -103,8 +108,8 @@ function getFaviconFailAt(domain: string) {
   try {
     const d1 = normalizeDomain(domain);
     const d2 = registrableDomain(domain);
-    const v1 = Number(localStorage.getItem(`${FAVICON_FAIL_PREFIX}${d1}`) || 0);
-    const v2 = Number(localStorage.getItem(`${FAVICON_FAIL_PREFIX}${d2}`) || 0);
+    const v1 = Number(readCachedLocalStorageItem(`${FAVICON_FAIL_PREFIX}${d1}`) || 0);
+    const v2 = Number(readCachedLocalStorageItem(`${FAVICON_FAIL_PREFIX}${d2}`) || 0);
     return Math.max(v1, v2);
   } catch {
     return 0;
@@ -115,7 +120,7 @@ function markFaviconFetchFailed(domain: string) {
   try {
     const d = normalizeDomain(domain);
     if (!d) return;
-    localStorage.setItem(`${FAVICON_FAIL_PREFIX}${d}`, String(Date.now()));
+    queueCachedLocalStorageSetItem(`${FAVICON_FAIL_PREFIX}${d}`, String(Date.now()));
   } catch {}
 }
 
@@ -123,8 +128,8 @@ function clearFaviconFetchFailed(domain: string) {
   try {
     const d1 = normalizeDomain(domain);
     const d2 = registrableDomain(domain);
-    if (d1) localStorage.removeItem(`${FAVICON_FAIL_PREFIX}${d1}`);
-    if (d2) localStorage.removeItem(`${FAVICON_FAIL_PREFIX}${d2}`);
+    if (d1) queueCachedLocalStorageRemoveItem(`${FAVICON_FAIL_PREFIX}${d1}`);
+    if (d2) queueCachedLocalStorageRemoveItem(`${FAVICON_FAIL_PREFIX}${d2}`);
   } catch {}
 }
 
@@ -151,7 +156,7 @@ function getCachedIconSignature(domain: string) {
   try {
     const d = normalizeDomain(domain);
     if (!d) return '';
-    return localStorage.getItem(`${ICON_META_PREFIX}${d}`) || '';
+    return readCachedLocalStorageItem(`${ICON_META_PREFIX}${d}`) || '';
   } catch {
     return '';
   }
@@ -162,10 +167,10 @@ function setCachedIconSignature(domain: string, signature: string) {
     const d = normalizeDomain(domain);
     if (!d) return;
     if (!signature) {
-      localStorage.removeItem(`${ICON_META_PREFIX}${d}`);
+      queueCachedLocalStorageRemoveItem(`${ICON_META_PREFIX}${d}`);
       return;
     }
-    localStorage.setItem(`${ICON_META_PREFIX}${d}`, signature);
+    queueCachedLocalStorageSetItem(`${ICON_META_PREFIX}${d}`, signature);
   } catch {}
 }
 
@@ -182,7 +187,7 @@ async function cacheFaviconData(domain: string, src: string) {
   setCachedFavicon(domain, src);
 }
 
-export default function ShortcutIcon({
+const ShortcutIcon = memo(function ShortcutIcon({
   icon,
   url,
   size = 36,
@@ -499,4 +504,6 @@ export default function ShortcutIcon({
       </div>
     </div>
   );
-}
+});
+
+export default ShortcutIcon;

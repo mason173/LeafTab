@@ -44,12 +44,9 @@ import { useSyncCenterActions } from './hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
 
 // Components
-import { TopNavBar } from './components/TopNavBar';
 import ScenarioModeMenu from './components/ScenarioModeMenu';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
-import { HomeMainContent } from './components/home/HomeMainContent';
-import type { SearchInteractionState } from './components/search/SearchExperience';
 import type { ScenarioShortcuts, SyncablePreferences } from './types';
 import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
@@ -75,24 +72,23 @@ import {
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
-import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
-import { AppDialogs } from './components/AppDialogs';
-import WallpaperSelector from './components/WallpaperSelector';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
-import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
+import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
+import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
 import {
+  LazyAppDialogs,
+  LazyLeafTabSyncDialog,
+  LazyLeafTabSyncEncryptionDialog,
   LazyRoleSelector,
   LazyUpdateAvailableDialog,
+  LazyWallpaperSelector,
 } from '@/lazy/components';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import {
-  INITIAL_REVEAL_TIMING,
   PANORAMIC_SURFACE_REVEAL_TIMING,
-  resolveInitialRevealOpacity,
-  resolveInitialRevealTransform,
 } from '@/config/animationTokens';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
@@ -112,8 +108,6 @@ import {
   readLeafTabBookmarkSyncScope,
 } from '@/sync/leaftab';
 import type { WebdavConfig } from '@/types/webdav';
-import { LeafTabSyncDialog } from '@/components/sync/LeafTabSyncDialog';
-import { LeafTabSyncEncryptionDialog } from '@/components/sync/LeafTabSyncEncryptionDialog';
 import {
   createLeafTabCloudEncryptionScopeKey,
   createLeafTabWebdavEncryptionScopeKey,
@@ -312,24 +306,6 @@ function readAccentColorSetting(): string {
   }
 }
 
-const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
-  if (target instanceof Element) return target;
-  if (target instanceof Node) return target.parentElement;
-  return null;
-};
-
-const isEditableTarget = (target: EventTarget | null): boolean => {
-  const element = resolveEventTargetElement(target);
-  if (!element) return false;
-  if (element instanceof HTMLElement && element.isContentEditable) return true;
-
-  return Boolean(
-    element.closest(
-      'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]',
-    ),
-  );
-};
-
 function useKeepMountedAfterFirstOpen(open: boolean) {
   const [hasOpened, setHasOpened] = useState(open);
 
@@ -346,70 +322,6 @@ export default function App() {
   const { t, i18n } = useTranslation();
   const firefox = isFirefoxBuildTarget();
   const pageFocusRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let attempts = 0;
-    let retryTimer: number | null = null;
-    let rafId: number | null = null;
-
-    const scheduleRetry = () => {
-      if (attempts >= INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS) return;
-      if (retryTimer !== null) return;
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        tryFocusSearchInput();
-      }, INITIAL_SEARCH_FOCUS_RETRY_MS);
-    };
-
-    const tryFocusSearchInput = () => {
-      attempts += 1;
-      const input = searchInputRef.current;
-      if (!input) {
-        scheduleRetry();
-        return;
-      }
-
-      const activeElement = document.activeElement as HTMLElement | null;
-      const activeTag = activeElement?.tagName?.toLowerCase() || '';
-      const activeIsEditable = Boolean(
-        activeElement
-        && (
-          activeElement.isContentEditable
-          || activeTag === 'input'
-          || activeTag === 'textarea'
-          || activeTag === 'select'
-        ),
-      );
-      if (activeElement && activeElement !== input && activeIsEditable) {
-        return;
-      }
-
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-
-      const cursor = input.value.length;
-      try {
-        input.setSelectionRange(cursor, cursor);
-      } catch {}
-
-      if (document.activeElement !== input) {
-        scheduleRetry();
-      }
-    };
-
-    rafId = window.requestAnimationFrame(() => {
-      tryFocusSearchInput();
-    });
-
-    return () => {
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-    };
-  }, []);
 
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
   const [confirmDisableWebdavSyncOpen, setConfirmDisableWebdavSyncOpen] = useState(false);
@@ -430,7 +342,6 @@ export default function App() {
   const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
-  const [isQuickAccessDrawerExpanded, setIsQuickAccessDrawerExpanded] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
       return sessionStorage.getItem('leaftab_weather_debug_visible') === 'true';
@@ -656,21 +567,6 @@ export default function App() {
     snoozeCurrentRelease,
   } = useGithubReleaseUpdate(API_URL);
 
-  const [searchInteractionState, setSearchInteractionState] = useState<SearchInteractionState>({
-    historyOpen: false,
-    dropdownOpen: false,
-    typingBurst: false,
-  });
-  // Keep the lightweight engine switcher from downgrading the clock/wallpaper rendering.
-  // Otherwise opening the menu flips the time between animated and plain rendering paths,
-  // which is especially noticeable with decorative fonts like Pacifico.
-  const searchPerformanceModeActive = searchInteractionState.historyOpen
-    || searchInteractionState.typingBurst;
-  const effectiveTopTimeAnimationEnabled = effectiveTimeAnimationEnabled && !searchPerformanceModeActive;
-  const shouldFreezeDynamicWallpaper = visualEffectsPolicy.freezeDynamicWallpaper
-    || isDynamicWallpaperIdleFrozen
-    || searchPerformanceModeActive;
-
   const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
   const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant, responsiveLayout.density);
 
@@ -711,93 +607,7 @@ export default function App() {
     },
   );
 
-  const [shortcutMultiSelectMode, setShortcutMultiSelectMode] = useState(false);
-  const [selectedShortcutIndexes, setSelectedShortcutIndexes] = useState<number[]>([]);
-  const [bulkShortcutDeleteOpen, setBulkShortcutDeleteOpen] = useState(false);
-  const [multiSelectMoveOpen, setMultiSelectMoveOpen] = useState(false);
-  const multiSelectMoveRef = useRef<HTMLDivElement>(null);
-  const selectedShortcutIndexSet = useMemo(() => new Set(selectedShortcutIndexes), [selectedShortcutIndexes]);
-  const selectedShortcutCount = selectedShortcutIndexes.length;
-  const moveTargetScenarioModes = useMemo(
-    () => scenarioModes.filter((mode) => mode.id !== selectedScenarioId),
-    [scenarioModes, selectedScenarioId],
-  );
-
-  useEffect(() => {
-    const handleSwitchScenarioShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat) return;
-      if (event.isComposing) return;
-      if (!(event.metaKey || event.ctrlKey) || !event.altKey || event.shiftKey) return;
-      const pressedScenarioHotkey = event.code === 'KeyS' || event.key.toLowerCase() === 's';
-      if (!pressedScenarioHotkey) return;
-      if (scenarioModes.length <= 1) return;
-
-      const activeElement = document.activeElement;
-      const activeElementIsSearchInput = activeElement === searchInputRef.current;
-      const searchInputBusy = searchInteractionState.historyOpen
-        || searchInteractionState.dropdownOpen
-        || searchInteractionState.typingBurst;
-
-      if (!activeElementIsSearchInput && (isEditableTarget(event.target) || isEditableTarget(activeElement))) return;
-      if (activeElementIsSearchInput && searchInputBusy) return;
-
-      const currentIndex = scenarioModes.findIndex((mode) => mode.id === selectedScenarioId);
-      const nextMode = currentIndex < 0
-        ? scenarioModes[0]
-        : scenarioModes[(currentIndex + 1) % scenarioModes.length];
-      if (!nextMode) return;
-
-      event.preventDefault();
-      setSelectedScenarioId(nextMode.id);
-      toast(t('scenario.toast.switched', { name: nextMode.name }));
-    };
-
-    window.addEventListener('keydown', handleSwitchScenarioShortcut, true);
-    return () => {
-      window.removeEventListener('keydown', handleSwitchScenarioShortcut, true);
-    };
-  }, [scenarioModes, searchInteractionState, selectedScenarioId, setSelectedScenarioId, t]);
-
-  const clearShortcutMultiSelect = useCallback(() => {
-    setShortcutMultiSelectMode(false);
-    setSelectedShortcutIndexes([]);
-    setBulkShortcutDeleteOpen(false);
-    setMultiSelectMoveOpen(false);
-  }, []);
-
-  const openShortcutMultiSelect = useCallback((initialIndex?: number) => {
-    setShortcutMultiSelectMode(true);
-    if (typeof initialIndex === 'number' && initialIndex >= 0) {
-      setSelectedShortcutIndexes([initialIndex]);
-      return;
-    }
-    setSelectedShortcutIndexes([]);
-  }, []);
-
-  const toggleShortcutMultiSelect = useCallback((shortcutIndex: number) => {
-    setSelectedShortcutIndexes((prev) => {
-      if (prev.includes(shortcutIndex)) {
-        return prev.filter((index) => index !== shortcutIndex);
-      }
-      return [...prev, shortcutIndex];
-    });
-  }, []);
-
-  const requestBulkDeleteShortcuts = useCallback(() => {
-    if (selectedShortcutCount <= 0) return;
-    setBulkShortcutDeleteOpen(true);
-    setContextMenu(null);
-  }, [selectedShortcutCount, setContextMenu]);
-
-  const handleConfirmBulkDeleteShortcuts = useCallback(() => {
-    if (selectedShortcutIndexes.length === 0) return;
-    handleConfirmDeleteShortcuts(selectedShortcutIndexes);
-    setBulkShortcutDeleteOpen(false);
-    setContextMenu(null);
-    clearShortcutMultiSelect();
-  }, [clearShortcutMultiSelect, handleConfirmDeleteShortcuts, selectedShortcutIndexes, setContextMenu]);
-
-  const handlePinSelectedShortcuts = useCallback((position: 'top' | 'bottom') => {
+  const handlePinSelectedShortcuts = useCallback((selectedShortcutIndexes: number[], position: 'top' | 'bottom') => {
     if (selectedShortcutIndexes.length === 0 || shortcuts.length === 0) return;
     const validIndices = Array.from(new Set(
       selectedShortcutIndexes
@@ -814,11 +624,10 @@ export default function App() {
       ? selectedItems.map((_, index) => index)
       : selectedItems.map((_, index) => remainingItems.length + index);
     handleShortcutReorder(nextShortcuts);
-    setSelectedShortcutIndexes(nextSelectedIndexes);
-    setContextMenu(null);
-  }, [handleShortcutReorder, selectedShortcutIndexes, setContextMenu, shortcuts]);
+    return nextSelectedIndexes;
+  }, [handleShortcutReorder, shortcuts]);
 
-  const handleMoveSelectedShortcutsToScenario = useCallback((targetScenarioId: string) => {
+  const handleMoveSelectedShortcutsToScenario = useCallback((selectedShortcutIndexes: number[], targetScenarioId: string) => {
     if (!targetScenarioId || targetScenarioId === selectedScenarioId) return;
     if (selectedShortcutIndexes.length === 0) return;
     setScenarioShortcuts((prev) => {
@@ -840,28 +649,10 @@ export default function App() {
       };
     });
     if (!user) localDirtyRef.current = true;
-    setMultiSelectMoveOpen(false);
-    setContextMenu(null);
-    clearShortcutMultiSelect();
-  }, [clearShortcutMultiSelect, localDirtyRef, selectedScenarioId, selectedShortcutIndexes, setContextMenu, setScenarioShortcuts, user]);
-
-  useEffect(() => {
-    setSelectedShortcutIndexes((prev) => prev.filter((index) => index >= 0 && index < shortcuts.length));
-  }, [shortcuts.length]);
-
-  useEffect(() => {
-    clearShortcutMultiSelect();
-  }, [clearShortcutMultiSelect, selectedScenarioId]);
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
-  const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
-    setSearchInteractionState((prevState) => (
-      prevState.historyOpen === nextState.historyOpen
-      && prevState.dropdownOpen === nextState.dropdownOpen
-      && prevState.typingBurst === nextState.typingBurst
-    ) ? prevState : nextState);
-  }, []);
 
   const handlePreventDuplicateNewTabChange = useCallback((checked: boolean) => {
     if (!checked) {
@@ -2262,17 +2053,6 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [contextMenu, contextMenuRef, setContextMenu]);
 
-  useEffect(() => {
-    if (!multiSelectMoveOpen) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (multiSelectMoveRef.current && !multiSelectMoveRef.current.contains(event.target as Node)) {
-        setMultiSelectMoveOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [multiSelectMoveOpen]);
-
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
@@ -2381,7 +2161,7 @@ export default function App() {
     reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur,
     leftSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur} />,
   }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, topNavSyncStatus, visualEffectsPolicy.disableBackdropBlur]);
-  const wallpaperClockProps = useMemo(() => ({
+  const wallpaperClockBaseProps = useMemo(() => ({
     is24Hour,
     onIs24HourChange: setIs24Hour,
     showSeconds,
@@ -2392,7 +2172,6 @@ export default function App() {
     onShowWeekdayChange: setShowWeekday,
     showLunar,
     onShowLunarChange: setShowLunar,
-    timeAnimationEnabled: effectiveTopTimeAnimationEnabled,
     onTimeAnimationModeChange: setTimeAnimationMode,
     bingWallpaperUrl: bingWallpaper,
     onSettingsClick: handleOpenSettings,
@@ -2414,7 +2193,6 @@ export default function App() {
     customWallpaper,
     colorWallpaperId,
     wallpaperMaskOpacity: effectiveWallpaperMaskOpacity,
-    pauseDynamicWallpaper: shouldFreezeDynamicWallpaper,
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
@@ -2444,16 +2222,13 @@ export default function App() {
     showSeconds,
     showLunar,
     timeFont,
-    effectiveTopTimeAnimationEnabled,
     topNavSyncStatus,
     visualEffectsPolicy.disableBackdropBlur,
     effectiveWallpaperMaskOpacity,
-    shouldFreezeDynamicWallpaper,
     effectiveWallpaperMode,
     weatherCode,
   ]);
-  const searchExperienceProps = useMemo(() => ({
-    inputRef: searchInputRef,
+  const searchExperienceBaseProps = useMemo(() => ({
     openInNewTab,
     shortcuts,
     tabSwitchSearchEngine,
@@ -2469,9 +2244,7 @@ export default function App() {
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
-    onInteractionStateChange: handleSearchInteractionStateChange,
   }), [
-    handleSearchInteractionStateChange,
     openInNewTab,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,
@@ -2487,7 +2260,7 @@ export default function App() {
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);
-  const shortcutGridProps = useMemo(() => ({
+  const shortcutGridBaseProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
     shortcuts,
@@ -2507,9 +2280,6 @@ export default function App() {
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
     onGridContextMenu: handleGridContextMenu,
-    selectionMode: shortcutMultiSelectMode,
-    selectedShortcutIndexes: selectedShortcutIndexSet,
-    onToggleShortcutSelection: toggleShortcutMultiSelect,
   }), [
     handleGridContextMenu,
     handleShortcutContextMenu,
@@ -2525,91 +2295,83 @@ export default function App() {
     responsiveLayout.defaultShortcutUrlSize,
     responsiveLayout.defaultShortcutVerticalPadding,
     responsiveLayout.density,
-    selectedShortcutIndexSet,
     shortcutCardVariant,
     shortcutCompactShowTitle,
-    shortcutMultiSelectMode,
     shortcuts,
     shortcutsAreaHeight,
-    toggleShortcutMultiSelect,
     visualEffectsPolicy.disableShortcutReorderMotion,
   ]);
-  const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
-  const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
-  const initialRevealTiming = INITIAL_REVEAL_TIMING;
-  const overlayWallpaperLayer = useMemo(() => {
-    if (!showOverlayWallpaperLayer) return null;
-
-    return (
-      <div
-        className="fixed z-0 pointer-events-none"
-        style={{
-          top: '-2px',
-          right: '-2px',
-          bottom: '-2px',
-          left: '-2px',
-          backgroundColor: 'var(--initial-reveal-surface)',
-          backfaceVisibility: 'hidden',
-        }}
-      >
-        <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
-          {effectiveWallpaperMode === 'weather' ? (
-            <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
-          ) : effectiveWallpaperMode === 'color' ? (
-            <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
-          ) : effectiveOverlayWallpaperSrc ? (
-            <img
-              src={effectiveOverlayWallpaperSrc}
-              alt={overlayBackgroundAlt}
-              className="absolute w-full h-full object-cover"
-              onLoad={handleOverlayImageReady}
-              onError={handleOverlayImageReady}
-            />
-          ) : null}
-          <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
-        </div>
-      </div>
-    );
-  }, [
-    colorWallpaperGradient,
-    effectiveOverlayWallpaperSrc,
-    effectiveWallpaperMaskOpacity,
-    freshWeatherVideo,
-    handleOverlayImageReady,
-    overlayBackgroundAlt,
-    shouldFreezeDynamicWallpaper,
-    showOverlayWallpaperLayer,
-    wallpaperAnimatedLayerStyle,
-    effectiveWallpaperMode,
-  ]);
-  const fixedTopNavLayer = useMemo(() => {
-    if (!(modeLayersVisible && displayModeFlags.showInlineTopNav)) return null;
-
-    return (
-      <div
-        className="fixed inset-6 z-[14020] pointer-events-none"
-        style={{
-          opacity: initialRevealOpacity,
-          transform: initialRevealTransform,
-          transition: `opacity ${initialRevealTiming}, transform ${initialRevealTiming}`,
-        }}
-      >
-        <TopNavBar {...topNavModeProps} />
-      </div>
-    );
-  }, [
-    displayModeFlags.showInlineTopNav,
-    initialRevealOpacity,
-    initialRevealTiming,
-    initialRevealTransform,
-    modeLayersVisible,
-    topNavModeProps,
+  const homeMainContentBaseProps = useMemo(() => ({
+    user,
+    loginBannerVisible,
+    onLoginRequest: handleRequestCloudLogin,
+    onDismissLoginBanner: handleDismissLoginBanner,
+    showTime,
+    displayMode,
+    is24Hour,
+    onIs24HourChange: setIs24Hour,
+    showSeconds,
+    onShowSecondsChange: setShowSeconds,
+    showDate,
+    onShowDateChange: setShowDate,
+    showWeekday,
+    onShowWeekdayChange: setShowWeekday,
+    showLunar,
+    onShowLunarChange: setShowLunar,
+    onWeatherUpdate: setWeatherCode,
+    timeFont,
+    onTimeFontChange: setTimeFont,
+    layout: responsiveLayout,
+    reduceMotionVisuals: visualEffectsLevel === 'low',
+  }), [
+    displayMode,
+    handleDismissLoginBanner,
+    handleRequestCloudLogin,
+    is24Hour,
+    loginBannerVisible,
+    responsiveLayout,
+    setIs24Hour,
+    setShowDate,
+    setShowLunar,
+    setShowSeconds,
+    setShowWeekday,
+    setTimeFont,
+    setWeatherCode,
+    showDate,
+    showLunar,
+    showSeconds,
+    showTime,
+    showWeekday,
+    timeFont,
+    user,
+    visualEffectsLevel,
   ]);
   const panoramicSurfaceRevealStyle: CSSProperties = {
     backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)',
     transition: `background-color ${PANORAMIC_SURFACE_REVEAL_TIMING}`,
   };
+  const shouldMountAppDialogs = useKeepMountedAfterFirstOpen(
+    shortcutEditOpen
+      || shortcutDeleteOpen
+      || scenarioCreateOpen
+      || scenarioEditOpen
+      || isAuthModalOpen
+      || settingsOpen
+      || searchSettingsOpen
+      || shortcutGuideOpen
+      || shortcutStyleSettingsOpen
+      || adminModalOpen
+      || aboutModalOpen
+      || exportBackupDialogOpen
+      || importBackupDialogOpen
+      || webdavDialogOpen
+      || cloudSyncConfigOpen
+      || importConfirmOpen
+      || confirmDisableConsentOpen,
+  );
   const shouldMountWallpaperSelector = useKeepMountedAfterFirstOpen(wallpaperSettingsOpen);
+  const shouldMountLeafTabSyncDialog = useKeepMountedAfterFirstOpen(leafTabSyncDialogOpen);
+  const shouldMountLeafTabSyncEncryptionDialog = useKeepMountedAfterFirstOpen(Boolean(syncEncryptionDialogState?.open));
   const shouldMountUpdateDialog = !IS_STORE_BUILD && useKeepMountedAfterFirstOpen(updateDialogOpen);
 
   return (
@@ -2619,255 +2381,82 @@ export default function App() {
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
       style={panoramicSurfaceRevealStyle}
     >
-      {overlayWallpaperLayer}
-      {fixedTopNavLayer}
-      <HomeMainContent
-        initialRevealReady={initialRevealReady}
-        visible={!roleSelectorOpen}
-        user={user}
-        loginBannerVisible={loginBannerVisible}
-        onLoginRequest={handleRequestCloudLogin}
-        onDismissLoginBanner={handleDismissLoginBanner}
-        modeFlags={displayModeFlags}
-        showTime={showTime}
-        displayMode={displayMode}
-        is24Hour={is24Hour}
-        onIs24HourChange={setIs24Hour}
-        showSeconds={showSeconds}
-        onShowSecondsChange={setShowSeconds}
-        showDate={showDate}
-        onShowDateChange={setShowDate}
-        showWeekday={showWeekday}
-        onShowWeekdayChange={setShowWeekday}
-        showLunar={showLunar}
-        onShowLunarChange={setShowLunar}
-        timeAnimationEnabled={effectiveTopTimeAnimationEnabled}
-        onTimeAnimationModeChange={setTimeAnimationMode}
-        onWeatherUpdate={setWeatherCode}
-        timeFont={timeFont}
-        onTimeFontChange={setTimeFont}
-        layout={responsiveLayout}
-        reduceMotionVisuals={visualEffectsLevel === 'low'}
-        wallpaperClockProps={wallpaperClockProps}
-        searchExperienceProps={searchExperienceProps}
-        searchInteractionLocked={searchInteractionState.historyOpen || searchInteractionState.dropdownOpen}
-        shortcutGridProps={shortcutGridProps}
-        onDrawerExpandedChange={setIsQuickAccessDrawerExpanded}
-      />
+      <ShortcutSelectionShell
+        contextMenu={contextMenu}
+        setContextMenu={setContextMenu}
+        contextMenuRef={contextMenuRef}
+        shortcuts={shortcuts}
+        scenarioModes={scenarioModes}
+        selectedScenarioId={selectedScenarioId}
+        onCreateShortcut={(insertIndex) => {
+          setShortcutModalMode('add');
+          setSelectedShortcut(null);
+          setEditingTitle('');
+          setEditingUrl('');
+          setCurrentInsertIndex(insertIndex);
+          setShortcutEditOpen(true);
+        }}
+        onEditShortcut={(shortcutIndex, shortcut) => {
+          setSelectedShortcut({ index: shortcutIndex, shortcut });
+          setEditingTitle(shortcut.title);
+          setEditingUrl(shortcut.url);
+          setShortcutModalMode('edit');
+          setShortcutEditOpen(true);
+        }}
+        onDeleteShortcut={(shortcutIndex, shortcut) => {
+          setSelectedShortcut({ index: shortcutIndex, shortcut });
+          setShortcutDeleteOpen(true);
+        }}
+        onShortcutOpen={handleShortcutOpen}
+        onDeleteSelectedShortcuts={handleConfirmDeleteShortcuts}
+        onPinSelectedShortcuts={handlePinSelectedShortcuts}
+        onMoveSelectedShortcutsToScenario={handleMoveSelectedShortcutsToScenario}
+      >
+        {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
+          <HomeInteractiveSurface
+            initialRevealReady={initialRevealReady}
+            visible={!roleSelectorOpen}
+            modeLayersVisible={modeLayersVisible}
+            modeFlags={displayModeFlags}
+            showOverlayWallpaperLayer={showOverlayWallpaperLayer}
+            wallpaperAnimatedLayerStyle={wallpaperAnimatedLayerStyle}
+            effectiveWallpaperMode={effectiveWallpaperMode}
+            freshWeatherVideo={freshWeatherVideo}
+            colorWallpaperGradient={colorWallpaperGradient}
+            effectiveOverlayWallpaperSrc={effectiveOverlayWallpaperSrc}
+            overlayBackgroundAlt={overlayBackgroundAlt}
+            onOverlayImageReady={handleOverlayImageReady}
+            effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
+            topNavModeProps={topNavModeProps}
+            homeMainContentBaseProps={homeMainContentBaseProps}
+            shortcutGridProps={{
+              ...shortcutGridBaseProps,
+              selectionMode,
+              selectedShortcutIndexes,
+              onToggleShortcutSelection,
+            }}
+            wallpaperClockBaseProps={wallpaperClockBaseProps}
+            searchExperienceBaseProps={searchExperienceBaseProps}
+            baseTimeAnimationEnabled={effectiveTimeAnimationEnabled}
+            freezeDynamicWallpaperBase={
+              visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
+            }
+          />
+        )}
+      </ShortcutSelectionShell>
       {shouldMountWallpaperSelector ? (
-        <WallpaperSelector
-          {...wallpaperSelectorLayerProps}
-          mode={effectiveWallpaperMode}
-          hideWeather={displayMode === 'minimalist' || firefox}
-          open={wallpaperSettingsOpen}
-          onOpenChange={setWallpaperSettingsOpen}
-          trigger={<span className="hidden" aria-hidden="true" />}
-        />
+        <Suspense fallback={null}>
+          <LazyWallpaperSelector
+            {...wallpaperSelectorLayerProps}
+            mode={effectiveWallpaperMode}
+            hideWeather={displayMode === 'minimalist' || firefox}
+            open={wallpaperSettingsOpen}
+            onOpenChange={setWallpaperSettingsOpen}
+            trigger={<span className="hidden" aria-hidden="true" />}
+          />
+        </Suspense>
       ) : null}
 
-      {contextMenu && (
-        <div ref={contextMenuRef} className="fixed z-[15020]" style={{ top: contextMenu.y, left: contextMenu.x }}>
-          <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
-            {contextMenu.kind === 'shortcut' ? (
-              shortcutMultiSelectMode ? (
-                <>
-                  <ContextMenuItem
-                    label={selectedShortcutIndexSet.has(contextMenu.shortcutIndex)
-                      ? t('context.unselect', { defaultValue: '取消选择' })
-                      : t('context.select', { defaultValue: '选择' })}
-                    onSelect={() => {
-                      toggleShortcutMultiSelect(contextMenu.shortcutIndex);
-                      setContextMenu(null);
-                    }}
-                  />
-                  <ContextMenuItem
-                    label={t('context.deleteSelected', { defaultValue: '删除已选' })}
-                    onSelect={requestBulkDeleteShortcuts}
-                    variant="destructive"
-                    disabled={selectedShortcutCount <= 0}
-                  />
-                  <ContextMenuItem
-                    label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
-                    onSelect={() => {
-                      clearShortcutMultiSelect();
-                      setContextMenu(null);
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  <ContextMenuItem label={t('context.newShortcut')} onSelect={() => { setShortcutModalMode('add'); setSelectedShortcut(null); setEditingTitle(''); setEditingUrl(''); setCurrentInsertIndex(Math.min(contextMenu.shortcutIndex + 1, shortcuts.length)); setShortcutEditOpen(true); setContextMenu(null); }} />
-                  <ContextMenuItem label={t('context.open')} onSelect={() => { handleShortcutOpen(contextMenu.shortcut); setContextMenu(null); }} />
-                  <ContextMenuItem label={t('context.copyLink')} onSelect={() => { const raw = contextMenu.shortcut.url || ''; let hostname = extractDomainFromUrl(raw); if (!hostname) { try { const normalized = raw.includes('://') ? raw : `https://${raw}`; hostname = new URL(normalized).hostname; } catch { hostname = ''; } } if (!hostname) { toast.error(t('toast.linkCopyFailed')); setContextMenu(null); return; } navigator.clipboard.writeText(hostname).then(() => { toast.success(t('toast.linkCopied')); }).catch(() => { try { const textarea = document.createElement('textarea'); textarea.value = hostname; document.body.appendChild(textarea); textarea.select(); document.execCommand('copy'); document.body.removeChild(textarea); toast.success(t('toast.linkCopied')); } catch { toast.error(t('toast.linkCopyFailed')); } }); setContextMenu(null); }} />
-                  <ContextMenuItem label={t('context.edit')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setEditingTitle(contextMenu.shortcut.title); setEditingUrl(contextMenu.shortcut.url); setShortcutModalMode('edit'); setShortcutEditOpen(true); setContextMenu(null); }} />
-                  <ContextMenuItem
-                    label={t('context.multiSelect', { defaultValue: '多选' })}
-                    onSelect={() => {
-                      openShortcutMultiSelect(contextMenu.shortcutIndex);
-                      setContextMenu(null);
-                    }}
-                  />
-                  <ContextMenuItem label={t('context.delete')} onSelect={() => { setSelectedShortcut({ index: contextMenu.shortcutIndex, shortcut: contextMenu.shortcut }); setShortcutDeleteOpen(true); setContextMenu(null); }} variant="destructive" />
-                </>
-              )
-            ) : (
-              shortcutMultiSelectMode ? (
-                <>
-                  <ContextMenuItem
-                    label={t('context.deleteSelected', { defaultValue: '删除已选' })}
-                    onSelect={requestBulkDeleteShortcuts}
-                    variant="destructive"
-                    disabled={selectedShortcutCount <= 0}
-                  />
-                  <ContextMenuItem
-                    label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
-                    onSelect={() => {
-                      clearShortcutMultiSelect();
-                      setContextMenu(null);
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  <ContextMenuItem 
-                    label={t('context.addShortcut')} 
-                    onSelect={() => { 
-                      setShortcutModalMode('add');
-                      setSelectedShortcut(null);
-                      setEditingTitle('');
-                      setEditingUrl('');
-                      setCurrentInsertIndex(shortcuts.length);
-                      setShortcutEditOpen(true);
-                      setContextMenu(null); 
-                    }} 
-                  />
-                  <ContextMenuItem
-                    label={t('context.multiSelect', { defaultValue: '多选' })}
-                    onSelect={() => {
-                      openShortcutMultiSelect();
-                      setContextMenu(null);
-                    }}
-                  />
-                </>
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {shortcutMultiSelectMode && (
-        <div className="fixed bottom-6 left-1/2 z-[15025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground min-w-[88px]">
-              {t('context.selectedCount', { count: selectedShortcutCount, defaultValue: '已选 {{count}} 项' })}
-            </span>
-            <div ref={multiSelectMoveRef} className="relative">
-              <Button
-                size="icon"
-                variant="secondary"
-                className="h-8 w-8 rounded-xl"
-                title={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
-                aria-label={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
-                aria-expanded={multiSelectMoveOpen}
-                onClick={() => setMultiSelectMoveOpen((prev) => !prev)}
-              >
-                <RiFolderTransferLine className="size-4" />
-              </Button>
-              {multiSelectMoveOpen ? (
-                <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-[15050] w-[280px] -translate-x-1/2 rounded-2xl border border-border bg-popover/95 p-2 text-foreground shadow-2xl backdrop-blur-xl">
-                  <div className="px-2 pb-1 pt-1 text-xs text-muted-foreground">
-                    {t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
-                  </div>
-                  <div className="max-h-[260px] space-y-1 overflow-y-auto">
-                    {selectedShortcutCount <= 0 ? (
-                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
-                        {t('context.selectBeforeMove', { defaultValue: '请先选择快捷方式' })}
-                      </div>
-                    ) : null}
-                    {selectedShortcutCount > 0 && moveTargetScenarioModes.map((mode) => (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
-                        onClick={() => handleMoveSelectedShortcutsToScenario(mode.id)}
-                      >
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: mode.color || '#60a5fa' }}
-                          aria-hidden="true"
-                        />
-                        <span className="truncate">{mode.name}</span>
-                      </button>
-                    ))}
-                    {selectedShortcutCount > 0 && moveTargetScenarioModes.length === 0 ? (
-                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
-                        {t('context.noScenarioTarget', { defaultValue: '暂无可移动的目标情景模式' })}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-8 w-8 rounded-xl"
-              onClick={() => handlePinSelectedShortcuts('top')}
-              disabled={selectedShortcutCount <= 0}
-              title={t('context.pinTop', { defaultValue: '置顶已选' })}
-              aria-label={t('context.pinTop', { defaultValue: '置顶已选' })}
-            >
-              <RiArrowUpLine className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-8 w-8 rounded-xl"
-              onClick={() => handlePinSelectedShortcuts('bottom')}
-              disabled={selectedShortcutCount <= 0}
-              title={t('context.pinBottom', { defaultValue: '置底已选' })}
-              aria-label={t('context.pinBottom', { defaultValue: '置底已选' })}
-            >
-              <RiArrowDownLine className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              className="h-8 w-8 rounded-xl"
-              variant="secondary"
-              onClick={requestBulkDeleteShortcuts}
-              disabled={selectedShortcutCount <= 0}
-              title={t('context.deleteSelected', { defaultValue: '删除已选' })}
-              aria-label={t('context.deleteSelected', { defaultValue: '删除已选' })}
-            >
-              <RiDeleteBinLine className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-8 w-8 rounded-xl"
-              onClick={clearShortcutMultiSelect}
-              title={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
-              aria-label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
-            >
-              <RiCloseLine className="size-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={bulkShortcutDeleteOpen}
-        onOpenChange={setBulkShortcutDeleteOpen}
-        title={t('shortcutDelete.bulkTitle', { count: selectedShortcutCount, defaultValue: '批量删除快捷方式' })}
-        description={t('shortcutDelete.bulkDescription', {
-          count: selectedShortcutCount,
-          defaultValue: '确定要删除已选的 {{count}} 个快捷方式吗？',
-        })}
-        confirmText={t('shortcutDelete.confirm')}
-        cancelText={t('shortcutDelete.cancel')}
-        onConfirm={handleConfirmBulkDeleteShortcuts}
-        confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-      />
 
       <ConfirmDialog
         open={confirmDisableWebdavSyncOpen}
@@ -2919,8 +2508,9 @@ export default function App() {
           resolveLegacyCloudMigrationPrompt(true);
         }}
       />
-
-      <AppDialogs
+      {shouldMountAppDialogs ? (
+        <Suspense fallback={null}>
+          <LazyAppDialogs
             shortcutModalProps={{
               isOpen: shortcutEditOpen,
               onOpenChange: (open) => {
@@ -3185,80 +2775,90 @@ export default function App() {
               },
             }}
           />
-      <LeafTabSyncDialog
-        open={leafTabSyncDialogOpen}
-        onOpenChange={handleLeafTabSyncDialogOpenChange}
-        cloudAnalysis={cloudLeafTabSyncAnalysis}
-        webdavAnalysis={leafTabSyncAnalysis}
-        syncState={leafTabSyncState}
-        cloudSyncState={cloudLeafTabSyncState}
-        ready={leafTabSyncReady}
-        hasConfig={leafTabSyncHasConfig}
-        busy={leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing'}
-        bookmarkScopeLabel={leafTabBookmarkSyncScopeLabel}
-        summaryText={cloudLeafTabSyncLastResult?.summaryText || leafTabSyncLastResult?.summaryText || ''}
-        cloudSignedIn={Boolean(user)}
-        cloudEnabled={cloudSyncEnabled}
-        cloudSyncBookmarksEnabled={cloudSyncBookmarksEnabled}
-        cloudUsername={user || ''}
-        cloudLastSyncLabel={cloudLastSyncLabel}
-        cloudNextSyncLabel={cloudNextSyncLabel}
-        cloudEncryptionReady={cloudSyncEncryptionReady}
-        webdavConfigured={leafTabWebdavConfigured}
-        webdavEnabled={leafTabWebdavEnabled}
-        webdavProfileLabel={leafTabWebdavProfileLabel}
-        webdavUrlLabel={leafTabSyncWebdavConfig?.url || ''}
-        webdavLastSyncLabel={leafTabWebdavLastSyncLabel}
-        webdavNextSyncLabel={leafTabWebdavNextSyncLabel}
-        webdavEncryptionReady={leafTabWebdavEncryptionReady}
-        onCloudSyncNow={() => {
-          setLeafTabSyncDialogOpen(false);
-          void handleCloudSyncNowFromCenter();
-        }}
-        onOpenCloudConfig={handleOpenCloudSyncConfig}
-        onCloudLogin={() => {
-          const shouldOpenLogin = handleRequestCloudLogin();
-          if (shouldOpenLogin) {
-            setLeafTabSyncDialogOpen(false);
-          }
-        }}
-        onCloudRepairPull={() => {
-          void handleCloudRepairFromCenter('pull-remote');
-        }}
-        onCloudRepairPush={() => {
-          void handleCloudRepairFromCenter('push-local');
-        }}
-        onSyncNow={() => {
-          setLeafTabSyncDialogOpen(false);
-          void handleWebdavSyncNowFromCenter();
-        }}
-        onEnableSync={() => {
-          setLeafTabSyncDialogOpen(false);
-          void handleEnableWebdavSync();
-        }}
-        onOpenConfig={() => {
-          handleOpenWebdavConfigFromSyncCenter();
-        }}
-        onOpenSetupConfig={() => {
-          handleOpenWebdavConfigFromSyncCenter({
-            enableAfterSave: true,
-          });
-        }}
-        onWebdavRepairPull={() => {
-          void handleWebdavRepairFromCenter('pull-remote');
-        }}
-        onWebdavRepairPush={() => {
-          void handleWebdavRepairFromCenter('push-local');
-        }}
-      />
-      <LeafTabSyncEncryptionDialog
-        open={Boolean(syncEncryptionDialogState?.open)}
-        mode={syncEncryptionDialogState?.mode || 'setup'}
-        providerLabel={syncEncryptionDialogState?.providerLabel || '同步'}
-        busy={syncEncryptionDialogBusy}
-        onOpenChange={handleSyncEncryptionDialogOpenChange}
-        onSubmit={handleSubmitSyncEncryptionDialog}
-      />
+        </Suspense>
+      ) : null}
+      {shouldMountLeafTabSyncDialog ? (
+        <Suspense fallback={null}>
+          <LazyLeafTabSyncDialog
+            open={leafTabSyncDialogOpen}
+            onOpenChange={handleLeafTabSyncDialogOpenChange}
+            cloudAnalysis={cloudLeafTabSyncAnalysis}
+            webdavAnalysis={leafTabSyncAnalysis}
+            syncState={leafTabSyncState}
+            cloudSyncState={cloudLeafTabSyncState}
+            ready={leafTabSyncReady}
+            hasConfig={leafTabSyncHasConfig}
+            busy={leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing'}
+            bookmarkScopeLabel={leafTabBookmarkSyncScopeLabel}
+            summaryText={cloudLeafTabSyncLastResult?.summaryText || leafTabSyncLastResult?.summaryText || ''}
+            cloudSignedIn={Boolean(user)}
+            cloudEnabled={cloudSyncEnabled}
+            cloudSyncBookmarksEnabled={cloudSyncBookmarksEnabled}
+            cloudUsername={user || ''}
+            cloudLastSyncLabel={cloudLastSyncLabel}
+            cloudNextSyncLabel={cloudNextSyncLabel}
+            cloudEncryptionReady={cloudSyncEncryptionReady}
+            webdavConfigured={leafTabWebdavConfigured}
+            webdavEnabled={leafTabWebdavEnabled}
+            webdavProfileLabel={leafTabWebdavProfileLabel}
+            webdavUrlLabel={leafTabSyncWebdavConfig?.url || ''}
+            webdavLastSyncLabel={leafTabWebdavLastSyncLabel}
+            webdavNextSyncLabel={leafTabWebdavNextSyncLabel}
+            webdavEncryptionReady={leafTabWebdavEncryptionReady}
+            onCloudSyncNow={() => {
+              setLeafTabSyncDialogOpen(false);
+              void handleCloudSyncNowFromCenter();
+            }}
+            onOpenCloudConfig={handleOpenCloudSyncConfig}
+            onCloudLogin={() => {
+              const shouldOpenLogin = handleRequestCloudLogin();
+              if (shouldOpenLogin) {
+                setLeafTabSyncDialogOpen(false);
+              }
+            }}
+            onCloudRepairPull={() => {
+              void handleCloudRepairFromCenter('pull-remote');
+            }}
+            onCloudRepairPush={() => {
+              void handleCloudRepairFromCenter('push-local');
+            }}
+            onSyncNow={() => {
+              setLeafTabSyncDialogOpen(false);
+              void handleWebdavSyncNowFromCenter();
+            }}
+            onEnableSync={() => {
+              setLeafTabSyncDialogOpen(false);
+              void handleEnableWebdavSync();
+            }}
+            onOpenConfig={() => {
+              handleOpenWebdavConfigFromSyncCenter();
+            }}
+            onOpenSetupConfig={() => {
+              handleOpenWebdavConfigFromSyncCenter({
+                enableAfterSave: true,
+              });
+            }}
+            onWebdavRepairPull={() => {
+              void handleWebdavRepairFromCenter('pull-remote');
+            }}
+            onWebdavRepairPush={() => {
+              void handleWebdavRepairFromCenter('push-local');
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {shouldMountLeafTabSyncEncryptionDialog ? (
+        <Suspense fallback={null}>
+          <LazyLeafTabSyncEncryptionDialog
+            open={Boolean(syncEncryptionDialogState?.open)}
+            mode={syncEncryptionDialogState?.mode || 'setup'}
+            providerLabel={syncEncryptionDialogState?.providerLabel || '同步'}
+            busy={syncEncryptionDialogBusy}
+            onOpenChange={handleSyncEncryptionDialogOpenChange}
+            onSubmit={handleSubmitSyncEncryptionDialog}
+          />
+        </Suspense>
+      ) : null}
       {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>
           <LazyUpdateAvailableDialog

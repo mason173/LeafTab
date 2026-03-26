@@ -1,3 +1,8 @@
+import {
+  queueCachedLocalStorageSetItem,
+  readCachedLocalStorageItem,
+} from '@/utils/cachedLocalStorage';
+
 export const SEARCH_HISTORY_KEY = 'search_history';
 export const MAX_SEARCH_HISTORY = 15;
 
@@ -48,7 +53,7 @@ export const normalizeSearchHistory = (parsed: unknown): SearchHistoryEntry[] =>
 
 export const readSearchHistoryFromStorage = () => {
   try {
-    const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+    const raw = readCachedLocalStorageItem(SEARCH_HISTORY_KEY);
     if (!raw) return [];
     return normalizeSearchHistory(JSON.parse(raw) as unknown);
   } catch {
@@ -58,6 +63,6 @@ export const readSearchHistoryFromStorage = () => {
 
 export const writeSearchHistoryToStorage = (entries: SearchHistoryEntry[]) => {
   const normalized = normalizeSearchHistory(entries);
-  localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(normalized));
+  queueCachedLocalStorageSetItem(SEARCH_HISTORY_KEY, JSON.stringify(normalized));
   return normalized;
 };
