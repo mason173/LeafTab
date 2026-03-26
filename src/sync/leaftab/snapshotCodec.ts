@@ -10,6 +10,7 @@ import {
   getLeafTabSyncHeadPath,
   isLeafTabSyncBookmarkFolderEntity,
   isLeafTabSyncBookmarkItemEntity,
+  isLeafTabSyncPreferencesState,
   isLeafTabSyncScenarioEntity,
   isLeafTabSyncShortcutEntity,
   isLeafTabSyncTombstone,
@@ -71,6 +72,7 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
   const shortcuts: LeafTabSyncSnapshot['shortcuts'] = {};
   const bookmarkFolders: LeafTabSyncSnapshot['bookmarkFolders'] = {};
   const bookmarkItems: LeafTabSyncSnapshot['bookmarkItems'] = {};
+  let preferences: LeafTabSyncSnapshot['preferences'] = null;
   const shortcutOrders: LeafTabSyncSnapshot['shortcutOrders'] = {};
   const bookmarkOrders: LeafTabSyncSnapshot['bookmarkOrders'] = {};
   const tombstones: LeafTabSyncSnapshot['tombstones'] = {};
@@ -85,6 +87,13 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
   manifest.packs.forEach((packRef) => {
     const value = parseLeafTabSyncJsonLike<unknown>(payloadMap[packRef.path]);
     if (!isRecord(value)) return;
+
+    if (packRef.kind === 'preferences') {
+      if (isLeafTabSyncPreferencesState(value.state)) {
+        preferences = value.state;
+      }
+      return;
+    }
 
     if (packRef.kind === 'scenarios') {
       Object.values(isRecord(value.entities) ? value.entities : {}).forEach((entity) => {
@@ -160,6 +169,7 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
       deviceId: commit.deviceId,
       generatedAt: manifest.generatedAt || commit.createdAt,
     },
+    preferences,
     scenarios,
     shortcuts,
     bookmarkFolders,

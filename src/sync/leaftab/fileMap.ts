@@ -8,6 +8,7 @@ import type {
   LeafTabSyncManifestFile,
   LeafTabSyncManifestPackRef,
   LeafTabSyncPackKind,
+  LeafTabSyncPreferencesState,
   LeafTabSyncScenarioEntity,
   LeafTabSyncScenarioOrder,
   LeafTabSyncShortcutEntity,
@@ -46,6 +47,13 @@ interface LeafTabSyncScenarioPackFile {
   generatedAt: string;
   entities: Record<string, LeafTabSyncScenarioEntity>;
   order: LeafTabSyncScenarioOrder;
+}
+
+interface LeafTabSyncPreferencesPackFile {
+  version: typeof LEAFTAB_SYNC_SCHEMA_VERSION;
+  kind: 'preferences';
+  generatedAt: string;
+  state: LeafTabSyncPreferencesState | null;
 }
 
 interface LeafTabSyncEntityPackFile<T, K extends LeafTabSyncShardedEntityKind> {
@@ -151,6 +159,19 @@ const buildSnapshotPayloadMap = (
 ) => {
   const payloads: LeafTabSyncJsonPayloadMap = {};
   const manifestPacks: LeafTabSyncManifestPackRef[] = [];
+
+  const preferencesPackPath = getLeafTabSyncPackPath('preferences', null, rootPath);
+  if (shouldIncludePath(includePaths, preferencesPackPath)) {
+    payloads[preferencesPackPath] = {
+      version: LEAFTAB_SYNC_SCHEMA_VERSION,
+      kind: 'preferences',
+      generatedAt: snapshot.meta.generatedAt,
+      state: snapshot.preferences,
+    } satisfies LeafTabSyncPreferencesPackFile;
+  }
+  manifestPacks.push(
+    createManifestPackRef('preferences', preferencesPackPath, snapshot.preferences ? 1 : 0),
+  );
 
   const scenarioPackPath = getLeafTabSyncPackPath('scenarios', null, rootPath);
   if (shouldIncludePath(includePaths, scenarioPackPath)) {
@@ -352,6 +373,10 @@ export const collectLeafTabSyncChangedPayloadPaths = (
   }
 
   const changedPaths = new Set<string>();
+
+  if (!sameContent(previousSnapshot.preferences, nextSnapshot.preferences)) {
+    changedPaths.add(getLeafTabSyncPackPath('preferences', null, rootPath));
+  }
 
   if (
     !sameContent(previousSnapshot.scenarios, nextSnapshot.scenarios) ||

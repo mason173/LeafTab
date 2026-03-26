@@ -1,6 +1,6 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { toast } from '../components/ui/sonner';
-import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut } from '../types';
+import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut, ShortcutDraft } from '../types';
 import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
 import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 
@@ -132,9 +132,9 @@ export function useShortcutActions({
     updateScenarioShortcuts(() => nextShortcuts);
   }, [updateScenarioShortcuts]);
 
-  const handleSaveShortcutEdit = useCallback((title: string, url: string) => {
-    const nextTitle = title.trim();
-    const nextUrl = url.trim();
+  const handleSaveShortcutEdit = useCallback((draft: ShortcutDraft) => {
+    const nextTitle = draft.title.trim();
+    const nextUrl = draft.url.trim();
     if (!nextTitle || !nextUrl) {
       toast.error(translate('shortcutModal.errors.fillAll'), { description: translate('shortcutModal.errors.fillAllDesc') });
       return;
@@ -150,7 +150,17 @@ export function useShortcutActions({
           duplicateFound = true;
           return current;
         }
-        const newShortcut: Shortcut = { id: createShortcutId(), title: nextTitle, url: nextUrl, icon: '' };
+        const newShortcut: Shortcut = {
+          id: createShortcutId(),
+          title: nextTitle,
+          url: nextUrl,
+          icon: draft.icon || '',
+          useOfficialIcon: draft.useOfficialIcon !== false,
+          autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
+          officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
+          iconRendering: draft.iconRendering,
+          iconColor: draft.iconColor || '',
+        };
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
         saved = true;
         return [...current.slice(0, insertIndex), newShortcut, ...current.slice(insertIndex)];
@@ -162,14 +172,26 @@ export function useShortcutActions({
           duplicateFound = true;
           return current;
         }
-        let newIcon = selectedShortcut.shortcut.icon;
+        let newIcon = draft.icon || selectedShortcut.shortcut.icon;
         const prevIdentity = getShortcutUrlIdentity(selectedShortcut.shortcut.url || '');
         const nextIdentity = getShortcutUrlIdentity(nextUrl);
         const urlChanged = nextIdentity ? prevIdentity !== nextIdentity : nextUrl !== (selectedShortcut.shortcut.url || '').trim();
         if (urlChanged && newIcon.includes('api.iowen.cn')) newIcon = '';
         saved = true;
         return current.map((item, index) => (
-          index === selectedShortcut.index ? { ...item, title: nextTitle, url: nextUrl, icon: newIcon } : item
+          index === selectedShortcut.index
+            ? {
+                ...item,
+                title: nextTitle,
+                url: nextUrl,
+                icon: newIcon,
+                useOfficialIcon: draft.useOfficialIcon !== false,
+                autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
+                officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
+                iconRendering: draft.iconRendering,
+                iconColor: draft.iconColor || '',
+              }
+            : item
         ));
       });
     }

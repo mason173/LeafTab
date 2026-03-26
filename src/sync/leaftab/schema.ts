@@ -1,4 +1,6 @@
 import type { LeafTabSyncEncryptionMetadata } from '@/utils/leafTabSyncEncryption';
+import type { ShortcutVisualMode, SyncablePreferences } from '@/types';
+import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 
 export const LEAFTAB_SYNC_SCHEMA_VERSION = 2 as const;
 export const LEAFTAB_SYNC_DEFAULT_ROOT = 'leaftab/v1';
@@ -44,6 +46,11 @@ export interface LeafTabSyncShortcutEntity extends LeafTabSyncBaseEntity {
   url: string;
   icon: string;
   description: string;
+  useOfficialIcon?: boolean;
+  autoUseOfficialIcon?: boolean;
+  officialIconAvailableAtSave?: boolean;
+  iconRendering?: ShortcutVisualMode;
+  iconColor?: string;
 }
 
 export interface LeafTabSyncBookmarkFolderEntity extends LeafTabSyncBaseEntity {
@@ -105,7 +112,15 @@ export interface LeafTabSyncHeadFile {
   updatedAt: string;
 }
 
+export interface LeafTabSyncPreferencesState {
+  revision: number;
+  updatedAt: string;
+  updatedBy: string;
+  value: SyncablePreferences;
+}
+
 export type LeafTabSyncPackKind =
+  | 'preferences'
   | 'scenarios'
   | 'shortcuts'
   | 'shortcut-orders'
@@ -151,6 +166,7 @@ export interface LeafTabSyncCommitFile {
 
 export interface LeafTabSyncSnapshot {
   meta: LeafTabSyncSnapshotMeta;
+  preferences?: LeafTabSyncPreferencesState | null;
   scenarios: Record<string, LeafTabSyncScenarioEntity>;
   shortcuts: Record<string, LeafTabSyncShortcutEntity>;
   bookmarkFolders: Record<string, LeafTabSyncBookmarkFolderEntity>;
@@ -218,6 +234,9 @@ export const getLeafTabSyncPackPath = (
   shard: string | null = null,
   rootPath = LEAFTAB_SYNC_DEFAULT_ROOT,
 ) => {
+  if (kind === 'preferences') {
+    return `${normalizeRoot(rootPath)}/packs/preferences.pack.json`;
+  }
   const shardSuffix = shard ? `-${shard}` : '';
   return `${normalizeRoot(rootPath)}/packs/${kind}${shardSuffix}.pack.json`;
 };
@@ -273,6 +292,14 @@ export const normalizeLeafTabSyncSnapshot = (
       deviceId,
       generatedAt,
     },
+    preferences: snapshot.preferences
+      ? {
+          revision: Number(snapshot.preferences.revision) > 0 ? Number(snapshot.preferences.revision) : 1,
+          updatedAt: snapshot.preferences.updatedAt || generatedAt,
+          updatedBy: snapshot.preferences.updatedBy || deviceId,
+          value: normalizeSyncablePreferences(snapshot.preferences.value),
+        }
+      : null,
     scenarios,
     shortcuts: snapshot.shortcuts || {},
     bookmarkFolders: snapshot.bookmarkFolders || {},
@@ -298,6 +325,21 @@ export const isLeafTabSyncScenarioEntity = (
       typeof value === 'object' &&
       (value as { type?: unknown }).type === 'scenario' &&
       typeof (value as { id?: unknown }).id === 'string',
+  );
+};
+
+export const isLeafTabSyncPreferencesState = (
+  value: unknown,
+): value is LeafTabSyncPreferencesState => {
+  return Boolean(
+    value
+      && typeof value === 'object'
+      && Number.isFinite((value as { revision?: unknown }).revision)
+      && typeof (value as { updatedAt?: unknown }).updatedAt === 'string'
+      && typeof (value as { updatedBy?: unknown }).updatedBy === 'string'
+      && (value as { value?: unknown }).value
+      && typeof (value as { value?: unknown }).value === 'object'
+      && !Array.isArray((value as { value?: unknown }).value),
   );
 };
 

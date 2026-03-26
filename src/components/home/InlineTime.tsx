@@ -4,16 +4,22 @@ import { TimeDisplayDialog } from '@/components/TimeDisplayDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import { useClock } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { WeatherCard } from '@/components/WeatherCard';
 
 interface InlineTimeProps {
   is24Hour: boolean;
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
   onShowSecondsChange: (checked: boolean) => void;
+  showDate: boolean;
+  onShowDateChange: (checked: boolean) => void;
+  showWeekday: boolean;
+  onShowWeekdayChange: (checked: boolean) => void;
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
+  onWeatherUpdate?: (code: number) => void;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   forceWhiteText: boolean;
@@ -25,10 +31,15 @@ export const InlineTime = memo(function InlineTime({
   onIs24HourChange,
   showSeconds,
   onShowSecondsChange,
+  showDate,
+  onShowDateChange,
+  showWeekday,
+  onShowWeekdayChange,
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
   onTimeAnimationModeChange,
+  onWeatherUpdate,
   timeFont,
   onTimeFontChange,
   forceWhiteText,
@@ -45,6 +56,10 @@ export const InlineTime = memo(function InlineTime({
   );
   const weekday = weekdayFormatter.format(date);
   const dateString = dateFormatter.format(date);
+  const metaParts = [
+    showDate ? dateString : null,
+    showWeekday ? weekday : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
@@ -66,6 +81,10 @@ export const InlineTime = memo(function InlineTime({
           previewTime={time}
           is24Hour={is24Hour}
           onIs24HourChange={onIs24HourChange}
+          showDate={showDate}
+          onShowDateChange={onShowDateChange}
+          showWeekday={showWeekday}
+          onShowWeekdayChange={onShowWeekdayChange}
           showSeconds={showSeconds}
           onShowSecondsChange={onShowSecondsChange}
           showLunar={showLunar}
@@ -74,12 +93,21 @@ export const InlineTime = memo(function InlineTime({
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
-        <div
-          className={`flex items-center gap-3 mt-2 font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}
-          style={{ fontSize: layout.clockMetaFontSize }}
-        >
-          <span>{dateString} {weekday}</span>
-          {showLunar && lunar ? <span>{lunar}</span> : null}
+        <div className={`mt-2 flex max-w-full flex-col items-center gap-1.5 font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}>
+          <div
+            className="flex items-center gap-3"
+            style={{ fontSize: layout.clockMetaFontSize }}
+          >
+            {metaParts.length > 0 ? <span>{metaParts.join(' ')}</span> : null}
+            {showLunar && lunar ? <span>{lunar}</span> : null}
+          </div>
+          <WeatherCard
+            onWeatherUpdate={onWeatherUpdate}
+            variant={forceWhiteText ? 'inverted' : 'default'}
+            displayMode="inline"
+            className="w-full px-4"
+            textClassName="text-sm sm:text-base"
+          />
         </div>
       </div>
     </div>

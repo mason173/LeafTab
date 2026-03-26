@@ -12,6 +12,7 @@ import {
 } from './snapshot';
 import type { LeafTabSyncSnapshot, LeafTabSyncTombstone } from './schema';
 import type { LeafTabSyncRemoteStore } from './remoteStore';
+import { getDefaultSyncablePreferences } from '@/utils/syncablePreferences';
 
 export interface LeafTabLegacySingleFileDriver {
   scopeKey?: string;
@@ -125,17 +126,22 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
         .concat(remainingShortcutIds)
         .filter((id: string) => snapshot.shortcuts[id]?.scenarioId === scenario.id);
 
-      return [scenario.id, shortcutIds.map((shortcutId: string) => {
-        const shortcut = snapshot.shortcuts[shortcutId];
-        return {
-          id: shortcut.id,
-          title: shortcut.title,
-          url: shortcut.url,
-          icon: shortcut.icon,
-        };
-      })];
-    }),
-  );
+	      return [scenario.id, shortcutIds.map((shortcutId: string) => {
+	        const shortcut = snapshot.shortcuts[shortcutId];
+	        return {
+	          id: shortcut.id,
+	          title: shortcut.title,
+	          url: shortcut.url,
+	          icon: shortcut.icon,
+	          useOfficialIcon: shortcut.useOfficialIcon,
+	          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
+	          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
+	          iconRendering: shortcut.iconRendering,
+	          iconColor: shortcut.iconColor,
+	        };
+	      })];
+	    }),
+	  );
 
   return {
     scenarioModes,
@@ -159,6 +165,7 @@ const mergeLegacyPayloadIntoSnapshot = (params: {
 }) => {
   const generatedAt = new Date().toISOString();
   const legacySubsetSnapshot = buildLeafTabSyncSnapshot({
+    preferences: params.localSnapshot.preferences?.value || getDefaultSyncablePreferences(),
     scenarioModes: params.mergedPayload.scenarioModes as any,
     scenarioShortcuts: params.mergedPayload.scenarioShortcuts as any,
     deviceId: params.deviceId,
@@ -167,6 +174,7 @@ const mergeLegacyPayloadIntoSnapshot = (params: {
 
   return {
     meta: legacySubsetSnapshot.meta,
+    preferences: params.localSnapshot.preferences,
     scenarios: legacySubsetSnapshot.scenarios,
     shortcuts: legacySubsetSnapshot.shortcuts,
     bookmarkFolders: params.localSnapshot.bookmarkFolders,
@@ -180,6 +188,7 @@ const mergeLegacyPayloadIntoSnapshot = (params: {
 
 const sameSnapshotContent = (left: LeafTabSyncSnapshot, right: LeafTabSyncSnapshot) => {
   return JSON.stringify({
+    preferences: left.preferences,
     scenarios: left.scenarios,
     shortcuts: left.shortcuts,
     bookmarkFolders: left.bookmarkFolders,
@@ -189,6 +198,7 @@ const sameSnapshotContent = (left: LeafTabSyncSnapshot, right: LeafTabSyncSnapsh
     bookmarkOrders: left.bookmarkOrders,
     tombstones: left.tombstones,
   }) === JSON.stringify({
+    preferences: right.preferences,
     scenarios: right.scenarios,
     shortcuts: right.shortcuts,
     bookmarkFolders: right.bookmarkFolders,
@@ -378,4 +388,3 @@ export class LeafTabLegacySingleFileCompat {
     this.writeBridgeState(nextBridgeState);
   }
 }
-

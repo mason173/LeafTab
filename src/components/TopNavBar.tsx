@@ -55,7 +55,7 @@ interface TopNavBarProps {
   onWeatherUpdate?: (code: number) => void;
   variant?: 'inverted' | 'default';
   className?: string;
-  rightSlot?: React.ReactNode;
+  leftSlot?: React.ReactNode;
   reduceVisualEffects?: boolean;
 }
 
@@ -70,7 +70,7 @@ export const TopNavBar = memo(function TopNavBar({
   onWeatherUpdate,
   className = "",
   variant = 'inverted',
-  rightSlot,
+  leftSlot,
   reduceVisualEffects = false,
 }: TopNavBarProps) {
   const { t } = useTranslation();
@@ -118,28 +118,44 @@ export const TopNavBar = memo(function TopNavBar({
   const settingsNode = settingsButton
     ? settingsButton
     : null;
+  const revealClass = settingsRevealOnHover && !keepControlsVisible
+    ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
+    : 'opacity-100 pointer-events-auto';
+  const fadeClass = fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : '';
 
   return (
-    <div className={`flex items-center justify-between w-full ${className}`} data-name="TopNavBar">
+    <div className={`relative w-full h-full ${className}`} data-name="TopNavBar">
       {!hideWeather && (
-        <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
-          {weatherNode}
+        <div className={`absolute left-0 top-0 ${fadeClass}`}>
+          <div className="pointer-events-auto">
+            {weatherNode}
+          </div>
         </div>
       )}
-      
-      <div className={fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}>
-        <div
-          className={`flex items-center gap-3 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${
-            settingsRevealOnHover && !keepControlsVisible
-              ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
-              : 'opacity-100'
-          }`}
-        >
-          {rightSlot}
-          {syncButton}
-          {settingsNode}
+
+      {leftSlot ? (
+        <div className={`absolute left-0 top-0 ${fadeClass}`}>
+          <div className="pointer-events-auto">
+            {leftSlot}
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {syncButton ? (
+        <div className={`absolute right-0 top-0 ${fadeClass}`}>
+          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}>
+            {syncButton}
+          </div>
+        </div>
+      ) : null}
+
+      {settingsNode ? (
+        <div className={`absolute bottom-0 right-0 ${fadeClass}`}>
+          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}>
+            {settingsNode}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 });

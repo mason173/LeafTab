@@ -13,6 +13,10 @@ interface TimeDisplayDialogProps {
   previewTime: string;
   is24Hour: boolean;
   onIs24HourChange: (checked: boolean) => void;
+  showDate: boolean;
+  onShowDateChange: (checked: boolean) => void;
+  showWeekday: boolean;
+  onShowWeekdayChange: (checked: boolean) => void;
   showSeconds: boolean;
   onShowSecondsChange: (checked: boolean) => void;
   showLunar: boolean;
@@ -29,6 +33,10 @@ export function TimeDisplayDialog({
   previewTime,
   is24Hour,
   onIs24HourChange,
+  showDate,
+  onShowDateChange,
+  showWeekday,
+  onShowWeekdayChange,
   showSeconds,
   onShowSecondsChange,
   showLunar,
@@ -40,30 +48,38 @@ export function TimeDisplayDialog({
   const { t } = useTranslation();
   const settingsCards = [
     {
+      key: 'show-date',
+      title: t("settings.showDate.label", { defaultValue: "显示日期" }),
+      checked: showDate,
+      onCheckedChange: onShowDateChange,
+    },
+    {
+      key: 'show-weekday',
+      title: t("settings.showWeekday.label", { defaultValue: "显示星期" }),
+      checked: showWeekday,
+      onCheckedChange: onShowWeekdayChange,
+    },
+    {
+      key: 'show-lunar',
+      title: t("settings.showLunar.label"),
+      checked: showLunar,
+      onCheckedChange: onShowLunarChange,
+    },
+    {
       key: 'time-format',
       title: t("settings.timeFormat.label"),
-      description: t("settings.timeFormat.description"),
       checked: is24Hour,
       onCheckedChange: onIs24HourChange,
     },
     {
       key: 'show-seconds',
       title: t("settings.showSeconds.label"),
-      description: t("settings.showSeconds.description"),
       checked: showSeconds,
       onCheckedChange: onShowSecondsChange,
     },
     {
-      key: 'show-lunar',
-      title: t("settings.showLunar.label"),
-      description: t("settings.showLunar.description"),
-      checked: showLunar,
-      onCheckedChange: onShowLunarChange,
-    },
-    {
       key: 'time-animation',
       title: t("settings.timeAnimation.label"),
-      description: t("settings.timeAnimation.description"),
       checked: timeAnimationEnabled,
       onCheckedChange: (checked: boolean) => {
         onTimeAnimationModeChange(checked ? 'on' : 'off');
@@ -88,23 +104,20 @@ export function TimeDisplayDialog({
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
         >
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3">
               {settingsCards.map((card) => (
                 <button
                   key={card.key}
                   type="button"
-                  className={`no-pill-radius !rounded-[24px] flex min-h-[124px] flex-col justify-between border p-4 text-left transition-colors ${
+                  className={`no-pill-radius !rounded-[20px] flex min-h-[64px] items-center border px-4 py-3 text-left transition-colors ${
                     card.checked
                       ? "border-primary/35 bg-primary/10"
                       : "border-border bg-secondary/35 hover:bg-secondary/55"
                   }`}
                   onClick={() => card.onCheckedChange(!card.checked)}
                 >
-                  <div className="flex flex-col gap-2">
+                  <div className="flex w-full items-center justify-between gap-3">
                     <span className="text-sm font-medium leading-none">{card.title}</span>
-                    <span className="text-xs leading-5 text-muted-foreground">{card.description}</span>
-                  </div>
-                  <div className="flex items-end justify-end gap-3 pt-3">
                     <Switch
                       id={`time-display-dialog-${card.key}`}
                       checked={card.checked}

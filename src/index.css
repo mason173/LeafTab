@@ -30,8 +30,8 @@
     [role="tablist"],
     [role="tab"],
     button:not([data-slot="checkbox"]):not([data-slot="switch"]):not([data-slot="radio-group-item"]):not([role="checkbox"]):not([role="switch"]):not([role="radio"]):not(.no-pill-radius),
-    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
-    textarea
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not(.no-pill-radius),
+    textarea:not(.no-pill-radius)
   ) {
     border-radius: 9999px !important;
   }

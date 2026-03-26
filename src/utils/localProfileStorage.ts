@@ -1,6 +1,7 @@
 import { SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from '@/scenario/scenario';
 import type { ScenarioMode } from '@/scenario/scenario';
-import type { ScenarioShortcuts } from '@/types';
+import type { ScenarioShortcuts, SyncablePreferences } from '@/types';
+import { normalizeSyncablePreferences, readSyncablePreferencesFromStorage } from '@/utils/syncablePreferences';
 
 export const LOCAL_SHORTCUTS_KEY = 'local_shortcuts_v3';
 export const LEGACY_SHORTCUTS_KEY = 'local_shortcuts';
@@ -13,6 +14,7 @@ export type LocalProfileSnapshot = {
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  preferences?: SyncablePreferences;
 };
 
 
@@ -34,7 +36,10 @@ const parseJson = <T>(raw: string | null): T | null => {
 export const readLocalProfileSnapshot = (): LocalProfileSnapshot | null => {
   const snapshot = parseJson<LocalProfileSnapshot>(localStorage.getItem(LOCAL_PROFILE_SNAPSHOT_KEY));
   if (snapshot && Array.isArray(snapshot.scenarioModes) && typeof snapshot.selectedScenarioId === 'string' && isObject(snapshot.scenarioShortcuts)) {
-    return snapshot;
+    return {
+      ...snapshot,
+      preferences: normalizeSyncablePreferences(snapshot.preferences || readSyncablePreferencesFromStorage()),
+    };
   }
 
   const scenarioModes = parseJson<ScenarioMode[]>(localStorage.getItem(SCENARIO_MODES_KEY));
@@ -46,15 +51,27 @@ export const readLocalProfileSnapshot = (): LocalProfileSnapshot | null => {
     scenarioModes,
     selectedScenarioId,
     scenarioShortcuts,
+    preferences: readSyncablePreferencesFromStorage(),
   };
 };
 
 export const persistLocalProfileSnapshot = (snapshot: LocalProfileSnapshot) => {
-  const serialized = JSON.stringify(snapshot);
+  const existing = readLocalProfileSnapshot();
+  const nextSnapshot: LocalProfileSnapshot = {
+    scenarioModes: snapshot.scenarioModes,
+    selectedScenarioId: snapshot.selectedScenarioId,
+    scenarioShortcuts: snapshot.scenarioShortcuts,
+    preferences: normalizeSyncablePreferences(
+      snapshot.preferences
+      || existing?.preferences
+      || readSyncablePreferencesFromStorage(),
+    ),
+  };
+  const serialized = JSON.stringify(nextSnapshot);
   localStorage.setItem(LOCAL_PROFILE_SNAPSHOT_KEY, serialized);
-  localStorage.setItem(SCENARIO_MODES_KEY, JSON.stringify(snapshot.scenarioModes));
-  localStorage.setItem(SCENARIO_SELECTED_KEY, snapshot.selectedScenarioId);
-  localStorage.setItem(LOCAL_SHORTCUTS_KEY, JSON.stringify(snapshot.scenarioShortcuts));
+  localStorage.setItem(SCENARIO_MODES_KEY, JSON.stringify(nextSnapshot.scenarioModes));
+  localStorage.setItem(SCENARIO_SELECTED_KEY, nextSnapshot.selectedScenarioId);
+  localStorage.setItem(LOCAL_SHORTCUTS_KEY, JSON.stringify(nextSnapshot.scenarioShortcuts));
   localStorage.removeItem(LEGACY_SHORTCUTS_KEY);
   localStorage.setItem('local_shortcuts_updated_at', new Date().toISOString());
 };
@@ -73,11 +90,26 @@ export const readRoleSeedSnapshot = (): LocalProfileSnapshot | null => {
   if (!snapshot || !Array.isArray(snapshot.scenarioModes) || typeof snapshot.selectedScenarioId !== 'string' || !isObject(snapshot.scenarioShortcuts)) {
     return null;
   }
-  return snapshot;
+  return {
+    ...snapshot,
+    preferences: normalizeSyncablePreferences(snapshot.preferences || readSyncablePreferencesFromStorage()),
+  };
 };
 
 export const persistRoleSeedSnapshot = (snapshot: LocalProfileSnapshot) => {
-  localStorage.setItem(ROLE_SEED_PROFILE_KEY, JSON.stringify(snapshot));
+  localStorage.setItem(ROLE_SEED_PROFILE_KEY, JSON.stringify({
+    ...snapshot,
+    preferences: normalizeSyncablePreferences(snapshot.preferences || readSyncablePreferencesFromStorage()),
+  }));
+};
+
+export const persistLocalProfilePreferences = (preferences: SyncablePreferences) => {
+  const current = readLocalProfileSnapshot();
+  if (!current) return;
+  persistLocalProfileSnapshot({
+    ...current,
+    preferences: normalizeSyncablePreferences(preferences),
+  });
 };
 
 

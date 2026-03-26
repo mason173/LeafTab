@@ -34,10 +34,15 @@ interface HomeMainContentProps {
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
   onShowSecondsChange: (checked: boolean) => void;
+  showDate: boolean;
+  onShowDateChange: (checked: boolean) => void;
+  showWeekday: boolean;
+  onShowWeekdayChange: (checked: boolean) => void;
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
+  onWeatherUpdate?: (code: number) => void;
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
@@ -68,10 +73,15 @@ export const HomeMainContent = memo(function HomeMainContent({
   onIs24HourChange,
   showSeconds,
   onShowSecondsChange,
+  showDate,
+  onShowDateChange,
+  showWeekday,
+  onShowWeekdayChange,
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
   onTimeAnimationModeChange,
+  onWeatherUpdate,
   timeFont,
   onTimeFontChange,
   layout,
@@ -160,10 +170,15 @@ export const HomeMainContent = memo(function HomeMainContent({
                   onIs24HourChange={onIs24HourChange}
                   showSeconds={showSeconds}
                   onShowSecondsChange={onShowSecondsChange}
+                  showDate={showDate}
+                  onShowDateChange={onShowDateChange}
+                  showWeekday={showWeekday}
+                  onShowWeekdayChange={onShowWeekdayChange}
                   showLunar={showLunar}
                   onShowLunarChange={onShowLunarChange}
                   timeAnimationEnabled={timeAnimationEnabled}
                   onTimeAnimationModeChange={onTimeAnimationModeChange}
+                  onWeatherUpdate={onWeatherUpdate}
                   timeFont={timeFont}
                   onTimeFontChange={onTimeFontChange}
                   forceWhiteText={modeFlags.forceWhiteSearchTheme}

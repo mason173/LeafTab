@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "@/components/ui/sonner";
 import type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
 import { useDocumentVisibility } from "@/hooks/useDocumentVisibility";
+import { SYNCABLE_PREFERENCES_APPLIED_EVENT } from "@/utils/syncablePreferences";
 
 export type { WeatherCitySuggestion } from "@/data/weatherCityIndex";
 
@@ -479,6 +480,16 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
       window.clearInterval(timer);
     };
   }, [isDocumentVisible, refresh]);
+
+  useEffect(() => {
+    const handlePreferencesApplied = () => {
+      const manualLocation = readManualLocation();
+      setManualCityName(manualLocation?.city || null);
+      void refresh(true);
+    };
+    window.addEventListener(SYNCABLE_PREFERENCES_APPLIED_EVENT, handlePreferencesApplied);
+    return () => window.removeEventListener(SYNCABLE_PREFERENCES_APPLIED_EVENT, handlePreferencesApplied);
+  }, [refresh]);
 
   return {
     weatherData,

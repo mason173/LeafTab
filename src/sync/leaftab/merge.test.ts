@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LeafTabSyncSnapshot } from './schema';
 import { LEAFTAB_SYNC_SCHEMA_VERSION } from './schema';
 import { mergeLeafTabSyncSnapshot } from './merge';
+import { getDefaultSyncablePreferences } from '@/utils/syncablePreferences';
 
 const createEmptySnapshot = (deviceId: string, generatedAt: string): LeafTabSyncSnapshot => ({
   meta: { version: LEAFTAB_SYNC_SCHEMA_VERSION, deviceId, generatedAt },
@@ -31,6 +32,92 @@ const createEmptySnapshot = (deviceId: string, generatedAt: string): LeafTabSync
 });
 
 describe('mergeLeafTabSyncSnapshot', () => {
+  it('merges preference fields changed independently on different devices', () => {
+    const base = createEmptySnapshot('base', '2026-03-21T10:00:00.000Z');
+    base.preferences = {
+      revision: 1,
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'base',
+      value: getDefaultSyncablePreferences(),
+    };
+
+    const local: LeafTabSyncSnapshot = JSON.parse(JSON.stringify(base));
+    local.meta = { version: LEAFTAB_SYNC_SCHEMA_VERSION, deviceId: 'local', generatedAt: '2026-03-21T10:01:00.000Z' };
+    local.preferences = {
+      revision: 2,
+      updatedAt: '2026-03-21T10:01:00.000Z',
+      updatedBy: 'local',
+      value: {
+        ...getDefaultSyncablePreferences(),
+        showDate: false,
+      },
+    };
+
+    const remote: LeafTabSyncSnapshot = JSON.parse(JSON.stringify(base));
+    remote.meta = { version: LEAFTAB_SYNC_SCHEMA_VERSION, deviceId: 'remote', generatedAt: '2026-03-21T10:02:00.000Z' };
+    remote.preferences = {
+      revision: 2,
+      updatedAt: '2026-03-21T10:02:00.000Z',
+      updatedBy: 'remote',
+      value: {
+        ...getDefaultSyncablePreferences(),
+        showWeekday: false,
+      },
+    };
+
+    const result = mergeLeafTabSyncSnapshot(base, local, remote, {
+      deviceId: 'merge-device',
+      generatedAt: '2026-03-21T10:03:00.000Z',
+    });
+
+    expect(result.snapshot.preferences?.value.showDate).toBe(false);
+    expect(result.snapshot.preferences?.value.showWeekday).toBe(false);
+    expect(result.snapshot.preferences?.revision).toBe(3);
+    expect(result.snapshot.preferences?.updatedBy).toBe('merge-device');
+    expect(result.orderSources.preferences).toBe('merged');
+  });
+
+  it('uses the fresher side when the same preference field conflicts', () => {
+    const base = createEmptySnapshot('base', '2026-03-21T10:00:00.000Z');
+    base.preferences = {
+      revision: 1,
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'base',
+      value: getDefaultSyncablePreferences(),
+    };
+
+    const local: LeafTabSyncSnapshot = JSON.parse(JSON.stringify(base));
+    local.meta = { version: LEAFTAB_SYNC_SCHEMA_VERSION, deviceId: 'local', generatedAt: '2026-03-21T10:01:00.000Z' };
+    local.preferences = {
+      revision: 2,
+      updatedAt: '2026-03-21T10:01:00.000Z',
+      updatedBy: 'local',
+      value: {
+        ...getDefaultSyncablePreferences(),
+        theme: 'dark',
+      },
+    };
+
+    const remote: LeafTabSyncSnapshot = JSON.parse(JSON.stringify(base));
+    remote.meta = { version: LEAFTAB_SYNC_SCHEMA_VERSION, deviceId: 'remote', generatedAt: '2026-03-21T10:02:00.000Z' };
+    remote.preferences = {
+      revision: 3,
+      updatedAt: '2026-03-21T10:02:00.000Z',
+      updatedBy: 'remote',
+      value: {
+        ...getDefaultSyncablePreferences(),
+        theme: 'light',
+      },
+    };
+
+    const result = mergeLeafTabSyncSnapshot(base, local, remote);
+
+    expect(result.snapshot.preferences?.value.theme).toBe('light');
+    expect(result.snapshot.preferences?.revision).toBe(3);
+    expect(result.snapshot.preferences?.updatedBy).toBe('remote');
+    expect(result.orderSources.preferences).toBe('remote');
+  });
+
   it('merges shortcut fields changed on different sides', () => {
     const base = createEmptySnapshot('base', '2026-03-21T10:00:00.000Z');
     base.scenarios.work = {

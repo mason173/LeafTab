@@ -2,31 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import {
+  getShortcutIconColor,
+  normalizeShortcutVisualMode,
+  shouldUseOfficialShortcutIcon,
+} from '@/utils/shortcutIconPreferences';
+import type { Shortcut } from '@/types';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
 const MAX_CACHE_ITEMS = 400;
 const FAVICON_FAIL_PREFIX = 'favicon_cache_v2_fail:';
 const FAVICON_FAIL_TTL_MS = 12 * 60 * 60 * 1000;
-const EMPTY_ICON_COLOR_MAP_KEY = 'leaftab_empty_icon_color_map_v1';
 const EMPTY_ICON_CONTAINER_PATH_D = "M0 36C0.000156948 13.5 6.42873 0.0000175685 36 0C65.5713 -0.0000175684 72 11.8929 72 36C72 61.7143 61.0716 72 36 72C13.8214 72 -0.000192817 63.6429 0 36Z";
-const EMPTY_ICON_COLOR_PALETTE = [
-  '#F4E300',
-  '#7279E3',
-  '#24212E',
-  '#000000',
-  '#1964D2',
-  '#1BB1C7',
-  '#099A4A',
-  '#13375A',
-  '#1C84E2',
-  '#FA8A00',
-  '#E25724',
-  '#F00016',
-  '#DD4E84',
-  '#4E4DB7',
-  '#2994CC',
-] as const;
 
 const normalizeDomain = (domain: string) => {
   let d = domain.trim().toLowerCase();
@@ -152,36 +140,6 @@ function isHttpFaviconEligible(url: string, domain: string) {
   return shouldProbeRemoteFaviconForUrl(url);
 }
 
-function readEmptyIconColorMap() {
-  try {
-    const raw = localStorage.getItem(EMPTY_ICON_COLOR_MAP_KEY);
-    if (!raw) return {} as Record<string, string>;
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    if (!parsed || typeof parsed !== 'object') return {} as Record<string, string>;
-    return parsed;
-  } catch {
-    return {} as Record<string, string>;
-  }
-}
-
-function persistEmptyIconColorMap(map: Record<string, string>) {
-  try {
-    localStorage.setItem(EMPTY_ICON_COLOR_MAP_KEY, JSON.stringify(map));
-  } catch {}
-}
-
-function getPersistedEmptyIconColor(seed: string) {
-  const safeSeed = seed.trim().toLowerCase();
-  if (!safeSeed) return EMPTY_ICON_COLOR_PALETTE[0];
-  const map = readEmptyIconColorMap();
-  const existing = map[safeSeed];
-  if (existing) return existing;
-  const picked = EMPTY_ICON_COLOR_PALETTE[Math.floor(Math.random() * EMPTY_ICON_COLOR_PALETTE.length)];
-  map[safeSeed] = picked;
-  persistEmptyIconColorMap(map);
-  return picked;
-}
-
 const ICON_META_PREFIX = 'favicon_cache_v2_meta:';
 type IconCandidateKind = 'custom' | 'favicon' | 'provided';
 type IconCandidate = {
@@ -233,6 +191,11 @@ export default function ShortcutIcon({
   fallbackStyle = 'default',
   fallbackLabel,
   fallbackLetterSize = 24,
+  useOfficialIcon,
+  autoUseOfficialIcon,
+  officialIconAvailableAtSave,
+  iconRendering,
+  iconColor,
 }: {
   icon: string;
   url: string;
@@ -242,6 +205,11 @@ export default function ShortcutIcon({
   fallbackStyle?: 'default' | 'emptyicon';
   fallbackLabel?: string;
   fallbackLetterSize?: number;
+  useOfficialIcon?: Shortcut['useOfficialIcon'];
+  autoUseOfficialIcon?: Shortcut['autoUseOfficialIcon'];
+  officialIconAvailableAtSave?: Shortcut['officialIconAvailableAtSave'];
+  iconRendering?: Shortcut['iconRendering'];
+  iconColor?: Shortcut['iconColor'];
 }) {
   const firefox = isFirefoxBuildTarget();
   const domain = useMemo(() => extractDomainFromUrl(url), [url]);
@@ -254,6 +222,7 @@ export default function ShortcutIcon({
   });
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
+  const resolvedIconRendering = normalizeShortcutVisualMode(iconRendering);
 
   useEffect(() => {
     setCachedFavicon(domain ? getCachedFavicon(domain) : '');
@@ -288,22 +257,32 @@ export default function ShortcutIcon({
 
   const candidates = useMemo<IconCandidate[]>(() => {
     const list: IconCandidate[] = [];
-    if (customIconUrl) {
+    const shouldUseOfficial = shouldUseOfficialShortcutIcon({
+      officialAvailable: Boolean(customIconUrl),
+      shortcut: {
+        useOfficialIcon,
+        autoUseOfficialIcon,
+        officialIconAvailableAtSave,
+      },
+    });
+    if (shouldUseOfficial && customIconUrl) {
       list.push({ src: customIconUrl, kind: 'custom' });
     }
-    if (cachedFavicon && (fallbackStyle !== 'emptyicon' || cachedFavicon.startsWith('data:'))) {
-      list.push({ src: cachedFavicon, kind: 'favicon' });
-    }
-    // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
-    if (icon && !isIowenFaviconUrl(icon)) {
-      list.push({ src: icon, kind: 'provided' });
-    }
-    if (domain && canProbeRemoteFavicon && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
-      list.push(
-        ...(firefox
-          ? buildFirefoxFaviconCandidates(domain, exact || size <= 36)
-          : buildFaviconCandidates(domain)).map((src) => ({ src, kind: 'favicon' as const })),
-      );
+    if (resolvedIconRendering !== 'letter') {
+      if (cachedFavicon && (fallbackStyle !== 'emptyicon' || cachedFavicon.startsWith('data:'))) {
+        list.push({ src: cachedFavicon, kind: 'favicon' });
+      }
+      // Stored iowen proxy URLs are legacy/unreliable; use dynamic candidates instead.
+      if (icon && !isIowenFaviconUrl(icon)) {
+        list.push({ src: icon, kind: 'provided' });
+      }
+      if (domain && canProbeRemoteFavicon && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
+        list.push(
+          ...(firefox
+            ? buildFirefoxFaviconCandidates(domain, exact || size <= 36)
+            : buildFaviconCandidates(domain)).map((src) => ({ src, kind: 'favicon' as const })),
+        );
+      }
     }
     const uniqueBySrc = new Map<string, IconCandidate>();
     for (const candidate of list) {
@@ -319,7 +298,23 @@ export default function ShortcutIcon({
       ));
     }
     return unique;
-  }, [cachedFavicon, canProbeRemoteFavicon, customIconUrl, domain, exact, fallbackStyle, firefox, firefoxDomainCandidatesReady, icon, size, skipDomainCandidates]);
+  }, [
+    autoUseOfficialIcon,
+    cachedFavicon,
+    canProbeRemoteFavicon,
+    customIconUrl,
+    domain,
+    exact,
+    fallbackStyle,
+    firefox,
+    firefoxDomainCandidatesReady,
+    icon,
+    officialIconAvailableAtSave,
+    resolvedIconRendering,
+    size,
+    skipDomainCandidates,
+    useOfficialIcon,
+  ]);
 
   const [index, setIndex] = useState(0);
 
@@ -382,15 +377,15 @@ export default function ShortcutIcon({
   const labelSeed = (fallbackLabel || domain || '').trim();
   const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
   const emptyIconColorSeed = (domain || url || fallbackLabel || '').trim().toLowerCase();
-  const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getPersistedEmptyIconColor(emptyIconColorSeed));
+  const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getShortcutIconColor(emptyIconColorSeed, iconColor));
   const isCustomActive = activeCandidate?.kind === 'custom';
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = 24;
 
   useEffect(() => {
-    setEmptyIconColor(getPersistedEmptyIconColor(emptyIconColorSeed));
-  }, [emptyIconColorSeed]);
+    setEmptyIconColor(getShortcutIconColor(emptyIconColorSeed, iconColor));
+  }, [emptyIconColorSeed, iconColor]);
 
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);

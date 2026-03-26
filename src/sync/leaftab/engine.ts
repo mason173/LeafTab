@@ -92,6 +92,7 @@ const sameSnapshotContent = (
   if (!left && !right) return true;
   if (!left || !right) return false;
   return JSON.stringify({
+    preferences: left.preferences,
     scenarios: left.scenarios,
     shortcuts: left.shortcuts,
     bookmarkFolders: left.bookmarkFolders,
@@ -101,6 +102,7 @@ const sameSnapshotContent = (
     bookmarkOrders: left.bookmarkOrders,
     tombstones: left.tombstones,
   }) === JSON.stringify({
+    preferences: right.preferences,
     scenarios: right.scenarios,
     shortcuts: right.shortcuts,
     bookmarkFolders: right.bookmarkFolders,

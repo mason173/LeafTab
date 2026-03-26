@@ -28,6 +28,8 @@ const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
 const SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY = 'search_rotating_placeholder_enabled';
 const PREVENT_DUPLICATE_NEWTAB_KEY = 'leaftab_prevent_duplicate_newtab';
+const SHOW_DATE_KEY = 'showDate';
+const SHOW_WEEKDAY_KEY = 'showWeekday';
 const SHOW_LUNAR_KEY = 'showLunar';
 const TIME_ANIMATION_MODE_KEY = 'time_animation_mode';
 const VISUAL_EFFECTS_LEVEL_KEY = 'visual_effects_level';
@@ -140,6 +142,8 @@ export function useSettings() {
   const [searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
   const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
   const [is24Hour, setIs24Hour] = useState(true);
+  const [showDate, setShowDate] = useState<boolean>(() => readStoredBoolean(SHOW_DATE_KEY, true));
+  const [showWeekday, setShowWeekday] = useState<boolean>(() => readStoredBoolean(SHOW_WEEKDAY_KEY, true));
   const [showLunar, setShowLunar] = useState<boolean>(() => readStoredBoolean(SHOW_LUNAR_KEY, true));
   const [timeAnimationMode, setTimeAnimationMode] = useState<TimeAnimationMode>(() => readTimeAnimationMode());
   const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'Pacifico');
@@ -221,6 +225,8 @@ export function useSettings() {
     setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
     setSearchRotatingPlaceholderEnabled(readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
     setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
+    setShowDate(readStoredBoolean(SHOW_DATE_KEY, true));
+    setShowWeekday(readStoredBoolean(SHOW_WEEKDAY_KEY, true));
     setShowLunar(readStoredBoolean(SHOW_LUNAR_KEY, true));
     setTimeAnimationMode(readTimeAnimationMode());
     
@@ -274,6 +280,8 @@ export function useSettings() {
     queueLocalStorageSetItem(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, JSON.stringify(searchRotatingPlaceholderEnabled));
     queueLocalStorageSetItem(PREVENT_DUPLICATE_NEWTAB_KEY, JSON.stringify(preventDuplicateNewTab));
     queueLocalStorageSetItem('is24Hour', JSON.stringify(is24Hour));
+    queueLocalStorageSetItem(SHOW_DATE_KEY, JSON.stringify(showDate));
+    queueLocalStorageSetItem(SHOW_WEEKDAY_KEY, JSON.stringify(showWeekday));
     queueLocalStorageSetItem(SHOW_LUNAR_KEY, JSON.stringify(showLunar));
     queueLocalStorageSetItem(TIME_ANIMATION_MODE_KEY, timeAnimationMode);
     queueLocalStorageRemoveItem('time_animation_enabled');
@@ -300,9 +308,11 @@ export function useSettings() {
     searchSiteShortcutEnabled,
     shortcutCardVariant,
     shortcutCompactShowTitle,
+    showDate,
     showLunar,
     showSeconds,
     showTime,
+    showWeekday,
     tabSwitchSearchEngine,
     timeAnimationMode,
     visualEffectsLevel,
@@ -381,6 +391,10 @@ export function useSettings() {
     setPreventDuplicateNewTab,
     is24Hour,
     setIs24Hour,
+    showDate,
+    setShowDate,
+    showWeekday,
+    setShowWeekday,
     showLunar,
     setShowLunar,
     timeAnimationMode,
