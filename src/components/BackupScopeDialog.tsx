@@ -18,6 +18,7 @@ interface BackupScopeDialogProps {
   onOpenChange: (open: boolean) => void;
   mode: 'export' | 'import';
   availableScope?: Partial<LeafTabLocalBackupExportScope> | null;
+  defaultScope?: Partial<LeafTabLocalBackupExportScope> | null;
   onConfirm: (scope: LeafTabLocalBackupExportScope) => void | Promise<void>;
 }
 
@@ -31,20 +32,28 @@ export function BackupScopeDialog({
   onOpenChange,
   mode,
   availableScope,
+  defaultScope,
   onConfirm,
 }: BackupScopeDialogProps) {
   const { t } = useTranslation();
   const resolvedAvailableScope = useMemo(() => normalizeScope(availableScope), [availableScope]);
-  const [includeShortcuts, setIncludeShortcuts] = useState(resolvedAvailableScope.shortcuts);
-  const [includeBookmarks, setIncludeBookmarks] = useState(resolvedAvailableScope.bookmarks);
+  const resolvedDefaultScope = useMemo(() => {
+    const normalizedDefault = normalizeScope(defaultScope);
+    return {
+      shortcuts: resolvedAvailableScope.shortcuts && normalizedDefault.shortcuts,
+      bookmarks: resolvedAvailableScope.bookmarks && normalizedDefault.bookmarks,
+    } satisfies LeafTabLocalBackupExportScope;
+  }, [defaultScope, resolvedAvailableScope.bookmarks, resolvedAvailableScope.shortcuts]);
+  const [includeShortcuts, setIncludeShortcuts] = useState(resolvedDefaultScope.shortcuts);
+  const [includeBookmarks, setIncludeBookmarks] = useState(resolvedDefaultScope.bookmarks);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setIncludeShortcuts(resolvedAvailableScope.shortcuts);
-    setIncludeBookmarks(resolvedAvailableScope.bookmarks);
+    setIncludeShortcuts(resolvedDefaultScope.shortcuts);
+    setIncludeBookmarks(resolvedDefaultScope.bookmarks);
     setSubmitting(false);
-  }, [open, resolvedAvailableScope.bookmarks, resolvedAvailableScope.shortcuts]);
+  }, [open, resolvedDefaultScope.bookmarks, resolvedDefaultScope.shortcuts]);
 
   const canConfirm = includeShortcuts || includeBookmarks;
   const nextScope = useMemo(() => ({
@@ -77,10 +86,10 @@ export function BackupScopeDialog({
           <DialogDescription className="text-muted-foreground">
             {isExport
               ? t('settings.backup.exportScope.description', {
-                  defaultValue: '可以只导出快捷方式，或只导出书签。至少要保留一项，默认两项都会一起导出。',
+                  defaultValue: '可以只导出快捷方式，或只导出书签。至少要保留一项，默认会勾选快捷方式。',
                 })
               : t('settings.backup.importScope.description', {
-                  defaultValue: '这个备份同时包含快捷方式和书签。你可以只导入其中一部分，至少要保留一项。',
+                  defaultValue: '这个备份可能同时包含快捷方式和书签。你可以只导入其中一部分，至少要保留一项。',
                 })}
           </DialogDescription>
         </DialogHeader>

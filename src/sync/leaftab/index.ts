@@ -5,6 +5,7 @@ export * from './remoteStore';
 export * from './snapshot';
 export * from './snapshotCodec';
 export * from './bookmarks';
+export * from './bookmarkSyncMode';
 export * from './merge';
 export * from './summary';
 export * from './webdavStore';

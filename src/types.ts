@@ -1,11 +1,67 @@
 import { ScenarioMode } from './scenario/scenario';
+import type { ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
+import type { DisplayMode } from '@/displayMode/config';
+import type { TimeAnimationMode } from '@/hooks/useSettings';
+import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
+
+export type ShortcutVisualMode = 'favicon' | 'letter';
+export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
+
+export interface WeatherManualLocation {
+  city: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface SyncablePreferences {
+  displayMode: DisplayMode;
+  openInNewTab: boolean;
+  searchTabSwitchEngine: boolean;
+  searchPrefixEnabled: boolean;
+  searchSiteDirectEnabled: boolean;
+  searchSiteShortcutEnabled: boolean;
+  searchAnyKeyCaptureEnabled: boolean;
+  searchCalculatorEnabled: boolean;
+  searchRotatingPlaceholderEnabled: boolean;
+  searchEngine: SearchEngine;
+  preventDuplicateNewTab: boolean;
+  is24Hour: boolean;
+  showDate: boolean;
+  showWeekday: boolean;
+  showLunar: boolean;
+  timeAnimationMode: TimeAnimationMode;
+  timeFont: string;
+  showSeconds: boolean;
+  visualEffectsLevel: VisualEffectsLevel;
+  showTime: boolean;
+  shortcutCardVariant: ShortcutCardVariant;
+  shortcutCompactShowTitle: boolean;
+  shortcutGridColumnsByVariant: Record<ShortcutCardVariant, number>;
+  shortcutsRowsPerColumn: number;
+  privacyConsent: boolean | null;
+  theme: 'system' | 'light' | 'dark';
+  language: string;
+  accentColor: string;
+  wallpaperMode: SyncableWallpaperMode;
+  wallpaperMaskOpacity: number;
+  darkModeAutoDimWallpaperEnabled: boolean;
+  colorWallpaperId: string;
+  weatherManualLocation: WeatherManualLocation | null;
+}
 
 export interface Shortcut {
   id: string;
   title: string;
   url: string;
   icon: string;
+  useOfficialIcon?: boolean;
+  autoUseOfficialIcon?: boolean;
+  officialIconAvailableAtSave?: boolean;
+  iconRendering?: ShortcutVisualMode;
+  iconColor?: string;
 }
+
+export type ShortcutDraft = Omit<Shortcut, 'id'>;
 
 export type ScenarioShortcuts = Record<string, Shortcut[]>;
 
@@ -68,6 +124,7 @@ export interface CloudShortcutsPayloadV3 {
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  preferences?: SyncablePreferences;
 }
 
 export type ContextMenuState =

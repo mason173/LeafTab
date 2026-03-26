@@ -39,6 +39,7 @@ export interface LeafTabSyncDialogProps {
   summaryText?: string;
   cloudSignedIn?: boolean;
   cloudEnabled?: boolean;
+  cloudSyncBookmarksEnabled?: boolean;
   cloudUsername?: string;
   cloudLastSyncLabel?: string;
   cloudNextSyncLabel?: string;
@@ -311,6 +312,7 @@ export function LeafTabSyncDialog({
   summaryText,
   cloudSignedIn = false,
   cloudEnabled = false,
+  cloudSyncBookmarksEnabled = false,
   cloudUsername,
   cloudLastSyncLabel,
   cloudNextSyncLabel,
@@ -396,10 +398,14 @@ export function LeafTabSyncDialog({
       statusTone: !cloudSignedIn ? 'neutral' : error ? 'danger' : syncing ? 'info' : enabled ? 'success' : 'neutral',
       statusIcon: !cloudSignedIn ? RiCloudFill : error ? RiErrorWarningFill : syncing ? RiRefreshFill : RiCheckboxCircleFill,
       statusSpin: syncing,
-      scopeLabel: t('leaftabSyncDialog.cloud.scopeRich', {
-        defaultValue: '快捷方式、{{scope}}',
-        scope: resolvedBookmarkScope,
-      }),
+      scopeLabel: cloudSyncBookmarksEnabled
+        ? t('leaftabSyncDialog.cloud.scopeRich', {
+            defaultValue: '快捷方式、{{scope}}',
+            scope: resolvedBookmarkScope,
+          })
+        : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
+            defaultValue: '仅快捷方式',
+          }),
     };
   }, [
     cloudAnalysis,
@@ -407,6 +413,7 @@ export function LeafTabSyncDialog({
     cloudLastSyncLabel,
     cloudNextSyncLabel,
     cloudSignedIn,
+    cloudSyncBookmarksEnabled,
     cloudSyncState.status,
     cloudUsername,
     resolvedBookmarkScope,

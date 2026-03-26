@@ -28,6 +28,7 @@ import {
   type SearchHistoryEntry,
 } from '@/utils/searchHistory';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
+import { SYNCABLE_PREFERENCES_APPLIED_EVENT } from '@/utils/syncablePreferences';
 import { queueLocalStorageSetItem } from '@/utils/storageWriteQueue';
 
 const SEARCH_ENGINE_KEY = 'search_engine';
@@ -196,6 +197,17 @@ export function useSearch(
       setSearchEngine(normalizedEngine);
     }
   }, [searchEngine]);
+
+  useEffect(() => {
+    const syncSearchEngine = () => {
+      try {
+        const next = normalizeSearchEngineForPlatform((localStorage.getItem(SEARCH_ENGINE_KEY) || '').trim() as SearchEngine);
+        setSearchEngine((prev) => prev === next ? prev : next);
+      } catch {}
+    };
+    window.addEventListener(SYNCABLE_PREFERENCES_APPLIED_EVENT, syncSearchEngine);
+    return () => window.removeEventListener(SYNCABLE_PREFERENCES_APPLIED_EVENT, syncSearchEngine);
+  }, []);
 
   useEffect(() => {
     queueLocalStorageSetItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));

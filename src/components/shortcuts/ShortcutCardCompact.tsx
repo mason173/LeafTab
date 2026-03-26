@@ -45,6 +45,11 @@ export function ShortcutCardCompact({
             frame="never"
             fallbackStyle="emptyicon"
             fallbackLabel={shortcut.title}
+            useOfficialIcon={shortcut.useOfficialIcon}
+            autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
+            officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+            iconRendering={shortcut.iconRendering}
+            iconColor={shortcut.iconColor}
           />
         </div>
         <p

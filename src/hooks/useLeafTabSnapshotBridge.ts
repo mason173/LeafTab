@@ -1,6 +1,6 @@
 import { useCallback, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
-import type { ScenarioMode, ScenarioShortcuts } from '@/types';
+import type { ScenarioMode, ScenarioShortcuts, SyncablePreferences } from '@/types';
 import { defaultScenarioModes } from '@/scenario/scenario';
 import {
   buildLeafTabSyncSnapshot,
@@ -29,6 +29,7 @@ const cloneLeafTabSyncSnapshot = (snapshot: LeafTabSyncSnapshot): LeafTabSyncSna
 const createComparableSnapshotSignature = (snapshot: LeafTabSyncSnapshot | null | undefined) => {
   if (!snapshot) return null;
   return {
+    preferences: snapshot.preferences,
     scenarios: snapshot.scenarios,
     shortcuts: snapshot.shortcuts,
     bookmarkFolders: snapshot.bookmarkFolders,
@@ -42,12 +43,14 @@ const createComparableSnapshotSignature = (snapshot: LeafTabSyncSnapshot | null 
 
 export const createSnapshotBuildSignature = (params: {
   baselineSnapshot?: LeafTabSyncSnapshot | null;
+  preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
   bookmarkTree: Awaited<ReturnType<typeof captureLeafTabBookmarkTreeDraft>> | null | undefined;
 }) => {
   return JSON.stringify({
     baseline: createComparableSnapshotSignature(params.baselineSnapshot),
+    preferences: params.preferences,
     scenarioModes: params.scenarioModes,
     scenarioShortcuts: params.scenarioShortcuts,
     bookmarks: {
@@ -64,6 +67,7 @@ export const createEmptyLeafTabSyncSnapshot = (deviceId: string): LeafTabSyncSna
     deviceId,
     generatedAt: EMPTY_TIMESTAMP,
   },
+  preferences: null,
   scenarios: {},
   shortcuts: {},
   bookmarkFolders: {},
@@ -117,10 +121,12 @@ export const deriveLeafTabSyncApplyState = ({
 
   return {
     projected,
+    nextPreferences: projected.preferences,
     nextScenarioModes,
     nextScenarioShortcuts,
     nextSelectedScenarioId,
     nextProfileSnapshot: {
+      preferences: projected.preferences || undefined,
       scenarioModes: nextScenarioModes,
       selectedScenarioId: nextSelectedScenarioId,
       scenarioShortcuts: nextScenarioShortcuts,
@@ -138,6 +144,8 @@ type UseLeafTabSnapshotBridgeOptions = {
   selectedScenarioId: string;
   user: string | null;
   localDirtyRef: MutableRefObject<boolean>;
+  buildPreferencesSnapshot: () => SyncablePreferences;
+  applyPreferencesSnapshot: (preferences: SyncablePreferences | null) => Promise<void> | void;
   setScenarioModes: Dispatch<SetStateAction<ScenarioMode[]>>;
   setSelectedScenarioId: Dispatch<SetStateAction<string>>;
   setScenarioShortcuts: Dispatch<SetStateAction<ScenarioShortcuts>>;
@@ -154,6 +162,8 @@ export function useLeafTabSnapshotBridge({
   selectedScenarioId,
   user,
   localDirtyRef,
+  buildPreferencesSnapshot,
+  applyPreferencesSnapshot,
   setScenarioModes,
   setSelectedScenarioId,
   setScenarioShortcuts,
@@ -164,18 +174,23 @@ export function useLeafTabSnapshotBridge({
   const buildSnapshotFromCurrentState = useCallback(async (options?: {
     requestBookmarkPermission?: boolean;
     baselineStorageKey?: string;
+    includeBookmarks?: boolean;
   }) => {
     flushQueuedLocalStorageWrites();
     const baselineStorageKey = options?.baselineStorageKey || leafTabSyncBaselineStorageKey;
     const baselineSnapshot = readBaselineSnapshot(
       baselineStorageKey,
     );
-    const bookmarkTree = await captureLeafTabBookmarkTreeDraft({
-      scope: leafTabBookmarkSyncScope,
-      requestPermission: options?.requestBookmarkPermission === true,
-    });
+    const bookmarkTree = options?.includeBookmarks === false
+      ? null
+      : await captureLeafTabBookmarkTreeDraft({
+          scope: leafTabBookmarkSyncScope,
+          requestPermission: options?.requestBookmarkPermission === true,
+        });
+    const preferences = buildPreferencesSnapshot();
     const signature = createSnapshotBuildSignature({
       baselineSnapshot,
+      preferences,
       scenarioModes,
       scenarioShortcuts,
       bookmarkTree,
@@ -188,6 +203,7 @@ export function useLeafTabSnapshotBridge({
     const generatedAt = new Date().toISOString();
     const state = createLeafTabSyncBuildState({
       previousSnapshot: baselineSnapshot,
+      preferences,
       scenarioModes,
       scenarioShortcuts,
       bookmarkTree,
@@ -195,6 +211,7 @@ export function useLeafTabSnapshotBridge({
       generatedAt,
     });
     const nextSnapshot = buildLeafTabSyncSnapshot({
+      preferences,
       scenarioModes,
       scenarioShortcuts,
       bookmarkTree,
@@ -212,6 +229,7 @@ export function useLeafTabSnapshotBridge({
     leafTabSyncBaselineStorageKey,
     leafTabSyncDeviceId,
     readBaselineSnapshot,
+    buildPreferencesSnapshot,
     scenarioModes,
     scenarioShortcuts,
   ]);
@@ -236,6 +254,7 @@ export function useLeafTabSnapshotBridge({
   ) => {
     const {
       projected,
+      nextPreferences,
       nextScenarioModes,
       nextScenarioShortcuts,
       nextProfileSnapshot,
@@ -279,6 +298,8 @@ export function useLeafTabSnapshotBridge({
       requestPermission: false,
     });
 
+    await applyPreferencesSnapshot(nextPreferences);
+
     persistLocalProfileSnapshot(nextProfileSnapshot);
 
     if (user) {
@@ -300,6 +321,7 @@ export function useLeafTabSnapshotBridge({
   }, [
     leafTabBookmarkSyncScope,
     localDirtyRef,
+    applyPreferencesSnapshot,
     selectedScenarioId,
     setScenarioModes,
     setScenarioShortcuts,

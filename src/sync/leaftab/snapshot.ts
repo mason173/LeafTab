@@ -1,11 +1,14 @@
 import type { ScenarioMode } from '@/scenario/scenario';
-import type { ScenarioShortcuts, Shortcut } from '@/types';
+import type { ScenarioShortcuts, Shortcut, SyncablePreferences } from '@/types';
 import { getShortcutIdentityKey } from '@/utils/shortcutIdentity';
+import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
+import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import type { LeafTabBookmarkTreeDraft } from './bookmarks';
 import type {
   LeafTabSyncBookmarkFolderEntity,
   LeafTabSyncBookmarkItemEntity,
   LeafTabSyncBookmarkOrder,
+  LeafTabSyncPreferencesState,
   LeafTabSyncScenarioEntity,
   LeafTabSyncScenarioOrder,
   LeafTabSyncShortcutEntity,
@@ -31,6 +34,9 @@ type LeafTabOrderMetadata = {
 export interface LeafTabSnapshotBuildState {
   entities?: Record<string, LeafTabEntityMetadata>;
   tombstones?: Record<string, LeafTabSyncTombstone>;
+  preferences?: LeafTabOrderMetadata & {
+    value: SyncablePreferences;
+  };
   orders?: {
     scenarioOrder?: LeafTabOrderMetadata;
     shortcutOrders?: Record<string, LeafTabOrderMetadata>;
@@ -148,7 +154,12 @@ const isSameShortcutValue = (
     entity.title === (shortcut.title || '') &&
     entity.url === (shortcut.url || '') &&
     entity.icon === (shortcut.icon || '') &&
-    entity.description === ''
+    entity.description === '' &&
+    entity.useOfficialIcon === (shortcut.useOfficialIcon !== false) &&
+    entity.autoUseOfficialIcon === (shortcut.autoUseOfficialIcon !== false) &&
+    entity.officialIconAvailableAtSave === (shortcut.officialIconAvailableAtSave === true) &&
+    entity.iconRendering === normalizeShortcutVisualMode(shortcut.iconRendering) &&
+    (entity.iconColor || '') === normalizeShortcutIconColor(shortcut.iconColor)
   );
 };
 
@@ -299,6 +310,7 @@ const resolveSnapshotInput = (
 
 export const createLeafTabSyncBuildState = (params: {
   previousSnapshot?: LeafTabSyncSnapshot | null;
+  preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
   bookmarkTree?: LeafTabBookmarkTreeDraft | null;
@@ -309,6 +321,7 @@ export const createLeafTabSyncBuildState = (params: {
   const previousSnapshot = params.previousSnapshot || null;
   const state: LeafTabSnapshotBuildState = {
     entities: {},
+    preferences: undefined,
     tombstones: {
       ...(previousSnapshot?.tombstones || {}),
     },
@@ -330,6 +343,20 @@ export const createLeafTabSyncBuildState = (params: {
     params.scenarioShortcuts,
     params.bookmarkTree,
   );
+  const normalizedPreferences = normalizeSyncablePreferences(params.preferences);
+  const previousPreferences = previousSnapshot?.preferences || null;
+  state.preferences = previousPreferences
+    && JSON.stringify(previousPreferences.value) === JSON.stringify(normalizedPreferences)
+    ? {
+        updatedAt: previousPreferences.updatedAt,
+        updatedBy: previousPreferences.updatedBy,
+        revision: previousPreferences.revision,
+        value: normalizeSyncablePreferences(previousPreferences.value),
+      }
+    : {
+        ...createUpdatedOrderMetadata(previousPreferences || undefined, params.deviceId, generatedAt),
+        value: normalizedPreferences,
+      };
 
   params.scenarioModes.forEach((mode) => {
     const previousEntity = previousSnapshot?.scenarios[mode.id];
@@ -443,6 +470,7 @@ export const createLeafTabSyncBuildState = (params: {
 };
 
 export const buildLeafTabSyncSnapshot = (params: {
+  preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
   bookmarkTree?: LeafTabBookmarkTreeDraft | null;
@@ -457,6 +485,19 @@ export const buildLeafTabSyncSnapshot = (params: {
   const bookmarkItems: Record<string, LeafTabSyncBookmarkItemEntity> = {};
   const shortcutOrders: Record<string, LeafTabSyncShortcutOrder> = {};
   const bookmarkOrders: Record<string, LeafTabSyncBookmarkOrder> = {};
+  const preferences: LeafTabSyncPreferencesState = params.state?.preferences
+    ? {
+        revision: params.state.preferences.revision,
+        updatedAt: params.state.preferences.updatedAt,
+        updatedBy: params.state.preferences.updatedBy,
+        value: normalizeSyncablePreferences(params.state.preferences.value),
+      }
+    : {
+        revision: 1,
+        updatedAt: generatedAt,
+        updatedBy: params.deviceId,
+        value: normalizeSyncablePreferences(params.preferences),
+      };
   const {
     scenarioIds,
     resolvedShortcutEntries,
@@ -495,6 +536,11 @@ export const buildLeafTabSyncSnapshot = (params: {
       url: shortcut.url || '',
       icon: shortcut.icon || '',
       description: '',
+      useOfficialIcon: shortcut.useOfficialIcon !== false,
+      autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
+      officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+      iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
+      iconColor: normalizeShortcutIconColor(shortcut.iconColor),
       ...metadata,
     };
     delete tombstones[shortcutId];
@@ -570,6 +616,7 @@ export const buildLeafTabSyncSnapshot = (params: {
       deviceId: params.deviceId,
       generatedAt,
     },
+    preferences,
     scenarios,
     shortcuts,
     bookmarkFolders,
@@ -584,6 +631,7 @@ export const buildLeafTabSyncSnapshot = (params: {
 export const projectLeafTabSyncSnapshotToAppState = (
   snapshot: LeafTabSyncSnapshot,
 ): {
+  preferences: SyncablePreferences | null;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
   bookmarkFolders: Record<string, LeafTabSyncBookmarkFolderEntity>;
@@ -619,6 +667,11 @@ export const projectLeafTabSyncSnapshotToAppState = (
           title: shortcut.title,
           url: shortcut.url,
           icon: shortcut.icon,
+          useOfficialIcon: shortcut.useOfficialIcon !== false,
+          autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
+          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+          iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
+          iconColor: normalizeShortcutIconColor(shortcut.iconColor),
         };
       });
     const seenShortcutIds = new Set(orderedShortcutList.map((shortcut) => shortcut.id));
@@ -636,11 +689,17 @@ export const projectLeafTabSyncSnapshotToAppState = (
         title: shortcut.title,
         url: shortcut.url,
         icon: shortcut.icon,
+        useOfficialIcon: shortcut.useOfficialIcon !== false,
+        autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
+        officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+        iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
+        iconColor: normalizeShortcutIconColor(shortcut.iconColor),
       }));
     scenarioShortcuts[scenario.id] = orderedShortcutList.concat(unorderedShortcutList);
   });
 
   return {
+    preferences: snapshot.preferences ? normalizeSyncablePreferences(snapshot.preferences.value) : null,
     scenarioModes,
     scenarioShortcuts,
     bookmarkFolders: snapshot.bookmarkFolders,

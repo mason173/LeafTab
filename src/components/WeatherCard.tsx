@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
 import { Button } from "./ui/button";
@@ -43,12 +43,18 @@ interface WeatherCardProps {
   onWeatherUpdate?: (code: number) => void;
   variant?: "inverted" | "default";
   disableBackdropBlur?: boolean;
+  displayMode?: "pill" | "inline";
+  className?: string;
+  textClassName?: string;
 }
 
 export function WeatherCard({
   onWeatherUpdate,
   variant = "inverted",
   disableBackdropBlur = false,
+  displayMode = "pill",
+  className,
+  textClassName,
 }: WeatherCardProps) {
   const firefox = isFirefoxBuildTarget();
   const { t, i18n } = useTranslation();
@@ -80,7 +86,9 @@ export function WeatherCard({
   });
 
   const weatherText = t(`weather.codes.${weatherData.weatherCode}`, { defaultValue: t("weather.unknown") });
+  const displayCity = weatherData.city?.trim() || t("weather.unknownLocation");
   const displayWeather = `${weatherText} ${Math.round(weatherData.temperature)}°C`;
+  const displayLine = `${displayCity} ${displayWeather}`;
 
   const onOpenDialog = useCallback(() => {
     setDialogOpen(true);
@@ -122,34 +130,54 @@ export function WeatherCard({
 
   return (
     <>
-      <div
-        className={`content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${firefox ? '' : 'transform-gpu backface-hidden'} ${
-          variant === "inverted"
-            ? (disableBackdropBlur
-                ? "hover:bg-white/10"
-                : firefox
-                  ? "bg-white/12 hover:bg-white/16"
-                  : "hover:bg-white/10 backdrop-blur-md")
-            : "hover:bg-secondary"
-        }`}
+      <button
+        type="button"
+        className={cn(
+          "appearance-none border-0 bg-transparent p-0 font-inherit outline-none",
+          displayMode === "inline"
+            ? `max-w-full shrink-0 cursor-pointer transition-colors pointer-events-auto ${
+                variant === "inverted"
+                  ? "text-white/90 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
+              }`
+            : `content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${firefox ? "" : "transform-gpu backface-hidden"} ${
+                variant === "inverted"
+                  ? disableBackdropBlur
+                    ? "hover:bg-white/10"
+                    : firefox
+                      ? "bg-white/12 hover:bg-white/16"
+                      : "hover:bg-white/10 backdrop-blur-md"
+                  : "hover:bg-secondary"
+              }`,
+          className,
+        )}
         data-name="Weather"
         onClick={onOpenDialog}
         title={t("weather.openLocationDialog", { defaultValue: "Click to open weather location settings" })}
+        aria-label={displayLine}
       >
-        <div
-          aria-hidden="true"
-          className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
-            variant === "inverted" ? "border-white/10" : "border-border"
-          }`}
-        />
-        <WeatherCity city={weatherData.city} variant={variant} />
-        <WeatherInfo weather={displayWeather} variant={variant} />
+        {displayMode === "inline" ? (
+          <span className={cn("block max-w-full truncate text-center leading-snug", textClassName)}>
+            {displayLine}
+          </span>
+        ) : (
+          <>
+            <div
+              aria-hidden="true"
+              className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
+                variant === "inverted" ? "border-white/10" : "border-border"
+              }`}
+            />
+            <WeatherCity city={displayCity} variant={variant} />
+            <WeatherInfo weather={displayWeather} variant={variant} />
+          </>
+        )}
         {isRefreshing && (
           <span className="sr-only" aria-live="polite">
             {t("weather.refreshing")}
           </span>
         )}
-      </div>
+      </button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-[520px] bg-background border-border text-foreground rounded-[32px] backdrop-blur-none">

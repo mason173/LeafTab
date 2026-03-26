@@ -35,26 +35,24 @@ export function CloudSyncConfigDialog({
   const [saving, setSaving] = useState(false);
   const [intervalMinutes, setIntervalMinutes] = useState(10);
   const [enabled, setEnabled] = useState(true);
+  const [syncBookmarksEnabled, setSyncBookmarksEnabled] = useState(false);
   const [autoSyncToastEnabled, setAutoSyncToastEnabled] = useState(true);
 
   useEffect(() => {
     if (!open) return;
     const config = readCloudSyncConfigFromStorage();
     setEnabled(config.enabled);
+    setSyncBookmarksEnabled(config.syncBookmarksEnabled);
     setAutoSyncToastEnabled(config.autoSyncToastEnabled);
     setIntervalMinutes(config.intervalMinutes);
   }, [open]);
 
   const handleSave = async () => {
-    if (enabled && !encryptionReady) {
-      toast.error(t('leaftabSyncEncryption.requiredBeforeSync', { defaultValue: '请先设置同步口令' }));
-      await onManageEncryption?.();
-      return;
-    }
     setSaving(true);
     try {
       writeCloudSyncConfigToStorage({
         enabled,
+        syncBookmarksEnabled,
         autoSyncToastEnabled,
         intervalMinutes,
       });
@@ -106,16 +104,24 @@ export function CloudSyncConfigDialog({
     >
       <div className="flex flex-col gap-4">
         <SyncToggleField
-          label={t('settings.backup.cloud.autoSyncToastLabel')}
-          description={t('settings.backup.cloud.autoSyncToastDesc')}
-          checked={autoSyncToastEnabled}
-          onCheckedChange={setAutoSyncToastEnabled}
-        />
-        <SyncToggleField
           label={t('settings.backup.cloud.enabledLabel')}
           description={t('settings.backup.cloud.enabledDesc')}
           checked={enabled}
           onCheckedChange={setEnabled}
+        />
+        <SyncToggleField
+          label={t('settings.backup.cloud.syncBookmarksLabel', { defaultValue: '同步书签' })}
+          description={t('settings.backup.cloud.syncBookmarksDesc', {
+            defaultValue: '关闭后云同步只处理快捷方式，不读取或写入浏览器书签。',
+          })}
+          checked={syncBookmarksEnabled}
+          onCheckedChange={setSyncBookmarksEnabled}
+        />
+        <SyncToggleField
+          label={t('settings.backup.cloud.autoSyncToastLabel')}
+          description={t('settings.backup.cloud.autoSyncToastDesc')}
+          checked={autoSyncToastEnabled}
+          onCheckedChange={setAutoSyncToastEnabled}
         />
         <SyncIntervalSliderField
           label={t('settings.backup.cloud.intervalLabel')}

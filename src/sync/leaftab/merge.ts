@@ -3,6 +3,7 @@ import type {
   LeafTabSyncBookmarkItemEntity,
   LeafTabSyncBookmarkOrder,
   LeafTabSyncEntityType,
+  LeafTabSyncPreferencesState,
   LeafTabSyncScenarioEntity,
   LeafTabSyncScenarioOrder,
   LeafTabSyncShortcutEntity,
@@ -11,6 +12,11 @@ import type {
   LeafTabSyncTombstone,
 } from './schema';
 import { LEAFTAB_SYNC_SCHEMA_VERSION } from './schema';
+import type { SyncablePreferences } from '@/types';
+import {
+  getDefaultSyncablePreferences,
+  normalizeSyncablePreferences,
+} from '@/utils/syncablePreferences';
 
 export type LeafTabSyncMergeSource = 'local' | 'remote' | 'merged' | 'tombstone';
 
@@ -46,6 +52,11 @@ const shortcutFields: Array<keyof LeafTabSyncShortcutEntity> = [
   'url',
   'icon',
   'description',
+  'useOfficialIcon',
+  'autoUseOfficialIcon',
+  'officialIconAvailableAtSave',
+  'iconRendering',
+  'iconColor',
 ];
 
 const bookmarkFolderFields: Array<keyof LeafTabSyncBookmarkFolderEntity> = [
@@ -110,6 +121,14 @@ const cloneTombstone = (tombstone: LeafTabSyncTombstone) => {
   return JSON.parse(JSON.stringify(tombstone)) as LeafTabSyncTombstone;
 };
 
+const clonePreferencesState = (preferences: LeafTabSyncPreferencesState) => {
+  return JSON.parse(JSON.stringify(preferences)) as LeafTabSyncPreferencesState;
+};
+
+const cloneJsonValue = <T>(value: T): T => {
+  return JSON.parse(JSON.stringify(value)) as T;
+};
+
 const resolvePreferredEntity = <T extends MergeableEntity>(
   local: T | null | undefined,
   remote: T | null | undefined,
@@ -119,6 +138,112 @@ const resolvePreferredEntity = <T extends MergeableEntity>(
   return compareEntityFreshness(local, remote) >= 0
     ? cloneEntity(local)
     : cloneEntity(remote);
+};
+
+const resolvePreferredPreferences = (
+  local: LeafTabSyncPreferencesState | null | undefined,
+  remote: LeafTabSyncPreferencesState | null | undefined,
+) => {
+  if (!local) return remote ? clonePreferencesState(remote) : null;
+  if (!remote) return clonePreferencesState(local);
+  return compareOrderFreshness(local, remote) >= 0
+    ? clonePreferencesState(local)
+    : clonePreferencesState(remote);
+};
+
+const haveSamePreferenceValue = (left: unknown, right: unknown) => {
+  return JSON.stringify(left) === JSON.stringify(right);
+};
+
+const mergePreferenceValues = (params: {
+  base: SyncablePreferences;
+  local: SyncablePreferences;
+  remote: SyncablePreferences;
+  preferLocal: boolean;
+}) => {
+  const defaults = getDefaultSyncablePreferences();
+  const merged = cloneJsonValue(defaults);
+
+  (Object.keys(defaults) as Array<keyof SyncablePreferences>).forEach((key) => {
+    const baseValue = params.base[key];
+    const localValue = params.local[key];
+    const remoteValue = params.remote[key];
+    const localChanged = !haveSamePreferenceValue(localValue, baseValue);
+    const remoteChanged = !haveSamePreferenceValue(remoteValue, baseValue);
+
+    if (localChanged && !remoteChanged) {
+      merged[key] = cloneJsonValue(localValue);
+      return;
+    }
+    if (!localChanged && remoteChanged) {
+      merged[key] = cloneJsonValue(remoteValue);
+      return;
+    }
+    if (!localChanged && !remoteChanged) {
+      merged[key] = cloneJsonValue(localValue);
+      return;
+    }
+    if (haveSamePreferenceValue(localValue, remoteValue)) {
+      merged[key] = cloneJsonValue(localValue);
+      return;
+    }
+
+    merged[key] = cloneJsonValue(params.preferLocal ? localValue : remoteValue);
+  });
+
+  return normalizeSyncablePreferences(merged);
+};
+
+const resolveMergedPreferences = (
+  base: LeafTabSyncPreferencesState | null | undefined,
+  local: LeafTabSyncPreferencesState | null | undefined,
+  remote: LeafTabSyncPreferencesState | null | undefined,
+  options: { deviceId: string; generatedAt: string },
+): { state: LeafTabSyncPreferencesState | null; source: LeafTabSyncMergeSource } => {
+  if (!local && !remote) {
+    return { state: null, source: 'merged' };
+  }
+  if (!local) {
+    return { state: remote ? clonePreferencesState(remote) : null, source: 'remote' };
+  }
+  if (!remote) {
+    return { state: clonePreferencesState(local), source: 'local' };
+  }
+  if (!base) {
+    const preferred = resolvePreferredPreferences(local, remote);
+    return {
+      state: preferred,
+      source: compareOrderFreshness(local, remote) >= 0 ? 'local' : 'remote',
+    };
+  }
+
+  const baseValue = normalizeSyncablePreferences(base.value);
+  const localValue = normalizeSyncablePreferences(local.value);
+  const remoteValue = normalizeSyncablePreferences(remote.value);
+  const preferLocal = compareOrderFreshness(local, remote) >= 0;
+  const mergedValue = mergePreferenceValues({
+    base: baseValue,
+    local: localValue,
+    remote: remoteValue,
+    preferLocal,
+  });
+
+  if (haveSamePreferenceValue(mergedValue, localValue)) {
+    return { state: clonePreferencesState(local), source: 'local' };
+  }
+  if (haveSamePreferenceValue(mergedValue, remoteValue)) {
+    return { state: clonePreferencesState(remote), source: 'remote' };
+  }
+
+  return {
+    state: {
+      revision: Math.max(base.revision || 0, local.revision || 0, remote.revision || 0) + 1,
+      updatedAt: options.generatedAt,
+      updatedBy: options.deviceId,
+      value: mergedValue,
+    },
+    source: 'merged',
+  };
 };
 
 const inferImplicitTombstone = (
@@ -391,6 +516,16 @@ export const mergeLeafTabSyncSnapshot = (
   const nextTombstones: Record<string, LeafTabSyncTombstone> = {};
   const entitySources: Record<string, LeafTabSyncMergeSource> = {};
   const conflicts: LeafTabSyncMergeConflict[] = [];
+  const mergedPreferences = resolveMergedPreferences(
+    baseSnapshot.preferences,
+    localSnapshot.preferences,
+    remoteSnapshot.preferences,
+    {
+      deviceId,
+      generatedAt,
+    },
+  );
+  const nextPreferences = mergedPreferences.state;
 
   const scenarioIds = new Set([
     ...Object.keys(baseSnapshot.scenarios),
@@ -576,6 +711,7 @@ export const mergeLeafTabSyncSnapshot = (
   };
 
   const orderSources: Record<string, LeafTabSyncMergeSource> = {
+    preferences: mergedPreferences.source,
     scenarios: scenarioOrderSource,
   };
 
@@ -718,6 +854,7 @@ export const mergeLeafTabSyncSnapshot = (
         deviceId,
         generatedAt,
       },
+      preferences: nextPreferences,
       scenarios: nextScenarios,
       shortcuts: nextShortcuts,
       bookmarkFolders: nextBookmarkFolders,

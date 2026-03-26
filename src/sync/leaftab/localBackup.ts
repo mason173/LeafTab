@@ -140,6 +140,7 @@ export const filterLeafTabLocalBackupSnapshot = (
   const scope = normalizeExportScope(scopeInput);
   return {
     meta: snapshot.meta,
+    preferences: snapshot.preferences,
     scenarios: scope.shortcuts ? snapshot.scenarios : {},
     shortcuts: scope.shortcuts ? snapshot.shortcuts : {},
     bookmarkFolders: scope.bookmarks ? snapshot.bookmarkFolders : {},
@@ -178,6 +179,7 @@ export const mergeLeafTabLocalBackupSnapshotWithBase = (params: {
   const scope = normalizeExportScope(params.exportScope);
   return {
     meta: params.importedSnapshot.meta,
+    preferences: params.importedSnapshot.preferences || params.baseSnapshot.preferences,
     scenarios: scope.shortcuts ? params.importedSnapshot.scenarios : params.baseSnapshot.scenarios,
     shortcuts: scope.shortcuts ? params.importedSnapshot.shortcuts : params.baseSnapshot.shortcuts,
     bookmarkFolders: scope.bookmarks ? params.importedSnapshot.bookmarkFolders : params.baseSnapshot.bookmarkFolders,

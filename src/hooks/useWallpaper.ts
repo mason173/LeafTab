@@ -8,6 +8,7 @@ import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
 const BING_REFRESH_DELAY_MINUTES = 20;
+const BING_REFRESH_RETRY_MS = 30 * 60 * 1000;
 const MANUAL_BING_REFRESH_COOLDOWN_MS = 15_000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 9000;
@@ -16,6 +17,7 @@ type BingCacheMeta = {
   slot: string;
   market: string;
   sourceUrl: string;
+  imageKey?: string;
   fetchedAt: string;
 };
 
@@ -84,6 +86,48 @@ const uniqueUrls = (urls: string[]): string[] => {
   return out;
 };
 
+const normalizeBingMarket = (value: string | null | undefined): string => {
+  const locale = (value || '').trim().toLowerCase().replace('_', '-');
+  if (!locale) return '';
+  if (locale.startsWith('zh-tw') || locale.startsWith('zh-hk')) return 'zh-TW';
+  if (locale.startsWith('zh')) return 'zh-CN';
+  if (locale.startsWith('ja')) return 'ja-JP';
+  if (locale.startsWith('ko')) return 'ko-KR';
+  if (locale.startsWith('en-gb')) return 'en-GB';
+  if (locale.startsWith('en-au')) return 'en-AU';
+  if (locale.startsWith('en')) return 'en-US';
+  return '';
+};
+
+const resolveBingMarket = (): string => {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (timeZone === 'Asia/Shanghai' || timeZone === 'Asia/Chongqing' || timeZone === 'Asia/Harbin' || timeZone === 'Asia/Urumqi') {
+      return 'zh-CN';
+    }
+    if (timeZone === 'Asia/Hong_Kong' || timeZone === 'Asia/Taipei') {
+      return 'zh-TW';
+    }
+    if (timeZone === 'Asia/Tokyo') {
+      return 'ja-JP';
+    }
+    if (timeZone === 'Asia/Seoul') {
+      return 'ko-KR';
+    }
+  } catch {}
+
+  const languages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
+
+  for (const language of languages) {
+    const normalized = normalizeBingMarket(language);
+    if (normalized) return normalized;
+  }
+
+  return 'en-US';
+};
+
 const toAbsoluteUrl = (baseHost: string, maybeRelative: string): string => {
   const value = (maybeRelative || '').trim();
   if (!value) return '';
@@ -93,7 +137,10 @@ const toAbsoluteUrl = (baseHost: string, maybeRelative: string): string => {
   return `https://${baseHost}/${value}`;
 };
 
-const buildCandidatesFromArchiveImage = (baseHost: string, image: any): string[] => {
+const buildCandidatesFromArchiveImage = (baseHost: string, image: any): {
+  candidates: string[];
+  imageKey: string;
+} => {
   const urlbase = typeof image?.urlbase === 'string' ? image.urlbase.trim() : '';
   const url = typeof image?.url === 'string' ? image.url.trim() : '';
   const candidates: string[] = [];
@@ -110,10 +157,16 @@ const buildCandidatesFromArchiveImage = (baseHost: string, image: any): string[]
       candidates.push(absolute.replace('_UHD.jpg', '_1920x1080.jpg'));
     }
   }
-  return uniqueUrls(candidates);
+  return {
+    candidates: uniqueUrls(candidates),
+    imageKey: urlbase || url || '',
+  };
 };
 
-const fetchCandidatesFromArchiveHost = async (baseHost: 'cn.bing.com' | 'www.bing.com', market: string): Promise<string[]> => {
+const fetchCandidatesFromArchiveHost = async (
+  baseHost: 'cn.bing.com' | 'www.bing.com',
+  market: string,
+): Promise<{ candidates: string[]; imageKey: string }> => {
   const resp = await fetchWithTimeout(
     `https://${baseHost}/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=${encodeURIComponent(market)}`,
     undefined,
@@ -126,8 +179,10 @@ const fetchCandidatesFromArchiveHost = async (baseHost: 'cn.bing.com' | 'www.bin
   return buildCandidatesFromArchiveImage(baseHost, image);
 };
 
-const fetchCandidatesFromBiturl = async (market: string): Promise<string[]> => {
-  const fetchMeta = async (resolution: 'UHD' | '1920'): Promise<string[]> => {
+const fetchCandidatesFromBiturl = async (
+  market: string,
+): Promise<{ candidates: string[]; imageKey: string }> => {
+  const fetchMeta = async (resolution: 'UHD' | '1920'): Promise<{ candidates: string[]; imageKey: string }> => {
     const resp = await fetchWithTimeout(
       `https://bing.biturl.top/?resolution=${resolution}&format=json&index=0&mkt=${encodeURIComponent(market)}`,
       undefined,
@@ -139,7 +194,10 @@ const fetchCandidatesFromBiturl = async (market: string): Promise<string[]> => {
     if (!direct) throw new Error(`biturl-${resolution}-missing-url`);
     const upgraded = direct.replace('_1920x1080.jpg', '_UHD.jpg');
     const downgraded = direct.replace('_UHD.jpg', '_1920x1080.jpg');
-    return uniqueUrls([upgraded, direct, downgraded]);
+    return {
+      candidates: uniqueUrls([upgraded, direct, downgraded]),
+      imageKey: direct,
+    };
   };
   try {
     return await fetchMeta('UHD');
@@ -267,6 +325,7 @@ export function useWallpaper() {
     let cancelled = false;
     let onceTimer: number | null = null;
     let dailyTimer: number | null = null;
+    let retryTimer: number | null = null;
     const revokeOwnedBingObjectUrl = () => {
       if (!ownedBingObjectUrlRef.current) return;
       URL.revokeObjectURL(ownedBingObjectUrlRef.current);
@@ -295,6 +354,20 @@ export function useWallpaper() {
         setBingSource('');
       }
     };
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
+    const scheduleRetryRefresh = (delayMs = BING_REFRESH_RETRY_MS) => {
+      if (cancelled) return;
+      clearRetryTimer();
+      retryTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        void refreshBingWallpaper(false);
+      }, Math.max(5_000, delayMs));
+    };
 
     const applyBingBlob = async (blob: Blob) => {
       const objectUrl = URL.createObjectURL(blob);
@@ -302,16 +375,25 @@ export function useWallpaper() {
       setBingSource(objectUrl, { ownsObjectUrl: true });
     };
 
-    const fetchBingImageSource = async (market: string): Promise<{ blob: Blob | null; sourceUrl: string }> => {
+    const fetchBingImageSource = async (
+      market: string,
+    ): Promise<{ blob: Blob | null; sourceUrl: string; imageKey: string }> => {
       const sourceCandidates: string[] = [];
+      let imageKey = '';
       try {
-        sourceCandidates.push(...await fetchCandidatesFromArchiveHost('cn.bing.com', market));
+        const result = await fetchCandidatesFromArchiveHost('cn.bing.com', market);
+        sourceCandidates.push(...result.candidates);
+        if (!imageKey && result.imageKey) imageKey = result.imageKey;
       } catch {}
       try {
-        sourceCandidates.push(...await fetchCandidatesFromArchiveHost('www.bing.com', market));
+        const result = await fetchCandidatesFromArchiveHost('www.bing.com', market);
+        sourceCandidates.push(...result.candidates);
+        if (!imageKey && result.imageKey) imageKey = result.imageKey;
       } catch {}
       try {
-        sourceCandidates.push(...await fetchCandidatesFromBiturl(market));
+        const result = await fetchCandidatesFromBiturl(market);
+        sourceCandidates.push(...result.candidates);
+        if (!imageKey && result.imageKey) imageKey = result.imageKey;
       } catch {}
 
       const candidates = uniqueUrls(sourceCandidates);
@@ -324,26 +406,36 @@ export function useWallpaper() {
           if (!imageResp.ok) continue;
           const imageBlob = await imageResp.blob();
           if (!(imageBlob instanceof Blob) || imageBlob.size <= 0) continue;
-          return { blob: imageBlob, sourceUrl: imageUrl };
+          return { blob: imageBlob, sourceUrl: imageUrl, imageKey: imageKey || imageUrl };
         } catch {
           continue;
         }
       }
-      return { blob: null, sourceUrl: firstCandidate };
+      return { blob: null, sourceUrl: firstCandidate, imageKey: imageKey || firstCandidate };
     };
 
     const refreshBingWallpaper = async (force = false): Promise<boolean> => {
-      const market = navigator.language?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US';
+      const market = resolveBingMarket();
       const slot = getCurrentBingSlot(new Date());
       const meta = readBingCacheMeta();
       if (!force && meta?.slot === slot && hasBingWallpaperRef.current) return true;
 
       try {
-        const { blob, sourceUrl } = await fetchBingImageSource(market);
+        const { blob, sourceUrl, imageKey } = await fetchBingImageSource(market);
+        const previousImageKey = (meta?.imageKey || meta?.sourceUrl || '').trim();
+        const slotAdvanced = Boolean(meta?.slot && meta.slot !== slot);
+        const fetchedStillOldImage = Boolean(slotAdvanced && previousImageKey && imageKey === previousImageKey);
+
+        if (fetchedStillOldImage) {
+          scheduleRetryRefresh();
+          return false;
+        }
+
         if (blob) {
           await saveBingWallpaperBlob(blob);
         }
         if (!cancelled) {
+          clearRetryTimer();
           if (blob) {
             await applyBingBlob(blob);
           } else if (!hasBingWallpaperRef.current) {
@@ -354,11 +446,13 @@ export function useWallpaper() {
             slot,
             market,
             sourceUrl,
+            imageKey: imageKey || sourceUrl,
             fetchedAt: new Date().toISOString(),
           });
         }
         return true;
       } catch {
+        scheduleRetryRefresh();
         if (!cancelled) clearBingSourceIfMissing();
         return false;
       }
@@ -403,6 +497,7 @@ export function useWallpaper() {
       refreshBingWallpaperRef.current = null;
       if (onceTimer !== null) window.clearTimeout(onceTimer);
       if (dailyTimer !== null) window.clearInterval(dailyTimer);
+      clearRetryTimer();
       revokeOwnedBingObjectUrl();
     };
   }, []);

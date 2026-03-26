@@ -55,6 +55,7 @@ type UseSyncCenterActionsOptions = {
   leafTabSyncHasConfig: boolean;
   cloudSyncing: boolean;
   webdavSyncing: boolean;
+  cloudSyncBookmarksEnabled: boolean;
   cloudSyncEncryptionScopeKey: string;
   cloudSyncEncryptedTransport: EncryptionTransport;
   ensureSyncEncryptionAccess: (params: {
@@ -62,6 +63,7 @@ type UseSyncCenterActionsOptions = {
     scopeKey: string;
     transport: EncryptionTransport;
   }) => Promise<boolean>;
+  ensureCloudLegacyMigrationReady: () => Promise<boolean>;
   handleCloudLeafTabSync: (options?: CloudSyncActionOptions) => Promise<any>;
   handleLeafTabSync: (options?: WebdavSyncActionOptions) => Promise<any>;
   setIsAuthModalOpen: (open: boolean) => void;
@@ -78,9 +80,11 @@ export function useSyncCenterActions({
   leafTabSyncHasConfig,
   cloudSyncing,
   webdavSyncing,
+  cloudSyncBookmarksEnabled,
   cloudSyncEncryptionScopeKey,
   cloudSyncEncryptedTransport,
   ensureSyncEncryptionAccess,
+  ensureCloudLegacyMigrationReady,
   handleCloudLeafTabSync,
   handleLeafTabSync,
   setIsAuthModalOpen,
@@ -92,6 +96,9 @@ export function useSyncCenterActions({
 }: UseSyncCenterActionsOptions) {
   const cloudSyncNowInFlightRef = useRef(false);
   const webdavSyncNowInFlightRef = useRef(false);
+  const cloudSyncDataDetail = cloudSyncBookmarksEnabled
+    ? '正在处理快捷方式和书签数据'
+    : '正在处理快捷方式数据';
 
   const handleLeafTabAutoSync = useCallback(async () => {
     const result = await handleLeafTabSync({
@@ -183,6 +190,9 @@ export function useSyncCenterActions({
       handleRequestCloudLogin();
       return false;
     }
+    if (!(await ensureCloudLegacyMigrationReady())) {
+      return false;
+    }
     cloudSyncNowInFlightRef.current = true;
     try {
       const encryptionReady = await ensureSyncEncryptionAccess({
@@ -195,11 +205,11 @@ export function useSyncCenterActions({
       }
       return runLongTask({
         title: '正在同步到云端',
-        detail: '正在处理快捷方式和书签数据',
+        detail: cloudSyncDataDetail,
         progress: 8,
       }, async ({ update }) => {
         const result = await handleCloudLeafTabSync({
-          requestBookmarkPermission: true,
+          requestBookmarkPermission: cloudSyncBookmarksEnabled,
           retryAfterConflictRefresh: true,
           retryAfterForceUnlock: true,
           silentSuccess: true,
@@ -223,14 +233,17 @@ export function useSyncCenterActions({
   }, [
     cloudSyncEncryptedTransport,
     cloudSyncEncryptionScopeKey,
+    cloudSyncBookmarksEnabled,
     cloudSyncNowInFlightRef,
     cloudSyncing,
     ensureSyncEncryptionAccess,
+    ensureCloudLegacyMigrationReady,
     handleCloudLeafTabSync,
     handleRequestCloudLogin,
     runLongTask,
     t,
     user,
+    cloudSyncDataDetail,
   ]);
 
   const handleWebdavSyncNowFromCenter = useCallback(async () => {
@@ -281,17 +294,22 @@ export function useSyncCenterActions({
       handleRequestCloudLogin();
       return false;
     }
-    const permissionGranted = await ensureExtensionPermission('bookmarks', {
-      requestIfNeeded: true,
-    }).catch(() => false);
-    if (!permissionGranted) {
-      toast.error('未授予书签权限，无法执行修复同步');
+    if (!(await ensureCloudLegacyMigrationReady())) {
       return false;
+    }
+    if (cloudSyncBookmarksEnabled) {
+      const permissionGranted = await ensureExtensionPermission('bookmarks', {
+        requestIfNeeded: true,
+      }).catch(() => false);
+      if (!permissionGranted) {
+        toast.error('未授予书签权限，无法执行修复同步');
+        return false;
+      }
     }
     setLeafTabSyncDialogOpen(false);
     return runLongTask({
       title: mode === 'pull-remote' ? '正在用云端覆盖本地' : '正在用本地覆盖云端',
-      detail: '正在处理快捷方式和书签数据',
+      detail: cloudSyncDataDetail,
       progress: 8,
     }, async ({ update }) => {
       const result = await handleCloudLeafTabSync({
@@ -317,16 +335,22 @@ export function useSyncCenterActions({
     });
   }, [
     handleCloudLeafTabSync,
+    cloudSyncBookmarksEnabled,
+    ensureCloudLegacyMigrationReady,
     handleRequestCloudLogin,
     runLongTask,
     setLeafTabSyncDialogOpen,
     user,
+    cloudSyncDataDetail,
   ]);
 
   const handleCloudSyncConfigSaved = useCallback(async () => {
     if (!user) return;
     if (!readCloudSyncConfigFromStorage().enabled) {
       setCloudNextSyncAt(null);
+      return;
+    }
+    if (!(await ensureCloudLegacyMigrationReady())) {
       return;
     }
     const encryptionReady = await ensureSyncEncryptionAccess({
@@ -342,6 +366,7 @@ export function useSyncCenterActions({
     cloudSyncEncryptedTransport,
     cloudSyncEncryptionScopeKey,
     ensureSyncEncryptionAccess,
+    ensureCloudLegacyMigrationReady,
     handleCloudSyncNowFromCenter,
     setCloudNextSyncAt,
     user,

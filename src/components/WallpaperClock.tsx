@@ -13,12 +13,17 @@ import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-t
 import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
+import { WeatherCard } from './WeatherCard';
 
 interface WallpaperClockProps {
   is24Hour: boolean;
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;
   onShowSecondsChange: (checked: boolean) => void;
+  showDate: boolean;
+  onShowDateChange: (checked: boolean) => void;
+  showWeekday: boolean;
+  onShowWeekdayChange: (checked: boolean) => void;
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
@@ -56,6 +61,10 @@ export const WallpaperClock = memo(function WallpaperClock({
   onIs24HourChange,
   showSeconds,
   onShowSecondsChange,
+  showDate,
+  onShowDateChange,
+  showWeekday,
+  onShowWeekdayChange,
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
@@ -99,6 +108,10 @@ export const WallpaperClock = memo(function WallpaperClock({
   );
   const weekday = weekdayFormatter.format(date);
   const dateString = dateFormatter.format(date);
+  const metaParts = [
+    showDate ? dateString : null,
+    showWeekday ? weekday : null,
+  ].filter(Boolean) as string[];
   const edgeInset = layout ? Math.max(16, Math.round((layout.wallpaperHeight / 220) * 24)) : 24;
 
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
@@ -158,8 +171,9 @@ export const WallpaperClock = memo(function WallpaperClock({
 
       <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
 
-      <div className="absolute z-20 transform-gpu" style={{ left: edgeInset, right: edgeInset, top: edgeInset }}>
+      <div className="absolute z-[14020] transform-gpu pointer-events-none" style={{ left: edgeInset, right: edgeInset, top: edgeInset, bottom: edgeInset }}>
         <TopNavBar 
+          hideWeather
           settingsRevealOnHover
           keepControlsVisible={scenarioModeOpen}
           onSettingsClick={onSettingsClick}
@@ -167,7 +181,7 @@ export const WallpaperClock = memo(function WallpaperClock({
           syncStatus={syncStatus}
           onWeatherUpdate={onWeatherUpdate}
           reduceVisualEffects={resolvedReduceTopControlsEffects}
-          rightSlot={
+          leftSlot={
             showScenarioMode ? (
               <ScenarioModeMenu
                 scenarioModes={scenarioModes}
@@ -202,6 +216,10 @@ export const WallpaperClock = memo(function WallpaperClock({
           previewTime={time}
           is24Hour={is24Hour}
           onIs24HourChange={onIs24HourChange}
+          showDate={showDate}
+          onShowDateChange={onShowDateChange}
+          showWeekday={showWeekday}
+          onShowWeekdayChange={onShowWeekdayChange}
           showSeconds={showSeconds}
           onShowSecondsChange={onShowSecondsChange}
           showLunar={showLunar}
@@ -210,12 +228,21 @@ export const WallpaperClock = memo(function WallpaperClock({
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
-        <div
-          className="flex items-center gap-3 mt-2 font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]"
-          style={{ fontSize: layout?.clockMetaFontSize ?? 16 }}
-        >
-          <span>{dateString} {weekday}</span>
-          {showLunar && lunar ? <span>{lunar}</span> : null}
+        <div className="mt-2 flex max-w-full flex-col items-center gap-1.5 font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]">
+          <div
+            className="flex items-center gap-3"
+            style={{ fontSize: layout?.clockMetaFontSize ?? 16 }}
+          >
+            {metaParts.length > 0 ? <span>{metaParts.join(' ')}</span> : null}
+            {showLunar && lunar ? <span>{lunar}</span> : null}
+          </div>
+          <WeatherCard
+            onWeatherUpdate={onWeatherUpdate}
+            variant="inverted"
+            displayMode="inline"
+            className="w-full px-4"
+            textClassName="text-sm sm:text-base"
+          />
         </div>
       </div>
 

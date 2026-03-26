@@ -115,6 +115,11 @@ export function ShortcutCardDefault({
             fallbackStyle="emptyicon"
             fallbackLabel={shortcut.title}
             fallbackLetterSize={16}
+            useOfficialIcon={shortcut.useOfficialIcon}
+            autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
+            officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+            iconRendering={shortcut.iconRendering}
+            iconColor={shortcut.iconColor}
           />
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText
