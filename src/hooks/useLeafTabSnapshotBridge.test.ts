@@ -93,12 +93,12 @@ describe('deriveLeafTabSyncApplyState', () => {
 
     expect(result.nextSelectedScenarioId).toBe('work');
     expect(result.nextProfileSnapshot.scenarioShortcuts.work).toEqual([
-      {
+      expect.objectContaining({
         id: 'a',
         title: 'A',
         url: 'https://a.example',
         icon: '',
-      },
+      }),
     ]);
   });
 });

@@ -7,6 +7,7 @@ import { TopNavBar } from './TopNavBar';
 import imgImage from "../assets/Default_wallpaper.webp";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useClock } from '@/hooks/useClock';
+import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
@@ -27,6 +28,7 @@ interface WallpaperClockProps {
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
+  timeAnimationMode: TimeAnimationMode;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   bingWallpaperUrl: string;
   onSettingsClick?: () => void;
@@ -68,6 +70,7 @@ export const WallpaperClock = memo(function WallpaperClock({
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
+  timeAnimationMode,
   onTimeAnimationModeChange,
   bingWallpaperUrl,
   onSettingsClick,
@@ -224,7 +227,7 @@ export const WallpaperClock = memo(function WallpaperClock({
           onShowSecondsChange={onShowSecondsChange}
           showLunar={showLunar}
           onShowLunarChange={onShowLunarChange}
-          timeAnimationEnabled={timeAnimationEnabled}
+          timeAnimationMode={timeAnimationMode}
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />

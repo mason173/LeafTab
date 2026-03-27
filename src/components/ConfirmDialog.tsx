@@ -35,10 +35,10 @@ function ConfirmDialog({
           <DialogDescription className="text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex w-full gap-4 sm:gap-4">
-          <Button className={cancelButtonClassName ?? "flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80"} onClick={() => onOpenChange(false)}>
+          <Button data-testid="confirm-dialog-cancel" className={cancelButtonClassName ?? "flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80"} onClick={() => onOpenChange(false)}>
             {resolvedCancelText}
           </Button>
-          <Button className={confirmButtonClassName ?? "flex-1 bg-primary text-primary-foreground hover:bg-primary/90"} onClick={onConfirm}>
+          <Button data-testid="confirm-dialog-confirm" className={confirmButtonClassName ?? "flex-1 bg-primary text-primary-foreground hover:bg-primary/90"} onClick={onConfirm}>
             {resolvedConfirmText}
           </Button>
         </DialogFooter>

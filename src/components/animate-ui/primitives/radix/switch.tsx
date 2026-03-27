@@ -26,7 +26,7 @@ type SwitchThumbProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitives.T
   pressedAnimation?: unknown;
 };
 
-function SwitchThumb({ className, ...props }: SwitchThumbProps) {
+function SwitchThumb({ className, pressedAnimation: _pressedAnimation, ...props }: SwitchThumbProps) {
   return (
     <SwitchPrimitives.Thumb
       data-slot="switch-thumb"

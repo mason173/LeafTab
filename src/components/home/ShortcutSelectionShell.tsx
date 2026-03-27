@@ -42,17 +42,20 @@ function ContextMenuItem({
   variant = 'default',
   disabled = false,
   iconRight,
+  testId,
 }: {
   label: string;
   onSelect: () => void;
   variant?: 'default' | 'destructive';
   disabled?: boolean;
   iconRight?: React.ReactNode;
+  testId?: string;
 }) {
   return (
     <button
       onClick={onSelect}
       disabled={disabled}
+      data-testid={testId}
       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
         variant === 'destructive'
           ? 'text-destructive hover:bg-destructive/15 dark:hover:bg-destructive/25 font-medium'
@@ -175,7 +178,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
       })}
 
       {contextMenu && (
-        <div ref={contextMenuRef} className="fixed z-[15020]" style={{ top: contextMenu.y, left: contextMenu.x }}>
+        <div ref={contextMenuRef} className="fixed z-[15020]" data-testid="shortcut-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
           <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
             {contextMenu.kind === 'shortcut' ? (
               shortcutMultiSelectMode ? (
@@ -184,6 +187,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                     label={selectedShortcutIndexes.has(contextMenu.shortcutIndex)
                       ? t('context.unselect', { defaultValue: '取消选择' })
                       : t('context.select', { defaultValue: '选择' })}
+                    testId="shortcut-context-toggle-select"
                     onSelect={() => {
                       toggleShortcutMultiSelect(contextMenu.shortcutIndex);
                       setContextMenu(null);
@@ -191,12 +195,14 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.deleteSelected', { defaultValue: '删除已选' })}
+                    testId="shortcut-context-delete-selected"
                     onSelect={requestBulkDeleteShortcuts}
                     variant="destructive"
                     disabled={selectedShortcutCount <= 0}
                   />
                   <ContextMenuItem
                     label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+                    testId="shortcut-context-cancel-multi-select"
                     onSelect={() => {
                       clearShortcutMultiSelect();
                       setContextMenu(null);
@@ -207,6 +213,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 <>
                   <ContextMenuItem
                     label={t('context.newShortcut')}
+                    testId="shortcut-context-new-shortcut"
                     onSelect={() => {
                       onCreateShortcut(Math.min(contextMenu.shortcutIndex + 1, shortcuts.length));
                       setContextMenu(null);
@@ -214,6 +221,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.open')}
+                    testId="shortcut-context-open"
                     onSelect={() => {
                       onShortcutOpen(contextMenu.shortcut);
                       setContextMenu(null);
@@ -221,6 +229,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.copyLink')}
+                    testId="shortcut-context-copy-link"
                     onSelect={() => {
                       const raw = contextMenu.shortcut.url || '';
                       let hostname = extractDomainFromUrl(raw);
@@ -257,6 +266,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.edit')}
+                    testId="shortcut-context-edit"
                     onSelect={() => {
                       onEditShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
                       setContextMenu(null);
@@ -264,6 +274,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.multiSelect', { defaultValue: '多选' })}
+                    testId="shortcut-context-multi-select"
                     onSelect={() => {
                       openShortcutMultiSelect(contextMenu.shortcutIndex);
                       setContextMenu(null);
@@ -271,6 +282,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.delete')}
+                    testId="shortcut-context-delete"
                     onSelect={() => {
                       onDeleteShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
                       setContextMenu(null);
@@ -284,12 +296,14 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 <>
                   <ContextMenuItem
                     label={t('context.deleteSelected', { defaultValue: '删除已选' })}
+                    testId="grid-context-delete-selected"
                     onSelect={requestBulkDeleteShortcuts}
                     variant="destructive"
                     disabled={selectedShortcutCount <= 0}
                   />
                   <ContextMenuItem
                     label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+                    testId="grid-context-cancel-multi-select"
                     onSelect={() => {
                       clearShortcutMultiSelect();
                       setContextMenu(null);
@@ -300,6 +314,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 <>
                   <ContextMenuItem
                     label={t('context.addShortcut')}
+                    testId="grid-context-add-shortcut"
                     onSelect={() => {
                       onCreateShortcut(shortcuts.length);
                       setContextMenu(null);
@@ -307,6 +322,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                   <ContextMenuItem
                     label={t('context.multiSelect', { defaultValue: '多选' })}
+                    testId="grid-context-multi-select"
                     onSelect={() => {
                       openShortcutMultiSelect();
                       setContextMenu(null);
@@ -320,7 +336,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
       )}
 
       {shortcutMultiSelectMode && (
-        <div className="fixed bottom-6 left-1/2 z-[15025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+        <div className="fixed bottom-6 left-1/2 z-[15025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl" data-testid="shortcut-multi-select-toolbar">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground min-w-[88px]">
               {t('context.selectedCount', { count: selectedShortcutCount, defaultValue: '已选 {{count}} 项' })}
@@ -330,6 +346,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 size="icon"
                 variant="secondary"
                 className="h-8 w-8 rounded-xl"
+                data-testid="shortcut-multi-select-move"
                 title={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
                 aria-label={t('context.moveToScenario', { defaultValue: '移动到情景模式' })}
                 aria-expanded={multiSelectMoveOpen}
@@ -352,6 +369,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                       <button
                         key={mode.id}
                         type="button"
+                        data-testid={`shortcut-multi-select-move-target-${mode.id}`}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
                         onClick={() => handleMoveSelectedShortcutsToScenario(mode.id)}
                       >
@@ -376,6 +394,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
               size="icon"
               variant="secondary"
               className="h-8 w-8 rounded-xl"
+              data-testid="shortcut-multi-select-pin-top"
               onClick={() => handlePinSelectedShortcuts('top')}
               disabled={selectedShortcutCount <= 0}
               title={t('context.pinTop', { defaultValue: '置顶已选' })}
@@ -387,6 +406,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
               size="icon"
               variant="secondary"
               className="h-8 w-8 rounded-xl"
+              data-testid="shortcut-multi-select-pin-bottom"
               onClick={() => handlePinSelectedShortcuts('bottom')}
               disabled={selectedShortcutCount <= 0}
               title={t('context.pinBottom', { defaultValue: '置底已选' })}
@@ -398,6 +418,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
               size="icon"
               className="h-8 w-8 rounded-xl"
               variant="secondary"
+              data-testid="shortcut-multi-select-delete"
               onClick={requestBulkDeleteShortcuts}
               disabled={selectedShortcutCount <= 0}
               title={t('context.deleteSelected', { defaultValue: '删除已选' })}
@@ -409,6 +430,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
               size="icon"
               variant="secondary"
               className="h-8 w-8 rounded-xl"
+              data-testid="shortcut-multi-select-cancel"
               onClick={clearShortcutMultiSelect}
               title={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
               aria-label={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}

@@ -422,6 +422,10 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     await refreshAnalysis();
   }, [baselineStore, markSyncIdle, refreshAnalysis]);
 
+  const invalidateAnalysis = useCallback(() => {
+    analysisStaleRef.current = true;
+  }, []);
+
   useEffect(() => {
     if (!enabled || !engine) {
       setAnalysis(null);
@@ -444,6 +448,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     analysis,
     lastResult,
     isReady,
+    invalidateAnalysis,
     refreshAnalysis,
     runSync,
     resetBaseline,

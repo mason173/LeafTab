@@ -13,6 +13,7 @@ import {
   type LeafTabSyncSnapshot,
 } from '@/sync/leaftab';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
+import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import { flushQueuedLocalStorageWrites } from '@/utils/storageWriteQueue';
 
 const EMPTY_TIMESTAMP = '1970-01-01T00:00:00.000Z';
@@ -175,6 +176,7 @@ export function useLeafTabSnapshotBridge({
     requestBookmarkPermission?: boolean;
     baselineStorageKey?: string;
     includeBookmarks?: boolean;
+    preferencesTransform?: (preferences: SyncablePreferences) => SyncablePreferences;
   }) => {
     flushQueuedLocalStorageWrites();
     const baselineStorageKey = options?.baselineStorageKey || leafTabSyncBaselineStorageKey;
@@ -187,7 +189,12 @@ export function useLeafTabSnapshotBridge({
           scope: leafTabBookmarkSyncScope,
           requestPermission: options?.requestBookmarkPermission === true,
         });
-    const preferences = buildPreferencesSnapshot();
+    const basePreferences = buildPreferencesSnapshot();
+    const preferences = normalizeSyncablePreferences(
+      options?.preferencesTransform
+        ? options.preferencesTransform(basePreferences)
+        : basePreferences,
+    );
     const signature = createSnapshotBuildSignature({
       baselineSnapshot,
       preferences,

@@ -100,7 +100,7 @@ describe('rolePresetRegistry', () => {
     expect(snapshot).not.toBeNull();
     expect(snapshot?.selectedScenarioId).toBe('work');
     expect(snapshot?.scenarioShortcuts.work).toEqual([
-      { id: 'github', title: 'GitHub', url: 'https://github.com', icon: '' },
+      expect.objectContaining({ id: 'github', title: 'GitHub', url: 'https://github.com', icon: '' }),
     ]);
   });
 
@@ -117,7 +117,7 @@ describe('rolePresetRegistry', () => {
     expect(snapshot?.selectedScenarioId).toBe('work');
     expect(snapshot?.scenarioModes.map((item) => item.id)).toEqual(['work']);
     expect(snapshot?.scenarioShortcuts.work).toEqual([
-      { id: 'github', title: 'GitHub', url: 'https://github.com', icon: '' },
+      expect.objectContaining({ id: 'github', title: 'GitHub', url: 'https://github.com', icon: '' }),
     ]);
   });
 });

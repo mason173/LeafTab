@@ -32,6 +32,7 @@ interface WebdavConfigDialogProps {
   onOpenChange: (open: boolean) => void;
   enableAfterSave?: boolean;
   onEnableAfterSave?: () => void | Promise<void>;
+  onSaveSuccess?: () => void | Promise<void>;
   onDisableSync?: () => void | Promise<void>;
 }
 
@@ -40,6 +41,7 @@ export function WebdavConfigDialog({
   onOpenChange,
   enableAfterSave = false,
   onEnableAfterSave,
+  onSaveSuccess,
   onDisableSync,
 }: WebdavConfigDialogProps) {
   const { t } = useTranslation();
@@ -119,6 +121,7 @@ export function WebdavConfigDialog({
       window.dispatchEvent(new CustomEvent('webdav-config-changed'));
       toast.success(t('settings.backup.webdav.configSaved'));
       onOpenChange(false);
+      await onSaveSuccess?.();
     } finally {
       setSaving(false);
     }

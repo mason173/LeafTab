@@ -1,7 +1,7 @@
 import type { ScenarioMode } from '@/scenario/scenario';
 import type { ScenarioShortcuts, Shortcut, SyncablePreferences } from '@/types';
 import { getShortcutIdentityKey } from '@/utils/shortcutIdentity';
-import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
+import { normalizeShortcutVisualMode, resolveShortcutIconColor } from '@/utils/shortcutIconPreferences';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import type { LeafTabBookmarkTreeDraft } from './bookmarks';
 import type {
@@ -159,7 +159,7 @@ const isSameShortcutValue = (
     entity.autoUseOfficialIcon === (shortcut.autoUseOfficialIcon !== false) &&
     entity.officialIconAvailableAtSave === (shortcut.officialIconAvailableAtSave === true) &&
     entity.iconRendering === normalizeShortcutVisualMode(shortcut.iconRendering) &&
-    (entity.iconColor || '') === normalizeShortcutIconColor(shortcut.iconColor)
+    (entity.iconColor || '') === resolveShortcutIconColor(shortcut.iconColor)
   );
 };
 
@@ -540,7 +540,7 @@ export const buildLeafTabSyncSnapshot = (params: {
       autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
       iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
-      iconColor: normalizeShortcutIconColor(shortcut.iconColor),
+      iconColor: resolveShortcutIconColor(shortcut.iconColor),
       ...metadata,
     };
     delete tombstones[shortcutId];
@@ -671,7 +671,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
           autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
           officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
           iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
-          iconColor: normalizeShortcutIconColor(shortcut.iconColor),
+          iconColor: resolveShortcutIconColor(shortcut.iconColor),
         };
       });
     const seenShortcutIds = new Set(orderedShortcutList.map((shortcut) => shortcut.id));
@@ -693,7 +693,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
         autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
         officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
         iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
-        iconColor: normalizeShortcutIconColor(shortcut.iconColor),
+        iconColor: resolveShortcutIconColor(shortcut.iconColor),
       }));
     scenarioShortcuts[scenario.id] = orderedShortcutList.concat(unorderedShortcutList);
   });

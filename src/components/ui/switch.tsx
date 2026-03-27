@@ -12,7 +12,7 @@ type SwitchThumbProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Th
 const SwitchThumb = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitive.Thumb>,
   SwitchThumbProps
->(({ className, ...props }, ref) => {
+>(({ className, pressedAnimation: _pressedAnimation, ...props }, ref) => {
   return (
     <SwitchPrimitive.Thumb
       ref={ref}

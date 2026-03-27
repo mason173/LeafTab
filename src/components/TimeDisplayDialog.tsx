@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { googleFonts, loadGoogleFont } from "@/utils/googleFonts";
+import type { TimeAnimationMode } from "@/hooks/useSettings";
 
 interface TimeDisplayDialogProps {
   open: boolean;
@@ -21,7 +22,7 @@ interface TimeDisplayDialogProps {
   onShowSecondsChange: (checked: boolean) => void;
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
-  timeAnimationEnabled: boolean;
+  timeAnimationMode: TimeAnimationMode;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   onSelect: (font: string) => void;
 }
@@ -41,11 +42,22 @@ export function TimeDisplayDialog({
   onShowSecondsChange,
   showLunar,
   onShowLunarChange,
-  timeAnimationEnabled,
+  timeAnimationMode,
   onTimeAnimationModeChange,
   onSelect,
 }: TimeDisplayDialogProps) {
   const { t } = useTranslation();
+  const animationSettingEnabled = timeAnimationMode !== 'off';
+  const handleTimeAnimationModeCheckedChange = (checked: boolean) => {
+    if (typeof onTimeAnimationModeChange === 'function') {
+      onTimeAnimationModeChange(checked ? 'on' : 'off');
+    }
+  };
+  const invokeCheckedChange = (handler: unknown, checked: boolean) => {
+    if (typeof handler === 'function') {
+      handler(checked);
+    }
+  };
   const settingsCards = [
     {
       key: 'show-date',
@@ -80,10 +92,8 @@ export function TimeDisplayDialog({
     {
       key: 'time-animation',
       title: t("settings.timeAnimation.label"),
-      checked: timeAnimationEnabled,
-      onCheckedChange: (checked: boolean) => {
-        onTimeAnimationModeChange(checked ? 'on' : 'off');
-      },
+      checked: animationSettingEnabled,
+      onCheckedChange: handleTimeAnimationModeCheckedChange,
     },
   ];
 
@@ -106,22 +116,28 @@ export function TimeDisplayDialog({
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-3">
               {settingsCards.map((card) => (
-                <button
+                <div
                   key={card.key}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={`no-pill-radius !rounded-[20px] flex min-h-[64px] items-center border px-4 py-3 text-left transition-colors ${
                     card.checked
                       ? "border-primary/35 bg-primary/10"
                       : "border-border bg-secondary/35 hover:bg-secondary/55"
                   }`}
-                  onClick={() => card.onCheckedChange(!card.checked)}
+                  onClick={() => invokeCheckedChange(card.onCheckedChange, !card.checked)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    invokeCheckedChange(card.onCheckedChange, !card.checked);
+                  }}
                 >
                   <div className="flex w-full items-center justify-between gap-3">
                     <span className="text-sm font-medium leading-none">{card.title}</span>
                     <Switch
                       id={`time-display-dialog-${card.key}`}
                       checked={card.checked}
-                      onCheckedChange={card.onCheckedChange}
+                      onCheckedChange={(checked) => invokeCheckedChange(card.onCheckedChange, checked)}
                       onClick={(event) => {
                         event.stopPropagation();
                       }}
@@ -130,7 +146,7 @@ export function TimeDisplayDialog({
                       <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
                     </Switch>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
             <Separator className="bg-border/60" />

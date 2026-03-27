@@ -70,13 +70,13 @@ const readTimeAnimationMode = (): TimeAnimationMode => {
   const legacyRaw = localStorage.getItem('time_animation_enabled');
   if (legacyRaw !== null) {
     try {
-      return JSON.parse(legacyRaw) === false ? 'off' : 'inherit';
+      return JSON.parse(legacyRaw) === false ? 'off' : 'on';
     } catch {
-      return legacyRaw === 'false' ? 'off' : 'inherit';
+      return legacyRaw === 'false' ? 'off' : 'on';
     }
   }
 
-  return 'inherit';
+  return 'on';
 };
 
 const readVisualEffectsLevel = (): VisualEffectsLevel => {
@@ -160,7 +160,7 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   showDate: true,
   showWeekday: true,
   showLunar: true,
-  timeAnimationMode: 'inherit',
+  timeAnimationMode: 'on',
   timeFont: 'Pacifico',
   showSeconds: true,
   visualEffectsLevel: 'high',

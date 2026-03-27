@@ -72,7 +72,7 @@ import {
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
-import { getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
@@ -888,6 +888,34 @@ export default function App() {
     wallpaperMode,
   ]);
 
+  const stripWallpaperFromCloudSyncPreferences = useCallback((preferences: SyncablePreferences): SyncablePreferences => {
+    return normalizeSyncablePreferences({
+      ...preferences,
+      wallpaperMode: null,
+      wallpaperMaskOpacity: 10,
+      darkModeAutoDimWallpaperEnabled: true,
+      colorWallpaperId: DEFAULT_COLOR_WALLPAPER_ID,
+    });
+  }, []);
+
+  const mergeCloudSyncSnapshotWithLocalWallpaper = useCallback((snapshot: LeafTabSyncSnapshot): LeafTabSyncSnapshot => {
+    if (!snapshot.preferences) return snapshot;
+    const localPreferences = buildSyncablePreferencesSnapshot();
+    return {
+      ...snapshot,
+      preferences: {
+        ...snapshot.preferences,
+        value: normalizeSyncablePreferences({
+          ...snapshot.preferences.value,
+          wallpaperMode: localPreferences.wallpaperMode,
+          wallpaperMaskOpacity: localPreferences.wallpaperMaskOpacity,
+          darkModeAutoDimWallpaperEnabled: localPreferences.darkModeAutoDimWallpaperEnabled,
+          colorWallpaperId: localPreferences.colorWallpaperId,
+        }),
+      },
+    };
+  }, [buildSyncablePreferencesSnapshot]);
+
   const applySyncablePreferencesSnapshot = useCallback(async (preferences: SyncablePreferences | null) => {
     if (!preferences) return;
     const normalized = normalizeSyncablePreferences(preferences);
@@ -1261,26 +1289,30 @@ export default function App() {
     return buildLeafTabSyncSnapshotFromCurrentState({
       baselineStorageKey: cloudSyncBaselineStorageKey,
       includeBookmarks: cloudSyncBookmarksEnabled,
+      preferencesTransform: stripWallpaperFromCloudSyncPreferences,
     });
   }, [
     buildLeafTabSyncSnapshotFromCurrentState,
     cloudSyncBaselineStorageKey,
     cloudSyncBookmarksEnabled,
+    stripWallpaperFromCloudSyncPreferences,
   ]);
   const applyCloudLeafTabSyncSnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
+    const snapshotWithoutCloudWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
     if (cloudSyncBookmarksEnabled) {
-      await applyLeafTabSyncSnapshot(snapshot);
+      await applyLeafTabSyncSnapshot(snapshotWithoutCloudWallpaper);
       return;
     }
 
     const localSnapshot = await buildLocalLeafTabSyncSnapshot();
     await applyLeafTabSyncSnapshot(
-      mergeLeafTabSyncSnapshotWithBookmarks(snapshot, localSnapshot),
+      mergeLeafTabSyncSnapshotWithBookmarks(snapshotWithoutCloudWallpaper, localSnapshot),
     );
   }, [
     applyLeafTabSyncSnapshot,
     buildLocalLeafTabSyncSnapshot,
     cloudSyncBookmarksEnabled,
+    mergeCloudSyncSnapshotWithLocalWallpaper,
   ]);
   const cloudSyncRunnerRef = useRef<(options?: CloudLeafTabSyncOptions) => Promise<unknown>>(async () => null);
   const {
@@ -1342,6 +1374,7 @@ export default function App() {
     hasConfig: leafTabSyncHasConfig,
     isReady: leafTabSyncReady,
     lastResult: leafTabSyncLastResult,
+    invalidateAnalysis: invalidateLeafTabSyncAnalysis,
     refreshAnalysis: refreshLeafTabSyncAnalysis,
     runSync: runLeafTabSync,
     syncState: leafTabSyncState,
@@ -1360,6 +1393,7 @@ export default function App() {
     analysis: cloudLeafTabSyncAnalysis,
     hasConfig: cloudLeafTabSyncHasConfig,
     lastResult: cloudLeafTabSyncLastResult,
+    invalidateAnalysis: invalidateCloudLeafTabSyncAnalysis,
     refreshAnalysis: refreshCloudLeafTabSyncAnalysis,
     runSync: runCloudLeafTabSync,
     syncState: cloudLeafTabSyncState,
@@ -1719,6 +1753,66 @@ export default function App() {
       maxAgeMs: LEAFTAB_SYNC_ANALYSIS_CACHE_MAX_AGE_MS,
     });
   }, [refreshCloudLeafTabSyncAnalysis, refreshLeafTabSyncAnalysis]);
+
+  useEffect(() => {
+    const bookmarksApi = globalThis.chrome?.bookmarks;
+    if (!bookmarksApi) return;
+
+    let refreshTimer: number | null = null;
+
+    const handleBookmarksChanged = () => {
+      invalidateLeafTabSyncAnalysis();
+      invalidateCloudLeafTabSyncAnalysis();
+
+      if (!leafTabSyncDialogOpen) {
+        return;
+      }
+
+      if (refreshTimer) {
+        window.clearTimeout(refreshTimer);
+      }
+
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void refreshLeafTabSyncAnalysis({
+          force: false,
+          maxAgeMs: 0,
+        });
+        if (cloudSyncBookmarksEnabled) {
+          void refreshCloudLeafTabSyncAnalysis({
+            force: false,
+            maxAgeMs: 0,
+          });
+        }
+      }, 120);
+    };
+
+    bookmarksApi.onCreated?.addListener?.(handleBookmarksChanged);
+    bookmarksApi.onRemoved?.addListener?.(handleBookmarksChanged);
+    bookmarksApi.onChanged?.addListener?.(handleBookmarksChanged);
+    bookmarksApi.onMoved?.addListener?.(handleBookmarksChanged);
+    bookmarksApi.onChildrenReordered?.addListener?.(handleBookmarksChanged);
+    bookmarksApi.onImportEnded?.addListener?.(handleBookmarksChanged);
+
+    return () => {
+      if (refreshTimer) {
+        window.clearTimeout(refreshTimer);
+      }
+      bookmarksApi.onCreated?.removeListener?.(handleBookmarksChanged);
+      bookmarksApi.onRemoved?.removeListener?.(handleBookmarksChanged);
+      bookmarksApi.onChanged?.removeListener?.(handleBookmarksChanged);
+      bookmarksApi.onMoved?.removeListener?.(handleBookmarksChanged);
+      bookmarksApi.onChildrenReordered?.removeListener?.(handleBookmarksChanged);
+      bookmarksApi.onImportEnded?.removeListener?.(handleBookmarksChanged);
+    };
+  }, [
+    cloudSyncBookmarksEnabled,
+    invalidateCloudLeafTabSyncAnalysis,
+    invalidateLeafTabSyncAnalysis,
+    leafTabSyncDialogOpen,
+    refreshCloudLeafTabSyncAnalysis,
+    refreshLeafTabSyncAnalysis,
+  ]);
   const resolveLegacyCloudMigrationPrompt = useCallback((confirmed: boolean) => {
     const resolver = legacyCloudMigrationResolverRef.current;
     legacyCloudMigrationResolverRef.current = null;
@@ -1888,35 +1982,17 @@ export default function App() {
     if (!cloudLoginSyncPendingUser || !user || cloudLoginSyncPendingUser !== user) {
       return;
     }
-    if (!cloudSyncEnabled || !cloudLeafTabSyncHasConfig || !cloudSyncEncryptionReady) {
+    if (!cloudLeafTabSyncHasConfig) {
       return;
     }
     setCloudLoginSyncPendingUser(null);
-    void runLongTask({
-      title: '正在同步账号数据',
-      detail: cloudSyncBookmarksEnabled ? '正在处理快捷方式和书签数据' : '正在处理快捷方式数据',
-      progress: 8,
-    }, async ({ update }) => {
-      await handleCloudLeafTabSync({
-        silentSuccess: true,
-        requestBookmarkPermission: cloudSyncBookmarksEnabled,
-        progressTaskId: null,
-        onProgress: (progress) => {
-          update({
-            title: progress.message,
-            progress: progress.progress,
-          });
-        },
-      });
+    void handleCloudSyncNowFromCenter({
+      allowWhenDisabled: true,
     });
   }, [
     cloudLeafTabSyncHasConfig,
     cloudLoginSyncPendingUser,
-    cloudSyncBookmarksEnabled,
-    cloudSyncEnabled,
-    cloudSyncEncryptionReady,
-    handleCloudLeafTabSync,
-    runLongTask,
+    handleCloudSyncNowFromCenter,
     user,
   ]);
   const syncLocalToCloudBeforeLogout = useCallback(async () => {
@@ -2172,6 +2248,7 @@ export default function App() {
     onShowWeekdayChange: setShowWeekday,
     showLunar,
     onShowLunarChange: setShowLunar,
+    timeAnimationMode,
     onTimeAnimationModeChange: setTimeAnimationMode,
     bingWallpaperUrl: bingWallpaper,
     onSettingsClick: handleOpenSettings,
@@ -2221,6 +2298,7 @@ export default function App() {
     setTimeAnimationMode,
     showSeconds,
     showLunar,
+    timeAnimationMode,
     timeFont,
     topNavSyncStatus,
     visualEffectsPolicy.disableBackdropBlur,
@@ -2318,6 +2396,9 @@ export default function App() {
     onShowWeekdayChange: setShowWeekday,
     showLunar,
     onShowLunarChange: setShowLunar,
+    timeAnimationEnabled: effectiveTimeAnimationEnabled,
+    timeAnimationMode,
+    onTimeAnimationModeChange: setTimeAnimationMode,
     onWeatherUpdate: setWeatherCode,
     timeFont,
     onTimeFontChange: setTimeFont,
@@ -2336,12 +2417,15 @@ export default function App() {
     setShowSeconds,
     setShowWeekday,
     setTimeFont,
+    setTimeAnimationMode,
     setWeatherCode,
+    effectiveTimeAnimationEnabled,
     showDate,
     showLunar,
     showSeconds,
     showTime,
     showWeekday,
+    timeAnimationMode,
     timeFont,
     user,
     visualEffectsLevel,
@@ -2717,6 +2801,12 @@ export default function App() {
               onEnableAfterSave: async () => {
                 await handleEnableWebdavSync();
                 setWebdavEnableAfterConfigSave(false);
+              },
+              onSaveSuccess: async () => {
+                if (!leafTabWebdavEnabled || leafTabSyncState.status === 'syncing') {
+                  return;
+                }
+                await handleLeafTabAutoSync();
               },
               onDisableSync: async () => {
                 setConfirmDisableWebdavSyncOpen(true);

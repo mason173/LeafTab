@@ -1,6 +1,6 @@
 {
       "name": "leaftab",
-      "version": "1.4.0-alpha.5",
+      "version": "1.4.0",
       "private": true,
       "dependencies": {
             "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
@@ -69,6 +69,7 @@
             "vaul": "^1.1.2"
       },
       "devDependencies": {
+            "@playwright/test": "^1.58.2",
             "@testing-library/jest-dom": "^6.9.1",
             "@testing-library/react": "^16.3.2",
             "@testing-library/user-event": "^14.6.1",
@@ -85,6 +86,10 @@
             "dev": "vite --host",
             "build": "npm run build:community",
             "test": "vitest run",
+            "test:node": "vitest run -c vitest.node.config.ts",
+            "test:e2e": "playwright test",
+            "test:e2e:headed": "playwright test --headed",
+            "test:plugin": "node scripts/run-plugin-checks.js",
             "test:watch": "vitest",
             "build:community": "node scripts/build-channel.js community",
             "build:store": "node scripts/build-channel.js store",
