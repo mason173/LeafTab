@@ -419,6 +419,9 @@ export default {
         previewDescription: "Alpha / Beta builds for testing. Features and details may still change",
       },
       items: {
+        release141BookmarkSyncFix: "Fixed key issues in bookmark sync",
+        release141SyncStability: "Improved overall data sync stability",
+        release141SyncTestingBackupNotice: "Data sync is still in testing. Please back up your data before enabling it",
         release140AlphaEncryptedBookmarkSync: "Added bookmark cloud sync, WebDAV sync, and end-to-end encrypted bookmark sync",
         release140AlphaBookmarkSearchPolish: "Returned to a simpler, more stable bookmark search flow while continuing to polish search and sync UX",
         release140AlphaKnownIssues: "Known issue: this Alpha build may still adjust some interactions and copy details",

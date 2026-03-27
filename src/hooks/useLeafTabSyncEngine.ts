@@ -333,7 +333,10 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
 
   const runSync = useCallback(async (
     choice: LeafTabSyncInitialChoice | 'auto' = 'auto',
-    progressOptions?: { onProgress?: (progress: LeafTabSyncEngineProgress) => void },
+    progressOptions?: {
+      onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+      allowDestructiveBookmarkChanges?: boolean;
+    },
   ) => {
     if (!enabled || !engine) {
       return null;
@@ -357,8 +360,15 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
         const result = await engine.sync(
           choice,
           preparedLegacy
-            ? { localSnapshotOverride: preparedLegacy.snapshot, onProgress: progressOptions?.onProgress }
-            : { onProgress: progressOptions?.onProgress },
+            ? {
+                localSnapshotOverride: preparedLegacy.snapshot,
+                onProgress: progressOptions?.onProgress,
+                allowDestructiveBookmarkChanges: progressOptions?.allowDestructiveBookmarkChanges,
+              }
+            : {
+                onProgress: progressOptions?.onProgress,
+                allowDestructiveBookmarkChanges: progressOptions?.allowDestructiveBookmarkChanges,
+              },
         );
 
         if (

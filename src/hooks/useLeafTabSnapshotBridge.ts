@@ -7,6 +7,7 @@ import {
   captureLeafTabBookmarkTreeDraft,
   createLeafTabSyncBuildState,
   LEAFTAB_SYNC_SCHEMA_VERSION,
+  LeafTabBookmarkPermissionDeniedError,
   projectLeafTabSyncSnapshotToAppState,
   replaceLeafTabBookmarkTree,
   type LeafTabBookmarkSyncScope,
@@ -188,7 +189,11 @@ export function useLeafTabSnapshotBridge({
       : await captureLeafTabBookmarkTreeDraft({
           scope: leafTabBookmarkSyncScope,
           requestPermission: options?.requestBookmarkPermission === true,
+          throwOnPermissionDenied: true,
         });
+    if (options?.includeBookmarks !== false && !bookmarkTree) {
+      throw new LeafTabBookmarkPermissionDeniedError();
+    }
     const basePreferences = buildPreferencesSnapshot();
     const preferences = normalizeSyncablePreferences(
       options?.preferencesTransform
@@ -278,7 +283,7 @@ export function useLeafTabSnapshotBridge({
       setScenarioShortcuts(nextScenarioShortcuts);
     });
 
-    await replaceLeafTabBookmarkTree({
+    const bookmarksApplied = await replaceLeafTabBookmarkTree({
       scope: leafTabBookmarkSyncScope,
       folderLookup: Object.fromEntries(
         Object.values(projected.bookmarkFolders).map((folder) => [
@@ -304,6 +309,9 @@ export function useLeafTabSnapshotBridge({
       ),
       requestPermission: false,
     });
+    if (!bookmarksApplied) {
+      throw new LeafTabBookmarkPermissionDeniedError();
+    }
 
     await applyPreferencesSnapshot(nextPreferences);
 

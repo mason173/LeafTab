@@ -60,6 +60,7 @@ export interface LeafTabSyncEngineConfig {
 export interface LeafTabSyncEngineRunOptions {
   localSnapshotOverride?: LeafTabSyncSnapshot;
   onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+  allowDestructiveBookmarkChanges?: boolean;
 }
 
 export interface LeafTabSyncEngineAnalyzeOptions {
@@ -116,6 +117,48 @@ const sameSnapshotContent = (
 
 const cloneSnapshot = (snapshot: LeafTabSyncSnapshot) => {
   return JSON.parse(JSON.stringify(snapshot)) as LeafTabSyncSnapshot;
+};
+
+const countBookmarkItems = (snapshot: LeafTabSyncSnapshot | null | undefined) => {
+  if (!snapshot) return 0;
+  return Object.keys(snapshot.bookmarkItems || {}).length;
+};
+
+export const isDestructiveBookmarkChange = (params: {
+  from: LeafTabSyncSnapshot | null | undefined;
+  to: LeafTabSyncSnapshot | null | undefined;
+}) => {
+  const fromCount = countBookmarkItems(params.from);
+  const toCount = countBookmarkItems(params.to);
+  if (fromCount < 20) return false;
+  if (toCount >= fromCount) return false;
+  const droppedCount = fromCount - toCount;
+  return toCount <= Math.max(5, Math.floor(fromCount * 0.2)) || droppedCount >= 100;
+};
+
+export class LeafTabDestructiveBookmarkChangeError extends Error {
+  fromCount: number;
+  toCount: number;
+
+  constructor(fromCount: number, toCount: number) {
+    super(`检测到书签数量将从 ${fromCount} 降到 ${toCount}，已停止同步以保护数据。若确认这是预期操作，请使用覆盖修复后重试。`);
+    this.name = 'LeafTabDestructiveBookmarkChangeError';
+    this.fromCount = fromCount;
+    this.toCount = toCount;
+  }
+}
+
+const assertSafeBookmarkChange = (
+  from: LeafTabSyncSnapshot | null | undefined,
+  to: LeafTabSyncSnapshot | null | undefined,
+  allowDestructiveBookmarkChanges: boolean | undefined,
+) => {
+  if (allowDestructiveBookmarkChanges) return;
+  if (!isDestructiveBookmarkChange({ from, to })) return;
+  throw new LeafTabDestructiveBookmarkChangeError(
+    countBookmarkItems(from),
+    countBookmarkItems(to),
+  );
 };
 
 const reportProgress = (
@@ -259,6 +302,11 @@ export class LeafTabSyncEngine {
           progress: 68,
           message: '正在写入云端数据',
         });
+        assertSafeBookmarkChange(
+          latestRemoteSnapshot,
+          localSnapshot,
+          runOptions?.allowDestructiveBookmarkChanges,
+        );
         const writeResult = await this.config.remoteStore.writeState({
           snapshot: localSnapshot,
           previousSnapshot: latestRemote.snapshot,
@@ -293,6 +341,11 @@ export class LeafTabSyncEngine {
 
     if (mode === 'pull-remote') {
       if (!sameSnapshotContent(localSnapshot, remoteSnapshot)) {
+        assertSafeBookmarkChange(
+          localSnapshot,
+          remoteSnapshot,
+          runOptions?.allowDestructiveBookmarkChanges,
+        );
         reportProgress(runOptions?.onProgress, {
           stage: 'applying-local',
           progress: 62,
@@ -377,6 +430,11 @@ export class LeafTabSyncEngine {
             progress: 72,
             message: '正在写入云端数据',
           });
+          assertSafeBookmarkChange(
+            latestRemoteSnapshot,
+            finalSnapshot,
+            runOptions?.allowDestructiveBookmarkChanges,
+          );
           const writeResult = await this.config.remoteStore.writeState({
             snapshot: finalSnapshot,
             previousSnapshot: latestRemote.snapshot,
@@ -390,6 +448,11 @@ export class LeafTabSyncEngine {
           }));
 
           if (!sameSnapshotContent(localSnapshot, finalSnapshot)) {
+            assertSafeBookmarkChange(
+              localSnapshot,
+              finalSnapshot,
+              runOptions?.allowDestructiveBookmarkChanges,
+            );
             reportProgress(runOptions?.onProgress, {
               stage: 'applying-local',
               progress: 88,
@@ -420,6 +483,11 @@ export class LeafTabSyncEngine {
         }));
 
         if (!sameSnapshotContent(localSnapshot, finalSnapshot)) {
+          assertSafeBookmarkChange(
+            localSnapshot,
+            finalSnapshot,
+            runOptions?.allowDestructiveBookmarkChanges,
+          );
           reportProgress(runOptions?.onProgress, {
             stage: 'applying-local',
             progress: 86,
@@ -490,6 +558,11 @@ export class LeafTabSyncEngine {
       progress: 84,
       message: '正在将云端数据写入本地',
     });
+    assertSafeBookmarkChange(
+      localSnapshot,
+      finalSnapshot,
+      runOptions?.allowDestructiveBookmarkChanges,
+    );
     await this.config.applyLocalSnapshot(cloneSnapshot(finalSnapshot));
     reportProgress(runOptions?.onProgress, {
       stage: 'finalizing',

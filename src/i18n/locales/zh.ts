@@ -423,6 +423,9 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release141BookmarkSyncFix: "修复书签同步中的关键问题",
+        release141SyncStability: "增强数据同步稳定性",
+        release141SyncTestingBackupNotice: "数据同步仍处于测试阶段，开启前请注意备份",
         release140AlphaEncryptedBookmarkSync: "支持书签云同步、WebDAV 同步与书签端到端加密同步",
         release140AlphaBookmarkSearchPolish: "回归更稳定的普通书签搜索，并继续优化搜索与同步体验",
         release140AlphaKnownIssues: "已知问题：Alpha 版本仍可能继续调整部分交互与文案表现",

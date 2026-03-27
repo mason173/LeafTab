@@ -214,11 +214,12 @@ describe('bookmarkSyncMode helpers', () => {
     expect(restored?.scenarios).toEqual(snapshot.scenarios);
   });
 
-  it('wraps a remote store so bookmark data is never read or written', async () => {
+  it('wraps a remote store so bookmark data is hidden from reads and preserved on writes', async () => {
+    const remoteSnapshot = createSnapshot('remote-device');
     const readState = vi.fn(async () => ({
       head: null,
       commit: null,
-      snapshot: createSnapshot('remote-device'),
+      snapshot: remoteSnapshot,
     }));
     const writeState = vi.fn(async () => ({
       head: {
@@ -263,12 +264,130 @@ describe('bookmarkSyncMode helpers', () => {
     expect(remoteState.snapshot?.bookmarkItems).toEqual({});
     expect(writeState).toHaveBeenCalledWith(expect.objectContaining({
       snapshot: expect.objectContaining({
-        bookmarkFolders: {},
-        bookmarkItems: {},
+        bookmarkFolders: remoteSnapshot.bookmarkFolders,
+        bookmarkItems: remoteSnapshot.bookmarkItems,
       }),
       previousSnapshot: expect.objectContaining({
-        bookmarkFolders: {},
-        bookmarkItems: {},
+        bookmarkFolders: remoteSnapshot.bookmarkFolders,
+        bookmarkItems: remoteSnapshot.bookmarkItems,
+      }),
+    }));
+  });
+
+  it('preserves remote bookmarks when bookmark sync is disabled but other data is written', async () => {
+    const remoteSnapshot = createSnapshot('remote-device');
+    const writeState = vi.fn(async () => ({
+      head: {
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        commitId: 'commit-2',
+        updatedAt: '2026-03-27T10:20:00.000Z',
+      },
+      commit: {
+        id: 'commit-2',
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        deviceId: 'remote-device',
+        createdAt: '2026-03-27T10:20:00.000Z',
+        parentCommitId: 'commit-1',
+        manifestPath: 'leaftab/v1/manifest.json',
+        summary: {
+          scenarios: 1,
+          shortcuts: 1,
+          bookmarkFolders: 1,
+          bookmarkItems: 1,
+          tombstones: 2,
+        },
+      },
+    }));
+    const remoteStore: LeafTabSyncRemoteStore = {
+      acquireLock: vi.fn(async () => null),
+      releaseLock: vi.fn(async () => {}),
+      readState: vi.fn(async () => ({
+        head: null,
+        commit: null,
+        snapshot: remoteSnapshot,
+      })),
+      writeState,
+    };
+
+    const wrapped = new LeafTabSyncBookmarksDisabledRemoteStore(remoteStore);
+    await wrapped.readState();
+
+    const localSnapshot = stripBookmarksFromLeafTabSyncSnapshot(createSnapshot('local-device')) || createSnapshot('local-device');
+    localSnapshot.shortcuts.shortcut_a = {
+      ...localSnapshot.shortcuts.shortcut_a,
+      title: 'Updated Locally',
+    };
+
+    await wrapped.writeState({
+      snapshot: localSnapshot,
+      previousSnapshot: localSnapshot,
+      deviceId: 'local-device',
+    });
+
+    expect(writeState).toHaveBeenCalledWith(expect.objectContaining({
+      snapshot: expect.objectContaining({
+        bookmarkFolders: remoteSnapshot.bookmarkFolders,
+        bookmarkItems: remoteSnapshot.bookmarkItems,
+        bookmarkOrders: remoteSnapshot.bookmarkOrders,
+      }),
+      previousSnapshot: expect.objectContaining({
+        bookmarkFolders: remoteSnapshot.bookmarkFolders,
+        bookmarkItems: remoteSnapshot.bookmarkItems,
+        bookmarkOrders: remoteSnapshot.bookmarkOrders,
+      }),
+    }));
+  });
+
+  it('reloads the full remote snapshot before writing when no cached remote snapshot is available', async () => {
+    const remoteSnapshot = createSnapshot('remote-device');
+    const readState = vi.fn(async () => ({
+      head: null,
+      commit: null,
+      snapshot: remoteSnapshot,
+    }));
+    const writeState = vi.fn(async () => ({
+      head: {
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        commitId: 'commit-3',
+        updatedAt: '2026-03-27T10:30:00.000Z',
+      },
+      commit: {
+        id: 'commit-3',
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        deviceId: 'remote-device',
+        createdAt: '2026-03-27T10:30:00.000Z',
+        parentCommitId: 'commit-2',
+        manifestPath: 'leaftab/v1/manifest.json',
+        summary: {
+          scenarios: 1,
+          shortcuts: 1,
+          bookmarkFolders: 1,
+          bookmarkItems: 1,
+          tombstones: 2,
+        },
+      },
+    }));
+    const remoteStore: LeafTabSyncRemoteStore = {
+      acquireLock: vi.fn(async () => null),
+      releaseLock: vi.fn(async () => {}),
+      readState,
+      writeState,
+    };
+
+    const wrapped = new LeafTabSyncBookmarksDisabledRemoteStore(remoteStore);
+    const localSnapshot = stripBookmarksFromLeafTabSyncSnapshot(createSnapshot('local-device')) || createSnapshot('local-device');
+
+    await wrapped.writeState({
+      snapshot: localSnapshot,
+      previousSnapshot: localSnapshot,
+      deviceId: 'local-device',
+    });
+
+    expect(readState).toHaveBeenCalledTimes(1);
+    expect(writeState).toHaveBeenCalledWith(expect.objectContaining({
+      snapshot: expect.objectContaining({
+        bookmarkFolders: remoteSnapshot.bookmarkFolders,
+        bookmarkItems: remoteSnapshot.bookmarkItems,
       }),
     }));
   });

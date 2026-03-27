@@ -30,6 +30,13 @@ export interface LeafTabBookmarkTreeDraft {
   nodeIdToEntityId: Record<string, string>;
 }
 
+export class LeafTabBookmarkPermissionDeniedError extends Error {
+  constructor(message = '未授予书签权限，已停止同步以保护现有书签数据') {
+    super(message);
+    this.name = 'LeafTabBookmarkPermissionDeniedError';
+  }
+}
+
 interface LeafTabBookmarkMappingState {
   version: 1;
   nodeIdToEntityId: Record<string, string>;
@@ -407,6 +414,7 @@ export const formatLeafTabBookmarkSyncScopeLabel = (
 export const captureLeafTabBookmarkTreeDraft = async (options?: {
   scope?: LeafTabBookmarkSyncScope | null;
   requestPermission?: boolean;
+  throwOnPermissionDenied?: boolean;
 }): Promise<LeafTabBookmarkTreeDraft> => {
   const scope = normalizeScope(options?.scope);
   ensureLeafTabBookmarkDraftCacheListeners();
@@ -415,6 +423,9 @@ export const captureLeafTabBookmarkTreeDraft = async (options?: {
   });
 
   if (!granted) {
+    if (options?.throwOnPermissionDenied) {
+      throw new LeafTabBookmarkPermissionDeniedError();
+    }
     return createEmptyBookmarkTreeDraft();
   }
 

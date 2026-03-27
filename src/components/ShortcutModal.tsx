@@ -15,7 +15,6 @@ import {
   getShortcutIconColor,
   normalizeShortcutIconColor,
   normalizeShortcutVisualMode,
-  resolveShortcutIconColor,
   SHORTCUT_ICON_COLOR_PALETTE,
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
@@ -207,7 +206,7 @@ export default function ShortcutModal({
       autoUseOfficialIcon,
       officialIconAvailableAtSave: officialIconAvailable,
       iconRendering,
-      iconColor: resolveShortcutIconColor(iconColor),
+      iconColor: normalizeShortcutIconColor(iconColor),
     });
   };
 

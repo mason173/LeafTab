@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { getDefaultSyncablePreferences } from '@/utils/syncablePreferences';
 import type { LeafTabSyncSnapshot } from './schema';
-import { projectLeafTabSyncSnapshotToAppState } from './snapshot';
+import { buildLeafTabSyncSnapshot, projectLeafTabSyncSnapshotToAppState } from './snapshot';
 
 const createSnapshot = (): LeafTabSyncSnapshot => ({
   meta: {
@@ -98,6 +99,51 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
         title: 'B',
         url: 'https://b.example',
         icon: '',
+      }),
+    ]);
+  });
+
+  it('preserves icon color semantics through a sync snapshot round trip', () => {
+    const snapshot = buildLeafTabSyncSnapshot({
+      preferences: getDefaultSyncablePreferences(),
+      deviceId: 'device',
+      scenarioModes: [
+        {
+          id: 'work',
+          name: 'Work',
+          color: '#000000',
+          icon: 'briefcase',
+        },
+      ],
+      scenarioShortcuts: {
+        work: [
+          {
+            id: 'custom',
+            title: 'Custom',
+            url: 'https://custom.example',
+            icon: '',
+            iconColor: '#12ab90',
+          },
+          {
+            id: 'unset',
+            title: 'Unset',
+            url: 'https://unset.example',
+            icon: '',
+          },
+        ],
+      },
+    });
+
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+
+    expect(projected.scenarioShortcuts.work).toEqual([
+      expect.objectContaining({
+        id: 'custom',
+        iconColor: '#12AB90',
+      }),
+      expect.objectContaining({
+        id: 'unset',
+        iconColor: '',
       }),
     ]);
   });

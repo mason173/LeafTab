@@ -10,6 +10,8 @@ type ExtensionFixtures = {
 };
 
 const extensionPath = path.resolve(__dirname, '../../build');
+const headedMode = process.env.PW_HEADLESS === 'false';
+const slowMo = Number(process.env.PW_SLOWMO || '0');
 const mockedOfficialIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#111827"/><path d="M36 36h56v56H36z" fill="#22c55e"/></svg>`;
 const baselineScenarioModes = [
   {
@@ -43,7 +45,8 @@ export const test = base.extend<ExtensionFixtures>({
     const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'leaftabb-e2e-'));
     const context = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chromium',
-      headless: true,
+      headless: !headedMode,
+      slowMo,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,

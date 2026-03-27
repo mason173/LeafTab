@@ -3,7 +3,7 @@ import { toast } from '../components/ui/sonner';
 import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut, ShortcutDraft } from '../types';
 import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
 import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
-import { resolveShortcutIconColor } from '@/utils/shortcutIconPreferences';
+import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
 
 type SelectedShortcut = { index: number; shortcut: Shortcut } | null;
 type TranslateFn = (key: string, options?: any) => string;
@@ -160,7 +160,7 @@ export function useShortcutActions({
           autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
           officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
           iconRendering: draft.iconRendering,
-          iconColor: resolveShortcutIconColor(draft.iconColor),
+          iconColor: normalizeShortcutIconColor(draft.iconColor),
         };
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
         saved = true;
@@ -190,7 +190,7 @@ export function useShortcutActions({
                 autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
                 officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
                 iconRendering: draft.iconRendering,
-                iconColor: resolveShortcutIconColor(draft.iconColor),
+                iconColor: normalizeShortcutIconColor(draft.iconColor),
               }
             : item
         ));

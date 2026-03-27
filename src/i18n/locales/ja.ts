@@ -293,6 +293,9 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release141BookmarkSyncFix: "ブックマーク同期の主要な不具合を修正",
+        release141SyncStability: "データ同期の安定性を強化",
+        release141SyncTestingBackupNotice: "データ同期は現在もテスト段階です。有効化する前に必ずバックアップしてください",
         release130DynamicEffectsOptimize: "全体の動的エフェクト体験を最適化し、「動的効果を抑える」トグルと統一されたモーション低減挙動を追加",
         release130DynamicWallpaperTab: "新しい「動的」壁紙カテゴリを追加し、Prism / Silk / Light Rays / Beams / Galaxy / Iridescence のプレビューと適用に対応",
         release130ManualWeatherCity: "天気機能で都市を手動選択して保存できるようになり、位置表示をより安定して制御可能に",

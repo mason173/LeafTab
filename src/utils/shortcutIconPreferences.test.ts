@@ -26,9 +26,10 @@ describe('normalizeShortcutIconColor', () => {
   });
 
   it('uses fixed legacy color when color is missing', () => {
+    expect(normalizeShortcutIconColor('')).toBe('');
     expect(resolveShortcutIconColor('')).toBe(LEGACY_SHORTCUT_ICON_COLOR);
     expect(getShortcutIconColor('seed-a', '')).toBe(LEGACY_SHORTCUT_ICON_COLOR);
     expect(getShortcutIconColor('seed-b', null)).toBe(LEGACY_SHORTCUT_ICON_COLOR);
-    expect(getPersistedShortcutIconColor('any-seed')).toBe(LEGACY_SHORTCUT_ICON_COLOR);
+    expect(getPersistedShortcutIconColor('any-seed')).toBe('');
   });
 });
