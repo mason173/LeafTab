@@ -87,18 +87,18 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
     const projected = projectLeafTabSyncSnapshotToAppState(createSnapshot());
 
     expect(projected.scenarioShortcuts.work).toEqual([
-      {
+      expect.objectContaining({
         id: 'a',
         title: 'A',
         url: 'https://a.example',
         icon: '',
-      },
-      {
+      }),
+      expect.objectContaining({
         id: 'b',
         title: 'B',
         url: 'https://b.example',
         icon: '',
-      },
+      }),
     ]);
   });
 });

@@ -56,7 +56,6 @@ const CACHE_KEY = "weather_cache_v5";
 const MANUAL_LOCATION_KEY = "weather_manual_location_v3";
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
-const AUTO_REFRESH_MS = 30 * 60 * 1000;
 
 const DEFAULT_WEATHER: WeatherData = {
   city: "",
@@ -69,6 +68,23 @@ const WTTR_BASE_URL = "https://wttr.in";
 const normalizeCityKey = (city: string) => city.trim().toLowerCase();
 const hasValidCoords = (latitude: number, longitude: number) =>
   Number.isFinite(latitude) && Number.isFinite(longitude);
+
+const buildWeatherQueryFallbacks = (city: string): string[] => {
+  const raw = city.trim();
+  if (!raw) return [];
+
+  const fallbacks = new Set<string>([raw]);
+  const cityLevelMatch = raw.match(/^(.+?市)/);
+  if (cityLevelMatch?.[1]) {
+    fallbacks.add(cityLevelMatch[1]);
+  }
+  const regionLevelMatch = raw.match(/^(.+?(?:地区|自治州|盟))/);
+  if (regionLevelMatch?.[1]) {
+    fallbacks.add(regionLevelMatch[1]);
+  }
+
+  return Array.from(fallbacks).filter(Boolean);
+};
 
 const fetchJsonWithTimeout = async <T = any>(url: string, timeoutMs = 9000): Promise<T> => {
   const controller = new AbortController();
@@ -217,26 +233,43 @@ const fetchWeatherFromWttr = async ({
   longitude?: number;
   language: string;
 }): Promise<WeatherData> => {
-  const url = buildWttrUrl({ city, latitude, longitude, language });
-  const data = await fetchJsonWithTimeout<WttrResponse>(url, 10000);
+  const cityFallbacks = hasValidCoords(Number(latitude), Number(longitude))
+    ? [city]
+    : buildWeatherQueryFallbacks(city);
 
-  const current = data.current_condition?.[0];
-  const wttrWeatherCode = Number(current?.weatherCode);
-  const temperature = Number(current?.temp_C ?? current?.temp_F);
+  let lastError: unknown = null;
 
-  if (!Number.isFinite(temperature)) {
-    throw new Error("weather-temp-missing");
+  for (const candidateCity of cityFallbacks) {
+    try {
+      const url = buildWttrUrl({ city: candidateCity, latitude, longitude, language });
+      const data = await fetchJsonWithTimeout<WttrResponse>(url, 10000);
+      if (!data || typeof data !== "object") {
+        throw new Error("weather-response-invalid");
+      }
+
+      const current = data.current_condition?.[0];
+      const wttrWeatherCode = Number(current?.weatherCode);
+      const temperature = Number(current?.temp_C ?? current?.temp_F);
+
+      if (!Number.isFinite(temperature)) {
+        throw new Error("weather-temp-missing");
+      }
+
+      const weatherCode = Number.isFinite(wttrWeatherCode)
+        ? mapWttrWeatherCodeToOpenMeteo(wttrWeatherCode)
+        : DEFAULT_WEATHER.weatherCode;
+
+      return {
+        city: city.trim() || extractNearestCityName(data),
+        weatherCode,
+        temperature,
+      };
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const weatherCode = Number.isFinite(wttrWeatherCode)
-    ? mapWttrWeatherCodeToOpenMeteo(wttrWeatherCode)
-    : DEFAULT_WEATHER.weatherCode;
-
-  return {
-    city: city.trim() || extractNearestCityName(data),
-    weatherCode,
-    temperature,
-  };
+  throw lastError || new Error("weather-fetch-failed");
 };
 
 const readManualLocation = (): ManualLocation | null => {
@@ -336,6 +369,7 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
 
   const inflightRefreshRef = useRef<Promise<void> | null>(null);
   const lastRefreshAtRef = useRef(0);
+  const initialRefreshDoneRef = useRef(false);
 
   const applyWeather = useCallback(
     (payload: WeatherData) => {
@@ -462,23 +496,9 @@ export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOption
   }, []);
 
   useEffect(() => {
-    if (!isDocumentVisible) return;
-
-    const shouldRefreshNow =
-      lastRefreshAtRef.current === 0 ||
-      Date.now() - lastRefreshAtRef.current >= AUTO_REFRESH_MS;
-
-    if (shouldRefreshNow) {
-      void refresh(false);
-    }
-
-    const timer = window.setInterval(() => {
-      void refresh(false);
-    }, AUTO_REFRESH_MS);
-
-    return () => {
-      window.clearInterval(timer);
-    };
+    if (!isDocumentVisible || initialRefreshDoneRef.current) return;
+    initialRefreshDoneRef.current = true;
+    void refresh(false);
   }, [isDocumentVisible, refresh]);
 
   useEffect(() => {

@@ -82,13 +82,13 @@ function readTimeAnimationMode(): TimeAnimationMode {
   const legacyRaw = localStorage.getItem('time_animation_enabled');
   if (legacyRaw !== null) {
     try {
-      return JSON.parse(legacyRaw) === false ? 'off' : 'inherit';
+      return JSON.parse(legacyRaw) === false ? 'off' : 'on';
     } catch {
-      return legacyRaw === 'false' ? 'off' : 'inherit';
+      return legacyRaw === 'false' ? 'off' : 'on';
     }
   }
 
-  return 'inherit';
+  return 'on';
 }
 
 function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {

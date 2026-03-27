@@ -332,6 +332,67 @@ const appendMissingShortcutIds = (
   return nextIds;
 };
 
+const pruneOrphanedBookmarkEntities = (params: {
+  bookmarkFolders: Record<string, LeafTabSyncBookmarkFolderEntity>;
+  bookmarkItems: Record<string, LeafTabSyncBookmarkItemEntity>;
+  tombstones: Record<string, LeafTabSyncTombstone>;
+  entitySources: Record<string, LeafTabSyncMergeSource>;
+  deviceId: string;
+  generatedAt: string;
+}) => {
+  const reachableFolderIds = new Set<string>();
+  const reachableItemIds = new Set<string>();
+  const queue: string[] = Object.values(params.bookmarkFolders)
+    .filter((folder) => folder.parentId === null)
+    .map((folder) => folder.id);
+
+  while (queue.length > 0) {
+    const folderId = queue.shift();
+    if (!folderId || reachableFolderIds.has(folderId)) continue;
+    const folder = params.bookmarkFolders[folderId];
+    if (!folder) continue;
+    reachableFolderIds.add(folderId);
+
+    Object.values(params.bookmarkFolders).forEach((childFolder) => {
+      if (childFolder.parentId === folderId && !reachableFolderIds.has(childFolder.id)) {
+        queue.push(childFolder.id);
+      }
+    });
+
+    Object.values(params.bookmarkItems).forEach((item) => {
+      if (item.parentId === folderId) {
+        reachableItemIds.add(item.id);
+      }
+    });
+  }
+
+  Object.values(params.bookmarkFolders).forEach((folder) => {
+    if (reachableFolderIds.has(folder.id)) return;
+    delete params.bookmarkFolders[folder.id];
+    params.tombstones[folder.id] = params.tombstones[folder.id] || {
+      id: folder.id,
+      type: 'bookmark-folder',
+      deletedAt: params.generatedAt,
+      deletedBy: params.deviceId,
+      lastKnownRevision: folder.revision,
+    };
+    params.entitySources[folder.id] = 'tombstone';
+  });
+
+  Object.values(params.bookmarkItems).forEach((item) => {
+    if (reachableItemIds.has(item.id)) return;
+    delete params.bookmarkItems[item.id];
+    params.tombstones[item.id] = params.tombstones[item.id] || {
+      id: item.id,
+      type: 'bookmark-item',
+      deletedAt: params.generatedAt,
+      deletedBy: params.deviceId,
+      lastKnownRevision: item.revision,
+    };
+    params.entitySources[item.id] = 'tombstone';
+  });
+};
+
 const mergeEntityFields = <T extends MergeableEntity>(
   entityType: T['type'],
   base: T | null | undefined,
@@ -673,6 +734,15 @@ export const mergeLeafTabSyncSnapshot = (
       conflicts.push(resolution.conflict);
     }
     entitySources[id] = resolution.source;
+  });
+
+  pruneOrphanedBookmarkEntities({
+    bookmarkFolders: nextBookmarkFolders,
+    bookmarkItems: nextBookmarkItems,
+    tombstones: nextTombstones,
+    entitySources,
+    deviceId,
+    generatedAt,
   });
 
   const validScenarioIds = new Set(Object.keys(nextScenarios));

@@ -1,7 +1,5 @@
 import type { Shortcut, ShortcutVisualMode } from '@/types';
 
-const EMPTY_ICON_COLOR_MAP_KEY = 'leaftab_empty_icon_color_map_v1';
-
 export const SHORTCUT_ICON_COLOR_PALETTE = [
   '#F4E300',
   '#7279E3',
@@ -22,48 +20,41 @@ export const SHORTCUT_ICON_COLOR_PALETTE = [
 const isShortcutIconColor = (value: string): value is (typeof SHORTCUT_ICON_COLOR_PALETTE)[number] =>
   SHORTCUT_ICON_COLOR_PALETTE.includes(value as (typeof SHORTCUT_ICON_COLOR_PALETTE)[number]);
 
-const readEmptyIconColorMap = () => {
-  try {
-    const raw = localStorage.getItem(EMPTY_ICON_COLOR_MAP_KEY);
-    if (!raw) return {} as Record<string, string>;
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    if (!parsed || typeof parsed !== 'object') return {} as Record<string, string>;
-    return parsed;
-  } catch {
-    return {} as Record<string, string>;
-  }
+const normalizeHexColor = (value: string) => {
+  const trimmed = value.trim();
+  const matched = trimmed.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/);
+  if (!matched) return '';
+  return `#${matched[1].toUpperCase()}`;
 };
 
-const persistEmptyIconColorMap = (map: Record<string, string>) => {
-  try {
-    localStorage.setItem(EMPTY_ICON_COLOR_MAP_KEY, JSON.stringify(map));
-  } catch {}
-};
+export const LEGACY_SHORTCUT_ICON_COLOR = SHORTCUT_ICON_COLOR_PALETTE[0];
 
 export const normalizeShortcutIconColor = (value: string | null | undefined) => {
   const trimmed = typeof value === 'string' ? value.trim() : '';
-  return isShortcutIconColor(trimmed) ? trimmed : '';
+  if (!trimmed) return '';
+  const paletteMatched = SHORTCUT_ICON_COLOR_PALETTE.find((paletteColor) => (
+    paletteColor.toLowerCase() === trimmed.toLowerCase()
+  ));
+  if (paletteMatched && isShortcutIconColor(paletteMatched)) return paletteMatched;
+  return normalizeHexColor(trimmed);
 };
 
 export const normalizeShortcutVisualMode = (value: unknown): ShortcutVisualMode =>
   value === 'letter' ? 'letter' : 'favicon';
 
 export const getPersistedShortcutIconColor = (seed: string) => {
-  const safeSeed = seed.trim().toLowerCase();
-  if (!safeSeed) return SHORTCUT_ICON_COLOR_PALETTE[0];
-  const map = readEmptyIconColorMap();
-  const existing = normalizeShortcutIconColor(map[safeSeed]);
-  if (existing) return existing;
-  const picked = SHORTCUT_ICON_COLOR_PALETTE[Math.floor(Math.random() * SHORTCUT_ICON_COLOR_PALETTE.length)];
-  map[safeSeed] = picked;
-  persistEmptyIconColorMap(map);
-  return picked;
+  void seed;
+  return LEGACY_SHORTCUT_ICON_COLOR;
+};
+
+export const resolveShortcutIconColor = (value: string | null | undefined) => {
+  const normalized = normalizeShortcutIconColor(value);
+  return normalized || LEGACY_SHORTCUT_ICON_COLOR;
 };
 
 export const getShortcutIconColor = (seed: string, preferredColor?: string | null) => {
-  const normalizedPreferred = normalizeShortcutIconColor(preferredColor);
-  if (normalizedPreferred) return normalizedPreferred;
-  return getPersistedShortcutIconColor(seed);
+  void seed;
+  return resolveShortcutIconColor(preferredColor);
 };
 
 export const shouldUseOfficialShortcutIcon = (params: {

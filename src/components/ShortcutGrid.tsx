@@ -219,6 +219,9 @@ function SortableShortcut({
       }`}
       data-shortcut-grid-columns={gridColumns}
       data-shortcut-drag-item="true"
+      data-testid={`shortcut-card-${sortId}`}
+      data-shortcut-id={shortcut.id}
+      data-shortcut-title={shortcut.title}
     >
       {showDragPlaceholder ? (
         <div
@@ -476,6 +479,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     <div 
       ref={rootRef}
       className="relative w-full" 
+      data-testid="shortcut-grid"
       style={{
         minHeight: Math.max(containerHeight, gridMinHeight),
         paddingBottom: Math.max(0, bottomInset),

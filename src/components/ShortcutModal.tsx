@@ -15,6 +15,7 @@ import {
   getShortcutIconColor,
   normalizeShortcutIconColor,
   normalizeShortcutVisualMode,
+  resolveShortcutIconColor,
   SHORTCUT_ICON_COLOR_PALETTE,
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
@@ -33,11 +34,13 @@ function IconModeCard({
   onClick,
   label,
   disabled,
+  testId,
 }: {
   selected: boolean;
   onClick: () => void;
   label: string;
   disabled?: boolean;
+  testId?: string;
 }) {
   return (
     <button
@@ -48,6 +51,7 @@ function IconModeCard({
       title={label}
       onClick={onClick}
       disabled={disabled}
+      data-testid={testId}
       className={`flex min-h-[52px] flex-1 items-center justify-between rounded-[16px] border px-3.5 py-2 transition-colors ${
         selected
           ? 'border-primary bg-primary/12 text-primary'
@@ -74,17 +78,20 @@ function SettingRow({
   label,
   checked,
   onCheckedChange,
+  testId,
 }: {
   label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  testId?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/25 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/25 px-4 py-3" data-testid={testId}>
       <span className="text-sm font-medium text-foreground">{label}</span>
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
+        data-testid={testId ? `${testId}-switch` : `shortcut-setting-${label}`}
         className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
       >
         <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
@@ -200,7 +207,7 @@ export default function ShortcutModal({
       autoUseOfficialIcon,
       officialIconAvailableAtSave: officialIconAvailable,
       iconRendering,
-      iconColor,
+      iconColor: resolveShortcutIconColor(iconColor),
     });
   };
 
@@ -248,6 +255,7 @@ export default function ShortcutModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         style={{ width: 'min(520px, calc(100vw - 32px))', maxWidth: 'min(520px, calc(100vw - 32px))' }}
+        data-testid="shortcut-modal"
         className="w-full sm:max-w-[520px] max-w-[calc(100vw-32px)] bg-background border-border text-foreground rounded-[32px] overflow-hidden p-6 flex flex-col"
       >
         <DialogHeader>
@@ -273,6 +281,7 @@ export default function ShortcutModal({
           <div className="flex w-full flex-col items-center gap-6">
             <input
               id="shortcut-title"
+              data-testid="shortcut-modal-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -281,6 +290,7 @@ export default function ShortcutModal({
             />
             <input
               id="shortcut-url"
+              data-testid="shortcut-modal-url"
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -295,16 +305,19 @@ export default function ShortcutModal({
                 selected={selectedSource === 'official'}
                 onClick={() => handleSelectSource('official')}
                 label={t('shortcutModal.icon.modeOfficialShort', { defaultValue: '官方' })}
+                testId="shortcut-icon-mode-official"
               />
               <IconModeCard
                 selected={selectedSource === 'favicon'}
                 onClick={() => handleSelectSource('favicon')}
                 label={t('shortcutModal.icon.modeFaviconShort', { defaultValue: '网络' })}
+                testId="shortcut-icon-mode-favicon"
               />
               <IconModeCard
                 selected={selectedSource === 'letter'}
                 onClick={() => handleSelectSource('letter')}
                 label={t('shortcutModal.icon.modeLetterShort', { defaultValue: '文字' })}
+                testId="shortcut-icon-mode-letter"
               />
             </div>
 
@@ -313,6 +326,7 @@ export default function ShortcutModal({
                 label={t('shortcutModal.icon.autoOfficial', { defaultValue: '适配后自动切换官方图标' })}
                 checked={autoUseOfficialIcon}
                 onCheckedChange={setAutoUseOfficialIcon}
+                testId="shortcut-auto-official"
               />
             ) : null}
 
@@ -324,6 +338,7 @@ export default function ShortcutModal({
                     key={color}
                     type="button"
                     onClick={() => handleSelectColor(color)}
+                    data-testid={`shortcut-color-${color}`}
                     className={`flex aspect-square w-full items-center justify-center rounded-full border transition-transform hover:scale-105 ${
                       selected ? 'border-foreground/70 shadow-[0_0_0_2px_rgba(255,255,255,0.08)]' : 'border-transparent'
                     }`}
@@ -342,12 +357,14 @@ export default function ShortcutModal({
         <div className="mt-5 flex w-full gap-4">
           <button
             onClick={() => onOpenChange(false)}
+            data-testid="shortcut-modal-cancel"
             className="flex-1 px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-xl transition-colors text-[14px]"
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
+            data-testid="shortcut-modal-save"
             className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-colors text-[14px] font-medium"
           >
             {t('common.save')}

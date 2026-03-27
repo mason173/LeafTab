@@ -32,9 +32,13 @@ function DialogClose(
 
 type DialogOverlayProps = React.ComponentProps<typeof DialogPrimitive.Overlay>;
 
-function DialogOverlay({ className, ...props }: DialogOverlayProps) {
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  DialogOverlayProps
+>(({ className, ...props }, ref) => {
   return (
     <DialogPrimitive.Overlay
+      ref={ref}
       data-slot="dialog-overlay"
       className={cn(
         "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200",
@@ -43,7 +47,9 @@ function DialogOverlay({ className, ...props }: DialogOverlayProps) {
       {...props}
     />
   );
-}
+});
+
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   overlayClassName?: string;

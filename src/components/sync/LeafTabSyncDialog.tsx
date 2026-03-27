@@ -373,9 +373,13 @@ export function LeafTabSyncDialog({
           : t('leaftabSyncDialog.cloud.disabledSubtitle', { defaultValue: '已登录，可在云同步设置里开启同步' })
         : t('leaftabSyncDialog.cloud.unsignedSubtitle', { defaultValue: '登录以同步数据' }),
       localShortcutCount: String(cloudAnalysis?.localSummary.shortcuts ?? 0),
-      localBookmarkCount: String(cloudAnalysis?.localSummary.bookmarkItems ?? 0),
+      localBookmarkCount: cloudSyncBookmarksEnabled
+        ? String(cloudAnalysis?.localSummary.bookmarkItems ?? 0)
+        : '-',
       remoteShortcutCount: String(cloudAnalysis?.remoteSummary.shortcuts ?? 0),
-      remoteBookmarkCount: String(cloudAnalysis?.remoteSummary.bookmarkItems ?? 0),
+      remoteBookmarkCount: cloudSyncBookmarksEnabled
+        ? String(cloudAnalysis?.remoteSummary.bookmarkItems ?? 0)
+        : '-',
       lastSyncLabel: cloudSignedIn
         ? (cloudLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
         : t('leaftabSyncDialog.lastSyncUnavailable', { defaultValue: '未同步' }),
@@ -478,6 +482,26 @@ export function LeafTabSyncDialog({
   ]);
 
   const activeModel = activeTab === 'cloud' ? cloudModel : webdavModel;
+  const cloudBookmarksBanner = activeTab === 'cloud' && cloudSignedIn && !cloudSyncBookmarksEnabled
+    ? (
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/35 px-4 py-3">
+        <div className="min-w-0 text-sm text-muted-foreground">
+          {t('leaftabSyncDialog.cloud.bookmarkSyncDisabledBanner', {
+            defaultValue: '未开启书签同步，当前只会同步快捷方式。',
+          })}
+        </div>
+        <button
+          type="button"
+          className="shrink-0 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+          onClick={onOpenCloudConfig}
+        >
+          {t('leaftabSyncDialog.cloud.enableBookmarkSyncAction', {
+            defaultValue: '去开启',
+          })}
+        </button>
+      </div>
+    )
+    : null;
   const securityCard = activeTab === 'cloud'
     ? (
       <SyncEncryptionStatusCard
@@ -615,6 +639,8 @@ export function LeafTabSyncDialog({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {cloudBookmarksBanner}
 
           <ProviderCard model={activeModel} securityCard={securityCard} actionArea={actionArea} />
         </div>

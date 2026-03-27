@@ -6,6 +6,7 @@ import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
 import { SearchExperience } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import type { TimeAnimationMode } from '@/hooks/useSettings';
 import {
   INITIAL_REVEAL_TIMING,
   resolveInitialRevealOpacity,
@@ -41,6 +42,7 @@ interface HomeMainContentProps {
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
+  timeAnimationMode: TimeAnimationMode;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   onWeatherUpdate?: (code: number) => void;
   timeFont: string;
@@ -80,6 +82,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
+  timeAnimationMode,
   onTimeAnimationModeChange,
   onWeatherUpdate,
   timeFont,
@@ -177,6 +180,7 @@ export const HomeMainContent = memo(function HomeMainContent({
                   showLunar={showLunar}
                   onShowLunarChange={onShowLunarChange}
                   timeAnimationEnabled={timeAnimationEnabled}
+                  timeAnimationMode={timeAnimationMode}
                   onTimeAnimationModeChange={onTimeAnimationModeChange}
                   onWeatherUpdate={onWeatherUpdate}
                   timeFont={timeFont}

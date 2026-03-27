@@ -20,6 +20,16 @@ export interface ChangelogSection {
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
     version: "1.4.0",
+    date: "2026-03-27",
+    notes: [
+      t("changelog.items.release140CustomShortcutIcons", { defaultValue: "支持自定义快捷方式图标与颜色，个性化展示更灵活" }),
+      t("changelog.items.release140BookmarkSyncToggle", { defaultValue: "支持书签同步（默认关闭），可按需开启并与现有同步流程协同" }),
+      t("changelog.items.release140E2EEBackup", { defaultValue: "支持端到端加密备份，优先保障数据安全与隐私" }),
+      t("changelog.items.release140PerformancePolish", { defaultValue: "优化整体性能表现与交互流畅度，降低卡顿与等待感" }),
+    ],
+  },
+  {
+    version: "1.4.0-alpha.5",
     date: "2026-03-24",
     channel: "preview",
     tag: "alpha",

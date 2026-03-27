@@ -181,7 +181,7 @@ export function useSyncCenterActions({
     setCloudSyncConfigOpen(true);
   }, [setCloudSyncConfigOpen, setLeafTabSyncDialogOpen]);
 
-  const handleCloudSyncNowFromCenter = useCallback(async () => {
+  const handleCloudSyncNowFromCenter = useCallback(async (options?: { allowWhenDisabled?: boolean }) => {
     if (cloudSyncing || cloudSyncNowInFlightRef.current) {
       toast.info('云同步正在进行中，请稍候');
       return false;
@@ -209,6 +209,7 @@ export function useSyncCenterActions({
         progress: 8,
       }, async ({ update }) => {
         const result = await handleCloudLeafTabSync({
+          allowWhenDisabled: options?.allowWhenDisabled,
           requestBookmarkPermission: cloudSyncBookmarksEnabled,
           retryAfterConflictRefresh: true,
           retryAfterForceUnlock: true,

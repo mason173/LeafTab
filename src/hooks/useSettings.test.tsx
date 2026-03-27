@@ -20,4 +20,10 @@ describe('useSettings search rotating placeholder setting', () => {
 
     expect(result.current.searchRotatingPlaceholderEnabled).toBe(false);
   });
+
+  it('defaults time animation mode to enabled', () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.timeAnimationMode).toBe('on');
+  });
 });

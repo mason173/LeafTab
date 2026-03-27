@@ -4,6 +4,7 @@ import { TimeDisplayDialog } from '@/components/TimeDisplayDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import { useClock } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WeatherCard } from '@/components/WeatherCard';
 
 interface InlineTimeProps {
@@ -18,6 +19,7 @@ interface InlineTimeProps {
   showLunar: boolean;
   onShowLunarChange: (checked: boolean) => void;
   timeAnimationEnabled: boolean;
+  timeAnimationMode: TimeAnimationMode;
   onTimeAnimationModeChange: (mode: 'inherit' | 'on' | 'off') => void;
   onWeatherUpdate?: (code: number) => void;
   timeFont: string;
@@ -38,6 +40,7 @@ export const InlineTime = memo(function InlineTime({
   showLunar,
   onShowLunarChange,
   timeAnimationEnabled,
+  timeAnimationMode,
   onTimeAnimationModeChange,
   onWeatherUpdate,
   timeFont,
@@ -89,7 +92,7 @@ export const InlineTime = memo(function InlineTime({
           onShowSecondsChange={onShowSecondsChange}
           showLunar={showLunar}
           onShowLunarChange={onShowLunarChange}
-          timeAnimationEnabled={timeAnimationEnabled}
+          timeAnimationMode={timeAnimationMode}
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
