@@ -95,6 +95,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     typingBurst: false,
   });
   const [visualBootSettled, setVisualBootSettled] = useState(initialRevealReady);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
 
   const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
     setSearchInteractionState((prevState) => (
@@ -224,6 +225,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     wallpaperClockBaseProps,
   ]);
 
+  useEffect(() => {
+    if (!drawerExpanded || !wallpaperClockBaseProps.scenarioModeOpen) return;
+    wallpaperClockBaseProps.onScenarioModeOpenChange(false);
+  }, [drawerExpanded, wallpaperClockBaseProps]);
+
   const searchPerformanceModeActive = searchInteractionState.historyOpen
     || searchInteractionState.typingBurst;
   const effectiveTopTimeAnimationEnabled = baseTimeAnimationEnabled
@@ -239,8 +245,25 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       ...wallpaperClockBaseProps,
       timeAnimationEnabled: effectiveTopTimeAnimationEnabled,
       pauseDynamicWallpaper: shouldFreezeDynamicWallpaper,
+      showScenarioMode: drawerExpanded ? false : wallpaperClockBaseProps.showScenarioMode,
+      scenarioModeOpen: drawerExpanded ? false : wallpaperClockBaseProps.scenarioModeOpen,
+      onSettingsClick: drawerExpanded ? undefined : wallpaperClockBaseProps.onSettingsClick,
+      onSyncClick: drawerExpanded ? undefined : wallpaperClockBaseProps.onSyncClick,
     }),
-    [effectiveTopTimeAnimationEnabled, shouldFreezeDynamicWallpaper, wallpaperClockBaseProps],
+    [drawerExpanded, effectiveTopTimeAnimationEnabled, shouldFreezeDynamicWallpaper, wallpaperClockBaseProps],
+  );
+
+  const effectiveTopNavModeProps = useMemo(
+    () => (drawerExpanded
+      ? {
+          ...topNavModeProps,
+          leftSlot: null,
+          keepControlsVisible: false,
+          onSettingsClick: undefined,
+          onSyncClick: undefined,
+        }
+      : topNavModeProps),
+    [drawerExpanded, topNavModeProps],
   );
 
   const searchExperienceProps = useMemo(
@@ -314,15 +337,15 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           transition: `opacity ${INITIAL_REVEAL_TIMING}, transform ${INITIAL_REVEAL_TIMING}`,
         }}
       >
-        <TopNavBar {...topNavModeProps} />
+        <TopNavBar {...effectiveTopNavModeProps} />
       </div>
     );
   }, [
+    effectiveTopNavModeProps,
     initialRevealOpacity,
     initialRevealTransform,
     modeFlags.showInlineTopNav,
     modeLayersVisible,
-    topNavModeProps,
   ]);
 
   return (
@@ -337,6 +360,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
         wallpaperClockProps={wallpaperClockProps}
         searchExperienceProps={searchExperienceProps}
         searchInteractionLocked={searchInteractionLocked}
+        onDrawerExpandedChange={setDrawerExpanded}
         shortcutGridProps={shortcutGridProps}
       />
     </>
