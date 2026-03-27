@@ -44,7 +44,7 @@ export const normalizeShortcutVisualMode = (value: unknown): ShortcutVisualMode 
 
 export const getPersistedShortcutIconColor = (seed: string) => {
   void seed;
-  return LEGACY_SHORTCUT_ICON_COLOR;
+  return '';
 };
 
 export const resolveShortcutIconColor = (value: string | null | undefined) => {

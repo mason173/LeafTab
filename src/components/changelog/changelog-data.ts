@@ -19,6 +19,15 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.1",
+    date: "2026-03-28",
+    notes: [
+      t("changelog.items.release141BookmarkSyncFix", { defaultValue: "修复书签同步中的关键问题" }),
+      t("changelog.items.release141SyncStability", { defaultValue: "增强数据同步稳定性" }),
+      t("changelog.items.release141SyncTestingBackupNotice", { defaultValue: "数据同步仍处于测试阶段，开启前请注意备份" }),
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-03-27",
     notes: [

@@ -212,4 +212,20 @@ describe('bookmark tree integration helpers', () => {
       nodeIdToEntityId: {},
     });
   });
+
+  it('throws instead of returning an empty draft when the caller requires bookmark access', async () => {
+    const { api } = createBookmarkApi();
+    getBookmarksApiMock.mockReturnValue(api);
+    ensureExtensionPermissionMock.mockResolvedValue(false);
+
+    const {
+      captureLeafTabBookmarkTreeDraft,
+      LeafTabBookmarkPermissionDeniedError,
+    } = await import('./bookmarks');
+
+    await expect(captureLeafTabBookmarkTreeDraft({
+      requestPermission: false,
+      throwOnPermissionDenied: true,
+    })).rejects.toBeInstanceOf(LeafTabBookmarkPermissionDeniedError);
+  });
 });

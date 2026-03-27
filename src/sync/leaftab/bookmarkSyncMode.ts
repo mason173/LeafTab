@@ -50,6 +50,7 @@ export const mergeLeafTabSyncSnapshotWithBookmarks = (snapshot: LeafTabSyncSnaps
 
 export class LeafTabSyncBookmarksDisabledRemoteStore implements LeafTabSyncRemoteStore {
   private readonly remoteStore: LeafTabSyncRemoteStore;
+  private latestFullRemoteSnapshot: LeafTabSyncSnapshot | null = null;
 
   constructor(remoteStore: LeafTabSyncRemoteStore) {
     this.remoteStore = remoteStore;
@@ -65,6 +66,7 @@ export class LeafTabSyncBookmarksDisabledRemoteStore implements LeafTabSyncRemot
 
   async readState(): Promise<LeafTabSyncRemoteState> {
     const state = await this.remoteStore.readState();
+    this.latestFullRemoteSnapshot = state.snapshot || null;
     return {
       ...state,
       snapshot: stripBookmarksFromLeafTabSyncSnapshot(state.snapshot),
@@ -72,10 +74,32 @@ export class LeafTabSyncBookmarksDisabledRemoteStore implements LeafTabSyncRemot
   }
 
   async writeState(params: LeafTabSyncWriteStateParams): Promise<LeafTabSyncWriteStateResult> {
+    let bookmarksSource = this.latestFullRemoteSnapshot;
+
+    if (!bookmarksSource) {
+      const latestState = await this.remoteStore.readState();
+      bookmarksSource = latestState.snapshot || null;
+      this.latestFullRemoteSnapshot = bookmarksSource;
+    }
+
+    const nextSnapshotWithoutBookmarks = stripBookmarksFromLeafTabSyncSnapshot(params.snapshot) || params.snapshot;
+    const previousSnapshotWithoutBookmarks = stripBookmarksFromLeafTabSyncSnapshot(params.previousSnapshot || null);
+    const nextSnapshot = bookmarksSource
+      ? mergeLeafTabSyncSnapshotWithBookmarks(nextSnapshotWithoutBookmarks, bookmarksSource)
+      : nextSnapshotWithoutBookmarks;
+    const previousSnapshot = bookmarksSource
+      ? mergeLeafTabSyncSnapshotWithBookmarks(
+          previousSnapshotWithoutBookmarks || nextSnapshotWithoutBookmarks,
+          bookmarksSource,
+        )
+      : previousSnapshotWithoutBookmarks;
+
+    this.latestFullRemoteSnapshot = nextSnapshot;
+
     return this.remoteStore.writeState({
       ...params,
-      snapshot: stripBookmarksFromLeafTabSyncSnapshot(params.snapshot) || params.snapshot,
-      previousSnapshot: stripBookmarksFromLeafTabSyncSnapshot(params.previousSnapshot || null),
+      snapshot: nextSnapshot,
+      previousSnapshot,
     });
   }
 }

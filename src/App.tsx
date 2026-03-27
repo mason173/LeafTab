@@ -52,6 +52,7 @@ import { extractDomainFromUrl, normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { LongTaskIndicator } from './components/LongTaskIndicator';
+import { LeafTabDangerousSyncDialog } from '@/components/sync/LeafTabDangerousSyncDialog';
 import {
   hasWebdavUrlConfiguredFromStorage,
   isWebdavSyncEnabledFromStorage,
@@ -93,6 +94,8 @@ import {
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
 import {
+  LeafTabDestructiveBookmarkChangeError,
+  LeafTabBookmarkPermissionDeniedError,
   LeafTabSyncBookmarksDisabledRemoteStore,
   LeafTabSyncCloudEncryptedTransport,
   LeafTabSyncCloudRemoteStoreError,
@@ -133,7 +136,24 @@ type CloudLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   _retriedAfterConflictRefresh?: boolean;
 };
 
+type DangerousSyncDialogAction = 'recheck' | 'use-remote' | 'use-local' | null;
+
+type DangerousSyncDialogState = {
+  open: boolean;
+  provider: 'cloud' | 'webdav';
+  localBookmarkCount: number | null;
+  remoteBookmarkCount: number | null;
+  detectedFromCount: number;
+  detectedToCount: number;
+};
+
 const formatLeafTabSyncErrorMessage = (error: unknown) => {
+  if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+    return error.message;
+  }
+  if (error instanceof LeafTabBookmarkPermissionDeniedError) {
+    return error.message;
+  }
   if (error && typeof error === 'object') {
     const status = Number((error as { status?: unknown }).status);
     const operation = String((error as { operation?: unknown }).operation || '');
@@ -174,6 +194,12 @@ const isCloudSyncCommitConflictError = (error: unknown) => {
 };
 
 const formatCloudSyncErrorMessage = (error: unknown) => {
+  if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+    return error.message;
+  }
+  if (error instanceof LeafTabBookmarkPermissionDeniedError) {
+    return error.message;
+  }
   if (error instanceof LeafTabSyncCloudRemoteStoreError) {
     if (error.status === 409) {
       if (/lock is held by another device/i.test(error.message || '')) {
@@ -334,6 +360,8 @@ export default function App() {
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
   const [leafTabSyncDialogOpen, setLeafTabSyncDialogOpen] = useState(false);
+  const [dangerousSyncDialogState, setDangerousSyncDialogState] = useState<DangerousSyncDialogState | null>(null);
+  const [dangerousSyncDialogBusyAction, setDangerousSyncDialogBusyAction] = useState<DangerousSyncDialogAction>(null);
   const [leafTabSyncConfigVersion, setLeafTabSyncConfigVersion] = useState(0);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
@@ -1449,6 +1477,37 @@ export default function App() {
     () => formatLeafTabSyncTimestamp(localStorage.getItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt)),
     [cloudLeafTabSyncState.lastErrorAt, cloudLeafTabSyncState.lastSuccessAt, cloudSyncConfigVersion],
   );
+  const presentDangerousSyncDialog = useCallback(async (params: {
+    provider: 'cloud' | 'webdav';
+    error: LeafTabDestructiveBookmarkChangeError;
+  }) => {
+    const refreshedAnalysis = await (
+      params.provider === 'cloud'
+        ? refreshCloudLeafTabSyncAnalysis({ force: true }).catch(() => cloudLeafTabSyncAnalysis)
+        : refreshLeafTabSyncAnalysis({ force: true }).catch(() => leafTabSyncAnalysis)
+    );
+    const analysis = refreshedAnalysis
+      || (params.provider === 'cloud' ? cloudLeafTabSyncAnalysis : leafTabSyncAnalysis);
+
+    setDangerousSyncDialogBusyAction(null);
+    setDangerousSyncDialogState({
+      open: true,
+      provider: params.provider,
+      localBookmarkCount: analysis?.localSummary.bookmarkItems ?? null,
+      remoteBookmarkCount: analysis?.remoteSummary.bookmarkItems ?? null,
+      detectedFromCount: params.error.fromCount,
+      detectedToCount: params.error.toCount,
+    });
+  }, [
+    cloudLeafTabSyncAnalysis,
+    leafTabSyncAnalysis,
+    refreshCloudLeafTabSyncAnalysis,
+    refreshLeafTabSyncAnalysis,
+  ]);
+  const closeDangerousSyncDialog = useCallback(() => {
+    setDangerousSyncDialogBusyAction(null);
+    setDangerousSyncDialogState(null);
+  }, []);
   const runWebdavSyncWithUi = useLeafTabSyncRunner<LeafTabSyncEngineResult, WebdavLeafTabSyncOptions>({
     providerLabel: 'WebDAV 同步',
     runSync: runLeafTabSync,
@@ -1489,6 +1548,14 @@ export default function App() {
     onError: async (error, context) => {
       if (context.shouldManageProgressIndicator && context.progressTaskId) {
         clearLongTaskIndicator(context.progressTaskId);
+      }
+      if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+        markWebdavSyncError(error);
+        await presentDangerousSyncDialog({
+          provider: 'webdav',
+          error,
+        });
+        return null;
       }
       markWebdavSyncError(error);
       return null;
@@ -1584,6 +1651,14 @@ export default function App() {
       }
       if (context.shouldManageProgressIndicator && context.progressTaskId) {
         clearLongTaskIndicator(context.progressTaskId);
+      }
+      if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+        markCloudSyncError(error);
+        await presentDangerousSyncDialog({
+          provider: 'cloud',
+          error,
+        });
+        return null;
       }
       markCloudSyncError(error);
       return null;
@@ -1899,6 +1974,62 @@ export default function App() {
     setCloudNextSyncAt,
     openLeafTabSyncConfig,
   });
+  const handleDangerousSyncDialogRecheck = useCallback(async () => {
+    if (!dangerousSyncDialogState) return;
+    setDangerousSyncDialogBusyAction('recheck');
+    try {
+      if (dangerousSyncDialogState.provider === 'cloud') {
+        await refreshCloudLeafTabSyncAnalysis({ force: true });
+      } else {
+        await refreshLeafTabSyncAnalysis({ force: true });
+      }
+      closeDangerousSyncDialog();
+      setLeafTabSyncDialogOpen(true);
+      toast.success('已重新检查最新同步状态');
+    } catch (error) {
+      toast.error(
+        dangerousSyncDialogState.provider === 'cloud'
+          ? formatCloudSyncErrorMessage(error)
+          : formatLeafTabSyncErrorMessage(error),
+      );
+      setDangerousSyncDialogBusyAction(null);
+    }
+  }, [
+    closeDangerousSyncDialog,
+    dangerousSyncDialogState,
+    refreshCloudLeafTabSyncAnalysis,
+    refreshLeafTabSyncAnalysis,
+  ]);
+  const handleDangerousSyncDialogUseRemote = useCallback(async () => {
+    if (!dangerousSyncDialogState) return;
+    setDangerousSyncDialogBusyAction('use-remote');
+    closeDangerousSyncDialog();
+    if (dangerousSyncDialogState.provider === 'cloud') {
+      await handleCloudRepairFromCenter('pull-remote');
+      return;
+    }
+    await handleWebdavRepairFromCenter('pull-remote');
+  }, [
+    closeDangerousSyncDialog,
+    dangerousSyncDialogState,
+    handleCloudRepairFromCenter,
+    handleWebdavRepairFromCenter,
+  ]);
+  const handleDangerousSyncDialogUseLocal = useCallback(async () => {
+    if (!dangerousSyncDialogState) return;
+    setDangerousSyncDialogBusyAction('use-local');
+    closeDangerousSyncDialog();
+    if (dangerousSyncDialogState.provider === 'cloud') {
+      await handleCloudRepairFromCenter('push-local');
+      return;
+    }
+    await handleWebdavRepairFromCenter('push-local');
+  }, [
+    closeDangerousSyncDialog,
+    dangerousSyncDialogState,
+    handleCloudRepairFromCenter,
+    handleWebdavRepairFromCenter,
+  ]);
   const cloudAutoSyncingRef = useRef(cloudLeafTabSyncState.status === 'syncing');
 
   useEffect(() => {
@@ -2948,6 +3079,32 @@ export default function App() {
             onSubmit={handleSubmitSyncEncryptionDialog}
           />
         </Suspense>
+      ) : null}
+      {dangerousSyncDialogState?.open ? (
+        <LeafTabDangerousSyncDialog
+          open={dangerousSyncDialogState.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              closeDangerousSyncDialog();
+            }
+          }}
+          provider={dangerousSyncDialogState.provider}
+          localBookmarkCount={dangerousSyncDialogState.localBookmarkCount}
+          remoteBookmarkCount={dangerousSyncDialogState.remoteBookmarkCount}
+          detectedFromCount={dangerousSyncDialogState.detectedFromCount}
+          detectedToCount={dangerousSyncDialogState.detectedToCount}
+          busyAction={dangerousSyncDialogBusyAction}
+          onCancel={closeDangerousSyncDialog}
+          onRecheck={() => {
+            void handleDangerousSyncDialogRecheck();
+          }}
+          onUseRemote={() => {
+            void handleDangerousSyncDialogUseRemote();
+          }}
+          onUseLocal={() => {
+            void handleDangerousSyncDialogUseLocal();
+          }}
+        />
       ) : null}
       {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>

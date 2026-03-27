@@ -1,6 +1,6 @@
 import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts, Shortcut } from '../types';
 import { defaultScenarioModes, makeScenarioId, type ScenarioIconKey } from '@/scenario/scenario';
-import { normalizeShortcutVisualMode, resolveShortcutIconColor } from '@/utils/shortcutIconPreferences';
+import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
 
 const shortHash = (value: string) => {
   let hash = 2166136261;
@@ -73,7 +73,7 @@ export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
           autoUseOfficialIcon: candidate.autoUseOfficialIcon !== false,
           officialIconAvailableAtSave: candidate.officialIconAvailableAtSave === true,
           iconRendering: normalizeShortcutVisualMode(candidate.iconRendering),
-          iconColor: resolveShortcutIconColor(candidate.iconColor),
+          iconColor: normalizeShortcutIconColor(candidate.iconColor),
         });
       });
 

@@ -29,6 +29,7 @@ type CloudSyncActionOptions = {
   mode?: LeafTabSyncInitialChoice | 'auto';
   silentSuccess?: boolean;
   requestBookmarkPermission?: boolean;
+  allowDestructiveBookmarkChanges?: boolean;
   progressTaskId?: string | null;
   onProgress?: (progress: SyncProgress) => void;
   allowWhenDisabled?: boolean;
@@ -40,6 +41,7 @@ type WebdavSyncActionOptions = {
   mode?: LeafTabSyncInitialChoice | 'auto';
   silentSuccess?: boolean;
   requestBookmarkPermission?: boolean;
+  allowDestructiveBookmarkChanges?: boolean;
   showProgressIndicator?: boolean;
   progressTaskId?: string | null;
   onProgress?: (progress: SyncProgress) => void;
@@ -129,6 +131,7 @@ export function useSyncCenterActions({
     }, async ({ update }) => {
       const result = await handleLeafTabSync({
         mode,
+        allowDestructiveBookmarkChanges: true,
         requestBookmarkPermission: false,
         silentSuccess: true,
         progressTaskId: null,
@@ -316,6 +319,7 @@ export function useSyncCenterActions({
       const result = await handleCloudLeafTabSync({
         mode,
         allowWhenDisabled: true,
+        allowDestructiveBookmarkChanges: true,
         requestBookmarkPermission: false,
         retryAfterConflictRefresh: true,
         retryAfterForceUnlock: true,
