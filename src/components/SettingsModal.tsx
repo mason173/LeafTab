@@ -30,7 +30,6 @@ import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import type { WallpaperMode } from "@/wallpaper/types";
 import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
-import leaftabUpdateImage from '@/assets/leaftabupdate.png?url';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -323,18 +322,6 @@ export default function SettingsModal({
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
-        <div className="relative h-[156px] overflow-hidden rounded-[24px] border border-border/60 bg-secondary/20">
-          <img
-            src={leaftabUpdateImage}
-            alt="LeafTab Settings"
-            className="block h-full w-full object-cover object-center"
-          />
-          <div className="pointer-events-none absolute right-14 top-4">
-            <span className="rounded-full bg-black/28 px-3 py-1 text-[11px] font-medium tracking-[0.12em] text-white/88 backdrop-blur-[2px]">
-              v{appVersion}
-            </span>
-          </div>
-        </div>
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>
