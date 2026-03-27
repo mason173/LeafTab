@@ -1,10 +1,10 @@
 {
   "appTitle": {
-    "message": "LeafTab - Minimalist New Tab Page",
+    "message": "LeafTab - Open-Source E2EE + WebDAV New Tab",
     "description": "The title of the application"
   },
   "appDescription": {
-    "message": "A calm, clean, minimalist new tab page for focused, distraction-free browsing.",
+    "message": "Open-source new tab with end-to-end encrypted backup, WebDAV and cloud sync, customizable shortcuts, and a clean focus layout.",
     "description": "The description of the application"
   }
 }
