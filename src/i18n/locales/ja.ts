@@ -293,6 +293,9 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release142BookmarkSyncDecoupling: "ブックマーク同期とショートカット/設定同期の分離不具合を修正",
+        release142DangerousSyncDialogPolish: "ブックマーク同期の危険検知ダイアログと案内を改善",
+        release142SyncTestingBackupNotice: "データ同期は引き続きテスト段階です。有効化前にバックアップを推奨します",
         release141BookmarkSyncFix: "ブックマーク同期の主要な不具合を修正",
         release141SyncStability: "データ同期の安定性を強化",
         release141SyncTestingBackupNotice: "データ同期は現在もテスト段階です。有効化する前に必ずバックアップしてください",

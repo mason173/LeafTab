@@ -287,6 +287,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release142BookmarkSyncDecoupling: "修復書籤同步與捷徑/設定同步解耦問題。",
+        release142DangerousSyncDialogPolish: "優化書籤同步風險攔截彈窗與提示文案。",
+        release142SyncTestingBackupNotice: "資料同步仍處於測試階段，建議先備份再開啟。",
         release130DynamicEffectsOptimize: "優化全域動態效果體驗，新增「減弱動態效果」開關並統一動畫降級策略。",
         release130DynamicWallpaperTab: "新增「靈動」動態桌布分類，支援 Prism、Silk、Light Rays、Beams、Galaxy、Iridescence 預覽與套用。",
         release130ManualWeatherCity: "天氣功能支援手動選擇城市並持久保存，定位與顯示更可控。",

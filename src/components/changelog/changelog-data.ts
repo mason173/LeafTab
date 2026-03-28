@@ -19,6 +19,15 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.2",
+    date: "2026-03-28",
+    notes: [
+      t("changelog.items.release142BookmarkSyncDecoupling", { defaultValue: "修复书签同步与快捷方式/设置同步解耦问题" }),
+      t("changelog.items.release142DangerousSyncDialogPolish", { defaultValue: "优化书签同步风险拦截弹窗与交互提示" }),
+      t("changelog.items.release142SyncTestingBackupNotice", { defaultValue: "数据同步仍处于测试阶段，建议先备份再开启" }),
+    ],
+  },
+  {
     version: "1.4.1",
     date: "2026-03-28",
     notes: [

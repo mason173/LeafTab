@@ -730,10 +730,21 @@ const createSyncPage = async (params: {
   await page.goto(`chrome-extension://${params.extensionId}/index.html?nt=1`);
   await page.waitForLoadState('networkidle');
   await seedSyncPage(page, params.seed);
+  await dismissPrivacyConsentIfVisible(page);
   return page;
 };
 
+const dismissPrivacyConsentIfVisible = async (page: Page) => {
+  const consentDialog = page.getByRole('dialog').filter({
+    hasText: /帮助改进 LeafTab|Help improve LeafTab/i,
+  }).first();
+  const visible = await consentDialog.isVisible({ timeout: 800 }).catch(() => false);
+  if (!visible) return;
+  await consentDialog.getByRole('button', { name: /不同意|Disagree|Not now|同意并开启|Agree/i }).first().click();
+};
+
 const openSyncCenter = async (page: Page) => {
+  await dismissPrivacyConsentIfVisible(page);
   await page.locator('button[title="同步中心"], button[title="Sync Center"]').first().evaluate((node: HTMLButtonElement) => {
     node.click();
   });
@@ -894,9 +905,11 @@ test.describe.serial('LeafTab sync safety flows', () => {
       await expect(dialog).toContainText(/云端书签/);
       await expect(dialog).toContainText(/200/);
       await expect(dialog).toContainText(/1/);
-      await expect(dialog.getByRole('button', { name: /重新检查云端/ })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: /云端覆盖本地/ })).toBeVisible();
-      await expect(dialog.getByRole('button', { name: /本地覆盖云端/ })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /继续同步快捷方式和设置/ })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /稍后处理书签/ })).toBeVisible();
+      await dialog.getByRole('button', { name: /高级设置/ }).click();
+      await expect(page.getByRole('menuitem', { name: /保留云端书签/ })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: /保留本地书签/ })).toBeVisible();
       expect(cloudState.snapshot ? Object.keys(cloudState.snapshot.bookmarkItems).length : 0).toBe(1);
     } finally {
       await page.close();
@@ -947,7 +960,7 @@ test.describe.serial('LeafTab sync safety flows', () => {
     }
   });
 
-  test('stops normal sync when bookmark permission is denied', async ({ extensionContext, extensionId }) => {
+  test('continues non-bookmark sync when bookmark permission is denied', async ({ extensionContext, extensionId }) => {
     const remoteSnapshot = buildSnapshot({
       deviceId: 'remote-device',
       generatedAt: '2026-03-27T10:00:00.000Z',
@@ -981,10 +994,10 @@ test.describe.serial('LeafTab sync safety flows', () => {
 
     try {
       await clickCloudSyncNow(page);
-      await expectUiMessage(page, /同步异常/);
-      expect(cloudState.writeCount).toBe(0);
+      await expect.poll(() => cloudState.writeCount).toBeGreaterThanOrEqual(1);
       await expect.poll(() => readBookmarkSummary(page).then((value) => value.totalItems)).toBe(0);
       expect(cloudState.snapshot ? Object.keys(cloudState.snapshot.bookmarkItems).length : 0).toBe(200);
+      expect(Object.values(cloudState.snapshot?.shortcuts || {})[0]?.title).toBe('GitHub Local');
     } finally {
       await page.close();
       await cleanupRoutes();
@@ -1030,7 +1043,7 @@ test.describe.serial('LeafTab sync safety flows', () => {
     try {
       const dialog = await openSyncCenter(page);
       await dialog.getByRole('button', { name: /修复同步|Repair/ }).click();
-      await page.getByRole('button', { name: /云端覆盖本地|Overwrite Local/i }).click();
+      await page.getByRole('button', { name: /云端覆盖本地|保留云端书签（本地将被替换）|Overwrite Local/i }).click();
       await expect.poll(() => readBookmarkSummary(page).then((value) => value.totalItems)).toBe(1);
       await expectUiMessage(page, /已用云端数据覆盖本地/);
     } finally {
@@ -1074,11 +1087,63 @@ test.describe.serial('LeafTab sync safety flows', () => {
     try {
       const dialog = await openSyncCenter(page);
       await dialog.getByRole('button', { name: /修复同步|Repair/ }).click();
-      await page.getByRole('button', { name: /云端覆盖本地|Overwrite Local/i }).click();
-      await expectUiMessage(page, /未授予书签权限，无法执行修复同步/);
+      await page.getByRole('button', { name: /云端覆盖本地|保留云端书签（本地将被替换）|Overwrite Local/i }).click();
+      await dismissPrivacyConsentIfVisible(page);
       expect(cloudState.writeCount).toBe(0);
       await expect.poll(() => readBookmarkSummary(page).then((value) => value.totalItems)).toBe(200);
       expect(cloudState.snapshot ? Object.keys(cloudState.snapshot.bookmarkItems).length : 0).toBe(1);
+    } finally {
+      await page.close();
+      await cleanupRoutes();
+    }
+  });
+
+  test('allows one-time safe sync without touching bookmarks after dangerous-drop intercept', async ({ extensionContext, extensionId }) => {
+    const baselineSnapshot = buildSnapshot({
+      deviceId: 'local-device',
+      generatedAt: '2026-03-27T10:00:00.000Z',
+      shortcutTitleSuffix: 'Stable',
+      bookmarkCount: 200,
+    });
+    const remoteSnapshot = buildSnapshot({
+      deviceId: 'remote-device',
+      generatedAt: '2026-03-27T10:05:00.000Z',
+      shortcutTitleSuffix: 'Remote Updated',
+      bookmarkCount: 1,
+    });
+    const cloudState = await createMockCloudState(remoteSnapshot);
+    const cleanupRoutes = await registerCloudRoutes(extensionContext, cloudState);
+    const scopeKey = createLeafTabCloudEncryptionScopeKey('sync-user');
+    const page = await createSyncPage({
+      context: extensionContext,
+      extensionId,
+      seed: {
+        username: 'sync-user',
+        token: 'token-sync-user',
+        deviceId: 'local-device',
+        profile: createSeedProfile('Stable'),
+        bookmarkCount: 200,
+        cloudSyncEnabled: true,
+        cloudSyncBookmarksEnabled: true,
+        encryption: {
+          scopeKey,
+          metadata: cloudState.metadata,
+          cachedKey: serializeLeafTabSyncKeyBytes(cloudState.keyBytes),
+        },
+        baselineSnapshot,
+      },
+    });
+
+    try {
+      await clickCloudSyncNow(page);
+      const dangerDialog = page.getByRole('dialog').last();
+      await expect(dangerDialog).toContainText(/已拦截危险同步/);
+      await dangerDialog.getByRole('button', { name: /继续同步快捷方式和设置/ }).click();
+      await expectUiMessage(page, /本次将跳过书签，仅同步快捷方式和设置/);
+      await expect.poll(() => cloudState.writeCount).toBe(2);
+      expect(cloudState.snapshot ? Object.keys(cloudState.snapshot.bookmarkItems).length : 0).toBe(1);
+      expect(Object.values(cloudState.snapshot?.shortcuts || {})[0]?.title).toBe('GitHub Stable');
+      await expect.poll(() => readBookmarkSummary(page).then((value) => value.totalItems)).toBe(200);
     } finally {
       await page.close();
       await cleanupRoutes();

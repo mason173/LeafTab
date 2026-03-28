@@ -338,6 +338,65 @@ describe('bookmarkSyncMode helpers', () => {
     }));
   });
 
+  it('does not propagate local bookmark tombstones when bookmark sync is disabled', async () => {
+    const remoteSnapshot = createSnapshot('remote-device');
+    const writeState = vi.fn(async () => ({
+      head: {
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        commitId: 'commit-2',
+        updatedAt: '2026-03-27T10:24:00.000Z',
+      },
+      commit: {
+        id: 'commit-2',
+        version: LEAFTAB_SYNC_SCHEMA_VERSION,
+        deviceId: 'remote-device',
+        createdAt: '2026-03-27T10:24:00.000Z',
+        parentCommitId: 'commit-1',
+        manifestPath: 'leaftab/v1/manifest.json',
+        summary: {
+          scenarios: 1,
+          shortcuts: 1,
+          bookmarkFolders: 1,
+          bookmarkItems: 1,
+          tombstones: 2,
+        },
+      },
+    }));
+    const remoteStore: LeafTabSyncRemoteStore = {
+      acquireLock: vi.fn(async () => null),
+      releaseLock: vi.fn(async () => {}),
+      readState: vi.fn(async () => ({
+        head: null,
+        commit: null,
+        snapshot: remoteSnapshot,
+      })),
+      writeState,
+    };
+
+    const wrapped = new LeafTabSyncBookmarksDisabledRemoteStore(remoteStore);
+    await wrapped.readState();
+
+    const localSnapshot = stripBookmarksFromLeafTabSyncSnapshot(createSnapshot('local-device')) || createSnapshot('local-device');
+    localSnapshot.tombstones.bookmark_a = {
+      id: 'bookmark_a',
+      type: 'bookmark-item',
+      deletedAt: '2026-03-27T10:25:00.000Z',
+      deletedBy: 'local-device',
+      lastKnownRevision: 9,
+    };
+
+    await wrapped.writeState({
+      snapshot: localSnapshot,
+      previousSnapshot: localSnapshot,
+      deviceId: 'local-device',
+    });
+
+    const writePayload = writeState.mock.calls[0]?.[0];
+    expect(writePayload?.snapshot?.bookmarkItems).toEqual(remoteSnapshot.bookmarkItems);
+    expect(writePayload?.snapshot?.bookmarkFolders).toEqual(remoteSnapshot.bookmarkFolders);
+    expect(writePayload?.snapshot?.tombstones?.bookmark_a).toBeUndefined();
+  });
+
   it('reloads the full remote snapshot before writing when no cached remote snapshot is available', async () => {
     const remoteSnapshot = createSnapshot('remote-device');
     const readState = vi.fn(async () => ({
