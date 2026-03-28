@@ -287,6 +287,9 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release142BookmarkSyncDecoupling: "북마크 동기화와 바로가기/설정 동기화 분리 이슈를 수정",
+        release142DangerousSyncDialogPolish: "북마크 동기화 위험 차단 팝업과 안내 문구를 개선",
+        release142SyncTestingBackupNotice: "데이터 동기화는 아직 테스트 단계입니다. 활성화 전에 백업을 권장합니다",
         release130DynamicEffectsOptimize: "전역 동적 효과 경험을 최적화하고 \"동적 효과 줄이기\" 토글 및 통합 모션 축소 동작을 추가",
         release130DynamicWallpaperTab: "새로운 \"다이내믹\" 배경 카테고리를 추가하고 Prism, Silk, Light Rays, Beams, Galaxy, Iridescence 미리보기/적용을 지원",
         release130ManualWeatherCity: "날씨 기능에서 도시를 수동으로 선택해 저장할 수 있어 위치 표시를 더 안정적으로 제어 가능",

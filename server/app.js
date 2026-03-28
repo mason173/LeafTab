@@ -41,7 +41,7 @@ const createApp = () => {
   const apiLimitWindowMs = parseIntEnv('API_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);
   const apiLimitMax = parseIntEnv('API_LIMIT_MAX', 100, 1);
   const shortcutsLimitWindowMs = parseIntEnv('SHORTCUTS_LIMIT_WINDOW_MS', 60 * 1000, 1000);
-  const shortcutsLimitMax = parseIntEnv('SHORTCUTS_LIMIT_MAX', 24, 1);
+  const shortcutsLimitMax = parseIntEnv('SHORTCUTS_LIMIT_MAX', 100, 1);
   const syncIpLimitWindowMs = parseIntEnv('SYNC_IP_LIMIT_WINDOW_MS', 60 * 1000, 1000);
   const syncIpLimitMax = parseIntEnv('SYNC_IP_LIMIT_MAX', 90, 1);
   const captchaLimitWindowMs = parseIntEnv('CAPTCHA_LIMIT_WINDOW_MS', 15 * 60 * 1000, 60 * 1000);

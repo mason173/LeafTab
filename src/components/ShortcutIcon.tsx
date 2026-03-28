@@ -17,6 +17,10 @@ import {
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
 const MAX_CACHE_ITEMS = 400;
+const OFFICIAL_ICON_CACHE_PREFIX = 'official_icon_cache_v1:';
+const OFFICIAL_ICON_CACHE_INDEX_KEY = 'official_icon_cache_v1_index';
+const MAX_OFFICIAL_ICON_CACHE_ITEMS = 160;
+const MAX_OFFICIAL_ICON_DATA_LENGTH = 260_000;
 const FAVICON_FAIL_PREFIX = 'favicon_cache_v2_fail:';
 const FAVICON_FAIL_TTL_MS = 12 * 60 * 60 * 1000;
 const EMPTY_ICON_CONTAINER_PATH_D = "M0 36C0.000156948 13.5 6.42873 0.0000175685 36 0C65.5713 -0.0000175684 72 11.8929 72 36C72 61.7143 61.0716 72 36 72C13.8214 72 -0.000192817 63.6429 0 36Z";
@@ -88,6 +92,62 @@ function setCachedFavicon(domain: string, data: string) {
       }
     }
     queueCachedLocalStorageSetItem(FAVICON_CACHE_INDEX_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+function readCacheIndex(key: string) {
+  try {
+    const raw = readCachedLocalStorageItem(key);
+    if (!raw) return [] as string[];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [] as string[];
+    return parsed.filter((item) => typeof item === 'string' && item);
+  } catch {
+    return [] as string[];
+  }
+}
+
+function getCachedOfficialIcon(domain: string) {
+  try {
+    const d1 = normalizeDomain(domain);
+    const d2 = registrableDomain(domain);
+    const k1 = `${OFFICIAL_ICON_CACHE_PREFIX}${d1}`;
+    const k2 = `${OFFICIAL_ICON_CACHE_PREFIX}${d2}`;
+    return readCachedLocalStorageItem(k1) || readCachedLocalStorageItem(k2) || '';
+  } catch {
+    return '';
+  }
+}
+
+function setCachedOfficialIcon(domain: string, dataUrl: string) {
+  try {
+    if (!dataUrl.startsWith('data:image/')) return;
+    if (dataUrl.length > MAX_OFFICIAL_ICON_DATA_LENGTH) return;
+    const d = normalizeDomain(domain);
+    if (!d) return;
+    const key = `${OFFICIAL_ICON_CACHE_PREFIX}${d}`;
+    queueCachedLocalStorageSetItem(key, dataUrl);
+    const list = readCacheIndex(OFFICIAL_ICON_CACHE_INDEX_KEY);
+    const idx = list.indexOf(d);
+    if (idx !== -1) list.splice(idx, 1);
+    list.unshift(d);
+    while (list.length > MAX_OFFICIAL_ICON_CACHE_ITEMS) {
+      const removed = list.pop();
+      if (removed) queueCachedLocalStorageRemoveItem(`${OFFICIAL_ICON_CACHE_PREFIX}${removed}`);
+    }
+    queueCachedLocalStorageSetItem(OFFICIAL_ICON_CACHE_INDEX_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+function clearCachedOfficialIcon(domain: string) {
+  try {
+    const d1 = normalizeDomain(domain);
+    const d2 = registrableDomain(domain);
+    if (d1) queueCachedLocalStorageRemoveItem(`${OFFICIAL_ICON_CACHE_PREFIX}${d1}`);
+    if (d2) queueCachedLocalStorageRemoveItem(`${OFFICIAL_ICON_CACHE_PREFIX}${d2}`);
+    const list = readCacheIndex(OFFICIAL_ICON_CACHE_INDEX_KEY);
+    const filtered = list.filter((v) => v !== d1 && v !== d2);
+    queueCachedLocalStorageSetItem(OFFICIAL_ICON_CACHE_INDEX_KEY, JSON.stringify(filtered));
   } catch {}
 }
 
@@ -187,6 +247,32 @@ async function cacheFaviconData(domain: string, src: string) {
   setCachedFavicon(domain, src);
 }
 
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(reader.error || new Error('read blob failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function cacheOfficialIconData(domain: string, src: string) {
+  if (!domain || !src || src.startsWith('data:')) return;
+  try {
+    const resp = await fetch(src, {
+      method: 'GET',
+      credentials: 'omit',
+      cache: 'force-cache',
+    });
+    if (!resp.ok) return;
+    const blob = await resp.blob();
+    if (!(blob instanceof Blob) || blob.size <= 0) return;
+    const dataUrl = await blobToDataUrl(blob);
+    if (!dataUrl) return;
+    setCachedOfficialIcon(domain, dataUrl);
+  } catch {}
+}
+
 const ShortcutIcon = memo(function ShortcutIcon({
   icon,
   url,
@@ -221,6 +307,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const canProbeRemoteFavicon = useMemo(() => isHttpFaviconEligible(url, domain), [domain, url]);
   const skipDomainCandidates = useMemo(() => (domain ? shouldSkipDomainCandidates(domain) : false), [domain]);
   const [cachedFavicon, setCachedFavicon] = useState<string>(() => (domain ? getCachedFavicon(domain) : ''));
+  const [cachedOfficialIcon, setCachedOfficialIcon] = useState<string>(() => (domain ? getCachedOfficialIcon(domain) : ''));
   const [customIconUrl, setCustomIconUrl] = useState<string>(() => {
     if (!domain) return '';
     return resolveCustomIconFromCache(domain)?.url || '';
@@ -231,6 +318,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
 
   useEffect(() => {
     setCachedFavicon(domain ? getCachedFavicon(domain) : '');
+    setCachedOfficialIcon(domain ? getCachedOfficialIcon(domain) : '');
   }, [domain]);
 
   useEffect(() => {
@@ -271,6 +359,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
       },
     });
     if (shouldUseOfficial && customIconUrl) {
+      if (cachedOfficialIcon) {
+        list.push({ src: cachedOfficialIcon, kind: 'custom' });
+      }
       list.push({ src: customIconUrl, kind: 'custom' });
     }
     if (resolvedIconRendering !== 'letter') {
@@ -306,6 +397,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   }, [
     autoUseOfficialIcon,
     cachedFavicon,
+    cachedOfficialIcon,
     canProbeRemoteFavicon,
     customIconUrl,
     domain,
@@ -365,7 +457,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
       const prevSig = getCachedIconSignature(domain);
       if (resolved.signature && prevSig && prevSig !== resolved.signature) {
         clearCachedFavicon(domain);
+        clearCachedOfficialIcon(domain);
         setCachedFavicon('');
+        setCachedOfficialIcon('');
       }
       if (resolved.signature && prevSig !== resolved.signature) {
         setCachedIconSignature(domain, resolved.signature);
@@ -395,6 +489,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);
     const shouldPersistAsFavicon = activeCandidate?.kind === 'favicon' || activeCandidate?.kind === 'provided';
+    const shouldPersistAsOfficial = activeCandidate?.kind === 'custom';
+    if (domain && src && shouldPersistAsOfficial && !src.startsWith('data:') && !cachedOfficialIcon) {
+      void cacheOfficialIconData(domain, src).then(() => {
+        setCachedOfficialIcon(getCachedOfficialIcon(domain));
+      });
+    }
     if (!firefox && domain && src && shouldPersistAsFavicon && src !== cachedFavicon) {
       void cacheFaviconData(domain, src).then(() => {
         setCachedFavicon(getCachedFavicon(domain));

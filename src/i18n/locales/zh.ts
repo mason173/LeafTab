@@ -423,6 +423,9 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release142BookmarkSyncDecoupling: "修复书签同步与快捷方式/设置同步解耦问题",
+        release142DangerousSyncDialogPolish: "优化书签同步风险拦截弹窗与交互提示",
+        release142SyncTestingBackupNotice: "数据同步仍处于测试阶段，建议先备份再开启",
         release141BookmarkSyncFix: "修复书签同步中的关键问题",
         release141SyncStability: "增强数据同步稳定性",
         release141SyncTestingBackupNotice: "数据同步仍处于测试阶段，开启前请注意备份",

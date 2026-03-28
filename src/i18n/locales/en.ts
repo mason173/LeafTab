@@ -419,6 +419,9 @@ export default {
         previewDescription: "Alpha / Beta builds for testing. Features and details may still change",
       },
       items: {
+        release142BookmarkSyncDecoupling: "Fixed decoupling issues between bookmark sync and shortcut/settings sync",
+        release142DangerousSyncDialogPolish: "Refined risky bookmark-sync interception dialog and guidance",
+        release142SyncTestingBackupNotice: "Data sync is still in testing. Back up your data before enabling",
         release141BookmarkSyncFix: "Fixed key issues in bookmark sync",
         release141SyncStability: "Improved overall data sync stability",
         release141SyncTestingBackupNotice: "Data sync is still in testing. Please back up your data before enabling it",

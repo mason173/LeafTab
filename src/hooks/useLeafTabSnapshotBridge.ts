@@ -262,6 +262,7 @@ export function useLeafTabSnapshotBridge({
     snapshot: LeafTabSyncSnapshot,
     options?: {
       preferredSelectedScenarioId?: string | null;
+      skipBookmarkApply?: boolean;
     },
   ) => {
     const {
@@ -283,34 +284,36 @@ export function useLeafTabSnapshotBridge({
       setScenarioShortcuts(nextScenarioShortcuts);
     });
 
-    const bookmarksApplied = await replaceLeafTabBookmarkTree({
-      scope: leafTabBookmarkSyncScope,
-      folderLookup: Object.fromEntries(
-        Object.values(projected.bookmarkFolders).map((folder) => [
-          folder.id,
-          {
-            title: folder.title,
-            parentId: folder.parentId,
-          },
-        ]),
-      ),
-      itemLookup: Object.fromEntries(
-        Object.values(projected.bookmarkItems).map((item) => [
-          item.id,
-          {
-            title: item.title,
-            parentId: item.parentId,
-            url: item.url,
-          },
-        ]),
-      ),
-      orderIdsByParent: Object.fromEntries(
-        Object.entries(projected.bookmarkOrders).map(([key, order]) => [key, order.ids.slice()]),
-      ),
-      requestPermission: false,
-    });
-    if (!bookmarksApplied) {
-      throw new LeafTabBookmarkPermissionDeniedError();
+    if (!options?.skipBookmarkApply) {
+      const bookmarksApplied = await replaceLeafTabBookmarkTree({
+        scope: leafTabBookmarkSyncScope,
+        folderLookup: Object.fromEntries(
+          Object.values(projected.bookmarkFolders).map((folder) => [
+            folder.id,
+            {
+              title: folder.title,
+              parentId: folder.parentId,
+            },
+          ]),
+        ),
+        itemLookup: Object.fromEntries(
+          Object.values(projected.bookmarkItems).map((item) => [
+            item.id,
+            {
+              title: item.title,
+              parentId: item.parentId,
+              url: item.url,
+            },
+          ]),
+        ),
+        orderIdsByParent: Object.fromEntries(
+          Object.entries(projected.bookmarkOrders).map(([key, order]) => [key, order.ids.slice()]),
+        ),
+        requestPermission: false,
+      });
+      if (!bookmarksApplied) {
+        throw new LeafTabBookmarkPermissionDeniedError();
+      }
     }
 
     await applyPreferencesSnapshot(nextPreferences);
@@ -344,8 +347,14 @@ export function useLeafTabSnapshotBridge({
     user,
   ]);
 
-  const applySnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
-    await applySnapshotToLocalState(snapshot);
+  const applySnapshot = useCallback(async (
+    snapshot: LeafTabSyncSnapshot,
+    options?: {
+      preferredSelectedScenarioId?: string | null;
+      skipBookmarkApply?: boolean;
+    },
+  ) => {
+    await applySnapshotToLocalState(snapshot, options);
   }, [applySnapshotToLocalState]);
 
   return {
