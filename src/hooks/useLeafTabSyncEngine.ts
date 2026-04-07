@@ -436,6 +436,10 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     analysisStaleRef.current = true;
   }, []);
 
+  const clearSyncError = useCallback(() => {
+    markSyncIdle();
+  }, [markSyncIdle]);
+
   useEffect(() => {
     if (!enabled || !engine) {
       setAnalysis(null);
@@ -462,6 +466,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     refreshAnalysis,
     runSync,
     resetBaseline,
+    clearSyncError,
     hasConfig: Boolean(enabled && engine),
   };
 }

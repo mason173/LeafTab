@@ -19,6 +19,15 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.3",
+    date: "2026-04-07",
+    notes: [
+      t("changelog.items.release143SyncFlowAlignment", { defaultValue: "对齐云同步与 WebDAV 同步逻辑，危险书签差异时可继续同步快捷方式和设置" }),
+      t("changelog.items.release143WebdavProviderPolish", { defaultValue: "WebDAV 新增坚果云内置服务商，并补齐切换服务商、授权、密钥校验与首次同步流程" }),
+      t("changelog.items.release143SyncStatusPolish", { defaultValue: "优化同步中心状态、同步范围文案与错误处理，减少误报失败或状态不同步" }),
+    ],
+  },
+  {
     version: "1.4.2",
     date: "2026-03-28",
     notes: [

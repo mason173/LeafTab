@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appTitle__",
-  "version": "1.4.2",
-  "version_name": "1.4.2",
+  "version": "1.4.3",
+  "version_name": "1.4.3",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "chrome_url_overrides": {
@@ -39,6 +39,7 @@
     "https://raw.githubusercontent.com/*",
     "https://fonts.googleapis.com/*",
     "https://fonts.gstatic.com/*",
+    "https://dav.jianguoyun.com/*",
     "https://ewebdav.pcloud.com/*",
     "https://webdav.pcloud.com/*",
     "https://webdav.mc.gmx.net/*",

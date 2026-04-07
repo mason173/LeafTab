@@ -102,6 +102,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         bodyText: responseText,
       });
     } catch (error) {
+      console.error('[LeafTab][WebDAV proxy]', method, url, error);
       sendResponse({
         success: false,
         error: String(error instanceof Error ? error.message : error),

@@ -45,6 +45,15 @@ export const writeCloudSyncConfigToStorage = (config: CloudSyncConfig) => {
   localStorage.removeItem('cloud_sync_nickname');
 };
 
+export const applyCloudDangerousBookmarkChoiceToStorage = () => {
+  const current = readCloudSyncConfigFromStorage();
+  writeCloudSyncConfigToStorage({
+    ...current,
+    enabled: true,
+    syncBookmarksEnabled: false,
+  });
+};
+
 export const emitCloudSyncConfigChanged = () => {
   window.dispatchEvent(new Event('cloud-sync-config-changed'));
 };

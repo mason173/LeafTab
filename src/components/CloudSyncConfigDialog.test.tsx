@@ -60,6 +60,20 @@ describe('CloudSyncConfigDialog', () => {
       intervalMinutes: 10,
     });
     ensureExtensionPermissionMock.mockResolvedValue(true);
+
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
   it('shows a safety reminder before enabling bookmark sync and requests permission only after confirmation', async () => {
