@@ -293,6 +293,9 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release144TranslationPromptFix: "LeafTab を開くたびに表示されることがあった「このページを翻訳しますか」のブラウザ翻訳案内を修正",
+        release144AboutQqGroup: "About LeafTab ダイアログに交流用 QQ グループ番号を追加し、フィードバックや交流をしやすくしました",
+        release144ReadmeCommunityEntry: "README にコミュニティ案内を追加し、1.4.4 のリリース情報も整理しました",
         release143SyncFlowAlignment: "クラウド同期と WebDAV 同期の挙動をそろえ、ブックマーク差分が危険と判定された場合でもショートカットと設定の同期を継続できるようにしました",
         release143WebdavProviderPolish: "WebDAV の内蔵プロバイダーに Jianguoyun を追加し、プロバイダー切り替え、権限許可、キー確認、初回同期フローを改善しました",
         release143SyncStatusPolish: "同期センターの状態表示、同期範囲文言、エラー処理を見直し、誤った失敗表示や状態ずれを減らしました",

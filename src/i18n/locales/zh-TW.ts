@@ -287,6 +287,9 @@ export default {
       version: "版本",
       date: "日期",
       items: {
+        release144TranslationPromptFix: "修復每次打開 LeafTab 都可能出現「是否翻譯此介面」的瀏覽器翻譯提示。",
+        release144AboutQqGroup: "關於 LeafTab 彈窗新增交流 QQ 群號，方便回饋與交流。",
+        release144ReadmeCommunityEntry: "README 補充社群交流入口，並同步整理 1.4.4 發佈資訊。",
         release143SyncFlowAlignment: "對齊雲端同步與 WebDAV 同步邏輯，在書籤差異風險較高時仍可繼續同步捷徑與設定。",
         release143WebdavProviderPolish: "WebDAV 新增堅果雲內建服務商，並補齊切換服務商、授權、密鑰校驗與首次同步流程。",
         release143SyncStatusPolish: "優化同步中心狀態、同步範圍文案與錯誤處理，減少誤報失敗或狀態不同步。",

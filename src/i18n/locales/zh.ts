@@ -423,6 +423,9 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release144TranslationPromptFix: "修复每次打开 LeafTab 都可能出现“是否翻译此界面”的浏览器翻译提示",
+        release144AboutQqGroup: "关于 LeafTab 弹窗新增交流 QQ 群号，方便反馈与交流",
+        release144ReadmeCommunityEntry: "README 补充社区交流入口，并同步整理 1.4.4 发布信息",
         release143SyncFlowAlignment: "对齐云同步与 WebDAV 同步逻辑，危险书签差异时可继续同步快捷方式和设置",
         release143WebdavProviderPolish: "WebDAV 新增坚果云内置服务商，并补齐切换服务商、授权、密钥校验与首次同步流程",
         release143SyncStatusPolish: "优化同步中心状态、同步范围文案与错误处理，减少误报失败或状态不同步",
