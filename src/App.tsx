@@ -54,14 +54,17 @@ import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { LongTaskIndicator } from './components/LongTaskIndicator';
 import { LeafTabDangerousSyncDialog } from '@/components/sync/LeafTabDangerousSyncDialog';
 import {
+  applyWebdavDangerousBookmarkChoiceToStorage,
   hasWebdavUrlConfiguredFromStorage,
   isWebdavSyncEnabledFromStorage,
   readWebdavConfigFromStorage,
+  readWebdavStorageStateFromStorage,
   WEBDAV_STORAGE_KEYS,
 } from '@/utils/webdavConfig';
 import { isWebdavAuthError } from '@/utils/webdavError';
 import {
   CLOUD_SYNC_STORAGE_KEYS,
+  applyCloudDangerousBookmarkChoiceToStorage,
   emitCloudSyncStatusChanged,
   readCloudSyncConfigFromStorage,
 } from '@/utils/cloudSyncConfig';
@@ -125,6 +128,7 @@ import {
   resolveCloudSyncBookmarkApplyMode,
   resolveCloudSyncBookmarksEnabled,
 } from '@/utils/cloudSyncBookmarksPolicy';
+import { resolveDeferredBookmarkSyncExecution } from '@/utils/deferredBookmarkSync';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -374,6 +378,8 @@ export default function App() {
   const [syncEncryptionVersion, setSyncEncryptionVersion] = useState(0);
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
+  const [webdavShowConnectionFields, setWebdavShowConnectionFields] = useState(false);
+  const [pendingWebdavEnableScopeKey, setPendingWebdavEnableScopeKey] = useState<string | null>(null);
   const [leafTabSyncDialogOpen, setLeafTabSyncDialogOpen] = useState(false);
   const [dangerousSyncDialogState, setDangerousSyncDialogState] = useState<DangerousSyncDialogState | null>(null);
   const [dangerousSyncDialogBusyAction, setDangerousSyncDialogBusyAction] = useState<DangerousSyncDialogAction>(null);
@@ -397,6 +403,7 @@ export default function App() {
   const legacyCloudMigrationResolverRef = useRef<((value: boolean) => void) | null>(null);
   const openLeafTabSyncConfig = useCallback(() => {
     setWebdavEnableAfterConfigSave(false);
+    setWebdavShowConnectionFields(false);
     setWebdavDialogOpen(true);
   }, []);
   useEffect(() => () => {
@@ -1144,6 +1151,16 @@ export default function App() {
     localStorage.setItem('cloud_last_error_message', String((error as Error)?.message || error || 'unknown'));
     emitCloudSyncStatusChanged();
   }, []);
+  const clearCloudSyncError = useCallback(() => {
+    localStorage.removeItem('cloud_last_error_at');
+    localStorage.removeItem('cloud_last_error_message');
+    emitCloudSyncStatusChanged();
+  }, []);
+  const applyCloudDangerousBookmarkChoice = useCallback(() => {
+    applyCloudDangerousBookmarkChoiceToStorage();
+    window.dispatchEvent(new Event('cloud-sync-config-changed'));
+    emitCloudSyncStatusChanged();
+  }, []);
 
   const setCloudNextSyncAt = useCallback((nextMs: number | null) => {
     if (nextMs && Number.isFinite(nextMs)) {
@@ -1160,8 +1177,14 @@ export default function App() {
     localStorage.removeItem('webdav_last_error_message');
     emitWebdavSyncStatusChanged();
   }, [emitWebdavSyncStatusChanged]);
+  const clearWebdavSyncError = useCallback(() => {
+    localStorage.removeItem('webdav_last_error_at');
+    localStorage.removeItem('webdav_last_error_message');
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
 
   const markWebdavSyncError = useCallback((error: unknown) => {
+    console.error('[LeafTab][WebDAV sync]', error);
     localStorage.setItem('webdav_last_error_at', new Date().toISOString());
     localStorage.setItem('webdav_last_error_message', String((error as any)?.message || 'unknown'));
     emitWebdavSyncStatusChanged();
@@ -1175,6 +1198,10 @@ export default function App() {
     if (!enabled) {
       localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
     }
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
+  const applyWebdavDangerousBookmarkChoice = useCallback(() => {
+    applyWebdavDangerousBookmarkChoiceToStorage();
     emitWebdavSyncStatusChanged();
   }, [emitWebdavSyncStatusChanged]);
 
@@ -1243,10 +1270,24 @@ export default function App() {
     leafTabWebdavEncryptedTransport,
     leafTabWebdavEncryptionScopeKey,
   ]);
+  const webdavStorageState = useMemo(
+    () => readWebdavStorageStateFromStorage(),
+    [leafTabSyncConfigVersion],
+  );
+  const webdavSyncBookmarksEnabled = webdavStorageState.syncBookmarksEnabled;
   const leafTabSyncBookmarksDisabledRemoteStore = useMemo(() => {
     if (!leafTabSyncRemoteStore) return null;
     return new LeafTabSyncBookmarksDisabledRemoteStore(leafTabSyncRemoteStore);
   }, [leafTabSyncRemoteStore]);
+  const leafTabSyncEffectiveRemoteStore = useMemo(() => {
+    if (!leafTabSyncRemoteStore) return null;
+    if (webdavSyncBookmarksEnabled) return leafTabSyncRemoteStore;
+    return leafTabSyncBookmarksDisabledRemoteStore;
+  }, [
+    leafTabSyncBookmarksDisabledRemoteStore,
+    leafTabSyncRemoteStore,
+    webdavSyncBookmarksEnabled,
+  ]);
   const cloudSyncToken = useMemo(() => (
     user ? (localStorage.getItem('token') || '') : ''
   ), [user]);
@@ -1343,7 +1384,6 @@ export default function App() {
 
   const {
     buildSnapshotFromCurrentState: buildLeafTabSyncSnapshotFromCurrentState,
-    buildLocalSnapshot: buildLocalLeafTabSyncSnapshot,
     createEmptySnapshot: createEmptyLeafTabSyncSnapshot,
     applySnapshotToLocalState: applyLeafTabSyncSnapshotToLocalState,
     applySnapshot: applyLeafTabSyncSnapshot,
@@ -1376,6 +1416,16 @@ export default function App() {
     cloudSyncBaselineStorageKey,
     cloudSyncBookmarksEnabled,
     stripWallpaperFromCloudSyncPreferences,
+  ]);
+  const buildWebdavLeafTabSyncSnapshotWithScope = useCallback(async () => {
+    return buildLeafTabSyncSnapshotFromCurrentState({
+      baselineStorageKey: leafTabSyncBaselineStorageKey,
+      includeBookmarks: webdavSyncBookmarksEnabled,
+    });
+  }, [
+    buildLeafTabSyncSnapshotFromCurrentState,
+    leafTabSyncBaselineStorageKey,
+    webdavSyncBookmarksEnabled,
   ]);
   const buildWebdavLeafTabSyncSnapshotWithoutBookmarks = useCallback(async () => {
     return buildLeafTabSyncSnapshotFromCurrentState({
@@ -1412,6 +1462,18 @@ export default function App() {
     applyLeafTabSyncSnapshot,
     cloudSyncBookmarksEnabled,
     mergeCloudSyncSnapshotWithLocalWallpaper,
+  ]);
+  const applyWebdavLeafTabSyncSnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
+    if (webdavSyncBookmarksEnabled) {
+      await applyLeafTabSyncSnapshot(snapshot);
+      return;
+    }
+    await applyLeafTabSyncSnapshot(snapshot, {
+      skipBookmarkApply: true,
+    });
+  }, [
+    applyLeafTabSyncSnapshot,
+    webdavSyncBookmarksEnabled,
   ]);
   const applyWebdavLeafTabSyncSnapshotWithoutBookmarks = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
     await applyLeafTabSyncSnapshot(snapshot, {
@@ -1490,14 +1552,15 @@ export default function App() {
     invalidateAnalysis: invalidateLeafTabSyncAnalysis,
     refreshAnalysis: refreshLeafTabSyncAnalysis,
     runSync: runLeafTabSync,
+    clearSyncError: clearLeafTabSyncErrorState,
     syncState: leafTabSyncState,
   } = useLeafTabSyncEngine({
     deviceId: leafTabSyncDeviceId,
     webdav: null,
-    remoteStore: leafTabSyncRemoteStore,
+    remoteStore: leafTabSyncEffectiveRemoteStore,
     legacyCompat: webdavLegacyCompat,
-    buildLocalSnapshot: buildLocalLeafTabSyncSnapshot,
-    applyLocalSnapshot: applyLeafTabSyncSnapshot,
+    buildLocalSnapshot: buildWebdavLeafTabSyncSnapshotWithScope,
+    applyLocalSnapshot: applyWebdavLeafTabSyncSnapshot,
     createEmptySnapshot: createEmptyLeafTabSyncSnapshot,
     baselineStorageKey: leafTabSyncBaselineStorageKey,
   });
@@ -1509,6 +1572,7 @@ export default function App() {
     invalidateAnalysis: invalidateCloudLeafTabSyncAnalysis,
     refreshAnalysis: refreshCloudLeafTabSyncAnalysis,
     runSync: runCloudLeafTabSync,
+    clearSyncError: clearCloudLeafTabSyncErrorState,
     syncState: cloudLeafTabSyncState,
   } = useLeafTabSyncEngine({
     enabled: Boolean(user && cloudSyncToken),
@@ -1616,6 +1680,8 @@ export default function App() {
   }, []);
   const webdavSkipBookmarksForThisRunRef = useRef(false);
   const cloudSkipBookmarksForThisRunRef = useRef(false);
+  const webdavDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
+  const cloudDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
   const runWebdavSyncWithUi = useLeafTabSyncRunner<LeafTabSyncEngineResult, WebdavLeafTabSyncOptions>({
     providerLabel: 'WebDAV 同步',
     runSync: (mode, progressOptions) => (
@@ -1679,23 +1745,37 @@ export default function App() {
       openLeafTabSyncConfig();
       return null;
     }
-    const skipBookmarksForThisRun = options?.skipBookmarksForThisRun === true;
-    if (skipBookmarksForThisRun) {
+    const hasDeferredDangerousBookmarks = Boolean(
+      leafTabWebdavEncryptionScopeKey
+      && webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey,
+    );
+    const {
+      effectiveSkipBookmarks,
+      effectiveRequestBookmarkPermission,
+    } = resolveDeferredBookmarkSyncExecution({
+      requestBookmarkPermission: options?.requestBookmarkPermission,
+      skipBookmarksForThisRun: options?.skipBookmarksForThisRun === true,
+      hasDeferredDangerousBookmarks,
+    });
+    if (effectiveSkipBookmarks) {
       webdavSkipBookmarksForThisRunRef.current = true;
     }
     try {
       return await runWebdavSyncWithUi({
         ...options,
-        requestBookmarkPermission: skipBookmarksForThisRun
-          ? false
-          : options?.requestBookmarkPermission,
+        requestBookmarkPermission: effectiveRequestBookmarkPermission,
       });
     } finally {
-      if (skipBookmarksForThisRun) {
+      if (effectiveSkipBookmarks) {
         webdavSkipBookmarksForThisRunRef.current = false;
       }
     }
-  }, [leafTabSyncHasConfig, openLeafTabSyncConfig, runWebdavSyncWithUi]);
+  }, [
+    leafTabSyncHasConfig,
+    leafTabWebdavEncryptionScopeKey,
+    openLeafTabSyncConfig,
+    runWebdavSyncWithUi,
+  ]);
 
   const runCloudSyncWithUi = useLeafTabSyncRunner<LeafTabSyncEngineResult, CloudLeafTabSyncOptions>({
     providerLabel: '云同步',
@@ -1831,23 +1911,33 @@ export default function App() {
     if (cloudSyncBookmarksConfigured && !cloudSyncBookmarksPermissionGranted) {
       toast.info('书签权限未授权，当前仅同步快捷方式和设置');
     }
-    const skipBookmarksForThisRun = options?.skipBookmarksForThisRun === true;
-    if (skipBookmarksForThisRun) {
+    const hasDeferredDangerousBookmarks = Boolean(
+      cloudSyncEncryptionScopeKey
+      && cloudDeferredDangerousBookmarksScopeKeyRef.current === cloudSyncEncryptionScopeKey,
+    );
+    const {
+      effectiveSkipBookmarks,
+      effectiveRequestBookmarkPermission,
+    } = resolveDeferredBookmarkSyncExecution({
+      requestBookmarkPermission: options?.requestBookmarkPermission,
+      skipBookmarksForThisRun: options?.skipBookmarksForThisRun === true,
+      hasDeferredDangerousBookmarks,
+    });
+    if (effectiveSkipBookmarks) {
       cloudSkipBookmarksForThisRunRef.current = true;
     }
     try {
       return await runCloudSyncWithUi({
         ...options,
-        requestBookmarkPermission: skipBookmarksForThisRun
-          ? false
-          : options?.requestBookmarkPermission,
+        requestBookmarkPermission: effectiveRequestBookmarkPermission,
       });
     } finally {
-      if (skipBookmarksForThisRun) {
+      if (effectiveSkipBookmarks) {
         cloudSkipBookmarksForThisRunRef.current = false;
       }
     }
   }, [
+    cloudSyncEncryptionScopeKey,
     cloudSyncBookmarksConfigured,
     cloudSyncBookmarksPermissionGranted,
     cloudLeafTabSyncHasConfig,
@@ -1882,7 +1972,7 @@ export default function App() {
     }
     await handleLeafTabSync({
       enableAfterSuccess: true,
-      requestBookmarkPermission: true,
+      requestBookmarkPermission: webdavSyncBookmarksEnabled,
       showProgressIndicator: true,
     });
   }, [
@@ -1892,6 +1982,19 @@ export default function App() {
     leafTabWebdavEncryptionScopeKey,
     t,
     user,
+    webdavSyncBookmarksEnabled,
+  ]);
+  useEffect(() => {
+    if (!pendingWebdavEnableScopeKey) return;
+    if (!leafTabSyncHasConfig) return;
+    if (pendingWebdavEnableScopeKey !== leafTabWebdavEncryptionScopeKey) return;
+    setPendingWebdavEnableScopeKey(null);
+    void handleEnableWebdavSync();
+  }, [
+    handleEnableWebdavSync,
+    leafTabWebdavEncryptionScopeKey,
+    leafTabSyncHasConfig,
+    pendingWebdavEnableScopeKey,
   ]);
 
   const handleDisableWebdavSync = useCallback(async (options?: { clearLocal?: boolean }) => {
@@ -1934,6 +2037,9 @@ export default function App() {
           title: '正在关闭同步',
           progress: 92,
         });
+        if (webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey) {
+          webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
+        }
         setWebdavSyncEnabledInStorage(false);
 
         if (options?.clearLocal === true) {
@@ -1962,18 +2068,21 @@ export default function App() {
     runLongTask,
     setWebdavSyncEnabledInStorage,
     t,
+    leafTabWebdavEncryptionScopeKey,
   ]);
-  const handleOpenWebdavConfig = useCallback((options?: { enableAfterSave?: boolean }) => {
+  const handleOpenWebdavConfig = useCallback((options?: { enableAfterSave?: boolean; showConnectionFields?: boolean }) => {
     if (cloudSyncEnabled) {
       toast.error('当前已启用云同步，请先退出云同步后再配置 WebDAV 同步');
       return false;
     }
     const shouldEnableAfterSave = options?.enableAfterSave ?? !leafTabWebdavConfigured;
+    const shouldShowConnectionFields = options?.showConnectionFields ?? shouldEnableAfterSave;
     setWebdavEnableAfterConfigSave(Boolean(shouldEnableAfterSave));
+    setWebdavShowConnectionFields(Boolean(shouldShowConnectionFields));
     setWebdavDialogOpen(true);
     return true;
   }, [cloudSyncEnabled, leafTabWebdavConfigured]);
-  const handleOpenWebdavConfigFromSyncCenter = useCallback((options?: { enableAfterSave?: boolean }) => {
+  const handleOpenWebdavConfigFromSyncCenter = useCallback((options?: { enableAfterSave?: boolean; showConnectionFields?: boolean }) => {
     const opened = handleOpenWebdavConfig(options);
     if (!opened) {
       return;
@@ -2125,6 +2234,7 @@ export default function App() {
     leafTabSyncHasConfig,
     cloudSyncing: cloudLeafTabSyncState.status === 'syncing',
     webdavSyncing: leafTabSyncState.status === 'syncing',
+    webdavSyncBookmarksEnabled,
     cloudSyncBookmarksEnabled,
     cloudSyncEncryptionScopeKey,
     cloudSyncEncryptedTransport,
@@ -2145,6 +2255,10 @@ export default function App() {
     closeDangerousSyncDialog();
     toast.info('本次将跳过书签，仅同步快捷方式和设置');
     if (dangerousSyncDialogState.provider === 'cloud') {
+      cloudDeferredDangerousBookmarksScopeKeyRef.current = null;
+      applyCloudDangerousBookmarkChoice();
+      clearCloudSyncError();
+      clearCloudLeafTabSyncErrorState();
       await handleCloudLeafTabSync({
         skipBookmarksForThisRun: true,
         requestBookmarkPermission: false,
@@ -2154,6 +2268,10 @@ export default function App() {
       });
       return;
     }
+    webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
+    applyWebdavDangerousBookmarkChoice();
+    clearWebdavSyncError();
+    clearLeafTabSyncErrorState();
     await handleLeafTabSync({
       skipBookmarksForThisRun: true,
       requestBookmarkPermission: false,
@@ -2161,39 +2279,83 @@ export default function App() {
     });
   }, [
     closeDangerousSyncDialog,
+    cloudSyncEncryptionScopeKey,
     dangerousSyncDialogState,
     handleCloudLeafTabSync,
     handleLeafTabSync,
+    leafTabWebdavEncryptionScopeKey,
+    applyWebdavDangerousBookmarkChoice,
+  ]);
+  const handleDangerousSyncDialogDefer = useCallback(() => {
+    if (!dangerousSyncDialogState) return;
+    closeDangerousSyncDialog();
+    if (dangerousSyncDialogState.provider !== 'webdav') {
+      applyCloudDangerousBookmarkChoice();
+      clearCloudSyncError();
+      clearCloudLeafTabSyncErrorState();
+      toast.info('已启用云同步，并暂时关闭“同步书签”');
+      return;
+    }
+    webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
+    applyWebdavDangerousBookmarkChoice();
+    clearWebdavSyncError();
+    clearLeafTabSyncErrorState();
+    toast.info('已启用 WebDAV 同步，并暂时关闭“同步书签”');
+  }, [
+    applyWebdavDangerousBookmarkChoice,
+    applyCloudDangerousBookmarkChoice,
+    clearCloudLeafTabSyncErrorState,
+    clearCloudSyncError,
+    clearLeafTabSyncErrorState,
+    clearWebdavSyncError,
+    closeDangerousSyncDialog,
+    dangerousSyncDialogState,
   ]);
   const handleDangerousSyncDialogUseRemote = useCallback(async () => {
     if (!dangerousSyncDialogState) return;
     setDangerousSyncDialogBusyAction('use-remote');
     closeDangerousSyncDialog();
     if (dangerousSyncDialogState.provider === 'cloud') {
-      await handleCloudRepairFromCenter('pull-remote');
+      const repaired = await handleCloudRepairFromCenter('pull-remote');
+      if (repaired && cloudDeferredDangerousBookmarksScopeKeyRef.current === cloudSyncEncryptionScopeKey) {
+        cloudDeferredDangerousBookmarksScopeKeyRef.current = null;
+      }
       return;
     }
-    await handleWebdavRepairFromCenter('pull-remote');
+    const repaired = await handleWebdavRepairFromCenter('pull-remote');
+    if (repaired && webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey) {
+      webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
+    }
   }, [
     closeDangerousSyncDialog,
+    cloudSyncEncryptionScopeKey,
     dangerousSyncDialogState,
     handleCloudRepairFromCenter,
     handleWebdavRepairFromCenter,
+    leafTabWebdavEncryptionScopeKey,
   ]);
   const handleDangerousSyncDialogUseLocal = useCallback(async () => {
     if (!dangerousSyncDialogState) return;
     setDangerousSyncDialogBusyAction('use-local');
     closeDangerousSyncDialog();
     if (dangerousSyncDialogState.provider === 'cloud') {
-      await handleCloudRepairFromCenter('push-local');
+      const repaired = await handleCloudRepairFromCenter('push-local');
+      if (repaired && cloudDeferredDangerousBookmarksScopeKeyRef.current === cloudSyncEncryptionScopeKey) {
+        cloudDeferredDangerousBookmarksScopeKeyRef.current = null;
+      }
       return;
     }
-    await handleWebdavRepairFromCenter('push-local');
+    const repaired = await handleWebdavRepairFromCenter('push-local');
+    if (repaired && webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey) {
+      webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
+    }
   }, [
     closeDangerousSyncDialog,
+    cloudSyncEncryptionScopeKey,
     dangerousSyncDialogState,
     handleCloudRepairFromCenter,
     handleWebdavRepairFromCenter,
+    leafTabWebdavEncryptionScopeKey,
   ]);
   const cloudAutoSyncingRef = useRef(cloudLeafTabSyncState.status === 'syncing');
 
@@ -3091,12 +3253,21 @@ export default function App() {
                 setWebdavDialogOpen(open);
                 if (!open) {
                   setWebdavEnableAfterConfigSave(false);
+                  setWebdavShowConnectionFields(false);
+                  setPendingWebdavEnableScopeKey(null);
                 }
               },
               enableAfterSave: webdavEnableAfterConfigSave,
+              showConnectionFields: webdavShowConnectionFields,
               onEnableAfterSave: async () => {
-                await handleEnableWebdavSync();
+                const nextConfig = readWebdavConfigFromStorage({ allowDisabled: true });
+                const nextScopeKey = createLeafTabWebdavEncryptionScopeKey(
+                  nextConfig?.url || '',
+                  resolveLeafTabSyncRootPath(nextConfig),
+                );
                 setWebdavEnableAfterConfigSave(false);
+                setWebdavShowConnectionFields(false);
+                setPendingWebdavEnableScopeKey(nextScopeKey || null);
               },
               onSaveSuccess: async () => {
                 if (!leafTabWebdavEnabled || leafTabSyncState.status === 'syncing') {
@@ -3186,6 +3357,7 @@ export default function App() {
             cloudEncryptionReady={cloudSyncEncryptionReady}
             webdavConfigured={leafTabWebdavConfigured}
             webdavEnabled={leafTabWebdavEnabled}
+            webdavSyncBookmarksEnabled={webdavSyncBookmarksEnabled}
             webdavProfileLabel={leafTabWebdavProfileLabel}
             webdavUrlLabel={leafTabSyncWebdavConfig?.url || ''}
             webdavLastSyncLabel={leafTabWebdavLastSyncLabel}
@@ -3212,15 +3384,12 @@ export default function App() {
               setLeafTabSyncDialogOpen(false);
               void handleWebdavSyncNowFromCenter();
             }}
-            onEnableSync={() => {
-              setLeafTabSyncDialogOpen(false);
-              void handleEnableWebdavSync();
-            }}
             onOpenConfig={() => {
               handleOpenWebdavConfigFromSyncCenter();
             }}
             onOpenSetupConfig={() => {
               handleOpenWebdavConfigFromSyncCenter({
+                showConnectionFields: true,
                 enableAfterSave: true,
               });
             }}
@@ -3262,7 +3431,7 @@ export default function App() {
           onContinueWithoutBookmarks={() => {
             void handleDangerousSyncDialogContinueWithoutBookmarks();
           }}
-          onDefer={closeDangerousSyncDialog}
+          onDefer={handleDangerousSyncDialogDefer}
           onUseRemote={() => {
             void handleDangerousSyncDialogUseRemote();
           }}

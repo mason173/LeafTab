@@ -423,6 +423,9 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release143SyncFlowAlignment: "对齐云同步与 WebDAV 同步逻辑，危险书签差异时可继续同步快捷方式和设置",
+        release143WebdavProviderPolish: "WebDAV 新增坚果云内置服务商，并补齐切换服务商、授权、密钥校验与首次同步流程",
+        release143SyncStatusPolish: "优化同步中心状态、同步范围文案与错误处理，减少误报失败或状态不同步",
         release142BookmarkSyncDecoupling: "修复书签同步与快捷方式/设置同步解耦问题",
         release142DangerousSyncDialogPolish: "优化书签同步风险拦截弹窗与交互提示",
         release142SyncTestingBackupNotice: "数据同步仍处于测试阶段，建议先备份再开启",

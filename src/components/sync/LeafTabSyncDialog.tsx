@@ -46,6 +46,7 @@ export interface LeafTabSyncDialogProps {
   cloudEncryptionReady?: boolean;
   webdavConfigured?: boolean;
   webdavEnabled?: boolean;
+  webdavSyncBookmarksEnabled?: boolean;
   webdavProfileLabel?: string;
   webdavUrlLabel?: string;
   webdavLastSyncLabel?: string;
@@ -57,7 +58,6 @@ export interface LeafTabSyncDialogProps {
   onCloudRepairPull?: () => void;
   onCloudRepairPush?: () => void;
   onSyncNow: () => void;
-  onEnableSync?: () => void;
   onOpenSetupConfig?: () => void;
   onOpenConfig?: () => void;
   onWebdavRepairPull?: () => void;
@@ -319,6 +319,7 @@ export function LeafTabSyncDialog({
   cloudEncryptionReady = false,
   webdavConfigured = false,
   webdavEnabled = false,
+  webdavSyncBookmarksEnabled = false,
   webdavProfileLabel,
   webdavUrlLabel,
   webdavLastSyncLabel,
@@ -330,7 +331,6 @@ export function LeafTabSyncDialog({
   onCloudRepairPull,
   onCloudRepairPush,
   onSyncNow,
-  onEnableSync,
   onOpenSetupConfig,
   onOpenConfig,
   onWebdavRepairPull,
@@ -408,7 +408,7 @@ export function LeafTabSyncDialog({
             scope: resolvedBookmarkScope,
           })
         : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
-            defaultValue: '仅快捷方式',
+            defaultValue: '仅快捷方式和设置',
           }),
     };
   }, [
@@ -439,9 +439,13 @@ export function LeafTabSyncDialog({
           ? t('leaftabSyncDialog.webdav.enabledSubtitle', { defaultValue: '已配置，可同步到 WebDAV' })
           : t('leaftabSyncDialog.webdav.disabledSubtitle', { defaultValue: '已配置，尚未启用同步' }),
       localShortcutCount: String(webdavAnalysis?.localSummary.shortcuts ?? 0),
-      localBookmarkCount: String(webdavAnalysis?.localSummary.bookmarkItems ?? 0),
+      localBookmarkCount: webdavSyncBookmarksEnabled
+        ? String(webdavAnalysis?.localSummary.bookmarkItems ?? 0)
+        : '-',
       remoteShortcutCount: String(webdavAnalysis?.remoteSummary.shortcuts ?? 0),
-      remoteBookmarkCount: String(webdavAnalysis?.remoteSummary.bookmarkItems ?? 0),
+      remoteBookmarkCount: webdavSyncBookmarksEnabled
+        ? String(webdavAnalysis?.remoteSummary.bookmarkItems ?? 0)
+        : '-',
       lastSyncLabel: webdavConfigured
         ? (webdavLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
         : t('leaftabSyncDialog.lastSyncUnavailable', { defaultValue: '未同步' }),
@@ -464,10 +468,14 @@ export function LeafTabSyncDialog({
       statusTone: !webdavConfigured ? 'neutral' : error ? 'danger' : syncing ? 'info' : webdavEnabled ? 'success' : 'neutral',
       statusIcon: !webdavConfigured ? RiHardDrive3Fill : error ? RiErrorWarningFill : syncing ? RiRefreshFill : RiCheckboxCircleFill,
       statusSpin: syncing,
-      scopeLabel: t('leaftabSyncDialog.webdav.scopeWithLabel', {
-        defaultValue: '快捷方式、{{scope}}',
-        scope: resolvedBookmarkScope,
-      }),
+      scopeLabel: webdavSyncBookmarksEnabled
+        ? t('leaftabSyncDialog.webdav.scopeWithLabel', {
+            defaultValue: '快捷方式、{{scope}}',
+            scope: resolvedBookmarkScope,
+          })
+        : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
+            defaultValue: '仅快捷方式和设置',
+          }),
     };
   }, [
     resolvedBookmarkScope,
@@ -479,6 +487,7 @@ export function LeafTabSyncDialog({
     webdavLastSyncLabel,
     webdavNextSyncLabel,
     webdavProfileLabel,
+    webdavSyncBookmarksEnabled,
   ]);
 
   const activeModel = activeTab === 'cloud' ? cloudModel : webdavModel;
@@ -487,7 +496,7 @@ export function LeafTabSyncDialog({
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-secondary/35 px-4 py-3">
         <div className="min-w-0 text-sm text-muted-foreground">
           {t('leaftabSyncDialog.cloud.bookmarkSyncDisabledBanner', {
-            defaultValue: '未开启书签同步，当前只会同步快捷方式。',
+            defaultValue: '未开启书签同步，当前只会同步快捷方式和设置。',
           })}
         </div>
         <button
@@ -525,6 +534,9 @@ export function LeafTabSyncDialog({
             : t('leaftabSyncEncryption.webdavNotEnabledPill', { defaultValue: '未开启' })}
         />
     );
+  const webdavNeedsConfiguration = !webdavConfigured || !webdavEnabled;
+  const webdavPrimaryConfigureAction = webdavNeedsConfiguration ? (onOpenSetupConfig || onOpenConfig) : onOpenConfig;
+  const webdavSettingsAction = webdavConfigured ? onOpenConfig : (onOpenSetupConfig || onOpenConfig);
 
   const actionArea = activeTab === 'cloud'
     ? (
@@ -583,17 +595,17 @@ export function LeafTabSyncDialog({
         <Button
           type="button"
           className="h-11 min-w-[160px] flex-1"
-          onClick={!webdavConfigured ? (onOpenSetupConfig || onOpenConfig) : webdavEnabled ? onSyncNow : onEnableSync}
-          disabled={busy || (webdavEnabled && !ready)}
+          onClick={webdavNeedsConfiguration ? webdavPrimaryConfigureAction : onSyncNow}
+          disabled={busy || (webdavEnabled && !ready) || (webdavNeedsConfiguration && !webdavPrimaryConfigureAction)}
         >
-          {!webdavConfigured ? (
+          {webdavNeedsConfiguration ? (
             <RiSettings4Fill className="size-4" />
           ) : webdavEnabled ? (
             <RiRefreshFill className={cn('size-4', syncState.status === 'syncing' ? 'animate-spin' : '')} />
           ) : (
             <RiCheckboxCircleFill className="size-4" />
           )}
-          {!webdavConfigured
+          {webdavNeedsConfiguration
             ? t('settings.backup.webdav.configureAction', { defaultValue: '去配置' })
             : webdavEnabled
               ? (syncState.status === 'syncing'
@@ -604,8 +616,8 @@ export function LeafTabSyncDialog({
         <IconActionButton
           icon={RiSettings4Fill}
           label={t('settings.backup.webdav.configure', { defaultValue: '配置 WebDAV' })}
-          onClick={onOpenConfig}
-          disabled={busy || !webdavEnabled}
+          onClick={webdavSettingsAction}
+          disabled={busy || !webdavSettingsAction}
         />
         <RepairPopover
           label={t('leaftabSyncDialog.repair', { defaultValue: '修复同步' })}

@@ -287,6 +287,9 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release143SyncFlowAlignment: "클라우드 동기화와 WebDAV 동기화 동작을 맞춰 북마크 차이가 위험하게 감지돼도 바로가기와 설정 동기화는 계속할 수 있게 했습니다",
+        release143WebdavProviderPolish: "WebDAV 기본 제공 서비스에 Jianguoyun을 추가하고, 서비스 전환, 권한 승인, 키 확인, 최초 동기화 흐름을 다듬었습니다",
+        release143SyncStatusPolish: "동기화 센터 상태, 동기화 범위 문구, 오류 처리를 정리해 잘못된 실패 표시나 상태 불일치를 줄였습니다",
         release142BookmarkSyncDecoupling: "북마크 동기화와 바로가기/설정 동기화 분리 이슈를 수정",
         release142DangerousSyncDialogPolish: "북마크 동기화 위험 차단 팝업과 안내 문구를 개선",
         release142SyncTestingBackupNotice: "데이터 동기화는 아직 테스트 단계입니다. 활성화 전에 백업을 권장합니다",

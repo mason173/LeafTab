@@ -57,6 +57,7 @@ type UseSyncCenterActionsOptions = {
   leafTabSyncHasConfig: boolean;
   cloudSyncing: boolean;
   webdavSyncing: boolean;
+  webdavSyncBookmarksEnabled: boolean;
   cloudSyncBookmarksEnabled: boolean;
   cloudSyncEncryptionScopeKey: string;
   cloudSyncEncryptedTransport: EncryptionTransport;
@@ -82,6 +83,7 @@ export function useSyncCenterActions({
   leafTabSyncHasConfig,
   cloudSyncing,
   webdavSyncing,
+  webdavSyncBookmarksEnabled,
   cloudSyncBookmarksEnabled,
   cloudSyncEncryptionScopeKey,
   cloudSyncEncryptedTransport,
@@ -98,6 +100,9 @@ export function useSyncCenterActions({
 }: UseSyncCenterActionsOptions) {
   const cloudSyncNowInFlightRef = useRef(false);
   const webdavSyncNowInFlightRef = useRef(false);
+  const webdavSyncDataDetail = webdavSyncBookmarksEnabled
+    ? '正在处理快捷方式和书签数据'
+    : '正在处理快捷方式数据';
   const cloudSyncDataDetail = cloudSyncBookmarksEnabled
     ? '正在处理快捷方式和书签数据'
     : '正在处理快捷方式数据';
@@ -116,17 +121,19 @@ export function useSyncCenterActions({
       openLeafTabSyncConfig();
       return false;
     }
-    const permissionGranted = await ensureExtensionPermission('bookmarks', {
-      requestIfNeeded: true,
-    }).catch(() => false);
-    if (!permissionGranted) {
-      toast.error('未授予书签权限，无法执行修复同步');
-      return false;
+    if (webdavSyncBookmarksEnabled) {
+      const permissionGranted = await ensureExtensionPermission('bookmarks', {
+        requestIfNeeded: true,
+      }).catch(() => false);
+      if (!permissionGranted) {
+        toast.error('未授予书签权限，无法执行修复同步');
+        return false;
+      }
     }
     setLeafTabSyncDialogOpen(false);
     return runLongTask({
       title: mode === 'pull-remote' ? '正在用 WebDAV 覆盖本地' : '正在用本地覆盖 WebDAV',
-      detail: '正在处理快捷方式和书签数据',
+      detail: webdavSyncDataDetail,
       progress: 8,
     }, async ({ update }) => {
       const result = await handleLeafTabSync({
@@ -155,14 +162,16 @@ export function useSyncCenterActions({
     openLeafTabSyncConfig,
     runLongTask,
     setLeafTabSyncDialogOpen,
+    webdavSyncBookmarksEnabled,
+    webdavSyncDataDetail,
   ]);
 
   const resolveWebdavConflict = useCallback(async (_config: WebdavConfig) => {
     await handleLeafTabSync({
-      requestBookmarkPermission: true,
+      requestBookmarkPermission: webdavSyncBookmarksEnabled,
       showProgressIndicator: true,
     });
-  }, [handleLeafTabSync]);
+  }, [handleLeafTabSync, webdavSyncBookmarksEnabled]);
 
   const handleRequestCloudLogin = useCallback(() => {
     const webdavEnabled = (localStorage.getItem('webdav_sync_enabled') ?? 'false') === 'true';
@@ -263,11 +272,11 @@ export function useSyncCenterActions({
     try {
       return runLongTask({
         title: '正在同步到 WebDAV',
-        detail: '正在处理快捷方式和书签数据',
+        detail: webdavSyncDataDetail,
         progress: 8,
       }, async ({ update }) => {
         const result = await handleLeafTabSync({
-          requestBookmarkPermission: true,
+          requestBookmarkPermission: webdavSyncBookmarksEnabled,
           progressTaskId: null,
           silentSuccess: true,
           onProgress: (progress) => {
@@ -288,6 +297,8 @@ export function useSyncCenterActions({
     openLeafTabSyncConfig,
     runLongTask,
     webdavSyncNowInFlightRef,
+    webdavSyncBookmarksEnabled,
+    webdavSyncDataDetail,
     webdavSyncing,
   ]);
 

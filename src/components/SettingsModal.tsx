@@ -71,7 +71,7 @@ interface SettingsModalProps {
   privacyConsent: boolean | null;
   onPrivacyConsentChange: (checked: boolean) => void;
   onOpenSyncCenter?: () => void;
-  onOpenWebdavConfig?: (options?: { enableAfterSave?: boolean }) => void;
+  onOpenWebdavConfig?: (options?: { enableAfterSave?: boolean; showConnectionFields?: boolean }) => void;
   onWebdavSync?: (config: WebdavConfig) => Promise<void>;
   onWebdavEnable?: () => Promise<void> | void;
   onWebdavDisable?: (options?: { clearLocal?: boolean }) => Promise<void> | void;

@@ -133,6 +133,9 @@ export function AboutLeafTabModal({
                 <img src={aboutIcon} alt="LeafTab" className="h-14 w-14 rounded-xl bg-secondary/40 p-1.5 object-contain" />
                 <div className="mt-2 text-lg font-semibold text-foreground text-center">LeafTab</div>
                 <div className="mt-0.5 text-xs text-foreground/80 text-center">版本 v{appVersion}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground text-center">
+                  {t("settings.about.qqGroup", { defaultValue: "交流QQ群：1075260794" })}
+                </div>
               </div>
 
               <div className="mt-3 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">

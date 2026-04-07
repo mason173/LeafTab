@@ -293,6 +293,9 @@ export default {
       version: "バージョン",
       date: "日付",
       items: {
+        release143SyncFlowAlignment: "クラウド同期と WebDAV 同期の挙動をそろえ、ブックマーク差分が危険と判定された場合でもショートカットと設定の同期を継続できるようにしました",
+        release143WebdavProviderPolish: "WebDAV の内蔵プロバイダーに Jianguoyun を追加し、プロバイダー切り替え、権限許可、キー確認、初回同期フローを改善しました",
+        release143SyncStatusPolish: "同期センターの状態表示、同期範囲文言、エラー処理を見直し、誤った失敗表示や状態ずれを減らしました",
         release142BookmarkSyncDecoupling: "ブックマーク同期とショートカット/設定同期の分離不具合を修正",
         release142DangerousSyncDialogPolish: "ブックマーク同期の危険検知ダイアログと案内を改善",
         release142SyncTestingBackupNotice: "データ同期は引き続きテスト段階です。有効化前にバックアップを推奨します",

@@ -294,7 +294,10 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     const response = await this.request('GET', relativePath, {
       headers: {},
     });
-    if (response.status === 404) return null;
+    // Some providers (for example Jianguoyun WebDAV) may return 409 for reads
+    // before the parent collection has been created. Treat it as "not found"
+    // so first-time sync can initialize the remote structure.
+    if (response.status === 404 || response.status === 409) return null;
     if (!response.ok) {
       throw new LeafTabSyncWebdavError('download', response.status, relativePath);
     }
