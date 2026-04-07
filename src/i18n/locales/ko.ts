@@ -287,6 +287,9 @@ export default {
       version: "버전",
       date: "날짜",
       items: {
+        release144TranslationPromptFix: "LeafTab을 열 때마다 나타날 수 있던 \"이 페이지를 번역하시겠습니까\" 브라우저 번역 안내를 수정했습니다",
+        release144AboutQqGroup: "About LeafTab 팝업에 커뮤니티 QQ 그룹 번호를 추가해 피드백과 소통이 더 쉬워졌습니다",
+        release144ReadmeCommunityEntry: "README에 커뮤니티 안내를 추가하고 1.4.4 릴리스 정보도 함께 정리했습니다",
         release143SyncFlowAlignment: "클라우드 동기화와 WebDAV 동기화 동작을 맞춰 북마크 차이가 위험하게 감지돼도 바로가기와 설정 동기화는 계속할 수 있게 했습니다",
         release143WebdavProviderPolish: "WebDAV 기본 제공 서비스에 Jianguoyun을 추가하고, 서비스 전환, 권한 승인, 키 확인, 최초 동기화 흐름을 다듬었습니다",
         release143SyncStatusPolish: "동기화 센터 상태, 동기화 범위 문구, 오류 처리를 정리해 잘못된 실패 표시나 상태 불일치를 줄였습니다",

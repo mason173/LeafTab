@@ -19,6 +19,15 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.4",
+    date: "2026-04-07",
+    notes: [
+      t("changelog.items.release144TranslationPromptFix", { defaultValue: "修复每次打开 LeafTab 都可能出现“是否翻译此界面”的浏览器翻译提示" }),
+      t("changelog.items.release144AboutQqGroup", { defaultValue: "关于 LeafTab 弹窗新增交流 QQ 群号，方便反馈与交流" }),
+      t("changelog.items.release144ReadmeCommunityEntry", { defaultValue: "README 补充社区交流入口，并同步整理 1.4.4 发布信息" }),
+    ],
+  },
+  {
     version: "1.4.3",
     date: "2026-04-07",
     notes: [

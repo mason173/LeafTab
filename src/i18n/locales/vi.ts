@@ -287,6 +287,9 @@ export default {
       version: "Phiên bản",
       date: "Ngày",
       items: {
+        release144TranslationPromptFix: "Đã sửa lời nhắc dịch trình duyệt có thể xuất hiện mỗi lần mở LeafTab",
+        release144AboutQqGroup: "Đã thêm số nhóm QQ cộng đồng vào hộp thoại About LeafTab để tiện phản hồi và trao đổi",
+        release144ReadmeCommunityEntry: "Đã bổ sung mục cộng đồng trong README và đồng bộ lại thông tin phát hành 1.4.4",
         release143SyncFlowAlignment: "Đồng bộ hóa logic giữa cloud sync và WebDAV sync để vẫn có thể tiếp tục đồng bộ phím tắt và cài đặt khi chênh lệch bookmark bị xem là rủi ro",
         release143WebdavProviderPolish: "Thêm Jianguoyun thành nhà cung cấp WebDAV tích hợp sẵn và hoàn thiện luồng chuyển nhà cung cấp, cấp quyền, kiểm tra khóa và đồng bộ lần đầu",
         release143SyncStatusPolish: "Tinh chỉnh trạng thái trong trung tâm đồng bộ, mô tả phạm vi đồng bộ và xử lý lỗi để giảm báo lỗi sai hoặc trạng thái không đồng bộ",

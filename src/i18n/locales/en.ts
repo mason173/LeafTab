@@ -419,6 +419,9 @@ export default {
         previewDescription: "Alpha / Beta builds for testing. Features and details may still change",
       },
       items: {
+        release144TranslationPromptFix: "Fixed the browser translation prompt that could appear every time LeafTab opened",
+        release144AboutQqGroup: "Added the community QQ group number to the About LeafTab dialog for easier feedback and discussion",
+        release144ReadmeCommunityEntry: "Added a community section to the README and aligned the 1.4.4 release information",
         release143SyncFlowAlignment: "Aligned cloud sync and WebDAV sync behavior so shortcut/settings sync can continue when bookmark differences are considered risky",
         release143WebdavProviderPolish: "Added Jianguoyun as a built-in WebDAV provider and polished provider switching, permission prompts, key checks, and first-sync flow",
         release143SyncStatusPolish: "Refined sync-center status, scope copy, and error handling to reduce false failures and stale states",
