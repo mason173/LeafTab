@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/sonner";
+import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { normalizeApiBase } from "@/utils";
 import { ensureOriginPermission } from "@/utils/extensionPermissions";
 import { DEFAULT_ICON_LIBRARY_URL, getIconLibraryUrl, normalizeIconLibraryUrl, setIconLibraryUrl } from "@/utils/iconLibrary";
@@ -22,6 +23,7 @@ export function AdminModal({
   customApiName,
   onCustomApiNameChange,
   allowCustomApiServer = true,
+  onBackToSettings,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +35,7 @@ export function AdminModal({
   customApiName: string;
   onCustomApiNameChange: (name: string) => void;
   allowCustomApiServer?: boolean;
+  onBackToSettings?: () => void;
 }) {
   const { t } = useTranslation();
   const [adminModeEnabled, setAdminModeEnabled] = useState(false);
@@ -194,7 +197,10 @@ export function AdminModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
-          <DialogTitle>{t("settings.adminMode.switchLabel")}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <DialogTitle>{t("settings.adminMode.switchLabel")}</DialogTitle>
+          </div>
           <DialogDescription>{t("settings.adminMode.switchDesc")}</DialogDescription>
         </DialogHeader>
 

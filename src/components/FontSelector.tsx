@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { googleFonts, loadGoogleFont } from '../utils/googleFonts';
+import { googleFonts, loadGoogleFont, toCssFontFamily } from '../utils/googleFonts';
 import { RiCheckFill } from '@/icons/ri-compat';
 import { cn } from './ui/utils';
 import { ScrollArea } from './ui/scroll-area';
@@ -49,7 +49,7 @@ export function FontSelector({ currentFont, onSelect }: FontSelectorProps) {
                   )}
                 />
                 <div className="flex flex-col items-start">
-                  <span style={{ fontFamily: font.family }} className="text-base">
+                  <span style={{ fontFamily: toCssFontFamily(font.family) }} className="text-base">
                     {font.name}
                   </span>
                   <span className="text-xs text-muted-foreground font-sans">

@@ -2,24 +2,25 @@ export interface GoogleFont {
   name: string;
   family: string;
   category: string;
+  timeScale?: number;
 }
 
 export const googleFonts: GoogleFont[] = [
-  { name: 'Default', family: 'Pacifico', category: 'handwriting' },
-  { name: 'PingFang SC', family: 'PingFang SC', category: 'sans-serif' },
-  { name: 'Inter', family: 'Inter', category: 'sans-serif' },
-  { name: 'Bebas Neue', family: 'Bebas Neue', category: 'display' },
-  { name: 'Orbitron', family: 'Orbitron', category: 'sans-serif' },
-  { name: 'Righteous', family: 'Righteous', category: 'display' },
-  { name: 'Playfair Display', family: 'Playfair Display', category: 'serif' },
-  { name: 'Abril Fatface', family: 'Abril Fatface', category: 'serif' },
-  { name: 'Cormorant Garamond', family: 'Cormorant Garamond', category: 'serif' },
-  { name: 'Space Mono', family: 'Space Mono', category: 'monospace' },
-  { name: 'Caveat', family: 'Caveat', category: 'handwriting' },
-  { name: 'Monoton', family: 'Monoton', category: 'display' },
-  { name: 'Bangers', family: 'Bangers', category: 'display' },
-  { name: 'Press Start 2P', family: 'Press Start 2P', category: 'display' },
-  { name: 'Pixelify Sans', family: 'Pixelify Sans', category: 'display' },
+  { name: 'Default', family: 'Pacifico', category: 'handwriting', timeScale: 1 },
+  { name: 'PingFang SC', family: 'PingFang SC', category: 'sans-serif', timeScale: 1 },
+  { name: 'Inter', family: 'Inter', category: 'sans-serif', timeScale: 1 },
+  { name: 'Bebas Neue', family: 'Bebas Neue', category: 'display', timeScale: 0.92 },
+  { name: 'Orbitron', family: 'Orbitron', category: 'sans-serif', timeScale: 0.94 },
+  { name: 'Righteous', family: 'Righteous', category: 'display', timeScale: 0.95 },
+  { name: 'Playfair Display', family: 'Playfair Display', category: 'serif', timeScale: 0.94 },
+  { name: 'Abril Fatface', family: 'Abril Fatface', category: 'serif', timeScale: 0.9 },
+  { name: 'Cormorant Garamond', family: 'Cormorant Garamond', category: 'serif', timeScale: 0.96 },
+  { name: 'Space Mono', family: 'Space Mono', category: 'monospace', timeScale: 0.9 },
+  { name: 'Caveat', family: 'Caveat', category: 'handwriting', timeScale: 0.96 },
+  { name: 'Monoton', family: 'Monoton', category: 'display', timeScale: 0.84 },
+  { name: 'Bangers', family: 'Bangers', category: 'display', timeScale: 0.9 },
+  { name: 'Audiowide', family: 'Audiowide', category: 'display', timeScale: 0.9 },
+  { name: 'Pixelify Sans', family: 'Pixelify Sans', category: 'display', timeScale: 0.86 },
 ];
 
 export const loadGoogleFont = (fontFamily: string) => {
@@ -35,4 +36,17 @@ export const loadGoogleFont = (fontFamily: string) => {
   link.href = `https://fonts.googleapis.com/css2?family=${fontFamily.replace(/\s+/g, '+')}&display=swap`;
   
   document.head.appendChild(link);
+};
+
+export const toCssFontFamily = (fontFamily: string) => {
+  const trimmed = fontFamily?.trim();
+  if (!trimmed) return 'inherit';
+  const escaped = trimmed.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+};
+
+export const getTimeFontScale = (fontFamily: string) => {
+  const trimmed = fontFamily?.trim();
+  if (!trimmed) return 1;
+  return googleFonts.find((font) => font.family === trimmed)?.timeScale ?? 1;
 };

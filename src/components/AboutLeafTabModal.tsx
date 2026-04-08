@@ -6,6 +6,7 @@ import { InfiniteSlider } from "@/components/motion-primitives/infinite-slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { buildChangelogItems } from "@/components/changelog/changelog-data";
 import { ChangelogTimeline } from "@/components/changelog/ChangelogTimeline";
+import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import aboutIcon from "@/assets/abouticon.svg";
 
 export type AboutLeafTabModalTab = "about" | "changelog";
@@ -14,10 +15,12 @@ export function AboutLeafTabModal({
   open,
   onOpenChange,
   defaultTab = "about",
+  onBackToSettings,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultTab?: AboutLeafTabModalTab;
+  onBackToSettings?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const [appVersion, setAppVersion] = useState<string>("—");
@@ -101,8 +104,14 @@ export function AboutLeafTabModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[630px] max-h-[84vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="pb-1">
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <span className="text-base font-semibold text-foreground">
+              {t("settings.about.title")}
+            </span>
+          </div>
         </DialogHeader>
 
         <div className="w-full h-9 rounded-[16px] bg-muted p-[3px] grid grid-cols-2 gap-0.5 shrink-0">

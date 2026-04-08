@@ -8,16 +8,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 
 type SyncSettingsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  title: ReactNode;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
   contentClassName?: string;
   scrollClassName?: string;
+  onBackToParent?: () => void;
+  backButtonLabel?: string;
 };
 
 export function SyncSettingsDialog({
@@ -29,12 +32,17 @@ export function SyncSettingsDialog({
   footer,
   contentClassName,
   scrollClassName = 'max-h-[60vh]',
+  onBackToParent,
+  backButtonLabel,
 }: SyncSettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`sm:max-w-[560px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px] ${contentClassName || ''}`}>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToParent} label={backButtonLabel} />
+            <DialogTitle>{title}</DialogTitle>
+          </div>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         <ScrollArea

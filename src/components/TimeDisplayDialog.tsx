@@ -4,7 +4,7 @@ import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/sw
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { googleFonts, loadGoogleFont } from "@/utils/googleFonts";
+import { getTimeFontScale, googleFonts, loadGoogleFont, toCssFontFamily } from "@/utils/googleFonts";
 import type { TimeAnimationMode } from "@/hooks/useSettings";
 
 interface TimeDisplayDialogProps {
@@ -153,17 +153,21 @@ export function TimeDisplayDialog({
             <div className="grid grid-cols-3 gap-3">
             {googleFonts.map((font) => {
               const selected = currentFont === font.family;
+              const previewFontSize = Math.round(36 * getTimeFontScale(font.family));
               return (
                 <button
                   key={font.family}
                   type="button"
-                  className={`no-pill-radius !rounded-[24px] border p-3 transition-all flex flex-col items-center justify-center gap-2 text-center ${selected ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:bg-secondary/70"}`}
+                  className={`no-pill-radius !rounded-[24px] border p-3 transition-all flex flex-col items-center justify-center gap-2 text-center overflow-hidden ${selected ? "border-primary bg-primary/10" : "border-border bg-secondary/40 hover:bg-secondary/70"}`}
                   onClick={() => {
                     onSelect(font.family);
                     onOpenChange(false);
                   }}
                 >
-                  <div style={{ fontFamily: font.family }} className="text-[36px] leading-none text-center w-full">
+                  <div
+                    style={{ fontFamily: toCssFontFamily(font.family), fontSize: previewFontSize }}
+                    className="leading-none text-center w-full max-w-full whitespace-nowrap overflow-hidden"
+                  >
                     {previewTime}
                   </div>
                   <div className="text-xs text-muted-foreground truncate w-full text-center">{font.name}</div>

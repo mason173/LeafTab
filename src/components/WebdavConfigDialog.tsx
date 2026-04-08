@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RiEyeFill, RiEyeOffFill } from "@/icons/ri-compat";
 import { toast } from "./ui/sonner";
+import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { ensureExtensionPermission, ensureOriginPermission } from "@/utils/extensionPermissions";
 import {
   isWebdavSyncEnabledFromStorage,
@@ -41,6 +42,7 @@ import {
 interface WebdavConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onBackToParent?: () => void;
   enableAfterSave?: boolean;
   showConnectionFields?: boolean;
   onEnableAfterSave?: () => void | Promise<void>;
@@ -75,6 +77,7 @@ export function getWebdavProviderChangeState({
 export function WebdavConfigDialog({
   open,
   onOpenChange,
+  onBackToParent,
   enableAfterSave = false,
   showConnectionFields = false,
   onEnableAfterSave,
@@ -265,7 +268,10 @@ export function WebdavConfigDialog({
     <Dialog open={open && !bookmarkSyncSafetyDialogOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
-          <DialogTitle className="text-foreground">{t("settings.backup.webdav.entry")}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToParent} label={t('common.back', { defaultValue: '返回' })} />
+            <DialogTitle className="text-foreground">{t("settings.backup.webdav.entry")}</DialogTitle>
+          </div>
           <DialogDescription className="text-muted-foreground">
             {t("settings.backup.webdav.entryDesc")}
           </DialogDescription>
@@ -357,6 +363,8 @@ export function WebdavConfigDialog({
       onOpenChange={onOpenChange}
       title={t("settings.backup.webdav.entry")}
       description={t("settings.backup.webdav.entryDesc")}
+      onBackToParent={onBackToParent}
+      backButtonLabel={t('common.back', { defaultValue: '返回' })}
       contentClassName="sm:max-w-[500px]"
       footer={(
         <div className="flex w-full flex-col gap-3">

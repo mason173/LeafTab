@@ -31,6 +31,7 @@ import {
 interface CloudSyncConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onBackToParent?: () => void;
   onSaveSuccess?: () => void | Promise<void>;
   encryptionReady?: boolean;
   onManageEncryption?: () => void | Promise<void>;
@@ -40,6 +41,7 @@ interface CloudSyncConfigDialogProps {
 export function CloudSyncConfigDialog({
   open,
   onOpenChange,
+  onBackToParent,
   onSaveSuccess,
   encryptionReady = false,
   onManageEncryption,
@@ -135,6 +137,8 @@ export function CloudSyncConfigDialog({
         description={t('settings.backup.cloud.configDesc', {
           defaultValue: '调整 LeafTab 云同步的自动同步频率和提醒方式。',
         })}
+        onBackToParent={onBackToParent}
+        backButtonLabel={t('common.back', { defaultValue: '返回' })}
         contentClassName="sm:max-w-[500px]"
         footer={(
           <div className="flex w-full flex-col gap-3">

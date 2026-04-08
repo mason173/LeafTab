@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { RiDownload2Fill, RiFolderTransferLine, RiLinkM, RiUpload2Fill } from '@/icons/ri-compat';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ interface BackupScopeDialogProps {
   availableScope?: Partial<LeafTabLocalBackupExportScope> | null;
   defaultScope?: Partial<LeafTabLocalBackupExportScope> | null;
   onConfirm: (scope: LeafTabLocalBackupExportScope) => void | Promise<void>;
+  onBackToSettings?: () => void;
 }
 
 const normalizeScope = (scope?: Partial<LeafTabLocalBackupExportScope> | null): LeafTabLocalBackupExportScope => ({
@@ -34,6 +36,7 @@ export function BackupScopeDialog({
   availableScope,
   defaultScope,
   onConfirm,
+  onBackToSettings,
 }: BackupScopeDialogProps) {
   const { t } = useTranslation();
   const resolvedAvailableScope = useMemo(() => normalizeScope(availableScope), [availableScope]);
@@ -78,11 +81,14 @@ export function BackupScopeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px] rounded-[32px] border-border bg-background text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-foreground">
-            {isExport
-              ? t('settings.backup.exportScope.title', { defaultValue: '选择导出内容' })
-              : t('settings.backup.importScope.title', { defaultValue: '选择导入内容' })}
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <DialogTitle className="text-foreground">
+              {isExport
+                ? t('settings.backup.exportScope.title', { defaultValue: '选择导出内容' })
+                : t('settings.backup.importScope.title', { defaultValue: '选择导入内容' })}
+            </DialogTitle>
+          </div>
           <DialogDescription className="text-muted-foreground">
             {isExport
               ? t('settings.backup.exportScope.description', {
