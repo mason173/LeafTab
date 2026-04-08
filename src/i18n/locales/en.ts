@@ -249,6 +249,15 @@ export default {
           configDesc: "Configure auto sync options and interval",
           enabledLabel: "Enable cloud sync",
           enabledDesc: "Disable to pause automatic sync; manual sync is still available",
+          syncBookmarksLabel: "Sync bookmarks",
+          syncBookmarksDesc: "When off, cloud sync will only sync shortcuts and settings; it won't read or write browser bookmarks.",
+          bookmarkSyncSafetyReminderTitle: "Reminder",
+          bookmarkSyncSafetyReminderA11yDescription: "Reminder before enabling bookmark sync",
+          bookmarkSyncSafetyReminderLine1: "Sync keeps devices consistent; it is not a backup.",
+          bookmarkSyncSafetyReminderLine2: "Bookmark sync is still in beta. Delays or unexpected behavior may occur in rare cases.",
+          bookmarkSyncSafetyReminderLine3: "We recommend exporting a local backup before enabling bookmark sync.",
+          bookmarkSyncSafetyReminderCancel: "Back up first",
+          bookmarkSyncSafetyReminderConfirm: "Enable anyway",
           autoSyncToastLabel: "Show auto-sync success toast",
           autoSyncToastDesc: "Show a toast notification after scheduled auto sync succeeds",
           intervalLabel: "Auto-sync interval",
@@ -262,6 +271,15 @@ export default {
           pull: "Pull from Cloud",
           push: "Push to Cloud",
           sync: "Sync Now",
+          syncBookmarksLabel: "Sync bookmarks",
+          syncBookmarksDesc: "When off, WebDAV sync will only sync shortcuts and settings; it won't read or write browser bookmarks.",
+          bookmarkSyncSafetyReminderTitle: "Reminder",
+          bookmarkSyncSafetyReminderA11yDescription: "Reminder before enabling bookmark sync",
+          bookmarkSyncSafetyReminderLine1: "Sync keeps devices consistent; it is not a backup.",
+          bookmarkSyncSafetyReminderLine2: "Bookmark sync is still in beta. Delays or unexpected behavior may occur in rare cases.",
+          bookmarkSyncSafetyReminderLine3: "We recommend exporting a local backup before enabling bookmark sync.",
+          bookmarkSyncSafetyReminderCancel: "Back up first",
+          bookmarkSyncSafetyReminderConfirm: "Enable anyway",
           url: "WebDAV URL",
           filePath: "Remote File Path",
           username: "Username",
@@ -1237,6 +1255,21 @@ export default {
     },
     pagination: {
       page: "Page {{page}}"
+    },
+    bookmarks: {
+      roots: {
+        toolbar: "Bookmarks bar",
+        other: "Other bookmarks",
+        mobile: "Mobile bookmarks"
+      },
+      scope: {
+        rootsLabel: "Bookmarks bar, Other bookmarks"
+      },
+      errors: {
+        permissionDenied: "Bookmarks permission not granted. Sync stopped to protect existing bookmarks.",
+        apiUnsupported: "Bookmarks API is not available in this environment.",
+        apiCallFailed: "Bookmarks API call failed"
+      }
     }
   }
 };

@@ -106,7 +106,6 @@ import {
   LeafTabSyncEncryptedRemoteStore,
   LeafTabSyncWebdavEncryptedTransport,
   LeafTabSyncWebdavStore,
-  formatLeafTabBookmarkSyncScopeLabel,
   type LeafTabSyncEngineResult,
   type LeafTabSyncInitialChoice,
   type LeafTabSyncSnapshot,
@@ -1398,8 +1397,8 @@ export default function App() {
 
   const leafTabBookmarkSyncScope = useMemo(() => readLeafTabBookmarkSyncScope(), []);
   const leafTabBookmarkSyncScopeLabel = useMemo(
-    () => formatLeafTabBookmarkSyncScopeLabel(leafTabBookmarkSyncScope),
-    [leafTabBookmarkSyncScope],
+    () => t('bookmarks.scope.rootsLabel', { defaultValue: 'Bookmarks bar, Other bookmarks' }),
+    [i18n.language, t],
   );
 
   const {
