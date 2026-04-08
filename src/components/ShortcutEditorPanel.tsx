@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { toast } from '@/components/ui/sonner';
 import ShortcutIcon from './ShortcutIcon';
 import { useTranslation } from 'react-i18next';
 import type { Shortcut, ShortcutDraft, ShortcutVisualMode } from '@/types';
 import { extractDomainFromUrl } from '@/utils';
+import {
+  prepareShortcutCustomIcon,
+  readShortcutCustomIcon,
+} from '@/utils/shortcutCustomIcons';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import {
   getShortcutIconColor,
@@ -18,7 +22,13 @@ interface ShortcutEditorPanelProps {
   mode: 'add' | 'edit';
   initialShortcut?: Partial<Shortcut> | null;
   open?: boolean;
-  onSave: (value: ShortcutDraft) => void;
+  onSave: (
+    value: ShortcutDraft,
+    localOnly?: {
+      useCustomIcon?: boolean;
+      customIconDataUrl?: string | null;
+    },
+  ) => void;
   onCancel?: () => void;
   title?: string;
   description?: ReactNode;
@@ -119,6 +129,7 @@ export function ShortcutEditorPanel({
   previewSize = 76,
 }: ShortcutEditorPanelProps) {
   const { t } = useTranslation();
+  const customFileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initialShortcut?.title || '');
   const [url, setUrl] = useState(initialShortcut?.url || '');
   const [useOfficialIcon, setUseOfficialIcon] = useState(false);
@@ -127,13 +138,21 @@ export function ShortcutEditorPanel({
   const [iconColor, setIconColor] = useState('');
   const [officialIconAvailable, setOfficialIconAvailable] = useState(false);
   const [userAdjustedIconSource, setUserAdjustedIconSource] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<'official' | 'favicon' | 'letter' | 'custom'>('favicon');
+  const [customIconDataUrl, setCustomIconDataUrl] = useState('');
+  const [customIconLoading, setCustomIconLoading] = useState(false);
 
   const normalizedInitialColor = normalizeShortcutIconColor(initialShortcut?.iconColor);
   const initialTitle = initialShortcut?.title || '';
   const initialUrl = initialShortcut?.url || '';
+  const initialShortcutId = typeof initialShortcut?.id === 'string' ? initialShortcut.id : '';
   const initialUseOfficialIcon = initialShortcut?.useOfficialIcon === true;
   const initialAutoUseOfficialIcon = initialShortcut?.autoUseOfficialIcon !== false;
   const initialIconRendering = normalizeShortcutVisualMode(initialShortcut?.iconRendering);
+  const initialCustomIconDataUrl = useMemo(
+    () => (initialShortcutId ? readShortcutCustomIcon(initialShortcutId) : ''),
+    [initialShortcutId],
+  );
   const hasExplicitIconPreference = Boolean(
     initialShortcut &&
     (
@@ -154,8 +173,19 @@ export function ShortcutEditorPanel({
     setIconColor(normalizedInitialColor);
     setOfficialIconAvailable(false);
     setUserAdjustedIconSource(false);
+    setCustomIconDataUrl(initialCustomIconDataUrl);
+    setSelectedSource(
+      initialCustomIconDataUrl
+        ? 'custom'
+        : initialUseOfficialIcon
+          ? 'official'
+          : initialIconRendering === 'letter'
+            ? 'letter'
+            : 'favicon',
+    );
   }, [
     initialAutoUseOfficialIcon,
+    initialCustomIconDataUrl,
     initialIconRendering,
     initialTitle,
     initialUrl,
@@ -177,10 +207,8 @@ export function ShortcutEditorPanel({
     () => normalizeShortcutIconColor(iconColor),
     [iconColor],
   );
-  const selectedSource = useMemo<'official' | 'favicon' | 'letter'>(
-    () => (useOfficialIcon ? 'official' : iconRendering === 'letter' ? 'letter' : 'favicon'),
-    [iconRendering, useOfficialIcon],
-  );
+  const colorSelectionDisabled = selectedSource === 'custom';
+  const hasCustomIcon = Boolean(customIconDataUrl);
   const resolvedTitle = titleOverride || (mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle'));
 
   useEffect(() => {
@@ -233,6 +261,9 @@ export function ShortcutEditorPanel({
       officialIconAvailableAtSave: officialIconAvailable,
       iconRendering,
       iconColor: normalizeShortcutIconColor(iconColor),
+    }, {
+      useCustomIcon: selectedSource === 'custom' && Boolean(customIconDataUrl),
+      customIconDataUrl: selectedSource === 'custom' ? customIconDataUrl : null,
     });
   };
 
@@ -248,6 +279,7 @@ export function ShortcutEditorPanel({
     }
     setUserAdjustedIconSource(true);
     setUseOfficialIcon(checked);
+    if (checked) setSelectedSource('official');
   };
 
   const handleSelectSource = (nextSource: 'official' | 'favicon' | 'letter') => {
@@ -265,15 +297,53 @@ export function ShortcutEditorPanel({
     setUserAdjustedIconSource(true);
     setUseOfficialIcon(false);
     setIconRendering(nextSource);
+    setSelectedSource(nextSource);
   };
 
   const handleSelectColor = (color: string) => {
+    if (colorSelectionDisabled) return;
     setUserAdjustedIconSource(true);
     if (useOfficialIcon) {
       setUseOfficialIcon(false);
       setIconRendering('favicon');
+      setSelectedSource('favicon');
     }
     setIconColor(color);
+  };
+
+  const handleCustomButtonClick = () => {
+    if (customIconLoading) return;
+    if (hasCustomIcon && selectedSource !== 'custom') {
+      setUserAdjustedIconSource(true);
+      setUseOfficialIcon(false);
+      setSelectedSource('custom');
+      return;
+    }
+    if (customFileInputRef.current) {
+      customFileInputRef.current.value = '';
+      customFileInputRef.current.click();
+    }
+  };
+
+  const handleCustomFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setCustomIconLoading(true);
+    try {
+      const processedDataUrl = await prepareShortcutCustomIcon(file);
+      setCustomIconDataUrl(processedDataUrl);
+      setSelectedSource('custom');
+      setUserAdjustedIconSource(true);
+    } catch {
+      toast.error(
+        t('shortcutModal.icon.customFileInvalid', {
+          defaultValue: '这张图片暂时无法作为图标，请换一张试试',
+        }),
+      );
+    } finally {
+      setCustomIconLoading(false);
+    }
   };
 
   return (
@@ -288,6 +358,9 @@ export function ShortcutEditorPanel({
           <ShortcutIcon
             icon={initialShortcut?.icon || ''}
             url={url}
+            shortcutId={initialShortcutId}
+            localCustomIconDataUrl={selectedSource === 'custom' ? customIconDataUrl : ''}
+            allowStoredCustomIcon={false}
             size={previewSize}
             frame="never"
             fallbackStyle="emptyicon"
@@ -323,7 +396,7 @@ export function ShortcutEditorPanel({
         </div>
 
         <div className={`flex w-full flex-col ${compact ? 'gap-3' : 'gap-3.5'}`}>
-          <div className={`grid w-full grid-cols-3 ${compact ? 'gap-2' : 'gap-2.5'}`} role="radiogroup" aria-label={t('shortcutModal.icon.modeGroup', { defaultValue: '图标来源' })}>
+          <div className={`grid w-full grid-cols-4 ${compact ? 'gap-2' : 'gap-2.5'}`} role="radiogroup" aria-label={t('shortcutModal.icon.modeGroup', { defaultValue: '图标来源' })}>
             <IconModeCard
               selected={selectedSource === 'official'}
               onClick={() => handleSelectSource('official')}
@@ -345,7 +418,26 @@ export function ShortcutEditorPanel({
               testId="shortcut-icon-mode-letter"
               compact={compact}
             />
+            <IconModeCard
+              selected={selectedSource === 'custom'}
+              onClick={handleCustomButtonClick}
+              label={customIconLoading
+                ? t('shortcutModal.icon.modeCustomLoadingShort', { defaultValue: '处理中' })
+                : selectedSource === 'custom' && hasCustomIcon
+                  ? t('shortcutModal.icon.modeCustomReplaceShort', { defaultValue: '更改' })
+                  : t('shortcutModal.icon.modeCustomShort', { defaultValue: '自定义' })}
+              testId="shortcut-icon-mode-custom"
+              disabled={customIconLoading}
+              compact={compact}
+            />
           </div>
+          <input
+            ref={customFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleCustomFileChange}
+          />
 
           {!officialIconAvailable ? (
             <SettingRow
@@ -364,9 +456,14 @@ export function ShortcutEditorPanel({
                 <button
                   key={color}
                   type="button"
+                  disabled={colorSelectionDisabled}
                   onClick={() => handleSelectColor(color)}
                   data-testid={`shortcut-color-${color}`}
-                  className={`mx-auto flex items-center justify-center rounded-full border transition-transform hover:scale-105 ${
+                  className={`mx-auto flex items-center justify-center rounded-full border transition-transform ${
+                    colorSelectionDisabled
+                      ? 'cursor-not-allowed opacity-40'
+                      : 'cursor-pointer hover:scale-105'
+                  } ${
                     selected ? 'border-foreground/70 shadow-[0_0_0_2px_rgba(255,255,255,0.08)]' : 'border-transparent'
                   } ${compact ? 'size-9' : 'aspect-square w-full'}`}
                   style={{ backgroundColor: color }}

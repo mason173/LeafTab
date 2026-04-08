@@ -564,9 +564,13 @@ export default {
         modeOfficialShort: "公式",
         modeFaviconShort: "ネット",
         modeLetterShort: "文字",
+        modeCustomShort: "カスタム",
+        modeCustomReplaceShort: "変更",
+        modeCustomLoadingShort: "処理中",
         autoOfficial: "対応時に公式アイコンへ自動切り替え",
         officialUnavailable: "このショートカットにはまだ公式アイコンがありません",
-        networkHint: "ネットアイコンは読み込みに失敗する場合があり、その際は文字アイコンに戻ります"
+        networkHint: "ネットアイコンは読み込みに失敗する場合があり、その際は文字アイコンに戻ります",
+        customFileInvalid: "この画像は今はアイコンにできません。別の画像を試してください"
       },
       errors: {
         fillAll: "すべての情報を入力してください",

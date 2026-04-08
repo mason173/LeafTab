@@ -13,7 +13,13 @@ interface ShortcutModalProps {
   onOpenChange: (open: boolean) => void;
   mode: 'add' | 'edit';
   initialShortcut?: Partial<Shortcut> | null;
-  onSave: (value: ShortcutDraft) => void;
+  onSave: (
+    value: ShortcutDraft,
+    localOnly?: {
+      useCustomIcon?: boolean;
+      customIconDataUrl?: string | null;
+    },
+  ) => void;
 }
 
 export default function ShortcutModal({

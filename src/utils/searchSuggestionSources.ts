@@ -17,6 +17,7 @@ type SearchHistoryLikeEntry = {
 };
 
 type IndexedShortcutSuggestion = {
+  id: string;
   label: string;
   url: string;
   icon: string;
@@ -96,6 +97,7 @@ export function buildShortcutSearchIndex(
     }
 
     dedupedByUrl.set(url, {
+      id: shortcut.id,
       label: shortcut.title || url,
       url,
       icon: shortcut.icon || '',
@@ -131,6 +133,7 @@ export function buildShortcutSuggestionItems(args: {
     insertRankedSuggestion(topMatches, {
       item: {
         type: 'shortcut',
+        shortcutId: shortcut.id,
         label: shortcut.label,
         value: shortcut.url,
         icon: shortcut.icon,
@@ -157,6 +160,7 @@ export function buildBuiltinSiteSuggestionItems(args: {
     .map((site, index) => ({
       item: {
         type: 'shortcut',
+        shortcutId: undefined,
         label: site.label,
         value: site.url,
         icon: '',

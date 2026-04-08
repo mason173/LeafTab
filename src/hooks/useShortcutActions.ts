@@ -4,6 +4,11 @@ import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut, Short
 import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
 import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
+import {
+  persistShortcutCustomIcon,
+  removeShortcutCustomIcon,
+  removeShortcutCustomIcons,
+} from '@/utils/shortcutCustomIcons';
 
 type SelectedShortcut = { index: number; shortcut: Shortcut } | null;
 type TranslateFn = (key: string, options?: any) => string;
@@ -93,6 +98,7 @@ export function useShortcutActions({
       return next;
     });
     setScenarioShortcuts((prev) => {
+      removeShortcutCustomIcons((prev[id] || []).map((shortcut) => shortcut.id));
       const next = { ...prev };
       delete next[id];
       return next;
@@ -133,7 +139,13 @@ export function useShortcutActions({
     updateScenarioShortcuts(() => nextShortcuts);
   }, [updateScenarioShortcuts]);
 
-  const handleSaveShortcutEdit = useCallback((draft: ShortcutDraft) => {
+  const handleSaveShortcutEdit = useCallback((
+    draft: ShortcutDraft,
+    localOnly?: {
+      useCustomIcon?: boolean;
+      customIconDataUrl?: string | null;
+    },
+  ) => {
     const nextTitle = draft.title.trim();
     const nextUrl = draft.url.trim();
     if (!nextTitle || !nextUrl) {
@@ -143,6 +155,7 @@ export function useShortcutActions({
 
     let duplicateFound = false;
     let saved = false;
+    let savedShortcutId = '';
 
     if (shortcutModalMode === 'add') {
       if (currentInsertIndex === null) return;
@@ -164,6 +177,7 @@ export function useShortcutActions({
         };
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
         saved = true;
+        savedShortcutId = newShortcut.id;
         return [...current.slice(0, insertIndex), newShortcut, ...current.slice(insertIndex)];
       });
     } else {
@@ -179,6 +193,7 @@ export function useShortcutActions({
         const urlChanged = nextIdentity ? prevIdentity !== nextIdentity : nextUrl !== (selectedShortcut.shortcut.url || '').trim();
         if (urlChanged && newIcon.includes('api.iowen.cn')) newIcon = '';
         saved = true;
+        savedShortcutId = selectedShortcut.shortcut.id;
         return current.map((item, index) => (
           index === selectedShortcut.index
             ? {
@@ -204,6 +219,14 @@ export function useShortcutActions({
 
     if (!saved) return;
 
+    if (savedShortcutId) {
+      if (localOnly?.useCustomIcon && localOnly.customIconDataUrl) {
+        persistShortcutCustomIcon(savedShortcutId, localOnly.customIconDataUrl);
+      } else if (shortcutModalMode === 'edit') {
+        removeShortcutCustomIcon(savedShortcutId);
+      }
+    }
+
     reportDomain(nextUrl);
     setShortcutEditOpen(false);
     setSelectedShortcut(null);
@@ -212,6 +235,7 @@ export function useShortcutActions({
 
   const handleConfirmDeleteShortcut = useCallback(() => {
     if (!selectedShortcut) return;
+    removeShortcutCustomIcon(selectedShortcut.shortcut.id);
     updateScenarioShortcuts((current) => current.filter((_, index) => index !== selectedShortcut.index));
     setShortcutDeleteOpen(false);
     setSelectedShortcut(null);
@@ -223,7 +247,14 @@ export function useShortcutActions({
       indices.filter((index) => Number.isInteger(index) && index >= 0),
     );
     if (validIndices.size === 0) return;
-    updateScenarioShortcuts((current) => current.filter((_, index) => !validIndices.has(index)));
+    updateScenarioShortcuts((current) => {
+      removeShortcutCustomIcons(
+        current
+          .filter((_, index) => validIndices.has(index))
+          .map((shortcut) => shortcut.id),
+      );
+      return current.filter((_, index) => !validIndices.has(index));
+    });
   }, [updateScenarioShortcuts]);
 
   return {

@@ -5,6 +5,7 @@ import { ShortcutEditorPanel } from '@/components/ShortcutEditorPanel';
 import type { ShortcutDraft } from '@/types';
 import type { ScenarioMode } from '@/scenario/scenario';
 import { queryCurrentTabPrefill } from '@/popup/activeTab';
+import { persistShortcutCustomIcon } from '@/utils/shortcutCustomIcons';
 import { readShortcutScenarioContext, saveShortcutToLocalProfile } from '@/utils/shortcutPersistence';
 
 type PrefillState = {
@@ -70,7 +71,13 @@ export function PopupApp() {
     url: prefill.url,
   }), [prefill.title, prefill.url]);
 
-  const handleSave = (draft: ShortcutDraft) => {
+  const handleSave = (
+    draft: ShortcutDraft,
+    localOnly?: {
+      useCustomIcon?: boolean;
+      customIconDataUrl?: string | null;
+    },
+  ) => {
     const result = saveShortcutToLocalProfile(draft, {
       scenarioId: selectedScenarioId || undefined,
     });
@@ -79,6 +86,10 @@ export function PopupApp() {
         description: t('shortcutModal.errors.duplicateUrlDesc'),
       });
       return;
+    }
+
+    if (localOnly?.useCustomIcon && localOnly.customIconDataUrl) {
+      persistShortcutCustomIcon(result.savedShortcut.id, localOnly.customIconDataUrl);
     }
 
     toast.success(t('popupShortcut.saved', {

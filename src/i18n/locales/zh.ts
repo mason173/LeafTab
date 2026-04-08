@@ -1064,9 +1064,13 @@ export default {
         modeOfficialShort: "官方",
         modeFaviconShort: "网络",
         modeLetterShort: "文字",
+        modeCustomShort: "自定义",
+        modeCustomReplaceShort: "更改",
+        modeCustomLoadingShort: "处理中",
         autoOfficial: "适配后自动切换官方图标",
         officialUnavailable: "这个快捷方式暂时还没有适配官方图标",
-        networkHint: "网络图标可能加载失败，失败时会自动回退为文字图标"
+        networkHint: "网络图标可能加载失败，失败时会自动回退为文字图标",
+        customFileInvalid: "这张图片暂时无法作为图标，请换一张试试"
       },
       errors: {
         fillAll: "请填写完整信息",

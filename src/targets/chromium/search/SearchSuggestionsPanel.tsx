@@ -246,7 +246,13 @@ export function SearchSuggestionsPanel({
       >
         <span className="relative mr-2 flex shrink-0 items-center justify-center" style={{ width: 24, height: 24 }}>
           {item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab' ? (
-            <ShortcutIcon icon={item.icon || ''} url={item.value} size={24} exact />
+            <ShortcutIcon
+              icon={item.icon || ''}
+              url={item.value}
+              shortcutId={item.type === 'shortcut' ? item.shortcutId : undefined}
+              size={24}
+              exact
+            />
           ) : item.type === 'history' && siteDirectDomain ? (
             <RiArrowRightSLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : (

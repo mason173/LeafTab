@@ -826,9 +826,13 @@ export default {
         modeOfficialShort: "Official",
         modeFaviconShort: "Online",
         modeLetterShort: "Letter",
+        modeCustomShort: "Custom",
+        modeCustomReplaceShort: "Change",
+        modeCustomLoadingShort: "Processing",
         autoOfficial: "Auto switch to official icon when available",
         officialUnavailable: "An official icon is not available for this shortcut yet",
-        networkHint: "Online icons may fail to load; if so, it will fall back to a letter icon"
+        networkHint: "Online icons may fail to load; if so, it will fall back to a letter icon",
+        customFileInvalid: "This image can't be used as an icon right now. Please try another one."
       },
       errors: {
         fillAll: "Please fill in all fields",

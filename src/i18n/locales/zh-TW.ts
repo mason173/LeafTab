@@ -543,9 +543,13 @@ export default {
         modeOfficialShort: "官方",
         modeFaviconShort: "網路",
         modeLetterShort: "文字",
+        modeCustomShort: "自訂",
+        modeCustomReplaceShort: "更改",
+        modeCustomLoadingShort: "處理中",
         autoOfficial: "支援後自動切換官方圖示",
         officialUnavailable: "這個捷徑目前還沒有官方圖示",
-        networkHint: "網路圖示可能載入失敗，失敗時會自動退回文字圖示"
+        networkHint: "網路圖示可能載入失敗，失敗時會自動退回文字圖示",
+        customFileInvalid: "這張圖片暫時無法作為圖示，請換一張試試"
       },
       errors: {
         fillAll: "請填寫完整資訊",
