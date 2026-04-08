@@ -276,6 +276,7 @@ export function TextEffect({
     <AnimatePresence mode='popLayout'>
       {trigger && (
         <MotionTag
+          key={`${per}-${children}`}
           initial='hidden'
           animate='visible'
           exit='exit'

@@ -178,6 +178,7 @@ export const WallpaperClock = memo(function WallpaperClock({
         <TopNavBar 
           hideWeather
           settingsRevealOnHover
+          leftSlotRevealOnHover
           keepControlsVisible={scenarioModeOpen}
           onSettingsClick={onSettingsClick}
           onSyncClick={onSyncClick}

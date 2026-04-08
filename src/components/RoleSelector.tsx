@@ -45,9 +45,9 @@ type OnboardingPermission = 'history' | 'bookmarks' | 'tabs';
 export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const firefox = isFirefoxBuildTarget();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('panoramic');
+  const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('fresh');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [accentColor, setAccentColor] = useState<string>('dynamic');
+  const [accentColor, setAccentColor] = useState<string>('green');
   const [step, setStep] = useState<StepType>('appearance');
   const [direction, setDirection] = useState(1);
   const [appearanceRevealReady, setAppearanceRevealReady] = useState(false);
@@ -185,7 +185,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
 
   useEffect(() => {
     const stored = localStorage.getItem('accentColor');
-    const savedColor = stored || 'dynamic';
+    const savedColor = stored || 'green';
     setAccentColor(savedColor);
     if (!stored) {
       localStorage.setItem('accentColor', savedColor);

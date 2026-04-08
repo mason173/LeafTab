@@ -8,14 +8,14 @@ export type DisplayModeOption = {
 
 export const DISPLAY_MODE_OPTIONS: DisplayModeOption[] = [
   {
-    value: 'panoramic',
-    labelKey: 'settings.displayMode.panoramic',
-    descriptionKey: 'settings.displayMode.panoramicDesc',
-  },
-  {
     value: 'fresh',
     labelKey: 'settings.displayMode.rhythm',
     descriptionKey: 'settings.displayMode.rhythmDesc',
+  },
+  {
+    value: 'panoramic',
+    labelKey: 'settings.displayMode.panoramic',
+    descriptionKey: 'settings.displayMode.panoramicDesc',
   },
   {
     value: 'minimalist',

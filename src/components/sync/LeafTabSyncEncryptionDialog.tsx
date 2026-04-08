@@ -75,10 +75,12 @@ export function LeafTabSyncEncryptionDialog({
         : t('leaftabSyncEncryption.unlockTitle', { defaultValue: '输入同步口令' })}
       description={isSetup
         ? t('leaftabSyncEncryption.setupDescription', {
-            defaultValue: `为 ${providerLabel} 设置端到端加密口令。服务器无法查看你的同步内容，也无法帮你找回这个口令。`,
+            defaultValue: '为 {{provider}} 设置端到端加密口令。服务器无法查看你的同步内容，也无法帮你找回这个口令。',
+            provider: providerLabel,
           })
         : t('leaftabSyncEncryption.unlockDescription', {
-            defaultValue: `请输入 ${providerLabel} 的同步口令以解锁云端密文数据。`,
+            defaultValue: '请输入 {{provider}} 的同步口令以解锁云端密文数据。',
+            provider: providerLabel,
           })}
       contentClassName="sm:max-w-[480px]"
       footer={(
