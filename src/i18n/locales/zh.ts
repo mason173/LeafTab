@@ -1059,12 +1059,31 @@ export default {
       namePlaceholder: "请输入快捷方式标题",
       urlLabel: "网址",
       urlPlaceholder: "请输入网址",
+      icon: {
+        modeGroup: "图标来源",
+        modeOfficialShort: "官方",
+        modeFaviconShort: "网络",
+        modeLetterShort: "文字",
+        autoOfficial: "适配后自动切换官方图标",
+        officialUnavailable: "这个快捷方式暂时还没有适配官方图标",
+        networkHint: "网络图标可能加载失败，失败时会自动回退为文字图标"
+      },
       errors: {
         fillAll: "请填写完整信息",
         fillAllDesc: "请输入快捷方式标题和链接地址",
         duplicateUrl: "该网站已存在快捷方式",
         duplicateUrlDesc: "同一网站仅保留一个快捷方式，请检查网址后重试"
       }
+    },
+    popupShortcut: {
+      title: "添加当前页面",
+      loading: "正在读取当前标签页信息…",
+      unsupported: "当前页面不是可直接保存的网站链接，请改成 http 或 https 地址后再保存。",
+      targetScenario: "将保存到「{{name}}」场景",
+      ready: "已自动填入当前标签页标题和网址。",
+      saved: "快捷方式已保存",
+      scenarioLabel: "保存到情景模式",
+      scenarioPlaceholder: "选择情景模式"
     },
     onboarding: {
       welcome: "欢迎使用 LeafTab",

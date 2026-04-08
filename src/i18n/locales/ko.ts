@@ -533,12 +533,31 @@ export default {
       namePlaceholder: "바로가기 이름 입력",
       urlLabel: "URL",
       urlPlaceholder: "URL 입력",
+      icon: {
+        modeGroup: "아이콘 출처",
+        modeOfficialShort: "공식",
+        modeFaviconShort: "온라인",
+        modeLetterShort: "문자",
+        autoOfficial: "지원되면 공식 아이콘으로 자동 전환",
+        officialUnavailable: "이 바로가기에는 아직 공식 아이콘이 없습니다",
+        networkHint: "온라인 아이콘은 불러오기에 실패할 수 있으며, 실패 시 문자 아이콘으로 대체됩니다"
+      },
       errors: {
         fillAll: "모든 정보를 입력해주세요",
         fillAllDesc: "바로가기 이름과 URL을 입력해주세요",
         duplicateUrl: "이 사이트의 바로가기가 이미 존재합니다",
         duplicateUrlDesc: "같은 사이트에는 바로가기 1개만 허용됩니다. URL을 확인해 주세요"
       }
+    },
+    popupShortcut: {
+      title: "현재 페이지 추가",
+      loading: "현재 탭 정보를 불러오는 중...",
+      unsupported: "현재 페이지는 바로 저장할 수 있는 웹사이트 링크가 아닙니다. http 또는 https 주소로 바꾼 뒤 저장해주세요.",
+      targetScenario: "‘{{name}}’ 시나리오에 저장됩니다",
+      ready: "현재 탭의 제목과 URL이 자동으로 입력되었습니다.",
+      saved: "바로가기가 저장되었습니다",
+      scenarioLabel: "저장할 시나리오",
+      scenarioPlaceholder: "시나리오 선택"
     },
     onboarding: {
       welcome: "LeafTab에 오신 것을 환영합니다",

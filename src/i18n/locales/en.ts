@@ -837,6 +837,16 @@ export default {
         duplicateUrlDesc: "Only one shortcut per site is allowed. Please use a different URL."
       }
     },
+    popupShortcut: {
+      title: "Add Current Page",
+      loading: "Reading current tab information...",
+      unsupported: "This page can't be saved directly. Switch to an http or https page and try again.",
+      targetScenario: "Will be saved to \"{{name}}\"",
+      ready: "The current tab title and URL were filled automatically.",
+      saved: "Shortcut saved",
+      scenarioLabel: "Save to scenario",
+      scenarioPlaceholder: "Choose a scenario"
+    },
     onboarding: {
       welcome: "Welcome to LeafTab",
       selectRole: "Select your role to start a personalized experience",

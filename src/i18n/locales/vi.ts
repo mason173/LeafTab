@@ -530,12 +530,31 @@ export default {
       namePlaceholder: "Nhập tiêu đề lối tắt",
       urlLabel: "URL",
       urlPlaceholder: "Nhập URL",
+      icon: {
+        modeGroup: "Nguồn biểu tượng",
+        modeOfficialShort: "Chính thức",
+        modeFaviconShort: "Mạng",
+        modeLetterShort: "Chữ",
+        autoOfficial: "Tự động chuyển sang biểu tượng chính thức khi có",
+        officialUnavailable: "Lối tắt này hiện chưa có biểu tượng chính thức",
+        networkHint: "Biểu tượng mạng có thể tải thất bại; khi đó sẽ tự động chuyển sang biểu tượng chữ"
+      },
       errors: {
         fillAll: "Vui lòng điền đầy đủ thông tin",
         fillAllDesc: "Nhập tiêu đề và URL của lối tắt",
         duplicateUrl: "Đã có lối tắt cho trang web này",
         duplicateUrlDesc: "Mỗi trang web chỉ cho phép một lối tắt. Vui lòng kiểm tra lại URL."
       }
+    },
+    popupShortcut: {
+      title: "Thêm trang hiện tại",
+      loading: "Đang đọc thông tin tab hiện tại...",
+      unsupported: "Trang hiện tại không phải liên kết website có thể lưu trực tiếp. Hãy đổi sang URL http hoặc https rồi lưu lại.",
+      targetScenario: "Sẽ lưu vào chế độ “{{name}}”",
+      ready: "Đã tự động điền tiêu đề và URL của tab hiện tại.",
+      saved: "Đã lưu lối tắt",
+      scenarioLabel: "Lưu vào chế độ",
+      scenarioPlaceholder: "Chọn chế độ"
     },
     onboarding: {
       welcome: "Chào mừng đến với LeafTab",

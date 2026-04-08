@@ -21,6 +21,13 @@
     background-color: var(--initial-reveal-surface);
   }
 
+  html[data-popup="true"],
+  html[data-popup="true"] body,
+  html[data-popup="true"] #root {
+    min-height: 100%;
+    background-color: var(--background);
+  }
+
   :where(
     [data-slot="button"],
     [data-slot="input"],

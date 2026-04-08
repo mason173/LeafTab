@@ -228,6 +228,7 @@ export default defineConfig(async () => {
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, 'index.html'),
+          popup: path.resolve(__dirname, 'popup.html'),
         },
         output: {
           manualChunks: resolveManualChunk,

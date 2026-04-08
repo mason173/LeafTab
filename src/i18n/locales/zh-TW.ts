@@ -538,12 +538,31 @@ export default {
       namePlaceholder: "請輸入捷徑標題",
       urlLabel: "網址",
       urlPlaceholder: "請輸入網址",
+      icon: {
+        modeGroup: "圖示來源",
+        modeOfficialShort: "官方",
+        modeFaviconShort: "網路",
+        modeLetterShort: "文字",
+        autoOfficial: "支援後自動切換官方圖示",
+        officialUnavailable: "這個捷徑目前還沒有官方圖示",
+        networkHint: "網路圖示可能載入失敗，失敗時會自動退回文字圖示"
+      },
       errors: {
         fillAll: "請填寫完整資訊",
         fillAllDesc: "請輸入捷徑標題和連結地址",
         duplicateUrl: "此網站已存在捷徑",
         duplicateUrlDesc: "同一網站僅保留一個捷徑，請確認網址後再試"
       }
+    },
+    popupShortcut: {
+      title: "新增目前頁面",
+      loading: "正在讀取目前分頁資訊…",
+      unsupported: "目前頁面不是可直接儲存的網站連結，請改成 http 或 https 網址後再儲存。",
+      targetScenario: "將儲存到「{{name}}」情境",
+      ready: "已自動填入目前分頁標題與網址。",
+      saved: "捷徑已儲存",
+      scenarioLabel: "儲存到情境模式",
+      scenarioPlaceholder: "選擇情境模式"
     },
     onboarding: {
       welcome: "歡迎使用 LeafTab",

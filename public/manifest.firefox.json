@@ -4,7 +4,9 @@
       "background.js"
     ]
   },
-  "permissions": [],
+  "permissions": [
+    "activeTab"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "leaftab@cc",
