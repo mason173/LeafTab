@@ -477,6 +477,9 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release145OnboardingAndThemeDefaults: "新手引导默认选中“节奏”模式，并调整默认主题为绿色",
+        release145TopNavAndShortcutGuide: "主页/全景模式顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化",
+        release145SyncI18nPolish: "同步中心与相关弹窗补齐中英文多语言（含书签同步提示与范围文案）",
         release144TranslationPromptFix: "修复每次打开 LeafTab 都可能出现“是否翻译此界面”的浏览器翻译提示",
         release144AboutQqGroup: "关于 LeafTab 弹窗新增交流 QQ 群号，方便反馈与交流",
         release144ReadmeCommunityEntry: "README 补充社区交流入口，并同步整理 1.4.4 发布信息",

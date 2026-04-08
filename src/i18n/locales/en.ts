@@ -473,6 +473,9 @@ export default {
         previewDescription: "Alpha / Beta builds for testing. Features and details may still change",
       },
       items: {
+        release145OnboardingAndThemeDefaults: "Onboarding defaults: “Rhythm” mode is selected by default and the default theme color is set to green",
+        release145TopNavAndShortcutGuide: "Top navigation buttons are icon-only with improved hover behavior; shortcuts guide layout is refined",
+        release145SyncI18nPolish: "Sync Center and related dialogs now support bilingual copy (including bookmark sync tips and scope labels)",
         release144TranslationPromptFix: "Fixed the browser translation prompt that could appear every time LeafTab opened",
         release144AboutQqGroup: "Added the community QQ group number to the About LeafTab dialog for easier feedback and discussion",
         release144ReadmeCommunityEntry: "Added a community section to the README and aligned the 1.4.4 release information",
