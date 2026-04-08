@@ -3,10 +3,12 @@ import { SHORTCUT_GUIDE_SECTIONS } from '@/config/shortcutGuide';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 
 interface ShortcutGuideDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onBackToSettings?: () => void;
 }
 
 function ShortcutKeyCaps({ combo }: { combo: readonly string[] }) {
@@ -24,14 +26,17 @@ function ShortcutKeyCaps({ combo }: { combo: readonly string[] }) {
   );
 }
 
-export function ShortcutGuideDialog({ open, onOpenChange }: ShortcutGuideDialogProps) {
+export function ShortcutGuideDialog({ open, onOpenChange, onBackToSettings }: ShortcutGuideDialogProps) {
   const { t } = useTranslation();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[740px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
-          <DialogTitle>{t('settings.shortcutGuide.title')}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <DialogTitle>{t('settings.shortcutGuide.title')}</DialogTitle>
+          </div>
           <DialogDescription>{t('settings.shortcutGuide.dialogDescription')}</DialogDescription>
         </DialogHeader>
         <ScrollArea

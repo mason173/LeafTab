@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { loadGoogleFont } from '../utils/googleFonts';
+import { googleFonts, loadGoogleFont } from '../utils/googleFonts';
 import { clampShortcutsRowsPerColumn } from '../utils/backupData';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import {
@@ -128,6 +128,14 @@ function readShortcutGridColumns(variant: ShortcutCardVariant): number {
   return getShortcutColumns(variant);
 }
 
+function normalizeTimeFont(value: string | null | undefined): string {
+  const next = (value || '').trim();
+  if (!next) return 'Pacifico';
+  if (next === 'Press Start 2P') return 'Audiowide';
+  const exists = googleFonts.some((font) => font.family === next);
+  return exists ? next : 'Pacifico';
+}
+
 export function useSettings() {
   const firefox = isFirefoxBuildTarget();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -146,7 +154,7 @@ export function useSettings() {
   const [showWeekday, setShowWeekday] = useState<boolean>(() => readStoredBoolean(SHOW_WEEKDAY_KEY, true));
   const [showLunar, setShowLunar] = useState<boolean>(() => readStoredBoolean(SHOW_LUNAR_KEY, true));
   const [timeAnimationMode, setTimeAnimationMode] = useState<TimeAnimationMode>(() => readTimeAnimationMode());
-  const [timeFont, setTimeFont] = useState(localStorage.getItem('time_font') || 'Pacifico');
+  const [timeFont, setTimeFont] = useState(() => normalizeTimeFont(localStorage.getItem('time_font')));
   const [showSeconds, setShowSeconds] = useState(() => {
     const storedShowSeconds = localStorage.getItem('showSeconds');
     if (storedShowSeconds === null) return true;
@@ -200,8 +208,13 @@ export function useSettings() {
   }, [firefox, visualEffectsLevel]);
 
   useEffect(() => {
-    loadGoogleFont(timeFont);
-    queueLocalStorageSetItem('time_font', timeFont);
+    const normalized = normalizeTimeFont(timeFont);
+    if (normalized !== timeFont) {
+      setTimeFont(normalized);
+      return;
+    }
+    loadGoogleFont(normalized);
+    queueLocalStorageSetItem('time_font', normalized);
   }, [timeFont]);
 
   useEffect(() => {

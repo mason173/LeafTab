@@ -15,6 +15,7 @@ import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpaper
 import type { WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
 import { WeatherCard } from './WeatherCard';
+import { getTimeFontScale, toCssFontFamily } from '@/utils/googleFonts';
 
 interface WallpaperClockProps {
   is24Hour: boolean;
@@ -120,6 +121,7 @@ export const WallpaperClock = memo(function WallpaperClock({
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const resolvedReduceTopControlsEffects = reduceTopControlsEffects ?? reduceVisualEffects;
+  const normalizedClockFontSize = (layout?.clockFontSize ?? 100) * getTimeFontScale(timeFont);
 
   return (
     <div
@@ -207,7 +209,7 @@ export const WallpaperClock = memo(function WallpaperClock({
         <button
           type="button"
           className="font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
-          style={{ fontFamily: timeFont, fontSize: layout?.clockFontSize ?? 100 }}
+          style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
           onClick={() => setTimeDisplayDialogOpen(true)}
           aria-label={time}
         >

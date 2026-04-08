@@ -5,6 +5,7 @@ import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 import type { WallpaperMode } from "@/wallpaper/types";
+import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
@@ -49,6 +50,7 @@ interface WallpaperSelectorProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onBackToSettings?: () => void;
 }
 
 export default function WallpaperSelector({
@@ -71,6 +73,7 @@ export default function WallpaperSelector({
   trigger,
   open,
   onOpenChange,
+  onBackToSettings,
 }: WallpaperSelectorProps) {
   const firefox = isFirefoxBuildTarget();
   const { t } = useTranslation();
@@ -109,7 +112,10 @@ export default function WallpaperSelector({
       >
         <div className="flex flex-col h-full">
           <DialogHeader className={`px-6 pt-6 pb-2 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
-            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">{t("weather.wallpaper.mode")}</DialogTitle>
+            <div className="flex items-center gap-2">
+              <BackToSettingsButton onClick={onBackToSettings} />
+              <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">{t("weather.wallpaper.mode")}</DialogTitle>
+            </div>
           </DialogHeader>
 
           <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">

@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import Scrubber from '@/components/ui/smoothui/scrubber';
+import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 import {
   clampShortcutGridColumns,
   DEFAULT_SHORTCUT_CARD_VARIANT,
@@ -32,6 +33,7 @@ function readColumnsByVariant(variant: ShortcutCardVariant): number | null {
 interface ShortcutStyleSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onBackToSettings?: () => void;
   variant: ShortcutCardVariant;
   compactShowTitle: boolean;
   columns: number;
@@ -41,6 +43,7 @@ interface ShortcutStyleSettingsDialogProps {
 export function ShortcutStyleSettingsDialog({
   open,
   onOpenChange,
+  onBackToSettings,
   variant,
   compactShowTitle,
   columns,
@@ -133,7 +136,10 @@ export function ShortcutStyleSettingsDialog({
         }`}
       >
         <DialogHeader className={`${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}>
-          <DialogTitle>{t('settings.shortcutsStyle.title')}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <DialogTitle>{t('settings.shortcutsStyle.title')}</DialogTitle>
+          </div>
           <DialogDescription>{t('settings.shortcutsStyle.description')}</DialogDescription>
         </DialogHeader>
 

@@ -6,6 +6,7 @@ import { useClock } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WeatherCard } from '@/components/WeatherCard';
+import { getTimeFontScale, toCssFontFamily } from '@/utils/googleFonts';
 
 interface InlineTimeProps {
   is24Hour: boolean;
@@ -63,6 +64,7 @@ export const InlineTime = memo(function InlineTime({
     showDate ? dateString : null,
     showWeekday ? weekday : null,
   ].filter(Boolean) as string[];
+  const normalizedClockFontSize = layout.clockFontSize * getTimeFontScale(timeFont);
 
   return (
     <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
@@ -71,7 +73,7 @@ export const InlineTime = memo(function InlineTime({
         <button
           type="button"
           className={`${forceWhiteText ? 'text-white text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
-          style={{ fontFamily: timeFont, fontSize: layout.clockFontSize }}
+          style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
           onClick={() => setTimeDisplayDialogOpen(true)}
           aria-label={time}
         >

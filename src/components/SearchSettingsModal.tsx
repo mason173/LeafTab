@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import {
   RiCalculatorLine,
   RiCodeSSlashFill,
@@ -88,6 +89,7 @@ function SearchSettingRow({
 interface SearchSettingsModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onBackToSettings?: () => void;
   tabSwitchSearchEngine: boolean;
   onTabSwitchSearchEngineChange: (checked: boolean) => void;
   searchPrefixEnabled: boolean;
@@ -107,6 +109,7 @@ interface SearchSettingsModalProps {
 export function SearchSettingsModal({
   isOpen,
   onOpenChange,
+  onBackToSettings,
   tabSwitchSearchEngine,
   onTabSwitchSearchEngineChange,
   searchPrefixEnabled,
@@ -128,7 +131,10 @@ export function SearchSettingsModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
         <DialogHeader>
-          <DialogTitle className="text-foreground">{t('settings.searchSettings.title')}</DialogTitle>
+          <div className="flex items-center gap-2">
+            <BackToSettingsButton onClick={onBackToSettings} />
+            <DialogTitle className="text-foreground">{t('settings.searchSettings.title')}</DialogTitle>
+          </div>
         </DialogHeader>
         <ScrollArea className="max-h-[68vh]" scrollBarClassName="data-[orientation=vertical]:translate-x-4">
           <div className="mx-auto w-full max-w-[500px] grid grid-cols-1 sm:grid-cols-2 gap-2">

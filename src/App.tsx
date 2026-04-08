@@ -394,6 +394,7 @@ export default function App() {
   const [cloudSyncConfigVersion, setCloudSyncConfigVersion] = useState(0);
   const [cloudLoginSyncPendingUser, setCloudLoginSyncPendingUser] = useState<string | null>(null);
   const [syncEncryptionVersion, setSyncEncryptionVersion] = useState(0);
+  const [syncConfigBackTarget, setSyncConfigBackTarget] = useState<'settings' | 'sync-center'>('settings');
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
   const [webdavEnableAfterConfigSave, setWebdavEnableAfterConfigSave] = useState(false);
   const [webdavShowConnectionFields, setWebdavShowConnectionFields] = useState(false);
@@ -420,6 +421,7 @@ export default function App() {
   const weatherDebugTapTimerRef = useRef<number | null>(null);
   const legacyCloudMigrationResolverRef = useRef<((value: boolean) => void) | null>(null);
   const openLeafTabSyncConfig = useCallback(() => {
+    setSyncConfigBackTarget('settings');
     setWebdavEnableAfterConfigSave(false);
     setWebdavShowConnectionFields(false);
     setWebdavDialogOpen(true);
@@ -1925,6 +1927,7 @@ export default function App() {
       return null;
     }
     if (!options?.allowWhenDisabled && !cloudSyncEnabled) {
+      setSyncConfigBackTarget('sync-center');
       setLeafTabSyncDialogOpen(false);
       setCloudSyncConfigOpen(true);
       return null;
@@ -2100,6 +2103,7 @@ export default function App() {
     }
     const shouldEnableAfterSave = options?.enableAfterSave ?? !leafTabWebdavConfigured;
     const shouldShowConnectionFields = options?.showConnectionFields ?? shouldEnableAfterSave;
+    setSyncConfigBackTarget('settings');
     setWebdavEnableAfterConfigSave(Boolean(shouldEnableAfterSave));
     setWebdavShowConnectionFields(Boolean(shouldShowConnectionFields));
     setWebdavDialogOpen(true);
@@ -2110,6 +2114,7 @@ export default function App() {
     if (!opened) {
       return;
     }
+    setSyncConfigBackTarget('sync-center');
     setLeafTabSyncDialogOpen(false);
   }, [handleOpenWebdavConfig]);
   const handleLeafTabSyncDialogOpenChange = useCallback((open: boolean) => {
@@ -2272,6 +2277,11 @@ export default function App() {
     setCloudNextSyncAt,
     openLeafTabSyncConfig,
   });
+
+  const handleOpenCloudSyncConfigFromSyncCenter = useCallback(() => {
+    setSyncConfigBackTarget('sync-center');
+    handleOpenCloudSyncConfig();
+  }, [handleOpenCloudSyncConfig]);
   const handleDangerousSyncDialogContinueWithoutBookmarks = useCallback(async () => {
     if (!dangerousSyncDialogState) return;
     setDangerousSyncDialogBusyAction('continue-without-bookmarks');
@@ -2585,6 +2595,44 @@ export default function App() {
     setAboutModalDefaultTab(tab);
     setAboutModalOpen(true);
   }, [setSettingsOpen]);
+
+  const handleBackToMainSettings = useCallback(() => {
+    setSearchSettingsOpen(false);
+    setShortcutGuideOpen(false);
+    setShortcutStyleSettingsOpen(false);
+    setAdminModalOpen(false);
+    setAboutModalOpen(false);
+    setWallpaperSettingsOpen(false);
+    setExportBackupDialogOpen(false);
+    setImportConfirmOpen(false);
+    handleImportBackupDialogOpenChange(false);
+    setWebdavDialogOpen(false);
+    setCloudSyncConfigOpen(false);
+    setWebdavEnableAfterConfigSave(false);
+    setWebdavShowConnectionFields(false);
+    setPendingWebdavEnableScopeKey(null);
+    setSettingsOpen(true);
+  }, [
+    handleImportBackupDialogOpenChange,
+    setExportBackupDialogOpen,
+    setImportConfirmOpen,
+    setSettingsOpen,
+  ]);
+
+  const handleBackFromSyncProviderConfig = useCallback(() => {
+    setWebdavDialogOpen(false);
+    setCloudSyncConfigOpen(false);
+    setWebdavEnableAfterConfigSave(false);
+    setWebdavShowConnectionFields(false);
+    setPendingWebdavEnableScopeKey(null);
+    if (syncConfigBackTarget === 'sync-center') {
+      setSettingsOpen(false);
+      setLeafTabSyncDialogOpen(true);
+      return;
+    }
+    setLeafTabSyncDialogOpen(false);
+    setSettingsOpen(true);
+  }, [setSettingsOpen, syncConfigBackTarget]);
 
   const handleWeatherDebugEnabledChange = useCallback((enabled: boolean) => {
     setWeatherDebugVisible(enabled);
@@ -3017,6 +3065,7 @@ export default function App() {
             hideWeather={displayMode === 'minimalist' || firefox}
             open={wallpaperSettingsOpen}
             onOpenChange={setWallpaperSettingsOpen}
+            onBackToSettings={handleBackToMainSettings}
             trigger={<span className="hidden" aria-hidden="true" />}
           />
         </Suspense>
@@ -3182,6 +3231,7 @@ export default function App() {
 	            searchSettingsModalProps={{
 	              isOpen: searchSettingsOpen,
 	              onOpenChange: setSearchSettingsOpen,
+                onBackToSettings: handleBackToMainSettings,
 	              tabSwitchSearchEngine,
 	              onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
 	              searchPrefixEnabled,
@@ -3200,10 +3250,12 @@ export default function App() {
 	            shortcutGuideDialogProps={{
 	              open: shortcutGuideOpen,
 	              onOpenChange: setShortcutGuideOpen,
+                onBackToSettings: handleBackToMainSettings,
 	            }}
 	            shortcutStyleSettingsDialogProps={{
 	              open: shortcutStyleSettingsOpen,
 	              onOpenChange: setShortcutStyleSettingsOpen,
+                onBackToSettings: handleBackToMainSettings,
 	              variant: shortcutCardVariant,
               compactShowTitle: shortcutCompactShowTitle,
               columns: normalizedGridColumns,
@@ -3216,6 +3268,7 @@ export default function App() {
             adminModalProps={{
               open: adminModalOpen,
               onOpenChange: setAdminModalOpen,
+              onBackToSettings: handleBackToMainSettings,
               onExportDomains: handleExportDomains,
               weatherDebugEnabled: weatherDebugVisible,
               onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
@@ -3228,11 +3281,13 @@ export default function App() {
             aboutModalProps={{
               open: aboutModalOpen,
               onOpenChange: setAboutModalOpen,
+              onBackToSettings: handleBackToMainSettings,
               defaultTab: aboutModalDefaultTab,
             }}
             exportBackupDialogProps={{
               open: exportBackupDialogOpen,
               onOpenChange: setExportBackupDialogOpen,
+              onBackToSettings: handleBackToMainSettings,
               mode: 'export',
               availableScope: {
                 shortcuts: true,
@@ -3249,6 +3304,7 @@ export default function App() {
             importBackupDialogProps={{
               open: importBackupDialogOpen,
               onOpenChange: handleImportBackupDialogOpenChange,
+              onBackToSettings: handleBackToMainSettings,
               mode: 'import',
               availableScope: importBackupScopePayload
                 ? {
@@ -3272,6 +3328,7 @@ export default function App() {
             }}
             webdavConfigDialogProps={{
               open: webdavDialogOpen,
+              onBackToParent: handleBackFromSyncProviderConfig,
               onOpenChange: (open: boolean) => {
                 setWebdavDialogOpen(open);
                 if (!open) {
@@ -3304,6 +3361,7 @@ export default function App() {
             }}
             cloudSyncConfigDialogProps={{
               open: cloudSyncConfigOpen,
+              onBackToParent: handleBackFromSyncProviderConfig,
               onOpenChange: setCloudSyncConfigOpen,
               encryptionReady: cloudSyncEncryptionReady,
               onManageEncryption: handleManageCloudSyncEncryption,
@@ -3390,7 +3448,7 @@ export default function App() {
               setLeafTabSyncDialogOpen(false);
               void handleCloudSyncNowFromCenter();
             }}
-            onOpenCloudConfig={handleOpenCloudSyncConfig}
+            onOpenCloudConfig={handleOpenCloudSyncConfigFromSyncCenter}
             onCloudLogin={() => {
               const shouldOpenLogin = handleRequestCloudLogin();
               if (shouldOpenLogin) {
@@ -3404,6 +3462,7 @@ export default function App() {
               void handleCloudRepairFromCenter('push-local');
             }}
             onSyncNow={() => {
+              setSyncConfigBackTarget('sync-center');
               setLeafTabSyncDialogOpen(false);
               void handleWebdavSyncNowFromCenter();
             }}
