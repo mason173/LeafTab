@@ -11,7 +11,7 @@ interface ShortcutGuideDialogProps {
 
 function ShortcutKeyCaps({ combo }: { combo: readonly string[] }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
       {combo.map((token, index) => (
         <span key={`${token}-${index}`} className="inline-flex items-center gap-1.5">
           {index > 0 ? <span className="text-muted-foreground">+</span> : null}
@@ -59,7 +59,7 @@ export function ShortcutGuideDialog({ open, onOpenChange }: ShortcutGuideDialogP
                   <table className="w-full table-fixed border-collapse">
                     <thead className="bg-background/65">
                       <tr className="border-b border-border/60">
-                        <th className="w-[32%] px-4 py-3 text-left text-[12px] font-medium text-muted-foreground">
+                        <th className="w-[42%] px-4 py-3 text-left text-[12px] font-medium text-muted-foreground">
                           {t('settings.shortcutGuide.columns.shortcut')}
                         </th>
                         <th className="px-4 py-3 text-left text-[12px] font-medium text-muted-foreground">
@@ -74,9 +74,9 @@ export function ShortcutGuideDialog({ open, onOpenChange }: ShortcutGuideDialogP
                           className={itemIndex > 0 ? 'border-t border-border/50' : undefined}
                         >
                           <td className="px-4 py-3 align-top">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap">
                               {item.combos.map((combo, comboIndex) => (
-                                <div key={`${item.id}-${comboIndex}`} className="flex items-center gap-2">
+                                <div key={`${item.id}-${comboIndex}`} className="flex items-center gap-2 shrink-0">
                                   {comboIndex > 0 ? (
                                     <span className="text-xs text-muted-foreground">/</span>
                                   ) : null}
@@ -85,7 +85,7 @@ export function ShortcutGuideDialog({ open, onOpenChange }: ShortcutGuideDialogP
                               ))}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm leading-6 text-foreground/85">
+                          <td className="px-4 py-3 text-sm leading-6 text-foreground/85 break-words">
                             {t(`settings.shortcutGuide.items.${item.id}`)}
                           </td>
                         </tr>
