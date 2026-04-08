@@ -269,7 +269,9 @@ export default {
           policyChangeSyncTriggered: "Conflict policy updated. Synced once with the selected policy.",
           intervalChangeSyncTriggered: "Sync interval updated. Triggered one immediate sync.",
           disableWebdavBeforeCloudLogin: "WebDAV sync is currently enabled. Disable WebDAV sync before signing in to cloud sync.",
+          disableWebdavBeforeCloudManage: "WebDAV sync is currently enabled. Disable WebDAV sync before managing cloud sync.",
           disableCloudBeforeWebdavEnable: "Cloud sync is currently signed in. Sign out from cloud sync before enabling WebDAV sync.",
+          disableCloudBeforeWebdavConfig: "Cloud sync is currently enabled. Disable cloud sync before configuring WebDAV sync.",
           disableConfirmTitle: "Disable WebDAV Sync",
           disableConfirmDesc: "Disable WebDAV sync? Local data will remain on this device.",
           clearLocalLabel: "Clear local data and restore defaults",
@@ -392,6 +394,7 @@ export default {
         desc: "Version info and extension overview",
         open: "Open",
         title: "About LeafTab",
+        versionLabel: "Version v{{version}}",
         content: "LeafTab is a browser new-tab extension.\nIt provides a clean start page with shortcuts, wallpaper/weather, and sync features including Cloud Sync and WebDAV.",
         openSourceNoticePrefix: "LeafTab Community Edition is open source under ",
         openSourceNoticeSuffix: ". Issues and PRs are welcome on GitHub.",
@@ -437,6 +440,26 @@ export default {
         release137PermissionsAndSearch: "Unified store/community permission strategy and refined search engine switching with clearer hints",
         release137WallpaperAndMotion: "Aligned default wallpaper, custom wallpaper, and first-screen reveal timing to reduce refresh flicker",
         release137ScenarioAndSync: "Added scenario mode hotkey switching and fixed the dropdown plus sync-time display issues",
+        release136LicenseGplv3: "Switched open-source license to GPLv3",
+        release136SystemEffectsLevel: "Added a system effects intensity setting",
+        release136UiPolish: "Polished UI visuals",
+        release136RemoveDynamicWallpaper: "Removed the live wallpaper (performance reasons)",
+        release140BookmarkSyncToggle: "Added bookmark sync (off by default); can be enabled as needed and works with the existing sync flow",
+        release140CustomShortcutIcons: "Added custom shortcut icons and colors for more flexible personalization",
+        release140E2EEBackup: "Added end-to-end encrypted backups to better protect privacy and security",
+        release140PerformancePolish: "Improved overall performance and interaction smoothness to reduce jank and waiting",
+        release139BuildIsolation: "Improved Firefox and Chrome build isolation",
+        release139LowEffectsMotion: "Improved search and drawer animations in Low Effects mode",
+        release139Stability: "Improved overall stability",
+        release138Cleanup: "Removed unused assets and redundant files to significantly reduce package size",
+        release138WallpaperAssets: "Further compressed the default wallpaper to reduce asset size",
+        release138WeatherAssets: "Compressed weather videos into lighter WebM and reduced to 45 FPS",
+        release133MultiEngineSwitcher: "Added multi search-engine switching for more flexible search selection",
+        release133ManifestCopyPolish: "Simplified extension description copy for clearer messaging",
+        release133Stability: "Routine fixes and stability improvements",
+        release132UiPolish: "Refined the Settings UI and interaction details for a more consistent look",
+        release132SearchAndDrawer: "Improved search and drawer interactions for smoother operations",
+        release132Stability: "Fixed known issues and improved stability",
         release135UiPolish: "Optimized interface effects",
         release135VisualRefine: "Refined interaction and visual details",
         release135KnownIssuesFix: "Fixed some known issues",
@@ -507,9 +530,15 @@ export default {
       publishedAt: "Published: {{date}}",
       changelogTitle: "What's new",
       noChangelog: "No detailed release notes were provided.",
+      imageAlt: "LeafTab Update",
+      badge: "New v{{version}}",
       later: "Later",
       ignoreThisVersion: "Ignore this version",
-      downloadFromGithub: "Download from GitHub"
+      downloadFromGithub: "Download from GitHub",
+      openRelease: "Download from GitHub",
+      sampleNote1: "Unified cloud sync and WebDAV sync settings interactions",
+      sampleNote2: "Added update notice dialog that links to GitHub Release",
+      sampleNote3: "Improved changelog dialog layout hierarchy"
     },
     roles: {
       programmer: "Programmer",
@@ -637,6 +666,10 @@ export default {
       current: "Current",
       clear: "Clear",
       back: "Back",
+      prev: "Previous",
+      next: "Next",
+      refresh: "Refresh",
+      settings: "Settings",
       more: "More"
     },
     user: {
@@ -654,6 +687,29 @@ export default {
       placeholderHintCalculator: "Type 12*8 to calculate",
       placeholderHintSiteDirect: "Type github react to search GitHub",
       placeholderHintPrefix: "Type g AI to search with Google",
+      actionOpen: "Open",
+      actionClose: "Close",
+      actionSelect: "Select",
+      authorizeHistoryPermission: "Authorize",
+      historyPermissionBanner: "Authorize to show browser history",
+      historyPermissionPending: "Waiting for history permission...",
+      historyPreparing: "Loading browser history...",
+      bookmarksPermissionBanner: "Authorize to search browser bookmarks",
+      bookmarksPermissionPending: "Waiting for bookmarks permission...",
+      bookmarksPreparing: "Preparing bookmarks...",
+      tabsPermissionBanner: "Authorize to search open tabs",
+      tabsPermissionPending: "Waiting for tabs permission...",
+      tabsPreparing: "Preparing open tabs...",
+      permissionHistoryDenied: "History permission not granted. You can authorize again from the top of the dropdown.",
+      permissionBookmarksDenied: "Bookmarks permission not granted. You can request it again next time you use /b.",
+      permissionTabsDenied: "Tabs permission not granted. You can request it again next time you use /t.",
+      permissionRequestFailed: "Permission request failed. Please try again.",
+      noBookmarks: "No matching bookmarks found",
+      noTabs: "No matching tabs found",
+      currentTabLabel: "Current tab",
+      justNow: "Just now",
+      calculatorCopied: "Result copied to clipboard",
+      calculatorCopyFailed: "Copy failed. Please copy manually.",
       systemEngine: "System default",
       useEngineSearch: "Search with {{engine}}",
       prefixEngineInlineHint: "Search with {{engine}}",
@@ -677,7 +733,18 @@ export default {
       delete: "Delete",
       addShortcut: "Add Shortcut",
       newShortcut: "New Shortcut",
-      pinToTop: "Pin to top"
+      pinToTop: "Pin to top",
+      pinTop: "Pin selected to top",
+      pinBottom: "Pin selected to bottom",
+      select: "Select",
+      unselect: "Unselect",
+      selectedCount: "{{count}} selected",
+      deleteSelected: "Delete selected",
+      moveToScenario: "Move to scenario",
+      noScenarioTarget: "No scenario to move to",
+      selectBeforeMove: "Select shortcuts first",
+      multiSelect: "Multi-select",
+      cancelMultiSelect: "Exit multi-select"
     },
     shortcutModal: {
       addTitle: "Add Shortcut",
@@ -686,6 +753,15 @@ export default {
       namePlaceholder: "Enter shortcut title",
       urlLabel: "URL",
       urlPlaceholder: "Enter URL",
+      icon: {
+        modeGroup: "Icon source",
+        modeOfficialShort: "Official",
+        modeFaviconShort: "Online",
+        modeLetterShort: "Letter",
+        autoOfficial: "Auto switch to official icon when available",
+        officialUnavailable: "An official icon is not available for this shortcut yet",
+        networkHint: "Online icons may fail to load; if so, it will fall back to a letter icon"
+      },
       errors: {
         fillAll: "Please fill in all fields",
         fillAllDesc: "Enter shortcut title and URL",
@@ -773,7 +849,9 @@ export default {
       confirm: "Delete",
       cancel: "Cancel",
       title: "Delete Shortcut",
-      description: "Are you sure you want to delete this shortcut?"
+      description: "Are you sure you want to delete this shortcut?",
+      bulkTitle: "Delete shortcuts",
+      bulkDescription: "Are you sure you want to delete the selected {{count}} shortcuts?"
     },
     syncConflict: {
       title: "Sync Conflict",
@@ -833,9 +911,110 @@ export default {
       loadedFromCache: "Loaded from local cache (Offline Mode)",
       sessionExpired: "Session expired, please log in again",
       shortcutCreateFailed: "Unable to create shortcut",
-      alreadyOnPage: "Already on the current page"
-    },
-    leaftabSyncCenter: {
+        alreadyOnPage: "Already on the current page"
+      },
+      leaftabSync: {
+        provider: {
+          webdav: "WebDAV sync",
+          cloud: "Cloud sync",
+          generic: "Sync"
+        },
+        webdav: {
+          actions: {
+            mkcol: "Create folder",
+            upload: "Write",
+            download: "Read",
+            delete: "Delete"
+          },
+          error: {
+            withPath: "WebDAV {{action}} failed ({{status}}): {{path}}",
+            noPath: "WebDAV {{action}} failed ({{status}})"
+          }
+        },
+        cloud: {
+          error: {
+            lockedTryFix: "Cloud sync was locked by another device. Tried to auto-fix; please retry if it still fails.",
+            remoteCommitChanged: "Cloud data just changed. Please sync again.",
+            parentCommitRequired: "A newer cloud version exists. Pull the latest data before overwriting.",
+            httpStatus: "Cloud sync failed ({{status}})",
+            generic: "Cloud sync failed"
+          }
+        }
+      },
+      leaftabSyncRunner: {
+        progressDetailDefault: "Syncing in background. You can continue using LeafTab.",
+        permissionTitle: "Checking bookmark permission",
+        permissionDetail: "LeafTab needs permission to access bookmarks.",
+        bookmarksPermissionDeniedToast: "Bookmark permission not granted. This run will sync shortcuts and settings only.",
+        bookmarksPermissionDeniedToastAlt: "Bookmark permission not granted. Only shortcuts and settings will be synced.",
+        successTitle: "Sync complete",
+        successToastFallback: "Sync complete",
+        successDetailFallback: "Local and remote data have been processed.",
+        webdav: {
+          prepareTitle: "Preparing sync",
+          prepareDetail: "Reading local and WebDAV status",
+          disable: {
+            title: "Disabling sync",
+            detail: "Running the final sync and turning off sync",
+            finalSyncTitle: "Syncing final changes",
+            closingTitle: "Turning off sync",
+            clearingTitle: "Clearing local data",
+            doneTitle: "Sync disabled"
+          }
+        },
+        cloud: {
+          prepareTitle: "Preparing cloud sync",
+          prepareDetail: "Reading local and cloud account status",
+          lockConflict: {
+            autoFixToast: "Detected a cloud sync lock conflict (409). Auto-fixing and retrying...",
+            autoFixTitle: "Detected stale cloud lock, auto-fixing",
+            autoFixDetail: "Releasing the old lock and retrying sync",
+            failedToast: "Cloud sync failed (409): The sync lock is held by another device. Close sync on other devices and retry, or wait about 2 minutes."
+          },
+          commitConflict: {
+            realignTitle: "Detected cloud version change, realigning state",
+            realignDetail: "Waiting for the latest state to take effect before retrying"
+          }
+        }
+      },
+      leaftabSyncActions: {
+        dataDetail: {
+          withBookmarks: "Processing shortcuts and bookmarks",
+          shortcutsOnly: "Processing shortcuts"
+        },
+        bookmarksPermissionRequired: "Bookmark permission not granted. Unable to repair sync.",
+        webdav: {
+          inProgress: "WebDAV sync is in progress. Please wait.",
+          syncingTitle: "Syncing to WebDAV",
+          repair: {
+            pullTitle: "Overwriting local data with WebDAV",
+            pushTitle: "Overwriting WebDAV with local data",
+            pullSuccess: "Local data overwritten with WebDAV data",
+            pushSuccess: "WebDAV overwritten with local data",
+            pullFailed: "Failed to overwrite local data with WebDAV",
+            pushFailed: "Failed to overwrite WebDAV with local data"
+          }
+        },
+        cloud: {
+          inProgress: "Cloud sync is in progress. Please wait.",
+          syncingTitle: "Syncing to cloud",
+          repair: {
+            pullTitle: "Overwriting local data with cloud data",
+            pushTitle: "Overwriting cloud with local data",
+            pullSuccess: "Local data overwritten with cloud data",
+            pushSuccess: "Cloud overwritten with local data"
+          }
+        }
+      },
+      syncPreview: {
+        hint: {
+          local: "Strikethrough items on the right will be removed from cloud after sync.",
+          cloud: "Strikethrough items on the left will be removed from local after sync.",
+          merge: "Merge keeps both sides with deduplication (local-first)."
+        },
+        noComparable: "No comparable shortcuts were found."
+      },
+      leaftabSyncCenter: {
       title: "Sync Center",
       description: "A WebDAV-based sync center focused on scenarios, shortcuts, and bookmarks.",
       bookmarkScope: "Bookmark sync scope: {{scope}}",
@@ -872,6 +1051,7 @@ export default {
       manualSyncOnly: "Manual sync only",
       autoSyncOn: "Auto sync is on",
       enableSync: "Enable sync",
+      disableSync: "Disable sync",
       repair: "Repair sync",
       cloudOverwriteLocal: "Cloud overwrites local",
       localOverwriteCloud: "Local overwrites cloud",
@@ -922,7 +1102,7 @@ export default {
         scopeWithLabel: "Shortcuts, {{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+      leaftabSyncEncryption: {
       cloudNotEnabledTitle: "Cloud sync is off",
       cloudNotEnabledPill: "Off",
       webdavNotEnabledTitle: "WebDAV sync is off",
@@ -945,12 +1125,50 @@ export default {
       confirmLabel: "Confirm passphrase",
       confirmPlaceholder: "Re-enter to confirm",
       setupChecklistTitle: "Before you continue",
-      checklist: {
-        serverCannotAccess: "We do not store this passphrase and cannot read your encrypted sync data.",
-        cannotRecover: "If you forget this passphrase, existing encrypted sync data cannot be recovered.",
-        newDeviceUnlock: "When you switch devices or clear local data, you'll need to enter this passphrase again."
-      },
-      deviceUnlockDescription: "After this device is unlocked, you won't need to enter it again for future sync."
+	      checklist: {
+	        serverCannotAccess: "We do not store this passphrase and cannot read your encrypted sync data.",
+	        cannotRecover: "If you forget this passphrase, existing encrypted sync data cannot be recovered.",
+	        newDeviceUnlock: "When you switch devices or clear local data, you'll need to enter this passphrase again."
+	      },
+	      deviceUnlockDescription: "After this device is unlocked, you won't need to enter it again for future sync.",
+	      errors: {
+	        missingMetadata: "Missing sync encryption metadata",
+	        incorrectPassphrase: "Incorrect sync passphrase",
+	        invalidConfig: "Invalid sync encryption configuration"
+	      },
+	      toast: {
+	        saved: "Sync passphrase saved",
+	        unlocked: "Sync data unlocked",
+	        saveFailed: "Failed to save sync passphrase"
+	      }
+	    },
+	    leaftabDangerousSync: {
+	      title: "Risky Sync Intercepted",
+	      description: "A significant change in bookmark counts was detected. Auto-sync has been paused.",
+	      riskDescription: "Bookmarks are expected to change from {{from}} to {{to}}, potentially removing about {{loss}} items.",
+	      localBookmarks: "Local bookmarks",
+	      remoteBookmarks: "{{provider}} bookmarks",
+	      continueWithoutBookmarks: "Continue syncing shortcuts and settings",
+	      continueWithoutBookmarksHint: "This will not change bookmarks in this run; only shortcuts and settings will be synced.",
+	      deferBookmarks: "Handle bookmarks later",
+	      advancedActions: "Advanced",
+	      useRemotePlain: "Keep {{provider}} bookmarks (local will be replaced)",
+	      useLocalPlain: "Keep local bookmarks ({{provider}} will be replaced)",
+	      toast: {
+	        skipBookmarks: "This run will skip bookmarks and sync shortcuts and settings only.",
+	        cloudBookmarksDisabled: "Cloud sync is enabled, but “Sync bookmarks” is temporarily turned off.",
+	        webdavBookmarksDisabled: "WebDAV sync is enabled, but “Sync bookmarks” is temporarily turned off."
+	      }
+	    },
+	    leaftabFirstSync: {
+      title: "Initialize Sync",
+      description: "Choose how the first LeafTab sync should handle your browser bookmarks, local LeafTab data, and remote data.",
+      recommended: "Recommended",
+      processingBadge: "Processing",
+      processingInline: "Initializing sync in background, please wait...",
+      processingFooter: "Initializing sync in background. Please do not close this window. You'll be returned to normal sync status when finished.",
+      footer: "This step only appears for the first sync. After initialization, LeafTab will use the new merge-based sync mode.",
+      bookmarkScopeDescription: "Bookmarks are synced directly against the real browser root, without making an extra copy. Current scope: {{scope}}."
     },
     sync: {
       cloud: "Cloud",

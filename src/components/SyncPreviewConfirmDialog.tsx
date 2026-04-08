@@ -156,8 +156,7 @@ export function SyncPreviewConfirmDialog({
   onCancel,
   requireDecision = false,
 }: SyncPreviewConfirmDialogProps) {
-  const { t, i18n } = useTranslation();
-  const isZh = i18n.language.startsWith('zh');
+  const { t } = useTranslation();
   const currentChoice = (confirmChoice ?? 'merge') as Exclude<SyncChoice, null>;
 
   const rows = useMemo(
@@ -167,16 +166,16 @@ export function SyncPreviewConfirmDialog({
 
   const hint = useMemo(() => {
     if (currentChoice === 'local') {
-      return isZh ? '右侧划线项将在同步后从云端删除' : 'Strikethrough items on the right will be removed from cloud after sync.';
+      return t('syncPreview.hint.local', { defaultValue: '右侧划线项将在同步后从云端删除' });
     }
     if (currentChoice === 'cloud') {
-      return isZh ? '左侧划线项将在同步后从本地删除' : 'Strikethrough items on the left will be removed from local after sync.';
+      return t('syncPreview.hint.cloud', { defaultValue: '左侧划线项将在同步后从本地删除' });
     }
     if (currentChoice === 'merge') {
-      return isZh ? '合并会保留两侧内容并去重（本地优先）' : 'Merge keeps both sides with deduplication (local-first).';
+      return t('syncPreview.hint.merge', { defaultValue: '合并会保留两侧内容并去重（本地优先）' });
     }
     return description;
-  }, [currentChoice, description, isZh]);
+  }, [currentChoice, description, t]);
 
   const shouldStrike = (side: 'local' | 'cloud', row: CompareRow) => {
     if (currentChoice === 'local' && side === 'cloud') return !!row.cloud && !row.local;
@@ -247,7 +246,7 @@ export function SyncPreviewConfirmDialog({
           <div className="grid grid-cols-2 gap-x-3">
             {rows.length === 0 ? (
               <div className="col-span-2 rounded-xl border border-dashed border-border/70 px-4 py-6 text-center text-sm text-muted-foreground">
-                {isZh ? '未读取到可对比的快捷方式数据' : 'No comparable shortcuts were found.'}
+                {t('syncPreview.noComparable', { defaultValue: '未读取到可对比的快捷方式数据' })}
               </div>
             ) : (
               rows.map((row) => (

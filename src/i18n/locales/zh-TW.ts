@@ -197,6 +197,10 @@ export default {
           authFailed: "WebDAV 驗證失敗，請檢查帳號或密碼",
           policyChangeSyncTriggered: "衝突策略已切換，已依目前策略同步一次",
           intervalChangeSyncTriggered: "同步間隔已調整，已立即同步一次",
+          disableWebdavBeforeCloudLogin: "目前已啟用 WebDAV 同步，請先停用 WebDAV 同步後再登入雲同步",
+          disableWebdavBeforeCloudManage: "目前已啟用 WebDAV 同步，請先停用 WebDAV 同步後再管理雲同步",
+          disableCloudBeforeWebdavEnable: "目前已登入雲同步，請先登出雲同步後再啟用 WebDAV 同步",
+          disableCloudBeforeWebdavConfig: "目前已啟用雲同步，請先停用雲同步後再設定 WebDAV 同步",
           urlRequired: "請先填寫 WebDAV 位址",
           defaultProfileName: "預設設定",
           configured: "已設定，可同步到 WebDAV",
@@ -273,6 +277,7 @@ export default {
         desc: "查看版本資訊與外掛簡介",
         open: "開啟",
         title: "關於 LeafTab",
+        versionLabel: "版本 v{{version}}",
         content: "LeafTab 是一款瀏覽器新分頁外掛。\n提供簡潔美觀的起始頁體驗，支援捷徑管理、桌布/天氣展示，以及雲端同步與 WebDAV 同步等功能。",
         ackTitle: "致謝與開源聲明",
         ackDesc: "LeafTab 使用了以下開源函式庫與資源（點擊可開啟）：",
@@ -358,9 +363,15 @@ export default {
       publishedAt: "發佈時間：{{date}}",
       changelogTitle: "本次更新內容",
       noChangelog: "此版本暫未提供詳細更新日誌。",
+      imageAlt: "LeafTab 更新",
+      badge: "新版本 v{{version}}",
       later: "稍後再說",
       ignoreThisVersion: "忽略此版本",
-      downloadFromGithub: "前往 GitHub 下載"
+      downloadFromGithub: "前往 GitHub 下載",
+      openRelease: "前往 GitHub 下載",
+      sampleNote1: "統一雲同步與 WebDAV 同步設定項互動",
+      sampleNote2: "新增自動更新提示彈窗，可直達 GitHub Release",
+      sampleNote3: "優化更新日誌彈窗排版層級"
     },
     languages: {
       zh: "簡體中文",
@@ -453,7 +464,9 @@ export default {
       delete: "刪除",
       addShortcut: "新增捷徑",
       newShortcut: "新建捷徑",
-      pinToTop: "置頂"
+      pinToTop: "置頂",
+      multiSelect: "多選",
+      cancelMultiSelect: "退出多選"
     },
     sidebar: {
       toggle: "切換側邊欄",
@@ -583,7 +596,7 @@ export default {
         switched: "已切換到：{{name}}"
       }
     },
-    leaftabSyncCenter: {
+	    leaftabSyncCenter: {
       title: "同步中心",
       description: "基於 WebDAV 的同步中心，目前重點支援情景、捷徑與書籤同步。",
       bookmarkScope: "書籤同步範圍：{{scope}}",
@@ -608,11 +621,119 @@ export default {
         ready: "合併同步已就緒",
         readyDescription: "新的同步引擎已可對情景、捷徑，以及瀏覽器書籤根執行推送、拉取與合併同步。"
       },
-      actions: {
-        syncing: "背景同步中..."
-      }
-    },
-    leaftabSyncDialog: {
+	      actions: {
+	        syncing: "背景同步中..."
+	      }
+	    },
+	    leaftabSync: {
+	      provider: {
+	        webdav: "WebDAV 同步",
+	        cloud: "雲同步",
+	        generic: "同步"
+	      },
+	      webdav: {
+	        actions: {
+	          mkcol: "建立目錄",
+	          upload: "寫入",
+	          download: "讀取",
+	          delete: "刪除"
+	        },
+	        error: {
+	          withPath: "WebDAV {{action}}失敗（{{status}}）：{{path}}",
+	          noPath: "WebDAV {{action}}失敗（{{status}}）"
+	        }
+	      },
+	      cloud: {
+	        error: {
+	          lockedTryFix: "雲同步被其他裝置鎖定，已嘗試自動修復；若仍失敗請再試一次",
+	          remoteCommitChanged: "雲端資料剛剛發生變化，請重新同步一次",
+	          parentCommitRequired: "雲端已有新版本，請先拉取最新資料後再覆蓋",
+	          httpStatus: "雲同步失敗（{{status}}）",
+	          generic: "雲同步失敗"
+	        }
+	      }
+	    },
+	    leaftabSyncRunner: {
+	      progressDetailDefault: "正在背景同步，你可以繼續進行其他操作",
+	      permissionTitle: "正在檢查書籤權限",
+	      permissionDetail: "需要確認目前瀏覽器允許存取書籤資料",
+	      bookmarksPermissionDeniedToast: "未授予書籤權限，本次僅同步捷徑與設定",
+	      bookmarksPermissionDeniedToastAlt: "書籤權限未授權，目前僅同步捷徑與設定",
+	      successTitle: "同步完成",
+	      successToastFallback: "同步完成",
+	      successDetailFallback: "本地與雲端已處理完成",
+	      webdav: {
+	        prepareTitle: "正在準備同步資料",
+	        prepareDetail: "正在讀取本地與雲端狀態",
+	        disable: {
+	          title: "正在停用同步",
+	          detail: "正在處理最後一次同步與關閉操作",
+	          finalSyncTitle: "正在同步最後的變更",
+	          closingTitle: "正在關閉同步",
+	          clearingTitle: "正在清理本地資料",
+	          doneTitle: "同步已停用"
+	        }
+	      },
+	      cloud: {
+	        prepareTitle: "正在準備雲同步",
+	        prepareDetail: "正在讀取本地與帳號雲端狀態",
+	        lockConflict: {
+	          autoFixToast: "檢測到雲同步鎖衝突（409），正在自動修復後重試",
+	          autoFixTitle: "檢測到舊雲端鎖，正在自動修復",
+	          autoFixDetail: "正在釋放舊鎖並重新嘗試同步",
+	          failedToast: "雲同步失敗（409）：目前帳號同步鎖被其他裝置占用。請關閉其他裝置同步後重試，或等待約 2 分鐘再試。"
+	        },
+	        commitConflict: {
+	          realignTitle: "檢測到雲端版本變化，正在重新對齊狀態",
+	          realignDetail: "正在等待最新狀態生效後重試"
+	        }
+	      }
+	    },
+	    leaftabSyncActions: {
+	      dataDetail: {
+	        withBookmarks: "正在處理捷徑與書籤資料",
+	        shortcutsOnly: "正在處理捷徑資料"
+	      },
+	      bookmarksPermissionRequired: "未授予書籤權限，無法執行修復同步",
+	      webdav: {
+	        inProgress: "WebDAV 同步正在進行中，請稍候",
+	        syncingTitle: "正在同步到 WebDAV",
+	        repair: {
+	          pullTitle: "正在用 WebDAV 覆蓋本地",
+	          pushTitle: "正在用本地覆蓋 WebDAV",
+	          pullSuccess: "已用 WebDAV 資料覆蓋本地",
+	          pushSuccess: "已用本地資料覆蓋 WebDAV",
+	          pullFailed: "WebDAV 覆蓋本地失敗",
+	          pushFailed: "本地覆蓋 WebDAV 失敗"
+	        }
+	      },
+	      cloud: {
+	        inProgress: "雲同步正在進行中，請稍候",
+	        syncingTitle: "正在同步到雲端",
+	        repair: {
+	          pullTitle: "正在用雲端覆蓋本地",
+	          pushTitle: "正在用本地覆蓋雲端",
+	          pullSuccess: "已用雲端資料覆蓋本地",
+	          pushSuccess: "已用本地資料覆蓋雲端"
+	        }
+	      }
+	    },
+	    syncPreview: {
+	      hint: {
+	        local: "右側刪除線項目將在同步後從雲端刪除",
+	        cloud: "左側刪除線項目將在同步後從本地刪除",
+	        merge: "合併會保留兩側內容並去重（本地優先）"
+	      },
+	      noComparable: "未讀取到可對比的捷徑資料"
+	    },
+	    leaftabDangerousSync: {
+	      toast: {
+	        skipBookmarks: "本次將跳過書籤，僅同步捷徑與設定",
+	        cloudBookmarksDisabled: "已啟用雲同步，並暫時關閉「同步書籤」",
+	        webdavBookmarksDisabled: "已啟用 WebDAV 同步，並暫時關閉「同步書籤」"
+	      }
+	    },
+	    leaftabSyncDialog: {
       description: "這裡單獨管理 LeafTab 的同步狀態、手動同步與 WebDAV 設定。",
       scopeDefault: "書籤",
       lastSyncEmpty: "暫無紀錄",
@@ -670,7 +791,7 @@ export default {
         scopeWithLabel: "捷徑、{{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+	    leaftabSyncEncryption: {
       cloudNotEnabledTitle: "當前未開啟雲同步",
       cloudNotEnabledPill: "未開啟",
       webdavNotEnabledTitle: "當前未開啟 WebDAV 同步",
@@ -698,8 +819,18 @@ export default {
         cannotRecover: "忘記這組同步口令後，已有加密同步資料將無法恢復。",
         newDeviceUnlock: "更換裝置或清除本地資料後，需要重新輸入這組同步口令。"
       },
-      deviceUnlockDescription: "當前裝置解鎖後，後續同步無需重複輸入。"
-    },
+	      deviceUnlockDescription: "當前裝置解鎖後，後續同步無需重複輸入。",
+	      errors: {
+	        missingMetadata: "缺少同步加密中繼資料",
+	        incorrectPassphrase: "同步口令不正確",
+	        invalidConfig: "同步加密設定無效"
+	      },
+	      toast: {
+	        saved: "同步口令已儲存",
+	        unlocked: "同步資料已解鎖",
+	        saveFailed: "儲存同步口令失敗"
+	      }
+	    },
     toast: {
       cloudSynced: "已同步雲端配置",
       cloudAutoSyncSuccess: "雲端自動同步成功",

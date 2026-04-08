@@ -1,6 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import ShortcutIcon from './ShortcutIcon';
 
 const {
   resolveCustomIconFromCacheMock,
@@ -20,7 +19,9 @@ vi.mock('@/platform/browserTarget', () => ({
 }));
 
 describe('ShortcutIcon offline cache', () => {
-  beforeEach(() => {
+  let ShortcutIcon: (typeof import('./ShortcutIcon'))['default'];
+
+  beforeEach(async () => {
     localStorage.clear();
     resolveCustomIconFromCacheMock.mockReset();
     resolveCustomIconMock.mockReset();
@@ -32,6 +33,8 @@ describe('ShortcutIcon offline cache', () => {
       url: 'https://icons.example.com/example.png',
       signature: 'sig-example-v1',
     });
+
+    ShortcutIcon = (await vi.importActual<typeof import('./ShortcutIcon')>('./ShortcutIcon')).default;
   });
 
   it('keeps showing an already loaded official icon after offline fallback by using local cache', async () => {

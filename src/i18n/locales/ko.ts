@@ -151,7 +151,7 @@ export default {
         columns: "그리드 열 수",
         rows: "기본 행 수"
       },
-      backup: {
+	      backup: {
         label: "데이터 백업 및 복원",
         description: "로컬 레이아웃 데이터 가져오기/내보내기 (.leaftab)",
         cloudTab: "클라우드 동기화",
@@ -161,7 +161,7 @@ export default {
         importSuccess: "데이터 가져오기에 성공했습니다",
         importError: "데이터 가져오기에 실패했습니다. 파일 형식을 확인하세요.",
         exportSuccess: "데이터 내보내기에 성공했습니다",
-        webdav: {
+	        webdav: {
           entry: "WebDAV 동기화",
           entryDesc: "WebDAV 원격 백업 및 복원을 설정",
           configure: "설정",
@@ -194,13 +194,17 @@ export default {
           uploadError: "WebDAV 동기화에 실패했습니다. 설정을 확인하세요.",
           syncSuccess: "동기화 완료",
           syncError: "동기화 실패. 설정을 확인하세요.",
-          authFailed: "WebDAV 인증에 실패했습니다. 아이디 또는 비밀번호를 확인하세요.",
-          policyChangeSyncTriggered: "충돌 정책을 변경해 현재 정책으로 한 번 동기화했습니다",
-          intervalChangeSyncTriggered: "동기화 간격을 변경해 즉시 한 번 동기화했습니다",
-          urlRequired: "먼저 WebDAV URL을 입력하세요",
-          defaultProfileName: "기본 설정",
-          configured: "설정 완료, 동기화 가능",
-          notConfigured: "미설정, WebDAV 정보를 입력하세요",
+	          authFailed: "WebDAV 인증에 실패했습니다. 아이디 또는 비밀번호를 확인하세요.",
+	          policyChangeSyncTriggered: "충돌 정책을 변경해 현재 정책으로 한 번 동기화했습니다",
+	          intervalChangeSyncTriggered: "동기화 간격을 변경해 즉시 한 번 동기화했습니다",
+	          disableWebdavBeforeCloudLogin: "WebDAV 동기화가 켜져 있습니다. 클라우드 동기화에 로그인하기 전에 WebDAV 동기화를 끄세요.",
+	          disableWebdavBeforeCloudManage: "WebDAV 동기화가 켜져 있습니다. 클라우드 동기화를 관리하기 전에 WebDAV 동기화를 끄세요.",
+	          disableCloudBeforeWebdavEnable: "클라우드 동기화에 로그인되어 있습니다. WebDAV 동기화를 켜기 전에 클라우드 동기화에서 로그아웃하세요.",
+	          disableCloudBeforeWebdavConfig: "클라우드 동기화가 켜져 있습니다. WebDAV 동기화를 설정하기 전에 클라우드 동기화를 끄세요.",
+	          urlRequired: "먼저 WebDAV URL을 입력하세요",
+	          defaultProfileName: "기본 설정",
+	          configured: "설정 완료, 동기화 가능",
+	          notConfigured: "미설정, WebDAV 정보를 입력하세요",
           disabled: "비활성화됨 (WebDAV 동기화 중지됨)",
           lastSyncAt: "마지막 동기화",
           notSynced: "동기화 안 됨",
@@ -273,6 +277,7 @@ export default {
         desc: "버전 정보와 확장 소개",
         open: "열기",
         title: "LeafTab 정보",
+        versionLabel: "버전 v{{version}}",
         content: "LeafTab은 브라우저 새 탭 확장 프로그램입니다.\n바로가기 관리, 배경/날씨 표시, 클라우드 동기화 및 WebDAV 동기화를 제공합니다.",
         ackTitle: "감사의 글",
         ackDesc: "LeafTab은 다음 오픈 소스 라이브러리/리소스를 사용합니다(탭하면 열림):",
@@ -353,9 +358,15 @@ export default {
       publishedAt: "배포일: {{date}}",
       changelogTitle: "변경 사항",
       noChangelog: "이 버전에 대한 상세 릴리스 노트가 없습니다.",
+      imageAlt: "LeafTab 업데이트",
+      badge: "새 버전 v{{version}}",
       later: "나중에",
       ignoreThisVersion: "이 버전 무시",
-      downloadFromGithub: "GitHub에서 다운로드"
+      downloadFromGithub: "GitHub에서 다운로드",
+      openRelease: "GitHub에서 다운로드",
+      sampleNote1: "클라우드 동기화와 WebDAV 동기화 설정 인터랙션을 통합",
+      sampleNote2: "자동 업데이트 알림 팝업 추가 (GitHub Release로 이동)",
+      sampleNote3: "업데이트 로그 팝업 레이아웃 개선"
     },
     languages: {
       zh: "简体中文",
@@ -448,7 +459,9 @@ export default {
       delete: "삭제",
       addShortcut: "바로가기 추가",
       newShortcut: "새 바로가기",
-      pinToTop: "고정"
+      pinToTop: "고정",
+      multiSelect: "다중 선택",
+      cancelMultiSelect: "다중 선택 종료"
     },
     sidebar: {
       toggle: "사이드바 전환",
@@ -578,7 +591,7 @@ export default {
         switched: "{{name}}(으)로 전환됨"
       }
     },
-    leaftabSyncCenter: {
+	    leaftabSyncCenter: {
       title: "동기화 센터",
       description: "WebDAV 기반 동기화 센터로, 시나리오/바로가기/북마크 동기화를 지원합니다.",
       bookmarkScope: "북마크 동기화 범위: {{scope}}",
@@ -603,11 +616,119 @@ export default {
         ready: "병합 동기화 준비됨",
         readyDescription: "새 동기화 엔진은 시나리오/바로가기/브라우저 북마크에 대해 push·pull·병합 동기화를 지원합니다."
       },
-      actions: {
-        syncing: "동기화 중..."
-      }
-    },
-    leaftabSyncDialog: {
+	      actions: {
+	        syncing: "동기화 중..."
+	      }
+	    },
+	    leaftabSync: {
+	      provider: {
+	        webdav: "WebDAV 동기화",
+	        cloud: "클라우드 동기화",
+	        generic: "동기화"
+	      },
+	      webdav: {
+	        actions: {
+	          mkcol: "폴더 생성",
+	          upload: "쓰기",
+	          download: "읽기",
+	          delete: "삭제"
+	        },
+	        error: {
+	          withPath: "WebDAV {{action}} 실패({{status}}): {{path}}",
+	          noPath: "WebDAV {{action}} 실패({{status}})"
+	        }
+	      },
+	      cloud: {
+	        error: {
+	          lockedTryFix: "클라우드 동기화가 다른 기기에 의해 잠겨 있습니다. 자동 복구를 시도했으며, 계속 실패하면 다시 시도해 주세요.",
+	          remoteCommitChanged: "클라우드 데이터가 방금 변경되었습니다. 다시 동기화해 주세요.",
+	          parentCommitRequired: "클라우드에 새 버전이 있습니다. 덮어쓰기 전에 최신 데이터를 먼저 가져오세요.",
+	          httpStatus: "클라우드 동기화 실패({{status}})",
+	          generic: "클라우드 동기화 실패"
+	        }
+	      }
+	    },
+	    leaftabSyncRunner: {
+	      progressDetailDefault: "백그라운드에서 동기화 중입니다. 계속 사용할 수 있습니다.",
+	      permissionTitle: "북마크 권한 확인 중",
+	      permissionDetail: "북마크 데이터에 접근하려면 권한이 필요합니다.",
+	      bookmarksPermissionDeniedToast: "북마크 권한이 없습니다. 이번에는 바로가기와 설정만 동기화합니다.",
+	      bookmarksPermissionDeniedToastAlt: "북마크 권한이 없습니다. 현재는 바로가기와 설정만 동기화합니다.",
+	      successTitle: "동기화 완료",
+	      successToastFallback: "동기화 완료",
+	      successDetailFallback: "로컬과 원격 데이터가 처리되었습니다.",
+	      webdav: {
+	        prepareTitle: "동기화 준비 중",
+	        prepareDetail: "로컬 및 WebDAV 상태를 읽는 중",
+	        disable: {
+	          title: "동기화 비활성화 중",
+	          detail: "마지막 동기화를 실행하고 동기화를 끄는 중",
+	          finalSyncTitle: "마지막 변경 사항 동기화 중",
+	          closingTitle: "동기화 끄는 중",
+	          clearingTitle: "로컬 데이터 정리 중",
+	          doneTitle: "동기화가 비활성화되었습니다"
+	        }
+	      },
+	      cloud: {
+	        prepareTitle: "클라우드 동기화 준비 중",
+	        prepareDetail: "로컬 및 클라우드 계정 상태를 읽는 중",
+	        lockConflict: {
+	          autoFixToast: "클라우드 동기화 잠금 충돌(409)을 감지했습니다. 자동 복구 후 재시도합니다...",
+	          autoFixTitle: "이전 클라우드 잠금 감지, 자동 복구 중",
+	          autoFixDetail: "이전 잠금을 해제하고 동기화를 다시 시도하는 중",
+	          failedToast: "클라우드 동기화 실패(409): 동기화 잠금이 다른 기기에 의해 점유되어 있습니다. 다른 기기에서 동기화를 종료한 뒤 다시 시도하거나, 약 2분 후 다시 시도하세요."
+	        },
+	        commitConflict: {
+	          realignTitle: "클라우드 버전 변경 감지, 상태 재정렬 중",
+	          realignDetail: "최신 상태가 반영된 후 재시도합니다"
+	        }
+	      }
+	    },
+	    leaftabSyncActions: {
+	      dataDetail: {
+	        withBookmarks: "바로가기와 북마크 처리 중",
+	        shortcutsOnly: "바로가기 처리 중"
+	      },
+	      bookmarksPermissionRequired: "북마크 권한이 없습니다. 동기화 복구를 실행할 수 없습니다.",
+	      webdav: {
+	        inProgress: "WebDAV 동기화가 진행 중입니다. 잠시만 기다려 주세요.",
+	        syncingTitle: "WebDAV로 동기화 중",
+	        repair: {
+	          pullTitle: "WebDAV로 로컬을 덮어쓰는 중",
+	          pushTitle: "로컬로 WebDAV를 덮어쓰는 중",
+	          pullSuccess: "WebDAV 데이터로 로컬을 덮어썼습니다",
+	          pushSuccess: "로컬 데이터로 WebDAV를 덮어썼습니다",
+	          pullFailed: "WebDAV로 로컬 덮어쓰기에 실패했습니다",
+	          pushFailed: "로컬로 WebDAV 덮어쓰기에 실패했습니다"
+	        }
+	      },
+	      cloud: {
+	        inProgress: "클라우드 동기화가 진행 중입니다. 잠시만 기다려 주세요.",
+	        syncingTitle: "클라우드로 동기화 중",
+	        repair: {
+	          pullTitle: "클라우드로 로컬을 덮어쓰는 중",
+	          pushTitle: "로컬로 클라우드를 덮어쓰는 중",
+	          pullSuccess: "클라우드 데이터로 로컬을 덮어썼습니다",
+	          pushSuccess: "로컬 데이터로 클라우드를 덮어썼습니다"
+	        }
+	      }
+	    },
+	    syncPreview: {
+	      hint: {
+	        local: "오른쪽 취소선 항목은 동기화 후 클라우드에서 삭제됩니다.",
+	        cloud: "왼쪽 취소선 항목은 동기화 후 로컬에서 삭제됩니다.",
+	        merge: "병합은 양쪽을 유지하고 중복을 제거합니다(로컬 우선)."
+	      },
+	      noComparable: "비교할 수 있는 바로가기 데이터를 찾지 못했습니다."
+	    },
+	    leaftabDangerousSync: {
+	      toast: {
+	        skipBookmarks: "이번에는 북마크를 건너뛰고 바로가기와 설정만 동기화합니다.",
+	        cloudBookmarksDisabled: "클라우드 동기화가 활성화되었고, “북마크 동기화”를 임시로 껐습니다.",
+	        webdavBookmarksDisabled: "WebDAV 동기화가 활성화되었고, “북마크 동기화”를 임시로 껐습니다."
+	      }
+	    },
+	    leaftabSyncDialog: {
       description: "LeafTab 동기화 상태, 수동 동기화, WebDAV 설정을 여기서 관리합니다.",
       scopeDefault: "북마크",
       lastSyncEmpty: "기록 없음",
@@ -665,7 +786,7 @@ export default {
         scopeWithLabel: "바로가기, {{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+	    leaftabSyncEncryption: {
       cloudNotEnabledTitle: "클라우드 동기화가 꺼져 있습니다",
       cloudNotEnabledPill: "꺼짐",
       webdavNotEnabledTitle: "WebDAV 동기화가 꺼져 있습니다",
@@ -693,8 +814,18 @@ export default {
         cannotRecover: "암호문구를 잊어버리면 기존 암호화 동기화 데이터는 복구할 수 없습니다.",
         newDeviceUnlock: "기기를 변경하거나 로컬 데이터를 지우면 다시 입력해야 합니다."
       },
-      deviceUnlockDescription: "이 기기에서 한 번 해제하면 이후 동기화에서는 다시 입력할 필요가 없습니다."
-    },
+	      deviceUnlockDescription: "이 기기에서 한 번 해제하면 이후 동기화에서는 다시 입력할 필요가 없습니다.",
+	      errors: {
+	        missingMetadata: "동기화 암호화 메타데이터가 없습니다",
+	        incorrectPassphrase: "동기화 암호문구가 올바르지 않습니다",
+	        invalidConfig: "동기화 암호화 설정이 올바르지 않습니다"
+	      },
+	      toast: {
+	        saved: "동기화 암호문구가 저장되었습니다",
+	        unlocked: "동기화 데이터가 해제되었습니다",
+	        saveFailed: "동기화 암호문구 저장에 실패했습니다"
+	      }
+	    },
     toast: {
       cloudSynced: "클라우드 설정 동기화됨",
       cloudAutoSyncSuccess: "클라우드 자동 동기화 완료",

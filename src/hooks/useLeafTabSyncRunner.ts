@@ -57,13 +57,14 @@ export async function executeLeafTabSyncRun<TResult, TOptions extends LeafTabSyn
   const progressTaskId = options.progressTaskId
     ?? (options.showProgressIndicator === true ? params.longTask.start(params.getInitialProgressCopy()) : null);
   const shouldManageProgressIndicator = !options.progressTaskId && options.showProgressIndicator === true;
+  const defaultProgressDetail = params.getInitialProgressCopy().detail;
 
   const updateSyncIndicator = (progress: LeafTabSyncEngineProgress) => {
     options.onProgress?.(progress);
     if (!progressTaskId) return;
     params.longTask.update(progressTaskId, {
       title: progress.message,
-      detail: options.progressDetail || '正在后台同步，你可以继续进行其他操作',
+      detail: options.progressDetail || defaultProgressDetail,
       progress: progress.progress,
     });
   };
@@ -103,15 +104,16 @@ export async function executeLeafTabSyncRun<TResult, TOptions extends LeafTabSyn
     });
     if (!result) return null;
 
+    const successText = params.getSuccessText(result);
     await params.onSuccess?.(result, context);
     if (shouldManageProgressIndicator && progressTaskId) {
       params.longTask.finish(progressTaskId, {
-        title: '同步完成',
-        detail: params.getSuccessText(result) || '本地与云端已经处理完成',
+        title: successText || params.getInitialProgressCopy().title,
+        detail: successText || params.getInitialProgressCopy().detail,
       });
     }
     if (!options.silentSuccess) {
-      params.notifySuccess(params.getSuccessText(result) || '同步完成');
+      params.notifySuccess(successText || params.getInitialProgressCopy().title);
     }
     await params.refreshAnalysis?.();
     return result;

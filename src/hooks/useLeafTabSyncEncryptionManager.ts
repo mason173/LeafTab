@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from '@/components/ui/sonner';
+import i18n from '@/i18n';
 import {
   clearLeafTabSyncEncryptionConfig,
   emitLeafTabSyncEncryptionChanged,
@@ -110,17 +111,17 @@ export function useLeafTabSyncEncryptionManager({
         keyBytes = created.keyBytes;
       } else {
         if (!metadata) {
-          throw new Error('缺少同步加密元数据');
+          throw new Error(i18n.t('leaftabSyncEncryption.errors.missingMetadata', { defaultValue: '缺少同步加密元数据' }));
         }
         keyBytes = await deriveLeafTabSyncKey(payload.passphrase, metadata);
         const valid = await verifyLeafTabSyncKey(keyBytes, metadata);
         if (!valid) {
-          throw new Error('同步口令不正确');
+          throw new Error(i18n.t('leaftabSyncEncryption.errors.incorrectPassphrase', { defaultValue: '同步口令不正确' }));
         }
       }
 
       if (!metadata) {
-        throw new Error('同步加密配置无效');
+        throw new Error(i18n.t('leaftabSyncEncryption.errors.invalidConfig', { defaultValue: '同步加密配置无效' }));
       }
 
       writeLeafTabSyncEncryptionConfig(
@@ -129,10 +130,12 @@ export function useLeafTabSyncEncryptionManager({
         serializeLeafTabSyncKeyBytes(keyBytes),
       );
       emitLeafTabSyncEncryptionChanged();
-      toast.success(request.mode === 'setup' ? '同步口令已保存' : '同步数据已解锁');
+      toast.success(request.mode === 'setup'
+        ? i18n.t('leaftabSyncEncryption.toast.saved', { defaultValue: '同步口令已保存' })
+        : i18n.t('leaftabSyncEncryption.toast.unlocked', { defaultValue: '同步数据已解锁' }));
       resolveSyncEncryptionDialog(true);
     } catch (error) {
-      toast.error(String((error as Error)?.message || '保存同步口令失败'));
+      toast.error(String((error as Error)?.message || i18n.t('leaftabSyncEncryption.toast.saveFailed', { defaultValue: '保存同步口令失败' })));
     } finally {
       setSyncEncryptionDialogBusy(false);
     }
@@ -174,7 +177,7 @@ export function useLeafTabSyncEncryptionManager({
     setLeafTabSyncDialogOpen(false);
     setWebdavDialogOpen(false);
     return ensureSyncEncryptionAccess({
-      providerLabel: 'WebDAV 同步',
+      providerLabel: i18n.t('leaftabSync.provider.webdav', { defaultValue: 'WebDAV 同步' }),
       scopeKey: leafTabWebdavEncryptionScopeKey,
       transport: leafTabWebdavEncryptedTransport,
     });
@@ -190,7 +193,7 @@ export function useLeafTabSyncEncryptionManager({
     setLeafTabSyncDialogOpen(false);
     setCloudSyncConfigOpen(false);
     return ensureSyncEncryptionAccess({
-      providerLabel: '云同步',
+      providerLabel: i18n.t('leaftabSync.provider.cloud', { defaultValue: '云同步' }),
       scopeKey: cloudSyncEncryptionScopeKey,
       transport: cloudSyncEncryptedTransport,
     });
