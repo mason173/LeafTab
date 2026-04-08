@@ -1,5 +1,6 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { persistShortcutCustomIcon } from '@/utils/shortcutCustomIcons';
 
 const {
   resolveCustomIconFromCacheMock,
@@ -79,5 +80,31 @@ describe('ShortcutIcon offline cache', () => {
     const secondImg = second.container.querySelector('img');
     expect(secondImg).not.toBeNull();
     expect(secondImg?.getAttribute('src') || '').toMatch(/^data:image\//);
+  });
+
+  it('refreshes immediately when a stored custom icon is replaced', async () => {
+    resolveCustomIconFromCacheMock.mockReturnValue(null);
+    resolveCustomIconMock.mockResolvedValue(null);
+
+    const view = render(
+      <ShortcutIcon
+        icon=""
+        url="https://example.com/path"
+        shortcutId="shortcut-1"
+        frame="never"
+        fallbackStyle="emptyicon"
+        fallbackLabel="Example"
+      />,
+    );
+
+    expect(view.container.querySelector('image')).toBeNull();
+
+    persistShortcutCustomIcon('shortcut-1', 'data:image/png;base64,updated-custom-icon');
+
+    await waitFor(() => {
+      const customImage = view.container.querySelector('image');
+      expect(customImage).not.toBeNull();
+      expect(customImage?.getAttribute('href')).toBe('data:image/png;base64,updated-custom-icon');
+    });
   });
 });

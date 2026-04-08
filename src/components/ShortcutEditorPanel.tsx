@@ -16,7 +16,7 @@ import {
   SHORTCUT_ICON_COLOR_PALETTE,
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
-import { RiCheckFill } from '@/icons/ri-compat';
+import { RiCheckFill, RiPencilFill } from '@/icons/ri-compat';
 
 interface ShortcutEditorPanelProps {
   mode: 'add' | 'edit';
@@ -313,12 +313,22 @@ export function ShortcutEditorPanel({
 
   const handleCustomButtonClick = () => {
     if (customIconLoading) return;
-    if (hasCustomIcon && selectedSource !== 'custom') {
-      setUserAdjustedIconSource(true);
-      setUseOfficialIcon(false);
-      setSelectedSource('custom');
+    if (hasCustomIcon) {
+      if (selectedSource !== 'custom') {
+        setUserAdjustedIconSource(true);
+        setUseOfficialIcon(false);
+        setSelectedSource('custom');
+      }
       return;
     }
+    if (customFileInputRef.current) {
+      customFileInputRef.current.value = '';
+      customFileInputRef.current.click();
+    }
+  };
+
+  const handleCustomPreviewClick = () => {
+    if (customIconLoading || !hasCustomIcon) return;
     if (customFileInputRef.current) {
       customFileInputRef.current.value = '';
       customFileInputRef.current.click();
@@ -346,6 +356,47 @@ export function ShortcutEditorPanel({
     }
   };
 
+  const previewNode = (
+    <ShortcutIcon
+      icon={initialShortcut?.icon || ''}
+      url={url}
+      shortcutId={initialShortcutId}
+      localCustomIconDataUrl={selectedSource === 'custom' ? customIconDataUrl : ''}
+      allowStoredCustomIcon={false}
+      size={previewSize}
+      frame="never"
+      fallbackStyle="emptyicon"
+      fallbackLabel={title}
+      useOfficialIcon={officialIconAvailable ? useOfficialIcon : false}
+      autoUseOfficialIcon={autoUseOfficialIcon}
+      officialIconAvailableAtSave={officialIconAvailable}
+      iconRendering={iconRendering}
+      iconColor={effectivePreviewColor}
+    />
+  );
+
+  const shouldShowCustomPreviewAction = selectedSource === 'custom' && hasCustomIcon;
+
+  const previewContent = shouldShowCustomPreviewAction ? (
+    <button
+      type="button"
+      onClick={handleCustomPreviewClick}
+      disabled={customIconLoading}
+      data-testid="shortcut-custom-preview-trigger"
+      aria-label={t('shortcutModal.icon.modeCustomReplaceShort', { defaultValue: '更改' })}
+      className="group relative inline-flex rounded-[22px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      {previewNode}
+      <span className="pointer-events-none absolute inset-0 flex items-end justify-center rounded-[22px] bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/28 group-hover:opacity-100 group-focus-visible:bg-black/28 group-focus-visible:opacity-100">
+        <span className="mb-1.5 flex size-8 items-center justify-center rounded-full bg-black/45 text-white shadow-sm">
+          <RiPencilFill className="size-4" />
+        </span>
+      </span>
+    </button>
+  ) : (
+    previewNode
+  );
+
   return (
     <div className={containerClassName ?? 'flex flex-col'}>
       <div className="space-y-1">
@@ -355,22 +406,7 @@ export function ShortcutEditorPanel({
 
       <div className={bodyClassName ?? 'no-scrollbar mt-6 flex max-h-[min(560px,calc(100vh-180px))] flex-col gap-7 overflow-y-auto'}>
         <div className="flex justify-center pt-1">
-          <ShortcutIcon
-            icon={initialShortcut?.icon || ''}
-            url={url}
-            shortcutId={initialShortcutId}
-            localCustomIconDataUrl={selectedSource === 'custom' ? customIconDataUrl : ''}
-            allowStoredCustomIcon={false}
-            size={previewSize}
-            frame="never"
-            fallbackStyle="emptyicon"
-            fallbackLabel={title}
-            useOfficialIcon={officialIconAvailable ? useOfficialIcon : false}
-            autoUseOfficialIcon={autoUseOfficialIcon}
-            officialIconAvailableAtSave={officialIconAvailable}
-            iconRendering={iconRendering}
-            iconColor={effectivePreviewColor}
-          />
+          {previewContent}
         </div>
 
         <div className={`flex w-full flex-col items-center ${compact ? 'gap-4' : 'gap-5'}`}>
@@ -423,9 +459,7 @@ export function ShortcutEditorPanel({
               onClick={handleCustomButtonClick}
               label={customIconLoading
                 ? t('shortcutModal.icon.modeCustomLoadingShort', { defaultValue: '处理中' })
-                : selectedSource === 'custom' && hasCustomIcon
-                  ? t('shortcutModal.icon.modeCustomReplaceShort', { defaultValue: '更改' })
-                  : t('shortcutModal.icon.modeCustomShort', { defaultValue: '自定义' })}
+                : t('shortcutModal.icon.modeCustomShort', { defaultValue: '自定义' })}
               testId="shortcut-icon-mode-custom"
               disabled={customIconLoading}
               compact={compact}

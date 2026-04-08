@@ -13,7 +13,10 @@ import {
   queueCachedLocalStorageSetItem,
   readCachedLocalStorageItem,
 } from '@/utils/cachedLocalStorage';
-import { readShortcutCustomIcon } from '@/utils/shortcutCustomIcons';
+import {
+  readShortcutCustomIcon,
+  SHORTCUT_CUSTOM_ICON_CHANGED_EVENT,
+} from '@/utils/shortcutCustomIcons';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -323,13 +326,35 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
   const resolvedIconRendering = normalizeShortcutVisualMode(iconRendering);
-  const storedLocalCustomIconDataUrl = allowStoredCustomIcon ? readShortcutCustomIcon(shortcutId) : '';
+  const [storedLocalCustomIconDataUrl, setStoredLocalCustomIconDataUrl] = useState<string>(() => (
+    allowStoredCustomIcon ? readShortcutCustomIcon(shortcutId) : ''
+  ));
   const effectiveLocalCustomIconDataUrl = (localCustomIconDataUrl || storedLocalCustomIconDataUrl || '').trim();
 
   useEffect(() => {
     setCachedFavicon(domain ? getCachedFavicon(domain) : '');
     setCachedOfficialIcon(domain ? getCachedOfficialIcon(domain) : '');
   }, [domain]);
+
+  useEffect(() => {
+    setStoredLocalCustomIconDataUrl(allowStoredCustomIcon ? readShortcutCustomIcon(shortcutId) : '');
+  }, [allowStoredCustomIcon, shortcutId]);
+
+  useEffect(() => {
+    if (!allowStoredCustomIcon || !shortcutId) return;
+
+    const normalizedShortcutId = String(shortcutId).trim();
+    const handleCustomIconChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ shortcutId?: string }>).detail;
+      if (!detail?.shortcutId || detail.shortcutId !== normalizedShortcutId) return;
+      setStoredLocalCustomIconDataUrl(readShortcutCustomIcon(normalizedShortcutId));
+    };
+
+    window.addEventListener(SHORTCUT_CUSTOM_ICON_CHANGED_EVENT, handleCustomIconChanged);
+    return () => {
+      window.removeEventListener(SHORTCUT_CUSTOM_ICON_CHANGED_EVENT, handleCustomIconChanged);
+    };
+  }, [allowStoredCustomIcon, shortcutId]);
 
   useEffect(() => {
     if (!firefox) {

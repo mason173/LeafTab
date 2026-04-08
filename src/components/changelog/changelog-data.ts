@@ -19,6 +19,15 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.6",
+    date: "2026-04-08",
+    notes: [
+      t("changelog.items.release146CustomIconPreviewReplace", { defaultValue: "快捷方式自定义图标支持直接点击预览图进行替换，操作更顺手" }),
+      t("changelog.items.release146CustomIconLiveRefresh", { defaultValue: "本地自定义图标被替换后，快捷方式图标会立即刷新显示" }),
+      t("changelog.items.release146CustomIconTests", { defaultValue: "补充自定义图标替换与刷新相关测试，提升稳定性" }),
+    ],
+  },
+  {
     version: "1.4.5",
     date: "2026-04-08",
     notes: [
