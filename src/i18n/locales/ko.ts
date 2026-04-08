@@ -578,6 +578,123 @@ export default {
         switched: "{{name}}(으)로 전환됨"
       }
     },
+    leaftabSyncCenter: {
+      title: "동기화 센터",
+      description: "WebDAV 기반 동기화 센터로, 시나리오/바로가기/북마크 동기화를 지원합니다.",
+      bookmarkScope: "북마크 동기화 범위: {{scope}}",
+      summary: "바로가기 {{shortcuts}}개, 시나리오 {{scenarios}}개, 북마크 {{bookmarks}}개",
+      stateLabel: "상태",
+      nav: {
+        syncing: "동기화 중",
+        attention: "확인 필요"
+      },
+      status: {
+        syncing: "동기화 중",
+        conflict: "처리 필요",
+        error: "실패",
+        ready: "준비됨"
+      },
+      state: {
+        analyzing: "동기화 상태 분석 중...",
+        syncing: "백그라운드 동기화 중",
+        syncingDescription: "LeafTab이 로컬과 원격 차이를 비교하고 변경 사항을 반영하고 있습니다. 완료될 때까지 기다려 주세요.",
+        initRequired: "초기화 필요",
+        initDescription: "로컬과 원격 모두에 데이터가 있습니다. 먼저 초기화 방식을 선택한 뒤 동기화를 시작하세요.",
+        ready: "병합 동기화 준비됨",
+        readyDescription: "새 동기화 엔진은 시나리오/바로가기/브라우저 북마크에 대해 push·pull·병합 동기화를 지원합니다."
+      },
+      actions: {
+        syncing: "동기화 중..."
+      }
+    },
+    leaftabSyncDialog: {
+      description: "LeafTab 동기화 상태, 수동 동기화, WebDAV 설정을 여기서 관리합니다.",
+      scopeDefault: "북마크",
+      lastSyncEmpty: "기록 없음",
+      lastSyncUnavailable: "미동기화",
+      manualSyncOnly: "현재는 수동 동기화만 가능",
+      autoSyncOn: "자동 동기화가 켜져 있습니다",
+      enableSync: "동기화 활성화",
+      repair: "동기화 복구",
+      cloudOverwriteLocal: "클라우드가 로컬을 덮어쓰기",
+      localOverwriteCloud: "로컬이 클라우드를 덮어쓰기",
+      remoteOverwriteLocal: "WebDAV가 로컬을 덮어쓰기",
+      localOverwriteRemote: "로컬이 WebDAV를 덮어쓰기",
+      tabs: {
+        cloud: "클라우드",
+        webdav: "WebDAV"
+      },
+      metrics: {
+        localShortcuts: "로컬 바로가기",
+        localBookmarks: "로컬 북마크",
+        remoteShortcuts: "원격 바로가기",
+        remoteBookmarks: "원격 북마크"
+      },
+      details: {
+        lastSync: "마지막 동기화",
+        nextSync: "다음 동기화",
+        scope: "동기화 범위"
+      },
+      cloud: {
+        bookmarkSyncDisabledBanner: "북마크 동기화가 꺼져 있습니다. 현재는 바로가기와 설정만 동기화됩니다.",
+        enableBookmarkSyncAction: "켜기",
+        connectedFallback: "LeafTab 계정",
+        unsignedTitle: "로그인 필요",
+        unsignedSubtitle: "로그인하여 데이터를 동기화",
+        loginToStart: "로그인 후 설정",
+        signedOut: "로그아웃됨",
+        connectedSubtitle: "로그인됨, LeafTab 데이터 동기화 가능",
+        disabledSubtitle: "로그인됨, 클라우드 설정에서 동기화를 켤 수 있습니다",
+        openSettingsToEnable: "켜기",
+        ready: "연결됨",
+        disabled: "비활성",
+        error: "실패",
+        enableViaSettings: "동기화 켜기",
+        manage: "클라우드 동기화 관리",
+        scopeRich: "바로가기, {{scope}}",
+        scopeShortcutsOnly: "바로가기와 설정만"
+      },
+      webdav: {
+        connectedFallback: "WebDAV",
+        unconfiguredTitle: "WebDAV 미사용",
+        unconfiguredSubtitle: "미설정 상태입니다. 먼저 설정해 주세요.",
+        enabledSubtitle: "설정됨, WebDAV로 동기화합니다",
+        disabledSubtitle: "설정됨, 동기화가 비활성입니다",
+        configureToStart: "설정 후 시작",
+        enableToStart: "설정됨, 활성화 필요",
+        scopeWithLabel: "바로가기, {{scope}}"
+      }
+    },
+    leaftabSyncEncryption: {
+      cloudNotEnabledTitle: "클라우드 동기화가 꺼져 있습니다",
+      cloudNotEnabledPill: "꺼짐",
+      webdavNotEnabledTitle: "WebDAV 동기화가 꺼져 있습니다",
+      webdavNotEnabledPill: "꺼짐",
+      statusReadyTitle: "종단간 암호화가 켜져 있습니다",
+      statusMissingTitle: "동기화 암호문구가 설정되지 않았습니다",
+      statusReadyPill: "보호됨",
+      statusMissingPill: "미설정",
+      setupTitle: "동기화 암호문구 설정",
+      unlockTitle: "동기화 암호문구 입력",
+      setupDescription: "{{provider}}에 사용할 종단간 암호화 암호문구를 설정합니다. 서버는 동기화 내용을 볼 수 없고 이 암호문구도 복구할 수 없습니다.",
+      unlockDescription: "{{provider}}의 동기화 암호문구를 입력해 암호화된 데이터를 이 기기에서 해독합니다.",
+      setupConfirm: "저장",
+      unlockConfirm: "동기화 해제",
+      e2eeSetupDescription: "데이터는 로컬에서 암호화된 후 클라우드/WebDAV로 업로드됩니다. 이 암호문구를 가진 기기만 해독할 수 있습니다.",
+      e2eeUnlockDescription: "동기화 데이터는 클라우드에 암호화된 형태로 저장됩니다. 올바른 암호문구를 입력하면 이 기기에서 해독해 읽을 수 있습니다.",
+      passphraseLabel: "동기화 암호문구",
+      passphrasePlaceholder: "최소 8자, 영문/숫자 조합 권장",
+      passphraseHint: "계정 로그인 비밀번호가 아니라 동기화 전용 암호문구입니다.",
+      confirmLabel: "암호문구 확인",
+      confirmPlaceholder: "다시 입력하여 확인",
+      setupChecklistTitle: "계속하기 전에 확인하세요",
+      checklist: {
+        serverCannotAccess: "이 암호문구는 저장되지 않으며, 암호화된 동기화 내용도 볼 수 없습니다.",
+        cannotRecover: "암호문구를 잊어버리면 기존 암호화 동기화 데이터는 복구할 수 없습니다.",
+        newDeviceUnlock: "기기를 변경하거나 로컬 데이터를 지우면 다시 입력해야 합니다."
+      },
+      deviceUnlockDescription: "이 기기에서 한 번 해제하면 이후 동기화에서는 다시 입력할 필요가 없습니다."
+    },
     toast: {
       cloudSynced: "클라우드 설정 동기화됨",
       cloudAutoSyncSuccess: "클라우드 자동 동기화 완료",

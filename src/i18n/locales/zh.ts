@@ -703,7 +703,91 @@ export default {
       webdavLastSync: "上次同步：{{value}}",
       lastError: "最近一次错误",
       disableSync: "停用同步",
-      enableSync: "启用同步"
+      enableSync: "启用同步",
+      scopeDefault: "书签",
+      lastSyncEmpty: "暂无记录",
+      lastSyncUnavailable: "未同步",
+      manualSyncOnly: "当前仅手动同步",
+      autoSyncOn: "自动同步已开启",
+      repair: "修复同步",
+      cloudOverwriteLocal: "云端覆盖本地",
+      localOverwriteCloud: "本地覆盖云端",
+      remoteOverwriteLocal: "WebDAV 覆盖本地",
+      localOverwriteRemote: "本地覆盖 WebDAV",
+      tabs: {
+        cloud: "云同步",
+        webdav: "WebDAV 同步"
+      },
+      metrics: {
+        localShortcuts: "本地快捷方式",
+        localBookmarks: "本地书签",
+        remoteShortcuts: "云端快捷方式",
+        remoteBookmarks: "云端书签"
+      },
+      details: {
+        lastSync: "上次同步",
+        nextSync: "下次同步",
+        scope: "同步范围"
+      },
+      cloud: {
+        bookmarkSyncDisabledBanner: "未开启书签同步，当前只会同步快捷方式和设置。",
+        enableBookmarkSyncAction: "去开启",
+        connectedFallback: "LeafTab 账号",
+        unsignedTitle: "未登录",
+        unsignedSubtitle: "登录以同步数据",
+        loginToStart: "登录后设置",
+        signedOut: "未登录",
+        connectedSubtitle: "已登录，可同步 LeafTab 数据",
+        disabledSubtitle: "已登录，可在云同步设置里开启同步",
+        openSettingsToEnable: "前往开启",
+        ready: "已连接",
+        disabled: "未启用",
+        error: "同步失败",
+        enableViaSettings: "前往开启同步",
+        manage: "管理云同步",
+        scopeRich: "快捷方式、{{scope}}",
+        scopeShortcutsOnly: "仅快捷方式和设置"
+      },
+      webdav: {
+        connectedFallback: "WebDAV",
+        unconfiguredTitle: "WebDAV 未开启",
+        unconfiguredSubtitle: "未配置，先去配置",
+        enabledSubtitle: "已配置，可同步到 WebDAV",
+        disabledSubtitle: "已配置，尚未启用同步",
+        configureToStart: "配置后设置",
+        enableToStart: "已配置，待启用",
+        scopeWithLabel: "快捷方式、{{scope}}"
+      }
+    },
+    leaftabSyncEncryption: {
+      cloudNotEnabledTitle: "当前未开启云同步",
+      cloudNotEnabledPill: "未开启",
+      webdavNotEnabledTitle: "当前未开启 WebDAV 同步",
+      webdavNotEnabledPill: "未开启",
+      statusReadyTitle: "端到端加密已开启",
+      statusMissingTitle: "同步口令尚未设置",
+      statusReadyPill: "已保护",
+      statusMissingPill: "未设置",
+      setupTitle: "设置同步口令",
+      unlockTitle: "输入同步口令",
+      setupDescription: "为 {{provider}} 设置端到端加密口令。服务器无法查看你的同步内容，也无法帮你找回这个口令。",
+      unlockDescription: "请输入 {{provider}} 的同步口令以解锁云端密文数据。",
+      setupConfirm: "保存口令",
+      unlockConfirm: "解锁同步",
+      e2eeSetupDescription: "你的数据会先在本地加密，再上传到云端或 WebDAV。只有输入这组同步口令的设备，才能解锁和读取同步内容。",
+      e2eeUnlockDescription: "同步数据在云端保存的是加密内容。输入正确的同步口令后，当前设备才能在本地解锁并读取这些数据。",
+      passphraseLabel: "同步口令",
+      passphrasePlaceholder: "至少 8 位，建议包含字母和数字",
+      passphraseHint: "这是同步专用口令，不是账号登录密码。",
+      confirmLabel: "再次输入同步口令",
+      confirmPlaceholder: "再次输入用于确认",
+      setupChecklistTitle: "继续前请确认以下事项",
+      checklist: {
+        serverCannotAccess: "我们不保存这组同步口令，也无法看到你加密后的同步内容。",
+        cannotRecover: "忘记这组同步口令后，已有加密同步数据将无法恢复。",
+        newDeviceUnlock: "更换设备或清除本地数据后，需要重新输入这组同步口令。"
+      },
+      deviceUnlockDescription: "当前设备解锁后，后续同步无需重复输入。"
     },
     leaftabFirstSync: {
       title: "初始化同步",

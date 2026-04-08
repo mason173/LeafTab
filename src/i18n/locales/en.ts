@@ -835,6 +835,123 @@ export default {
       shortcutCreateFailed: "Unable to create shortcut",
       alreadyOnPage: "Already on the current page"
     },
+    leaftabSyncCenter: {
+      title: "Sync Center",
+      description: "A WebDAV-based sync center focused on scenarios, shortcuts, and bookmarks.",
+      bookmarkScope: "Bookmark sync scope: {{scope}}",
+      summary: "{{shortcuts}} shortcuts, {{scenarios}} scenarios, {{bookmarks}} bookmarks",
+      stateLabel: "Status",
+      nav: {
+        syncing: "Syncing",
+        attention: "Needs attention"
+      },
+      status: {
+        syncing: "Syncing",
+        conflict: "Action required",
+        error: "Failed",
+        ready: "Ready"
+      },
+      state: {
+        analyzing: "Analyzing sync status...",
+        syncing: "Syncing in background",
+        syncingDescription: "LeafTab is comparing local and remote data and writing back changes. Just wait for it to finish.",
+        initRequired: "Initialization required",
+        initDescription: "Both local and remote have data. Choose an initialization strategy first, then background sync can start.",
+        ready: "Merge sync is ready",
+        readyDescription: "The new sync engine can push, pull, and merge scenarios, shortcuts, and your browser bookmarks root."
+      },
+      actions: {
+        syncing: "Syncing..."
+      }
+    },
+    leaftabSyncDialog: {
+      description: "Manage LeafTab sync status, manual sync, and WebDAV configuration here.",
+      scopeDefault: "Bookmarks",
+      lastSyncEmpty: "No records",
+      lastSyncUnavailable: "Not synced",
+      manualSyncOnly: "Manual sync only",
+      autoSyncOn: "Auto sync is on",
+      enableSync: "Enable sync",
+      repair: "Repair sync",
+      cloudOverwriteLocal: "Cloud overwrites local",
+      localOverwriteCloud: "Local overwrites cloud",
+      remoteOverwriteLocal: "WebDAV overwrites local",
+      localOverwriteRemote: "Local overwrites WebDAV",
+      tabs: {
+        cloud: "Cloud",
+        webdav: "WebDAV"
+      },
+      metrics: {
+        localShortcuts: "Local shortcuts",
+        localBookmarks: "Local bookmarks",
+        remoteShortcuts: "Remote shortcuts",
+        remoteBookmarks: "Remote bookmarks"
+      },
+      details: {
+        lastSync: "Last sync",
+        nextSync: "Next sync",
+        scope: "Scope"
+      },
+      cloud: {
+        bookmarkSyncDisabledBanner: "Bookmark sync is off. Currently only shortcuts and settings will be synced.",
+        enableBookmarkSyncAction: "Turn on",
+        connectedFallback: "LeafTab account",
+        unsignedTitle: "Signed out",
+        unsignedSubtitle: "Sign in to sync",
+        loginToStart: "Sign in to configure",
+        signedOut: "Signed out",
+        connectedSubtitle: "Signed in, syncing LeafTab data",
+        disabledSubtitle: "Signed in, enable sync in Cloud settings",
+        openSettingsToEnable: "Enable",
+        ready: "Connected",
+        disabled: "Disabled",
+        error: "Failed",
+        enableViaSettings: "Enable sync",
+        manage: "Manage cloud sync",
+        scopeRich: "Shortcuts, {{scope}}",
+        scopeShortcutsOnly: "Shortcuts & settings only"
+      },
+      webdav: {
+        connectedFallback: "WebDAV",
+        unconfiguredTitle: "WebDAV not enabled",
+        unconfiguredSubtitle: "Not configured, set it up first",
+        enabledSubtitle: "Configured, syncing to WebDAV",
+        disabledSubtitle: "Configured, sync is disabled",
+        configureToStart: "Configure",
+        enableToStart: "Configured, enable to start",
+        scopeWithLabel: "Shortcuts, {{scope}}"
+      }
+    },
+    leaftabSyncEncryption: {
+      cloudNotEnabledTitle: "Cloud sync is off",
+      cloudNotEnabledPill: "Off",
+      webdavNotEnabledTitle: "WebDAV sync is off",
+      webdavNotEnabledPill: "Off",
+      statusReadyTitle: "End-to-end encryption is on",
+      statusMissingTitle: "Sync passphrase not set",
+      statusReadyPill: "Protected",
+      statusMissingPill: "Not set",
+      setupTitle: "Set sync passphrase",
+      unlockTitle: "Enter sync passphrase",
+      setupDescription: "Set an end-to-end encryption passphrase for {{provider}}. The server can't read your data or recover this passphrase.",
+      unlockDescription: "Enter the sync passphrase for {{provider}} to unlock encrypted cloud data.",
+      setupConfirm: "Save passphrase",
+      unlockConfirm: "Unlock sync",
+      e2eeSetupDescription: "Your data is encrypted locally before being uploaded to cloud or WebDAV. Only devices with this passphrase can decrypt it.",
+      e2eeUnlockDescription: "Synced data is stored encrypted in the cloud. Enter the correct passphrase to decrypt it on this device.",
+      passphraseLabel: "Sync passphrase",
+      passphrasePlaceholder: "At least 8 characters; letters and numbers recommended",
+      passphraseHint: "This is for sync encryption, not your account password.",
+      confirmLabel: "Confirm passphrase",
+      confirmPlaceholder: "Re-enter to confirm",
+      setupChecklistTitle: "Before you continue",
+      checklist: {
+        serverCannotAccess: "We do not store this passphrase and cannot read your encrypted sync data.",
+        cannotRecover: "If you forget this passphrase, existing encrypted sync data cannot be recovered.",
+        newDeviceUnlock: "When you switch devices or clear local data, you'll need to enter this passphrase again."
+      },
+      deviceUnlockDescription: "After this device is unlocked, you won't need to enter it again for future sync."
+    },
     sync: {
       cloud: "Cloud",
       local: "Local"

@@ -583,6 +583,123 @@ export default {
         switched: "已切換到：{{name}}"
       }
     },
+    leaftabSyncCenter: {
+      title: "同步中心",
+      description: "基於 WebDAV 的同步中心，目前重點支援情景、捷徑與書籤同步。",
+      bookmarkScope: "書籤同步範圍：{{scope}}",
+      summary: "{{shortcuts}} 個捷徑，{{scenarios}} 個情景，{{bookmarks}} 個書籤",
+      stateLabel: "狀態",
+      nav: {
+        syncing: "同步中",
+        attention: "同步異常"
+      },
+      status: {
+        syncing: "同步中",
+        conflict: "需要處理",
+        error: "同步失敗",
+        ready: "就緒"
+      },
+      state: {
+        analyzing: "正在分析同步狀態...",
+        syncing: "正在背景同步",
+        syncingDescription: "LeafTab 正在背景比對本地與雲端差異，並寫回需要更新的資料。畫面沒有卡住，等待完成即可。",
+        initRequired: "需要初始化",
+        initDescription: "本地與雲端都已經有資料，請先選擇首次初始化方式，再開啟背景同步。",
+        ready: "合併同步已就緒",
+        readyDescription: "新的同步引擎已可對情景、捷徑，以及瀏覽器書籤根執行推送、拉取與合併同步。"
+      },
+      actions: {
+        syncing: "背景同步中..."
+      }
+    },
+    leaftabSyncDialog: {
+      description: "這裡單獨管理 LeafTab 的同步狀態、手動同步與 WebDAV 設定。",
+      scopeDefault: "書籤",
+      lastSyncEmpty: "暫無紀錄",
+      lastSyncUnavailable: "未同步",
+      manualSyncOnly: "目前僅手動同步",
+      autoSyncOn: "自動同步已開啟",
+      enableSync: "啟用同步",
+      repair: "修復同步",
+      cloudOverwriteLocal: "雲端覆蓋本地",
+      localOverwriteCloud: "本地覆蓋雲端",
+      remoteOverwriteLocal: "WebDAV 覆蓋本地",
+      localOverwriteRemote: "本地覆蓋 WebDAV",
+      tabs: {
+        cloud: "雲同步",
+        webdav: "WebDAV 同步"
+      },
+      metrics: {
+        localShortcuts: "本地捷徑",
+        localBookmarks: "本地書籤",
+        remoteShortcuts: "雲端捷徑",
+        remoteBookmarks: "雲端書籤"
+      },
+      details: {
+        lastSync: "上次同步",
+        nextSync: "下次同步",
+        scope: "同步範圍"
+      },
+      cloud: {
+        bookmarkSyncDisabledBanner: "未開啟書籤同步，目前只會同步捷徑與設定。",
+        enableBookmarkSyncAction: "去開啟",
+        connectedFallback: "LeafTab 帳號",
+        unsignedTitle: "未登入",
+        unsignedSubtitle: "登入以同步資料",
+        loginToStart: "登入後設定",
+        signedOut: "未登入",
+        connectedSubtitle: "已登入，可同步 LeafTab 資料",
+        disabledSubtitle: "已登入，可在雲同步設定中開啟同步",
+        openSettingsToEnable: "前往開啟",
+        ready: "已連線",
+        disabled: "未啟用",
+        error: "同步失敗",
+        enableViaSettings: "前往開啟同步",
+        manage: "管理雲同步",
+        scopeRich: "捷徑、{{scope}}",
+        scopeShortcutsOnly: "僅捷徑與設定"
+      },
+      webdav: {
+        connectedFallback: "WebDAV",
+        unconfiguredTitle: "WebDAV 未開啟",
+        unconfiguredSubtitle: "未配置，先去配置",
+        enabledSubtitle: "已配置，可同步到 WebDAV",
+        disabledSubtitle: "已配置，尚未啟用同步",
+        configureToStart: "配置後設定",
+        enableToStart: "已配置，待啟用",
+        scopeWithLabel: "捷徑、{{scope}}"
+      }
+    },
+    leaftabSyncEncryption: {
+      cloudNotEnabledTitle: "當前未開啟雲同步",
+      cloudNotEnabledPill: "未開啟",
+      webdavNotEnabledTitle: "當前未開啟 WebDAV 同步",
+      webdavNotEnabledPill: "未開啟",
+      statusReadyTitle: "端到端加密已開啟",
+      statusMissingTitle: "同步口令尚未設定",
+      statusReadyPill: "已保護",
+      statusMissingPill: "未設定",
+      setupTitle: "設定同步口令",
+      unlockTitle: "輸入同步口令",
+      setupDescription: "為 {{provider}} 設定端到端加密口令。伺服器無法查看你的同步內容，也無法幫你找回這個口令。",
+      unlockDescription: "請輸入 {{provider}} 的同步口令以解鎖雲端密文資料。",
+      setupConfirm: "儲存口令",
+      unlockConfirm: "解鎖同步",
+      e2eeSetupDescription: "你的資料會先在本地加密，再上傳到雲端或 WebDAV。只有輸入這組同步口令的裝置，才能解鎖並讀取同步內容。",
+      e2eeUnlockDescription: "同步資料在雲端保存的是加密內容。輸入正確的同步口令後，當前裝置才能在本地解鎖並讀取這些資料。",
+      passphraseLabel: "同步口令",
+      passphrasePlaceholder: "至少 8 位，建議包含字母與數字",
+      passphraseHint: "這是同步專用口令，不是帳號登入密碼。",
+      confirmLabel: "再次輸入口令",
+      confirmPlaceholder: "再次輸入用於確認",
+      setupChecklistTitle: "繼續前請確認以下事項",
+      checklist: {
+        serverCannotAccess: "我們不保存這組同步口令，也無法看到你加密後的同步內容。",
+        cannotRecover: "忘記這組同步口令後，已有加密同步資料將無法恢復。",
+        newDeviceUnlock: "更換裝置或清除本地資料後，需要重新輸入這組同步口令。"
+      },
+      deviceUnlockDescription: "當前裝置解鎖後，後續同步無需重複輸入。"
+    },
     toast: {
       cloudSynced: "已同步雲端配置",
       cloudAutoSyncSuccess: "雲端自動同步成功",

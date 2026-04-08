@@ -9,37 +9,26 @@ function ActionButton({
   icon,
   label,
   variant = 'inverted',
-  disableBackdropBlur = false,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label?: string;
   variant?: 'inverted' | 'default';
-  disableBackdropBlur?: boolean;
 }) {
-  const firefox = isFirefoxBuildTarget();
-  const invertedClass = disableBackdropBlur
-    ? 'bg-white/10 hover:bg-white/20 text-white/90'
-    : firefox
-      ? 'bg-white/12 hover:bg-white/18 text-white/90'
-      : 'bg-white/10 hover:bg-white/20 text-white/90 backdrop-blur-md';
+  const invertedClass = 'text-white/85 hover:text-white';
   return (
     <button
       type="button"
-      className={`content-stretch flex items-center justify-center gap-2 px-[10px] py-[6px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${
+      className={`inline-flex items-center justify-center p-1 shrink-0 cursor-pointer transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
         variant === 'inverted' 
           ? invertedClass
-          : 'bg-secondary hover:bg-secondary/80 text-muted-foreground'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
       onClick={onClick}
       title={label}
       aria-label={label}
     >
-      <div aria-hidden="true" className={`absolute border border-solid inset-0 pointer-events-none rounded-[999px] ${
-        variant === 'inverted' ? 'border-white/10' : 'border-border'
-      }`} />
       {icon}
-      {label ? <span className="text-sm font-medium leading-none">{label}</span> : null}
     </button>
   );
 }
@@ -50,6 +39,7 @@ interface TopNavBarProps {
   syncStatus?: 'idle' | 'syncing' | 'conflict' | 'error';
   hideWeather?: boolean;
   settingsRevealOnHover?: boolean;
+  leftSlotRevealOnHover?: boolean;
   keepControlsVisible?: boolean;
   fadeOnIdle?: boolean;
   onWeatherUpdate?: (code: number) => void;
@@ -65,6 +55,7 @@ export const TopNavBar = memo(function TopNavBar({
   syncStatus = 'idle',
   hideWeather = false,
   settingsRevealOnHover = false,
+  leftSlotRevealOnHover = false,
   keepControlsVisible = false,
   fadeOnIdle = false,
   onWeatherUpdate,
@@ -100,7 +91,6 @@ export const TopNavBar = memo(function TopNavBar({
         icon={syncIcon}
         label={syncLabel}
         variant={variant}
-        disableBackdropBlur={reduceVisualEffects}
       />
     )
     : null;
@@ -111,7 +101,6 @@ export const TopNavBar = memo(function TopNavBar({
         icon={<RiSettings4Fill className="size-4.5" />}
         label={t('common.settings', { defaultValue: '设置' })}
         variant={variant}
-        disableBackdropBlur={reduceVisualEffects}
       />
     )
     : null;
@@ -121,7 +110,11 @@ export const TopNavBar = memo(function TopNavBar({
   const revealClass = settingsRevealOnHover && !keepControlsVisible
     ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
     : 'opacity-100 pointer-events-auto';
+  const leftRevealClass = leftSlotRevealOnHover && !keepControlsVisible
+    ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto'
+    : 'opacity-100 pointer-events-auto';
   const fadeClass = fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : '';
+  const actionFadeClass = fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : '';
 
   return (
     <div className={`relative w-full h-full ${className}`} data-name="TopNavBar">
@@ -135,24 +128,19 @@ export const TopNavBar = memo(function TopNavBar({
 
       {leftSlot ? (
         <div className={`absolute left-0 top-0 ${fadeClass}`}>
-          <div className="pointer-events-auto">
+          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${leftRevealClass}`}>
             {leftSlot}
           </div>
         </div>
       ) : null}
 
-      {syncButton ? (
-        <div className={`absolute right-0 top-0 ${fadeClass}`}>
-          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}>
-            {syncButton}
-          </div>
-        </div>
-      ) : null}
-
-      {settingsNode ? (
-        <div className={`absolute bottom-0 right-0 ${fadeClass}`}>
-          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}>
-            {settingsNode}
+      {syncButton || settingsNode ? (
+        <div className="absolute right-0 top-0">
+          <div
+            className={`flex items-center gap-6 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}
+          >
+            {syncButton ? <div className={actionFadeClass}>{syncButton}</div> : null}
+            {settingsNode ? <div className={actionFadeClass}>{settingsNode}</div> : null}
           </div>
         </div>
       ) : null}

@@ -623,6 +623,123 @@ export default {
       shortcutCreateFailed: "ショートカットを作成できません",
       alreadyOnPage: "すでにこのページです"
     },
+    leaftabSyncCenter: {
+      title: "同期センター",
+      description: "WebDAV ベースの同期センター。シナリオ、ショートカット、ブックマークの同期に対応します。",
+      bookmarkScope: "ブックマーク同期範囲: {{scope}}",
+      summary: "ショートカット {{shortcuts}} 件 / シナリオ {{scenarios}} 件 / ブックマーク {{bookmarks}} 件",
+      stateLabel: "状態",
+      nav: {
+        syncing: "同期中",
+        attention: "要確認"
+      },
+      status: {
+        syncing: "同期中",
+        conflict: "要対応",
+        error: "失敗",
+        ready: "準備完了"
+      },
+      state: {
+        analyzing: "同期状態を解析中...",
+        syncing: "バックグラウンド同期中",
+        syncingDescription: "LeafTab がローカルとクラウドの差分を比較し、必要な更新を書き戻しています。完了までお待ちください。",
+        initRequired: "初期化が必要です",
+        initDescription: "ローカルとクラウドの両方にデータがあります。初回の初期化方式を選択してから同期を開始してください。",
+        ready: "マージ同期の準備完了",
+        readyDescription: "新しい同期エンジンで、シナリオ/ショートカット/ブラウザのブックマークを push・pull・マージできます。"
+      },
+      actions: {
+        syncing: "同期中..."
+      }
+    },
+    leaftabSyncDialog: {
+      description: "LeafTab の同期状態、手動同期、WebDAV 設定をここで管理します。",
+      scopeDefault: "ブックマーク",
+      lastSyncEmpty: "記録なし",
+      lastSyncUnavailable: "未同期",
+      manualSyncOnly: "手動同期のみ",
+      autoSyncOn: "自動同期が有効です",
+      enableSync: "同期を有効化",
+      repair: "同期を修復",
+      cloudOverwriteLocal: "クラウドでローカルを上書き",
+      localOverwriteCloud: "ローカルでクラウドを上書き",
+      remoteOverwriteLocal: "WebDAV でローカルを上書き",
+      localOverwriteRemote: "ローカルで WebDAV を上書き",
+      tabs: {
+        cloud: "クラウド",
+        webdav: "WebDAV"
+      },
+      metrics: {
+        localShortcuts: "ローカルショートカット",
+        localBookmarks: "ローカルブックマーク",
+        remoteShortcuts: "クラウドショートカット",
+        remoteBookmarks: "クラウドブックマーク"
+      },
+      details: {
+        lastSync: "前回同期",
+        nextSync: "次回同期",
+        scope: "同期範囲"
+      },
+      cloud: {
+        bookmarkSyncDisabledBanner: "ブックマーク同期がオフです。現在はショートカットと設定のみ同期します。",
+        enableBookmarkSyncAction: "有効にする",
+        connectedFallback: "LeafTab アカウント",
+        unsignedTitle: "未ログイン",
+        unsignedSubtitle: "ログインして同期を有効化",
+        loginToStart: "ログインして設定",
+        signedOut: "未ログイン",
+        connectedSubtitle: "ログイン済み。LeafTab データを同期できます。",
+        disabledSubtitle: "ログイン済み。クラウド同期設定で有効化できます。",
+        openSettingsToEnable: "有効化する",
+        ready: "接続済み",
+        disabled: "未有効",
+        error: "失敗",
+        enableViaSettings: "同期を有効化",
+        manage: "クラウド同期を管理",
+        scopeRich: "ショートカット、{{scope}}",
+        scopeShortcutsOnly: "ショートカットと設定のみ"
+      },
+      webdav: {
+        connectedFallback: "WebDAV",
+        unconfiguredTitle: "WebDAV 未有効",
+        unconfiguredSubtitle: "未設定です。先に設定してください。",
+        enabledSubtitle: "設定済み。WebDAV に同期します。",
+        disabledSubtitle: "設定済みですが、同期は無効です。",
+        configureToStart: "設定して開始",
+        enableToStart: "設定済み。同期を有効化してください。",
+        scopeWithLabel: "ショートカット、{{scope}}"
+      }
+    },
+    leaftabSyncEncryption: {
+      cloudNotEnabledTitle: "クラウド同期は無効です",
+      cloudNotEnabledPill: "無効",
+      webdavNotEnabledTitle: "WebDAV 同期は無効です",
+      webdavNotEnabledPill: "無効",
+      statusReadyTitle: "エンドツーエンド暗号化が有効です",
+      statusMissingTitle: "同期パスフレーズが未設定です",
+      statusReadyPill: "保護済み",
+      statusMissingPill: "未設定",
+      setupTitle: "同期パスフレーズを設定",
+      unlockTitle: "同期パスフレーズを入力",
+      setupDescription: "{{provider}} のエンドツーエンド暗号化パスフレーズを設定します。サーバーは同期内容を読めず、このパスフレーズも復元できません。",
+      unlockDescription: "{{provider}} の同期パスフレーズを入力して、暗号化されたデータをこの端末で復号します。",
+      setupConfirm: "保存",
+      unlockConfirm: "同期を解錠",
+      e2eeSetupDescription: "データはローカルで暗号化されてからクラウド/WebDAV に送信されます。このパスフレーズを持つ端末だけが復号できます。",
+      e2eeUnlockDescription: "同期データはクラウド上では暗号化されています。正しいパスフレーズを入力すると、この端末で復号して読み取れます。",
+      passphraseLabel: "同期パスフレーズ",
+      passphrasePlaceholder: "8 文字以上。英数字の組み合わせを推奨",
+      passphraseHint: "これは同期用のパスフレーズで、アカウントのログインパスワードではありません。",
+      confirmLabel: "パスフレーズ確認",
+      confirmPlaceholder: "もう一度入力して確認",
+      setupChecklistTitle: "続行する前に確認してください",
+      checklist: {
+        serverCannotAccess: "このパスフレーズは保存しません。暗号化された同期内容も閲覧できません。",
+        cannotRecover: "パスフレーズを忘れると、既存の暗号化同期データは復元できません。",
+        newDeviceUnlock: "端末を変更する、またはローカルデータを消去した場合は再入力が必要です。"
+      },
+      deviceUnlockDescription: "この端末で一度解錠すると、以降の同期では再入力不要です。"
+    },
     sync: {
       cloud: "クラウド",
       local: "ローカル"

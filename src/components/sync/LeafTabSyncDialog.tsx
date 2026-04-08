@@ -240,6 +240,7 @@ function ProviderCard({
   securityCard?: ReactNode;
   actionArea?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const ProviderIcon = model.icon;
 
   return (
@@ -270,10 +271,22 @@ function ProviderCard({
         </div>
 
         <div className="mx-auto grid w-full max-w-[520px] grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-          <MetricTile label="本地快捷方式" value={model.localShortcutCount} />
-          <MetricTile label="本地书签" value={model.localBookmarkCount} />
-          <MetricTile label="云端快捷方式" value={model.remoteShortcutCount} />
-          <MetricTile label="云端书签" value={model.remoteBookmarkCount} />
+          <MetricTile
+            label={t('leaftabSyncDialog.metrics.localShortcuts', { defaultValue: '本地快捷方式' })}
+            value={model.localShortcutCount}
+          />
+          <MetricTile
+            label={t('leaftabSyncDialog.metrics.localBookmarks', { defaultValue: '本地书签' })}
+            value={model.localBookmarkCount}
+          />
+          <MetricTile
+            label={t('leaftabSyncDialog.metrics.remoteShortcuts', { defaultValue: '云端快捷方式' })}
+            value={model.remoteShortcutCount}
+          />
+          <MetricTile
+            label={t('leaftabSyncDialog.metrics.remoteBookmarks', { defaultValue: '云端书签' })}
+            value={model.remoteBookmarkCount}
+          />
         </div>
 
         {securityCard ? (
@@ -283,9 +296,18 @@ function ProviderCard({
         ) : null}
 
         <div className="space-y-1">
-          <DetailRow label="上次同步" value={model.lastSyncLabel} />
-          <DetailRow label="下次同步" value={model.nextSyncLabel} />
-          <DetailRow label="同步范围" value={model.scopeLabel} />
+          <DetailRow
+            label={t('leaftabSyncDialog.details.lastSync', { defaultValue: '上次同步' })}
+            value={model.lastSyncLabel}
+          />
+          <DetailRow
+            label={t('leaftabSyncDialog.details.nextSync', { defaultValue: '下次同步' })}
+            value={model.nextSyncLabel}
+          />
+          <DetailRow
+            label={t('leaftabSyncDialog.details.scope', { defaultValue: '同步范围' })}
+            value={model.scopeLabel}
+          />
         </div>
       </div>
 
