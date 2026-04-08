@@ -51,9 +51,9 @@ describe('LeafTabDangerousSyncDialog', () => {
   it('routes advanced overwrite actions through the provided callbacks', () => {
     const props = renderDialog();
 
-    fireEvent.click(screen.getByRole('button', { name: '高级设置' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: '高级设置' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '保留云端书签（本地将被替换）' }));
-    fireEvent.click(screen.getByRole('button', { name: '高级设置' }));
+    fireEvent.pointerDown(screen.getByRole('button', { name: '高级设置' }));
     fireEvent.click(screen.getByRole('menuitem', { name: '保留本地书签（云端将被替换）' }));
 
     expect(props.onUseRemote).toHaveBeenCalledTimes(1);

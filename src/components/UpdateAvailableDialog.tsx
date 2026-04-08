@@ -30,11 +30,11 @@ export function UpdateAvailableDialog({
     if (notes.length > 0) return notes;
     if (!debugSample) return notes;
     return [
-      '统一云同步与 WebDAV 同步设置项交互',
-      '新增自动更新提示弹窗，可直达 GitHub Release',
-      '优化更新日志弹窗排版层级',
+      t('updateNotice.sampleNote1', { defaultValue: '统一云同步与 WebDAV 同步设置项交互' }),
+      t('updateNotice.sampleNote2', { defaultValue: '新增自动更新提示弹窗，可直达 GitHub Release' }),
+      t('updateNotice.sampleNote3', { defaultValue: '优化更新日志弹窗排版层级' }),
     ];
-  }, [debugSample, notes]);
+  }, [debugSample, notes, t]);
 
   const openReleasePage = () => {
     const targetUrl = releaseUrl || (debugSample ? 'https://github.com/mason173/LeafTab/releases' : '');
@@ -49,12 +49,12 @@ export function UpdateAvailableDialog({
         <div className="relative px-3 pt-3 shrink-0">
           <img
             src={leaftabUpdateImage}
-            alt="LeafTab Update"
+            alt={t('updateNotice.imageAlt', { defaultValue: 'LeafTab Update' })}
             className="block w-full h-auto rounded-[20px]"
           />
           {resolvedLatestVersion ? (
             <span className="absolute left-1/2 bottom-5 -translate-x-1/2 inline-flex items-center rounded-full bg-primary text-primary-foreground px-4 py-1.5 text-sm font-semibold shadow-md border border-background/70">
-              新版本 v{resolvedLatestVersion}
+              {t('updateNotice.badge', { defaultValue: '新版本 v{{version}}', version: resolvedLatestVersion })}
             </span>
           ) : null}
         </div>
@@ -82,10 +82,10 @@ export function UpdateAvailableDialog({
 
         <DialogFooter className="px-6 pb-6 pt-4 flex w-full gap-3 sm:gap-3 shrink-0">
           <Button variant="secondary" className="flex-1" onClick={onLater}>
-            稍后提醒
+            {t('updateNotice.later', { defaultValue: '稍后提醒' })}
           </Button>
           <Button className="flex-1" onClick={openReleasePage}>
-            前往 GitHub 下载
+            {t('updateNotice.openRelease', { defaultValue: '前往 GitHub 下载' })}
           </Button>
         </DialogFooter>
       </DialogContent>

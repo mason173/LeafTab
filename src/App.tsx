@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
+import i18n from './i18n';
 import {
   RiArrowDownLine,
   RiArrowUpLine,
@@ -169,18 +170,27 @@ const formatLeafTabSyncErrorMessage = (error: unknown) => {
     const relativePath = String((error as { relativePath?: unknown }).relativePath || '');
     if (Number.isInteger(status) && status > 0 && operation) {
       const actionLabel = operation === 'mkcol'
-        ? '创建目录'
+        ? i18n.t('leaftabSync.webdav.actions.mkcol', { defaultValue: '创建目录' })
         : operation === 'upload'
-          ? '写入'
+          ? i18n.t('leaftabSync.webdav.actions.upload', { defaultValue: '写入' })
           : operation === 'download'
-            ? '读取'
+            ? i18n.t('leaftabSync.webdav.actions.download', { defaultValue: '读取' })
             : operation === 'delete'
-              ? '删除'
+              ? i18n.t('leaftabSync.webdav.actions.delete', { defaultValue: '删除' })
               : operation;
 
       return relativePath
-        ? `WebDAV ${actionLabel}失败（${status}）：${relativePath}`
-        : `WebDAV ${actionLabel}失败（${status}）`;
+        ? i18n.t('leaftabSync.webdav.error.withPath', {
+          action: actionLabel,
+          status,
+          path: relativePath,
+          defaultValue: 'WebDAV {{action}}失败（{{status}}）：{{path}}',
+        })
+        : i18n.t('leaftabSync.webdav.error.noPath', {
+          action: actionLabel,
+          status,
+          defaultValue: 'WebDAV {{action}}失败（{{status}}）',
+        });
     }
   }
 
@@ -222,20 +232,29 @@ const formatCloudSyncErrorMessage = (error: unknown) => {
         /lock is held by another device/i.test(message)
         || /POST\s+\/user\/leaftab-sync\/lock/i.test(operation)
       ) {
-        return '云同步被旧设备锁定，已尝试自动修复；如果仍失败请再试一次';
+        return i18n.t('leaftabSync.cloud.error.lockedTryFix', {
+          defaultValue: '云同步被旧设备锁定，已尝试自动修复；如果仍失败请再试一次',
+        });
       }
       if (/remote commit changed/i.test(message)) {
-        return '云端数据刚刚发生变化，请重新同步一次';
+        return i18n.t('leaftabSync.cloud.error.remoteCommitChanged', {
+          defaultValue: '云端数据刚刚发生变化，请重新同步一次',
+        });
       }
       if (/parent commit required/i.test(message)) {
-        return '云端已有新版本，请先拉取最新数据后再覆盖';
+        return i18n.t('leaftabSync.cloud.error.parentCommitRequired', {
+          defaultValue: '云端已有新版本，请先拉取最新数据后再覆盖',
+        });
       }
     }
 
-    return message || `云同步失败（${error.status}）`;
+    return message || i18n.t('leaftabSync.cloud.error.httpStatus', {
+      status: error.status,
+      defaultValue: '云同步失败（{{status}}）',
+    });
   }
 
-  return String((error as Error)?.message || '云同步失败');
+  return String((error as Error)?.message || i18n.t('leaftabSync.cloud.error.generic', { defaultValue: '云同步失败' }));
 };
 
 const getApiBase = () => {
@@ -1262,13 +1281,14 @@ export default function App() {
     return new LeafTabSyncEncryptedRemoteStore({
       transport: leafTabWebdavEncryptedTransport,
       scopeKey: leafTabWebdavEncryptionScopeKey,
-      scopeLabel: 'WebDAV 同步',
+      scopeLabel: t('leaftabSync.provider.webdav', { defaultValue: 'WebDAV 同步' }),
       rootPath: leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
     });
   }, [
     leafTabSyncWebdavConfig?.rootPath,
     leafTabWebdavEncryptedTransport,
     leafTabWebdavEncryptionScopeKey,
+    t,
   ]);
   const webdavStorageState = useMemo(
     () => readWebdavStorageStateFromStorage(),
@@ -1348,10 +1368,10 @@ export default function App() {
     return new LeafTabSyncEncryptedRemoteStore({
       transport: cloudSyncEncryptedTransport,
       scopeKey: cloudSyncEncryptionScopeKey,
-      scopeLabel: '云同步',
+      scopeLabel: t('leaftabSync.provider.cloud', { defaultValue: '云同步' }),
       rootPath: LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
     });
-  }, [cloudSyncEncryptedTransport, cloudSyncEncryptionScopeKey]);
+  }, [cloudSyncEncryptedTransport, cloudSyncEncryptionScopeKey, t]);
   const cloudSyncBookmarksDisabledRemoteStore = useMemo(() => {
     if (!cloudSyncRemoteStore) return null;
     return new LeafTabSyncBookmarksDisabledRemoteStore(cloudSyncRemoteStore);
@@ -1683,7 +1703,7 @@ export default function App() {
   const webdavDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
   const cloudDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
   const runWebdavSyncWithUi = useLeafTabSyncRunner<LeafTabSyncEngineResult, WebdavLeafTabSyncOptions>({
-    providerLabel: 'WebDAV 同步',
+    providerLabel: t('leaftabSync.provider.webdav', { defaultValue: 'WebDAV 同步' }),
     runSync: (mode, progressOptions) => (
       webdavSkipBookmarksForThisRunRef.current
         ? runLeafTabSyncWithoutBookmarks(mode, progressOptions)
@@ -1699,16 +1719,16 @@ export default function App() {
       clear: clearLongTaskIndicator,
     },
     getInitialProgressCopy: () => ({
-      title: '正在准备同步数据',
-      detail: '正在读取本地与云端状态',
+      title: t('leaftabSyncRunner.webdav.prepareTitle', { defaultValue: '正在准备同步数据' }),
+      detail: t('leaftabSyncRunner.webdav.prepareDetail', { defaultValue: '正在读取本地与云端状态' }),
       progress: 6,
     }),
     getPermissionProgressCopy: (options) => ({
-      title: '正在检查书签权限',
-      detail: options.progressDetail || '需要确认当前浏览器允许访问书签数据',
+      title: t('leaftabSyncRunner.permissionTitle', { defaultValue: '正在检查书签权限' }),
+      detail: options.progressDetail || t('leaftabSyncRunner.permissionDetail', { defaultValue: '需要确认当前浏览器允许访问书签数据' }),
       progress: 10,
     }),
-    getSuccessText: (result) => result.summaryText || '同步完成',
+    getSuccessText: (result) => result.summaryText || t('leaftabSyncRunner.successTitle', { defaultValue: '同步完成' }),
     notifySuccess: (message) => toast.success(message),
     notifyError: (message) => toast.error(message),
     formatErrorMessage: (error) => (
@@ -1778,7 +1798,7 @@ export default function App() {
   ]);
 
   const runCloudSyncWithUi = useLeafTabSyncRunner<LeafTabSyncEngineResult, CloudLeafTabSyncOptions>({
-    providerLabel: '云同步',
+    providerLabel: t('leaftabSync.provider.cloud', { defaultValue: '云同步' }),
     runSync: (mode, progressOptions) => (
       cloudSkipBookmarksForThisRunRef.current
         ? runCloudLeafTabSyncWithoutBookmarks(mode, progressOptions)
@@ -1790,7 +1810,7 @@ export default function App() {
       const granted = await ensureExtensionPermission('bookmarks', { requestIfNeeded: true }).catch(() => false);
       setCloudSyncBookmarksPermissionGranted(Boolean(granted));
       if (!granted && cloudSyncBookmarksConfigured) {
-        toast.info('未授予书签权限，本次仅同步快捷方式和设置');
+        toast.info(t('leaftabSyncRunner.bookmarksPermissionDeniedToast', { defaultValue: '未授予书签权限，本次仅同步快捷方式和设置' }));
       }
       return granted;
     },
@@ -1801,16 +1821,16 @@ export default function App() {
       clear: clearLongTaskIndicator,
     },
     getInitialProgressCopy: () => ({
-      title: '正在准备云同步',
-      detail: '正在读取本地与账号云端状态',
+      title: t('leaftabSyncRunner.cloud.prepareTitle', { defaultValue: '正在准备云同步' }),
+      detail: t('leaftabSyncRunner.cloud.prepareDetail', { defaultValue: '正在读取本地与账号云端状态' }),
       progress: 6,
     }),
     getPermissionProgressCopy: (options) => ({
-      title: '正在检查书签权限',
-      detail: options.progressDetail || '需要确认当前浏览器允许访问书签数据',
+      title: t('leaftabSyncRunner.permissionTitle', { defaultValue: '正在检查书签权限' }),
+      detail: options.progressDetail || t('leaftabSyncRunner.permissionDetail', { defaultValue: '需要确认当前浏览器允许访问书签数据' }),
       progress: 10,
     }),
-    getSuccessText: (result) => result.summaryText || '同步完成',
+    getSuccessText: (result) => result.summaryText || t('leaftabSyncRunner.successTitle', { defaultValue: '同步完成' }),
     notifySuccess: (message) => toast.success(message),
     notifyError: (message) => toast.error(message),
     formatErrorMessage: (error) => formatCloudSyncErrorMessage(error),
@@ -1823,16 +1843,16 @@ export default function App() {
         && !context.options._retriedAfterForceUnlock
         && isCloudSyncLockConflictError(error)
       ) {
-        toast.info('检测到云同步锁冲突（409），正在自动修复后重试');
+        toast.info(t('leaftabSyncRunner.cloud.lockConflict.autoFixToast', { defaultValue: '检测到云同步锁冲突（409），正在自动修复后重试' }));
         context.options.onProgress?.({
           stage: 'acquiring-lock',
-          message: '检测到旧云端锁，正在自动修复',
+          message: t('leaftabSyncRunner.cloud.lockConflict.autoFixTitle', { defaultValue: '检测到旧云端锁，正在自动修复' }),
           progress: 18,
         });
         if (context.progressTaskId) {
           updateLongTaskIndicator(context.progressTaskId, {
-            title: '检测到旧云端锁，正在自动修复',
-            detail: context.options.progressDetail || '正在释放旧锁并重新尝试同步',
+            title: t('leaftabSyncRunner.cloud.lockConflict.autoFixTitle', { defaultValue: '检测到旧云端锁，正在自动修复' }),
+            detail: context.options.progressDetail || t('leaftabSyncRunner.cloud.lockConflict.autoFixDetail', { defaultValue: '正在释放旧锁并重新尝试同步' }),
             progress: 18,
           });
         }
@@ -1849,13 +1869,13 @@ export default function App() {
       ) {
         context.options.onProgress?.({
           stage: 'rechecking-remote',
-          message: '检测到云端版本变化，正在重新对齐状态',
+          message: t('leaftabSyncRunner.cloud.commitConflict.realignTitle', { defaultValue: '检测到云端版本变化，正在重新对齐状态' }),
           progress: 26,
         });
         if (context.progressTaskId) {
           updateLongTaskIndicator(context.progressTaskId, {
-            title: '检测到云端版本变化，正在重新对齐状态',
-            detail: context.options.progressDetail || '正在等待最新状态生效后重试',
+            title: t('leaftabSyncRunner.cloud.commitConflict.realignTitle', { defaultValue: '检测到云端版本变化，正在重新对齐状态' }),
+            detail: context.options.progressDetail || t('leaftabSyncRunner.cloud.commitConflict.realignDetail', { defaultValue: '正在等待最新状态生效后重试' }),
             progress: 26,
           });
         }
@@ -1873,7 +1893,9 @@ export default function App() {
       }
       if (isCloudSyncLockConflictError(error)) {
         markCloudSyncError(error);
-        toast.error('云同步失败（409）：当前账号同步锁被其他设备占用。请关闭其他设备同步后重试，或等待约 2 分钟再试。');
+        toast.error(t('leaftabSyncRunner.cloud.lockConflict.failedToast', {
+          defaultValue: '云同步失败（409）：当前账号同步锁被其他设备占用。请关闭其他设备同步后重试，或等待约 2 分钟再试。',
+        }));
         return null;
       }
       if (error instanceof LeafTabDestructiveBookmarkChangeError) {
@@ -1909,7 +1931,7 @@ export default function App() {
       return null;
     }
     if (cloudSyncBookmarksConfigured && !cloudSyncBookmarksPermissionGranted) {
-      toast.info('书签权限未授权，当前仅同步快捷方式和设置');
+      toast.info(t('leaftabSyncRunner.bookmarksPermissionDeniedToastAlt', { defaultValue: '书签权限未授权，当前仅同步快捷方式和设置' }));
     }
     const hasDeferredDangerousBookmarks = Boolean(
       cloudSyncEncryptionScopeKey
@@ -1963,7 +1985,7 @@ export default function App() {
       return;
     }
     const encryptionReady = await ensureSyncEncryptionAccess({
-      providerLabel: 'WebDAV 同步',
+      providerLabel: t('leaftabSync.provider.webdav', { defaultValue: 'WebDAV 同步' }),
       scopeKey: leafTabWebdavEncryptionScopeKey,
       transport: leafTabWebdavEncryptedTransport,
     });
@@ -2002,8 +2024,8 @@ export default function App() {
     if (!currentlyEnabled) return;
     await runLongTask(
       {
-        title: '正在停用同步',
-        detail: '正在处理最后一次同步和关闭操作',
+        title: t('leaftabSyncRunner.webdav.disable.title', { defaultValue: '正在停用同步' }),
+        detail: t('leaftabSyncRunner.webdav.disable.detail', { defaultValue: '正在处理最后一次同步和关闭操作' }),
         progress: 8,
       },
       async ({ update }) => {
@@ -2011,13 +2033,13 @@ export default function App() {
 
         if (leafTabSyncHasConfig) {
           update({
-            title: '正在同步最后的变更',
+            title: t('leaftabSyncRunner.webdav.disable.finalSyncTitle', { defaultValue: '正在同步最后的变更' }),
             progress: 18,
           });
           try {
             const result = await handleLeafTabSync({
               silentSuccess: true,
-              progressDetail: '正在处理最后一次同步和关闭操作',
+              progressDetail: t('leaftabSyncRunner.webdav.disable.detail', { defaultValue: '正在处理最后一次同步和关闭操作' }),
               onProgress: (progress) => {
                 update({
                   title: progress.message,
@@ -2034,7 +2056,7 @@ export default function App() {
         }
 
         update({
-          title: '正在关闭同步',
+          title: t('leaftabSyncRunner.webdav.disable.closingTitle', { defaultValue: '正在关闭同步' }),
           progress: 92,
         });
         if (webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey) {
@@ -2044,14 +2066,14 @@ export default function App() {
 
         if (options?.clearLocal === true) {
           update({
-            title: '正在清理本地数据',
+            title: t('leaftabSyncRunner.webdav.disable.clearingTitle', { defaultValue: '正在清理本地数据' }),
             progress: 96,
           });
           await resetLocalShortcutsByRole(localStorage.getItem('role'));
         }
 
         update({
-          title: '同步已停用',
+          title: t('leaftabSyncRunner.webdav.disable.doneTitle', { defaultValue: '同步已停用' }),
           progress: 100,
         });
 
@@ -2072,7 +2094,9 @@ export default function App() {
   ]);
   const handleOpenWebdavConfig = useCallback((options?: { enableAfterSave?: boolean; showConnectionFields?: boolean }) => {
     if (cloudSyncEnabled) {
-      toast.error('当前已启用云同步，请先退出云同步后再配置 WebDAV 同步');
+      toast.error(t('settings.backup.webdav.disableCloudBeforeWebdavConfig', {
+        defaultValue: '当前已启用云同步，请先退出云同步后再配置 WebDAV 同步',
+      }));
       return false;
     }
     const shouldEnableAfterSave = options?.enableAfterSave ?? !leafTabWebdavConfigured;
@@ -2253,7 +2277,7 @@ export default function App() {
     if (!dangerousSyncDialogState) return;
     setDangerousSyncDialogBusyAction('continue-without-bookmarks');
     closeDangerousSyncDialog();
-    toast.info('本次将跳过书签，仅同步快捷方式和设置');
+    toast.info(t('leaftabDangerousSync.toast.skipBookmarks', { defaultValue: '本次将跳过书签，仅同步快捷方式和设置' }));
     if (dangerousSyncDialogState.provider === 'cloud') {
       cloudDeferredDangerousBookmarksScopeKeyRef.current = null;
       applyCloudDangerousBookmarkChoice();
@@ -2293,14 +2317,14 @@ export default function App() {
       applyCloudDangerousBookmarkChoice();
       clearCloudSyncError();
       clearCloudLeafTabSyncErrorState();
-      toast.info('已启用云同步，并暂时关闭“同步书签”');
+      toast.info(t('leaftabDangerousSync.toast.cloudBookmarksDisabled', { defaultValue: '已启用云同步，并暂时关闭“同步书签”' }));
       return;
     }
     webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
     applyWebdavDangerousBookmarkChoice();
     clearWebdavSyncError();
     clearLeafTabSyncErrorState();
-    toast.info('已启用 WebDAV 同步，并暂时关闭“同步书签”');
+    toast.info(t('leaftabDangerousSync.toast.webdavBookmarksDisabled', { defaultValue: '已启用 WebDAV 同步，并暂时关闭“同步书签”' }));
   }, [
     applyWebdavDangerousBookmarkChoice,
     applyCloudDangerousBookmarkChoice,
@@ -3404,14 +3428,14 @@ export default function App() {
       ) : null}
       {shouldMountLeafTabSyncEncryptionDialog ? (
         <Suspense fallback={null}>
-          <LazyLeafTabSyncEncryptionDialog
-            open={Boolean(syncEncryptionDialogState?.open)}
-            mode={syncEncryptionDialogState?.mode || 'setup'}
-            providerLabel={syncEncryptionDialogState?.providerLabel || '同步'}
-            busy={syncEncryptionDialogBusy}
-            onOpenChange={handleSyncEncryptionDialogOpenChange}
-            onSubmit={handleSubmitSyncEncryptionDialog}
-          />
+	          <LazyLeafTabSyncEncryptionDialog
+	            open={Boolean(syncEncryptionDialogState?.open)}
+	            mode={syncEncryptionDialogState?.mode || 'setup'}
+	            providerLabel={syncEncryptionDialogState?.providerLabel || t('leaftabSync.provider.generic', { defaultValue: '同步' })}
+	            busy={syncEncryptionDialogBusy}
+	            onOpenChange={handleSyncEncryptionDialogOpenChange}
+	            onSubmit={handleSubmitSyncEncryptionDialog}
+	          />
         </Suspense>
       ) : null}
       {dangerousSyncDialogState?.open ? (

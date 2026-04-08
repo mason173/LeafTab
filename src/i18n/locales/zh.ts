@@ -272,7 +272,9 @@ export default {
           policyChangeSyncTriggered: "冲突策略已切换，已按当前策略同步一次",
           intervalChangeSyncTriggered: "同步间隔已调整，已立即同步一次",
           disableWebdavBeforeCloudLogin: "当前已开启 WebDAV 同步，请先关闭 WebDAV 同步后再登录云同步",
+          disableWebdavBeforeCloudManage: "当前已开启 WebDAV 同步，请先关闭 WebDAV 同步后再管理云同步",
           disableCloudBeforeWebdavEnable: "当前已登录云同步，请先退出云同步后再开启 WebDAV 同步",
+          disableCloudBeforeWebdavConfig: "当前已启用云同步，请先退出云同步后再配置 WebDAV 同步",
           logoutRequiredForWebdav: "当前已登录云同步，请先退出登录后再开启 WebDAV 同步",
           disableConfirmTitle: "关闭 WebDAV 同步",
           disableConfirmDesc: "确定要关闭 WebDAV 同步吗？关闭后仅保留本地数据。",
@@ -396,6 +398,7 @@ export default {
         desc: "查看版本信息与插件简介",
         open: "打开",
         title: "关于 LeafTab",
+        versionLabel: "版本 v{{version}}",
         content: "LeafTab，一个由 AI 协助开发的、极简主义的新标签页插件。它不试图成为臃肿的浏览器操作系统，而是回归“新标签页”这一动作的本质——一个高效的起点。它不追求花哨，而是追求稳定、顺手、可控。",
         openSourceNoticePrefix: "LeafTab 社区版已开源（",
         openSourceNoticeSuffix: "），欢迎在 GitHub 提交 Issue / PR。",
@@ -514,9 +517,15 @@ export default {
       publishedAt: "发布时间：{{date}}",
       changelogTitle: "本次更新内容",
       noChangelog: "该版本暂未提供详细更新日志。",
+      imageAlt: "LeafTab 更新",
+      badge: "新版本 v{{version}}",
       later: "稍后再说",
       ignoreThisVersion: "忽略此版本",
-      downloadFromGithub: "前往 GitHub 下载"
+      downloadFromGithub: "前往 GitHub 下载",
+      openRelease: "前往 GitHub 下载",
+      sampleNote1: "统一云同步与 WebDAV 同步设置项交互",
+      sampleNote2: "新增自动更新提示弹窗，可直达 GitHub Release",
+      sampleNote3: "优化更新日志弹窗排版层级"
     },
     roles: {
       programmer: "程序员",
@@ -647,15 +656,123 @@ export default {
     lunar: {
       label: "农历"
     },
-    user: {
-      loggedIn: "已登录",
-      logout: "退出登录",
-      loggedOut: "已退出登录",
-      days: "天",
-      shortcutsCount: "个快捷方式",
-      logoutOfflineWarning: "退出前会先尝试同步一次；如果当前离线或未能完成同步，本地改动会保留到下次继续。确定要退出吗？"
-    },
-    leaftabSyncCenter: {
+	    user: {
+	      loggedIn: "已登录",
+	      logout: "退出登录",
+	      loggedOut: "已退出登录",
+	      days: "天",
+	      shortcutsCount: "个快捷方式",
+	      logoutOfflineWarning: "退出前会先尝试同步一次；如果当前离线或未能完成同步，本地改动会保留到下次继续。确定要退出吗？"
+	    },
+	    leaftabSync: {
+	      provider: {
+	        webdav: "WebDAV 同步",
+	        cloud: "云同步",
+	        generic: "同步"
+	      },
+	      webdav: {
+	        actions: {
+	          mkcol: "创建目录",
+	          upload: "写入",
+	          download: "读取",
+	          delete: "删除"
+	        },
+	        error: {
+	          withPath: "WebDAV {{action}}失败（{{status}}）：{{path}}",
+	          noPath: "WebDAV {{action}}失败（{{status}}）"
+	        }
+	      },
+	      cloud: {
+	        error: {
+	          lockedTryFix: "云同步被旧设备锁定，已尝试自动修复；如果仍失败请再试一次",
+	          remoteCommitChanged: "云端数据刚刚发生变化，请重新同步一次",
+	          parentCommitRequired: "云端已有新版本，请先拉取最新数据后再覆盖",
+	          httpStatus: "云同步失败（{{status}}）",
+	          generic: "云同步失败"
+	        }
+	      }
+	    },
+	    leaftabSyncRunner: {
+	      progressDetailDefault: "正在后台同步，你可以继续进行其他操作",
+	      permissionTitle: "正在检查书签权限",
+	      permissionDetail: "需要确认当前浏览器允许访问书签数据",
+	      bookmarksPermissionDeniedToast: "未授予书签权限，本次仅同步快捷方式和设置",
+	      bookmarksPermissionDeniedToastAlt: "书签权限未授权，当前仅同步快捷方式和设置",
+	      successTitle: "同步完成",
+	      successToastFallback: "同步完成",
+	      successDetailFallback: "本地与云端已经处理完成",
+	      webdav: {
+	        prepareTitle: "正在准备同步数据",
+	        prepareDetail: "正在读取本地与云端状态",
+	        disable: {
+	          title: "正在停用同步",
+	          detail: "正在处理最后一次同步和关闭操作",
+	          finalSyncTitle: "正在同步最后的变更",
+	          closingTitle: "正在关闭同步",
+	          clearingTitle: "正在清理本地数据",
+	          doneTitle: "同步已停用"
+	        }
+	      },
+	      cloud: {
+	        prepareTitle: "正在准备云同步",
+	        prepareDetail: "正在读取本地与账号云端状态",
+	        lockConflict: {
+	          autoFixToast: "检测到云同步锁冲突（409），正在自动修复后重试",
+	          autoFixTitle: "检测到旧云端锁，正在自动修复",
+	          autoFixDetail: "正在释放旧锁并重新尝试同步",
+	          failedToast: "云同步失败（409）：当前账号同步锁被其他设备占用。请关闭其他设备同步后重试，或等待约 2 分钟再试。"
+	        },
+	        commitConflict: {
+	          realignTitle: "检测到云端版本变化，正在重新对齐状态",
+	          realignDetail: "正在等待最新状态生效后重试"
+	        }
+	      }
+	    },
+	    leaftabSyncActions: {
+	      dataDetail: {
+	        withBookmarks: "正在处理快捷方式和书签数据",
+	        shortcutsOnly: "正在处理快捷方式数据"
+	      },
+	      bookmarksPermissionRequired: "未授予书签权限，无法执行修复同步",
+	      webdav: {
+	        inProgress: "WebDAV 同步正在进行中，请稍候",
+	        syncingTitle: "正在同步到 WebDAV",
+	        repair: {
+	          pullTitle: "正在用 WebDAV 覆盖本地",
+	          pushTitle: "正在用本地覆盖 WebDAV",
+	          pullSuccess: "已用 WebDAV 数据覆盖本地",
+	          pushSuccess: "已用本地数据覆盖 WebDAV",
+	          pullFailed: "WebDAV 覆盖本地失败",
+	          pushFailed: "本地覆盖 WebDAV 失败"
+	        }
+	      },
+	      cloud: {
+	        inProgress: "云同步正在进行中，请稍候",
+	        syncingTitle: "正在同步到云端",
+	        repair: {
+	          pullTitle: "正在用云端覆盖本地",
+	          pushTitle: "正在用本地覆盖云端",
+	          pullSuccess: "已用云端数据覆盖本地",
+	          pushSuccess: "已用本地数据覆盖云端"
+	        }
+	      }
+	    },
+	    syncPreview: {
+	      hint: {
+	        local: "右侧划线项将在同步后从云端删除",
+	        cloud: "左侧划线项将在同步后从本地删除",
+	        merge: "合并会保留两侧内容并去重（本地优先）"
+	      },
+	      noComparable: "未读取到可对比的快捷方式数据"
+	    },
+	    leaftabDangerousSync: {
+	      toast: {
+	        skipBookmarks: "本次将跳过书签，仅同步快捷方式和设置",
+	        cloudBookmarksDisabled: "已启用云同步，并暂时关闭“同步书签”",
+	        webdavBookmarksDisabled: "已启用 WebDAV 同步，并暂时关闭“同步书签”"
+	      }
+	    },
+	    leaftabSyncCenter: {
       title: "同步中心",
       description: "基于 WebDAV 的同步中心，当前重点支持场景、快捷方式和书签同步。",
       bookmarkScope: "书签同步范围：{{scope}}",
@@ -759,7 +876,7 @@ export default {
         scopeWithLabel: "快捷方式、{{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+	    leaftabSyncEncryption: {
       cloudNotEnabledTitle: "当前未开启云同步",
       cloudNotEnabledPill: "未开启",
       webdavNotEnabledTitle: "当前未开启 WebDAV 同步",
@@ -782,14 +899,24 @@ export default {
       confirmLabel: "再次输入同步口令",
       confirmPlaceholder: "再次输入用于确认",
       setupChecklistTitle: "继续前请确认以下事项",
-      checklist: {
-        serverCannotAccess: "我们不保存这组同步口令，也无法看到你加密后的同步内容。",
-        cannotRecover: "忘记这组同步口令后，已有加密同步数据将无法恢复。",
-        newDeviceUnlock: "更换设备或清除本地数据后，需要重新输入这组同步口令。"
-      },
-      deviceUnlockDescription: "当前设备解锁后，后续同步无需重复输入。"
-    },
-    leaftabFirstSync: {
+	      checklist: {
+	        serverCannotAccess: "我们不保存这组同步口令，也无法看到你加密后的同步内容。",
+	        cannotRecover: "忘记这组同步口令后，已有加密同步数据将无法恢复。",
+	        newDeviceUnlock: "更换设备或清除本地数据后，需要重新输入这组同步口令。"
+	      },
+	      deviceUnlockDescription: "当前设备解锁后，后续同步无需重复输入。",
+	      errors: {
+	        missingMetadata: "缺少同步加密元数据",
+	        incorrectPassphrase: "同步口令不正确",
+	        invalidConfig: "同步加密配置无效"
+	      },
+	      toast: {
+	        saved: "同步口令已保存",
+	        unlocked: "同步数据已解锁",
+	        saveFailed: "保存同步口令失败"
+	      }
+	    },
+	    leaftabFirstSync: {
       title: "初始化同步",
       description: "选择第一次 LeafTab 同步时，应该如何处理当前浏览器书签、本地 LeafTab 数据与云端数据。",
       recommended: "推荐",
@@ -839,7 +966,9 @@ export default {
       delete: "删除",
       addShortcut: "添加快捷方式",
       newShortcut: "新建快捷方式",
-      pinToTop: "置顶"
+      pinToTop: "置顶",
+      multiSelect: "多选",
+      cancelMultiSelect: "退出多选"
     },
     sidebar: {
       toggle: "切换侧边栏",

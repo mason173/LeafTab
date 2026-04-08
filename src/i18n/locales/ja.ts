@@ -151,7 +151,7 @@ export default {
         columns: "グリッド列数",
         rows: "基本行数"
       },
-      backup: {
+	      backup: {
         label: "データのバックアップと復元",
         description: "ローカルレイアウトデータをインポート/エクスポート (.leaftab)",
         cloudTab: "クラウド同期",
@@ -161,7 +161,7 @@ export default {
         importSuccess: "データのインポートに成功しました",
         importError: "データのインポートに失敗しました。ファイル形式を確認してください。",
         exportSuccess: "データのエクスポートに成功しました",
-        webdav: {
+	        webdav: {
           entry: "WebDAV 同期",
           entryDesc: "WebDAV でリモートバックアップと復元を設定",
           configure: "設定",
@@ -200,13 +200,17 @@ export default {
           uploadError: "WebDAV の同期に失敗しました。設定を確認してください。",
           syncSuccess: "同期完了",
           syncError: "同期に失敗しました。設定を確認してください。",
-          authFailed: "WebDAV の認証に失敗しました。ユーザー名またはパスワードを確認してください。",
-          policyChangeSyncTriggered: "競合ポリシーを切り替え、現在のポリシーで1回同期しました",
-          intervalChangeSyncTriggered: "同期間隔を変更し、即時に1回同期しました",
-          urlRequired: "まず WebDAV URL を入力してください",
-          defaultProfileName: "デフォルト設定",
-          configured: "設定済み、同期可能",
-          notConfigured: "未設定。WebDAV 情報を入力してください",
+	          authFailed: "WebDAV の認証に失敗しました。ユーザー名またはパスワードを確認してください。",
+	          policyChangeSyncTriggered: "競合ポリシーを切り替え、現在のポリシーで1回同期しました",
+	          intervalChangeSyncTriggered: "同期間隔を変更し、即時に1回同期しました",
+	          disableWebdavBeforeCloudLogin: "WebDAV 同期が有効です。クラウド同期にログインする前に WebDAV 同期を無効にしてください。",
+	          disableWebdavBeforeCloudManage: "WebDAV 同期が有効です。クラウド同期を管理する前に WebDAV 同期を無効にしてください。",
+	          disableCloudBeforeWebdavEnable: "クラウド同期にログイン中です。WebDAV 同期を有効にする前にクラウド同期からログアウトしてください。",
+	          disableCloudBeforeWebdavConfig: "クラウド同期が有効です。WebDAV 同期を設定する前にクラウド同期を無効にしてください。",
+	          urlRequired: "まず WebDAV URL を入力してください",
+	          defaultProfileName: "デフォルト設定",
+	          configured: "設定済み、同期可能",
+	          notConfigured: "未設定。WebDAV 情報を入力してください",
           lastSyncAt: "最終同期",
           notSynced: "未同期",
           justSynced: "たった今同期",
@@ -279,6 +283,7 @@ export default {
         desc: "バージョン情報と拡張機能の概要",
         open: "開く",
         title: "LeafTab について",
+        versionLabel: "バージョン v{{version}}",
         content: "LeafTab はブラウザーの新しいタブ拡張です。\nショートカット管理、壁紙/天気表示、クラウド同期や WebDAV 同期などの機能を提供します。",
         ackTitle: "謝辞",
         ackDesc: "LeafTab は次のオープンソースライブラリ／リソースを利用しています（タップで開く）：",
@@ -362,9 +367,15 @@ export default {
       publishedAt: "公開日: {{date}}",
       changelogTitle: "更新内容",
       noChangelog: "このバージョンの詳細な更新内容はありません。",
+      imageAlt: "LeafTab アップデート",
+      badge: "新バージョン v{{version}}",
       later: "あとで",
       ignoreThisVersion: "このバージョンを無視",
-      downloadFromGithub: "GitHub からダウンロード"
+      downloadFromGithub: "GitHub からダウンロード",
+      openRelease: "GitHub からダウンロード",
+      sampleNote1: "クラウド同期と WebDAV 同期の設定操作を統一",
+      sampleNote2: "自動更新通知ダイアログを追加（GitHub Release へ）",
+      sampleNote3: "更新履歴ダイアログのレイアウト階層を改善"
     },
     languages: {
       zh: "简体中文",
@@ -476,7 +487,9 @@ export default {
       delete: "削除",
       addShortcut: "ショートカットを追加",
       newShortcut: "新しいショートカット",
-      pinToTop: "固定"
+      pinToTop: "固定",
+      multiSelect: "複数選択",
+      cancelMultiSelect: "複数選択を終了"
     },
     sidebar: {
       toggle: "サイドバーを切り替え",
@@ -545,7 +558,7 @@ export default {
         registering: "登録中...",
         register: "登録"
       },
-      toast: {
+	    toast: {
         loginSuccess: "ログイン成功！おかえりなさい、{{username}}",
         registerSuccess: "登録成功！ログインしてください、{{username}}"
       },
@@ -621,9 +634,117 @@ export default {
       loadedFromCache: "ローカルキャッシュから読み込みました（オフラインモード）",
       sessionExpired: "セッションが切れました。もう一度ログインしてください",
       shortcutCreateFailed: "ショートカットを作成できません",
-      alreadyOnPage: "すでにこのページです"
-    },
-    leaftabSyncCenter: {
+	      alreadyOnPage: "すでにこのページです"
+	    },
+	    leaftabSync: {
+	      provider: {
+	        webdav: "WebDAV 同期",
+	        cloud: "クラウド同期",
+	        generic: "同期"
+	      },
+	      webdav: {
+	        actions: {
+	          mkcol: "フォルダ作成",
+	          upload: "書き込み",
+	          download: "読み取り",
+	          delete: "削除"
+	        },
+	        error: {
+	          withPath: "WebDAV {{action}} に失敗（{{status}}）：{{path}}",
+	          noPath: "WebDAV {{action}} に失敗（{{status}}）"
+	        }
+	      },
+	      cloud: {
+	        error: {
+	          lockedTryFix: "クラウド同期が別の端末にロックされています。自動修復を試しました。まだ失敗する場合は再試行してください。",
+	          remoteCommitChanged: "クラウドデータが更新されました。もう一度同期してください。",
+	          parentCommitRequired: "クラウドに新しいバージョンがあります。上書き前に最新データを取得してください。",
+	          httpStatus: "クラウド同期に失敗（{{status}}）",
+	          generic: "クラウド同期に失敗しました"
+	        }
+	      }
+	    },
+	    leaftabSyncRunner: {
+	      progressDetailDefault: "バックグラウンドで同期しています。操作は続けられます。",
+	      permissionTitle: "ブックマーク権限を確認中",
+	      permissionDetail: "ブックマークへのアクセス権限が必要です。",
+	      bookmarksPermissionDeniedToast: "ブックマーク権限がありません。この回はショートカットと設定のみ同期します。",
+	      bookmarksPermissionDeniedToastAlt: "ブックマーク権限がありません。現在はショートカットと設定のみ同期します。",
+	      successTitle: "同期完了",
+	      successToastFallback: "同期完了",
+	      successDetailFallback: "ローカルとリモートの処理が完了しました。",
+	      webdav: {
+	        prepareTitle: "同期の準備中",
+	        prepareDetail: "ローカルと WebDAV の状態を読み込み中",
+	        disable: {
+	          title: "同期を無効化中",
+	          detail: "最終同期を実行して同期をオフにしています",
+	          finalSyncTitle: "最終変更を同期中",
+	          closingTitle: "同期をオフにしています",
+	          clearingTitle: "ローカルデータを消去中",
+	          doneTitle: "同期を無効化しました"
+	        }
+	      },
+	      cloud: {
+	        prepareTitle: "クラウド同期の準備中",
+	        prepareDetail: "ローカルとクラウド状態を読み込み中",
+	        lockConflict: {
+	          autoFixToast: "クラウド同期ロック競合（409）を検出。自動修復して再試行しています...",
+	          autoFixTitle: "古いクラウドロックを検出。自動修復中",
+	          autoFixDetail: "古いロックを解放して同期を再試行しています",
+	          failedToast: "クラウド同期に失敗（409）：同期ロックが他の端末に保持されています。他端末の同期を停止して再試行するか、約 2 分待ってください。"
+	        },
+	        commitConflict: {
+	          realignTitle: "クラウドのバージョン変化を検出。状態を再調整中",
+	          realignDetail: "最新状態の反映を待ってから再試行します"
+	        }
+	      }
+	    },
+	    leaftabSyncActions: {
+	      dataDetail: {
+	        withBookmarks: "ショートカットとブックマークを処理中",
+	        shortcutsOnly: "ショートカットを処理中"
+	      },
+	      bookmarksPermissionRequired: "ブックマーク権限がありません。同期の修復を実行できません。",
+	      webdav: {
+	        inProgress: "WebDAV 同期が進行中です。しばらくお待ちください。",
+	        syncingTitle: "WebDAV に同期中",
+	        repair: {
+	          pullTitle: "WebDAV でローカルを上書き中",
+	          pushTitle: "ローカルで WebDAV を上書き中",
+	          pullSuccess: "WebDAV データでローカルを上書きしました",
+	          pushSuccess: "ローカルデータで WebDAV を上書きしました",
+	          pullFailed: "WebDAV でローカルの上書きに失敗しました",
+	          pushFailed: "ローカルで WebDAV の上書きに失敗しました"
+	        }
+	      },
+	      cloud: {
+	        inProgress: "クラウド同期が進行中です。しばらくお待ちください。",
+	        syncingTitle: "クラウドに同期中",
+	        repair: {
+	          pullTitle: "クラウドでローカルを上書き中",
+	          pushTitle: "ローカルでクラウドを上書き中",
+	          pullSuccess: "クラウドデータでローカルを上書きしました",
+	          pushSuccess: "ローカルデータでクラウドを上書きしました"
+	        }
+	      }
+	    },
+	    syncPreview: {
+	      hint: {
+	        local: "右側の取り消し線の項目は同期後にクラウドから削除されます。",
+	        cloud: "左側の取り消し線の項目は同期後にローカルから削除されます。",
+	        merge: "マージは両方を保持して重複を除去します（ローカル優先）。"
+	      },
+	      noComparable: "比較できるショートカットデータが見つかりませんでした。"
+	    },
+	    leaftabDangerousSync: {
+	      toast: {
+	        skipBookmarks: "この回はブックマークをスキップし、ショートカットと設定のみ同期します。",
+	        cloudBookmarksDisabled: "クラウド同期は有効ですが、「ブックマーク同期」を一時的にオフにしました。",
+	        webdavBookmarksDisabled: "WebDAV 同期は有効ですが、「ブックマーク同期」を一時的にオフにしました。"
+	      }
+	    },
+	    leaftabSyncCenter: {
       title: "同期センター",
       description: "WebDAV ベースの同期センター。シナリオ、ショートカット、ブックマークの同期に対応します。",
       bookmarkScope: "ブックマーク同期範囲: {{scope}}",
@@ -710,7 +831,7 @@ export default {
         scopeWithLabel: "ショートカット、{{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+	    leaftabSyncEncryption: {
       cloudNotEnabledTitle: "クラウド同期は無効です",
       cloudNotEnabledPill: "無効",
       webdavNotEnabledTitle: "WebDAV 同期は無効です",
@@ -738,8 +859,18 @@ export default {
         cannotRecover: "パスフレーズを忘れると、既存の暗号化同期データは復元できません。",
         newDeviceUnlock: "端末を変更する、またはローカルデータを消去した場合は再入力が必要です。"
       },
-      deviceUnlockDescription: "この端末で一度解錠すると、以降の同期では再入力不要です。"
-    },
+	      deviceUnlockDescription: "この端末で一度解錠すると、以降の同期では再入力不要です。",
+	      errors: {
+	        missingMetadata: "同期暗号化メタデータがありません",
+	        incorrectPassphrase: "同期パスフレーズが正しくありません",
+	        invalidConfig: "同期暗号化設定が無効です"
+	      },
+	      toast: {
+	        saved: "同期パスフレーズを保存しました",
+	        unlocked: "同期データを解錠しました",
+	        saveFailed: "同期パスフレーズの保存に失敗しました"
+	      }
+	    },
     sync: {
       cloud: "クラウド",
       local: "ローカル"

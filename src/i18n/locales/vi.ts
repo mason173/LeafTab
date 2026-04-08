@@ -151,7 +151,7 @@ export default {
         columns: "Số cột",
         rows: "Số hàng cơ sở"
       },
-      backup: {
+	      backup: {
         label: "Sao lưu & khôi phục dữ liệu",
         description: "Nhập hoặc xuất dữ liệu bố cục cục bộ (.leaftab)",
         cloudTab: "Đồng bộ đám mây",
@@ -161,7 +161,7 @@ export default {
         importSuccess: "Nhập dữ liệu thành công",
         importError: "Nhập dữ liệu thất bại, vui lòng kiểm tra định dạng tệp",
         exportSuccess: "Xuất dữ liệu thành công",
-        webdav: {
+	        webdav: {
           entry: "Đồng bộ WebDAV",
           entryDesc: "Cấu hình sao lưu & khôi phục từ xa qua WebDAV",
           configure: "Cấu hình",
@@ -194,13 +194,17 @@ export default {
           uploadError: "Đồng bộ WebDAV thất bại, hãy kiểm tra cấu hình",
           syncSuccess: "Đồng bộ hoàn tất",
           syncError: "Đồng bộ thất bại, hãy kiểm tra cấu hình",
-          authFailed: "Xác thực WebDAV thất bại, hãy kiểm tra tài khoản hoặc mật khẩu",
-          policyChangeSyncTriggered: "Đã đổi chính sách xung đột và đồng bộ một lần theo chính sách hiện tại",
-          intervalChangeSyncTriggered: "Đã đổi khoảng thời gian đồng bộ và đồng bộ ngay một lần",
-          urlRequired: "Vui lòng nhập URL WebDAV trước",
-          defaultProfileName: "Cấu hình mặc định",
-          configured: "Đã cấu hình, sẵn sàng đồng bộ",
-          notConfigured: "Chưa cấu hình, vui lòng nhập thông tin WebDAV",
+	          authFailed: "Xác thực WebDAV thất bại, hãy kiểm tra tài khoản hoặc mật khẩu",
+	          policyChangeSyncTriggered: "Đã đổi chính sách xung đột và đồng bộ một lần theo chính sách hiện tại",
+	          intervalChangeSyncTriggered: "Đã đổi khoảng thời gian đồng bộ và đồng bộ ngay một lần",
+	          disableWebdavBeforeCloudLogin: "WebDAV đang được bật. Hãy tắt đồng bộ WebDAV trước khi đăng nhập đồng bộ đám mây.",
+	          disableWebdavBeforeCloudManage: "WebDAV đang được bật. Hãy tắt đồng bộ WebDAV trước khi quản lý đồng bộ đám mây.",
+	          disableCloudBeforeWebdavEnable: "Bạn đang đăng nhập đồng bộ đám mây. Hãy đăng xuất trước khi bật đồng bộ WebDAV.",
+	          disableCloudBeforeWebdavConfig: "Đồng bộ đám mây đang bật. Hãy tắt đồng bộ đám mây trước khi cấu hình WebDAV.",
+	          urlRequired: "Vui lòng nhập URL WebDAV trước",
+	          defaultProfileName: "Cấu hình mặc định",
+	          configured: "Đã cấu hình, sẵn sàng đồng bộ",
+	          notConfigured: "Chưa cấu hình, vui lòng nhập thông tin WebDAV",
           disabled: "Đã tắt, đồng bộ WebDAV đã dừng",
           lastSyncAt: "Lần đồng bộ gần nhất",
           notSynced: "Chưa đồng bộ",
@@ -273,6 +277,7 @@ export default {
         desc: "Xem phiên bản và giới thiệu tiện ích",
         open: "Mở",
         title: "Giới thiệu LeafTab",
+        versionLabel: "Phiên bản v{{version}}",
         content: "LeafTab là tiện ích trang tab mới của trình duyệt.\nCung cấp trang bắt đầu gọn gàng với lối tắt, hình nền/thời tiết và các tính năng đồng bộ như Cloud Sync và WebDAV.",
         ackTitle: "Ghi nhận",
         ackDesc: "LeafTab sử dụng các thư viện và tài nguyên mã nguồn mở sau (chạm để mở):",
@@ -350,9 +355,15 @@ export default {
       publishedAt: "Phát hành: {{date}}",
       changelogTitle: "Nội dung cập nhật",
       noChangelog: "Phiên bản này chưa có ghi chú phát hành chi tiết.",
+      imageAlt: "Cập nhật LeafTab",
+      badge: "Phiên bản mới v{{version}}",
       later: "Để sau",
       ignoreThisVersion: "Bỏ qua phiên bản này",
-      downloadFromGithub: "Tải từ GitHub"
+      downloadFromGithub: "Tải từ GitHub",
+      openRelease: "Tải từ GitHub",
+      sampleNote1: "Thống nhất tương tác cài đặt đồng bộ đám mây và WebDAV",
+      sampleNote2: "Thêm hộp thoại thông báo cập nhật tự động, dẫn thẳng tới GitHub Release",
+      sampleNote3: "Cải thiện bố cục hộp thoại nhật ký cập nhật"
     },
     languages: {
       zh: "简体中文",
@@ -445,7 +456,9 @@ export default {
       delete: "Xóa",
       addShortcut: "Thêm lối tắt",
       newShortcut: "Lối tắt mới",
-      pinToTop: "Ghim lên đầu"
+      pinToTop: "Ghim lên đầu",
+      multiSelect: "Chọn nhiều",
+      cancelMultiSelect: "Thoát chọn nhiều"
     },
     sidebar: {
       toggle: "Bật/tắt thanh bên",
@@ -575,7 +588,7 @@ export default {
         switched: "Đã chuyển sang: {{name}}"
       }
     },
-    leaftabSyncCenter: {
+	    leaftabSyncCenter: {
       title: "Trung tâm đồng bộ",
       description: "Trung tâm đồng bộ dựa trên WebDAV, tập trung vào chế độ kịch bản, lối tắt và dấu trang.",
       bookmarkScope: "Phạm vi đồng bộ dấu trang: {{scope}}",
@@ -600,11 +613,119 @@ export default {
         ready: "Sẵn sàng đồng bộ hợp nhất",
         readyDescription: "Công cụ đồng bộ mới có thể đẩy, kéo và hợp nhất chế độ, lối tắt và gốc dấu trang của trình duyệt."
       },
-      actions: {
-        syncing: "Đang đồng bộ..."
-      }
-    },
-    leaftabSyncDialog: {
+	      actions: {
+	        syncing: "Đang đồng bộ..."
+	      }
+	    },
+	    leaftabSync: {
+	      provider: {
+	        webdav: "Đồng bộ WebDAV",
+	        cloud: "Đồng bộ đám mây",
+	        generic: "Đồng bộ"
+	      },
+	      webdav: {
+	        actions: {
+	          mkcol: "Tạo thư mục",
+	          upload: "Ghi",
+	          download: "Đọc",
+	          delete: "Xóa"
+	        },
+	        error: {
+	          withPath: "WebDAV {{action}} thất bại ({{status}}): {{path}}",
+	          noPath: "WebDAV {{action}} thất bại ({{status}})"
+	        }
+	      },
+	      cloud: {
+	        error: {
+	          lockedTryFix: "Đồng bộ đám mây bị thiết bị khác khóa. Đã thử tự sửa; nếu vẫn lỗi hãy thử lại.",
+	          remoteCommitChanged: "Dữ liệu đám mây vừa thay đổi. Vui lòng đồng bộ lại.",
+	          parentCommitRequired: "Có phiên bản mới hơn trên đám mây. Hãy kéo dữ liệu mới nhất trước khi ghi đè.",
+	          httpStatus: "Đồng bộ đám mây thất bại ({{status}})",
+	          generic: "Đồng bộ đám mây thất bại"
+	        }
+	      }
+	    },
+	    leaftabSyncRunner: {
+	      progressDetailDefault: "Đang đồng bộ nền. Bạn có thể tiếp tục sử dụng LeafTab.",
+	      permissionTitle: "Đang kiểm tra quyền dấu trang",
+	      permissionDetail: "LeafTab cần quyền truy cập dữ liệu dấu trang.",
+	      bookmarksPermissionDeniedToast: "Chưa cấp quyền dấu trang. Lần này chỉ đồng bộ lối tắt và cài đặt.",
+	      bookmarksPermissionDeniedToastAlt: "Chưa cấp quyền dấu trang. Chỉ đồng bộ lối tắt và cài đặt.",
+	      successTitle: "Đồng bộ hoàn tất",
+	      successToastFallback: "Đồng bộ hoàn tất",
+	      successDetailFallback: "Dữ liệu cục bộ và từ xa đã được xử lý.",
+	      webdav: {
+	        prepareTitle: "Đang chuẩn bị đồng bộ",
+	        prepareDetail: "Đang đọc trạng thái cục bộ và WebDAV",
+	        disable: {
+	          title: "Đang tắt đồng bộ",
+	          detail: "Đang chạy đồng bộ lần cuối và tắt đồng bộ",
+	          finalSyncTitle: "Đang đồng bộ thay đổi cuối cùng",
+	          closingTitle: "Đang tắt đồng bộ",
+	          clearingTitle: "Đang xóa dữ liệu cục bộ",
+	          doneTitle: "Đã tắt đồng bộ"
+	        }
+	      },
+	      cloud: {
+	        prepareTitle: "Đang chuẩn bị đồng bộ đám mây",
+	        prepareDetail: "Đang đọc trạng thái cục bộ và tài khoản đám mây",
+	        lockConflict: {
+	          autoFixToast: "Phát hiện xung đột khóa đồng bộ đám mây (409). Đang tự sửa và thử lại...",
+	          autoFixTitle: "Phát hiện khóa đám mây cũ, đang tự sửa",
+	          autoFixDetail: "Đang giải phóng khóa cũ và thử đồng bộ lại",
+	          failedToast: "Đồng bộ đám mây thất bại (409): Khóa đồng bộ đang bị thiết bị khác giữ. Hãy tắt đồng bộ trên thiết bị khác và thử lại, hoặc đợi khoảng 2 phút."
+	        },
+	        commitConflict: {
+	          realignTitle: "Phát hiện thay đổi phiên bản đám mây, đang căn chỉnh lại trạng thái",
+	          realignDetail: "Đang chờ trạng thái mới nhất có hiệu lực trước khi thử lại"
+	        }
+	      }
+	    },
+	    leaftabSyncActions: {
+	      dataDetail: {
+	        withBookmarks: "Đang xử lý lối tắt và dấu trang",
+	        shortcutsOnly: "Đang xử lý lối tắt"
+	      },
+	      bookmarksPermissionRequired: "Chưa cấp quyền dấu trang, không thể sửa đồng bộ.",
+	      webdav: {
+	        inProgress: "Đồng bộ WebDAV đang chạy. Vui lòng đợi.",
+	        syncingTitle: "Đang đồng bộ tới WebDAV",
+	        repair: {
+	          pullTitle: "Đang ghi đè dữ liệu cục bộ bằng WebDAV",
+	          pushTitle: "Đang ghi đè WebDAV bằng dữ liệu cục bộ",
+	          pullSuccess: "Đã ghi đè dữ liệu cục bộ bằng dữ liệu WebDAV",
+	          pushSuccess: "Đã ghi đè WebDAV bằng dữ liệu cục bộ",
+	          pullFailed: "Không thể ghi đè dữ liệu cục bộ bằng WebDAV",
+	          pushFailed: "Không thể ghi đè WebDAV bằng dữ liệu cục bộ"
+	        }
+	      },
+	      cloud: {
+	        inProgress: "Đồng bộ đám mây đang chạy. Vui lòng đợi.",
+	        syncingTitle: "Đang đồng bộ tới đám mây",
+	        repair: {
+	          pullTitle: "Đang ghi đè dữ liệu cục bộ bằng dữ liệu đám mây",
+	          pushTitle: "Đang ghi đè đám mây bằng dữ liệu cục bộ",
+	          pullSuccess: "Đã ghi đè dữ liệu cục bộ bằng dữ liệu đám mây",
+	          pushSuccess: "Đã ghi đè đám mây bằng dữ liệu cục bộ"
+	        }
+	      }
+	    },
+	    syncPreview: {
+	      hint: {
+	        local: "Các mục gạch ngang bên phải sẽ bị xóa khỏi đám mây sau khi đồng bộ.",
+	        cloud: "Các mục gạch ngang bên trái sẽ bị xóa khỏi cục bộ sau khi đồng bộ.",
+	        merge: "Hợp nhất giữ cả hai bên và loại trùng (ưu tiên cục bộ)."
+	      },
+	      noComparable: "Không tìm thấy dữ liệu lối tắt có thể so sánh."
+	    },
+	    leaftabDangerousSync: {
+	      toast: {
+	        skipBookmarks: "Lần này sẽ bỏ qua dấu trang và chỉ đồng bộ lối tắt và cài đặt.",
+	        cloudBookmarksDisabled: "Đã bật đồng bộ đám mây và tạm thời tắt “Đồng bộ dấu trang”.",
+	        webdavBookmarksDisabled: "Đã bật đồng bộ WebDAV và tạm thời tắt “Đồng bộ dấu trang”."
+	      }
+	    },
+	    leaftabSyncDialog: {
       description: "Quản lý trạng thái đồng bộ LeafTab, đồng bộ thủ công và cấu hình WebDAV tại đây.",
       scopeDefault: "Dấu trang",
       lastSyncEmpty: "Chưa có",
@@ -662,7 +783,7 @@ export default {
         scopeWithLabel: "Lối tắt, {{scope}}"
       }
     },
-    leaftabSyncEncryption: {
+	    leaftabSyncEncryption: {
       cloudNotEnabledTitle: "Chưa bật đồng bộ đám mây",
       cloudNotEnabledPill: "Chưa bật",
       webdavNotEnabledTitle: "Chưa bật đồng bộ WebDAV",
@@ -690,8 +811,18 @@ export default {
         cannotRecover: "Nếu quên mật khẩu này, dữ liệu đồng bộ đã mã hóa hiện có sẽ không thể khôi phục.",
         newDeviceUnlock: "Khi đổi thiết bị hoặc xóa dữ liệu cục bộ, bạn sẽ cần nhập lại mật khẩu này."
       },
-      deviceUnlockDescription: "Sau khi thiết bị này được mở khóa, các lần đồng bộ sau không cần nhập lại."
-    },
+	      deviceUnlockDescription: "Sau khi thiết bị này được mở khóa, các lần đồng bộ sau không cần nhập lại.",
+	      errors: {
+	        missingMetadata: "Thiếu metadata mã hóa đồng bộ",
+	        incorrectPassphrase: "Mật khẩu đồng bộ không đúng",
+	        invalidConfig: "Cấu hình mã hóa đồng bộ không hợp lệ"
+	      },
+	      toast: {
+	        saved: "Đã lưu mật khẩu đồng bộ",
+	        unlocked: "Đã mở khóa dữ liệu đồng bộ",
+	        saveFailed: "Lưu mật khẩu đồng bộ thất bại"
+	      }
+	    },
     toast: {
       cloudSynced: "Đã đồng bộ cấu hình đám mây",
       cloudAutoSyncSuccess: "Đã hoàn tất đồng bộ tự động lên đám mây",
