@@ -29,7 +29,7 @@ export function ShortcutGuideDialog({ open, onOpenChange }: ShortcutGuideDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
+      <DialogContent className="sm:max-w-[740px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t('settings.shortcutGuide.title')}</DialogTitle>
           <DialogDescription>{t('settings.shortcutGuide.dialogDescription')}</DialogDescription>
