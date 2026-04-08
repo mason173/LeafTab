@@ -100,7 +100,7 @@ export function WebdavConfigDialog({
 
   const webdavProviders = useMemo<WebdavProviderOption[]>(() => ([
     { id: "custom", label: t("settings.backup.webdav.providerCustom") },
-    { id: "jianguoyun", label: "坚果云", url: "https://dav.jianguoyun.com/dav/" },
+    { id: "jianguoyun", label: t("settings.backup.webdav.providers.jianguoyun", { defaultValue: "Jianguoyun" }), url: "https://dav.jianguoyun.com/dav/" },
     { id: "pcloud-us", label: "pCloud (US)", url: "https://webdav.pcloud.com" },
     { id: "pcloud-eu", label: "pCloud (EU)", url: "https://ewebdav.pcloud.com" },
     { id: "gmx", label: "GMX MediaCenter", url: "https://webdav.mc.gmx.net" },

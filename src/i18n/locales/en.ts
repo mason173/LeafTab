@@ -214,6 +214,36 @@ export default {
         importConfirmDesc: "The imported file will overwrite your cloud configuration. A cloud backup will be downloaded first.",
         importConfirmAction: "Import",
         cloudBackupDownloaded: "Cloud backup downloaded",
+        progress: {
+          importPreparingTitle: "Preparing import",
+          importPreparingDetail: "Validating backup file...",
+          importReadingLocalTitle: "Reading local data",
+          importReadingLocalDetail: "Preparing to merge imported content...",
+          importWritingLocalTitle: "Writing local data",
+          importWritingLocalDetail: "Applying imported data to this device...",
+          importMergingTitle: "Merging imported data",
+          importMergingDetail: "Aligning shortcuts and bookmarks...",
+          importSyncingTitle: "Syncing imported data",
+          importSyncingDetail: "Uploading latest data to cloud...",
+          importLongTaskTitle: "Importing data",
+          importLongTaskDetail: "Writing to local data, please wait...",
+
+          exportLongTaskTitle: "Exporting data",
+          exportLongTaskDetail: "Preparing shortcuts and bookmarks...",
+          exportReadingLocalTitle: "Reading local data",
+          exportReadingLocalDetail: "Collecting shortcuts and bookmarks...",
+          exportAssemblingTitle: "Assembling export",
+          exportAssemblingDetail: "Building LeafTab backup file...",
+          exportGeneratingTitle: "Generating export file",
+          exportGeneratingDetail: "Almost ready to save...",
+
+          cloudBackupLongTaskTitle: "Backing up cloud data",
+          cloudBackupLongTaskDetail: "Downloading a backup snapshot before import...",
+          cloudBackupReadingTitle: "Reading cloud data",
+          cloudBackupReadingDetail: "Creating a pre-import backup to prevent overwrites...",
+          cloudBackupImportingTitle: "Importing backup data",
+          cloudBackupImportingDetail: "Writing your selected data to this device...",
+        },
         cloud: {
           configTitle: "Cloud Sync Settings",
           configDesc: "Configure auto sync options and interval",
@@ -249,6 +279,9 @@ export default {
           enabledLabel: "Enable WebDAV Sync",
           enabledDesc: "Disable to pause WebDAV automatic and manual sync",
           providerCustom: "Custom provider",
+          providers: {
+            jianguoyun: "Jianguoyun",
+          },
           providerLabel: "WebDAV provider",
           providerPlaceholder: "Select provider",
           policyMerge: "Merge local and cloud changes when possible (recommended)",
@@ -616,7 +649,21 @@ export default {
         imageSupport: "Supports JPG, PNG, WEBP",
         maskOpacity: "Black Overlay",
         autoDimInDarkMode: "Auto-dim in Dark Mode",
-        autoDimInDarkModeDesc: "When dark mode is on, increase wallpaper overlay automatically for readability."
+        autoDimInDarkModeDesc: "When dark mode is on, increase wallpaper overlay automatically for readability.",
+        colorPresets: {
+          "aurora-blush": "Aurora Blush",
+          "mist-lilac": "Mist Lilac",
+          "mint-breeze": "Mint Breeze",
+          "peach-cloud": "Peach Cloud",
+          "glacier-milk": "Glacier Blue",
+          "rose-water": "Rose Water",
+          "sage-cream": "Sage Cream",
+          "dawn-sand": "Dawn Sand",
+          "lavender-snow": "Lavender Snow",
+          "ocean-haze": "Ocean Haze",
+          "camellia-silk": "Camellia Silk",
+          "tea-ivory": "Tea Ivory"
+        }
       },
       codes: {
         0: "Sunny",
@@ -1168,7 +1215,21 @@ export default {
       processingInline: "Initializing sync in background, please wait...",
       processingFooter: "Initializing sync in background. Please do not close this window. You'll be returned to normal sync status when finished.",
       footer: "This step only appears for the first sync. After initialization, LeafTab will use the new merge-based sync mode.",
-      bookmarkScopeDescription: "Bookmarks are synced directly against the real browser root, without making an extra copy. Current scope: {{scope}}."
+      bookmarkScopeDescription: "Bookmarks are synced directly against the real browser root, without making an extra copy. Current scope: {{scope}}.",
+      choice: {
+        push: {
+          title: "Upload local data",
+          description: "Use this device as the source of truth and upload your current LeafTab data and browser bookmarks to WebDAV."
+        },
+        pull: {
+          title: "Download remote data",
+          description: "Overwrite the current local LeafTab data and browser bookmarks with the latest remote snapshot on WebDAV."
+        },
+        merge: {
+          title: "Smart merge",
+          description: "Merge local and remote data, keeping items unique to each side and automatically resolving most conflicts."
+        }
+      }
     },
     sync: {
       cloud: "Cloud",

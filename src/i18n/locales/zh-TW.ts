@@ -161,10 +161,43 @@ export default {
         importSuccess: "資料匯入成功",
         importError: "資料匯入失敗，請檢查檔案格式",
         exportSuccess: "資料匯出成功",
+        progress: {
+          importPreparingTitle: "正在整理匯入資料",
+          importPreparingDetail: "正在驗證備份檔內容",
+          importReadingLocalTitle: "正在讀取目前本地資料",
+          importReadingLocalDetail: "正在準備合併匯入內容",
+          importWritingLocalTitle: "正在寫入本地資料",
+          importWritingLocalDetail: "正在將匯入資料套用到此裝置",
+          importMergingTitle: "正在合併匯入資料",
+          importMergingDetail: "正在對齊捷徑與書籤的最新狀態",
+          importSyncingTitle: "正在同步匯入結果",
+          importSyncingDetail: "正在將最新資料寫回雲端",
+          importLongTaskTitle: "正在匯入資料",
+          importLongTaskDetail: "正在寫入本地資料，請稍候",
+
+          exportLongTaskTitle: "正在匯出資料",
+          exportLongTaskDetail: "正在準備捷徑與書籤內容",
+          exportReadingLocalTitle: "正在讀取本地資料",
+          exportReadingLocalDetail: "正在收集此裝置上的捷徑與書籤",
+          exportAssemblingTitle: "正在整理匯出內容",
+          exportAssemblingDetail: "正在組裝 LeafTab 備份檔",
+          exportGeneratingTitle: "正在產生匯出檔案",
+          exportGeneratingDetail: "馬上就可以儲存到本地",
+
+          cloudBackupLongTaskTitle: "正在備份雲端目前資料",
+          cloudBackupLongTaskDetail: "匯入前會先保存一份目前帳號的雲端副本",
+          cloudBackupReadingTitle: "正在讀取雲端目前資料",
+          cloudBackupReadingDetail: "正在產生匯入前備份，避免誤覆蓋",
+          cloudBackupImportingTitle: "正在匯入備份資料",
+          cloudBackupImportingDetail: "正在將你選擇的資料寫入此裝置",
+        },
         webdav: {
           entry: "WebDAV 同步",
           entryDesc: "設定 WebDAV 遠端備份與還原",
           configure: "設定",
+          providers: {
+            jianguoyun: "堅果雲",
+          },
           pull: "從雲端拉取",
           push: "推送至雲端",
           sync: "立即同步",
@@ -384,6 +417,22 @@ export default {
     weather: {
       refreshing: "正在重新整理天氣和位置...",
       unknown: "未知",
+      wallpaper: {
+        colorPresets: {
+          "aurora-blush": "極光粉霧",
+          "mist-lilac": "晨霧紫",
+          "mint-breeze": "薄荷風",
+          "peach-cloud": "蜜桃雲",
+          "glacier-milk": "冰川奶藍",
+          "rose-water": "玫瑰水",
+          "sage-cream": "鼠尾奶綠",
+          "dawn-sand": "晨砂",
+          "lavender-snow": "薰衣雪",
+          "ocean-haze": "海霧",
+          "camellia-silk": "山茶絹",
+          "tea-ivory": "茶米白"
+        }
+      },
       codes: {
         0: "晴",
         1: "晴",
@@ -465,6 +514,15 @@ export default {
       addShortcut: "新增捷徑",
       newShortcut: "新建捷徑",
       pinToTop: "置頂",
+      pinTop: "置頂已選",
+      pinBottom: "置底已選",
+      select: "選擇",
+      unselect: "取消選擇",
+      selectedCount: "已選 {{count}} 項",
+      deleteSelected: "刪除已選",
+      moveToScenario: "移動到情景模式",
+      noScenarioTarget: "暫無可移動的目標情景模式",
+      selectBeforeMove: "請先選擇捷徑",
       multiSelect: "多選",
       cancelMultiSelect: "退出多選"
     },
@@ -831,6 +889,30 @@ export default {
 	        saveFailed: "儲存同步口令失敗"
 	      }
 	    },
+	    leaftabFirstSync: {
+      title: "初始化同步",
+      description: "選擇第一次 LeafTab 同步時，應該如何處理目前瀏覽器書籤、本地 LeafTab 資料與雲端資料。",
+      recommended: "推薦",
+      processingBadge: "處理中",
+      processingInline: "正在背景執行初始化同步，請稍候...",
+      processingFooter: "正在背景初始化同步，請不要關閉目前視窗。完成後會自動回到正常同步狀態。",
+      footer: "這一步只會在首次同步時出現。初始化完成後，LeafTab 將進入基於合併的新同步模式。",
+      bookmarkScopeDescription: "書籤會直接以真實瀏覽器根目錄為同步對象，不再額外複製一份。當前同步範圍：{{scope}}。",
+      choice: {
+        push: {
+          title: "上傳本地資料",
+          description: "以目前裝置為準，將現在的 LeafTab 資料與瀏覽器書籤寫入 WebDAV。"
+        },
+        pull: {
+          title: "下載雲端資料",
+          description: "用 WebDAV 上最新的遠端快照覆蓋目前本地 LeafTab 資料與瀏覽器書籤。"
+        },
+        merge: {
+          title: "智慧合併",
+          description: "合併本地與雲端資料，保留雙方各自獨有的 LeafTab 資料與瀏覽器書籤，並自動處理多數衝突。"
+        }
+      }
+    },
     toast: {
       cloudSynced: "已同步雲端配置",
       cloudAutoSyncSuccess: "雲端自動同步成功",
