@@ -362,9 +362,7 @@ export function LeafTabSyncDialog({
   void hasConfig;
   void summaryText;
   void webdavUrlLabel;
-  const resolvedBookmarkScope = bookmarkScopeLabel
-    ? bookmarkScopeLabel.replace(/\s*\/\s*/g, '、')
-    : t('leaftabSyncDialog.scopeDefault', { defaultValue: '书签' });
+  const resolvedBookmarkScope = bookmarkScopeLabel || t('leaftabSyncDialog.scopeDefault', { defaultValue: '书签' });
 
   const [activeTab, setActiveTab] = useState<ProviderTab>('cloud');
 

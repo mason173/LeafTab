@@ -252,6 +252,15 @@ export default {
           configDesc: "设置自动同步开关、提示与间隔",
           enabledLabel: "开启云同步",
           enabledDesc: "关闭后将暂停自动同步，仍可手动同步",
+          syncBookmarksLabel: "同步书签",
+          syncBookmarksDesc: "关闭后云同步只处理快捷方式和设置，不读取或写入浏览器书签。",
+          bookmarkSyncSafetyReminderTitle: "开启前提醒",
+          bookmarkSyncSafetyReminderA11yDescription: "开启书签同步前的提醒说明",
+          bookmarkSyncSafetyReminderLine1: "同步用于多设备保持一致，不等同于备份。",
+          bookmarkSyncSafetyReminderLine2: "书签同步仍处于测试阶段，少数情况下可能出现延迟或异常。",
+          bookmarkSyncSafetyReminderLine3: "建议先导出本地备份，再开启书签同步。",
+          bookmarkSyncSafetyReminderCancel: "我先备份",
+          bookmarkSyncSafetyReminderConfirm: "继续开启",
           autoSyncToastLabel: "自动同步成功提示",
           autoSyncToastDesc: "定时自动同步成功后显示提示",
           intervalLabel: "自动同步间隔",
@@ -265,6 +274,15 @@ export default {
           pull: "从云端拉取",
           push: "推送至云端",
           sync: "立即同步",
+          syncBookmarksLabel: "同步书签",
+          syncBookmarksDesc: "关闭后 WebDAV 只同步快捷方式和设置，不读取或写入浏览器书签。",
+          bookmarkSyncSafetyReminderTitle: "开启前提醒",
+          bookmarkSyncSafetyReminderA11yDescription: "开启书签同步前的提醒说明",
+          bookmarkSyncSafetyReminderLine1: "同步用于多设备保持一致，不等同于备份。",
+          bookmarkSyncSafetyReminderLine2: "书签同步仍处于测试阶段，少数情况下可能出现延迟或异常。",
+          bookmarkSyncSafetyReminderLine3: "建议先导出本地备份，再开启书签同步。",
+          bookmarkSyncSafetyReminderCancel: "我先备份",
+          bookmarkSyncSafetyReminderConfirm: "继续开启",
           url: "WebDAV 地址",
           filePath: "远程文件路径",
           username: "用户名",
@@ -1193,6 +1211,21 @@ export default {
     },
     pagination: {
       page: "第 {{page}} 页"
+    },
+    bookmarks: {
+      roots: {
+        toolbar: "书签栏",
+        other: "其他书签",
+        mobile: "移动书签"
+      },
+      scope: {
+        rootsLabel: "书签栏、其他书签"
+      },
+      errors: {
+        permissionDenied: "未授予书签权限，已停止同步以保护现有书签数据",
+        apiUnsupported: "当前环境不支持书签 API",
+        apiCallFailed: "书签 API 调用失败"
+      }
     }
   }
 };
