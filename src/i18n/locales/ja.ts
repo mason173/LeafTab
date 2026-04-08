@@ -559,12 +559,31 @@ export default {
       namePlaceholder: "ショートカット名を入力",
       urlLabel: "URL",
       urlPlaceholder: "URLを入力",
+      icon: {
+        modeGroup: "アイコンの種類",
+        modeOfficialShort: "公式",
+        modeFaviconShort: "ネット",
+        modeLetterShort: "文字",
+        autoOfficial: "対応時に公式アイコンへ自動切り替え",
+        officialUnavailable: "このショートカットにはまだ公式アイコンがありません",
+        networkHint: "ネットアイコンは読み込みに失敗する場合があり、その際は文字アイコンに戻ります"
+      },
       errors: {
         fillAll: "すべての情報を入力してください",
         fillAllDesc: "ショートカット名とURLを入力してください",
         duplicateUrl: "このサイトのショートカットは既に存在します",
         duplicateUrlDesc: "同一サイトのショートカットは1件のみです。URLを確認して再試行してください"
       }
+    },
+    popupShortcut: {
+      title: "現在のページを追加",
+      loading: "現在のタブ情報を読み込み中…",
+      unsupported: "このページは直接保存できるサイトURLではありません。http または https のURLに変更してから保存してください。",
+      targetScenario: "「{{name}}」シナリオに保存されます",
+      ready: "現在のタブのタイトルとURLを自動入力しました。",
+      saved: "ショートカットを保存しました",
+      scenarioLabel: "保存先シナリオ",
+      scenarioPlaceholder: "シナリオを選択"
     },
     onboarding: {
       welcome: "LeafTab へようこそ",
