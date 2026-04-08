@@ -161,10 +161,43 @@ export default {
         importSuccess: "Nhập dữ liệu thành công",
         importError: "Nhập dữ liệu thất bại, vui lòng kiểm tra định dạng tệp",
         exportSuccess: "Xuất dữ liệu thành công",
+        progress: {
+          importPreparingTitle: "Chuẩn bị nhập dữ liệu",
+          importPreparingDetail: "Đang kiểm tra tệp sao lưu...",
+          importReadingLocalTitle: "Đang đọc dữ liệu cục bộ hiện tại",
+          importReadingLocalDetail: "Đang chuẩn bị hợp nhất nội dung đã nhập...",
+          importWritingLocalTitle: "Đang ghi dữ liệu cục bộ",
+          importWritingLocalDetail: "Đang áp dụng dữ liệu đã nhập vào thiết bị...",
+          importMergingTitle: "Đang hợp nhất dữ liệu đã nhập",
+          importMergingDetail: "Đang đồng bộ trạng thái lối tắt và dấu trang...",
+          importSyncingTitle: "Đang đồng bộ dữ liệu đã nhập",
+          importSyncingDetail: "Đang tải dữ liệu mới nhất lên đám mây...",
+          importLongTaskTitle: "Đang nhập dữ liệu",
+          importLongTaskDetail: "Đang ghi dữ liệu cục bộ, vui lòng chờ...",
+
+          exportLongTaskTitle: "Đang xuất dữ liệu",
+          exportLongTaskDetail: "Đang chuẩn bị lối tắt và dấu trang...",
+          exportReadingLocalTitle: "Đang đọc dữ liệu cục bộ",
+          exportReadingLocalDetail: "Đang thu thập lối tắt và dấu trang...",
+          exportAssemblingTitle: "Đang đóng gói dữ liệu xuất",
+          exportAssemblingDetail: "Đang tạo tệp sao lưu LeafTab...",
+          exportGeneratingTitle: "Đang tạo tệp xuất",
+          exportGeneratingDetail: "Sắp sẵn sàng để lưu...",
+
+          cloudBackupLongTaskTitle: "Đang sao lưu dữ liệu đám mây",
+          cloudBackupLongTaskDetail: "Đang tải bản sao lưu trước khi nhập...",
+          cloudBackupReadingTitle: "Đang đọc dữ liệu đám mây",
+          cloudBackupReadingDetail: "Đang tạo bản sao lưu trước khi nhập để tránh ghi đè...",
+          cloudBackupImportingTitle: "Đang nhập dữ liệu sao lưu",
+          cloudBackupImportingDetail: "Đang ghi dữ liệu bạn chọn vào thiết bị...",
+        },
 	        webdav: {
           entry: "Đồng bộ WebDAV",
           entryDesc: "Cấu hình sao lưu & khôi phục từ xa qua WebDAV",
           configure: "Cấu hình",
+          providers: {
+            jianguoyun: "Jianguoyun",
+          },
           pull: "Kéo từ đám mây",
           push: "Đẩy lên đám mây",
           sync: "Đồng bộ ngay",
@@ -376,6 +409,22 @@ export default {
     weather: {
       refreshing: "Đang cập nhật thời tiết và vị trí...",
       unknown: "Không xác định",
+      wallpaper: {
+        colorPresets: {
+          "aurora-blush": "Aurora Blush",
+          "mist-lilac": "Mist Lilac",
+          "mint-breeze": "Mint Breeze",
+          "peach-cloud": "Peach Cloud",
+          "glacier-milk": "Glacier Blue",
+          "rose-water": "Rose Water",
+          "sage-cream": "Sage Cream",
+          "dawn-sand": "Dawn Sand",
+          "lavender-snow": "Lavender Snow",
+          "ocean-haze": "Ocean Haze",
+          "camellia-silk": "Camellia Silk",
+          "tea-ivory": "Tea Ivory"
+        }
+      },
       codes: {
         0: "Nắng",
         1: "Nắng",
@@ -457,6 +506,15 @@ export default {
       addShortcut: "Thêm lối tắt",
       newShortcut: "Lối tắt mới",
       pinToTop: "Ghim lên đầu",
+      pinTop: "Ghim mục đã chọn lên đầu",
+      pinBottom: "Ghim mục đã chọn xuống cuối",
+      select: "Chọn",
+      unselect: "Bỏ chọn",
+      selectedCount: "Đã chọn {{count}}",
+      deleteSelected: "Xóa mục đã chọn",
+      moveToScenario: "Chuyển sang kịch bản",
+      noScenarioTarget: "Không có kịch bản để chuyển đến",
+      selectBeforeMove: "Hãy chọn lối tắt trước khi chuyển",
       multiSelect: "Chọn nhiều",
       cancelMultiSelect: "Thoát chọn nhiều"
     },
@@ -823,6 +881,30 @@ export default {
 	        saveFailed: "Lưu mật khẩu đồng bộ thất bại"
 	      }
 	    },
+	    leaftabFirstSync: {
+      title: "Khởi tạo đồng bộ",
+      description: "Chọn cách lần đồng bộ LeafTab đầu tiên xử lý dấu trang trình duyệt, dữ liệu LeafTab cục bộ và dữ liệu từ xa.",
+      recommended: "Khuyến nghị",
+      processingBadge: "Đang xử lý",
+      processingInline: "Đang khởi tạo đồng bộ trong nền, vui lòng chờ...",
+      processingFooter: "Đang khởi tạo đồng bộ trong nền. Vui lòng không đóng cửa sổ này. Hoàn tất sẽ tự quay về trạng thái đồng bộ bình thường.",
+      footer: "Bước này chỉ xuất hiện trong lần đồng bộ đầu tiên. Sau khi khởi tạo, LeafTab sẽ dùng chế độ đồng bộ mới dựa trên hợp nhất.",
+      bookmarkScopeDescription: "Dấu trang được đồng bộ trực tiếp theo thư mục gốc thật của trình duyệt, không tạo thêm bản sao. Phạm vi hiện tại: {{scope}}.",
+      choice: {
+        push: {
+          title: "Tải lên dữ liệu cục bộ",
+          description: "Dùng thiết bị này làm chuẩn và tải dữ liệu LeafTab cùng dấu trang hiện tại lên WebDAV."
+        },
+        pull: {
+          title: "Tải xuống dữ liệu từ xa",
+          description: "Ghi đè dữ liệu LeafTab và dấu trang cục bộ bằng bản snapshot từ xa mới nhất trên WebDAV."
+        },
+        merge: {
+          title: "Hợp nhất thông minh",
+          description: "Hợp nhất dữ liệu cục bộ và từ xa, giữ lại nội dung chỉ có ở mỗi bên và tự xử lý hầu hết xung đột."
+        }
+      }
+    },
     toast: {
       cloudSynced: "Đã đồng bộ cấu hình đám mây",
       cloudAutoSyncSuccess: "Đã hoàn tất đồng bộ tự động lên đám mây",

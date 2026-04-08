@@ -175,8 +175,8 @@ export function useLeafTabBackupActions({
       }) => void,
     ) => {
       reportProgress?.({
-        title: '正在整理快捷方式数据',
-        detail: '正在校验导入文件内容',
+        title: t('settings.backup.progress.importPreparingTitle', { defaultValue: '正在整理导入数据' }),
+        detail: t('settings.backup.progress.importPreparingDetail', { defaultValue: '正在校验导入文件内容' }),
         progress: 16,
       });
       if (!Array.isArray(payload.scenarioModes) || !payload.scenarioShortcuts || typeof payload.scenarioShortcuts !== 'object') {
@@ -192,8 +192,8 @@ export function useLeafTabBackupActions({
       };
 
       reportProgress?.({
-        title: '正在写入本地快捷方式',
-        detail: '正在把导入数据应用到当前设备',
+        title: t('settings.backup.progress.importWritingLocalTitle', { defaultValue: '正在写入本地数据' }),
+        detail: t('settings.backup.progress.importWritingLocalDetail', { defaultValue: '正在把导入数据应用到当前设备' }),
         progress: 52,
       });
       setScenarioModes(nextSnapshot.scenarioModes);
@@ -219,8 +219,8 @@ export function useLeafTabBackupActions({
       let synced = true;
       if (user && options?.syncCloudIfSignedIn !== false) {
         reportProgress?.({
-          title: '正在同步导入结果',
-          detail: '正在把最新快捷方式写回账号云端',
+          title: t('settings.backup.progress.importSyncingTitle', { defaultValue: '正在同步导入结果' }),
+          detail: t('settings.backup.progress.importSyncingDetail', { defaultValue: '正在把最新数据写回账号云端' }),
           progress: 82,
         });
         synced = Boolean(await cloudSyncRunnerRef.current({
@@ -241,8 +241,8 @@ export function useLeafTabBackupActions({
         return await performImport(options?.onProgress);
       }
       return await runLongTask({
-        title: '正在导入快捷方式',
-        detail: '正在写入本地数据，请稍候',
+        title: t('settings.backup.progress.importLongTaskTitle', { defaultValue: '正在导入数据' }),
+        detail: t('settings.backup.progress.importLongTaskDetail', { defaultValue: '正在写入本地数据，请稍候' }),
         progress: 8,
       }, async ({ update }) => performImport(update));
     } catch (error) {
@@ -292,16 +292,16 @@ export function useLeafTabBackupActions({
       }) => void,
     ) => {
       reportProgress?.({
-        title: '正在读取当前本地数据',
-        detail: '正在准备合并导入内容',
+        title: t('settings.backup.progress.importReadingLocalTitle', { defaultValue: '正在读取当前本地数据' }),
+        detail: t('settings.backup.progress.importReadingLocalDetail', { defaultValue: '正在准备合并导入内容' }),
         progress: 18,
       });
       const baseSnapshot = await buildSnapshotFromCurrentState({
         requestBookmarkPermission: false,
       });
       reportProgress?.({
-        title: '正在合并导入数据',
-        detail: '正在对齐快捷方式与书签的最新状态',
+        title: t('settings.backup.progress.importMergingTitle', { defaultValue: '正在合并导入数据' }),
+        detail: t('settings.backup.progress.importMergingDetail', { defaultValue: '正在对齐快捷方式与书签的最新状态' }),
         progress: 40,
       });
       const mergedSnapshot = mergeLeafTabLocalBackupSnapshotWithBase({
@@ -318,8 +318,8 @@ export function useLeafTabBackupActions({
         : nextScenarioModes[0]?.id || '';
 
       reportProgress?.({
-        title: '正在写入本地数据',
-        detail: '正在把导入结果应用到当前设备',
+        title: t('settings.backup.progress.importWritingLocalTitle', { defaultValue: '正在写入本地数据' }),
+        detail: t('settings.backup.progress.importWritingLocalDetail', { defaultValue: '正在把导入数据应用到当前设备' }),
         progress: 68,
       });
       await applySnapshotToLocalState(mergedSnapshot, {
@@ -329,8 +329,8 @@ export function useLeafTabBackupActions({
       let synced = true;
       if (user && options?.syncCloudIfSignedIn !== false) {
         reportProgress?.({
-          title: '正在同步导入结果',
-          detail: '正在把最新数据写回账号云端',
+          title: t('settings.backup.progress.importSyncingTitle', { defaultValue: '正在同步导入结果' }),
+          detail: t('settings.backup.progress.importSyncingDetail', { defaultValue: '正在把最新数据写回账号云端' }),
           progress: 86,
         });
         synced = Boolean(await cloudSyncRunnerRef.current({
@@ -351,8 +351,8 @@ export function useLeafTabBackupActions({
         return await performImport(options?.onProgress);
       }
       return await runLongTask({
-        title: '正在导入数据',
-        detail: '正在处理快捷方式和书签内容',
+        title: t('settings.backup.progress.importLongTaskTitle', { defaultValue: '正在导入数据' }),
+        detail: t('settings.backup.progress.importLongTaskDetail', { defaultValue: '正在写入本地数据，请稍候' }),
         progress: 8,
       }, async ({ update }) => performImport(update));
     } catch (error) {
@@ -372,21 +372,21 @@ export function useLeafTabBackupActions({
 
   const executeExportData = useCallback(async (exportScope?: LeafTabLocalBackupExportScope) => {
     await runLongTask({
-      title: '正在导出数据',
-      detail: '正在准备快捷方式与书签内容',
+      title: t('settings.backup.progress.exportLongTaskTitle', { defaultValue: '正在导出数据' }),
+      detail: t('settings.backup.progress.exportLongTaskDetail', { defaultValue: '正在准备快捷方式与书签内容' }),
       progress: 8,
     }, async ({ update }) => {
       update({
-        title: '正在读取本地数据',
-        detail: '正在收集当前设备上的快捷方式与书签',
+        title: t('settings.backup.progress.exportReadingLocalTitle', { defaultValue: '正在读取本地数据' }),
+        detail: t('settings.backup.progress.exportReadingLocalDetail', { defaultValue: '正在收集当前设备上的快捷方式与书签' }),
         progress: 24,
       });
       const snapshot = await buildSnapshotFromCurrentState({
         requestBookmarkPermission: true,
       });
       update({
-        title: '正在整理导出内容',
-        detail: '正在组装 LeafTab 备份文件',
+        title: t('settings.backup.progress.exportAssemblingTitle', { defaultValue: '正在整理导出内容' }),
+        detail: t('settings.backup.progress.exportAssemblingDetail', { defaultValue: '正在组装 LeafTab 备份文件' }),
         progress: 58,
       });
       const bundle = createLeafTabLocalBackupBundle({
@@ -398,8 +398,8 @@ export function useLeafTabBackupActions({
         appVersion: globalThis.chrome?.runtime?.getManifest?.().version || '',
       });
       update({
-        title: '正在生成导出文件',
-        detail: '马上就可以保存到本地',
+        title: t('settings.backup.progress.exportGeneratingTitle', { defaultValue: '正在生成导出文件' }),
+        detail: t('settings.backup.progress.exportGeneratingDetail', { defaultValue: '马上就可以保存到本地' }),
         progress: 84,
       });
       const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
@@ -453,19 +453,19 @@ export function useLeafTabBackupActions({
 
   const handleImportConfirmApply = useCallback(async (payload: LeafTabLocalBackupImportData) => {
     return runLongTask({
-      title: '正在备份云端当前数据',
-      detail: '导入前会先保存一份当前账号云端副本',
+      title: t('settings.backup.progress.cloudBackupLongTaskTitle', { defaultValue: '正在备份云端当前数据' }),
+      detail: t('settings.backup.progress.cloudBackupLongTaskDetail', { defaultValue: '导入前会先保存一份当前账号云端副本' }),
       progress: 6,
     }, async ({ update }) => {
       update({
-        title: '正在读取云端当前数据',
-        detail: '正在生成导入前备份，避免误覆盖',
+        title: t('settings.backup.progress.cloudBackupReadingTitle', { defaultValue: '正在读取云端当前数据' }),
+        detail: t('settings.backup.progress.cloudBackupReadingDetail', { defaultValue: '正在生成导入前备份，避免误覆盖' }),
         progress: 18,
       });
       await downloadCloudBackupEnvelope();
       update({
-        title: '正在导入备份数据',
-        detail: '正在把你选择的数据写入当前设备',
+        title: t('settings.backup.progress.cloudBackupImportingTitle', { defaultValue: '正在导入备份数据' }),
+        detail: t('settings.backup.progress.cloudBackupImportingDetail', { defaultValue: '正在把你选择的数据写入当前设备' }),
         progress: 34,
       });
       return applyImportedLeafTabBackup(payload, {

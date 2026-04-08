@@ -161,10 +161,43 @@ export default {
         importSuccess: "데이터 가져오기에 성공했습니다",
         importError: "데이터 가져오기에 실패했습니다. 파일 형식을 확인하세요.",
         exportSuccess: "데이터 내보내기에 성공했습니다",
+        progress: {
+          importPreparingTitle: "가져오기 준비 중",
+          importPreparingDetail: "백업 파일을 확인하는 중...",
+          importReadingLocalTitle: "현재 로컬 데이터 읽는 중",
+          importReadingLocalDetail: "가져온 내용을 병합할 준비 중...",
+          importWritingLocalTitle: "로컬 데이터 쓰는 중",
+          importWritingLocalDetail: "가져온 데이터를 이 기기에 적용하는 중...",
+          importMergingTitle: "가져온 데이터 병합 중",
+          importMergingDetail: "바로가기와 북마크 상태를 맞추는 중...",
+          importSyncingTitle: "가져온 데이터 동기화 중",
+          importSyncingDetail: "최신 데이터를 클라우드에 업로드하는 중...",
+          importLongTaskTitle: "데이터 가져오는 중",
+          importLongTaskDetail: "로컬에 저장 중입니다. 잠시만 기다려 주세요...",
+
+          exportLongTaskTitle: "데이터 내보내는 중",
+          exportLongTaskDetail: "바로가기와 북마크를 준비하는 중...",
+          exportReadingLocalTitle: "로컬 데이터 읽는 중",
+          exportReadingLocalDetail: "바로가기와 북마크를 수집하는 중...",
+          exportAssemblingTitle: "내보내기 구성 중",
+          exportAssemblingDetail: "LeafTab 백업 파일을 만드는 중...",
+          exportGeneratingTitle: "내보내기 파일 생성 중",
+          exportGeneratingDetail: "곧 저장할 수 있습니다...",
+
+          cloudBackupLongTaskTitle: "클라우드 데이터 백업 중",
+          cloudBackupLongTaskDetail: "가져오기 전에 클라우드 백업을 다운로드합니다...",
+          cloudBackupReadingTitle: "클라우드 데이터 읽는 중",
+          cloudBackupReadingDetail: "덮어쓰기를 방지하기 위해 가져오기 전 백업을 만드는 중...",
+          cloudBackupImportingTitle: "백업 데이터 가져오는 중",
+          cloudBackupImportingDetail: "선택한 데이터를 이 기기에 쓰는 중...",
+        },
 	        webdav: {
           entry: "WebDAV 동기화",
           entryDesc: "WebDAV 원격 백업 및 복원을 설정",
           configure: "설정",
+          providers: {
+            jianguoyun: "Jianguoyun",
+          },
           pull: "클라우드에서 가져오기",
           push: "클라우드로 보내기",
           sync: "지금 동기화",
@@ -379,6 +412,22 @@ export default {
     weather: {
       refreshing: "날씨 및 위치 업데이트 중...",
       unknown: "알 수 없음",
+      wallpaper: {
+        colorPresets: {
+          "aurora-blush": "오로라 블러시",
+          "mist-lilac": "미스트 라일락",
+          "mint-breeze": "민트 브리즈",
+          "peach-cloud": "피치 클라우드",
+          "glacier-milk": "글래시어 블루",
+          "rose-water": "로즈 워터",
+          "sage-cream": "세이지 크림",
+          "dawn-sand": "던 샌드",
+          "lavender-snow": "라벤더 스노우",
+          "ocean-haze": "오션 헤이즈",
+          "camellia-silk": "카멜리아 실크",
+          "tea-ivory": "티 아이보리"
+        }
+      },
       codes: {
         0: "맑음",
         1: "맑음",
@@ -460,6 +509,15 @@ export default {
       addShortcut: "바로가기 추가",
       newShortcut: "새 바로가기",
       pinToTop: "고정",
+      pinTop: "선택 항목을 맨 위로 고정",
+      pinBottom: "선택 항목을 맨 아래로 고정",
+      select: "선택",
+      unselect: "선택 해제",
+      selectedCount: "{{count}}개 선택됨",
+      deleteSelected: "선택 항목 삭제",
+      moveToScenario: "시나리오로 이동",
+      noScenarioTarget: "이동할 시나리오가 없습니다",
+      selectBeforeMove: "이동하려면 먼저 바로가기를 선택하세요",
       multiSelect: "다중 선택",
       cancelMultiSelect: "다중 선택 종료"
     },
@@ -826,6 +884,30 @@ export default {
 	        saveFailed: "동기화 암호문구 저장에 실패했습니다"
 	      }
 	    },
+	    leaftabFirstSync: {
+      title: "초기 동기화",
+      description: "첫 LeafTab 동기화에서 브라우저 북마크, 로컬 LeafTab 데이터, 원격 데이터를 어떻게 처리할지 선택하세요.",
+      recommended: "추천",
+      processingBadge: "처리 중",
+      processingInline: "백그라운드에서 초기 동기화를 진행 중입니다. 잠시만 기다려 주세요...",
+      processingFooter: "백그라운드에서 초기 동기화를 진행 중입니다. 이 창을 닫지 마세요. 완료되면 정상 동기화 상태로 자동 전환됩니다.",
+      footer: "이 단계는 최초 동기화에서만 표시됩니다. 초기화가 끝나면 LeafTab은 병합 기반의 새 동기화 모드로 전환됩니다.",
+      bookmarkScopeDescription: "북마크는 실제 브라우저 루트를 기준으로 직접 동기화되며, 별도의 복사본을 만들지 않습니다. 현재 범위: {{scope}}.",
+      choice: {
+        push: {
+          title: "로컬 데이터 업로드",
+          description: "현재 기기를 기준으로 지금의 LeafTab 데이터와 브라우저 북마크를 WebDAV에 업로드합니다."
+        },
+        pull: {
+          title: "원격 데이터 다운로드",
+          description: "WebDAV에 있는 최신 원격 스냅샷으로 현재 로컬 LeafTab 데이터와 브라우저 북마크를 덮어씁니다."
+        },
+        merge: {
+          title: "스마트 병합",
+          description: "로컬과 원격 데이터를 병합하여 양쪽에만 있는 데이터를 유지하고, 대부분의 충돌을 자동으로 처리합니다."
+        }
+      }
+    },
     toast: {
       cloudSynced: "클라우드 설정 동기화됨",
       cloudAutoSyncSuccess: "클라우드 자동 동기화 완료",

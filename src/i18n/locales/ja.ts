@@ -161,6 +161,36 @@ export default {
         importSuccess: "データのインポートに成功しました",
         importError: "データのインポートに失敗しました。ファイル形式を確認してください。",
         exportSuccess: "データのエクスポートに成功しました",
+        progress: {
+          importPreparingTitle: "インポートを準備中",
+          importPreparingDetail: "バックアップファイルを検証しています...",
+          importReadingLocalTitle: "現在のローカルデータを読み込み中",
+          importReadingLocalDetail: "インポート内容を統合する準備をしています...",
+          importWritingLocalTitle: "ローカルデータを書き込み中",
+          importWritingLocalDetail: "インポート内容をこの端末に適用しています...",
+          importMergingTitle: "インポートデータを統合中",
+          importMergingDetail: "ショートカットとブックマークを整合しています...",
+          importSyncingTitle: "インポート結果を同期中",
+          importSyncingDetail: "最新データをクラウドへ送信しています...",
+          importLongTaskTitle: "データをインポート中",
+          importLongTaskDetail: "ローカルに書き込み中です。しばらくお待ちください...",
+
+          exportLongTaskTitle: "データをエクスポート中",
+          exportLongTaskDetail: "ショートカットとブックマークを準備しています...",
+          exportReadingLocalTitle: "ローカルデータを読み込み中",
+          exportReadingLocalDetail: "ショートカットとブックマークを収集中...",
+          exportAssemblingTitle: "エクスポート内容を組み立て中",
+          exportAssemblingDetail: "LeafTab バックアップファイルを生成しています...",
+          exportGeneratingTitle: "エクスポートファイルを生成中",
+          exportGeneratingDetail: "まもなく保存できます...",
+
+          cloudBackupLongTaskTitle: "クラウドデータをバックアップ中",
+          cloudBackupLongTaskDetail: "インポート前にクラウドのバックアップをダウンロードします...",
+          cloudBackupReadingTitle: "クラウドデータを読み込み中",
+          cloudBackupReadingDetail: "上書きを防ぐため、インポート前バックアップを作成しています...",
+          cloudBackupImportingTitle: "バックアップデータをインポート中",
+          cloudBackupImportingDetail: "選択したデータをこの端末に書き込んでいます...",
+        },
 	        webdav: {
           entry: "WebDAV 同期",
           entryDesc: "WebDAV でリモートバックアップと復元を設定",
@@ -185,6 +215,9 @@ export default {
           enabledLabel: "WebDAV 同期を有効化",
           enabledDesc: "無効化すると WebDAV の自動/手動同期を停止します",
           providerCustom: "カスタムサービス",
+          providers: {
+            jianguoyun: "Jianguoyun",
+          },
           providerLabel: "WebDAV プロバイダー",
           providerPlaceholder: "プロバイダーを選択",
           policyMerge: "可能ならローカルとクラウドの変更を統合（推奨）",
@@ -405,7 +438,21 @@ export default {
         customDesc: "自分の画像を壁紙として使用します。",
         customUploaded: "アップロードした壁紙。",
         imageSupport: "JPG、PNG、WEBP に対応",
-        maskOpacity: "黒いオーバーレイ"
+        maskOpacity: "黒いオーバーレイ",
+        colorPresets: {
+          "aurora-blush": "オーロラブラッシュ",
+          "mist-lilac": "ミストライラック",
+          "mint-breeze": "ミントブリーズ",
+          "peach-cloud": "ピーチクラウド",
+          "glacier-milk": "グレイシャーブルー",
+          "rose-water": "ローズウォーター",
+          "sage-cream": "セージクリーム",
+          "dawn-sand": "ドーンサンド",
+          "lavender-snow": "ラベンダースノー",
+          "ocean-haze": "オーシャンヘイズ",
+          "camellia-silk": "カメリアシルク",
+          "tea-ivory": "ティーアイボリー"
+        }
       },
       codes: {
         0: "晴れ",
@@ -488,6 +535,15 @@ export default {
       addShortcut: "ショートカットを追加",
       newShortcut: "新しいショートカット",
       pinToTop: "固定",
+      pinTop: "選択項目を先頭に固定",
+      pinBottom: "選択項目を末尾に固定",
+      select: "選択",
+      unselect: "選択解除",
+      selectedCount: "{{count}} 件選択中",
+      deleteSelected: "選択した項目を削除",
+      moveToScenario: "シナリオに移動",
+      noScenarioTarget: "移動先のシナリオがありません",
+      selectBeforeMove: "移動する前にショートカットを選択してください",
       multiSelect: "複数選択",
       cancelMultiSelect: "複数選択を終了"
     },
@@ -871,6 +927,30 @@ export default {
 	        saveFailed: "同期パスフレーズの保存に失敗しました"
 	      }
 	    },
+	    leaftabFirstSync: {
+      title: "初回同期の初期化",
+      description: "初回の LeafTab 同期で、ブラウザのブックマーク、ローカルの LeafTab データ、リモートデータをどう扱うか選択します。",
+      recommended: "おすすめ",
+      processingBadge: "処理中",
+      processingInline: "バックグラウンドで初期同期を実行中です。しばらくお待ちください...",
+      processingFooter: "バックグラウンドで初期同期を実行中です。このウィンドウを閉じないでください。完了後に通常の同期状態に戻ります。",
+      footer: "このステップは初回同期時のみ表示されます。初期化後、LeafTab はマージ型の新しい同期モードを使用します。",
+      bookmarkScopeDescription: "ブックマークは実際のブラウザのルートに対して直接同期され、追加のコピーは作成しません。現在の範囲: {{scope}}。",
+      choice: {
+        push: {
+          title: "ローカルデータをアップロード",
+          description: "この端末を基準に、現在の LeafTab データとブラウザのブックマークを WebDAV にアップロードします。"
+        },
+        pull: {
+          title: "リモートデータをダウンロード",
+          description: "WebDAV 上の最新のリモートスナップショットで、現在のローカル LeafTab データとブックマークを上書きします。"
+        },
+        merge: {
+          title: "スマート統合",
+          description: "ローカルとリモートを統合し、双方にしかないデータを保持しつつ、多くの競合を自動的に解決します。"
+        }
+      }
+    },
     sync: {
       cloud: "クラウド",
       local: "ローカル"

@@ -45,7 +45,7 @@ export function ColorWallpaperPanel({
                     onColorWallpaperIdChange(preset.id);
                     onModeChange("color");
                   }}
-                  title={preset.name}
+                  title={t(`weather.wallpaper.colorPresets.${preset.id}`, { defaultValue: preset.name })}
                 >
                   {selected ? (
                     <span className="absolute right-1 top-1 rounded-full bg-black/35 p-0.5 text-white">
