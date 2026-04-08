@@ -9,6 +9,19 @@ const SHORTCUT_CUSTOM_ICON_INDEX_KEY = 'shortcut_custom_icon_v1:index';
 const MAX_CUSTOM_SHORTCUT_ICONS = 160;
 const MAX_CUSTOM_ICON_DATA_LENGTH = 220_000;
 const CUSTOM_ICON_SIZE = 64;
+export const SHORTCUT_CUSTOM_ICON_CHANGED_EVENT = 'leaftab-shortcut-custom-icon-changed';
+
+type ShortcutCustomIconChangedDetail = {
+  shortcutId: string;
+  action: 'set' | 'remove';
+};
+
+function dispatchShortcutCustomIconChanged(detail: ShortcutCustomIconChangedDetail) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<ShortcutCustomIconChangedDetail>(SHORTCUT_CUSTOM_ICON_CHANGED_EVENT, {
+    detail,
+  }));
+}
 
 function readCustomIconIndex() {
   try {
@@ -56,6 +69,7 @@ export function persistShortcutCustomIcon(shortcutId: string, dataUrl: string) {
   }
 
   writeCustomIconIndex(nextIndex);
+  dispatchShortcutCustomIconChanged({ shortcutId: normalizedId, action: 'set' });
 }
 
 export function removeShortcutCustomIcon(shortcutId?: string | null) {
@@ -63,6 +77,7 @@ export function removeShortcutCustomIcon(shortcutId?: string | null) {
   if (!normalizedId) return;
   queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(normalizedId));
   writeCustomIconIndex(readCustomIconIndex().filter((id) => id !== normalizedId));
+  dispatchShortcutCustomIconChanged({ shortcutId: normalizedId, action: 'remove' });
 }
 
 export function removeShortcutCustomIcons(shortcutIds: Iterable<string>) {
@@ -75,6 +90,7 @@ export function removeShortcutCustomIcons(shortcutIds: Iterable<string>) {
 
   normalizedIds.forEach((shortcutId) => {
     queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(shortcutId));
+    dispatchShortcutCustomIconChanged({ shortcutId, action: 'remove' });
   });
   writeCustomIconIndex(readCustomIconIndex().filter((id) => !normalizedIds.has(id)));
 }
