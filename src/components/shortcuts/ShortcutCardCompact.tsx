@@ -40,6 +40,7 @@ export function ShortcutCardCompact({
           <ShortcutIcon
             icon={shortcut.icon}
             url={shortcut.url}
+            shortcutId={shortcut.id}
             size={iconSize}
             exact
             frame="never"

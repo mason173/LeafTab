@@ -535,9 +535,13 @@ export default {
         modeOfficialShort: "Chính thức",
         modeFaviconShort: "Mạng",
         modeLetterShort: "Chữ",
+        modeCustomShort: "Tùy chỉnh",
+        modeCustomReplaceShort: "Thay đổi",
+        modeCustomLoadingShort: "Đang xử lý",
         autoOfficial: "Tự động chuyển sang biểu tượng chính thức khi có",
         officialUnavailable: "Lối tắt này hiện chưa có biểu tượng chính thức",
-        networkHint: "Biểu tượng mạng có thể tải thất bại; khi đó sẽ tự động chuyển sang biểu tượng chữ"
+        networkHint: "Biểu tượng mạng có thể tải thất bại; khi đó sẽ tự động chuyển sang biểu tượng chữ",
+        customFileInvalid: "Hình ảnh này hiện chưa dùng được làm biểu tượng. Vui lòng thử ảnh khác."
       },
       errors: {
         fillAll: "Vui lòng điền đầy đủ thông tin",

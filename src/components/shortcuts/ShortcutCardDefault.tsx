@@ -110,6 +110,7 @@ export function ShortcutCardDefault({
           <ShortcutIcon
             icon={shortcut.icon}
             url={shortcut.url}
+            shortcutId={shortcut.id}
             size={iconSize}
             frame="auto"
             fallbackStyle="emptyicon"

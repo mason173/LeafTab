@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
@@ -13,6 +13,7 @@ import {
   queueCachedLocalStorageSetItem,
   readCachedLocalStorageItem,
 } from '@/utils/cachedLocalStorage';
+import { readShortcutCustomIcon } from '@/utils/shortcutCustomIcons';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -206,7 +207,7 @@ function isHttpFaviconEligible(url: string, domain: string) {
 }
 
 const ICON_META_PREFIX = 'favicon_cache_v2_meta:';
-type IconCandidateKind = 'custom' | 'favicon' | 'provided';
+type IconCandidateKind = 'official' | 'favicon' | 'provided' | 'local-custom';
 type IconCandidate = {
   src: string;
   kind: IconCandidateKind;
@@ -282,6 +283,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
   fallbackStyle = 'default',
   fallbackLabel,
   fallbackLetterSize = 24,
+  shortcutId,
+  localCustomIconDataUrl,
+  allowStoredCustomIcon = true,
   useOfficialIcon,
   autoUseOfficialIcon,
   officialIconAvailableAtSave,
@@ -296,6 +300,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
   fallbackStyle?: 'default' | 'emptyicon';
   fallbackLabel?: string;
   fallbackLetterSize?: number;
+  shortcutId?: string;
+  localCustomIconDataUrl?: string;
+  allowStoredCustomIcon?: boolean;
   useOfficialIcon?: Shortcut['useOfficialIcon'];
   autoUseOfficialIcon?: Shortcut['autoUseOfficialIcon'];
   officialIconAvailableAtSave?: Shortcut['officialIconAvailableAtSave'];
@@ -312,9 +319,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
     if (!domain) return '';
     return resolveCustomIconFromCache(domain)?.url || '';
   });
+  const customIconClipPathId = useId().replace(/:/g, '');
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
   const resolvedIconRendering = normalizeShortcutVisualMode(iconRendering);
+  const storedLocalCustomIconDataUrl = allowStoredCustomIcon ? readShortcutCustomIcon(shortcutId) : '';
+  const effectiveLocalCustomIconDataUrl = (localCustomIconDataUrl || storedLocalCustomIconDataUrl || '').trim();
 
   useEffect(() => {
     setCachedFavicon(domain ? getCachedFavicon(domain) : '');
@@ -350,6 +360,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
 
   const candidates = useMemo<IconCandidate[]>(() => {
     const list: IconCandidate[] = [];
+    if (effectiveLocalCustomIconDataUrl) {
+      list.push({ src: effectiveLocalCustomIconDataUrl, kind: 'local-custom' });
+    }
     const shouldUseOfficial = shouldUseOfficialShortcutIcon({
       officialAvailable: Boolean(customIconUrl),
       shortcut: {
@@ -360,9 +373,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
     });
     if (shouldUseOfficial && customIconUrl) {
       if (cachedOfficialIcon) {
-        list.push({ src: cachedOfficialIcon, kind: 'custom' });
+        list.push({ src: cachedOfficialIcon, kind: 'official' });
       }
-      list.push({ src: customIconUrl, kind: 'custom' });
+      list.push({ src: customIconUrl, kind: 'official' });
     }
     if (resolvedIconRendering !== 'letter') {
       if (cachedFavicon && (fallbackStyle !== 'emptyicon' || cachedFavicon.startsWith('data:'))) {
@@ -406,6 +419,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
     firefox,
     firefoxDomainCandidatesReady,
     icon,
+    effectiveLocalCustomIconDataUrl,
     officialIconAvailableAtSave,
     resolvedIconRendering,
     size,
@@ -477,7 +491,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
   const emptyIconColorSeed = (domain || url || fallbackLabel || '').trim().toLowerCase();
   const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getShortcutIconColor(emptyIconColorSeed, iconColor));
-  const isCustomActive = activeCandidate?.kind === 'custom';
+  const isCustomActive = activeCandidate?.kind === 'official' || activeCandidate?.kind === 'local-custom';
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = 24;
@@ -489,7 +503,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);
     const shouldPersistAsFavicon = activeCandidate?.kind === 'favicon' || activeCandidate?.kind === 'provided';
-    const shouldPersistAsOfficial = activeCandidate?.kind === 'custom';
+    const shouldPersistAsOfficial = activeCandidate?.kind === 'official';
     if (domain && src && shouldPersistAsOfficial && !src.startsWith('data:') && !cachedOfficialIcon) {
       void cacheOfficialIconData(domain, src).then(() => {
         setCachedOfficialIcon(getCachedOfficialIcon(domain));
@@ -569,6 +583,32 @@ const ShortcutIcon = memo(function ShortcutIcon({
         <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 rounded-xl top-1/2 bg-secondary text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
           {letter}
         </div>
+      </div>
+    );
+  }
+
+  if (activeCandidate?.kind === 'local-custom') {
+    return (
+      <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
+        <svg
+          aria-hidden="true"
+          className="absolute inset-0 size-full max-w-none pointer-events-none select-none"
+          viewBox="0 0 72 72"
+        >
+          <defs>
+            <clipPath id={customIconClipPathId}>
+              <path d={EMPTY_ICON_CONTAINER_PATH_D} />
+            </clipPath>
+          </defs>
+          <image
+            href={src}
+            width="72"
+            height="72"
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#${customIconClipPathId})`}
+          />
+          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="2" />
+        </svg>
       </div>
     );
   }

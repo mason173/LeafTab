@@ -80,6 +80,7 @@ export type HistorySearchSuggestionItem = SearchSuggestionBase & {
 
 export type ShortcutSearchSuggestionItem = SearchSuggestionBase & {
   type: 'shortcut';
+  shortcutId?: string;
   icon: string;
 };
 

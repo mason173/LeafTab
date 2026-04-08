@@ -538,9 +538,13 @@ export default {
         modeOfficialShort: "공식",
         modeFaviconShort: "온라인",
         modeLetterShort: "문자",
+        modeCustomShort: "사용자 지정",
+        modeCustomReplaceShort: "변경",
+        modeCustomLoadingShort: "처리 중",
         autoOfficial: "지원되면 공식 아이콘으로 자동 전환",
         officialUnavailable: "이 바로가기에는 아직 공식 아이콘이 없습니다",
-        networkHint: "온라인 아이콘은 불러오기에 실패할 수 있으며, 실패 시 문자 아이콘으로 대체됩니다"
+        networkHint: "온라인 아이콘은 불러오기에 실패할 수 있으며, 실패 시 문자 아이콘으로 대체됩니다",
+        customFileInvalid: "이 이미지는 지금 아이콘으로 사용할 수 없습니다. 다른 이미지를 선택해 주세요"
       },
       errors: {
         fillAll: "모든 정보를 입력해주세요",
