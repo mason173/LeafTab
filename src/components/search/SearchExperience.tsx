@@ -25,7 +25,7 @@ import {
 import {
   matchSearchCommandAliasInput,
   parseSearchCommand,
-  type SearchCommandPermission,
+  type SearchSuggestionPermission,
 } from '@/utils/searchCommands';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
@@ -34,7 +34,7 @@ import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
-const SEARCH_PERMISSION_KEYS: SearchCommandPermission[] = ['bookmarks', 'history', 'tabs'];
+const SEARCH_PERMISSION_KEYS: SearchSuggestionPermission[] = ['bookmarks', 'history', 'tabs'];
 const SEARCH_FOCUS_BLOCKING_SELECTOR = [
   '[data-slot="dialog-content"]',
   '[data-slot="alert-dialog-content"]',
@@ -158,9 +158,11 @@ export const SearchExperience = memo(function SearchExperience({
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
   const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
+  const outsideDismissRefocusTimerRef = useRef<number | null>(null);
+  const suppressNextInputFocusOpenRef = useRef(false);
   const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
-  const [searchPermissions, setSearchPermissions] = useState<Record<SearchCommandPermission, boolean>>(() => ({
+  const [searchPermissions, setSearchPermissions] = useState<Record<SearchSuggestionPermission, boolean>>(() => ({
     bookmarks: typeof chrome === 'undefined' || !chrome.runtime?.id,
     history: typeof chrome === 'undefined' || !chrome.runtime?.id,
     tabs: typeof chrome === 'undefined' || !chrome.runtime?.id,
@@ -168,13 +170,12 @@ export const SearchExperience = memo(function SearchExperience({
   const [searchPermissionsReady, setSearchPermissionsReady] = useState<boolean>(() => (
     typeof chrome === 'undefined' || !chrome.runtime?.id
   ));
-  const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchCommandPermission | null>(null);
-  const [permissionWarmup, setPermissionWarmup] = useState<SearchCommandPermission | null>(null);
+  const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchSuggestionPermission | null>(null);
+  const [permissionWarmup, setPermissionWarmup] = useState<SearchSuggestionPermission | null>(null);
 
   const {
     searchValue,
     setSearchValue,
-    searchHistory,
     setSearchHistory,
     historySelectedIndex,
     setHistorySelectedIndex,
@@ -219,8 +220,59 @@ export const SearchExperience = memo(function SearchExperience({
       if (searchTypingBurstTimerRef.current !== null) {
         window.clearTimeout(searchTypingBurstTimerRef.current);
       }
+      if (outsideDismissRefocusTimerRef.current !== null) {
+        window.clearTimeout(outsideDismissRefocusTimerRef.current);
+      }
     };
   }, []);
+
+  const captureSearchInputSelection = useCallback(() => {
+    const input = inputRef.current;
+    if (!input || document.activeElement !== input) return;
+    lastInputSelectionRef.current = {
+      start: input.selectionStart ?? input.value.length,
+      end: input.selectionEnd ?? input.value.length,
+    };
+  }, [inputRef]);
+
+  const restoreSearchInputSelection = useCallback((input: HTMLInputElement) => {
+    const lastSelection = lastInputSelectionRef.current;
+    const valueLength = input.value.length;
+    const start = Math.max(0, Math.min(lastSelection?.start ?? valueLength, valueLength));
+    const end = Math.max(start, Math.min(lastSelection?.end ?? valueLength, valueLength));
+    try {
+      input.setSelectionRange(start, end);
+    } catch {}
+  }, []);
+
+  const focusSearchInputWithoutOpeningPanel = useCallback(() => {
+    if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
+    const input = inputRef.current;
+    if (!input) return;
+    if (document.activeElement === input) {
+      captureSearchInputSelection();
+      restoreSearchInputSelection(input);
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (
+      activeElement
+      && activeElement !== document.body
+      && activeElement !== document.documentElement
+      && activeElement !== input
+      && isEditableElement(activeElement)
+    ) {
+      return;
+    }
+
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      input.focus();
+    }
+    restoreSearchInputSelection(input);
+  }, [captureSearchInputSelection, dropdownOpen, inputRef, restoreSearchInputSelection]);
 
   useEffect(() => {
     onInteractionStateChange?.({
@@ -254,46 +306,9 @@ export const SearchExperience = memo(function SearchExperience({
       }
     };
 
-    const restoreInputSelection = (input: HTMLInputElement) => {
-      const lastSelection = lastInputSelectionRef.current;
-      const valueLength = input.value.length;
-      const start = Math.max(0, Math.min(lastSelection?.start ?? valueLength, valueLength));
-      const end = Math.max(start, Math.min(lastSelection?.end ?? valueLength, valueLength));
-      try {
-        input.setSelectionRange(start, end);
-      } catch {}
-    };
-
     const focusSearchInput = () => {
       clearScheduledFocus();
-      if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
-      const input = inputRef.current;
-      if (!input) return;
-      if (document.activeElement === input) {
-        lastInputSelectionRef.current = {
-          start: input.selectionStart ?? input.value.length,
-          end: input.selectionEnd ?? input.value.length,
-        };
-        return;
-      }
-
-      const activeElement = document.activeElement;
-      if (
-        activeElement
-        && activeElement !== document.body
-        && activeElement !== document.documentElement
-        && activeElement !== input
-        && isEditableElement(activeElement)
-      ) {
-        return;
-      }
-
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-      restoreInputSelection(input);
+      focusSearchInputWithoutOpeningPanel();
     };
 
     const scheduleFocusSearchInput = () => {
@@ -305,21 +320,12 @@ export const SearchExperience = memo(function SearchExperience({
       }, SEARCH_INPUT_FOCUS_LOCK_DELAY_MS);
     };
 
-    const captureInputSelection = () => {
-      const input = inputRef.current;
-      if (!input || document.activeElement !== input) return;
-      lastInputSelectionRef.current = {
-        start: input.selectionStart ?? input.value.length,
-        end: input.selectionEnd ?? input.value.length,
-      };
-    };
-
     const handleDocumentFocusIn = (event: FocusEvent) => {
       const input = inputRef.current;
       if (!input || dropdownOpen || hasOpenBlockingLayer()) return;
       const target = event.target;
       if (target === input) {
-        captureInputSelection();
+        captureSearchInputSelection();
         return;
       }
       if (target instanceof Element && isFocusProtectedElement(target)) {
@@ -339,7 +345,7 @@ export const SearchExperience = memo(function SearchExperience({
     };
 
     const handleSelectionChange = () => {
-      captureInputSelection();
+      captureSearchInputSelection();
     };
 
     scheduleFocusSearchInput();
@@ -355,7 +361,7 @@ export const SearchExperience = memo(function SearchExperience({
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [dropdownOpen, inputRef]);
+  }, [captureSearchInputSelection, dropdownOpen, focusSearchInputWithoutOpeningPanel, inputRef]);
 
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const searchSessionModel = useMemo(() => createSearchSessionModel(searchValue, {
@@ -438,7 +444,7 @@ export const SearchExperience = memo(function SearchExperience({
     }
   }, [t]);
 
-  const setSearchPermissionGranted = useCallback((permission: SearchCommandPermission, granted: boolean) => {
+  const setSearchPermissionGranted = useCallback((permission: SearchSuggestionPermission, granted: boolean) => {
     setSearchPermissions((prev) => {
       if (prev[permission] === granted) return prev;
       return {
@@ -482,7 +488,7 @@ export const SearchExperience = memo(function SearchExperience({
     executeSearchAction(action);
   }, [executeSearchAction, searchPermissions, showSearchCommandPermissionDeniedToast]);
 
-  const refreshSearchPermissionStatus = useCallback((permissions: SearchCommandPermission[] = SEARCH_PERMISSION_KEYS) => {
+  const refreshSearchPermissionStatus = useCallback((permissions: SearchSuggestionPermission[] = SEARCH_PERMISSION_KEYS) => {
     void Promise.all(
       permissions.map((permission) => ensureExtensionPermission(permission, { requestIfNeeded: false })
         .then((granted) => ({ permission, granted }))
@@ -695,14 +701,28 @@ export const SearchExperience = memo(function SearchExperience({
   useEffect(() => {
     const handleHistoryOutside = (event: MouseEvent) => {
       if (!historyOpen) return;
-      const target = event.target as Node;
-      if (searchAreaRef.current && !searchAreaRef.current.contains(target)) {
+      const target = event.target;
+      const targetNode = target as Node | null;
+      if (searchAreaRef.current && (!targetNode || !searchAreaRef.current.contains(targetNode))) {
+        captureSearchInputSelection();
         closeHistoryPanel('outside');
+        const shouldRestoreFocus = !(target instanceof Element) || !isFocusProtectedElement(target);
+        if (shouldRestoreFocus) {
+          suppressNextInputFocusOpenRef.current = true;
+          if (outsideDismissRefocusTimerRef.current !== null) {
+            window.clearTimeout(outsideDismissRefocusTimerRef.current);
+          }
+          outsideDismissRefocusTimerRef.current = window.setTimeout(() => {
+            outsideDismissRefocusTimerRef.current = null;
+            focusSearchInputWithoutOpeningPanel();
+            suppressNextInputFocusOpenRef.current = false;
+          }, SEARCH_INPUT_FOCUS_LOCK_DELAY_MS);
+        }
       }
     };
     document.addEventListener('mousedown', handleHistoryOutside);
     return () => document.removeEventListener('mousedown', handleHistoryOutside);
-  }, [closeHistoryPanel, historyOpen]);
+  }, [captureSearchInputSelection, closeHistoryPanel, focusSearchInputWithoutOpeningPanel, historyOpen]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -715,6 +735,16 @@ export const SearchExperience = memo(function SearchExperience({
     openHistoryPanel({ select: 'none' });
     refreshSearchPermissionStatus();
   }, [openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
+
+  const handleSearchInputFocus = useCallback(() => {
+    if (suppressNextInputFocusOpenRef.current) {
+      suppressNextInputFocusOpenRef.current = false;
+      return;
+    }
+    if (searchValue.length > 0) {
+      handleSearchHistoryOpen();
+    }
+  }, [handleSearchHistoryOpen, searchValue.length]);
 
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     if (Date.now() < pointerHighlightLockUntilRef.current) return;
@@ -886,6 +916,7 @@ export const SearchExperience = memo(function SearchExperience({
       searchActions={searchActions}
       historyOpen={historyOpen}
       onHistoryOpen={handleSearchHistoryOpen}
+      onInputFocus={handleSearchInputFocus}
       onSuggestionSelect={activateSearchAction}
       onSuggestionHighlight={handleSearchSuggestionHighlight}
       onHistoryClear={handleSearchHistoryClear}

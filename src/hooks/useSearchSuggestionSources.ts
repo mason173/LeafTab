@@ -5,7 +5,7 @@ import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/u
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { SearchSessionModel } from '@/utils/searchSessionModel';
-import type { SearchCommandPermission } from '@/utils/searchCommands';
+import type { SearchSuggestionPermission } from '@/utils/searchCommands';
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 type UseSearchSuggestionSourcesOptions = {
@@ -14,7 +14,7 @@ type UseSearchSuggestionSourcesOptions = {
   historyPermissionGranted: boolean;
   bookmarksPermissionGranted: boolean;
   tabsPermissionGranted: boolean;
-  permissionWarmup: SearchCommandPermission | null;
+  permissionWarmup: SearchSuggestionPermission | null;
 };
 
 type SuggestionCacheEntry = {

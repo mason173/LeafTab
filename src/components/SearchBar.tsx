@@ -19,6 +19,7 @@ interface SearchBarProps {
   searchActions: SearchAction[];
   historyOpen: boolean;
   onHistoryOpen: () => void;
+  onInputFocus?: () => void;
   onSuggestionSelect: (value: SearchAction) => void;
   onSuggestionHighlight?: (index: number) => void;
   onHistoryClear: () => void;
@@ -63,6 +64,7 @@ export function SearchBar({
   searchActions,
   historyOpen,
   onHistoryOpen,
+  onInputFocus,
   onSuggestionSelect,
   onSuggestionHighlight,
   onHistoryClear,
@@ -122,6 +124,7 @@ export function SearchBar({
             onValueChange={onValueChange}
             inputRef={inputRef}
             onFocusContainer={() => inputRef.current?.focus()}
+            onInputFocus={onInputFocus}
             onOpenHistory={onHistoryOpen}
             onClear={onClear}
             placeholder={placeholder}
