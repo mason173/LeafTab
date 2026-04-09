@@ -89,21 +89,24 @@ function SettingRow({
   label,
   checked,
   onCheckedChange,
+  disabled,
   testId,
   compact,
 }: {
   label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
   testId?: string;
   compact?: boolean;
 }) {
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/25 ${compact ? 'px-3.5 py-2.5' : 'px-4 py-3'}`} data-testid={testId}>
-      <span className={`font-medium text-foreground ${compact ? 'text-[13px]' : 'text-sm'}`}>{label}</span>
+    <div className={`flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/25 ${disabled ? 'opacity-60' : ''} ${compact ? 'px-3.5 py-2.5' : 'px-4 py-3'}`} data-testid={testId}>
+      <span className={`font-medium ${disabled ? 'text-muted-foreground' : 'text-foreground'} ${compact ? 'text-[13px]' : 'text-sm'}`}>{label}</span>
       <Switch
         checked={checked}
-        onCheckedChange={onCheckedChange}
+        onCheckedChange={disabled ? undefined : onCheckedChange}
+        disabled={disabled}
         data-testid={testId ? `${testId}-switch` : `shortcut-setting-${label}`}
         className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
       >
@@ -208,13 +211,19 @@ export function ShortcutEditorPanel({
     [iconColor],
   );
   const colorSelectionDisabled = selectedSource === 'custom';
+  const autoOfficialLocked = officialIconAvailable && selectedSource === 'official' && useOfficialIcon;
   const hasCustomIcon = Boolean(customIconDataUrl);
   const resolvedTitle = titleOverride || (mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle'));
+  const fallbackSource = iconRendering === 'letter' ? 'letter' : 'favicon';
 
   useEffect(() => {
     if (!open) return;
     if (!domain) {
       setOfficialIconAvailable(false);
+      if (!hasExplicitIconPreference && !userAdjustedIconSource) {
+        setUseOfficialIcon(false);
+        setSelectedSource((prev) => (prev === 'custom' ? prev : fallbackSource));
+      }
       return;
     }
 
@@ -225,6 +234,11 @@ export function ShortcutEditorPanel({
 
     if (cachedAvailable && !hasExplicitIconPreference && !userAdjustedIconSource) {
       setUseOfficialIcon(true);
+      setSelectedSource((prev) => (prev === 'custom' ? prev : 'official'));
+    }
+    if (!cachedAvailable && !hasExplicitIconPreference && !userAdjustedIconSource) {
+      setUseOfficialIcon(false);
+      setSelectedSource((prev) => (prev === 'custom' ? prev : fallbackSource));
     }
 
     void resolveCustomIcon(domain).then((resolved) => {
@@ -233,17 +247,21 @@ export function ShortcutEditorPanel({
       setOfficialIconAvailable(available);
       if (!available) {
         setUseOfficialIcon(false);
+        if (!hasExplicitIconPreference && !userAdjustedIconSource) {
+          setSelectedSource((prev) => (prev === 'custom' ? prev : fallbackSource));
+        }
         return;
       }
       if (!hasExplicitIconPreference && !userAdjustedIconSource) {
         setUseOfficialIcon(true);
+        setSelectedSource((prev) => (prev === 'custom' ? prev : 'official'));
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [domain, hasExplicitIconPreference, open, userAdjustedIconSource]);
+  }, [domain, fallbackSource, hasExplicitIconPreference, open, userAdjustedIconSource]);
 
   const handleSave = () => {
     if (!title.trim() || !url.trim()) {
@@ -473,15 +491,14 @@ export function ShortcutEditorPanel({
             onChange={handleCustomFileChange}
           />
 
-          {!officialIconAvailable ? (
-            <SettingRow
-              label={t('shortcutModal.icon.autoOfficial', { defaultValue: '适配后自动切换官方图标' })}
-              checked={autoUseOfficialIcon}
-              onCheckedChange={setAutoUseOfficialIcon}
-              testId="shortcut-auto-official"
-              compact={compact}
-            />
-          ) : null}
+          <SettingRow
+            label={t('shortcutModal.icon.autoOfficial', { defaultValue: '适配后自动切换官方图标' })}
+            checked={autoOfficialLocked ? true : autoUseOfficialIcon}
+            onCheckedChange={setAutoUseOfficialIcon}
+            disabled={autoOfficialLocked}
+            testId="shortcut-auto-official"
+            compact={compact}
+          />
 
             <div className={`grid w-full grid-cols-7 ${compact ? 'gap-2' : 'gap-2.5'}`}>
             {SHORTCUT_ICON_COLOR_PALETTE.map((color) => {

@@ -11,6 +11,8 @@ const initializeDatabase = (dbPath) => {
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               username TEXT UNIQUE NOT NULL,
               password TEXT NOT NULL,
+              auth_provider TEXT DEFAULT 'password',
+              google_sub TEXT,
               shortcuts TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               role TEXT DEFAULT 'user',
@@ -52,6 +54,24 @@ const initializeDatabase = (dbPath) => {
               db.run('ALTER TABLE users ADD COLUMN role TEXT', (alterErr) => {
                 if (alterErr) console.error('Error adding role column', alterErr);
                 else console.log('Role column added successfully');
+              });
+            }
+
+            const hasAuthProvider = rows.some((row) => row.name === 'auth_provider');
+            if (!hasAuthProvider) {
+              console.log('Adding auth_provider column to users table...');
+              db.run("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'password'", (alterErr) => {
+                if (alterErr) console.error('Error adding auth_provider column', alterErr);
+                else console.log('auth_provider column added successfully');
+              });
+            }
+
+            const hasGoogleSub = rows.some((row) => row.name === 'google_sub');
+            if (!hasGoogleSub) {
+              console.log('Adding google_sub column to users table...');
+              db.run('ALTER TABLE users ADD COLUMN google_sub TEXT', (alterErr) => {
+                if (alterErr) console.error('Error adding google_sub column', alterErr);
+                else console.log('google_sub column added successfully');
               });
             }
 
@@ -158,6 +178,12 @@ const initializeDatabase = (dbPath) => {
         }
       });
     }
+  });
+
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub
+          ON users (google_sub)
+          WHERE google_sub IS NOT NULL`, (err) => {
+    if (err) console.error('Error creating idx_users_google_sub', err.message);
   });
 
   // Anonymous domain stats table

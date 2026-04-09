@@ -12,6 +12,7 @@ const env = {
   VITE_BUILD_OUT_DIR: 'build',
 };
 const switchManifestScript = path.join(root, 'scripts', 'switch-manifest.js');
+const syncLocalIconLibraryScript = path.join(root, 'scripts', 'sync-local-icon-library.js');
 const buildDir = path.join(root, 'build');
 const BUILD_MANIFEST_TEMPLATE_FILES = [
   'manifest.community.json',
@@ -34,6 +35,7 @@ function removeBuildManifestTemplates(dirPath) {
 
 console.log(`[build] channel: ${channel}`);
 try {
+  run(`node "${syncLocalIconLibraryScript}"`);
   run(`node "${switchManifestScript}" ${channel}`);
   run('npx vite build');
   if (fs.existsSync(buildDir)) {

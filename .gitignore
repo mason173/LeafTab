@@ -25,6 +25,8 @@ test-results/
 !.env.example
 
 deployment/leaftab-backend.env
+deployment/*.env
+!deployment/*env.example
 
 # Local-only admin helper scripts (do not publish)
 scripts/get-admin-api-key.sh
@@ -36,3 +38,6 @@ scripts/local/get-admin-api-key.sh
 
 # Large optional model assets are downloaded locally and should not be committed
 public/models/paraphrase-multilingual-MiniLM-L12-v2/
+
+# Generated from leaftab-icons-main via scripts/sync-local-icon-library.js
+public/leaftab-icons/

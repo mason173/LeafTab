@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeafTab - 极简而强大的新标签页</title>
+  <meta name="description" content="LeafTab 是一个极简但强大的新标签页插件，支持快捷搜索、云同步、自托管后端、WebDAV 备份与隐私可控。" />
+  <style>
+    :root {
+      --bg: #0f1412;
+      --panel: #131a17;
+      --panel-2: #18211d;
+      --text: #f3f8f5;
+      --muted: #b4c4bd;
+      --line: #2a3932;
+      --brand: #57d18f;
+      --brand-2: #2bb673;
+      --chip: #1f2c27;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --maxw: 1120px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, #1d2f28 0%, transparent 50%),
+                  radial-gradient(900px 500px at 100% 10%, #1a2f27 0%, transparent 50%),
+                  var(--bg);
+      font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: reveal 0.6s ease forwards;
+    }
+
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
+
+    @keyframes reveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(15, 20, 18, 0.66);
+      border-bottom: 1px solid rgba(42, 57, 50, 0.75);
+    }
+
+    .nav {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand), #84e3af);
+      box-shadow: 0 0 0 6px rgba(87, 209, 143, 0.12);
+    }
+
+    .nav-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 14px;
+      font-weight: 600;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: #3f5a4e;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #082013;
+      border: none;
+    }
+
+    .hero {
+      padding: 62px 0 36px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #385448;
+      background: rgba(36, 56, 48, 0.45);
+      color: #d3eee0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.25px;
+    }
+
+    h1 {
+      margin: 14px 0 14px;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.06;
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      max-width: 60ch;
+      font-size: 16px;
+    }
+
+    .hero-cta {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hero-card {
+      background: linear-gradient(160deg, #17221d, #121916 60%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .hero-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-list li {
+      background: rgba(31, 44, 39, 0.7);
+      border: 1px solid #2e4139;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #d7e5df;
+      font-size: 14px;
+    }
+
+    .section {
+      padding: 18px 0 6px;
+    }
+
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: -0.015em;
+    }
+
+    .section p.section-intro {
+      margin: 0 0 20px;
+      color: var(--muted);
+      max-width: 70ch;
+    }
+
+    .feature-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .feature {
+      background: linear-gradient(180deg, #141d19, #111814);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 138px;
+    }
+
+    .feature .kicker {
+      color: #8fe0b3;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .feature h3 {
+      margin: 8px 0 8px;
+      font-size: 18px;
+    }
+
+    .feature p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .split {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 12px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .chip-row {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid #355044;
+      background: var(--chip);
+      color: #d7ece0;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .gallery {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .shot {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #0d1210;
+    }
+
+    .shot img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      transition: transform 0.35s ease;
+    }
+
+    .shot:hover img {
+      transform: scale(1.025);
+    }
+
+    .privacy-box {
+      margin: 24px 0 12px;
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid #365245;
+      background: linear-gradient(140deg, #15211b, #101713 70%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .privacy-box p {
+      margin: 0;
+      color: #cce6d8;
+      max-width: 62ch;
+    }
+
+    footer {
+      margin-top: 30px;
+      padding: 20px 0 28px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .split,
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 44px;
+      }
+
+      .gallery {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .wrap { padding: 0 14px; }
+      .nav { height: 62px; }
+      .btn { height: 36px; padding: 0 12px; font-size: 13px; }
+      .hero-card { padding: 14px; }
+      .section { padding-top: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="logo" href="./" aria-label="LeafTab 首页">
+        <span class="dot" aria-hidden="true"></span>
+        <span>LeafTab</span>
+      </a>
+      <div class="nav-actions">
+        <a class="btn" href="./privacy/index.html">隐私政策</a>
+        <a class="btn primary" href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <span class="tag reveal">LeafTab Official Website</span>
+        <h1 class="reveal delay-1">LeafTab</h1>
+        <p class="lead reveal delay-2">
+          LeafTab 专注于一件事：把“打开新标签页”变成一个稳定、顺手、可控的高效起点。
+          你可以获得键盘优先的搜索体验、灵活的快捷方式管理，以及端到端加密备份、WebDAV 同步与自托管能力。项目完全开源且免费。
+        </p>
+        <div class="hero-cta reveal delay-3">
+          <a class="btn primary" href="https://github.com/mason173/LeafTab/releases" target="_blank" rel="noopener noreferrer">下载 Releases</a>
+          <a class="btn" href="./privacy/index.html">查看隐私政策</a>
+        </div>
+      </div>
+      <aside class="hero-card reveal delay-4" aria-label="核心能力摘要">
+        <ul class="hero-list">
+          <li>本地优先：默认数据保存在浏览器本地</li>
+          <li>强搜索：标签页 / 书签 / 历史 / 搜索引擎统一入口</li>
+          <li>可同步：官方后端、自定义后端、WebDAV 多种方案</li>
+          <li>端到端加密备份：备份数据可加密后再上传</li>
+          <li>可扩展：图标库、壁纸、天气组件与多布局模式</li>
+          <li>完全开源免费：代码公开、社区可参与、可自行构建</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="section reveal">
+      <h2>为什么选择 LeafTab</h2>
+      <p class="section-intro">
+        我们不是把新标签页做成“复杂操作系统”，而是把常用工作流打磨到足够顺滑。
+        它对新用户友好，也给重度用户留足了控制力。
+      </p>
+
+      <div class="feature-grid">
+        <article class="feature reveal delay-1">
+          <div class="kicker">Search</div>
+          <h3>键盘优先搜索</h3>
+          <p>支持命令前缀和多源检索，让信息查找更快，减少鼠标切换成本。</p>
+        </article>
+        <article class="feature reveal delay-2">
+          <div class="kicker">Sync</div>
+          <h3>同步与备份可控</h3>
+          <p>支持账号同步与 WebDAV 备份，数据迁移、导入导出更安心。</p>
+        </article>
+        <article class="feature reveal delay-3">
+          <div class="kicker">Self-host</div>
+          <h3>后端可自托管</h3>
+          <p>登录、同步、统计接口可切换到自定义服务器，适配不同部署需求。</p>
+        </article>
+        <article class="feature reveal delay-4">
+          <div class="kicker">E2EE</div>
+          <h3>端到端加密备份</h3>
+          <p>在支持的备份流程中，数据可先加密再同步，降低明文暴露风险。</p>
+        </article>
+        <article class="feature reveal delay-1">
+          <div class="kicker">WebDAV</div>
+          <h3>WebDAV 同步支持</h3>
+          <p>你可以接入自己的 WebDAV 服务，实现跨环境的数据备份与恢复。</p>
+        </article>
+        <article class="feature reveal delay-2">
+          <div class="kicker">Open Source</div>
+          <h3>完全开源免费</h3>
+          <p>仓库公开、可审计、可二次部署，社区用户可以直接参与共建。</p>
+        </article>
+      </div>
+
+      <div class="split">
+        <article class="panel reveal delay-1">
+          <h3>核心特性</h3>
+          <p>围绕效率、可控与隐私构建，避免不必要的权限和噪音设计。</p>
+          <div class="chip-row">
+            <span class="chip">Local-First</span>
+            <span class="chip">Cloud Sync</span>
+            <span class="chip">E2EE Backup</span>
+            <span class="chip">WebDAV</span>
+            <span class="chip">Custom Backend</span>
+            <span class="chip">Open Source</span>
+            <span class="chip">Free Forever</span>
+            <span class="chip">Icon Library</span>
+            <span class="chip">Privacy Controls</span>
+          </div>
+        </article>
+        <article class="panel reveal delay-2">
+          <h3>适用场景</h3>
+          <p>适合需要快速启页、重度搜索和跨设备同步的用户，也适合想要自己托管数据流的团队与开发者。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section reveal">
+      <h2>界面预览</h2>
+      <p class="section-intro">以下是 LeafTab 的真实界面截图，展示常见布局和交互状态。</p>
+      <div class="gallery">
+        <div class="shot reveal delay-1"><img src="./assets/previews/preview-1.png" alt="LeafTab 界面预览 1" /></div>
+        <div class="shot reveal delay-2"><img src="./assets/previews/preview-2.png" alt="LeafTab 界面预览 2" /></div>
+        <div class="shot reveal delay-3"><img src="./assets/previews/preview-3.png" alt="LeafTab 界面预览 3" /></div>
+        <div class="shot reveal delay-4"><img src="./assets/previews/preview-4.png" alt="LeafTab 界面预览 4" /></div>
+      </div>
+    </section>
+
+    <section class="privacy-box reveal">
+      <p>
+        LeafTab 提供清晰、可读的隐私政策，说明数据处理边界、可选权限用途，以及 Google 登录与自托管场景下的数据最小化原则。
+      </p>
+      <a class="btn primary" href="./privacy/index.html">进入隐私政策</a>
+    </section>
+
+    <footer>
+      <span>© 2026 LeafTab</span>
+      <span><a href="./privacy/index.html">Privacy Policy</a> · <a href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    </footer>
+  </main>
+</body>
+</html>

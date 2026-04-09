@@ -17,7 +17,8 @@
   "permissions": [
     "search",
     "permissions",
-    "activeTab"
+    "activeTab",
+    "identity"
   ],
   "optional_permissions": [
     "bookmarks",
