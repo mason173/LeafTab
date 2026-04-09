@@ -15,6 +15,7 @@ export const SEARCH_COMMAND_DEFINITIONS = [
 
 export type SearchCommandId = (typeof SEARCH_COMMAND_DEFINITIONS)[number]['id'];
 export type SearchCommandPermission = (typeof SEARCH_COMMAND_DEFINITIONS)[number]['permission'];
+export type SearchSuggestionPermission = SearchCommandPermission | 'history';
 export type SearchCommandDefinition = (typeof SEARCH_COMMAND_DEFINITIONS)[number];
 
 export type ParsedSearchCommand = {
@@ -24,7 +25,7 @@ export type ParsedSearchCommand = {
   query: string;
 };
 
-const SEARCH_COMMAND_TOKEN_SET = new Set(
+const SEARCH_COMMAND_TOKEN_SET = new Set<string>(
   SEARCH_COMMAND_DEFINITIONS.map((definition) => definition.token),
 );
 

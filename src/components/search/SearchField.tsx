@@ -16,6 +16,7 @@ interface SearchFieldProps {
   onValueChange: SearchFieldValueChangeHandler;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFocusContainer: () => void;
+  onInputFocus?: () => void;
   onOpenHistory: () => void;
   onClear: () => void;
   placeholder?: string;
@@ -39,7 +40,7 @@ function SearchFieldInput({
   value,
   onValueChange,
   inputRef,
-  onOpenHistory,
+  onInputFocus,
   placeholder,
   inlinePreview,
   disablePlaceholderAnimation,
@@ -50,7 +51,7 @@ function SearchFieldInput({
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  onOpenHistory: () => void;
+  onInputFocus?: () => void;
   placeholder?: string;
   inlinePreview?: string;
   disablePlaceholderAnimation?: boolean;
@@ -98,7 +99,7 @@ function SearchFieldInput({
         }}
         onFocus={() => {
           setIsFocused(true);
-          if (value.length > 0) onOpenHistory();
+          onInputFocus?.();
         }}
         onBlur={() => setIsFocused(false)}
         onKeyDown={(e) => {
@@ -171,6 +172,7 @@ export function SearchField({
   onValueChange,
   inputRef,
   onFocusContainer,
+  onInputFocus,
   onOpenHistory,
   onClear,
   placeholder,
@@ -227,7 +229,7 @@ export function SearchField({
         value={value}
         onValueChange={onValueChange}
         inputRef={inputRef}
-        onOpenHistory={onOpenHistory}
+        onInputFocus={onInputFocus}
         placeholder={placeholder}
         inlinePreview={inlinePreview}
         disablePlaceholderAnimation={disablePlaceholderAnimation}

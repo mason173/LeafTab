@@ -755,6 +755,7 @@ export default {
       placeholderHintCalculator: "Type 12*8 to calculate",
       placeholderHintSiteDirect: "Type github react to search GitHub",
       placeholderHintPrefix: "Type g AI to search with Google",
+      enterKey: "Enter",
       actionOpen: "Open",
       actionClose: "Close",
       actionSelect: "Select",

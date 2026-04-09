@@ -134,10 +134,11 @@ export function SearchSuggestionsPanel({
     contain: 'layout paint style',
     contentVisibility: isOpen ? 'auto' : 'hidden',
   } as CSSProperties;
+  const enterKeyLabel = t('search.enterKey', { defaultValue: 'Enter' });
   const enterHint = (
     <span className="ml-2 inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-current opacity-70">
       <RiCornerDownLeftLine className="size-3.5 shrink-0" />
-      <span>Enter</span>
+      <span>{enterKeyLabel}</span>
     </span>
   );
   const formatRelativeTime = (timestamp?: number) => {

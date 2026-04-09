@@ -8,7 +8,7 @@ import {
   type SearchSuggestionSourceStatus,
 } from '@/hooks/useSearchSuggestionSources';
 import type { SearchSessionModel } from '@/utils/searchSessionModel';
-import type { SearchCommandPermission } from '@/utils/searchCommands';
+import type { SearchSuggestionPermission } from '@/utils/searchCommands';
 import {
   computeSearchSuggestionActions,
   type SearchSuggestionsComputationInput,
@@ -24,7 +24,7 @@ type UseSearchSuggestionsOptions = {
   historyPermissionGranted: boolean;
   bookmarksPermissionGranted: boolean;
   tabsPermissionGranted: boolean;
-  permissionWarmup: SearchCommandPermission | null;
+  permissionWarmup: SearchSuggestionPermission | null;
 };
 
 type SearchSuggestionsWorkerResponse =
