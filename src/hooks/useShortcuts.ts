@@ -3,10 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { ScenarioShortcuts, Shortcut, ScenarioMode, ContextMenuState } from '../types';
 import { defaultScenarioModes, SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from "@/scenario/scenario";
 import defaultProfile from '../assets/profiles/default-profile.json';
-import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot, readLocalProfileSnapshot } from '@/utils/localProfileStorage';
+import {
+  clearLocalNeedsCloudReconcile,
+  LOCAL_PROFILE_SNAPSHOT_KEY,
+  LOCAL_SHORTCUTS_KEY,
+  markLocalNeedsCloudReconcile,
+  persistLocalProfileSnapshot,
+  readLocalProfileSnapshot,
+} from '@/utils/localProfileStorage';
 import { useCloudSync } from './useCloudSync';
 import { useShortcutDomainReporting } from './useShortcutDomainReporting';
 import { useShortcutActions } from './useShortcutActions';
+import { LOCAL_PROFILE_UPDATED_MESSAGE_TYPE } from '@/utils/localProfileSync';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
 import { loadRoleProfileDataForReset } from '@/utils/roleProfile';
 
@@ -239,6 +247,83 @@ export function useShortcuts(
     }
     hasLoadedLocalShortcutsRef.current = true;
   }, [user, normalizeScenarioModesList, normalizeScenarioShortcuts]);
+
+  const syncFromLocalProfile = useCallback(() => {
+    const localProfile = readLocalProfileSnapshot();
+    if (!localProfile) return;
+
+    const nextScenarioModes = normalizeScenarioModesList(localProfile.scenarioModes);
+    const nextSelectedScenarioId = nextScenarioModes.some((mode) => mode.id === localProfile.selectedScenarioId)
+      ? localProfile.selectedScenarioId
+      : nextScenarioModes[0]?.id || defaultScenarioModes[0].id;
+    const nextScenarioShortcuts = normalizeScenarioShortcuts(localProfile.scenarioShortcuts);
+    const currentSignature = JSON.stringify({
+      scenarioModes: scenarioModesRef.current,
+      selectedScenarioId: selectedScenarioIdRef.current,
+      scenarioShortcuts: scenarioShortcutsRef.current,
+    });
+    const nextSignature = JSON.stringify({
+      scenarioModes: nextScenarioModes,
+      selectedScenarioId: nextSelectedScenarioId,
+      scenarioShortcuts: nextScenarioShortcuts,
+    });
+
+    if (nextSignature === currentSignature) return;
+
+    scenarioModesRef.current = nextScenarioModes;
+    selectedScenarioIdRef.current = nextSelectedScenarioId;
+    scenarioShortcutsRef.current = nextScenarioShortcuts;
+
+    setScenarioModes(nextScenarioModes);
+    setSelectedScenarioId(nextSelectedScenarioId);
+    setScenarioShortcuts(nextScenarioShortcuts);
+  }, [normalizeScenarioModesList, normalizeScenarioShortcuts]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key
+        && event.key !== 'local_shortcuts_updated_at'
+        && event.key !== LOCAL_PROFILE_SNAPSHOT_KEY
+        && event.key !== LOCAL_SHORTCUTS_KEY
+        && event.key !== SCENARIO_MODES_KEY
+        && event.key !== SCENARIO_SELECTED_KEY
+      ) {
+        return;
+      }
+      syncFromLocalProfile();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncFromLocalProfile();
+      }
+    };
+
+    const handleRuntimeMessage = (message: unknown) => {
+      if ((message as { type?: unknown })?.type === LOCAL_PROFILE_UPDATED_MESSAGE_TYPE) {
+        syncFromLocalProfile();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', syncFromLocalProfile);
+    window.addEventListener(LOCAL_PROFILE_UPDATED_MESSAGE_TYPE, syncFromLocalProfile);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    if (typeof chrome !== 'undefined') {
+      chrome.runtime?.onMessage?.addListener?.(handleRuntimeMessage);
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', syncFromLocalProfile);
+      window.removeEventListener(LOCAL_PROFILE_UPDATED_MESSAGE_TYPE, syncFromLocalProfile);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (typeof chrome !== 'undefined') {
+        chrome.runtime?.onMessage?.removeListener?.(handleRuntimeMessage);
+      }
+    };
+  }, [syncFromLocalProfile]);
 
   useEffect(() => {
     setScenarioShortcuts((prev) => {

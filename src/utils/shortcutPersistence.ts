@@ -7,6 +7,7 @@ import {
   persistLocalProfileSnapshot,
   readLocalProfileSnapshot,
 } from '@/utils/localProfileStorage';
+import { emitLocalProfileUpdated } from '@/utils/localProfileSync';
 import { normalizeScenarioModesList, normalizeScenarioShortcuts } from '@/utils/shortcutsPayload';
 import { hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
@@ -146,6 +147,8 @@ export function saveShortcutToLocalProfile(
   } else {
     markLocalNeedsCloudReconcile('signed_out_edit');
   }
+
+  emitLocalProfileUpdated();
 
   return {
     ok: true,
