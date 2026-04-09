@@ -929,14 +929,20 @@ export default {
         tooManyRequests: "Too many requests, please try again later",
         googleLoginFailed: "Google login failed",
         googleUnsupported: "Google sign-in is not supported in this browser",
+        googleUnsupportedDetailed: "Google sign-in is not available in the current environment: {{reason}}",
         googleCanceled: "Google login canceled",
+        googleTimedOut: "Google login timed out. Please try again.",
+        googlePopupBlocked: "Google login popup was blocked. Please allow popups and try again.",
         googleOAuthFailed: "Google OAuth failed. Please try again.",
         googleParseFailed: "Failed to complete Google sign-in callback",
         googleClientIdMissing: "Google client ID is missing in extension config",
+        googleWebClientIdMissing: "Google sign-in is not configured for web mode. Set VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.",
+        googleRedirectMismatch: "This extension ID is not allowed in Google OAuth callbacks yet. Current redirect URI: {{redirectUri}}",
         googleNotEnabled: "Google login is not enabled on this server",
         invalidGoogleToken: "Google token verification failed, please sign in again",
         googleTokenMissing: "Google token is missing",
-        googleUserIdMissing: "Google account identifier is missing"
+        googleUserIdMissing: "Google account identifier is missing",
+        googleStateMismatch: "Google sign-in state validation failed. Please try again."
       }
     },
     shortcutDelete: {

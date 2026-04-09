@@ -18,19 +18,277 @@ import { normalizeApiBase } from "@/utils";
 
 const FIRST_LOGIN_LOCAL_FIRST_KEY = 'leaftab_force_local_sync_after_first_login_user';
 const OFFICIAL_GOOGLE_OAUTH_CLIENT_ID = '352087600211-6cu9ot6j7n16927c9blblpcotnimfel2.apps.googleusercontent.com';
+const OFFICIAL_GOOGLE_REDIRECT_URI = 'https://lfogogokkkpmolbfbklchcbgdiboccdf.chromiumapp.org/';
+const OFFICIAL_GOOGLE_WEB_REDIRECT_URI = 'https://www.leaftab.cc/google-auth-callback.html';
+const GOOGLE_WEB_CALLBACK_PATH = '/google-auth-callback.html';
 const GOOGLE_OAUTH_SCOPE = 'openid email profile';
 
-const resolveGoogleClientId = () => {
-  const fromEnv = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_OAUTH_CLIENT_ID)
-    ? String((import.meta as any).env.VITE_GOOGLE_OAUTH_CLIENT_ID).trim()
-    : '';
+const readEnv = (key: string) => {
+  if (typeof import.meta === 'undefined') return '';
+  const envValue = (import.meta as any).env?.[key];
+  return envValue ? String(envValue).trim() : '';
+};
+
+const resolveExtensionGoogleClientId = () => {
+  const fromEnv = readEnv('VITE_GOOGLE_OAUTH_CLIENT_ID');
   if (fromEnv) return fromEnv;
   return OFFICIAL_GOOGLE_OAUTH_CLIENT_ID;
+};
+
+const resolveWebGoogleClientId = () => {
+  const webClientId = readEnv('VITE_GOOGLE_WEB_OAUTH_CLIENT_ID');
+  if (webClientId) return webClientId;
+  return '';
+};
+
+const resolveWebGoogleRedirectUri = (isExtensionPage: boolean) => {
+  const fromEnv = readEnv('VITE_GOOGLE_WEB_OAUTH_REDIRECT_URI');
+  if (fromEnv) return fromEnv;
+  if (isExtensionPage) return OFFICIAL_GOOGLE_WEB_REDIRECT_URI;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}${GOOGLE_WEB_CALLBACK_PATH}`;
+  }
+  return OFFICIAL_GOOGLE_WEB_REDIRECT_URI;
 };
 
 const getIdentityApi = () => {
   const anyGlobal = globalThis as any;
   return anyGlobal?.chrome?.identity || anyGlobal?.browser?.identity || null;
+};
+
+type GoogleAuthDiagnostics = {
+  protocol: string;
+  runtimeId: string;
+  hasChromeIdentity: boolean;
+  hasBrowserIdentity: boolean;
+  hasLaunchWebAuthFlow: boolean;
+  hasGetRedirectURL: boolean;
+  isExtensionPage: boolean;
+  redirectUri: string;
+  usingOfficialClientId: boolean;
+  redirectUriMatchesOfficialClientId: boolean;
+};
+
+type GoogleWebPopupMessage = {
+  source: 'leaf-tab-google-auth';
+  type: 'success' | 'error';
+  state?: string;
+  idToken?: string;
+  error?: string;
+};
+
+type GoogleAuthMode = 'extension' | 'web-popup' | 'unavailable';
+
+const getGoogleAuthDiagnostics = (clientId?: string | null): GoogleAuthDiagnostics => {
+  const anyGlobal = globalThis as any;
+  const chromeIdentity = anyGlobal?.chrome?.identity;
+  const browserIdentity = anyGlobal?.browser?.identity;
+  const identityApi = chromeIdentity || browserIdentity || null;
+  const protocol = typeof location !== 'undefined' ? location.protocol : '';
+  const runtimeId = String(anyGlobal?.chrome?.runtime?.id || anyGlobal?.browser?.runtime?.id || '').trim();
+  const isExtensionPage = protocol === 'chrome-extension:' || protocol === 'moz-extension:' || protocol === 'edge-extension:';
+
+  let redirectUri = '';
+  if (identityApi?.getRedirectURL) {
+    try {
+      redirectUri = String(identityApi.getRedirectURL() || '').trim();
+    } catch (error) {
+      console.warn('[LeafTab] Failed to resolve Google auth redirect URI', error);
+    }
+  }
+
+  const usingOfficialClientId = String(clientId || '').trim() === OFFICIAL_GOOGLE_OAUTH_CLIENT_ID;
+  const redirectUriMatchesOfficialClientId = !usingOfficialClientId || !redirectUri || redirectUri === OFFICIAL_GOOGLE_REDIRECT_URI;
+
+  return {
+    protocol,
+    runtimeId,
+    hasChromeIdentity: Boolean(chromeIdentity),
+    hasBrowserIdentity: Boolean(browserIdentity),
+    hasLaunchWebAuthFlow: Boolean(identityApi?.launchWebAuthFlow),
+    hasGetRedirectURL: Boolean(identityApi?.getRedirectURL),
+    isExtensionPage,
+    redirectUri,
+    usingOfficialClientId,
+    redirectUriMatchesOfficialClientId,
+  };
+};
+
+const resolveGoogleAuthMode = ({
+  diagnostics,
+  extensionClientId,
+  webClientId,
+}: {
+  diagnostics: GoogleAuthDiagnostics;
+  extensionClientId: string;
+  webClientId: string;
+}): GoogleAuthMode => {
+  if (
+    diagnostics.isExtensionPage
+    && extensionClientId
+    && diagnostics.hasLaunchWebAuthFlow
+    && diagnostics.hasGetRedirectURL
+  ) {
+    return 'extension';
+  }
+  if (webClientId && typeof window !== 'undefined' && typeof window.open === 'function') {
+    return 'web-popup';
+  }
+  return 'unavailable';
+};
+
+const getGoogleUnsupportedReason = ({
+  diagnostics,
+  authMode,
+  webClientIdConfigured,
+}: {
+  diagnostics: GoogleAuthDiagnostics;
+  authMode: GoogleAuthMode;
+  webClientIdConfigured: boolean;
+}) => {
+  if (authMode !== 'unavailable') {
+    return 'Google auth mode is available';
+  }
+  if (!diagnostics.isExtensionPage) {
+    if (typeof window === 'undefined' || typeof window.open !== 'function') {
+      return 'window.open is unavailable in the current browser environment';
+    }
+    return webClientIdConfigured
+      ? `web Google OAuth is unavailable for this page (${diagnostics.protocol || 'unknown protocol'})`
+      : `web Google OAuth client ID is missing for this page (${diagnostics.protocol || 'unknown protocol'})`;
+  }
+  if (!diagnostics.hasChromeIdentity && !diagnostics.hasBrowserIdentity) {
+    return webClientIdConfigured
+      ? 'identity API is missing, will require web popup fallback'
+      : 'identity API is missing and no web Google client ID is configured';
+  }
+  if (!diagnostics.hasLaunchWebAuthFlow) {
+    return 'identity.launchWebAuthFlow is missing';
+  }
+  if (!diagnostics.hasGetRedirectURL) {
+    return 'identity.getRedirectURL is missing';
+  }
+  return 'required browser identity APIs are unavailable';
+};
+
+const getGoogleRedirectMismatchReason = (diagnostics: GoogleAuthDiagnostics) => {
+  if (!diagnostics.usingOfficialClientId || diagnostics.redirectUriMatchesOfficialClientId || !diagnostics.redirectUri) {
+    return '';
+  }
+  return `redirect URI mismatch: expected ${OFFICIAL_GOOGLE_REDIRECT_URI}, got ${diagnostics.redirectUri}`;
+};
+
+const createGoogleOAuthUrl = ({
+  clientId,
+  redirectUri,
+  nonce,
+  state,
+}: {
+  clientId: string;
+  redirectUri: string;
+  nonce: string;
+  state: string;
+}) => {
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', clientId);
+  authUrl.searchParams.set('response_type', 'id_token');
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('scope', GOOGLE_OAUTH_SCOPE);
+  authUrl.searchParams.set('nonce', nonce);
+  authUrl.searchParams.set('state', state);
+  authUrl.searchParams.set('prompt', 'select_account');
+  return authUrl;
+};
+
+const encodeGooglePopupState = ({
+  csrfToken,
+  openerOrigin,
+}: {
+  csrfToken: string;
+  openerOrigin: string;
+}) => {
+  const payload = JSON.stringify({ csrfToken, openerOrigin });
+  return btoa(unescape(encodeURIComponent(payload)));
+};
+
+const launchGooglePopupAuthFlow = ({
+  clientId,
+  redirectUri,
+  callbackOrigin,
+}: {
+  clientId: string;
+  redirectUri: string;
+  callbackOrigin: string;
+}): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('Google popup login is unavailable outside the browser window'));
+      return;
+    }
+
+    const nonce = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const csrfToken = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const openerOrigin = window.location.origin;
+    const state = encodeGooglePopupState({ csrfToken, openerOrigin });
+    const authUrl = createGoogleOAuthUrl({ clientId, redirectUri, nonce, state });
+    const popupWidth = 520;
+    const popupHeight = 640;
+    const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - popupWidth) / 2));
+    const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - popupHeight) / 2));
+    const popupFeatures = [
+      'popup=yes',
+      `width=${popupWidth}`,
+      `height=${popupHeight}`,
+      `left=${left}`,
+      `top=${top}`,
+      'resizable=yes',
+      'scrollbars=yes',
+    ].join(',');
+    const popup = window.open(authUrl.toString(), 'leafTabGoogleLogin', popupFeatures);
+    if (!popup) {
+      reject(new Error('Google login popup was blocked'));
+      return;
+    }
+
+    let resolved = false;
+    let timeoutId = 0;
+
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+
+    const finish = (fn: () => void) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      fn();
+    };
+
+    const handleMessage = (event: MessageEvent<GoogleWebPopupMessage>) => {
+      if (event.origin !== callbackOrigin) return;
+      if (event.source !== popup) return;
+      if (!event.data || event.data.source !== 'leaf-tab-google-auth') return;
+      if (event.data.state !== state) {
+        finish(() => reject(new Error('Google login state mismatch')));
+        return;
+      }
+      if (event.data.type === 'error') {
+        finish(() => reject(new Error(event.data.error ? `Google OAuth error: ${event.data.error}` : 'Google OAuth error')));
+        return;
+      }
+      if (!event.data.idToken) {
+        finish(() => reject(new Error('Google ID token is missing')));
+        return;
+      }
+      finish(() => resolve(event.data.idToken as string));
+    };
+
+    window.addEventListener('message', handleMessage);
+    timeoutId = window.setTimeout(() => {
+      finish(() => reject(new Error('Google login timed out')));
+    }, 2 * 60 * 1000);
+  });
 };
 
 const launchGoogleWebAuthFlow = (clientId: string): Promise<string> => {
@@ -130,15 +388,30 @@ export default function AuthModal({
     if (allowCustomApiServer && apiServer === 'custom' && customApiBase) return customApiBase;
     return defaultApiBase;
   }, [allowCustomApiServer, apiServer, customApiBase, defaultApiBase]);
-  const googleClientId = useMemo(() => resolveGoogleClientId(), []);
+  const extensionGoogleClientId = useMemo(() => resolveExtensionGoogleClientId(), []);
+  const webGoogleClientId = useMemo(() => resolveWebGoogleClientId(), []);
+  const googleAuthDiagnostics = useMemo(() => getGoogleAuthDiagnostics(extensionGoogleClientId), [extensionGoogleClientId]);
+  const webGoogleRedirectUri = useMemo(
+    () => resolveWebGoogleRedirectUri(googleAuthDiagnostics.isExtensionPage),
+    [googleAuthDiagnostics.isExtensionPage]
+  );
+  const webGoogleRedirectOrigin = useMemo(() => {
+    try {
+      return new URL(webGoogleRedirectUri).origin;
+    } catch {
+      return '';
+    }
+  }, [webGoogleRedirectUri]);
+  const googleAuthMode = useMemo(() => resolveGoogleAuthMode({
+    diagnostics: googleAuthDiagnostics,
+    extensionClientId: extensionGoogleClientId,
+    webClientId: webGoogleClientId,
+  }), [googleAuthDiagnostics, extensionGoogleClientId, webGoogleClientId]);
+  const googleClientId = googleAuthMode === 'extension' ? extensionGoogleClientId : webGoogleClientId;
   const googleLoginAvailable = useMemo(() => {
-    const identityApi = getIdentityApi();
-    return Boolean(
-      googleClientId
-      && identityApi?.launchWebAuthFlow
-      && identityApi?.getRedirectURL
-    );
-  }, [googleClientId]);
+    if (!googleClientId) return false;
+    return googleAuthMode === 'extension' || googleAuthMode === 'web-popup';
+  }, [googleClientId, googleAuthMode]);
 
   React.useEffect(() => {
     if (!allowCustomApiServer && apiServer !== 'official') {
@@ -197,11 +470,31 @@ export default function AuthModal({
     if (errorMsg.includes('Google sign-in is missing a stable user id')) return t('auth.errors.googleUserIdMissing');
     if (errorMsg.includes('Google sign-in is not supported in this browser')) return t('auth.errors.googleUnsupported');
     if (errorMsg.includes('Google login canceled')) return t('auth.errors.googleCanceled');
+    if (errorMsg.includes('Google login timed out')) return t('auth.errors.googleTimedOut');
+    if (errorMsg.includes('Google login popup was blocked')) return t('auth.errors.googlePopupBlocked');
+    if (errorMsg.includes('Google login state mismatch')) return t('auth.errors.googleStateMismatch');
     if (errorMsg.includes('Google OAuth error')) return t('auth.errors.googleOAuthFailed');
     if (errorMsg.includes('Unable to parse Google callback URL') || errorMsg.includes('Google ID token is missing')) {
       return t('auth.errors.googleParseFailed');
     }
     return errorMsg;
+  };
+
+  const getGoogleUnsupportedMessage = () => {
+    if (!webGoogleClientId && googleAuthMode !== 'extension') {
+      return t('auth.errors.googleWebClientIdMissing', {
+        defaultValue: 'Google sign-in is not configured for web mode. Missing VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.',
+      });
+    }
+    const reason = getGoogleUnsupportedReason({
+      diagnostics: googleAuthDiagnostics,
+      authMode: googleAuthMode,
+      webClientIdConfigured: Boolean(webGoogleClientId),
+    });
+    return t('auth.errors.googleUnsupportedDetailed', {
+      reason,
+      defaultValue: `Google sign-in is not supported in this browser: ${reason}`,
+    });
   };
 
   const handleLoginSuccessPayload = (data: any) => {
@@ -315,18 +608,54 @@ export default function AuthModal({
 
   const handleGoogleLogin = async () => {
     if (!googleClientId) {
-      toast.error(t('auth.errors.googleClientIdMissing'));
+      toast.error(
+        googleAuthMode === 'extension'
+          ? t('auth.errors.googleClientIdMissing')
+          : t('auth.errors.googleWebClientIdMissing', {
+              defaultValue: 'Google sign-in is not configured for web mode. Missing VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.',
+            })
+      );
       return;
     }
 
+    console.info('[LeafTab] Google auth diagnostics', {
+      ...googleAuthDiagnostics,
+      authMode: googleAuthMode,
+      activeClientId: googleClientId,
+      webGoogleClientIdConfigured: Boolean(webGoogleClientId),
+      webGoogleRedirectUri,
+    });
+
     if (!googleLoginAvailable) {
-      toast.error(t('auth.errors.googleUnsupported'));
+      toast.error(getGoogleUnsupportedMessage());
+      return;
+    }
+
+    const redirectMismatchReason = googleAuthMode === 'extension'
+      ? getGoogleRedirectMismatchReason(googleAuthDiagnostics)
+      : '';
+    if (redirectMismatchReason) {
+      console.warn('[LeafTab] Google auth redirect mismatch', {
+        expectedRedirectUri: OFFICIAL_GOOGLE_REDIRECT_URI,
+        actualRedirectUri: googleAuthDiagnostics.redirectUri,
+        runtimeId: googleAuthDiagnostics.runtimeId,
+      });
+      toast.error(t('auth.errors.googleRedirectMismatch', {
+        redirectUri: googleAuthDiagnostics.redirectUri,
+        defaultValue: `Google OAuth callback is not configured for this extension ID. Current redirect URI: ${googleAuthDiagnostics.redirectUri}`,
+      }));
       return;
     }
 
     setIsLoading(true);
     try {
-      const idToken = await launchGoogleWebAuthFlow(googleClientId);
+      const idToken = googleAuthMode === 'extension'
+        ? await launchGoogleWebAuthFlow(googleClientId)
+        : await launchGooglePopupAuthFlow({
+            clientId: googleClientId,
+            redirectUri: webGoogleRedirectUri,
+            callbackOrigin: webGoogleRedirectOrigin,
+          });
       const response = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
