@@ -1141,6 +1141,7 @@ export default {
       buttons: {
         loggingIn: "登录中...",
         login: "登录",
+        googleLogin: "使用 Google 登录",
         registering: "注册中...",
         register: "注册"
       },
@@ -1166,7 +1167,17 @@ export default {
         credentialsRequired: "请输入用户名和密码",
         invalidCaptcha: "验证码错误",
         internalError: "服务器内部错误",
-        tooManyRequests: "请求过于频繁，请稍后再试"
+        tooManyRequests: "请求过于频繁，请稍后再试",
+        googleLoginFailed: "Google 登录失败",
+        googleUnsupported: "当前浏览器暂不支持 Google 登录",
+        googleCanceled: "已取消 Google 登录",
+        googleOAuthFailed: "Google 授权失败，请重试",
+        googleParseFailed: "Google 登录回调解析失败",
+        googleClientIdMissing: "插件未配置 Google Client ID",
+        googleNotEnabled: "当前服务器未启用 Google 登录",
+        invalidGoogleToken: "Google 身份令牌无效，请重新登录",
+        googleTokenMissing: "缺少 Google 身份令牌",
+        googleUserIdMissing: "Google 账号标识缺失"
       }
     },
     shortcutDelete: {

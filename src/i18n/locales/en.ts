@@ -900,6 +900,7 @@ export default {
       buttons: {
         loggingIn: "Logging in...",
         login: "Login",
+        googleLogin: "Continue with Google",
         registering: "Registering...",
         register: "Register"
       },
@@ -925,7 +926,17 @@ export default {
         credentialsRequired: "Username and password are required",
         invalidCaptcha: "Invalid captcha",
         internalError: "Internal server error",
-        tooManyRequests: "Too many requests, please try again later"
+        tooManyRequests: "Too many requests, please try again later",
+        googleLoginFailed: "Google login failed",
+        googleUnsupported: "Google sign-in is not supported in this browser",
+        googleCanceled: "Google login canceled",
+        googleOAuthFailed: "Google OAuth failed. Please try again.",
+        googleParseFailed: "Failed to complete Google sign-in callback",
+        googleClientIdMissing: "Google client ID is missing in extension config",
+        googleNotEnabled: "Google login is not enabled on this server",
+        invalidGoogleToken: "Google token verification failed, please sign in again",
+        googleTokenMissing: "Google token is missing",
+        googleUserIdMissing: "Google account identifier is missing"
       }
     },
     shortcutDelete: {

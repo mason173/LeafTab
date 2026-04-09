@@ -36,6 +36,37 @@ vi.mock('@/components/ui/sonner', () => ({
 }));
 
 describe('ShortcutEditorPanel', () => {
+  it('switches source selection to official when official icon is auto-resolved', async () => {
+    prepareShortcutCustomIconMock.mockResolvedValue('data:image/png;base64,custom-icon');
+    readShortcutCustomIconMock.mockReturnValue('');
+    resolveCustomIconFromCacheMock.mockImplementation((domain: string) => (
+      domain === 'github.com'
+        ? { url: 'https://local.test/leaftab-icons/svgs/github.com.svg', signature: 'path:github.com' }
+        : null
+    ));
+    resolveCustomIconMock.mockResolvedValue({
+      url: 'https://local.test/leaftab-icons/svgs/github.com.svg',
+      signature: 'path:github.com',
+    });
+
+    render(
+      <ShortcutEditorPanel
+        mode="add"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('shortcut-modal-url'), {
+      target: { value: 'https://github.com' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shortcut-icon-mode-official')).toHaveAttribute('aria-checked', 'true');
+    });
+    expect(screen.getByTestId('shortcut-icon-mode-favicon')).toHaveAttribute('aria-checked', 'false');
+  });
+
   it('uses the preview as the replace trigger after a custom icon has been uploaded', async () => {
     prepareShortcutCustomIconMock.mockResolvedValue('data:image/png;base64,custom-icon');
     readShortcutCustomIconMock.mockReturnValue('');

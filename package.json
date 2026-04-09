@@ -83,8 +83,11 @@
             "vitest": "^3.2.4"
       },
       "scripts": {
-            "dev": "vite --host",
+            "dev": "npm run icons:sync && vite --host",
             "build": "npm run build:community",
+            "icons:sync": "node scripts/sync-local-icon-library.js",
+            "icons:optimize:lossless": "npx --yes svgo@3 -f leaftab-icons-main/svgs --config=scripts/svgo-lossless.config.mjs",
+            "icons:prepare:release": "npm run icons:optimize:lossless && npm run icons:sync",
             "test": "vitest run",
             "test:node": "vitest run -c vitest.node.config.ts",
             "test:e2e": "playwright test",
@@ -97,12 +100,15 @@
             "verify:firefox:community": "npm run build:community && npm run lint:firefox",
             "verify:firefox:store": "npm run build:store && npm run lint:firefox",
             "pack:release": "node scripts/package-release-zips.js",
-            "pack:release:community": "npm run build:community && node scripts/package-release-zips.js community",
-            "pack:release:store": "npm run build:store && node scripts/package-release-zips.js store",
-            "pack:release:all": "npm run pack:release:community && npm run pack:release:store",
+            "pack:release:community:no-icons": "npm run build:community && node scripts/package-release-zips.js community",
+            "pack:release:store:no-icons": "npm run build:store && node scripts/package-release-zips.js store",
+            "pack:release:community": "npm run icons:prepare:release && npm run pack:release:community:no-icons",
+            "pack:release:store": "npm run icons:prepare:release && npm run pack:release:store:no-icons",
+            "pack:release:all": "npm run icons:prepare:release && npm run pack:release:community:no-icons && npm run pack:release:store:no-icons",
             "verify:release:community": "node scripts/verify-release-channel.js community",
             "verify:release:store": "node scripts/verify-release-channel.js store",
-            "publish:github": "node scripts/publish-github-release.js"
+            "publish:github": "node scripts/publish-github-release.js",
+            "check:publish-safe": "bash scripts/guard_github_publish.sh"
       },
       "license": "GPL-3.0-or-later"
 }

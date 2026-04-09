@@ -485,7 +485,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
           const cachedResolved = resolveCustomIconFromCache(domain);
           setCustomIconUrl(cachedResolved?.url || '');
         }
-        return;
       }
       const resolved = await resolveCustomIcon(domain);
       if (cancelled) return;

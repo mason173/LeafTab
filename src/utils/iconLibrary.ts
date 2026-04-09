@@ -21,6 +21,7 @@ const ICON_LIBRARY_URL_KEY = 'leaftab_icon_library_url';
 const ICON_LIBRARY_MANIFEST_KEY = 'leaftab_icon_library_manifest_json';
 const ICON_LIBRARY_MANIFEST_ETAG_KEY = 'leaftab_icon_library_manifest_etag';
 const ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY = 'leaftab_icon_library_manifest_fetched_at';
+const LOCAL_ICON_LIBRARY_BASE_URL = '/leaftab-icons';
 
 export const DEFAULT_ICON_LIBRARY_URL = 'https://mason173.github.io/leaftab-icons';
 const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
@@ -123,6 +124,15 @@ export const setIconLibraryUrl = (url: string) => {
 
 let inMemoryManifest: IconLibraryManifest | null = null;
 let inFlight: Promise<IconLibraryManifest | null> | null = null;
+let inMemoryLocalManifest: IconLibraryManifest | null = null;
+let inFlightLocal: Promise<IconLibraryManifest | null> | null = null;
+
+const getLocalIconLibraryUrl = () => {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return LOCAL_ICON_LIBRARY_BASE_URL;
+  }
+  return `${window.location.origin}${LOCAL_ICON_LIBRARY_BASE_URL}`;
+};
 
 const readStoredManifest = (): IconLibraryManifest | null => {
   try {
@@ -251,6 +261,44 @@ export const fetchIconLibraryManifest = async (options?: { force?: boolean }) =>
   }
 };
 
+const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {
+  if (!options?.force && inMemoryLocalManifest) return inMemoryLocalManifest;
+  if (inFlightLocal) return inFlightLocal;
+
+  const baseUrl = getLocalIconLibraryUrl();
+  inFlightLocal = (async () => {
+    try {
+      const resp = await fetch(`${baseUrl}/manifest.json`, {
+        method: 'GET',
+        credentials: 'omit',
+        cache: 'force-cache',
+      });
+      if (!resp.ok) {
+        inMemoryLocalManifest = null;
+        return null;
+      }
+      const json = await resp.json();
+      const normalized = normalizeManifest(json);
+      inMemoryLocalManifest = normalized;
+      return normalized;
+    } catch {
+      inMemoryLocalManifest = null;
+      return null;
+    }
+  })();
+
+  try {
+    return await inFlightLocal;
+  } finally {
+    inFlightLocal = null;
+  }
+};
+
+export const warmIconLibraryManifestCache = async (options?: { force?: boolean }) => {
+  await fetchLocalIconLibraryManifest(options);
+  return fetchIconLibraryManifest(options);
+};
+
 const resolveEntry = (manifest: IconLibraryManifest, domain: string): { entry: IconLibraryEntry; key: string } | null => {
   const d = normalizeDomain(domain);
   if (!d) return null;
@@ -294,6 +342,13 @@ const buildResolvedCustomIcon = (
 };
 
 export const resolveCustomIconFromCache = (domain: string): ResolvedCustomIcon | null => {
+  const localBaseUrl = getLocalIconLibraryUrl();
+  const localManifest = inMemoryLocalManifest;
+  if (localManifest?.icons) {
+    const localResolved = resolveEntry(localManifest, domain);
+    if (localResolved) return buildResolvedCustomIcon(localBaseUrl, localResolved);
+  }
+
   const baseUrl = getIconLibraryUrl();
   if (!baseUrl) return null;
   const manifest = inMemoryManifest || readStoredManifest();
@@ -305,9 +360,17 @@ export const resolveCustomIconFromCache = (domain: string): ResolvedCustomIcon |
 };
 
 export const resolveCustomIcon = async (domain: string) => {
+  const localBaseUrl = getLocalIconLibraryUrl();
+  const localCached = resolveCustomIconFromCache(domain);
+  const localManifest = await fetchLocalIconLibraryManifest();
+  if (localManifest?.icons) {
+    const localResolved = resolveEntry(localManifest, domain);
+    if (localResolved) return buildResolvedCustomIcon(localBaseUrl, localResolved);
+  }
+
   const baseUrl = getIconLibraryUrl();
-  if (!baseUrl) return null;
-  const cached = resolveCustomIconFromCache(domain);
+  if (!baseUrl) return localCached;
+  const cached = localCached;
   const manifest = await fetchIconLibraryManifest();
   if (!manifest || !manifest.icons) return cached;
   const resolved = resolveEntry(manifest, domain);

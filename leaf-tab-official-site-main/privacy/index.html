@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - LeafTab</title>
+    <style>
+        :root {
+            --primary-color: #2f855a;
+            --text-color: #1f2937;
+            --muted-color: #6b7280;
+            --bg-color: #f5f7f8;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --link-color: #2f855a;
+            --soft-bg: #f0fdf4;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.7;
+            color: var(--text-color);
+            background: linear-gradient(180deg, #f7faf8 0%, var(--bg-color) 100%);
+            margin: 0;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 28px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 28px;
+        }
+
+        .title-block p {
+            margin: 8px 0 0;
+            color: var(--muted-color);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 28px;
+            line-height: 1.2;
+            color: var(--primary-color);
+        }
+
+        h2 {
+            font-size: 19px;
+            margin: 28px 0 12px;
+            padding-left: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        p, ul {
+            margin: 0 0 14px;
+        }
+
+        ul {
+            padding-left: 22px;
+        }
+
+        li + li {
+            margin-top: 10px;
+        }
+
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .lang-switch {
+            appearance: none;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .lang-switch:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ghost-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-size: 14px;
+            transition: border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .ghost-link:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+
+        .note {
+            background: var(--soft-bg);
+            border: 1px solid #bbf7d0;
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            color: #166534;
+        }
+
+        .muted {
+            color: var(--muted-color);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 36px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-color);
+            font-size: 14px;
+            color: var(--muted-color);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            background: #f3f4f6;
+            padding: 0.12em 0.38em;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .container {
+                padding: 20px;
+                border-radius: 16px;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .ghost-link {
+                flex: 1;
+            }
+
+            .lang-switch {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="title-block">
+            <h1 id="app-title">LeafTab Privacy Policy</h1>
+            <p id="subtitle-en">Minimal by Design. Powerful in Use.</p>
+            <p id="subtitle-zh" class="hidden">极简而生，强大顺手。</p>
+        </div>
+        <div class="header-actions">
+            <a class="ghost-link" href="../">返回官网</a>
+            <button class="lang-switch" type="button" onclick="toggleLanguage()">中文 / English</button>
+        </div>
+    </header>
+
+    <div id="content-en">
+        <p class="muted">Last updated: April 9, 2026</p>
+
+        <div class="note">
+            LeafTab is designed around local-first behavior. Most preferences and search interactions stay in your browser unless you explicitly enable a sync or network-based feature.
+        </div>
+
+        <p>LeafTab ("we", "us", or "our") respects your privacy. This Privacy Policy explains what data the extension handles, which permissions it may request, and how those permissions are used.</p>
+
+        <h2>1. Data We Handle</h2>
+        <ul>
+            <li><strong>Stored locally by default:</strong> shortcuts, scenario modes, wallpaper settings, search preferences, UI preferences, and local search history are stored in your browser using local extension storage.</li>
+            <li><strong>Cloud sync (optional):</strong> if you sign in and use sync, LeafTab stores your shortcut backup payload and necessary account metadata on the configured LeafTab backend (such as <code>leaftab.cc</code>) so your data can sync across devices.</li>
+            <li><strong>WebDAV sync (optional):</strong> if you enable WebDAV, backup data is sent only to the WebDAV address you configure. LeafTab does not scan your device files; it only reads and writes the backup payload created by the extension.</li>
+            <li><strong>Anonymous usage statistics (optional):</strong> if you opt in, LeafTab may send shortcut domain names only (for example, <code>google.com</code>) to help improve icon coverage. This does not include full URLs, page content, browsing history entries, or personal identity data.</li>
+            <li><strong>Search queries:</strong> your typed query is processed locally for suggestions and shortcuts. A query is sent to your selected search engine or target site only when you explicitly submit a search.</li>
+        </ul>
+
+        <h2>2. Browser Permissions Explained</h2>
+        <p>LeafTab requests some permissions only when you use related features.</p>
+        <ul>
+            <li><strong><code>search</code>:</strong> used to submit searches through the browser's search service when you choose the system search engine option.</li>
+            <li><strong><code>permissions</code>:</strong> used to request optional browser permissions or site access at runtime, only when you trigger a related feature.</li>
+            <li><strong><code>bookmarks</code> (optional):</strong> used to let you search and open browser bookmarks directly from the new tab search box.</li>
+            <li><strong><code>history</code> (optional):</strong> used to let you search, suggest, and open browser history entries from the new tab search box.</li>
+            <li><strong><code>tabs</code> (optional):</strong> used to let you search, switch, and manage currently open tabs, and to support experiences such as avoiding duplicate LeafTab tabs.</li>
+            <li><strong>Host access:</strong> used for LeafTab backend requests, wallpaper/weather/icon resources, font loading, GitHub-hosted resources, and user-configured WebDAV sync targets. Access to a custom WebDAV origin is requested on demand when you actually use WebDAV sync.</li>
+        </ul>
+
+        <h2>3. What LeafTab Does Not Do</h2>
+        <ul>
+            <li>It does not sell your data.</li>
+            <li>It does not read bookmarks, history, or tabs unless you grant the related optional permission.</li>
+            <li>It does not upload your browser history, bookmark contents, or open-tab list to our server for unrelated purposes.</li>
+            <li>It does not request browser geolocation permission. Weather features rely on the city you choose or related weather-service responses, not on continuous device location tracking.</li>
+        </ul>
+
+        <h2>4. Third-Party Services</h2>
+        <p>Depending on which features you use, LeafTab may connect to third-party services such as:</p>
+        <ul>
+            <li><strong>LeafTab backend:</strong> authentication, sync, and optional statistics.</li>
+            <li><strong>Weather and wallpaper services:</strong> for weather data and Bing wallpaper content.</li>
+            <li><strong>Icon services:</strong> for fetching website favicons used by shortcuts.</li>
+            <li><strong>Google Identity / OAuth services:</strong> only when you explicitly choose Google Sign-In.</li>
+            <li><strong>GitHub Pages / GitHub raw / Google Fonts:</strong> for public resources used by the extension or related pages.</li>
+            <li><strong>User-configured WebDAV server:</strong> only when you enable WebDAV backup or restore.</li>
+        </ul>
+
+        <h2>5. Google Sign-In (Optional)</h2>
+        <ul>
+            <li><strong>Triggered only by you:</strong> Google Sign-In is used only after you click a Google login action. LeafTab does not silently sign you in with Google.</li>
+            <li><strong>Data minimization:</strong> by default, account binding only requires <code>sub</code> (Google account unique ID), <code>email</code>, and <code>email_verified</code>. Fields like display name or avatar are optional and used only when needed for account display.</li>
+            <li><strong>Scope principle:</strong> by default, authentication uses the minimal sign-in scopes <code>openid</code> and <code>email</code>. <code>profile</code> is optional and only needed if you choose to show profile details. LeafTab does not request access to Google Drive, Gmail, Contacts, Calendar, or other Google data unless explicitly documented and approved by you.</li>
+            <li><strong>Token handling:</strong> OAuth credentials are used for login verification and session creation, then replaced by LeafTab's own session token. Access tokens are not used for unrelated purposes and should not be stored long-term unless technically required for security/availability reasons.</li>
+            <li><strong>Self-hosted backend compatibility:</strong> if you use a custom/self-hosted backend, Google login availability depends on whether that backend is configured with its own Google OAuth credentials and redirect URI. Without such configuration, Google login may be hidden or disabled while other login/sync methods remain available.</li>
+        </ul>
+
+        <h2>6. Your Controls</h2>
+        <ul>
+            <li>You can choose whether to sign in and use cloud sync.</li>
+            <li>You can enable or disable anonymous usage statistics in settings.</li>
+            <li>You can choose whether to grant optional permissions such as <code>bookmarks</code>, <code>history</code>, and <code>tabs</code>.</li>
+            <li>You can export, import, back up, or self-host supported parts of your data workflow.</li>
+        </ul>
+
+        <h2>7. Contact</h2>
+        <p>If you have questions about this Privacy Policy, please contact:</p>
+        <p><strong>Email:</strong> <a href="mailto:mason.life@proton.me">mason.life@proton.me</a></p>
+    </div>
+
+    <div id="content-zh" class="hidden">
+        <p class="muted">最后更新：2026 年 4 月 9 日</p>
+
+        <div class="note">
+            LeafTab 采用本地优先设计。除非您主动开启同步或其他联网功能，否则大多数偏好设置与搜索交互都只保留在浏览器本地。
+        </div>
+
+        <p>LeafTab（以下简称“我们”）重视您的隐私。本隐私政策说明扩展会处理哪些数据、可能申请哪些权限，以及这些权限的实际用途。</p>
+
+        <h2>1. 我们处理的数据</h2>
+        <ul>
+            <li><strong>默认本地存储：</strong> 快捷方式、情景模式、壁纸设置、搜索偏好、界面偏好以及本地搜索历史，默认都存储在浏览器本地的扩展存储中。</li>
+            <li><strong>云端同步（可选）：</strong> 如果您登录并使用同步功能，LeafTab 会将快捷方式备份数据和必要的账号元数据存储到配置的 LeafTab 后端（例如 <code>leaftab.cc</code>），以便在多设备之间同步。</li>
+            <li><strong>WebDAV 同步（可选）：</strong> 如果您启用 WebDAV，备份数据只会发送到您自己配置的 WebDAV 地址。LeafTab 不会扫描您的本地文件，只会读写扩展生成的备份数据。</li>
+            <li><strong>匿名使用统计（可选）：</strong> 如果您主动开启，我们可能仅上报快捷方式对应的域名（例如 <code>google.com</code>），用于改进网站图标适配。这不包含完整 URL、页面内容、浏览历史明细或个人身份信息。</li>
+            <li><strong>搜索词：</strong> 您输入的搜索内容会先在本地用于建议、快捷方式匹配与结果组织；只有当您主动提交搜索时，查询才会发送到您选定的搜索引擎或目标网站。</li>
+        </ul>
+
+        <h2>2. 浏览器权限说明</h2>
+        <p>LeafTab 的部分权限只会在您实际使用相关功能时按需申请。</p>
+        <ul>
+            <li><strong><code>search</code>：</strong> 当您选择“系统搜索引擎”时，用于通过浏览器搜索服务发起搜索。</li>
+            <li><strong><code>permissions</code>：</strong> 用于在运行时按需申请可选权限或站点访问权限，仅在您触发相关功能时使用。</li>
+            <li><strong><code>bookmarks</code>（可选）：</strong> 用于在新标签页搜索框中直接搜索并打开浏览器书签。</li>
+            <li><strong><code>history</code>（可选）：</strong> 用于在新标签页搜索框中搜索、联想并打开浏览历史记录。</li>
+            <li><strong><code>tabs</code>（可选）：</strong> 用于搜索、切换和管理当前已打开的标签页，以及支持避免重复打开 LeafTab 标签页等体验。</li>
+            <li><strong>站点访问权限：</strong> 用于访问 LeafTab 后端、壁纸/天气/图标资源、字体资源、GitHub 托管资源，以及您自行配置的 WebDAV 同步目标。自定义 WebDAV 域名权限只会在您实际使用 WebDAV 同步时按需申请。</li>
+        </ul>
+
+        <h2>3. LeafTab 不会做什么</h2>
+        <ul>
+            <li>不会出售您的数据。</li>
+            <li>不会在您未授权的情况下读取书签、历史记录或标签页。</li>
+            <li>不会为了与核心功能无关的用途，把您的浏览历史、书签内容或打开中的标签页列表上传到我们的服务器。</li>
+            <li>不会申请浏览器地理位置权限。天气功能依赖您手动选择的城市或相关天气服务返回的数据，而不是持续追踪设备位置。</li>
+        </ul>
+
+        <h2>4. 第三方服务</h2>
+        <p>根据您使用的功能，LeafTab 可能会连接以下类型的第三方服务：</p>
+        <ul>
+            <li><strong>LeafTab 后端：</strong> 用于账号登录、同步和可选统计功能。</li>
+            <li><strong>天气与壁纸服务：</strong> 用于获取天气数据和必应壁纸内容。</li>
+            <li><strong>图标服务：</strong> 用于获取快捷方式所需的网站图标。</li>
+            <li><strong>Google 身份认证 / OAuth 服务：</strong> 仅在您主动选择 Google 登录时使用。</li>
+            <li><strong>GitHub Pages / GitHub Raw / Google Fonts：</strong> 用于扩展或相关页面依赖的公开资源。</li>
+            <li><strong>用户自行配置的 WebDAV 服务器：</strong> 仅在您启用 WebDAV 备份或恢复时使用。</li>
+        </ul>
+
+        <h2>5. Google 登录（可选）</h2>
+        <ul>
+            <li><strong>仅在您主动触发时使用：</strong> 只有当您点击 Google 登录操作时，才会发起 Google 身份认证流程；LeafTab 不会在后台静默替您登录 Google。</li>
+            <li><strong>最小化数据原则：</strong> 默认仅需 <code>sub</code>（Google 账号唯一标识）、<code>email</code>、<code>email_verified</code> 完成账号绑定。显示名称、头像等资料字段为可选，仅在您需要账号展示时使用。</li>
+            <li><strong>最小权限原则：</strong> 默认仅使用登录必要范围 <code>openid</code> 与 <code>email</code>；<code>profile</code> 为可选，仅在需要展示资料时使用。除非另行明确说明并征得您同意，LeafTab 不会请求 Google Drive、Gmail、通讯录、日历等额外数据权限。</li>
+            <li><strong>令牌处理：</strong> OAuth 凭据仅用于登录校验与会话创建，随后使用 LeafTab 自身会话令牌。Access Token 不会用于无关用途，且除非出于安全/可用性技术需要，不会长期保存。</li>
+            <li><strong>自托管兼容性：</strong> 若您使用自定义/自托管后端，Google 登录是否可用取决于该后端是否配置了自己的 Google OAuth 凭据与回调地址；未配置时，Google 登录入口可能隐藏或禁用，但不影响其他登录/同步方式。</li>
+        </ul>
+
+        <h2>6. 您的控制权</h2>
+        <ul>
+            <li>您可以自行决定是否登录并启用云端同步。</li>
+            <li>您可以在设置中开启或关闭匿名使用统计。</li>
+            <li>您可以自行决定是否授予 <code>bookmarks</code>、<code>history</code>、<code>tabs</code> 等可选权限。</li>
+            <li>您可以导出、导入、备份数据，也可以在支持的场景下自托管后端。</li>
+        </ul>
+
+        <h2>7. 联系方式</h2>
+        <p>如果您对本隐私政策有任何问题，请通过以下方式联系：</p>
+        <p><strong>邮箱：</strong> <a href="mailto:mason.life@proton.me">mason.life@proton.me</a></p>
+    </div>
+
+    <footer>
+        &copy; 2026 LeafTab. All rights reserved.
+    </footer>
+</div>
+
+<script>
+    function setLanguage(lang) {
+        const en = document.getElementById('content-en');
+        const zh = document.getElementById('content-zh');
+        const title = document.getElementById('app-title');
+        const subtitleEn = document.getElementById('subtitle-en');
+        const subtitleZh = document.getElementById('subtitle-zh');
+        const isZh = lang === 'zh';
+
+        en.classList.toggle('hidden', isZh);
+        zh.classList.toggle('hidden', !isZh);
+        subtitleEn.classList.toggle('hidden', isZh);
+        subtitleZh.classList.toggle('hidden', !isZh);
+        title.textContent = isZh ? 'LeafTab 隐私政策' : 'LeafTab Privacy Policy';
+        document.documentElement.lang = isZh ? 'zh-CN' : 'en';
+    }
+
+    function toggleLanguage() {
+        const isCurrentlyZh = !document.getElementById('content-zh').classList.contains('hidden');
+        setLanguage(isCurrentlyZh ? 'en' : 'zh');
+    }
+
+    window.onload = function() {
+        const userLang = navigator.language || navigator.userLanguage || 'en';
+        setLanguage(userLang.toLowerCase().startsWith('zh') ? 'zh' : 'en');
+    };
+</script>
+</body>
+</html>

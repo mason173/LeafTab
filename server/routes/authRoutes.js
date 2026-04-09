@@ -1,4 +1,6 @@
+const crypto = require('crypto');
 const svgCaptcha = require('svg-captcha');
+const { OAuth2Client } = require('google-auth-library');
 
 const normalizeShortcutsPayload = (shortcutsValue) => {
   let shortcutsOut = shortcutsValue;
@@ -19,6 +21,67 @@ const normalizeShortcutsPayload = (shortcutsValue) => {
   return shortcutsOut;
 };
 
+const issueAuthResponse = ({ res, jwt, secretKey, row, isNewUser = false }) => {
+  const token = jwt.sign({ id: row.id, username: row.username }, secretKey, {
+    expiresIn: '30d', // 30 days
+  });
+
+  const shortcutsOut = normalizeShortcutsPayload(row.shortcuts);
+  res.json({
+    auth: true,
+    token,
+    username: row.username,
+    shortcuts: shortcutsOut,
+    role: row.role || 'user',
+    createdAt: row.created_at,
+    privacyConsent: row.privacy_consent_ts ? !!row.privacy_consent : null,
+    isNewUser,
+  });
+};
+
+const sanitizeGoogleUsernameSeed = (value) => {
+  const normalized = String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_.@]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return normalized;
+};
+
+const buildGoogleBaseUsername = ({ payload, googleSub }) => {
+  const email = String(payload?.email || '').trim().toLowerCase();
+  const emailLocalPart = email.includes('@') ? email.split('@')[0] : '';
+  const nameSeed = sanitizeGoogleUsernameSeed(payload?.name);
+  const emailSeed = sanitizeGoogleUsernameSeed(emailLocalPart);
+  const fallbackSeed = `google_${String(googleSub || '').slice(-10)}`.replace(/[^a-z0-9_]/g, '');
+  const base = (nameSeed || emailSeed || fallbackSeed || 'google_user').slice(0, 46);
+  return base.length >= 3 ? base : `google_${String(googleSub || '').slice(-8)}`;
+};
+
+const resolveAvailableUsername = ({ db, validateUsername, baseUsername, callback, suffix = 0 }) => {
+  const suffixPart = suffix === 0 ? '' : `_${suffix}`;
+  const baseMaxLength = Math.max(3, 50 - suffixPart.length);
+  const candidate = `${baseUsername.slice(0, baseMaxLength)}${suffixPart}`.toLowerCase();
+
+  if (!validateUsername(candidate)) {
+    return callback(new Error('Failed to generate a valid username from Google profile'));
+  }
+
+  db.get('SELECT id FROM users WHERE username = ?', [candidate], (err, row) => {
+    if (err) return callback(err);
+    if (row) {
+      if (suffix >= 9999) return callback(new Error('Unable to allocate username for Google account'));
+      return resolveAvailableUsername({
+        db,
+        validateUsername,
+        baseUsername,
+        callback,
+        suffix: suffix + 1,
+      });
+    }
+    return callback(null, candidate);
+  });
+};
+
 const registerAuthRoutes = ({
   app,
   db,
@@ -32,7 +95,11 @@ const registerAuthRoutes = ({
   captchaLimiter,
   updateLimiter,
   getLatestReleaseCached,
+  googleOAuthClientIds = [],
 }) => {
+  const googleClientIds = googleOAuthClientIds.map((value) => String(value || '').trim()).filter(Boolean);
+  const googleOAuthClient = googleClientIds.length > 0 ? new OAuth2Client() : null;
+
   // Captcha Endpoint
   app.get('/captcha', captchaLimiter, (req, res) => {
     const captcha = svgCaptcha.create({
@@ -136,21 +203,120 @@ const registerAuthRoutes = ({
         if (!passwordIsValid) {
           return res.status(400).json({ error: 'Invalid username or password' });
         }
-
-        const token = jwt.sign({ id: row.id, username: row.username }, secretKey, {
-          expiresIn: '30d', // 30 days
+        return issueAuthResponse({
+          res,
+          jwt,
+          secretKey,
+          row,
+          isNewUser: false,
         });
+      });
+    });
+  });
 
-        const shortcutsOut = normalizeShortcutsPayload(row.shortcuts);
-        res.json({
-          auth: true,
-          token,
-          username: row.username,
-          shortcuts: shortcutsOut,
-          role: row.role || 'user',
-          createdAt: row.created_at,
-          privacyConsent: row.privacy_consent_ts ? !!row.privacy_consent : null,
+  app.post('/auth/google', authLimiter, async (req, res) => {
+    if (!googleOAuthClient || googleClientIds.length === 0) {
+      return res.status(503).json({ error: 'Google login is not enabled on this server' });
+    }
+
+    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : '';
+    if (!idToken) {
+      return res.status(400).json({ error: 'Google ID token is required' });
+    }
+
+    let payload;
+    try {
+      const ticket = await googleOAuthClient.verifyIdToken({
+        idToken,
+        audience: googleClientIds,
+      });
+      payload = ticket.getPayload();
+    } catch (verifyErr) {
+      console.error('Google token verification failed:', verifyErr?.message || verifyErr);
+      return res.status(401).json({ error: 'Invalid Google ID token' });
+    }
+
+    const googleSub = String(payload?.sub || '').trim();
+    if (!googleSub) {
+      return res.status(400).json({ error: 'Google sign-in is missing a stable user id' });
+    }
+
+    db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (lookupErr, existingUser) => {
+      if (lookupErr) {
+        return res.status(500).json({ error: lookupErr.message });
+      }
+
+      if (existingUser) {
+        return issueAuthResponse({
+          res,
+          jwt,
+          secretKey,
+          row: existingUser,
+          isNewUser: false,
         });
+      }
+
+      const baseUsername = buildGoogleBaseUsername({ payload, googleSub });
+      resolveAvailableUsername({
+        db,
+        validateUsername,
+        baseUsername,
+        callback: (usernameErr, availableUsername) => {
+          if (usernameErr || !availableUsername) {
+            console.error('Failed to resolve username for Google account:', usernameErr?.message || usernameErr);
+            return res.status(500).json({ error: 'Failed to create account from Google profile' });
+          }
+
+          const randomPassword = crypto.randomBytes(32).toString('hex');
+          bcrypt.hash(randomPassword, bcryptRounds, (hashErr, hashedPassword) => {
+            if (hashErr) {
+              console.error('bcrypt hash failed for Google account:', hashErr.message);
+              return res.status(500).json({ error: 'Failed to process account credentials' });
+            }
+
+            const insertSql = 'INSERT INTO users (username, password, role, auth_provider, google_sub) VALUES (?, ?, ?, ?, ?)';
+            db.run(insertSql, [availableUsername, hashedPassword, 'user', 'google', googleSub], function insertGoogleUser(insertErr) {
+              if (insertErr) {
+                if (insertErr.message.includes('UNIQUE constraint failed: users.google_sub')) {
+                  return db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (raceLookupErr, raceUser) => {
+                    if (raceLookupErr) return res.status(500).json({ error: raceLookupErr.message });
+                    if (!raceUser) return res.status(500).json({ error: 'Failed to finish Google login' });
+                    return issueAuthResponse({
+                      res,
+                      jwt,
+                      secretKey,
+                      row: raceUser,
+                      isNewUser: false,
+                    });
+                  });
+                }
+                if (insertErr.message.includes('UNIQUE constraint failed: users.username')) {
+                  return res.status(409).json({ error: 'Username collision, please retry Google login' });
+                }
+                if (insertErr.message.includes('database is locked')) {
+                  return res.status(503).json({ error: 'Database is busy, please retry in a moment.' });
+                }
+                return res.status(500).json({ error: insertErr.message });
+              }
+
+              return db.get('SELECT * FROM users WHERE id = ?', [this.lastID], (createdErr, createdUser) => {
+                if (createdErr) {
+                  return res.status(500).json({ error: createdErr.message });
+                }
+                if (!createdUser) {
+                  return res.status(500).json({ error: 'Failed to load new Google account' });
+                }
+                return issueAuthResponse({
+                  res,
+                  jwt,
+                  secretKey,
+                  row: createdUser,
+                  isNewUser: true,
+                });
+              });
+            });
+          });
+        },
       });
     });
   });

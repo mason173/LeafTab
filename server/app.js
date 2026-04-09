@@ -65,6 +65,14 @@ const createApp = () => {
     : sessionCookieSecure;
 
   const adminApiKey = (process.env.ADMIN_API_KEY || '').trim();
+  const googleOAuthClientIds = (
+    process.env.GOOGLE_OAUTH_CLIENT_IDS
+    || process.env.GOOGLE_OAUTH_CLIENT_ID
+    || ''
+  )
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
   const { isAdminRequest, authenticateToken } = createAuthHelpers({ secretKey, adminApiKey });
 
   const {
@@ -166,6 +174,7 @@ const createApp = () => {
     captchaLimiter,
     updateLimiter,
     getLatestReleaseCached,
+    googleOAuthClientIds,
   });
 
   registerUserRoutes({

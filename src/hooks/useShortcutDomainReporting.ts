@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { ScenarioShortcuts } from '../types';
 import { extractDomainFromUrl } from '../utils';
-import { fetchIconLibraryManifest, resolveCustomIconFromCache } from '@/utils/iconLibrary';
+import { resolveCustomIconFromCache, warmIconLibraryManifestCache } from '@/utils/iconLibrary';
 
 const DOMAIN_QUEUE_KEY = 'leaftab_domain_queue_v1';
 const DOMAIN_LAST_FLUSH_AT_KEY = 'leaftab_domain_last_flush_at';
@@ -106,7 +106,7 @@ export function useShortcutDomainReporting({
     const backoffUntil = backoffUntilRaw ? Number(backoffUntilRaw) : 0;
     if (Number.isFinite(backoffUntil) && backoffUntil > Date.now()) return;
 
-    await fetchIconLibraryManifest();
+    await warmIconLibraryManifestCache();
 
     const filterUnsupportedDomains = (list: string[]) => {
       const seen = new Set<string>();
@@ -203,7 +203,7 @@ export function useShortcutDomainReporting({
       if (seededRaw === user) return;
 
       // Best effort: warm icon manifest cache before seeding, to avoid reporting already-supported domains.
-      await fetchIconLibraryManifest();
+      await warmIconLibraryManifestCache();
       if (cancelled) return;
 
       const queue = readDomainQueue();
