@@ -1170,14 +1170,20 @@ export default {
         tooManyRequests: "请求过于频繁，请稍后再试",
         googleLoginFailed: "Google 登录失败",
         googleUnsupported: "当前浏览器暂不支持 Google 登录",
+        googleUnsupportedDetailed: "当前环境暂不支持 Google 登录：{{reason}}",
         googleCanceled: "已取消 Google 登录",
+        googleTimedOut: "Google 登录超时，请重试",
+        googlePopupBlocked: "Google 登录弹窗被浏览器拦截，请允许弹窗后重试",
         googleOAuthFailed: "Google 授权失败，请重试",
         googleParseFailed: "Google 登录回调解析失败",
         googleClientIdMissing: "插件未配置 Google Client ID",
+        googleWebClientIdMissing: "当前网页模式未配置 Google Web Client ID，请设置 VITE_GOOGLE_WEB_OAUTH_CLIENT_ID",
+        googleRedirectMismatch: "当前扩展 ID 未配置到 Google OAuth 回调白名单。当前回调地址：{{redirectUri}}",
         googleNotEnabled: "当前服务器未启用 Google 登录",
         invalidGoogleToken: "Google 身份令牌无效，请重新登录",
         googleTokenMissing: "缺少 Google 身份令牌",
-        googleUserIdMissing: "Google 账号标识缺失"
+        googleUserIdMissing: "Google 账号标识缺失",
+        googleStateMismatch: "Google 登录状态校验失败，请重试"
       }
     },
     shortcutDelete: {

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeafTab Google Sign-In</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        function decodeState(rawState) {
+          if (!rawState) return null;
+          try {
+            var json = decodeURIComponent(escape(window.atob(rawState)));
+            return JSON.parse(json);
+          } catch (error) {
+            console.warn('[LeafTab] Failed to decode Google popup state', error);
+            return null;
+          }
+        }
+
+        var hash = window.location.hash && window.location.hash.charAt(0) === '#'
+          ? window.location.hash.slice(1)
+          : window.location.hash || '';
+        var params = new URLSearchParams(hash);
+        var rawState = params.get('state') || '';
+        var decodedState = decodeState(rawState);
+        var openerOrigin = decodedState && decodedState.openerOrigin
+          ? String(decodedState.openerOrigin)
+          : window.location.origin;
+        var payload = {
+          source: 'leaf-tab-google-auth',
+          type: params.get('error') ? 'error' : 'success',
+          state: rawState,
+          idToken: params.get('id_token') || '',
+          error: params.get('error') || '',
+        };
+
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(payload, openerOrigin);
+        }
+
+        window.close();
+      })();
+    </script>
+  </body>
+</html>
