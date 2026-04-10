@@ -4,6 +4,7 @@
   const ICON_LIBRARY_MANIFEST_ETAG_KEY = "leaftab_icon_library_manifest_etag";
   const ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY = "leaftab_icon_library_manifest_fetched_at";
   const DEFAULT_ICON_LIBRARY_URL = "https://mason173.github.io/leaftab-icons";
+  const ICON_LIBRARY_MANIFEST_FILES = ["icon-library.json", "manifest.json"];
   const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
 
   const params = new URLSearchParams(window.location.search);
@@ -401,11 +402,23 @@
     try {
       const headers = {};
       if (etag) headers["If-None-Match"] = etag;
-      const resp = await fetch(baseUrl.replace(/\/+$/, "") + "/manifest.json", {
-        method: "GET",
-        credentials: "omit",
-        headers: headers
-      });
+      const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+      let resp = null;
+      for (const fileName of ICON_LIBRARY_MANIFEST_FILES) {
+        const candidate = await fetch(normalizedBaseUrl + "/" + fileName, {
+          method: "GET",
+          credentials: "omit",
+          headers: headers
+        });
+        if (candidate.ok || candidate.status === 304) {
+          resp = candidate;
+          break;
+        }
+      }
+      if (!resp) {
+        iconManifest = storedManifest;
+        return iconManifest;
+      }
 
       if (resp.status === 304 && storedManifest) {
         iconManifest = storedManifest;

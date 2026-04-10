@@ -212,7 +212,7 @@
     </header>
 
     <div id="content-en">
-        <p class="muted">Last updated: April 9, 2026</p>
+        <p class="muted">Last updated: April 10, 2026</p>
 
         <div class="note">
             LeafTab is designed around local-first behavior. Most preferences and search interactions stay in your browser unless you explicitly enable a sync or network-based feature.
@@ -234,6 +234,8 @@
         <ul>
             <li><strong><code>search</code>:</strong> used to submit searches through the browser's search service when you choose the system search engine option.</li>
             <li><strong><code>permissions</code>:</strong> used to request optional browser permissions or site access at runtime, only when you trigger a related feature.</li>
+            <li><strong><code>activeTab</code>:</strong> used to read the title and URL of your currently active tab so LeafTab can help you quickly add the current page as a shortcut. This is only used when you actively trigger that feature.</li>
+            <li><strong><code>identity</code>:</strong> used to support Google Sign-In through the browser's identity / OAuth flow. This is only used when you explicitly choose to sign in with Google.</li>
             <li><strong><code>bookmarks</code> (optional):</strong> used to let you search and open browser bookmarks directly from the new tab search box.</li>
             <li><strong><code>history</code> (optional):</strong> used to let you search, suggest, and open browser history entries from the new tab search box.</li>
             <li><strong><code>tabs</code> (optional):</strong> used to let you search, switch, and manage currently open tabs, and to support experiences such as avoiding duplicate LeafTab tabs.</li>
@@ -262,9 +264,10 @@
         <h2>5. Google Sign-In (Optional)</h2>
         <ul>
             <li><strong>Triggered only by you:</strong> Google Sign-In is used only after you click a Google login action. LeafTab does not silently sign you in with Google.</li>
-            <li><strong>Data minimization:</strong> by default, account binding only requires <code>sub</code> (Google account unique ID), <code>email</code>, and <code>email_verified</code>. Fields like display name or avatar are optional and used only when needed for account display.</li>
-            <li><strong>Scope principle:</strong> by default, authentication uses the minimal sign-in scopes <code>openid</code> and <code>email</code>. <code>profile</code> is optional and only needed if you choose to show profile details. LeafTab does not request access to Google Drive, Gmail, Contacts, Calendar, or other Google data unless explicitly documented and approved by you.</li>
-            <li><strong>Token handling:</strong> OAuth credentials are used for login verification and session creation, then replaced by LeafTab's own session token. Access tokens are not used for unrelated purposes and should not be stored long-term unless technically required for security/availability reasons.</li>
+            <li><strong>Data used for authentication:</strong> Google Sign-In may process basic Google account data returned by Google, such as a stable Google account identifier (<code>sub</code>), email address, email verification state, and limited profile information needed to complete sign-in and create or recover your LeafTab account.</li>
+            <li><strong>Scope principle:</strong> the sign-in flow uses Google OpenID Connect scopes such as <code>openid</code>, <code>email</code>, and <code>profile</code> to complete authentication and account display. LeafTab does not request access to Google Drive, Gmail, Contacts, Calendar, or other Google data unless explicitly documented and approved by you.</li>
+            <li><strong>Token handling:</strong> Google OAuth / identity tokens are used to verify your sign-in and create a LeafTab session. After verification, LeafTab uses its own session token for the application. LeafTab does not store your Google password.</li>
+            <li><strong>Stored account data:</strong> if you use Google Sign-In, LeafTab may store the authentication provider, a stable Google account identifier, your LeafTab username, and the account data required for login and sync.</li>
             <li><strong>Self-hosted backend compatibility:</strong> if you use a custom/self-hosted backend, Google login availability depends on whether that backend is configured with its own Google OAuth credentials and redirect URI. Without such configuration, Google login may be hidden or disabled while other login/sync methods remain available.</li>
         </ul>
 
@@ -282,7 +285,7 @@
     </div>
 
     <div id="content-zh" class="hidden">
-        <p class="muted">最后更新：2026 年 4 月 9 日</p>
+        <p class="muted">最后更新：2026 年 4 月 10 日</p>
 
         <div class="note">
             LeafTab 采用本地优先设计。除非您主动开启同步或其他联网功能，否则大多数偏好设置与搜索交互都只保留在浏览器本地。
@@ -304,6 +307,8 @@
         <ul>
             <li><strong><code>search</code>：</strong> 当您选择“系统搜索引擎”时，用于通过浏览器搜索服务发起搜索。</li>
             <li><strong><code>permissions</code>：</strong> 用于在运行时按需申请可选权限或站点访问权限，仅在您触发相关功能时使用。</li>
+            <li><strong><code>activeTab</code>：</strong> 用于读取您当前活动标签页的标题和网址，以便 LeafTab 帮助您快速把当前页面添加为快捷方式。该权限仅在您主动触发该功能时使用。</li>
+            <li><strong><code>identity</code>：</strong> 用于通过浏览器身份认证 / OAuth 流程支持 Google 登录。该权限仅在您明确选择使用 Google 登录时使用。</li>
             <li><strong><code>bookmarks</code>（可选）：</strong> 用于在新标签页搜索框中直接搜索并打开浏览器书签。</li>
             <li><strong><code>history</code>（可选）：</strong> 用于在新标签页搜索框中搜索、联想并打开浏览历史记录。</li>
             <li><strong><code>tabs</code>（可选）：</strong> 用于搜索、切换和管理当前已打开的标签页，以及支持避免重复打开 LeafTab 标签页等体验。</li>
@@ -332,9 +337,10 @@
         <h2>5. Google 登录（可选）</h2>
         <ul>
             <li><strong>仅在您主动触发时使用：</strong> 只有当您点击 Google 登录操作时，才会发起 Google 身份认证流程；LeafTab 不会在后台静默替您登录 Google。</li>
-            <li><strong>最小化数据原则：</strong> 默认仅需 <code>sub</code>（Google 账号唯一标识）、<code>email</code>、<code>email_verified</code> 完成账号绑定。显示名称、头像等资料字段为可选，仅在您需要账号展示时使用。</li>
-            <li><strong>最小权限原则：</strong> 默认仅使用登录必要范围 <code>openid</code> 与 <code>email</code>；<code>profile</code> 为可选，仅在需要展示资料时使用。除非另行明确说明并征得您同意，LeafTab 不会请求 Google Drive、Gmail、通讯录、日历等额外数据权限。</li>
-            <li><strong>令牌处理：</strong> OAuth 凭据仅用于登录校验与会话创建，随后使用 LeafTab 自身会话令牌。Access Token 不会用于无关用途，且除非出于安全/可用性技术需要，不会长期保存。</li>
+            <li><strong>用于认证的数据：</strong> Google 登录过程中，LeafTab 可能处理 Google 返回的基础账号信息，例如稳定的 Google 账号标识（<code>sub</code>）、邮箱地址、邮箱验证状态，以及完成登录和创建或找回 LeafTab 账号所需的有限资料信息。</li>
+            <li><strong>权限范围原则：</strong> 登录流程会使用 Google OpenID Connect 的 <code>openid</code>、<code>email</code>、<code>profile</code> 等范围，以完成身份认证和账号展示。除非另行明确说明并征得您同意，LeafTab 不会请求 Google Drive、Gmail、通讯录、日历等额外数据权限。</li>
+            <li><strong>令牌处理：</strong> Google OAuth / 身份令牌仅用于校验您的登录并创建 LeafTab 会话；完成校验后，应用会使用 LeafTab 自身的会话令牌。LeafTab 不会保存您的 Google 密码。</li>
+            <li><strong>存储的账号数据：</strong> 如果您使用 Google 登录，LeafTab 可能会保存认证提供方、稳定的 Google 账号标识、您的 LeafTab 用户名，以及登录和同步所必需的账号数据。</li>
             <li><strong>自托管兼容性：</strong> 若您使用自定义/自托管后端，Google 登录是否可用取决于该后端是否配置了自己的 Google OAuth 凭据与回调地址；未配置时，Google 登录入口可能隐藏或禁用，但不影响其他登录/同步方式。</li>
         </ul>
 

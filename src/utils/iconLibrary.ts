@@ -22,6 +22,7 @@ const ICON_LIBRARY_MANIFEST_KEY = 'leaftab_icon_library_manifest_json';
 const ICON_LIBRARY_MANIFEST_ETAG_KEY = 'leaftab_icon_library_manifest_etag';
 const ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY = 'leaftab_icon_library_manifest_fetched_at';
 const LOCAL_ICON_LIBRARY_BASE_URL = '/leaftab-icons';
+const ICON_LIBRARY_MANIFEST_FILE_CANDIDATES = ['icon-library.json', 'manifest.json'] as const;
 
 export const DEFAULT_ICON_LIBRARY_URL = 'https://mason173.github.io/leaftab-icons';
 const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
@@ -199,6 +200,29 @@ const normalizeManifest = (raw: any): IconLibraryManifest | null => {
   };
 };
 
+const fetchManifestJson = async ({
+  baseUrl,
+  headers,
+  cache,
+}: {
+  baseUrl: string;
+  headers?: Record<string, string>;
+  cache?: RequestCache;
+}) => {
+  for (const fileName of ICON_LIBRARY_MANIFEST_FILE_CANDIDATES) {
+    const resp = await fetch(`${baseUrl}/${fileName}`, {
+      method: 'GET',
+      credentials: 'omit',
+      headers,
+      cache,
+    });
+    if (resp.ok || resp.status === 304) {
+      return resp;
+    }
+  }
+  return null;
+};
+
 export const fetchIconLibraryManifest = async (options?: { force?: boolean }) => {
   const baseUrl = getIconLibraryUrl();
   if (!baseUrl) return null;
@@ -222,11 +246,11 @@ export const fetchIconLibraryManifest = async (options?: { force?: boolean }) =>
     try {
       const headers: Record<string, string> = {};
       if (etag) headers['If-None-Match'] = etag;
-      const resp = await fetch(`${baseUrl}/manifest.json`, {
-        method: 'GET',
-        credentials: 'omit',
-        headers,
-      });
+      const resp = await fetchManifestJson({ baseUrl, headers });
+      if (!resp) {
+        inMemoryManifest = storedManifest || null;
+        return inMemoryManifest;
+      }
       if (resp.status === 304 && storedManifest) {
         inMemoryManifest = storedManifest;
         try {
@@ -268,12 +292,8 @@ const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {
   const baseUrl = getLocalIconLibraryUrl();
   inFlightLocal = (async () => {
     try {
-      const resp = await fetch(`${baseUrl}/manifest.json`, {
-        method: 'GET',
-        credentials: 'omit',
-        cache: 'force-cache',
-      });
-      if (!resp.ok) {
+      const resp = await fetchManifestJson({ baseUrl, cache: 'force-cache' });
+      if (!resp || !resp.ok) {
         inMemoryLocalManifest = null;
         return null;
       }
