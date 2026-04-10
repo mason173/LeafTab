@@ -503,6 +503,12 @@ export function ShortcutEditorPanel({
             <div className={`grid w-full grid-cols-7 ${compact ? 'gap-2' : 'gap-2.5'}`}>
             {SHORTCUT_ICON_COLOR_PALETTE.map((color) => {
               const selected = color === selectedColor;
+              const checkColor = color === '#FFFFFF' ? '#232128' : '#FFFFFF';
+              const borderClass = selected
+                ? 'border-foreground/70 shadow-[0_0_0_2px_rgba(255,255,255,0.08)]'
+                : color === '#FFFFFF'
+                  ? 'border-border/60'
+                  : 'border-transparent';
               return (
                 <button
                   key={color}
@@ -514,14 +520,12 @@ export function ShortcutEditorPanel({
                     colorSelectionDisabled
                       ? 'cursor-not-allowed opacity-40'
                       : 'cursor-pointer hover:scale-105'
-                  } ${
-                    selected ? 'border-foreground/70 shadow-[0_0_0_2px_rgba(255,255,255,0.08)]' : 'border-transparent'
-                  } ${compact ? 'size-9' : 'aspect-square w-full'}`}
+                  } ${borderClass} ${compact ? 'size-9' : 'aspect-square w-full'}`}
                   style={{ backgroundColor: color }}
                   title={color}
                   aria-label={color}
                 >
-                  {selected ? <RiCheckFill className="size-4 text-white" /> : null}
+                  {selected ? <RiCheckFill className="size-4" style={{ color: checkColor }} /> : null}
                 </button>
               );
             })}
