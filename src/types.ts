@@ -5,6 +5,7 @@ import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 
 export type ShortcutVisualMode = 'favicon' | 'letter';
+export type ShortcutIconAppearance = 'colorful' | 'monochrome' | 'accent';
 export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
 
 export interface WeatherManualLocation {
@@ -37,6 +38,9 @@ export interface SyncablePreferences {
   shortcutCardVariant: ShortcutCardVariant;
   shortcutCompactShowTitle: boolean;
   shortcutGridColumnsByVariant: Record<ShortcutCardVariant, number>;
+  shortcutIconAppearance: ShortcutIconAppearance;
+  shortcutIconCornerRadius: number;
+  shortcutIconScale: number;
   shortcutsRowsPerColumn: number;
   privacyConsent: boolean | null;
   theme: 'system' | 'light' | 'dark';

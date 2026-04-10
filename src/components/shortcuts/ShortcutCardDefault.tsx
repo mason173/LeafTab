@@ -6,6 +6,7 @@ import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
   iconSize?: number;
+  iconCornerRadius?: number;
   titleFontSize?: number;
   urlFontSize?: number;
   verticalPadding?: number;
@@ -85,6 +86,7 @@ function ScrollingText({
 export function ShortcutCardDefault({
   shortcut,
   iconSize = 36,
+  iconCornerRadius,
   titleFontSize = 14,
   urlFontSize = 10,
   verticalPadding = 8,
@@ -121,6 +123,7 @@ export function ShortcutCardDefault({
             officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
             iconRendering={shortcut.iconRendering}
             iconColor={shortcut.iconColor}
+            iconCornerRadius={iconCornerRadius}
           />
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText

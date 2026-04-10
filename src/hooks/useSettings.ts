@@ -15,6 +15,17 @@ import {
   queueLocalStorageSetItem,
 } from '@/utils/storageWriteQueue';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import {
+  clampShortcutIconCornerRadius,
+  DEFAULT_SHORTCUT_ICON_APPEARANCE,
+  DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
+  DEFAULT_SHORTCUT_ICON_SCALE,
+  normalizeShortcutIconAppearance,
+  SHORTCUT_ICON_APPEARANCE_KEY,
+  SHORTCUT_ICON_CORNER_RADIUS_KEY,
+  SHORTCUT_ICON_SCALE_KEY,
+  clampShortcutIconScale,
+} from '@/utils/shortcutIconSettings';
 
 export type TimeAnimationMode = 'inherit' | 'on' | 'off';
 
@@ -187,6 +198,21 @@ export function useSettings() {
     const variant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
     return readShortcutGridColumns(variant);
   });
+  const [shortcutIconAppearance, setShortcutIconAppearance] = useState(() => {
+    return normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY));
+  });
+  const [shortcutIconCornerRadius, setShortcutIconCornerRadius] = useState(() => {
+    const stored = localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY);
+    return stored === null
+      ? DEFAULT_SHORTCUT_ICON_CORNER_RADIUS
+      : clampShortcutIconCornerRadius(stored);
+  });
+  const [shortcutIconScale, setShortcutIconScale] = useState(() => {
+    const stored = localStorage.getItem(SHORTCUT_ICON_SCALE_KEY);
+    return stored === null
+      ? DEFAULT_SHORTCUT_ICON_SCALE
+      : clampShortcutIconScale(stored);
+  });
   const [shortcutsRowsPerColumn, setShortcutsRowsPerColumn] = useState(() => {
     const stored = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     return clampShortcutsRowsPerColumn(stored);
@@ -256,6 +282,9 @@ export function useSettings() {
     }
     const nextShortcutVariant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
     setShortcutGridColumns(readShortcutGridColumns(nextShortcutVariant));
+    setShortcutIconAppearance(normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY) || DEFAULT_SHORTCUT_ICON_APPEARANCE));
+    setShortcutIconCornerRadius(clampShortcutIconCornerRadius(localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY) ?? DEFAULT_SHORTCUT_ICON_CORNER_RADIUS));
+    setShortcutIconScale(clampShortcutIconScale(localStorage.getItem(SHORTCUT_ICON_SCALE_KEY) ?? DEFAULT_SHORTCUT_ICON_SCALE));
     const storedShortcutsRowsPerColumn = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
     setShortcutsRowsPerColumn(clampShortcutsRowsPerColumn(storedShortcutsRowsPerColumn));
     
@@ -304,6 +333,9 @@ export function useSettings() {
     queueLocalStorageSetItem('showTime', JSON.stringify(showTime));
     queueLocalStorageSetItem('shortcutCardVariant', shortcutCardVariant);
     queueLocalStorageSetItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
+    queueLocalStorageSetItem(SHORTCUT_ICON_APPEARANCE_KEY, shortcutIconAppearance);
+    queueLocalStorageSetItem(SHORTCUT_ICON_CORNER_RADIUS_KEY, String(clampShortcutIconCornerRadius(shortcutIconCornerRadius)));
+    queueLocalStorageSetItem(SHORTCUT_ICON_SCALE_KEY, String(clampShortcutIconScale(shortcutIconScale)));
     if (privacyConsent !== null) {
       queueLocalStorageSetItem('privacy_consent', JSON.stringify(privacyConsent));
     }
@@ -321,6 +353,9 @@ export function useSettings() {
     searchSiteShortcutEnabled,
     shortcutCardVariant,
     shortcutCompactShowTitle,
+    shortcutIconAppearance,
+    shortcutIconCornerRadius,
+    shortcutIconScale,
     showDate,
     showLunar,
     showSeconds,
@@ -330,6 +365,27 @@ export function useSettings() {
     timeAnimationMode,
     visualEffectsLevel,
   ]);
+
+  useEffect(() => {
+    const normalized = normalizeShortcutIconAppearance(shortcutIconAppearance);
+    if (normalized !== shortcutIconAppearance) {
+      setShortcutIconAppearance(normalized);
+    }
+  }, [shortcutIconAppearance]);
+
+  useEffect(() => {
+    const normalized = clampShortcutIconCornerRadius(shortcutIconCornerRadius);
+    if (normalized !== shortcutIconCornerRadius) {
+      setShortcutIconCornerRadius(normalized);
+    }
+  }, [shortcutIconCornerRadius]);
+
+  useEffect(() => {
+    const normalized = clampShortcutIconScale(shortcutIconScale);
+    if (normalized !== shortcutIconScale) {
+      setShortcutIconScale(normalized);
+    }
+  }, [shortcutIconScale]);
 
   useEffect(() => {
     const normalized = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant);
@@ -426,6 +482,12 @@ export function useSettings() {
     setShortcutCompactShowTitle,
     shortcutGridColumns,
     setShortcutGridColumns,
+    shortcutIconAppearance,
+    setShortcutIconAppearance,
+    shortcutIconCornerRadius,
+    setShortcutIconCornerRadius,
+    shortcutIconScale,
+    setShortcutIconScale,
     shortcutsRowsPerColumn,
     setShortcutsRowsPerColumn,
     privacyConsent,

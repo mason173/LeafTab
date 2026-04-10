@@ -84,6 +84,7 @@ interface SettingsModalProps {
   onOpenWallpaperSettings?: () => void;
   onOpenShortcutGuide?: () => void;
   onOpenShortcutStyleSettings?: () => void;
+  onOpenShortcutIconSettings?: () => void;
 }
 
 export default function SettingsModal({
@@ -137,6 +138,7 @@ export default function SettingsModal({
   onOpenWallpaperSettings,
   onOpenShortcutGuide,
   onOpenShortcutStyleSettings,
+  onOpenShortcutIconSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const firefox = isFirefoxBuildTarget();
@@ -315,6 +317,12 @@ export default function SettingsModal({
     onOpenShortcutStyleSettings?.();
   };
 
+  const handleOpenShortcutIconSettings = () => {
+    if (shortcutStyleDisabled) return;
+    onOpenChange(false);
+    onOpenShortcutIconSettings?.();
+  };
+
   const handleOpenWallpaperSettings = () => {
     onOpenChange(false);
     onOpenWallpaperSettings?.();
@@ -409,8 +417,8 @@ export default function SettingsModal({
                   aria-label={`Select ${option.label} color`}
                 />
               ))}
+              </div>
             </div>
-          </div>
             <Separator className="bg-border/60" />
 
             <div className="flex items-center justify-between space-x-2">
@@ -469,6 +477,21 @@ export default function SettingsModal({
                   onClick={handleOpenShortcutStyleSettings}
                 >
                   {t('settings.shortcutsStyle.open')}
+                </Button>
+              </div>
+              <div className={`flex items-center justify-between gap-3 ${shortcutStyleDisabled ? 'opacity-55' : ''}`}>
+                <div className="flex flex-col space-y-1 items-start">
+                  <span className="text-sm font-medium leading-none">{t('settings.shortcutIconSettings.label', { defaultValue: '图标设置' })}</span>
+                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutIconSettings.entryDescription', { defaultValue: '调整快捷方式图标的颜色模式与圆角' })}</span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className={`!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 ${shortcutStyleDisabled ? 'bg-secondary/35 text-muted-foreground cursor-not-allowed hover:bg-secondary/35' : 'bg-secondary/50 hover:bg-secondary'}`}
+                  disabled={shortcutStyleDisabled}
+                  onClick={handleOpenShortcutIconSettings}
+                >
+                  {t('settings.shortcutIconSettings.open', { defaultValue: '打开' })}
                 </Button>
               </div>
             <Separator className="bg-border/60" />

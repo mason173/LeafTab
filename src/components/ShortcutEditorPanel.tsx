@@ -17,6 +17,7 @@ import {
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import { RiCheckFill, RiPencilFill } from '@/icons/ri-compat';
+import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
 interface ShortcutEditorPanelProps {
   mode: 'add' | 'edit';
@@ -38,6 +39,7 @@ interface ShortcutEditorPanelProps {
   bodyClassName?: string;
   footerClassName?: string;
   previewSize?: number;
+  iconCornerRadius?: number;
 }
 
 function IconModeCard({
@@ -130,6 +132,7 @@ export function ShortcutEditorPanel({
   bodyClassName,
   footerClassName,
   previewSize = 76,
+  iconCornerRadius,
 }: ShortcutEditorPanelProps) {
   const { t } = useTranslation();
   const customFileInputRef = useRef<HTMLInputElement>(null);
@@ -390,10 +393,12 @@ export function ShortcutEditorPanel({
       officialIconAvailableAtSave={officialIconAvailable}
       iconRendering={iconRendering}
       iconColor={effectivePreviewColor}
+      iconCornerRadius={iconCornerRadius}
     />
   );
 
   const shouldShowCustomPreviewAction = selectedSource === 'custom' && hasCustomIcon;
+  const previewBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
 
   const previewContent = shouldShowCustomPreviewAction ? (
     <button
@@ -402,10 +407,14 @@ export function ShortcutEditorPanel({
       disabled={customIconLoading}
       data-testid="shortcut-custom-preview-trigger"
       aria-label={t('shortcutModal.icon.modeCustomReplaceShort', { defaultValue: '更改' })}
-      className="group relative inline-flex rounded-[22px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group relative inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      style={{ borderRadius: previewBorderRadius }}
     >
       {previewNode}
-      <span className="pointer-events-none absolute inset-0 flex items-end justify-center rounded-[22px] bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/28 group-hover:opacity-100 group-focus-visible:bg-black/28 group-focus-visible:opacity-100">
+      <span
+        className="pointer-events-none absolute inset-0 flex items-end justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/28 group-hover:opacity-100 group-focus-visible:bg-black/28 group-focus-visible:opacity-100"
+        style={{ borderRadius: previewBorderRadius }}
+      >
         <span className="mb-1.5 flex size-8 items-center justify-center rounded-full bg-black/45 text-white shadow-sm">
           <RiPencilFill className="size-4" />
         </span>

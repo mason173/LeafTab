@@ -7,6 +7,17 @@ import type { SearchEngine, SyncablePreferences, SyncableWallpaperMode, WeatherM
 import { clampShortcutsRowsPerColumn } from '@/utils/backupData';
 import { DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
+import {
+  clampShortcutIconCornerRadius,
+  DEFAULT_SHORTCUT_ICON_APPEARANCE,
+  DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
+  DEFAULT_SHORTCUT_ICON_SCALE,
+  normalizeShortcutIconAppearance,
+  SHORTCUT_ICON_APPEARANCE_KEY,
+  SHORTCUT_ICON_CORNER_RADIUS_KEY,
+  SHORTCUT_ICON_SCALE_KEY,
+  clampShortcutIconScale,
+} from '@/utils/shortcutIconSettings';
 
 const SHORTCUT_GRID_COLUMNS_LEGACY_KEY = 'shortcutGridColumns';
 const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
@@ -168,6 +179,9 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   shortcutCardVariant: DEFAULT_SHORTCUT_CARD_VARIANT,
   shortcutCompactShowTitle: true,
   shortcutGridColumnsByVariant: getDefaultShortcutGridColumnsByVariant(),
+  shortcutIconAppearance: DEFAULT_SHORTCUT_ICON_APPEARANCE,
+  shortcutIconCornerRadius: DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
+  shortcutIconScale: DEFAULT_SHORTCUT_ICON_SCALE,
   shortcutsRowsPerColumn: 4,
   privacyConsent: null,
   theme: 'system',
@@ -225,6 +239,9 @@ export const normalizeSyncablePreferences = (
       default: clampShortcutGridColumns(Number(shortcutGridColumnsByVariant.default), 'default'),
       compact: clampShortcutGridColumns(Number(shortcutGridColumnsByVariant.compact), 'compact'),
     },
+    shortcutIconAppearance: normalizeShortcutIconAppearance(candidate.shortcutIconAppearance),
+    shortcutIconCornerRadius: clampShortcutIconCornerRadius(candidate.shortcutIconCornerRadius),
+    shortcutIconScale: clampShortcutIconScale(candidate.shortcutIconScale),
     shortcutsRowsPerColumn: clampShortcutsRowsPerColumn(Number(candidate.shortcutsRowsPerColumn)),
     privacyConsent: readNullableBoolean(candidate.privacyConsent),
     theme: candidate.theme === 'light' || candidate.theme === 'dark' || candidate.theme === 'system'
@@ -294,6 +311,9 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     shortcutCardVariant: parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')),
     shortcutCompactShowTitle: storedShortcutCompactShowTitle === null ? true : storedShortcutCompactShowTitle === 'true',
     shortcutGridColumnsByVariant: readShortcutGridColumnsByVariantFromStorage(),
+    shortcutIconAppearance: normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY)),
+    shortcutIconCornerRadius: clampShortcutIconCornerRadius(localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY)),
+    shortcutIconScale: clampShortcutIconScale(localStorage.getItem(SHORTCUT_ICON_SCALE_KEY)),
     shortcutsRowsPerColumn: clampShortcutsRowsPerColumn(Number(localStorage.getItem('shortcutsRowsPerColumn') || '4')),
     privacyConsent,
     theme: ((localStorage.getItem(THEME_KEY) || 'system').trim() as SyncablePreferences['theme']),
@@ -337,6 +357,9 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
     SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY,
     JSON.stringify(normalized.shortcutGridColumnsByVariant),
   );
+  localStorage.setItem(SHORTCUT_ICON_APPEARANCE_KEY, normalized.shortcutIconAppearance);
+  localStorage.setItem(SHORTCUT_ICON_CORNER_RADIUS_KEY, String(normalized.shortcutIconCornerRadius));
+  localStorage.setItem(SHORTCUT_ICON_SCALE_KEY, String(normalized.shortcutIconScale));
   localStorage.setItem(
     SHORTCUT_GRID_COLUMNS_LEGACY_KEY,
     String(normalized.shortcutGridColumnsByVariant[normalized.shortcutCardVariant]),

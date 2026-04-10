@@ -9,6 +9,7 @@ interface ShortcutCardRendererProps {
   compactShowTitle: boolean;
   shortcut: Shortcut;
   compactIconSize?: number;
+  iconCornerRadius?: number;
   compactTitleFontSize?: number;
   defaultIconSize?: number;
   defaultTitleFontSize?: number;
@@ -24,6 +25,7 @@ export function ShortcutCardRenderer({
   compactShowTitle,
   shortcut,
   compactIconSize,
+  iconCornerRadius,
   compactTitleFontSize,
   defaultIconSize,
   defaultTitleFontSize,
@@ -40,6 +42,7 @@ export function ShortcutCardRenderer({
           shortcut={shortcut}
           showTitle={compactShowTitle}
           iconSize={compactIconSize}
+          iconCornerRadius={iconCornerRadius}
           titleFontSize={compactTitleFontSize}
           forceTextWhite={forceTextWhite}
           onOpen={onOpen}
@@ -52,6 +55,7 @@ export function ShortcutCardRenderer({
         <ShortcutCardDefault
           shortcut={shortcut}
           iconSize={defaultIconSize}
+          iconCornerRadius={iconCornerRadius}
           titleFontSize={defaultTitleFontSize}
           urlFontSize={defaultUrlFontSize}
           verticalPadding={defaultVerticalPadding}

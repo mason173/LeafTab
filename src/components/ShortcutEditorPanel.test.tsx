@@ -96,8 +96,7 @@ describe('ShortcutEditorPanel', () => {
       expect(screen.getByTestId('shortcut-custom-preview-trigger')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('shortcut-icon-mode-custom')).toHaveTextContent('Custom');
-    expect(screen.queryByText('Change')).not.toBeInTheDocument();
+    expect(screen.getByTestId('shortcut-icon-mode-custom')).toHaveAttribute('aria-checked', 'true');
 
     const clickSpy = vi.spyOn(fileInput, 'click');
     fireEvent.click(screen.getByTestId('shortcut-custom-preview-trigger'));
