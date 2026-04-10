@@ -11,6 +11,7 @@ import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { normalizeApiBase } from "@/utils";
 import { ensureOriginPermission } from "@/utils/extensionPermissions";
 import { DEFAULT_ICON_LIBRARY_URL, getIconLibraryUrl, normalizeIconLibraryUrl, setIconLibraryUrl } from "@/utils/iconLibrary";
+import { UpdateAvailableDialog } from "@/components/UpdateAvailableDialog";
 
 export function AdminModal({
   open,
@@ -47,6 +48,7 @@ export function AdminModal({
   const [iconLibraryUrlDraft, setIconLibraryUrlDraft] = useState<string>(() => (getIconLibraryUrl() || "").trim());
   const [domainQueueCount, setDomainQueueCount] = useState<number>(0);
   const [domainLastFlushAt, setDomainLastFlushAt] = useState<string>("");
+  const [updateDebugOpen, setUpdateDebugOpen] = useState(false);
 
   const refreshLocal = () => {
     try {
@@ -74,6 +76,7 @@ export function AdminModal({
     setCustomApiUrlDraft((customApiUrl || "").trim());
     setCustomApiNameDraft((customApiName || "").trim());
     setIconLibraryUrlDraft((getIconLibraryUrl() || "").trim());
+    setUpdateDebugOpen(false);
     const timer = window.setInterval(() => {
       try {
         const raw = localStorage.getItem("leaftab_domain_queue_v1");
@@ -251,6 +254,23 @@ export function AdminModal({
                   />
                 </div>
 
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1 items-start">
+                    <span className="text-sm font-medium leading-none">
+                      {t("settings.adminPanel.debugUpdateDialogLabel", { defaultValue: "调试：更新弹窗" })}
+                    </span>
+                    <span className="font-normal text-xs text-muted-foreground">
+                      {t("settings.adminPanel.debugUpdateDialogDesc", { defaultValue: "打开后展示“检查更新”弹窗，方便调试顶部卡片排版" })}
+                    </span>
+                  </div>
+                  <Switch
+                    id="debug-update-dialog"
+                    checked={updateDebugOpen}
+                    onCheckedChange={(checked: boolean) => setUpdateDebugOpen(checked)}
+                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
+                  />
+                </div>
+
                 <div className="h-px bg-border" />
 
                 <div className="flex flex-col gap-3 py-1">
@@ -391,6 +411,16 @@ export function AdminModal({
             )}
           </div>
         </ScrollArea>
+
+        <UpdateAvailableDialog
+          open={updateDebugOpen}
+          onOpenChange={setUpdateDebugOpen}
+          latestVersion=""
+          releaseUrl=""
+          notes={[]}
+          onLater={() => setUpdateDebugOpen(false)}
+          debugSample
+        />
       </DialogContent>
     </Dialog>
   );

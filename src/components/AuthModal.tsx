@@ -15,6 +15,7 @@ import * as Tabs from "@radix-ui/react-tabs";
 import { toast } from "@/components/ui/sonner";
 import { useTranslation } from 'react-i18next';
 import { normalizeApiBase } from "@/utils";
+import googleIcon from '@/assets/google.svg';
 
 const FIRST_LOGIN_LOCAL_FIRST_KEY = 'leaftab_force_local_sync_after_first_login_user';
 const OFFICIAL_GOOGLE_OAUTH_CLIENT_ID = '352087600211-6cu9ot6j7n16927c9blblpcotnimfel2.apps.googleusercontent.com';
@@ -77,7 +78,7 @@ type GoogleWebPopupMessage = {
   error?: string;
 };
 
-type GoogleAuthMode = 'extension' | 'web-popup' | 'unavailable';
+type GoogleAuthMode = 'web-popup' | 'unavailable';
 
 const getGoogleAuthDiagnostics = (clientId?: string | null): GoogleAuthDiagnostics => {
   const anyGlobal = globalThis as any;
@@ -116,21 +117,11 @@ const getGoogleAuthDiagnostics = (clientId?: string | null): GoogleAuthDiagnosti
 
 const resolveGoogleAuthMode = ({
   diagnostics,
-  extensionClientId,
   webClientId,
 }: {
   diagnostics: GoogleAuthDiagnostics;
-  extensionClientId: string;
   webClientId: string;
 }): GoogleAuthMode => {
-  if (
-    diagnostics.isExtensionPage
-    && extensionClientId
-    && diagnostics.hasLaunchWebAuthFlow
-    && diagnostics.hasGetRedirectURL
-  ) {
-    return 'extension';
-  }
   if (webClientId && typeof window !== 'undefined' && typeof window.open === 'function') {
     return 'web-popup';
   }
@@ -404,13 +395,12 @@ export default function AuthModal({
   }, [webGoogleRedirectUri]);
   const googleAuthMode = useMemo(() => resolveGoogleAuthMode({
     diagnostics: googleAuthDiagnostics,
-    extensionClientId: extensionGoogleClientId,
     webClientId: webGoogleClientId,
-  }), [googleAuthDiagnostics, extensionGoogleClientId, webGoogleClientId]);
-  const googleClientId = googleAuthMode === 'extension' ? extensionGoogleClientId : webGoogleClientId;
+  }), [googleAuthDiagnostics, webGoogleClientId]);
+  const googleClientId = webGoogleClientId;
   const googleLoginAvailable = useMemo(() => {
     if (!googleClientId) return false;
-    return googleAuthMode === 'extension' || googleAuthMode === 'web-popup';
+    return googleAuthMode === 'web-popup';
   }, [googleClientId, googleAuthMode]);
 
   React.useEffect(() => {
@@ -481,7 +471,7 @@ export default function AuthModal({
   };
 
   const getGoogleUnsupportedMessage = () => {
-    if (!webGoogleClientId && googleAuthMode !== 'extension') {
+    if (!webGoogleClientId) {
       return t('auth.errors.googleWebClientIdMissing', {
         defaultValue: 'Google sign-in is not configured for web mode. Missing VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.',
       });
@@ -608,13 +598,9 @@ export default function AuthModal({
 
   const handleGoogleLogin = async () => {
     if (!googleClientId) {
-      toast.error(
-        googleAuthMode === 'extension'
-          ? t('auth.errors.googleClientIdMissing')
-          : t('auth.errors.googleWebClientIdMissing', {
-              defaultValue: 'Google sign-in is not configured for web mode. Missing VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.',
-            })
-      );
+      toast.error(t('auth.errors.googleWebClientIdMissing', {
+        defaultValue: 'Google sign-in is not configured for web mode. Missing VITE_GOOGLE_WEB_OAUTH_CLIENT_ID.',
+      }));
       return;
     }
 
@@ -631,31 +617,13 @@ export default function AuthModal({
       return;
     }
 
-    const redirectMismatchReason = googleAuthMode === 'extension'
-      ? getGoogleRedirectMismatchReason(googleAuthDiagnostics)
-      : '';
-    if (redirectMismatchReason) {
-      console.warn('[LeafTab] Google auth redirect mismatch', {
-        expectedRedirectUri: OFFICIAL_GOOGLE_REDIRECT_URI,
-        actualRedirectUri: googleAuthDiagnostics.redirectUri,
-        runtimeId: googleAuthDiagnostics.runtimeId,
-      });
-      toast.error(t('auth.errors.googleRedirectMismatch', {
-        redirectUri: googleAuthDiagnostics.redirectUri,
-        defaultValue: `Google OAuth callback is not configured for this extension ID. Current redirect URI: ${googleAuthDiagnostics.redirectUri}`,
-      }));
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const idToken = googleAuthMode === 'extension'
-        ? await launchGoogleWebAuthFlow(googleClientId)
-        : await launchGooglePopupAuthFlow({
-            clientId: googleClientId,
-            redirectUri: webGoogleRedirectUri,
-            callbackOrigin: webGoogleRedirectOrigin,
-          });
+      const idToken = await launchGooglePopupAuthFlow({
+        clientId: googleClientId,
+        redirectUri: webGoogleRedirectUri,
+        callbackOrigin: webGoogleRedirectOrigin,
+      });
       const response = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -766,10 +734,16 @@ export default function AuthModal({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full rounded-[16px]"
+                className="w-full rounded-[16px] gap-2"
                 disabled={isLoading}
                 onClick={handleGoogleLogin}
               >
+                <img
+                  src={googleIcon}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0"
+                />
                 {isLoading ? t('auth.buttons.loggingIn') : t('auth.buttons.googleLogin')}
               </Button>
             </form>
