@@ -13,8 +13,8 @@ export const SHORTCUT_ICON_COLOR_PALETTE = [
   '#E25724',
   '#F00016',
   '#DD4E84',
-  '#4E4DB7',
-  '#2994CC',
+  '#FFFFFF',
+  '#232128',
 ] as const;
 
 const isShortcutIconColor = (value: string): value is (typeof SHORTCUT_ICON_COLOR_PALETTE)[number] =>

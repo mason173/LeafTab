@@ -1,26 +1,34 @@
-import { lazy } from 'react';
+import { lazyWithPageReload } from './lazyWithPageReload';
 
-export const LazyWallpaperSelector = lazy(() => import('../components/WallpaperSelector'));
-export const LazyAppDialogs = lazy(() =>
-  import('../components/AppDialogs').then((module) => ({ default: module.AppDialogs })),
+export const LazyWallpaperSelector = lazyWithPageReload(
+  'wallpaper-selector',
+  () => import('../components/WallpaperSelector'),
+  (module) => module.default,
 );
-export const LazyLeafTabSyncDialog = lazy(() =>
-  import('../components/sync/LeafTabSyncDialog').then((module) => ({
-    default: module.LeafTabSyncDialog,
-  })),
+export const LazyAppDialogs = lazyWithPageReload(
+  'app-dialogs',
+  () => import('../components/AppDialogs'),
+  (module) => module.AppDialogs,
 );
-export const LazyLeafTabSyncEncryptionDialog = lazy(() =>
-  import('../components/sync/LeafTabSyncEncryptionDialog').then((module) => ({
-    default: module.LeafTabSyncEncryptionDialog,
-  })),
+export const LazyLeafTabSyncDialog = lazyWithPageReload(
+  'leaftab-sync-dialog',
+  () => import('../components/sync/LeafTabSyncDialog'),
+  (module) => module.LeafTabSyncDialog,
+);
+export const LazyLeafTabSyncEncryptionDialog = lazyWithPageReload(
+  'leaftab-sync-encryption-dialog',
+  () => import('../components/sync/LeafTabSyncEncryptionDialog'),
+  (module) => module.LeafTabSyncEncryptionDialog,
 );
 
-export const LazyUpdateAvailableDialog = lazy(() =>
-  import('../components/UpdateAvailableDialog').then((module) => ({
-    default: module.UpdateAvailableDialog,
-  })),
+export const LazyUpdateAvailableDialog = lazyWithPageReload(
+  'update-available-dialog',
+  () => import('../components/UpdateAvailableDialog'),
+  (module) => module.UpdateAvailableDialog,
 );
 
-export const LazyRoleSelector = lazy(() =>
-  import('../components/RoleSelector').then((module) => ({ default: module.RoleSelector })),
+export const LazyRoleSelector = lazyWithPageReload(
+  'role-selector',
+  () => import('../components/RoleSelector'),
+  (module) => module.RoleSelector,
 );
