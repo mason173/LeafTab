@@ -18,13 +18,20 @@
 
 ### 扩展模式 Client ID
 
-你已经申请了 Web Client ID（可直接使用）：
+LeafTab 当前扩展模式默认使用这个 Client ID：
 
 `352087600211-6cu9ot6j7n16927c9blblpcotnimfel2.apps.googleusercontent.com`
 
-回调地址需包含当前扩展 ID 对应的：
+如果你要同时支持“Chrome 商店版”和“社区版 zip 解压安装”，Google Cloud Console 里必须同时放行这两个扩展回调地址：
 
-`https://lfogogokkkpmolbfbklchcbgdiboccdf.chromiumapp.org/`
+- 商店版（Chrome Web Store）
+  - `https://lfogogokkkpmolbfbklchcbgdiboccdf.chromiumapp.org/`
+- 社区版（固定 key 后的 unpacked ID）
+  - `https://plnjjlkaaonbccmjpfljbbbbaahfklem.chromiumapp.org/`
+
+只放行其中一个时，另一个渠道会在 Google 授权页报：
+
+`错误 400：redirect_uri_mismatch`
 
 ### 网页模式 Client ID
 
@@ -98,6 +105,14 @@ VITE_GOOGLE_OAUTH_CLIENT_ID=你的客户端ID npm run build:community
 ```bash
 VITE_GOOGLE_WEB_OAUTH_CLIENT_ID=你的网页模式客户端ID npm run dev
 ```
+
+当前前端行为：
+
+- 扩展页优先走 `chrome.identity.launchWebAuthFlow`
+- 官网网页页签继续走 Google popup fallback
+- 扩展模式默认同时兼容这两个固定扩展 ID：
+  - 商店版：`lfogogokkkpmolbfbklchcbgdiboccdf`
+  - 社区版：`plnjjlkaaonbccmjpfljbbbbaahfklem`
 
 ## 4) 自定义后端说明
 
