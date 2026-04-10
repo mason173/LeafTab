@@ -30,6 +30,8 @@ import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import type { WallpaperMode } from "@/wallpaper/types";
 import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
+import aboutIcon from "@/assets/abouticon.svg";
+import { DIST_CHANNEL } from "@/config/distribution";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -220,6 +222,16 @@ export default function SettingsModal({
     if (lowered.startsWith('ko')) return 'ko';
     return 'zh';
   }, [i18n.language]);
+  const settingsHeroCopy = useMemo(() => {
+    const isChinese = languageValue === 'zh' || languageValue === 'zh-TW';
+    return {
+      title: isChinese ? 'LeafTab 新标签页' : 'LeafTab New Tab',
+      subtitle: isChinese ? 'Minimal by Design. Powerful in Use.' : 'Minimal by Design. Powerful in Use.',
+      badges: isChinese
+        ? ['开源', '端到端加密', 'WebDAV 同步']
+        : ['Open Source', 'End-to-End Encryption', 'WebDAV Sync'],
+    };
+  }, [languageValue]);
 
   useEffect(() => {
     setMounted(true);
@@ -330,6 +342,40 @@ export default function SettingsModal({
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
         >
           <div className="flex flex-col gap-6">
+            <div className="relative flex h-[190px] flex-col items-center justify-center overflow-hidden rounded-[28px] border border-border/60 bg-secondary/20 px-5 text-center">
+              {DIST_CHANNEL === 'community' ? (
+                <div className="absolute right-3 top-3 rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[10px] font-normal text-foreground/70 backdrop-blur">
+                  {languageValue === 'zh' || languageValue === 'zh-TW' ? '社区版' : 'Community'}
+                </div>
+              ) : null}
+              <div className="relative flex h-[60px] w-[60px] items-center justify-center rounded-[20px] bg-background ring-1 ring-border/60">
+                <img
+                  src={aboutIcon}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 w-9"
+                  draggable={false}
+                />
+              </div>
+              <div className="relative mt-3 flex w-full max-w-[440px] flex-col items-center gap-1">
+                <h2 className="max-w-full text-[22px] font-medium leading-none tracking-[-0.05em] text-foreground">
+                  {settingsHeroCopy.title}
+                </h2>
+                <p className="max-w-[260px] text-[12px] font-normal leading-[1.35] text-foreground/78">
+                  {settingsHeroCopy.subtitle}
+                </p>
+              </div>
+              <div className="relative mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                {settingsHeroCopy.badges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="inline-flex min-h-8 items-center justify-center rounded-full border border-border/70 bg-secondary/35 px-4 py-1.5 text-[12px] font-normal text-foreground/70 sm:min-w-[96px]"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            </div>
             {/* Display Mode Selection */}
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-3 gap-3">
