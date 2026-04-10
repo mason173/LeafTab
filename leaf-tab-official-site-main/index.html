@@ -4,865 +4,492 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LeafTab - 极简而强大的新标签页</title>
-  <meta
-    name="description"
-    content="LeafTab 是一个极简但强大的新标签页插件，支持快捷搜索、云同步、WebDAV、自托管与隐私可控。"
-  />
+  <meta name="description" content="LeafTab 是一个极简但强大的新标签页插件，支持快捷搜索、云同步、自托管后端、WebDAV 备份与隐私可控。" />
   <style>
     :root {
-      --background: #ffffff;
-      --foreground: #171717;
-      --muted: #525252;
-      --muted-soft: #737373;
-      --surface: #fafafa;
-      --surface-strong: #f5f5f5;
-      --line: rgba(23, 23, 23, 0.08);
-      --line-strong: rgba(23, 23, 23, 0.14);
-      --brand: #22c55e;
-      --brand-soft: rgba(34, 197, 94, 0.08);
-      --shadow-card: 0 0 0 1px rgba(23, 23, 23, 0.08);
-      --shadow-strong: 0 0 0 1px rgba(23, 23, 23, 0.12);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 16px;
-      --radius-pill: 999px;
-      --max-width: 1160px;
+      --bg: #0f1412;
+      --panel: #131a17;
+      --panel-2: #18211d;
+      --text: #f3f8f5;
+      --muted: #b4c4bd;
+      --line: #2a3932;
+      --brand: #57d18f;
+      --brand-2: #2bb673;
+      --chip: #1f2c27;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius: 18px;
+      --maxw: 1120px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
+    html, body {
       margin: 0;
-      color: var(--foreground);
-      background: radial-gradient(circle at top, rgba(23, 23, 23, 0.035), transparent 28%), var(--background);
-      font-family: "Geist", "Inter", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
+      padding: 0;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, #1d2f28 0%, transparent 50%),
+                  radial-gradient(900px 500px at 100% 10%, #1a2f27 0%, transparent 50%),
+                  var(--bg);
+      font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
     }
 
-    img {
-      display: block;
-      max-width: 100%;
-    }
+    a { color: inherit; text-decoration: none; }
 
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .container {
-      width: min(var(--max-width), calc(100% - 32px));
+    .wrap {
+      max-width: var(--maxw);
       margin: 0 auto;
+      padding: 0 20px;
     }
 
-    .topbar {
+    .reveal {
+      opacity: 0;
+      transform: translateY(14px);
+      animation: reveal 0.6s ease forwards;
+    }
+
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
+
+    @keyframes reveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    header {
       position: sticky;
       top: 0;
       z-index: 20;
-      backdrop-filter: blur(18px);
-      background: rgba(255, 255, 255, 0.86);
-      border-bottom: 1px solid rgba(23, 23, 23, 0.06);
+      backdrop-filter: blur(10px);
+      background: rgba(15, 20, 18, 0.66);
+      border-bottom: 1px solid rgba(42, 57, 50, 0.75);
     }
 
     .nav {
-      min-height: 72px;
+      height: 70px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 12px;
     }
 
-    .brand {
+    .logo {
       display: inline-flex;
       align-items: center;
-      gap: 14px;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
     }
 
-    .brand-mark {
-      width: 40px;
-      height: 40px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #ffffff, #f3f3f3);
-      box-shadow: 0 12px 28px rgba(23, 23, 23, 0.08), var(--shadow-card);
-      position: relative;
-      flex: none;
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--brand), #84e3af);
+      box-shadow: 0 0 0 6px rgba(87, 209, 143, 0.12);
     }
 
-    .brand-mark::before,
-    .brand-mark::after {
-      content: "";
-      position: absolute;
-      background: linear-gradient(180deg, #22c55e, #16a34a);
-    }
-
-    .brand-mark::before {
-      width: 18px;
-      height: 18px;
-      border-radius: 0 100% 0 100%;
-      left: 11px;
-      top: 9px;
-      transform: rotate(-28deg);
-    }
-
-    .brand-mark::after {
-      width: 11px;
-      height: 11px;
-      border-radius: 0 100% 0 100%;
-      right: 8px;
-      bottom: 11px;
-      transform: rotate(14deg);
-    }
-
-    .nav-links,
-    .nav-actions,
-    .hero-actions,
-    .proof-list,
-    .hero-metrics,
-    .pill-row,
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
+    .nav-actions {
+      display: inline-flex;
       align-items: center;
+      gap: 10px;
     }
 
-    .nav-links {
-      gap: 18px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .nav-link:hover,
-    .footer-links a:hover {
-      color: var(--foreground);
-    }
-
-    .button,
-    .button-secondary {
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 42px;
-      padding: 0 18px;
-      border-radius: var(--radius-pill);
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
       font-size: 14px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-      transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+      font-weight: 600;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      white-space: nowrap;
     }
 
-    .button:hover,
-    .button-secondary:hover {
+    .btn:hover {
       transform: translateY(-1px);
+      border-color: #3f5a4e;
     }
 
-    .button {
-      background: var(--foreground);
-      color: #ffffff;
-      box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.04);
-    }
-
-    .button-secondary {
-      background: #ffffff;
-      color: var(--foreground);
-      box-shadow: var(--shadow-card);
+    .btn.primary {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #082013;
+      border: none;
     }
 
     .hero {
-      padding: 72px 0 44px;
-    }
-
-    .hero-grid {
+      padding: 62px 0 36px;
       display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 28px;
-      align-items: stretch;
+      align-items: center;
     }
 
-    .eyebrow {
+    .tag {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      height: 32px;
-      padding: 0 12px;
-      border-radius: var(--radius-pill);
-      background: #ffffff;
-      color: var(--muted);
-      box-shadow: var(--shadow-card);
+      border: 1px solid #385448;
+      background: rgba(36, 56, 48, 0.45);
+      color: #d3eee0;
+      border-radius: 999px;
+      padding: 8px 12px;
       font-size: 12px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-    }
-
-    .eyebrow::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--brand);
-      box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.08);
+      font-weight: 700;
+      letter-spacing: 0.25px;
     }
 
     h1 {
-      margin: 18px 0 14px;
-      font-size: clamp(48px, 8vw, 88px);
-      line-height: 0.98;
-      letter-spacing: -0.07em;
-      font-weight: 600;
+      margin: 14px 0 14px;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.06;
+      letter-spacing: -0.02em;
     }
 
-    .hero-copy p {
-      max-width: 620px;
+    .lead {
       margin: 0;
       color: var(--muted);
-      font-size: 18px;
-      line-height: 1.65;
-      letter-spacing: -0.015em;
+      max-width: 60ch;
+      font-size: 16px;
     }
 
-    .hero-actions {
-      margin-top: 28px;
-    }
-
-    .hero-metrics {
-      margin-top: 18px;
+    .hero-cta {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
       gap: 10px;
     }
 
-    .metric {
-      padding: 10px 14px;
-      border-radius: var(--radius-pill);
-      background: var(--surface);
-      color: var(--muted);
-      box-shadow: var(--shadow-card);
-      font-size: 13px;
-      letter-spacing: -0.01em;
-    }
-
-    .hero-panel,
-    .section-card,
-    .preview-card,
-    .privacy-card,
-    .footer-card {
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-    }
-
-    .hero-panel {
-      border-radius: var(--radius-xl);
-      padding: 24px;
-      display: grid;
-      gap: 18px;
-      min-height: 100%;
-      background:
-        linear-gradient(180deg, rgba(34, 197, 94, 0.05), transparent 36%),
-        #ffffff;
-    }
-
-    .panel-window {
-      border-radius: 22px;
-      background: linear-gradient(180deg, #fafafa, #f5f5f5);
+    .hero-card {
+      background: linear-gradient(160deg, #17221d, #121916 60%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
       padding: 18px;
-      box-shadow: var(--shadow-card);
     }
 
-    .window-bar,
-    .mini-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .window-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(23, 23, 23, 0.12);
-    }
-
-    .search-shell {
-      margin-top: 16px;
-      border-radius: 18px;
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-      padding: 16px;
-    }
-
-    .search-bar {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 0 16px;
-      border-radius: 18px;
-      background: #fafafa;
-      box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.06) inset;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .search-chip {
-      height: 32px;
-      padding: 0 12px;
-      display: inline-flex;
-      align-items: center;
-      border-radius: var(--radius-pill);
-      background: var(--brand-soft);
-      color: #15803d;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .mini-grid {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .mini-card {
-      min-height: 118px;
-      border-radius: 18px;
-      padding: 16px;
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-    }
-
-    .mini-card strong {
-      display: block;
-      margin-top: 14px;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: -0.015em;
-    }
-
-    .mini-card p,
-    .feature p,
-    .story-copy p,
-    .privacy-copy p,
-    .footer-copy {
+    .hero-list {
       margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.65;
-      letter-spacing: -0.01em;
-    }
-
-    .proof {
-      padding: 18px 0 10px;
-    }
-
-    .proof-list {
+      padding: 0;
+      list-style: none;
+      display: grid;
       gap: 10px;
     }
 
-    .proof-item {
-      min-height: 42px;
-      padding: 0 14px;
-      border-radius: var(--radius-pill);
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
+    .hero-list li {
+      background: rgba(31, 44, 39, 0.7);
+      border: 1px solid #2e4139;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #d7e5df;
+      font-size: 14px;
     }
 
     .section {
-      padding: 56px 0 0;
+      padding: 18px 0 6px;
     }
 
-    .section-heading {
-      max-width: 660px;
-      margin-bottom: 24px;
-    }
-
-    .section-heading h2,
-    .story-copy h2,
-    .privacy-copy h2 {
-      margin: 0;
-      font-size: clamp(30px, 4vw, 46px);
-      line-height: 1.04;
-      letter-spacing: -0.05em;
-      font-weight: 600;
-    }
-
-    .section-heading p,
-    .story-copy p.lead,
-    .privacy-copy p.lead {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 16px;
-      line-height: 1.7;
+    .section h2 {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 3vw, 34px);
       letter-spacing: -0.015em;
+    }
+
+    .section p.section-intro {
+      margin: 0 0 20px;
+      color: var(--muted);
+      max-width: 70ch;
     }
 
     .feature-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      gap: 12px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .feature {
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
+      background: linear-gradient(180deg, #141d19, #111814);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      min-height: 138px;
     }
 
-    .feature-kicker {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 0 10px;
-      border-radius: var(--radius-pill);
-      background: var(--surface);
-      color: var(--muted);
+    .feature .kicker {
+      color: #8fe0b3;
       font-size: 12px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
     }
 
     .feature h3 {
-      margin: 16px 0 10px;
-      font-size: 22px;
-      line-height: 1.1;
-      letter-spacing: -0.035em;
-      font-weight: 600;
+      margin: 8px 0 8px;
+      font-size: 18px;
     }
 
-    .story-grid,
-    .privacy-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-      gap: 18px;
-      align-items: stretch;
-    }
-
-    .story-copy,
-    .privacy-copy {
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .story-points,
-    .privacy-points {
-      display: grid;
-      gap: 10px;
-    }
-
-    .point {
-      border-radius: 16px;
-      background: var(--surface);
-      box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.05) inset;
-      padding: 14px 16px;
-    }
-
-    .point strong {
-      display: block;
-      margin-bottom: 4px;
+    .feature p {
+      margin: 0;
+      color: var(--muted);
       font-size: 14px;
-      font-weight: 500;
-      letter-spacing: -0.015em;
     }
 
-    .preview-stack {
+    .split {
+      margin-top: 14px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 12px;
     }
 
-    .preview-card {
-      border-radius: 24px;
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
       padding: 16px;
     }
 
-    .preview-card img {
-      border-radius: 18px;
-      box-shadow: 0 0 0 1px rgba(23, 23, 23, 0.06);
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
     }
 
-    .preview-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 12px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .pill-row {
-      gap: 10px;
-    }
-
-    .pill {
-      min-height: 34px;
-      padding: 0 12px;
-      border-radius: var(--radius-pill);
-      background: #ffffff;
-      box-shadow: var(--shadow-card);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .privacy-card {
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      background:
-        linear-gradient(180deg, rgba(34, 197, 94, 0.05), transparent 42%),
-        #ffffff;
-      display: grid;
-      gap: 18px;
-    }
-
-    .privacy-card-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      align-items: flex-start;
-    }
-
-    .privacy-card h3 {
+    .panel p {
       margin: 0;
-      font-size: 30px;
-      line-height: 1.06;
-      letter-spacing: -0.04em;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .chip-row {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid #355044;
+      background: var(--chip);
+      color: #d7ece0;
+      padding: 6px 10px;
+      font-size: 12px;
       font-weight: 600;
     }
 
-    .privacy-card p {
-      margin: 0;
-      max-width: 620px;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.75;
-      letter-spacing: -0.015em;
-    }
-
-    .footer {
-      padding: 64px 0 36px;
-    }
-
-    .footer-card {
-      border-radius: var(--radius-xl);
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .footer-copy {
+    .gallery {
+      margin-top: 14px;
       display: grid;
-      gap: 6px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
 
-    .footer-title {
-      font-size: 16px;
-      font-weight: 500;
-      letter-spacing: -0.02em;
+    .shot {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #0d1210;
+    }
+
+    .shot img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      transition: transform 0.35s ease;
+    }
+
+    .shot:hover img {
+      transform: scale(1.025);
+    }
+
+    .privacy-box {
+      margin: 24px 0 12px;
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid #365245;
+      background: linear-gradient(140deg, #15211b, #101713 70%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .privacy-box p {
+      margin: 0;
+      color: #cce6d8;
+      max-width: 62ch;
+    }
+
+    footer {
+      margin-top: 30px;
+      padding: 20px 0 28px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
     }
 
     @media (max-width: 980px) {
-      .hero-grid,
-      .story-grid,
-      .privacy-grid,
+      .hero,
+      .split,
       .feature-grid {
         grid-template-columns: 1fr;
       }
 
-      .preview-stack {
-        grid-template-columns: 1fr;
+      .hero {
+        padding-top: 44px;
       }
 
-      h1 {
-        font-size: clamp(42px, 15vw, 68px);
+      .gallery {
+        grid-template-columns: 1fr;
       }
     }
 
-    @media (max-width: 760px) {
-      .nav {
-        padding: 14px 0;
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .nav-links {
-        display: none;
-      }
-
-      .container {
-        width: min(var(--max-width), calc(100% - 24px));
-      }
-
-      .hero {
-        padding-top: 42px;
-      }
-
-      .hero-copy p {
-        font-size: 16px;
-      }
-
-      .privacy-card-top,
-      .footer-card {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .button,
-      .button-secondary {
-        width: 100%;
-      }
-
-      .nav-actions,
-      .hero-actions {
-        width: 100%;
-      }
+    @media (max-width: 560px) {
+      .wrap { padding: 0 14px; }
+      .nav { height: 62px; }
+      .btn { height: 36px; padding: 0 12px; font-size: 13px; }
+      .hero-card { padding: 14px; }
+      .section { padding-top: 10px; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="container nav">
-      <a class="brand" href="./" aria-label="LeafTab 官网首页">
-        <span class="brand-mark" aria-hidden="true"></span>
+  <header>
+    <div class="wrap nav">
+      <a class="logo" href="./" aria-label="LeafTab 首页">
+        <span class="dot" aria-hidden="true"></span>
         <span>LeafTab</span>
       </a>
-      <nav class="nav-links" aria-label="页面导航">
-        <a class="nav-link" href="#features">能力</a>
-        <a class="nav-link" href="#showcase">界面</a>
-        <a class="nav-link" href="#privacy">隐私</a>
-      </nav>
       <div class="nav-actions">
-        <a class="button-secondary" href="./privacy/index.html">Privacy</a>
-        <a class="button" href="https://github.com/mason173/LeafTab/releases" target="_blank" rel="noopener noreferrer">下载社区版</a>
+        <a class="btn" href="./privacy/index.html">隐私政策</a>
+        <a class="btn primary" href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
     </div>
   </header>
 
-  <main>
+  <main class="wrap">
     <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <div class="eyebrow">Minimal by Design. Powerful in Use.</div>
-          <h1>LeafTab 新标签页</h1>
-          <p>
-            一个真正适合长期使用的新标签页。它保留极简界面，把快捷搜索、场景模式、同步、自托管和隐私控制放进一套足够克制的日常工作流里。
-          </p>
-          <div class="hero-actions">
-            <a class="button" href="https://github.com/mason173/LeafTab/releases" target="_blank" rel="noopener noreferrer">下载 Releases</a>
-            <a class="button-secondary" href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">查看 GitHub</a>
-          </div>
-          <div class="hero-metrics" aria-label="核心能力">
-            <span class="metric">开源社区版</span>
-            <span class="metric">端到端加密同步</span>
-            <span class="metric">WebDAV / 自托管</span>
-          </div>
+      <div>
+        <span class="tag reveal">LeafTab Official Website</span>
+        <h1 class="reveal delay-1">LeafTab</h1>
+        <p class="lead reveal delay-2">
+          LeafTab 专注于一件事：把“打开新标签页”变成一个稳定、顺手、可控的高效起点。
+          你可以获得键盘优先的搜索体验、灵活的快捷方式管理，以及端到端加密备份、WebDAV 同步与自托管能力。项目完全开源且免费。
+        </p>
+        <div class="hero-cta reveal delay-3">
+          <a class="btn primary" href="https://github.com/mason173/LeafTab/releases" target="_blank" rel="noopener noreferrer">下载 Releases</a>
+          <a class="btn" href="./privacy/index.html">查看隐私政策</a>
         </div>
+      </div>
+      <aside class="hero-card reveal delay-4" aria-label="核心能力摘要">
+        <ul class="hero-list">
+          <li>本地优先：默认数据保存在浏览器本地</li>
+          <li>强搜索：标签页 / 书签 / 历史 / 搜索引擎统一入口</li>
+          <li>可同步：官方后端、自定义后端、WebDAV 多种方案</li>
+          <li>端到端加密备份：备份数据可加密后再上传</li>
+          <li>可扩展：图标库、壁纸、天气组件与多布局模式</li>
+          <li>完全开源免费：代码公开、社区可参与、可自行构建</li>
+        </ul>
+      </aside>
+    </section>
 
-        <aside class="hero-panel" aria-label="LeafTab 功能预览">
-          <div class="panel-window">
-            <div class="window-bar" aria-hidden="true">
-              <span class="window-dot"></span>
-              <span class="window-dot"></span>
-              <span class="window-dot"></span>
-            </div>
-            <div class="search-shell">
-              <div class="search-bar">
-                <span>搜索、快捷命令、书签、历史记录、当前标签页</span>
-                <span class="search-chip">Command Palette</span>
-              </div>
-              <div class="mini-grid">
-                <div class="mini-card">
-                  <div class="mini-row"><span class="window-dot"></span><span class="window-dot"></span></div>
-                  <strong>同步与备份</strong>
-                  <p>云同步、WebDAV、自托管后端都可以按你的节奏启用。</p>
-                </div>
-                <div class="mini-card">
-                  <div class="mini-row"><span class="window-dot"></span><span class="window-dot"></span></div>
-                  <strong>界面与场景</strong>
-                  <p>节奏、全景、留白三种氛围，加上壁纸与主题自由组合。</p>
-                </div>
-              </div>
-            </div>
+    <section class="section reveal">
+      <h2>为什么选择 LeafTab</h2>
+      <p class="section-intro">
+        我们不是把新标签页做成“复杂操作系统”，而是把常用工作流打磨到足够顺滑。
+        它对新用户友好，也给重度用户留足了控制力。
+      </p>
+
+      <div class="feature-grid">
+        <article class="feature reveal delay-1">
+          <div class="kicker">Search</div>
+          <h3>键盘优先搜索</h3>
+          <p>支持命令前缀和多源检索，让信息查找更快，减少鼠标切换成本。</p>
+        </article>
+        <article class="feature reveal delay-2">
+          <div class="kicker">Sync</div>
+          <h3>同步与备份可控</h3>
+          <p>支持账号同步与 WebDAV 备份，数据迁移、导入导出更安心。</p>
+        </article>
+        <article class="feature reveal delay-3">
+          <div class="kicker">Self-host</div>
+          <h3>后端可自托管</h3>
+          <p>登录、同步、统计接口可切换到自定义服务器，适配不同部署需求。</p>
+        </article>
+        <article class="feature reveal delay-4">
+          <div class="kicker">E2EE</div>
+          <h3>端到端加密备份</h3>
+          <p>在支持的备份流程中，数据可先加密再同步，降低明文暴露风险。</p>
+        </article>
+        <article class="feature reveal delay-1">
+          <div class="kicker">WebDAV</div>
+          <h3>WebDAV 同步支持</h3>
+          <p>你可以接入自己的 WebDAV 服务，实现跨环境的数据备份与恢复。</p>
+        </article>
+        <article class="feature reveal delay-2">
+          <div class="kicker">Open Source</div>
+          <h3>完全开源免费</h3>
+          <p>仓库公开、可审计、可二次部署，社区用户可以直接参与共建。</p>
+        </article>
+      </div>
+
+      <div class="split">
+        <article class="panel reveal delay-1">
+          <h3>核心特性</h3>
+          <p>围绕效率、可控与隐私构建，避免不必要的权限和噪音设计。</p>
+          <div class="chip-row">
+            <span class="chip">Local-First</span>
+            <span class="chip">Cloud Sync</span>
+            <span class="chip">E2EE Backup</span>
+            <span class="chip">WebDAV</span>
+            <span class="chip">Custom Backend</span>
+            <span class="chip">Open Source</span>
+            <span class="chip">Free Forever</span>
+            <span class="chip">Icon Library</span>
+            <span class="chip">Privacy Controls</span>
           </div>
-          <div class="proof-list">
-            <span class="proof-item">本地优先</span>
-            <span class="proof-item">可选权限</span>
-            <span class="proof-item">国内可离线带图标库打包</span>
-          </div>
-        </aside>
+        </article>
+        <article class="panel reveal delay-2">
+          <h3>适用场景</h3>
+          <p>适合需要快速启页、重度搜索和跨设备同步的用户，也适合想要自己托管数据流的团队与开发者。</p>
+        </article>
       </div>
     </section>
 
-    <section class="proof">
-      <div class="container">
-        <div class="proof-list" aria-label="LeafTab 产品关键词">
-          <span class="proof-item">新标签页不该只是一个空白页</span>
-          <span class="proof-item">让搜索、启动、同步都在一个地方完成</span>
-          <span class="proof-item">从个人使用到自托管都能平滑过渡</span>
-        </div>
+    <section class="section reveal">
+      <h2>界面预览</h2>
+      <p class="section-intro">以下是 LeafTab 的真实界面截图，展示常见布局和交互状态。</p>
+      <div class="gallery">
+        <div class="shot reveal delay-1"><img src="./assets/previews/preview-1.png" alt="LeafTab 界面预览 1" /></div>
+        <div class="shot reveal delay-2"><img src="./assets/previews/preview-2.png" alt="LeafTab 界面预览 2" /></div>
+        <div class="shot reveal delay-3"><img src="./assets/previews/preview-3.png" alt="LeafTab 界面预览 3" /></div>
+        <div class="shot reveal delay-4"><img src="./assets/previews/preview-4.png" alt="LeafTab 界面预览 4" /></div>
       </div>
     </section>
 
-    <section class="section" id="features">
-      <div class="container">
-        <div class="section-heading">
-          <h2>不是堆功能，而是把常用能力排得更顺。</h2>
-          <p>官网这次按 `DESIGN.md` 重新收敛到更克制的黑白体系，只留必要的层级、信息密度和一处产品绿色，让产品能力自己说话。</p>
-        </div>
-        <div class="feature-grid">
-          <article class="feature">
-            <span class="feature-kicker">Search</span>
-            <h3>统一搜索入口</h3>
-            <p>搜索引擎、站内搜索、书签、历史记录、当前标签页切换，都可以从一个输入框快速完成。</p>
-          </article>
-          <article class="feature">
-            <span class="feature-kicker">Sync</span>
-            <h3>同步方式自己选</h3>
-            <p>可选云同步、WebDAV 备份或自托管后端，不强迫你把数据和账号绑定在单一服务里。</p>
-          </article>
-          <article class="feature">
-            <span class="feature-kicker">Privacy</span>
-            <h3>默认本地优先</h3>
-            <p>大多数偏好和交互默认只留在浏览器本地，联网功能按需开启，可选权限按需申请。</p>
-          </article>
-          <article class="feature">
-            <span class="feature-kicker">UI</span>
-            <h3>氛围感但不喧宾夺主</h3>
-            <p>场景模式、主题色、壁纸和布局节奏经过收敛，让新标签页既有状态也不影响进入工作。</p>
-          </article>
-          <article class="feature">
-            <span class="feature-kicker">Open</span>
-            <h3>社区版可直接分发</h3>
-            <p>社区版可以带着本地图标库一起打包发布，弱网或无法访问外部图标服务时也能正常显示。</p>
-          </article>
-          <article class="feature">
-            <span class="feature-kicker">Control</span>
-            <h3>从个人习惯出发</h3>
-            <p>快捷方式、搜索顺序、场景偏好和同步策略都可以围绕你的使用方式调整，而不是反过来适应产品。</p>
-          </article>
-        </div>
-      </div>
+    <section class="privacy-box reveal">
+      <p>
+        LeafTab 提供清晰、可读的隐私政策，说明数据处理边界、可选权限用途，以及 Google 登录与自托管场景下的数据最小化原则。
+      </p>
+      <a class="btn primary" href="./privacy/index.html">进入隐私政策</a>
     </section>
 
-    <section class="section" id="showcase">
-      <div class="container story-grid">
-        <div class="story-copy">
-          <h2>界面是轻的，但不是空的。</h2>
-          <p class="lead">下面这些截图保留了 LeafTab 真正的使用状态。我们没有用营销拼贴去掩盖细节，而是直接展示它在浏览器里的样子。</p>
-          <div class="story-points">
-            <div class="point">
-              <strong>用于启动</strong>
-              <p>打开新标签页时，核心信息和动作都在第一屏内完成，不需要额外学习路径。</p>
-            </div>
-            <div class="point">
-              <strong>用于搜索</strong>
-              <p>键盘驱动、快捷切换、命令式输入体验，都围绕日常使用的速度去设计。</p>
-            </div>
-            <div class="point">
-              <strong>用于长期使用</strong>
-              <p>从主题到备份，从社区版到自托管，LeafTab 希望你能把它当成可持续维护的工作入口。</p>
-            </div>
-          </div>
-          <div class="pill-row">
-            <span class="pill">快捷搜索</span>
-            <span class="pill">壁纸与主题</span>
-            <span class="pill">命令式交互</span>
-          </div>
-        </div>
-
-        <div class="preview-stack">
-          <figure class="preview-card">
-            <img src="./assets/previews/preview-1.png" alt="LeafTab 界面预览 1" />
-            <figcaption class="preview-meta"><span>预览一</span><span>首页布局</span></figcaption>
-          </figure>
-          <figure class="preview-card">
-            <img src="./assets/previews/preview-2.png" alt="LeafTab 界面预览 2" />
-            <figcaption class="preview-meta"><span>预览二</span><span>搜索交互</span></figcaption>
-          </figure>
-          <figure class="preview-card">
-            <img src="./assets/previews/preview-3.png" alt="LeafTab 界面预览 3" />
-            <figcaption class="preview-meta"><span>预览三</span><span>个性化设置</span></figcaption>
-          </figure>
-          <figure class="preview-card">
-            <img src="./assets/previews/preview-4.png" alt="LeafTab 界面预览 4" />
-            <figcaption class="preview-meta"><span>预览四</span><span>更多状态</span></figcaption>
-          </figure>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="privacy">
-      <div class="container privacy-grid">
-        <div class="privacy-copy">
-          <h2>把隐私边界说清楚，比口号更重要。</h2>
-          <p class="lead">LeafTab 的同步、Google 登录、WebDAV 和匿名统计都按“主动开启、最小化使用、可替换后端”来设计。这些边界，我们单独写成了隐私政策。</p>
-          <div class="privacy-points">
-            <div class="point">
-              <strong>默认本地优先</strong>
-              <p>大多数偏好设置和日常搜索交互默认只保留在浏览器本地。</p>
-            </div>
-            <div class="point">
-              <strong>联网能力按需启用</strong>
-              <p>云同步、WebDAV、Google 登录与匿名统计都是可选能力，不会默认强塞给所有用户。</p>
-            </div>
-            <div class="point">
-              <strong>社区版也能稳定使用</strong>
-              <p>社区版登录流程已统一为网页登录 fallback，不再被扩展 ID 变化绑死。</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="privacy-card">
-          <div class="privacy-card-top">
-            <div>
-              <h3>Privacy Policy</h3>
-              <p>查看完整的双语隐私政策，了解数据范围、权限用途、Google 登录最小化原则，以及自托管或 WebDAV 场景下的数据流向。</p>
-            </div>
-            <a class="button" href="./privacy/index.html">阅读政策</a>
-          </div>
-          <div class="pill-row" aria-label="政策关键词">
-            <span class="pill">Local-first</span>
-            <span class="pill">Optional Permissions</span>
-            <span class="pill">Google Sign-In</span>
-            <span class="pill">WebDAV</span>
-          </div>
-        </div>
-      </div>
-    </section>
+    <footer>
+      <span>© 2026 LeafTab</span>
+      <span><a href="./privacy/index.html">Privacy Policy</a> · <a href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    </footer>
   </main>
-
-  <footer class="footer">
-    <div class="container footer-card">
-      <div class="footer-copy">
-        <span class="footer-title">© 2026 LeafTab</span>
-        <span>一个极简但强大的新标签页。开源、可同步、可自托管，也尽量保持顺手。</span>
-      </div>
-      <div class="footer-links">
-        <a href="./privacy/index.html">Privacy Policy</a>
-        <a href="https://github.com/mason173/LeafTab" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a href="https://github.com/mason173/LeafTab/releases" target="_blank" rel="noopener noreferrer">Releases</a>
-      </div>
-    </div>
-  </footer>
 </body>
 </html>
