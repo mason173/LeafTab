@@ -123,6 +123,9 @@ npm i
 npm run dev
 ```
 
+首次执行 `npm run dev` / `npm run build` 时，如果本地不存在 `leaftab-icons-main/svgs`，脚本会自动从 `https://github.com/mason173/leaftab-icons.git` 拉取图标库到仓库根目录下的 `leaftab-icons-main/`，再同步到 `public/leaftab-icons/`。
+On the first `npm run dev` / `npm run build`, if `leaftab-icons-main/svgs` is missing locally, the script will automatically clone `https://github.com/mason173/leaftab-icons.git` into `leaftab-icons-main/` at the repo root, then sync it into `public/leaftab-icons/`.
+
 ## 构建（前端）/ Build (Frontend)
 
 ```bash

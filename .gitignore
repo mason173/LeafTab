@@ -41,3 +41,6 @@ public/models/paraphrase-multilingual-MiniLM-L12-v2/
 
 # Generated from leaftab-icons-main via scripts/sync-local-icon-library.js
 public/leaftab-icons/
+
+# Auto-cloned local icon source repo used by scripts/sync-local-icon-library.js
+leaftab-icons-main/
