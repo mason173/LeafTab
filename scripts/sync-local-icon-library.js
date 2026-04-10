@@ -8,7 +8,9 @@ const iconRepoDir = path.join(root, 'leaftab-icons-main');
 const sourceDir = path.join(root, 'leaftab-icons-main', 'svgs');
 const targetRoot = path.join(root, 'public', 'leaftab-icons');
 const targetDir = path.join(targetRoot, 'svgs');
-const manifestPath = path.join(targetRoot, 'manifest.json');
+const manifestFileName = 'icon-library.json';
+const manifestPath = path.join(targetRoot, manifestFileName);
+const legacyManifestPath = path.join(targetRoot, 'manifest.json');
 const packageJsonPath = path.join(root, 'package.json');
 const iconRepoUrl = process.env.LEAFTAB_ICONS_REPO_URL || 'https://github.com/mason173/leaftab-icons.git';
 const iconRepoRef = (process.env.LEAFTAB_ICONS_GIT_REF || '').trim();
@@ -131,6 +133,9 @@ const syncLocalIconLibrary = () => {
   };
 
   ensureDir(targetRoot);
+  if (fs.existsSync(legacyManifestPath)) {
+    fs.rmSync(legacyManifestPath, { force: true });
+  }
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   console.log(`[icons] synced ${svgFiles.length} SVG files to public/leaftab-icons`);
 };
