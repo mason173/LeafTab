@@ -7,6 +7,7 @@ interface ShortcutCardCompactProps {
   shortcut: Shortcut;
   showTitle: boolean;
   iconSize?: number;
+  iconCornerRadius?: number;
   titleFontSize?: number;
   forceTextWhite?: boolean;
   onOpen: () => void;
@@ -17,6 +18,7 @@ export function ShortcutCardCompact({
   shortcut,
   showTitle,
   iconSize = 72,
+  iconCornerRadius,
   titleFontSize = 12,
   forceTextWhite = false,
   onOpen,
@@ -51,6 +53,7 @@ export function ShortcutCardCompact({
             officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
             iconRendering={shortcut.iconRendering}
             iconColor={shortcut.iconColor}
+            iconCornerRadius={iconCornerRadius}
           />
         </div>
         <p

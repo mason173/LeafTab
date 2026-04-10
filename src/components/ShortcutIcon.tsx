@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
@@ -7,7 +7,7 @@ import {
   normalizeShortcutVisualMode,
   shouldUseOfficialShortcutIcon,
 } from '@/utils/shortcutIconPreferences';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
   queueCachedLocalStorageRemoveItem,
   queueCachedLocalStorageSetItem,
@@ -17,6 +17,12 @@ import {
   readShortcutCustomIcon,
   SHORTCUT_CUSTOM_ICON_CHANGED_EVENT,
 } from '@/utils/shortcutCustomIcons';
+import {
+  clampShortcutIconCornerRadius,
+  DEFAULT_SHORTCUT_ICON_APPEARANCE,
+  DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
+  getShortcutIconBorderRadius,
+} from '@/utils/shortcutIconSettings';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -27,8 +33,6 @@ const MAX_OFFICIAL_ICON_CACHE_ITEMS = 160;
 const MAX_OFFICIAL_ICON_DATA_LENGTH = 260_000;
 const FAVICON_FAIL_PREFIX = 'favicon_cache_v2_fail:';
 const FAVICON_FAIL_TTL_MS = 12 * 60 * 60 * 1000;
-const EMPTY_ICON_CONTAINER_PATH_D = "M0 36C0.000156948 13.5 6.42873 0.0000175685 36 0C65.5713 -0.0000175684 72 11.8929 72 36C72 61.7143 61.0716 72 36 72C13.8214 72 -0.000192817 63.6429 0 36Z";
-
 const normalizeDomain = (domain: string) => {
   let d = domain.trim().toLowerCase();
   if (d.startsWith('www.')) d = d.slice(4);
@@ -294,6 +298,8 @@ const ShortcutIcon = memo(function ShortcutIcon({
   officialIconAvailableAtSave,
   iconRendering,
   iconColor,
+  iconCornerRadius = DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
+  iconAppearance = DEFAULT_SHORTCUT_ICON_APPEARANCE,
 }: {
   icon: string;
   url: string;
@@ -311,6 +317,8 @@ const ShortcutIcon = memo(function ShortcutIcon({
   officialIconAvailableAtSave?: Shortcut['officialIconAvailableAtSave'];
   iconRendering?: Shortcut['iconRendering'];
   iconColor?: Shortcut['iconColor'];
+  iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
 }) {
   const firefox = isFirefoxBuildTarget();
   const domain = useMemo(() => extractDomainFromUrl(url), [url]);
@@ -322,7 +330,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
     if (!domain) return '';
     return resolveCustomIconFromCache(domain)?.url || '';
   });
-  const customIconClipPathId = useId().replace(/:/g, '');
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
   const resolvedIconRendering = normalizeShortcutVisualMode(iconRendering);
@@ -519,6 +526,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = 24;
+  const resolvedCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
+  const roundedBorderRadius = getShortcutIconBorderRadius(resolvedCornerRadius);
+  void iconAppearance;
 
   useEffect(() => {
     setEmptyIconColor(getShortcutIconColor(emptyIconColorSeed, iconColor));
@@ -552,14 +562,15 @@ const ShortcutIcon = memo(function ShortcutIcon({
   if (useEmptyFallback) {
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <svg
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ borderRadius: roundedBorderRadius, backgroundColor: emptyIconColor }}
+        />
+        <div
           aria-hidden="true"
-          className="absolute inset-0 size-full max-w-none pointer-events-none select-none"
-          viewBox="0 0 72 72"
-        >
-          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill={emptyIconColor} />
-          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="2" />
-        </svg>
+          className="absolute inset-0 pointer-events-none"
+          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+        />
         {src ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>
@@ -593,8 +604,15 @@ const ShortcutIcon = memo(function ShortcutIcon({
     if (useFrame) {
       return (
         <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-          <div className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative rounded-lg shrink-0 size-full">
-            <div aria-hidden="true" className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none rounded-lg" />
+          <div
+            className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
+            style={{ borderRadius: roundedBorderRadius }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none"
+              style={{ borderRadius: roundedBorderRadius }}
+            />
             <div className="text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
               {letter}
             </div>
@@ -604,7 +622,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
     }
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 rounded-xl top-1/2 bg-secondary text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
+        <div
+          className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 bg-secondary text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
+          style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}
+        >
           {letter}
         </div>
       </div>
@@ -614,25 +635,23 @@ const ShortcutIcon = memo(function ShortcutIcon({
   if (activeCandidate?.kind === 'local-custom') {
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <svg
-          aria-hidden="true"
-          className="absolute inset-0 size-full max-w-none pointer-events-none select-none"
-          viewBox="0 0 72 72"
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ borderRadius: roundedBorderRadius }}
         >
-          <defs>
-            <clipPath id={customIconClipPathId}>
-              <path d={EMPTY_ICON_CONTAINER_PATH_D} />
-            </clipPath>
-          </defs>
-          <image
-            href={src}
-            width="72"
-            height="72"
-            preserveAspectRatio="xMidYMid slice"
-            clipPath={`url(#${customIconClipPathId})`}
+          <img
+            alt=""
+            className="absolute inset-0 max-w-none object-cover pointer-events-none"
+            draggable={false}
+            src={src}
+            style={{ width: size, height: size }}
           />
-          <path d={EMPTY_ICON_CONTAINER_PATH_D} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth="2" />
-        </svg>
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+        />
       </div>
     );
   }
@@ -652,9 +671,16 @@ const ShortcutIcon = memo(function ShortcutIcon({
   if (useFrame) {
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-        <div className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative rounded-lg shrink-0 size-full">
-          <div aria-hidden="true" className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none rounded-lg" />
-          <div className="relative select-none" style={{ width: innerSize, height: innerSize }}>
+        <div
+          className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
+          style={{ borderRadius: roundedBorderRadius }}
+        >
+          <div
+            aria-hidden="true"
+            className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none"
+            style={{ borderRadius: roundedBorderRadius }}
+          />
+          <div className="relative select-none overflow-hidden" style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}>
             {image}
           </div>
         </div>
@@ -663,7 +689,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
   }
   return (
     <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
-      <div className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 select-none" style={{ width: innerSize, height: innerSize }}>
+      <div
+        className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 select-none overflow-hidden"
+        style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}
+      >
         {image}
       </div>
     </div>

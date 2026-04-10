@@ -200,6 +200,20 @@ export default {
         columns: "Grid Columns",
         rows: "Base Rows"
       },
+      shortcutIconSettings: {
+        label: "Icon Settings",
+        entryDescription: "Adjust shortcut icon color mode and corner radius",
+        open: "Open",
+        title: "Icon Settings",
+        description: "Adjust the color mode and corner radius of shortcut icons.",
+        modeLabel: "Color Mode",
+        colorful: "Colorful",
+        monochrome: "Monochrome",
+        accent: "Accent",
+        modeReservedHint: "Monochrome and accent modes are reserved for now and currently render the same as colorful mode.",
+        cornerRadius: "Corner Radius",
+        size: "Icon Size"
+      },
       backup: {
         label: "Data Backup & Recovery",
         description: "Import or export local layout data (.leaftab)",

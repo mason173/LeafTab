@@ -94,17 +94,18 @@ describe('ShortcutIcon offline cache', () => {
         frame="never"
         fallbackStyle="emptyicon"
         fallbackLabel="Example"
+        iconRendering="letter"
       />,
     );
 
-    expect(view.container.querySelector('image')).toBeNull();
+    expect(view.container.querySelector('img')).toBeNull();
 
     persistShortcutCustomIcon('shortcut-1', 'data:image/png;base64,updated-custom-icon');
 
     await waitFor(() => {
-      const customImage = view.container.querySelector('image');
+      const customImage = view.container.querySelector('img');
       expect(customImage).not.toBeNull();
-      expect(customImage?.getAttribute('href')).toBe('data:image/png;base64,updated-custom-icon');
+      expect(customImage?.getAttribute('src')).toBe('data:image/png;base64,updated-custom-icon');
     });
   });
 });

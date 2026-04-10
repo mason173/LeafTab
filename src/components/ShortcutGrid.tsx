@@ -12,6 +12,7 @@ import {
   ShortcutCardVariant,
   type ShortcutLayoutDensity,
 } from './shortcuts/shortcutCardVariant';
+import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
 const DRAG_DROP_ANIMATION_MS = 320;
 const DRAG_DROP_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -24,13 +25,16 @@ const DRAG_AUTO_SCROLL_MAX_SPEED_PX = 26;
 function DragPreviewIcon({
   shortcut,
   size,
+  cornerRadius,
 }: {
   shortcut: Shortcut;
   size: number;
+  cornerRadius: number;
 }) {
   const iconSrc = (shortcut.icon || '').trim();
   const label = (shortcut.title || shortcut.url || '?').trim();
   const fallbackText = (label.charAt(0) || '?').toUpperCase();
+  const borderRadius = getShortcutIconBorderRadius(cornerRadius);
 
   if (iconSrc) {
     return (
@@ -38,8 +42,8 @@ function DragPreviewIcon({
         src={iconSrc}
         alt=""
         draggable={false}
-        className="shrink-0 rounded-[20%] object-cover"
-        style={{ width: size, height: size }}
+        className="shrink-0 object-cover"
+        style={{ width: size, height: size, borderRadius }}
       />
     );
   }
@@ -47,8 +51,8 @@ function DragPreviewIcon({
   return (
     <span
       aria-hidden="true"
-      className="flex shrink-0 items-center justify-center rounded-[20%] bg-primary/12 text-primary"
-      style={{ width: size, height: size, fontSize: Math.max(14, Math.round(size * 0.38)), fontWeight: 600 }}
+      className="flex shrink-0 items-center justify-center bg-primary/12 text-primary"
+      style={{ width: size, height: size, fontSize: Math.max(14, Math.round(size * 0.38)), fontWeight: 600, borderRadius }}
     >
       {fallbackText}
     </span>
@@ -61,6 +65,7 @@ function LightweightDragPreview({
   firefox,
   compactShowTitle,
   compactIconSize,
+  iconCornerRadius,
   compactTitleFontSize,
   defaultIconSize,
   defaultTitleFontSize,
@@ -73,6 +78,7 @@ function LightweightDragPreview({
   firefox: boolean;
   compactShowTitle: boolean;
   compactIconSize: number;
+  iconCornerRadius: number;
   compactTitleFontSize: number;
   defaultIconSize: number;
   defaultTitleFontSize: number;
@@ -92,7 +98,7 @@ function LightweightDragPreview({
         }}
       >
         <div className="flex flex-col items-center gap-1.5">
-          <DragPreviewIcon shortcut={shortcut} size={compactIconSize} />
+          <DragPreviewIcon shortcut={shortcut} size={compactIconSize} cornerRadius={iconCornerRadius} />
           {titleVisible ? (
             <p
               className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
@@ -117,7 +123,7 @@ function LightweightDragPreview({
       }}
     >
       <div className="flex items-center gap-2">
-        <DragPreviewIcon shortcut={shortcut} size={defaultIconSize} />
+        <DragPreviewIcon shortcut={shortcut} size={defaultIconSize} cornerRadius={iconCornerRadius} />
         <div className="min-w-0 flex-1 leading-none">
           <p
             className={`truncate font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
@@ -157,6 +163,7 @@ function SortableShortcut({
   gridColumns,
   compactShowTitle,
   compactIconSize,
+  iconCornerRadius,
   compactTitleFontSize,
   defaultIconSize,
   defaultTitleFontSize,
@@ -178,6 +185,7 @@ function SortableShortcut({
   gridColumns: number;
   compactShowTitle: boolean;
   compactIconSize: number;
+  iconCornerRadius: number;
   compactTitleFontSize: number;
   defaultIconSize: number;
   defaultTitleFontSize: number;
@@ -238,6 +246,7 @@ function SortableShortcut({
           variant={cardVariant}
           compactShowTitle={compactShowTitle}
           compactIconSize={compactIconSize}
+          iconCornerRadius={iconCornerRadius}
           compactTitleFontSize={compactTitleFontSize}
           defaultIconSize={defaultIconSize}
           defaultTitleFontSize={defaultTitleFontSize}
@@ -278,6 +287,7 @@ interface ShortcutGridProps {
   compactShowTitle?: boolean;
   layoutDensity?: ShortcutLayoutDensity;
   compactIconSize?: number;
+  iconCornerRadius?: number;
   compactTitleFontSize?: number;
   defaultIconSize?: number;
   defaultTitleFontSize?: number;
@@ -306,6 +316,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   compactShowTitle = true,
   layoutDensity = 'regular',
   compactIconSize = 72,
+  iconCornerRadius = 22,
   compactTitleFontSize = 12,
   defaultIconSize = 36,
   defaultTitleFontSize = 14,
@@ -553,6 +564,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
                 gridColumns={gridColumns}
                 compactShowTitle={compactShowTitle}
                 compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
                 compactTitleFontSize={compactTitleFontSize}
                 defaultIconSize={defaultIconSize}
                 defaultTitleFontSize={defaultTitleFontSize}
@@ -592,6 +604,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
                     firefox={firefox}
                     compactShowTitle={compactShowTitle}
                     compactIconSize={compactIconSize}
+                    iconCornerRadius={iconCornerRadius}
                     compactTitleFontSize={compactTitleFontSize}
                     defaultIconSize={defaultIconSize}
                     defaultTitleFontSize={defaultTitleFontSize}
@@ -604,6 +617,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
                     variant={cardVariant}
                     compactShowTitle={compactShowTitle}
                     compactIconSize={compactIconSize}
+                    iconCornerRadius={iconCornerRadius}
                     compactTitleFontSize={compactTitleFontSize}
                     defaultIconSize={defaultIconSize}
                     defaultTitleFontSize={defaultTitleFontSize}

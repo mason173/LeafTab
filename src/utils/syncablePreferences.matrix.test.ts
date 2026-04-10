@@ -39,6 +39,9 @@ describe('syncablePreferences matrix', () => {
       const next = normalizeSyncablePreferences({
         ...getDefaultSyncablePreferences(),
         ...testCase,
+        shortcutIconAppearance: 'accent',
+        shortcutIconCornerRadius: 37,
+        shortcutIconScale: 112,
         weatherManualLocation: {
           city: 'Hangzhou',
           latitude: 30.2741,
@@ -54,6 +57,9 @@ describe('syncablePreferences matrix', () => {
       expect(restored.showSeconds).toBe(testCase.showSeconds);
       expect(restored.showLunar).toBe(testCase.showLunar);
       expect(restored.timeAnimationMode).toBe(testCase.timeAnimationMode);
+      expect(restored.shortcutIconAppearance).toBe('accent');
+      expect(restored.shortcutIconCornerRadius).toBe(37);
+      expect(restored.shortcutIconScale).toBe(112);
       expect(restored.weatherManualLocation).toEqual({
         city: 'Hangzhou',
         latitude: 30.2741,

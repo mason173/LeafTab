@@ -9,6 +9,7 @@ import ScenarioModeCreateDialog from './ScenarioModeCreateDialog';
 import SettingsModal from './SettingsModal';
 import { SearchSettingsModal } from './SearchSettingsModal';
 import { ShortcutGuideDialog } from './ShortcutGuideDialog';
+import { ShortcutIconSettingsDialog } from './ShortcutIconSettingsDialog';
 import { ShortcutStyleSettingsDialog } from './ShortcutStyleSettingsDialog';
 import ShortcutModal from './ShortcutModal';
 import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
@@ -33,6 +34,7 @@ type AuthModalProps = ComponentProps<typeof AuthModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type SearchSettingsModalProps = ComponentProps<typeof SearchSettingsModal>;
 type ShortcutGuideDialogProps = ComponentProps<typeof ShortcutGuideDialog>;
+type ShortcutIconSettingsDialogProps = ComponentProps<typeof ShortcutIconSettingsDialog>;
 type ShortcutStyleSettingsDialogProps = ComponentProps<typeof ShortcutStyleSettingsDialog>;
 type AdminModalProps = ComponentProps<typeof AdminModal>;
 type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
@@ -92,6 +94,7 @@ interface AppDialogsProps {
   settingsModalProps: SettingsModalProps;
   searchSettingsModalProps: SearchSettingsModalProps;
   shortcutGuideDialogProps: ShortcutGuideDialogProps;
+  shortcutIconSettingsDialogProps: ShortcutIconSettingsDialogProps;
   shortcutStyleSettingsDialogProps: ShortcutStyleSettingsDialogProps;
   adminModalProps: AdminModalProps;
   aboutModalProps: AboutLeafTabModalProps;
@@ -125,6 +128,7 @@ export function AppDialogs({
   settingsModalProps,
   searchSettingsModalProps,
   shortcutGuideDialogProps,
+  shortcutIconSettingsDialogProps,
   shortcutStyleSettingsDialogProps,
   adminModalProps,
   aboutModalProps,
@@ -144,6 +148,7 @@ export function AppDialogs({
   const shouldMountSettingsModal = useKeepMountedAfterFirstOpen(settingsModalProps.isOpen);
   const shouldMountSearchSettingsModal = useKeepMountedAfterFirstOpen(searchSettingsModalProps.isOpen);
   const shouldMountShortcutGuideDialog = useKeepMountedAfterFirstOpen(shortcutGuideDialogProps.open);
+  const shouldMountShortcutIconSettingsDialog = useKeepMountedAfterFirstOpen(shortcutIconSettingsDialogProps.open);
   const shouldMountShortcutStyleDialog = useKeepMountedAfterFirstOpen(shortcutStyleSettingsDialogProps.open);
   const shouldMountAdminModal = useKeepMountedAfterFirstOpen(adminModalProps.open);
   const shouldMountAboutModal = useKeepMountedAfterFirstOpen(aboutModalProps.open);
@@ -169,6 +174,7 @@ export function AppDialogs({
       {shouldMountSettingsModal ? <SettingsModal {...settingsModalProps} /> : null}
       {shouldMountSearchSettingsModal ? <SearchSettingsModal {...searchSettingsModalProps} /> : null}
       {shouldMountShortcutGuideDialog ? <ShortcutGuideDialog {...shortcutGuideDialogProps} /> : null}
+      {shouldMountShortcutIconSettingsDialog ? <ShortcutIconSettingsDialog {...shortcutIconSettingsDialogProps} /> : null}
       {shouldMountShortcutStyleDialog ? <ShortcutStyleSettingsDialog {...shortcutStyleSettingsDialogProps} /> : null}
       {shouldMountAdminModal ? <AdminModal {...adminModalProps} /> : null}
       {shouldMountAboutModal ? <AboutLeafTabModal {...aboutModalProps} /> : null}

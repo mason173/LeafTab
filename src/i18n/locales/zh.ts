@@ -203,6 +203,20 @@ export default {
         columns: "网格列数",
         rows: "基础行数"
       },
+      shortcutIconSettings: {
+        label: "图标设置",
+        entryDescription: "调整快捷方式图标的颜色模式与圆角",
+        open: "打开",
+        title: "图标设置",
+        description: "调整快捷方式图标的颜色模式与圆角形状。",
+        modeLabel: "颜色模式",
+        colorful: "彩色",
+        monochrome: "黑白",
+        accent: "主题色",
+        modeReservedHint: "黑白和主题色模式已预留，当前版本先保持与彩色模式一致。",
+        cornerRadius: "圆角",
+        size: "图标大小"
+      },
       backup: {
         label: "数据备份与恢复",
         description: "导入或导出本地布局数据 (.leaftab)",

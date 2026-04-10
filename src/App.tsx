@@ -76,6 +76,7 @@ import {
 } from './utils/backupData';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
+import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
@@ -408,6 +409,7 @@ export default function App() {
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
   const [shortcutGuideOpen, setShortcutGuideOpen] = useState(false);
   const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
+  const [shortcutIconSettingsOpen, setShortcutIconSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
@@ -488,6 +490,9 @@ export default function App() {
     shortcutCardVariant, setShortcutCardVariant,
     shortcutCompactShowTitle, setShortcutCompactShowTitle,
     shortcutGridColumns, setShortcutGridColumns,
+    shortcutIconAppearance, setShortcutIconAppearance,
+    shortcutIconCornerRadius, setShortcutIconCornerRadius,
+    shortcutIconScale, setShortcutIconScale,
     shortcutsRowsPerColumn, setShortcutsRowsPerColumn,
     privacyConsent, setPrivacyConsent,
     apiServer, setApiServer,
@@ -910,6 +915,9 @@ export default function App() {
       showTime,
       shortcutCardVariant,
       shortcutCompactShowTitle,
+      shortcutIconAppearance,
+      shortcutIconCornerRadius,
+      shortcutIconScale,
       shortcutGridColumnsByVariant: {
         ...stored.shortcutGridColumnsByVariant,
         [shortcutCardVariant]: normalizedGridColumns,
@@ -944,6 +952,9 @@ export default function App() {
     searchSiteShortcutEnabled,
     shortcutCardVariant,
     shortcutCompactShowTitle,
+    shortcutIconAppearance,
+    shortcutIconCornerRadius,
+    shortcutIconScale,
     showDate,
     showLunar,
     showSeconds,
@@ -1013,6 +1024,9 @@ export default function App() {
     setShortcutCardVariant(normalized.shortcutCardVariant);
     setShortcutCompactShowTitle(normalized.shortcutCompactShowTitle);
     setShortcutGridColumns(normalized.shortcutGridColumnsByVariant[normalized.shortcutCardVariant]);
+    setShortcutIconAppearance(normalized.shortcutIconAppearance);
+    setShortcutIconCornerRadius(normalized.shortcutIconCornerRadius);
+    setShortcutIconScale(normalized.shortcutIconScale);
     setShortcutsRowsPerColumn(normalized.shortcutsRowsPerColumn);
     setPrivacyConsent(normalized.privacyConsent);
 
@@ -1152,6 +1166,10 @@ export default function App() {
 
   const handleOpenShortcutStyleSettings = useCallback(() => {
     setShortcutStyleSettingsOpen(true);
+  }, []);
+
+  const handleOpenShortcutIconSettings = useCallback(() => {
+    setShortcutIconSettingsOpen(true);
   }, []);
 
   const emitWebdavSyncStatusChanged = useCallback(() => {
@@ -2600,6 +2618,7 @@ export default function App() {
     setSearchSettingsOpen(false);
     setShortcutGuideOpen(false);
     setShortcutStyleSettingsOpen(false);
+    setShortcutIconSettingsOpen(false);
     setAdminModalOpen(false);
     setAboutModalOpen(false);
     setWallpaperSettingsOpen(false);
@@ -2643,9 +2662,11 @@ export default function App() {
     Math.ceil(shortcuts.length / Math.max(normalizedGridColumns, 1)),
     normalizedRowsPerColumn,
   );
+  const scaledCompactShortcutSize = scaleShortcutIconSize(responsiveLayout.compactShortcutSize, shortcutIconScale);
+  const scaledDefaultShortcutIconSize = scaleShortcutIconSize(responsiveLayout.defaultShortcutIconSize, shortcutIconScale);
   const shortcutRowHeight = shortcutCardVariant === 'compact'
-    ? (responsiveLayout.compactShortcutSize + 24)
-    : (responsiveLayout.defaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
+    ? (scaledCompactShortcutSize + 24)
+    : (scaledDefaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
   const shortcutRowGap = shortcutCardVariant === 'compact' ? responsiveLayout.compactRowGap : responsiveLayout.defaultRowGap;
   const shortcutsAreaHeight = displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
 
@@ -2875,13 +2896,14 @@ export default function App() {
     minRows: normalizedRowsPerColumn,
     cardVariant: shortcutCardVariant,
     layoutDensity: responsiveLayout.density,
-    compactIconSize: responsiveLayout.compactShortcutSize,
+    compactIconSize: scaledCompactShortcutSize,
     compactTitleFontSize: responsiveLayout.compactShortcutTitleSize,
-    defaultIconSize: responsiveLayout.defaultShortcutIconSize,
+    defaultIconSize: scaledDefaultShortcutIconSize,
     defaultTitleFontSize: responsiveLayout.defaultShortcutTitleSize,
     defaultUrlFontSize: responsiveLayout.defaultShortcutUrlSize,
     defaultVerticalPadding: responsiveLayout.defaultShortcutVerticalPadding,
     compactShowTitle: shortcutCompactShowTitle,
+    iconCornerRadius: shortcutIconCornerRadius,
     disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion,
     onShortcutOpen: handleShortcutOpen,
     onShortcutContextMenu: handleShortcutContextMenu,
@@ -2894,14 +2916,15 @@ export default function App() {
     handleShortcutReorder,
     normalizedGridColumns,
     normalizedRowsPerColumn,
-    responsiveLayout.compactShortcutSize,
+    scaledCompactShortcutSize,
     responsiveLayout.compactShortcutTitleSize,
     responsiveLayout.defaultRowGap,
-    responsiveLayout.defaultShortcutIconSize,
+    scaledDefaultShortcutIconSize,
     responsiveLayout.defaultShortcutTitleSize,
     responsiveLayout.defaultShortcutUrlSize,
     responsiveLayout.defaultShortcutVerticalPadding,
     responsiveLayout.density,
+    shortcutIconCornerRadius,
     shortcutCardVariant,
     shortcutCompactShowTitle,
     shortcuts,
@@ -2973,6 +2996,7 @@ export default function App() {
       || searchSettingsOpen
       || shortcutGuideOpen
       || shortcutStyleSettingsOpen
+      || shortcutIconSettingsOpen
       || adminModalOpen
       || aboutModalOpen
       || exportBackupDialogOpen
@@ -3140,6 +3164,8 @@ export default function App() {
               initialShortcut: selectedShortcut?.shortcut
                 ? { ...selectedShortcut.shortcut, title: editingTitle, url: editingUrl }
                 : { title: editingTitle, url: editingUrl, icon: '' },
+              iconCornerRadius: shortcutIconCornerRadius,
+              iconScale: shortcutIconScale,
               onSave: handleSaveShortcutEdit,
             }}
             shortcutDeleteDialogProps={{
@@ -3188,6 +3214,7 @@ export default function App() {
               onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
               shortcutGridColumns: normalizedGridColumns,
               onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
+              onOpenShortcutIconSettings: handleOpenShortcutIconSettings,
               openInNewTab,
               onOpenInNewTabChange: setOpenInNewTab,
               preventDuplicateNewTab,
@@ -3263,6 +3290,19 @@ export default function App() {
                 setShortcutCardVariant(variant);
                 setShortcutCompactShowTitle(compactShowTitle);
                 handleShortcutGridColumnsChange(columns);
+              },
+            }}
+            shortcutIconSettingsDialogProps={{
+              open: shortcutIconSettingsOpen,
+              onOpenChange: setShortcutIconSettingsOpen,
+              onBackToSettings: handleBackToMainSettings,
+              appearance: shortcutIconAppearance,
+              cornerRadius: shortcutIconCornerRadius,
+              scale: shortcutIconScale,
+              onSave: ({ appearance, cornerRadius, scale }) => {
+                setShortcutIconAppearance(appearance);
+                setShortcutIconCornerRadius(cornerRadius);
+                setShortcutIconScale(scale);
               },
             }}
             adminModalProps={{
