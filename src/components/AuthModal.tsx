@@ -734,7 +734,7 @@ export default function AuthModal({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full rounded-[16px] gap-2"
+                className="w-full rounded-[16px] gap-2 border-transparent hover:border-transparent"
                 disabled={isLoading}
                 onClick={handleGoogleLogin}
               >
