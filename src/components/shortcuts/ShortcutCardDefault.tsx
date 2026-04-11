@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import { ShortcutFolderPreview } from './ShortcutFolderPreview';
+import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
 interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
@@ -95,6 +97,9 @@ export function ShortcutCardDefault({
   onContextMenu,
 }: ShortcutCardDefaultProps) {
   const firefox = isFirefoxBuildTarget();
+  const folder = isShortcutFolder(shortcut);
+  const folderChildrenCount = getShortcutChildren(shortcut).length;
+  const secondaryText = folder ? `${folderChildrenCount} items` : shortcut.url;
 
   return (
     <div
@@ -109,22 +114,32 @@ export function ShortcutCardDefault({
           className="content-stretch flex gap-[8px] items-center px-[8px] relative w-full"
           style={{ paddingTop: verticalPadding, paddingBottom: verticalPadding }}
         >
-          <ShortcutIcon
-            icon={shortcut.icon}
-            url={shortcut.url}
-            shortcutId={shortcut.id}
-            size={iconSize}
-            frame="auto"
-            fallbackStyle="emptyicon"
-            fallbackLabel={shortcut.title}
-            fallbackLetterSize={16}
-            useOfficialIcon={shortcut.useOfficialIcon}
-            autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
-            officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
-            iconRendering={shortcut.iconRendering}
-            iconColor={shortcut.iconColor}
-            iconCornerRadius={iconCornerRadius}
-          />
+          <div className="relative shrink-0" style={{ width: iconSize, height: iconSize }}>
+            {folder ? (
+              <ShortcutFolderPreview
+                shortcut={shortcut}
+                size={iconSize}
+                iconCornerRadius={iconCornerRadius}
+              />
+            ) : (
+              <ShortcutIcon
+                icon={shortcut.icon}
+                url={shortcut.url}
+                shortcutId={shortcut.id}
+                size={iconSize}
+                frame="auto"
+                fallbackStyle="emptyicon"
+                fallbackLabel={shortcut.title}
+                fallbackLetterSize={16}
+                useOfficialIcon={shortcut.useOfficialIcon}
+                autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
+                officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+                iconRendering={shortcut.iconRendering}
+                iconColor={shortcut.iconColor}
+                iconCornerRadius={iconCornerRadius}
+              />
+            )}
+          </div>
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText
               text={shortcut.title}
@@ -133,7 +148,7 @@ export function ShortcutCardDefault({
               allowScroll={!firefox}
             />
             <ScrollingText
-              text={shortcut.url}
+              text={secondaryText}
               textClassName={`font-['PingFang_SC:Regular',sans-serif] leading-[14px] ${forceTextWhite ? 'text-white' : 'text-muted-foreground'}`}
               textStyle={{ fontSize: urlFontSize }}
               allowScroll={false}

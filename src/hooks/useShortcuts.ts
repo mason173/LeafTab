@@ -17,6 +17,7 @@ import { useShortcutActions } from './useShortcutActions';
 import { LOCAL_PROFILE_UPDATED_MESSAGE_TYPE } from '@/utils/localProfileSync';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
 import { loadRoleProfileDataForReset } from '@/utils/roleProfile';
+import { countShortcutLinks } from '@/utils/shortcutFolders';
 
 const LEGACY_SHORTCUTS_KEY = 'local_shortcuts';
 
@@ -134,7 +135,7 @@ export function useShortcuts(
   const totalShortcuts = useMemo(() => {
     let count = 0;
     Object.values(scenarioShortcuts).forEach((list) => {
-      if (Array.isArray(list)) count += list.length;
+      if (Array.isArray(list)) count += countShortcutLinks(list);
     });
     return count;
   }, [scenarioShortcuts]);

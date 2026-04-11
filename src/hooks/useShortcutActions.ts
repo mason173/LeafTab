@@ -9,6 +9,7 @@ import {
   removeShortcutCustomIcon,
   removeShortcutCustomIcons,
 } from '@/utils/shortcutCustomIcons';
+import { collectShortcutIds, isShortcutFolder } from '@/utils/shortcutFolders';
 
 type SelectedShortcut = { index: number; shortcut: Shortcut } | null;
 type TranslateFn = (key: string, options?: any) => string;
@@ -108,6 +109,7 @@ export function useShortcutActions({
   }, [localDirtyRef, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, translate, user]);
 
   const handleShortcutOpen = useCallback((shortcut: Shortcut) => {
+    if (isShortcutFolder(shortcut)) return;
     let url = shortcut.url.trim();
     if (/^javascript:/i.test(url)) return;
     if (!url.includes('://')) url = `https://${url}`;
@@ -235,7 +237,7 @@ export function useShortcutActions({
 
   const handleConfirmDeleteShortcut = useCallback(() => {
     if (!selectedShortcut) return;
-    removeShortcutCustomIcon(selectedShortcut.shortcut.id);
+    removeShortcutCustomIcons(collectShortcutIds([selectedShortcut.shortcut]));
     updateScenarioShortcuts((current) => current.filter((_, index) => index !== selectedShortcut.index));
     setShortcutDeleteOpen(false);
     setSelectedShortcut(null);
@@ -251,7 +253,7 @@ export function useShortcutActions({
       removeShortcutCustomIcons(
         current
           .filter((_, index) => validIndices.has(index))
-          .map((shortcut) => shortcut.id),
+          .flatMap((shortcut) => collectShortcutIds([shortcut])),
       );
       return current.filter((_, index) => !validIndices.has(index));
     });

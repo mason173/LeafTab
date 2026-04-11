@@ -7,6 +7,7 @@ import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 export type ShortcutVisualMode = 'favicon' | 'letter';
 export type ShortcutIconAppearance = 'colorful' | 'monochrome' | 'accent';
 export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
+export type ShortcutKind = 'link' | 'folder';
 
 export interface WeatherManualLocation {
   city: string;
@@ -58,6 +59,8 @@ export interface Shortcut {
   title: string;
   url: string;
   icon: string;
+  kind?: ShortcutKind;
+  children?: Shortcut[];
   useOfficialIcon?: boolean;
   autoUseOfficialIcon?: boolean;
   officialIconAvailableAtSave?: boolean;
@@ -65,7 +68,7 @@ export interface Shortcut {
   iconColor?: string;
 }
 
-export type ShortcutDraft = Omit<Shortcut, 'id'>;
+export type ShortcutDraft = Omit<Shortcut, 'id' | 'kind' | 'children'>;
 
 export type ScenarioShortcuts = Record<string, Shortcut[]>;
 

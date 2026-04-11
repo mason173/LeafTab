@@ -101,6 +101,54 @@ describe('deriveLeafTabSyncApplyState', () => {
       }),
     ]);
   });
+
+  it('keeps folder shortcuts when projecting a sync snapshot back into app state', () => {
+    const snapshot = createSnapshot();
+    snapshot.shortcuts.folder_1 = {
+      id: 'folder_1',
+      type: 'shortcut',
+      scenarioId: 'work',
+      title: 'Workspace',
+      url: '',
+      icon: '',
+      description: '',
+      kind: 'folder',
+      children: [
+        {
+          id: 'child_1',
+          kind: 'link',
+          title: 'Docs',
+          url: 'https://docs.example',
+          icon: '',
+        },
+      ],
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      updatedBy: 'device',
+      revision: 1,
+    };
+    snapshot.shortcutOrders.work.ids = ['folder_1', 'a'];
+
+    const result = deriveLeafTabSyncApplyState({
+      snapshot,
+      selectedScenarioId: 'work',
+    });
+
+    expect(result.nextProfileSnapshot.scenarioShortcuts.work[0]).toEqual(
+      expect.objectContaining({
+        id: 'folder_1',
+        kind: 'folder',
+        title: 'Workspace',
+        children: [
+          expect.objectContaining({
+            id: 'child_1',
+            kind: 'link',
+            url: 'https://docs.example',
+          }),
+        ],
+      }),
+    );
+  });
 });
 
 describe('createSnapshotBuildSignature', () => {

@@ -3,17 +3,21 @@ import { expect, test } from './extension.fixtures';
 
 type LocalProfileSnapshot = {
   selectedScenarioId: string;
-  scenarioShortcuts: Record<string, Array<{
-    id: string;
-    title: string;
-    url: string;
-    icon: string;
-    useOfficialIcon?: boolean;
-    autoUseOfficialIcon?: boolean;
-    officialIconAvailableAtSave?: boolean;
-    iconRendering?: string;
-    iconColor?: string;
-  }>>;
+  scenarioShortcuts: Record<string, LocalShortcutSnapshotItem[]>;
+};
+
+type LocalShortcutSnapshotItem = {
+  id: string;
+  title: string;
+  url: string;
+  icon: string;
+  kind?: 'link' | 'folder';
+  children?: LocalShortcutSnapshotItem[];
+  useOfficialIcon?: boolean;
+  autoUseOfficialIcon?: boolean;
+  officialIconAvailableAtSave?: boolean;
+  iconRendering?: string;
+  iconColor?: string;
 };
 
 async function readLocalProfileSnapshot(page: Page): Promise<LocalProfileSnapshot> {
@@ -55,6 +59,41 @@ async function setShortcutCardVariant(page: Page, variant: 'compact' | 'default'
     localStorage.setItem('shortcutCardVariant', nextVariant);
   }, variant);
   await page.reload({ waitUntil: 'networkidle' });
+}
+
+async function seedTopLevelFolder(page: Page, folder = {
+  id: 'e2e-folder',
+  title: 'E2E Folder',
+}) {
+  await page.evaluate((nextFolder) => {
+    const raw = localStorage.getItem('leaf_tab_local_profile_v1');
+    if (!raw) {
+      throw new Error('leaf_tab_local_profile_v1 is missing');
+    }
+
+    const snapshot = JSON.parse(raw);
+    const scenarioId = snapshot.selectedScenarioId;
+    const shortcuts = snapshot.scenarioShortcuts[scenarioId];
+    const [first, second, ...rest] = shortcuts;
+
+    snapshot.scenarioShortcuts[scenarioId] = [
+      {
+        id: nextFolder.id,
+        title: nextFolder.title,
+        url: '',
+        icon: '',
+        kind: 'folder',
+        children: [first, second],
+      },
+      ...rest,
+    ];
+
+    localStorage.setItem('leaf_tab_local_profile_v1', JSON.stringify(snapshot));
+    localStorage.setItem('local_shortcuts_v3', JSON.stringify(snapshot.scenarioShortcuts));
+  }, folder);
+
+  await page.reload({ waitUntil: 'networkidle' });
+  return folder;
 }
 
 async function openGridContextMenu(page: Page) {
@@ -196,7 +235,7 @@ test.describe('LeafTab shortcut flows', () => {
     await extensionPage.mouse.down();
     await extensionPage.mouse.move(
       targetBox.x + targetBox.width / 2,
-      targetBox.y + targetBox.height / 2,
+      targetBox.y + Math.max(6, targetBox.height * 0.15),
       { steps: 12 },
     );
     await extensionPage.mouse.up();
@@ -206,6 +245,66 @@ test.describe('LeafTab shortcut flows', () => {
     const after = await readCurrentShortcutTitles(extensionPage);
     expect(after[0]).toBe('少数派');
     expect(after[1]).toBe('哔哩哔哩');
+  });
+
+  test('creates a folder when dropping a shortcut onto another shortcut center', async ({ extensionPage }) => {
+    const source = extensionPage.locator('[data-shortcut-title="哔哩哔哩"]');
+    const target = extensionPage.locator('[data-shortcut-title="少数派"]');
+    const sourceBox = await source.boundingBox();
+    const targetBox = await target.boundingBox();
+
+    if (!sourceBox || !targetBox) {
+      throw new Error('Unable to resolve shortcut card positions for folder-creation test');
+    }
+
+    await extensionPage.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+    await extensionPage.mouse.down();
+    await extensionPage.mouse.move(
+      targetBox.x + targetBox.width / 2,
+      targetBox.y + targetBox.height / 2,
+      { steps: 12 },
+    );
+    await extensionPage.mouse.up();
+
+    await expect.poll(async () => {
+      const snapshot = await readLocalProfileSnapshot(extensionPage);
+      const shortcuts = snapshot.scenarioShortcuts[snapshot.selectedScenarioId];
+      const folder = shortcuts.find((item) => item.kind === 'folder');
+      return folder?.children?.map((item) => item.title).join('|') ?? null;
+    }).toBe('哔哩哔哩|少数派');
+  });
+
+  test('moves a shortcut into an existing folder when dropped onto the folder center', async ({ extensionPage }) => {
+    await seedTopLevelFolder(extensionPage);
+
+    const source = extensionPage.locator('[data-shortcut-title="什么值得买"]');
+    const target = extensionPage.locator('[data-shortcut-title="E2E Folder"]');
+    const sourceBox = await source.boundingBox();
+    const targetBox = await target.boundingBox();
+
+    if (!sourceBox || !targetBox) {
+      throw new Error('Unable to resolve shortcut card positions for folder-move test');
+    }
+
+    await extensionPage.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+    await extensionPage.mouse.down();
+    await extensionPage.mouse.move(
+      targetBox.x + targetBox.width / 2,
+      targetBox.y + targetBox.height / 2,
+      { steps: 12 },
+    );
+    await extensionPage.mouse.up();
+
+    await expect.poll(async () => {
+      const snapshot = await readLocalProfileSnapshot(extensionPage);
+      const shortcuts = snapshot.scenarioShortcuts[snapshot.selectedScenarioId];
+      const folder = shortcuts.find((item) => item.id === 'e2e-folder');
+      return folder?.children?.map((item) => item.title).join('|') ?? null;
+    }).toContain('什么值得买');
+
+    const snapshot = await readLocalProfileSnapshot(extensionPage);
+    const topLevelTitles = snapshot.scenarioShortcuts[snapshot.selectedScenarioId].map((item) => item.title);
+    expect(topLevelTitles).not.toContain('什么值得买');
   });
 
   test('supports pinning selected shortcuts to the bottom', async ({ extensionPage }) => {

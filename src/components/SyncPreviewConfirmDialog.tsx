@@ -14,6 +14,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { isShortcutFolder } from '@/utils/shortcutFolders';
 
 type SyncChoice = 'cloud' | 'local' | 'merge' | null;
 
@@ -90,10 +91,12 @@ const extractFlatShortcuts = (payload: any): FlatShortcut[] => {
   const scenarioShortcuts = payload?.scenarioShortcuts;
   if (!scenarioShortcuts || typeof scenarioShortcuts !== 'object') return [];
   const out: FlatShortcut[] = [];
-  Object.entries(scenarioShortcuts).forEach(([modeId, list]) => {
-    if (!Array.isArray(list)) return;
-    const modeLabel = modeLabelMap.get(modeId) || modeId;
+  const visitShortcutList = (modeId: string, list: any[], modeLabel: string, folderTrail: string[] = []) => {
     list.forEach((item: any, index) => {
+      if (isShortcutFolder(item)) {
+        visitShortcutList(`${modeId}/${item.id || index}`, item.children || [], modeLabel, [...folderTrail, item.title || '(Folder)']);
+        return;
+      }
       const key = getShortcutKey(modeId, item, index);
       const title = (typeof item?.title === 'string' && item.title.trim()) ? item.title.trim() : '(Untitled)';
       const url = typeof item?.url === 'string' ? item.url.trim() : '';
@@ -101,9 +104,14 @@ const extractFlatShortcuts = (payload: any): FlatShortcut[] => {
         rowKey: key,
         title,
         url,
-        modeLabel,
+        modeLabel: folderTrail.length > 0 ? `${modeLabel} / ${folderTrail.join(' / ')}` : modeLabel,
       });
     });
+  };
+  Object.entries(scenarioShortcuts).forEach(([modeId, list]) => {
+    if (!Array.isArray(list)) return;
+    const modeLabel = modeLabelMap.get(modeId) || modeId;
+    visitShortcutList(modeId, list, modeLabel);
   });
   return out;
 };
@@ -208,10 +216,10 @@ export function SyncPreviewConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`sm:max-w-[520px] w-[520px] max-w-[calc(100vw-2rem)] max-h-[76vh] bg-background border-border text-foreground rounded-[32px] flex flex-col min-h-0 ${requireDecision ? '[&>button]:hidden' : ''}`}
-        onEscapeKeyDown={(event) => {
+        onEscapeKeyDown={(event: { preventDefault: () => void }) => {
           if (requireDecision) event.preventDefault();
         }}
-        onPointerDownOutside={(event) => {
+        onPointerDownOutside={(event: { preventDefault: () => void }) => {
           if (requireDecision) event.preventDefault();
         }}
       >
@@ -222,7 +230,7 @@ export function SyncPreviewConfirmDialog({
         {enableChoiceSwitch && onChoiceChange ? (
           <Tabs
             value={currentChoice}
-            onValueChange={(value) => onChoiceChange(value as Exclude<SyncChoice, null>)}
+            onValueChange={(value: string) => onChoiceChange(value as Exclude<SyncChoice, null>)}
             className="w-full"
           >
             <TabsList className="grid w-full grid-cols-3 rounded-[16px]">
