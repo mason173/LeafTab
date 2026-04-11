@@ -108,13 +108,6 @@ function resolveManualChunk(id: string): string | undefined {
   }
 
   if (
-    pkg.startsWith('@dnd-kit/') ||
-    pkg.startsWith('@atlaskit/')
-  ) {
-    return 'vendor-dnd';
-  }
-
-  if (
     pkg === '@react-three/fiber' ||
     pkg === '@react-three/drei' ||
     pkg === 'three' ||

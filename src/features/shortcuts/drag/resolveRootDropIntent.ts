@@ -1,6 +1,5 @@
-import type { ClientRect } from '@dnd-kit/core';
 import { isShortcutFolder, isShortcutLink } from '@/features/shortcuts/model/selectors';
-import type { RootShortcutDragItem, RootShortcutDropIntent } from './types';
+import type { DragRect, RootShortcutDragItem, RootShortcutDropIntent } from './types';
 import { getDropEdge, getReorderTargetIndex } from './dropEdge';
 
 type Point = { x: number; y: number };
@@ -9,7 +8,7 @@ export function resolveRootDropIntent(params: {
   activeSortId: string;
   overSortId: string;
   pointer: Point;
-  overRect: ClientRect;
+  overRect: DragRect;
   items: RootShortcutDragItem[];
 }): RootShortcutDropIntent | null {
   const { activeSortId, overSortId, pointer, overRect, items } = params;

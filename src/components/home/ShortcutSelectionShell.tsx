@@ -271,14 +271,6 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 isShortcutFolder(contextMenu.shortcut) ? (
                   <>
                     <ContextMenuItem
-                      label={t('context.openFolder', { defaultValue: '打开文件夹' })}
-                      testId="shortcut-context-open-folder"
-                      onSelect={() => {
-                        onShortcutOpen(contextMenu.shortcut);
-                        setContextMenu(null);
-                      }}
-                    />
-                    <ContextMenuItem
                       label={t('context.editFolder', { defaultValue: '重命名文件夹' })}
                       testId="shortcut-context-edit-folder"
                       onSelect={() => {
@@ -301,15 +293,6 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                         onDissolveFolder(contextMenu.shortcutIndex, contextMenu.shortcut);
                         setContextMenu(null);
                       }}
-                    />
-                    <ContextMenuItem
-                      label={t('context.delete')}
-                      testId="shortcut-context-delete-folder"
-                      onSelect={() => {
-                        onDeleteShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
-                        setContextMenu(null);
-                      }}
-                      variant="destructive"
                     />
                   </>
                 ) : (
