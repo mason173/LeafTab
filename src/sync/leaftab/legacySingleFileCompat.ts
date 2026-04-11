@@ -290,14 +290,25 @@ export class LeafTabLegacySingleFileCompat {
       baseline?.snapshot || baseline?.commitId || remoteState.head?.commitId || remoteState.snapshot,
     );
     const legacyHash = fingerprintLegacyPayload(legacyPayload);
+
+    // Once the new sync engine has baseline or remote state, treat the legacy
+    // payload as a downstream mirror only. Re-importing stale legacy ordering
+    // can overwrite newer local layout changes before the mirror is refreshed.
+    if (hasNewEngineState) {
+      return {
+        migrated: false,
+        importedLegacy: false,
+        legacyPayloadFound: true,
+        snapshot: localSnapshot,
+        legacyHash,
+      };
+    }
+
     const bridgeState = this.readBridgeState();
 
     if (
-      hasNewEngineState
-      && (
-        bridgeState?.lastImportedHash === legacyHash
-        || bridgeState?.lastMirroredHash === legacyHash
-      )
+      bridgeState?.lastImportedHash === legacyHash
+      || bridgeState?.lastMirroredHash === legacyHash
     ) {
       return {
         migrated: false,

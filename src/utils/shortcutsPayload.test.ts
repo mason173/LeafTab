@@ -38,6 +38,7 @@ describe('normalizeScenarioShortcuts', () => {
           id: 'folder-1',
           kind: 'folder',
           title: 'Workspace',
+          folderDisplayMode: 'large',
           children: [
             {
               id: 'link-1',
@@ -56,6 +57,7 @@ describe('normalizeScenarioShortcuts', () => {
         kind: 'folder',
         title: 'Workspace',
         url: '',
+        folderDisplayMode: 'large',
         children: [
           expect.objectContaining({
             id: 'link-1',

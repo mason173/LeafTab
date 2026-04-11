@@ -1,34 +1,48 @@
 import { lazyWithPageReload } from './lazyWithPageReload';
 
+const importWallpaperSelector = () => import('../components/WallpaperSelector');
+const importAppDialogs = () => import('../components/AppDialogs');
+const importLeafTabSyncDialog = () => import('../components/sync/LeafTabSyncDialog');
+const importLeafTabSyncEncryptionDialog = () => import('../components/sync/LeafTabSyncEncryptionDialog');
+const importUpdateAvailableDialog = () => import('../components/UpdateAvailableDialog');
+const importRoleSelector = () => import('../components/RoleSelector');
+
 export const LazyWallpaperSelector = lazyWithPageReload(
   'wallpaper-selector',
-  () => import('../components/WallpaperSelector'),
+  importWallpaperSelector,
   (module) => module.default,
 );
 export const LazyAppDialogs = lazyWithPageReload(
   'app-dialogs',
-  () => import('../components/AppDialogs'),
+  importAppDialogs,
   (module) => module.AppDialogs,
 );
 export const LazyLeafTabSyncDialog = lazyWithPageReload(
   'leaftab-sync-dialog',
-  () => import('../components/sync/LeafTabSyncDialog'),
+  importLeafTabSyncDialog,
   (module) => module.LeafTabSyncDialog,
 );
 export const LazyLeafTabSyncEncryptionDialog = lazyWithPageReload(
   'leaftab-sync-encryption-dialog',
-  () => import('../components/sync/LeafTabSyncEncryptionDialog'),
+  importLeafTabSyncEncryptionDialog,
   (module) => module.LeafTabSyncEncryptionDialog,
 );
 
 export const LazyUpdateAvailableDialog = lazyWithPageReload(
   'update-available-dialog',
-  () => import('../components/UpdateAvailableDialog'),
+  importUpdateAvailableDialog,
   (module) => module.UpdateAvailableDialog,
 );
 
 export const LazyRoleSelector = lazyWithPageReload(
   'role-selector',
-  () => import('../components/RoleSelector'),
+  importRoleSelector,
   (module) => module.RoleSelector,
 );
+
+export async function preloadHomeDialogs() {
+  await Promise.allSettled([
+    importAppDialogs(),
+    importLeafTabSyncDialog(),
+  ]);
+}

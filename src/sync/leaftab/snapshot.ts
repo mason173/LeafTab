@@ -159,6 +159,7 @@ const isSameShortcutValue = (
     entity.description === '' &&
     (entity.kind || 'link') === (isShortcutFolder(shortcut) ? 'folder' : 'link') &&
     JSON.stringify(entity.children || []) === JSON.stringify(normalizedChildren || []) &&
+    (entity.folderDisplayMode || 'small') === (shortcut.folderDisplayMode || 'small') &&
     entity.useOfficialIcon === (shortcut.useOfficialIcon !== false) &&
     entity.autoUseOfficialIcon === (shortcut.autoUseOfficialIcon !== false) &&
     entity.officialIconAvailableAtSave === (shortcut.officialIconAvailableAtSave === true) &&
@@ -561,6 +562,9 @@ export const buildLeafTabSyncSnapshot = (params: {
       description: '',
       kind: isShortcutFolder(shortcut) ? 'folder' : 'link',
       children: getNormalizedShortcutChildren(shortcut),
+      folderDisplayMode: isShortcutFolder(shortcut)
+        ? (shortcut.folderDisplayMode === 'large' ? 'large' : 'small')
+        : undefined,
       useOfficialIcon: shortcut.useOfficialIcon !== false,
       autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
@@ -694,6 +698,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
           icon: shortcut.icon,
           kind: shortcut.kind || 'link',
           children: shortcut.children,
+          folderDisplayMode: shortcut.folderDisplayMode === 'large' ? 'large' : 'small',
           useOfficialIcon: shortcut.useOfficialIcon !== false,
           autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
           officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
@@ -718,6 +723,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
         icon: shortcut.icon,
         kind: shortcut.kind || 'link',
         children: shortcut.children,
+        folderDisplayMode: shortcut.folderDisplayMode === 'large' ? 'large' : 'small',
         useOfficialIcon: shortcut.useOfficialIcon !== false,
         autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
         officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,

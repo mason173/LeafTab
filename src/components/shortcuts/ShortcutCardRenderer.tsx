@@ -16,6 +16,9 @@ interface ShortcutCardRendererProps {
   defaultUrlFontSize?: number;
   defaultVerticalPadding?: number;
   forceTextWhite?: boolean;
+  enableLargeFolder?: boolean;
+  largeFolderPreviewSize?: number;
+  onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -32,6 +35,9 @@ export function ShortcutCardRenderer({
   defaultUrlFontSize,
   defaultVerticalPadding,
   forceTextWhite = false,
+  enableLargeFolder = false,
+  largeFolderPreviewSize,
+  onPreviewShortcutOpen,
   onOpen,
   onContextMenu,
 }: ShortcutCardRendererProps) {
@@ -45,6 +51,9 @@ export function ShortcutCardRenderer({
           iconCornerRadius={iconCornerRadius}
           titleFontSize={compactTitleFontSize}
           forceTextWhite={forceTextWhite}
+          enableLargeFolder={enableLargeFolder}
+          largeFolderPreviewSize={largeFolderPreviewSize}
+          onPreviewShortcutOpen={onPreviewShortcutOpen}
           onOpen={onOpen}
           onContextMenu={onContextMenu}
         />

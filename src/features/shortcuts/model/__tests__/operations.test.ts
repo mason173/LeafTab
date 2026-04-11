@@ -6,6 +6,7 @@ import {
   extractShortcutFromFolder,
   mergeShortcutsIntoNewFolder,
   moveShortcutsIntoFolder,
+  reorderRootShortcutPreservingLargeFolderPositions,
   reorderShortcutWithinContainer,
 } from '@/features/shortcuts/model/operations';
 
@@ -24,6 +25,11 @@ const createFolder = (id: string, title: string, children: Shortcut[]): Shortcut
   icon: '',
   kind: 'folder',
   children,
+});
+
+const createLargeFolder = (id: string, title: string, children: Shortcut[]): Shortcut => ({
+  ...createFolder(id, title, children),
+  folderDisplayMode: 'large',
 });
 
 describe('shortcut model operations', () => {
@@ -114,6 +120,24 @@ describe('shortcut model operations', () => {
       createLink('nested-a', 'Nested A'),
       createLink('nested-b', 'Nested B'),
       createLink('root-b', 'Root B'),
+    ]);
+  });
+
+  it('reorders a small root shortcut without changing large folder anchor positions', () => {
+    const shortcuts: Shortcut[] = [
+      createLink('a', 'Alpha'),
+      createLargeFolder('folder-large', 'Large', [createLink('nested', 'Nested')]),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+      createLink('d', 'Delta'),
+    ];
+
+    expect(reorderRootShortcutPreservingLargeFolderPositions(shortcuts, 'd', 0)).toEqual([
+      createLink('d', 'Delta'),
+      createLargeFolder('folder-large', 'Large', [createLink('nested', 'Nested')]),
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
     ]);
   });
 });

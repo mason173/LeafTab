@@ -2,7 +2,8 @@ import React from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import { ShortcutFolderPreview } from './ShortcutFolderPreview';
+import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
+import { ShortcutFolderLargePreview, ShortcutFolderPreview } from './ShortcutFolderPreview';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 
 interface ShortcutCardCompactProps {
@@ -13,6 +14,9 @@ interface ShortcutCardCompactProps {
   titleFontSize?: number;
   forceTextWhite?: boolean;
   remoteIconScale?: number;
+  enableLargeFolder?: boolean;
+  largeFolderPreviewSize?: number;
+  onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   disableIconWrapperEffects?: boolean;
   rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'onClick' | 'onContextMenu'> & {
     [key: `data-${string}`]: string | number | boolean | undefined;
@@ -35,6 +39,9 @@ export function ShortcutCardCompact({
   titleFontSize = 12,
   forceTextWhite = false,
   remoteIconScale = 1,
+  enableLargeFolder = false,
+  largeFolderPreviewSize,
+  onPreviewShortcutOpen,
   disableIconWrapperEffects = false,
   rootProps,
   iconWrapperProps,
@@ -43,25 +50,30 @@ export function ShortcutCardCompact({
   onContextMenu,
 }: ShortcutCardCompactProps) {
   const firefox = isFirefoxBuildTarget();
-  const titleBlockHeight = 24;
-  const totalHeight = iconSize + titleBlockHeight;
   const folder = isShortcutFolder(shortcut);
+  const metrics = getCompactShortcutCardMetrics({
+    shortcut,
+    iconSize,
+    allowLargeFolder: enableLargeFolder,
+    largeFolderPreviewSize,
+  });
   const iconWrapperMotionClass = disableIconWrapperEffects || firefox
     ? ''
     : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]';
+
   return (
     <div
       {...rootProps}
       className={`relative rounded-xl cursor-pointer select-none group/shortcut ${rootProps?.className ?? ''}`}
-      style={{ width: iconSize, ...rootProps?.style }}
+      style={{ width: metrics.width, ...rootProps?.style }}
       onClick={onOpen}
       onContextMenu={onContextMenu}
     >
-      <div className="flex flex-col items-center justify-start gap-[4px]" style={{ width: iconSize, height: totalHeight }}>
+      <div className="flex flex-col items-center justify-start gap-[4px]" style={{ width: metrics.width, height: metrics.height }}>
         <div
           {...iconWrapperProps}
           className={`relative shrink-0 origin-center ${iconWrapperMotionClass} ${iconWrapperProps?.className ?? ''}`}
-          style={{ height: iconSize, width: iconSize, ...iconWrapperProps?.style }}
+          style={{ height: metrics.previewSize, width: metrics.previewSize, ...iconWrapperProps?.style }}
         >
           <div
             {...iconContentProps}
@@ -69,11 +81,21 @@ export function ShortcutCardCompact({
             style={{ ...iconContentProps?.style }}
           >
             {folder ? (
-              <ShortcutFolderPreview
-                shortcut={shortcut}
-                size={iconSize}
-                iconCornerRadius={iconCornerRadius}
-              />
+              metrics.largeFolder ? (
+                <ShortcutFolderLargePreview
+                  shortcut={shortcut}
+                  size={metrics.previewSize}
+                  iconCornerRadius={iconCornerRadius}
+                  onOpenFolder={onOpen}
+                  onOpenShortcut={onPreviewShortcutOpen}
+                />
+              ) : (
+                <ShortcutFolderPreview
+                  shortcut={shortcut}
+                  size={metrics.previewSize}
+                  iconCornerRadius={iconCornerRadius}
+                />
+              )
             ) : (
               <ShortcutIcon
                 icon={shortcut.icon}
@@ -97,7 +119,7 @@ export function ShortcutCardCompact({
         </div>
         <p
           className={`truncate text-center leading-4 transition-opacity duration-150 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-          style={{ width: iconSize, fontSize: titleFontSize, opacity: showTitle ? 1 : 0 }}
+          style={{ width: metrics.width, fontSize: titleFontSize, opacity: showTitle ? 1 : 0 }}
           aria-hidden={!showTitle}
         >
           {shortcut.title}

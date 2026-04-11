@@ -39,6 +39,7 @@ import { useLeafTabSyncEncryptionManager } from './hooks/useLeafTabSyncEncryptio
 import { useLeafTabBackupActions } from './hooks/useLeafTabBackupActions';
 import { useSyncCenterActions } from './hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
+import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 
 // Components
 import ScenarioModeMenu from './components/ScenarioModeMenu';
@@ -90,6 +91,7 @@ import {
   LazyRoleSelector,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
+  preloadHomeDialogs,
 } from '@/lazy/components';
 import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
@@ -141,6 +143,7 @@ import {
   extractShortcutFromFolder,
   mergeShortcutsIntoNewFolder,
   moveShortcutsIntoFolder,
+  reorderRootShortcutPreservingLargeFolderPositions,
   reorderShortcutWithinContainer,
 } from '@/features/shortcuts/model/operations';
 import type { FolderShortcutDropIntent, RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
@@ -648,6 +651,34 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let canceled = false;
+
+    const warmDialogs = () => {
+      if (canceled) return;
+      void preloadHomeDialogs();
+    };
+
+    const cancelWarmup = scheduleAfterInteractivePaint(warmDialogs, {
+      delayMs: 240,
+      idleTimeoutMs: 900,
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        warmDialogs();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      canceled = true;
+      cancelWarmup();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const defaultApiBase = useMemo(() => getApiBase(), []);
 
   const API_URL = useMemo(() => {
@@ -712,16 +743,27 @@ export default function App() {
   const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
   const folderOverlayActionTimerRef = useRef<number | null>(null);
+  const lastCompactOverlayFolderIdRef = useRef<string | null>(null);
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
     [openFolderId, shortcuts],
   );
+  const compactOverlayShortcut = useMemo(() => {
+    const overlayFolderId = openFolderId ?? lastCompactOverlayFolderIdRef.current;
+    return overlayFolderId ? findShortcutById(shortcuts, overlayFolderId) : null;
+  }, [openFolderId, shortcuts]);
   const useCompactFolderOverlay = shortcutCardVariant === 'compact';
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
   );
+
+  useEffect(() => {
+    if (openFolderId) {
+      lastCompactOverlayFolderIdRef.current = openFolderId;
+    }
+  }, [openFolderId]);
 
   useEffect(() => {
     if (openFolderId && !openFolderShortcut) {
@@ -891,6 +933,7 @@ export default function App() {
         url: '',
         icon: '',
         kind: 'folder',
+        folderDisplayMode: 'small',
         children: folderChildren,
       }));
       if (!result) return prev;
@@ -938,14 +981,28 @@ export default function App() {
       let nextShortcuts: Shortcut[] | null = null;
 
       switch (intent.type) {
-        case 'reorder-root':
-          nextShortcuts = reorderShortcutWithinContainer(
-            sourceShortcuts,
-            ROOT_SHORTCUTS_PATH,
-            intent.activeShortcutId,
-            intent.targetIndex,
+        case 'reorder-root': {
+          const activeShortcut = sourceShortcuts.find((shortcut) => shortcut.id === intent.activeShortcutId) ?? null;
+          const preserveLargeFolderPositions = Boolean(
+            activeShortcut
+            && (!isShortcutFolder(activeShortcut) || activeShortcut.folderDisplayMode !== 'large')
+            && sourceShortcuts.some((shortcut) => isShortcutFolder(shortcut) && shortcut.folderDisplayMode === 'large'),
           );
+
+          nextShortcuts = preserveLargeFolderPositions
+            ? reorderRootShortcutPreservingLargeFolderPositions(
+                sourceShortcuts,
+                intent.activeShortcutId,
+                intent.targetIndex,
+              )
+            : reorderShortcutWithinContainer(
+                sourceShortcuts,
+                ROOT_SHORTCUTS_PATH,
+                intent.activeShortcutId,
+                intent.targetIndex,
+              );
           break;
+        }
         case 'merge-root-shortcuts': {
           const result = mergeShortcutsIntoNewFolder(
             sourceShortcuts,
@@ -957,6 +1014,7 @@ export default function App() {
               url: '',
               icon: '',
               kind: 'folder',
+              folderDisplayMode: 'small',
               children: folderChildren,
             }),
           );
@@ -1141,6 +1199,57 @@ export default function App() {
     });
     if (!user) localDirtyRef.current = true;
   }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+
+  const handleSetFolderDisplayMode = useCallback((
+    shortcutIndex: number,
+    shortcut: Shortcut,
+    mode: 'small' | 'large',
+  ) => {
+    if (!isShortcutFolder(shortcut)) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const resolvedFolderId = sourceShortcuts[shortcutIndex]?.id === shortcut.id
+        ? shortcut.id
+        : sourceShortcuts.find((item) => item.id === shortcut.id)?.id;
+      if (!resolvedFolderId) return prev;
+
+      let changed = false;
+      const nextShortcuts = sourceShortcuts.map((item) => {
+        if (item.id !== resolvedFolderId || !isShortcutFolder(item)) return item;
+        const nextMode = mode === 'large' ? 'large' : 'small';
+        if ((item.folderDisplayMode || 'small') === nextMode) return item;
+        changed = true;
+        return {
+          ...item,
+          folderDisplayMode: nextMode,
+        };
+      });
+
+      if (!changed) return prev;
+      const nextScenarioShortcuts = {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+      try {
+        persistLocalProfileSnapshot({
+          scenarioModes,
+          selectedScenarioId,
+          scenarioShortcuts: nextScenarioShortcuts,
+        });
+        if (user) {
+          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify({
+            version: 3,
+            scenarioModes,
+            selectedScenarioId,
+            scenarioShortcuts: nextScenarioShortcuts,
+          }));
+          localStorage.setItem('leaf_tab_sync_pending', 'true');
+        }
+      } catch {}
+      return nextScenarioShortcuts;
+    });
+    localDirtyRef.current = true;
+  }, [localDirtyRef, scenarioModes, selectedScenarioId, setScenarioShortcuts, user]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
@@ -3470,6 +3579,8 @@ export default function App() {
         onMoveSelectedShortcutsToScenario={handleMoveSelectedShortcutsToScenario}
         onMoveSelectedShortcutsToFolder={handleMoveSelectedShortcutsToFolder}
         onDissolveFolder={handleDissolveFolder}
+        showLargeFolderToggle={shortcutCardVariant === 'compact'}
+        onSetFolderDisplayMode={handleSetFolderDisplayMode}
       >
         {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
           <HomeInteractiveSurface
@@ -3509,7 +3620,7 @@ export default function App() {
           onOpenChange={(open) => {
             if (!open) setOpenFolderId(null);
           }}
-          shortcut={openFolderShortcut}
+          shortcut={compactOverlayShortcut}
           iconCornerRadius={shortcutIconCornerRadius}
           onRenameFolder={handleRenameFolderInline}
           onShortcutOpen={handleShortcutOpen}

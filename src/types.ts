@@ -8,6 +8,7 @@ export type ShortcutVisualMode = 'favicon' | 'letter';
 export type ShortcutIconAppearance = 'colorful' | 'monochrome' | 'accent';
 export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
 export type ShortcutKind = 'link' | 'folder';
+export type ShortcutFolderDisplayMode = 'small' | 'large';
 
 export interface WeatherManualLocation {
   city: string;
@@ -61,6 +62,7 @@ export interface Shortcut {
   icon: string;
   kind?: ShortcutKind;
   children?: Shortcut[];
+  folderDisplayMode?: ShortcutFolderDisplayMode;
   useOfficialIcon?: boolean;
   autoUseOfficialIcon?: boolean;
   officialIconAvailableAtSave?: boolean;
