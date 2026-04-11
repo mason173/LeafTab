@@ -9,9 +9,9 @@ import {
   removeShortcutCustomIcon,
   removeShortcutCustomIcons,
 } from '@/utils/shortcutCustomIcons';
-import { collectShortcutIds, isShortcutFolder } from '@/utils/shortcutFolders';
+import { collectShortcutIds, getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
-type SelectedShortcut = { index: number; shortcut: Shortcut } | null;
+type SelectedShortcut = { index: number; shortcut: Shortcut; parentFolderId?: string | null } | null;
 type TranslateFn = (key: string, options?: any) => string;
 
 type UseShortcutActionsParams = {
@@ -185,30 +185,49 @@ export function useShortcutActions({
     } else {
       if (!selectedShortcut) return;
       updateScenarioShortcuts((current) => {
-        if (hasShortcutUrlConflict(current, nextUrl, selectedShortcut.index)) {
-          duplicateFound = true;
-          return current;
-        }
         let newIcon = draft.icon || selectedShortcut.shortcut.icon;
         const prevIdentity = getShortcutUrlIdentity(selectedShortcut.shortcut.url || '');
         const nextIdentity = getShortcutUrlIdentity(nextUrl);
         const urlChanged = nextIdentity ? prevIdentity !== nextIdentity : nextUrl !== (selectedShortcut.shortcut.url || '').trim();
         if (urlChanged && newIcon.includes('api.iowen.cn')) newIcon = '';
+        const updatedShortcut = {
+          ...selectedShortcut.shortcut,
+          title: nextTitle,
+          url: nextUrl,
+          icon: newIcon,
+          useOfficialIcon: draft.useOfficialIcon !== false,
+          autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
+          officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
+          iconRendering: draft.iconRendering,
+          iconColor: normalizeShortcutIconColor(draft.iconColor),
+        };
+
+        if (selectedShortcut.parentFolderId) {
+          let changed = false;
+          const nextCurrent = current.map((item) => {
+            if (item.id !== selectedShortcut.parentFolderId || !isShortcutFolder(item)) return item;
+            const nextChildren = getShortcutChildren(item).map((child) => {
+              if (child.id !== selectedShortcut.shortcut.id) return child;
+              changed = true;
+              return updatedShortcut;
+            });
+            return changed ? { ...item, children: nextChildren } : item;
+          });
+          if (!changed) return current;
+          saved = true;
+          savedShortcutId = selectedShortcut.shortcut.id;
+          return nextCurrent;
+        }
+
+        if (hasShortcutUrlConflict(current, nextUrl, selectedShortcut.index)) {
+          duplicateFound = true;
+          return current;
+        }
         saved = true;
         savedShortcutId = selectedShortcut.shortcut.id;
         return current.map((item, index) => (
           index === selectedShortcut.index
-            ? {
-                ...item,
-                title: nextTitle,
-                url: nextUrl,
-                icon: newIcon,
-                useOfficialIcon: draft.useOfficialIcon !== false,
-                autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
-                officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
-                iconRendering: draft.iconRendering,
-                iconColor: normalizeShortcutIconColor(draft.iconColor),
-              }
+            ? updatedShortcut
             : item
         ));
       });
@@ -238,7 +257,20 @@ export function useShortcutActions({
   const handleConfirmDeleteShortcut = useCallback(() => {
     if (!selectedShortcut) return;
     removeShortcutCustomIcons(collectShortcutIds([selectedShortcut.shortcut]));
-    updateScenarioShortcuts((current) => current.filter((_, index) => index !== selectedShortcut.index));
+    updateScenarioShortcuts((current) => {
+      if (selectedShortcut.parentFolderId) {
+        let changed = false;
+        const nextCurrent = current.map((item) => {
+          if (item.id !== selectedShortcut.parentFolderId || !isShortcutFolder(item)) return item;
+          const nextChildren = getShortcutChildren(item).filter((child) => child.id !== selectedShortcut.shortcut.id);
+          if (nextChildren.length === getShortcutChildren(item).length) return item;
+          changed = true;
+          return { ...item, children: nextChildren };
+        });
+        return changed ? nextCurrent : current;
+      }
+      return current.filter((_, index) => index !== selectedShortcut.index);
+    });
     setShortcutDeleteOpen(false);
     setSelectedShortcut(null);
   }, [selectedShortcut, setSelectedShortcut, setShortcutDeleteOpen, updateScenarioShortcuts]);

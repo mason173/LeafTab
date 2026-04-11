@@ -24,10 +24,14 @@ type FolderShortcutSurfaceProps = {
   shortcuts: Shortcut[];
   emptyText: string;
   iconCornerRadius?: number;
+  forceTextWhite?: boolean;
+  showShortcutTitles?: boolean;
   maskBoundaryRef: React.RefObject<HTMLElement | null>;
   onShortcutOpen: (shortcut: Shortcut) => void;
+  onShortcutContextMenu?: (event: React.MouseEvent<HTMLDivElement>, shortcut: Shortcut) => void;
   onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
+  onDragActiveChange?: (active: boolean) => void;
 };
 
 export type FolderExtractDragStartPayload = {
@@ -64,7 +68,7 @@ type MeasuredFolderItem = MeasuredDragItem<{
 
 const DRAG_ACTIVATION_DISTANCE_PX = 8;
 const DRAG_MATCH_DISTANCE_PX = 72;
-const EXTRACT_HANDOFF_DELAY_MS = 320;
+const EXTRACT_HANDOFF_DELAY_MS = 520;
 const DRAG_OVERLAY_Z_INDEX = 2147483000;
 
 function buildReorderProjectionOffsets(params: {
@@ -176,11 +180,13 @@ function FloatingFolderShortcutPreview({
   pointer,
   previewOffset,
   iconCornerRadius,
+  forceTextWhite,
 }: {
   shortcut: Shortcut;
   pointer: PointerPoint;
   previewOffset: PointerPoint;
   iconCornerRadius?: number;
+  forceTextWhite?: boolean;
 }) {
   if (typeof document === 'undefined') return null;
 
@@ -198,6 +204,7 @@ function FloatingFolderShortcutPreview({
         iconSize={72}
         iconCornerRadius={iconCornerRadius}
         titleFontSize={12}
+        forceTextWhite={forceTextWhite}
         onOpen={() => {}}
         onContextMenu={() => {}}
       />
@@ -211,10 +218,14 @@ export function FolderShortcutSurface({
   shortcuts,
   emptyText,
   iconCornerRadius,
+  forceTextWhite = false,
+  showShortcutTitles = true,
   maskBoundaryRef,
   onShortcutOpen,
+  onShortcutContextMenu,
   onShortcutDropIntent,
   onExtractDragStart,
+  onDragActiveChange,
 }: FolderShortcutSurfaceProps) {
   const firefox = isFirefoxBuildTarget();
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -254,11 +265,13 @@ export function FolderShortcutSurface({
       window.setTimeout(() => {
         ignoreClickRef.current = false;
       }, 120);
+      onDragActiveChange?.(false);
       return;
     }
 
     ignoreClickRef.current = true;
-  }, [activeDragId]);
+    onDragActiveChange?.(true);
+  }, [activeDragId, onDragActiveChange]);
 
   const clearDragState = useCallback(() => {
     if (extractHandoffTimerRef.current !== null) {
@@ -444,8 +457,9 @@ export function FolderShortcutSurface({
   }, [clearDragState, folderId, onShortcutDropIntent, resolveHoverState, shortcuts]);
 
   useEffect(() => () => {
+    onDragActiveChange?.(false);
     clearDragState();
-  }, [clearDragState]);
+  }, [clearDragState, onDragActiveChange]);
 
   if (shortcuts.length === 0) {
     return (
@@ -464,13 +478,20 @@ export function FolderShortcutSurface({
         hovered={hoveredMask}
         boundaryRef={maskBoundaryRef}
       />
-      <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
+      <div
+        className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4"
+        data-folder-shortcut-grid="true"
+      >
         {shortcuts.map((shortcut, shortcutIndex) => {
           const isDragging = activeDragId === shortcut.id;
           const projectionOffset = projectionOffsets.get(shortcut.id) ?? null;
 
           return (
-            <div key={shortcut.id} className="relative flex justify-center">
+            <div
+              key={shortcut.id}
+              className="relative flex justify-center"
+              data-folder-shortcut-grid-item="true"
+            >
               <DraggableShortcutItemFrame
                 cardVariant="compact"
                 compactIconSize={72}
@@ -510,15 +531,23 @@ export function FolderShortcutSurface({
               >
                 <ShortcutCardCompact
                   shortcut={shortcut}
-                  showTitle
+                  showTitle={showShortcutTitles}
                   iconSize={72}
                   iconCornerRadius={iconCornerRadius}
                   titleFontSize={12}
+                  forceTextWhite={forceTextWhite}
+                  disableIconWrapperEffects
+                  iconContentProps={{
+                    'data-folder-overlay-child-id': shortcut.id,
+                  }}
                   onOpen={() => {
                     if (ignoreClickRef.current) return;
                     onShortcutOpen(shortcut);
                   }}
-                  onContextMenu={(event) => event.preventDefault()}
+                  onContextMenu={(event) => {
+                    if (ignoreClickRef.current) return;
+                    onShortcutContextMenu?.(event, shortcut);
+                  }}
                 />
               </DraggableShortcutItemFrame>
             </div>
@@ -531,6 +560,7 @@ export function FolderShortcutSurface({
           pointer={dragPointer}
           previewOffset={dragPreviewOffset}
           iconCornerRadius={iconCornerRadius}
+          forceTextWhite={forceTextWhite}
         />
       ) : null}
     </>

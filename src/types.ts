@@ -137,6 +137,7 @@ export interface CloudShortcutsPayloadV3 {
 
 export type ContextMenuState =
   | { x: number; y: number; kind: 'shortcut'; shortcutIndex: number; shortcut: Shortcut }
+  | { x: number; y: number; kind: 'folder-shortcut'; folderId: string; shortcut: Shortcut }
   | { x: number; y: number; kind: 'grid' };
 
 export type { ScenarioMode };

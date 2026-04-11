@@ -4,39 +4,68 @@ import type { Shortcut } from '@/types';
 import { getShortcutChildren } from '@/utils/shortcutFolders';
 import { clampShortcutIconCornerRadius, getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
+const FOLDER_PREVIEW_CONTENT_RATIO = 0.94;
+const FOLDER_INLINE_PREVIEW_CONTENT_RATIO = 0.92;
+const FOLDER_INLINE_REMOTE_ICON_SCALE = 0.58;
+const FOLDER_SHARED_ICON_BASE_SIZE = 72;
+
 function FolderPreviewTile({
   child,
+  folderId,
+  index,
   tileSize,
-  tileRadius,
   iconCornerRadius,
 }: {
   child: Shortcut;
+  folderId: string;
+  index: number;
   tileSize: number;
-  tileRadius: number;
   iconCornerRadius: number;
 }) {
+  const previewIconSize = Math.max(16, Math.round(tileSize * FOLDER_PREVIEW_CONTENT_RATIO));
+  const previewIconScale = previewIconSize / FOLDER_SHARED_ICON_BASE_SIZE;
+
   return (
     <div
-      className="overflow-hidden bg-background/80"
-      style={{ width: tileSize, height: tileSize, borderRadius: tileRadius }}
+      className="flex items-center justify-center"
+      style={{ width: tileSize, height: tileSize }}
     >
-      <ShortcutIcon
-        icon={child.icon}
-        url={child.url}
-        shortcutId={child.id}
-        size={tileSize}
-        exact
-        frame="never"
-        fallbackStyle="emptyicon"
-        fallbackLabel={child.title}
-        fallbackLetterSize={Math.max(9, Math.round(tileSize * 0.46))}
-        useOfficialIcon={child.useOfficialIcon}
-        autoUseOfficialIcon={child.autoUseOfficialIcon}
-        officialIconAvailableAtSave={child.officialIconAvailableAtSave}
-        iconRendering={child.iconRendering}
-        iconColor={child.iconColor}
-        iconCornerRadius={Math.max(8, iconCornerRadius * 0.45)}
-      />
+      <div
+        className="flex items-center justify-center"
+        style={{ width: previewIconSize, height: previewIconSize }}
+        data-folder-preview-child-id={child.id}
+        data-folder-preview-index={index}
+        data-folder-preview-parent-id={folderId}
+      >
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: FOLDER_SHARED_ICON_BASE_SIZE,
+            height: FOLDER_SHARED_ICON_BASE_SIZE,
+            transform: `scale(${previewIconScale})`,
+            transformOrigin: 'center center',
+            willChange: 'transform',
+          }}
+        >
+          <ShortcutIcon
+            icon={child.icon}
+            url={child.url}
+            shortcutId={child.id}
+            size={FOLDER_SHARED_ICON_BASE_SIZE}
+            exact
+            frame="never"
+            fallbackStyle="emptyicon"
+            fallbackLabel={child.title}
+            useOfficialIcon={child.useOfficialIcon}
+            autoUseOfficialIcon={child.autoUseOfficialIcon}
+            officialIconAvailableAtSave={child.officialIconAvailableAtSave}
+            iconRendering={child.iconRendering}
+            iconColor={child.iconColor}
+            iconCornerRadius={iconCornerRadius}
+            remoteIconScale={1}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -63,7 +92,6 @@ export function ShortcutFolderPreview({
   const children = allChildren.slice(0, 4);
   const normalizedCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
-  const tileRadius = Math.max(6, Math.round(size * normalizedCornerRadius / 250));
 
   return (
     <div
@@ -73,13 +101,16 @@ export function ShortcutFolderPreview({
         height: size,
         borderRadius: getShortcutIconBorderRadius(normalizedCornerRadius),
       }}
+      data-folder-preview="true"
+      data-folder-preview-id={shortcut.id}
     >
-      {children.length > 0 ? children.map((child) => (
+      {children.length > 0 ? children.map((child, index) => (
         <FolderPreviewTile
           key={child.id}
           child={child}
+          folderId={shortcut.id}
+          index={index}
           tileSize={tileSize}
-          tileRadius={tileRadius}
           iconCornerRadius={iconCornerRadius}
         />
       )) : (
@@ -98,32 +129,34 @@ export function ShortcutFolderInlinePreview({
   maxIcons = 4,
 }: ShortcutFolderInlinePreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, Math.max(2, maxIcons));
-  const tileRadius = Math.max(6, Math.round(iconSize * 0.28));
+  const previewIconSize = Math.max(12, Math.round(iconSize * FOLDER_INLINE_PREVIEW_CONTENT_RATIO));
+  const previewIconCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
 
   return (
     <div className="flex min-w-0 items-center gap-2 overflow-hidden">
       {children.length > 0 ? children.map((child) => (
         <div
           key={child.id}
-          className="shrink-0 overflow-hidden bg-background/80"
-          style={{ width: iconSize, height: iconSize, borderRadius: tileRadius }}
+          className="flex shrink-0 items-center justify-center"
+          style={{ width: iconSize, height: iconSize }}
         >
           <ShortcutIcon
             icon={child.icon}
             url={child.url}
             shortcutId={child.id}
-            size={iconSize}
+            size={previewIconSize}
             exact
             frame="never"
             fallbackStyle="emptyicon"
             fallbackLabel={child.title}
-            fallbackLetterSize={Math.max(9, Math.round(iconSize * 0.44))}
+            fallbackLetterSize={Math.max(9, Math.round(previewIconSize * 0.44))}
             useOfficialIcon={child.useOfficialIcon}
             autoUseOfficialIcon={child.autoUseOfficialIcon}
             officialIconAvailableAtSave={child.officialIconAvailableAtSave}
             iconRendering={child.iconRendering}
             iconColor={child.iconColor}
-            iconCornerRadius={Math.max(8, iconCornerRadius * 0.45)}
+            iconCornerRadius={previewIconCornerRadius}
+            remoteIconScale={FOLDER_INLINE_REMOTE_ICON_SCALE}
           />
         </div>
       )) : (
