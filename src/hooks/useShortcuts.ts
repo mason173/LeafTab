@@ -117,7 +117,7 @@ export function useShortcuts(
   const [scenarioModeOpen, setScenarioModeOpen] = useState(false);
   const [scenarioCreateOpen, setScenarioCreateOpen] = useState(false);
   const [scenarioEditOpen, setScenarioEditOpen] = useState(false);
-  const [selectedShortcut, setSelectedShortcut] = useState<{ index: number; shortcut: Shortcut } | null>(null);
+  const [selectedShortcut, setSelectedShortcut] = useState<{ index: number; shortcut: Shortcut; parentFolderId?: string | null } | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingUrl, setEditingUrl] = useState('');
   const [currentEditScenarioId, setCurrentEditScenarioId] = useState<string>('');

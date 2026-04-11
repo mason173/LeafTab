@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties, type MouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
@@ -79,6 +79,7 @@ import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
+import { ShortcutFolderCompactOverlay } from '@/components/ShortcutFolderCompactOverlay';
 import { ShortcutFolderDialog } from '@/components/ShortcutFolderDialog';
 import { ShortcutFolderNameDialog } from '@/components/ShortcutFolderNameDialog';
 import type { ExternalShortcutDragSession } from '@/components/ShortcutGrid';
@@ -167,6 +168,8 @@ function createFolderShortcutId() {
   } catch {}
   return `fld_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
+
+const COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS = 460;
 
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
@@ -708,11 +711,13 @@ export default function App() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
+  const folderOverlayActionTimerRef = useRef<number | null>(null);
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
     [openFolderId, shortcuts],
   );
+  const useCompactFolderOverlay = shortcutCardVariant === 'compact';
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
@@ -730,6 +735,30 @@ export default function App() {
       setFolderNameDialogOpen(false);
     }
   }, [editingFolderId, editingFolderShortcut]);
+
+  useEffect(() => () => {
+    if (folderOverlayActionTimerRef.current !== null) {
+      window.clearTimeout(folderOverlayActionTimerRef.current);
+    }
+  }, []);
+
+  const runAfterFolderOverlayClose = useCallback((folderId: string, action: () => void) => {
+    if (folderOverlayActionTimerRef.current !== null) {
+      window.clearTimeout(folderOverlayActionTimerRef.current);
+      folderOverlayActionTimerRef.current = null;
+    }
+
+    if (!useCompactFolderOverlay || openFolderId !== folderId) {
+      action();
+      return;
+    }
+
+    setOpenFolderId(null);
+    folderOverlayActionTimerRef.current = window.setTimeout(() => {
+      folderOverlayActionTimerRef.current = null;
+      action();
+    }, COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS);
+  }, [openFolderId, useCompactFolderOverlay]);
 
   const handleShortcutActivate = useCallback((shortcut: Shortcut) => {
     if (isShortcutFolder(shortcut)) {
@@ -757,6 +786,48 @@ export default function App() {
     setShortcutEditOpen,
     setShortcutModalMode,
   ]);
+
+  const handleOpenFolderChildShortcutEditor = useCallback((folderId: string, shortcut: Shortcut) => {
+    runAfterFolderOverlayClose(folderId, () => {
+      setSelectedShortcut({ index: -1, shortcut, parentFolderId: folderId });
+      setEditingTitle(shortcut.title);
+      setEditingUrl(shortcut.url);
+      setShortcutModalMode('edit');
+      setShortcutEditOpen(true);
+    });
+  }, [
+    runAfterFolderOverlayClose,
+    setEditingTitle,
+    setEditingUrl,
+    setSelectedShortcut,
+    setShortcutEditOpen,
+    setShortcutModalMode,
+  ]);
+
+  const handleDeleteFolderChildShortcut = useCallback((folderId: string, shortcut: Shortcut) => {
+    runAfterFolderOverlayClose(folderId, () => {
+      setSelectedShortcut({ index: -1, shortcut, parentFolderId: folderId });
+      setShortcutDeleteOpen(true);
+    });
+  }, [
+    runAfterFolderOverlayClose,
+    setSelectedShortcut,
+    setShortcutDeleteOpen,
+  ]);
+
+  const handleFolderChildShortcutContextMenu = useCallback((
+    event: MouseEvent<HTMLDivElement>,
+    folderId: string,
+    shortcut: Shortcut,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const menuWidth = 160;
+    const menuHeight = 172;
+    const x = Math.min(event.clientX, window.innerWidth - menuWidth - 8);
+    const y = Math.min(event.clientY, window.innerHeight - menuHeight - 8);
+    setContextMenu({ x, y, kind: 'folder-shortcut', folderId, shortcut });
+  }, [setContextMenu]);
 
   const handlePinSelectedShortcuts = useCallback((selectedShortcutIndexes: number[], position: 'top' | 'bottom') => {
     if (selectedShortcutIndexes.length === 0 || shortcuts.length === 0) return;
@@ -1047,6 +1118,29 @@ export default function App() {
     setFolderNameDialogOpen(false);
     setEditingFolderId(null);
   }, [editingFolderId, localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+
+  const handleRenameFolderInline = useCallback((folderId: string, name: string) => {
+    const nextName = name.trim();
+    if (!folderId || !nextName) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      let changed = false;
+      const nextShortcuts = sourceShortcuts.map((shortcut) => {
+        if (shortcut.id !== folderId || !isShortcutFolder(shortcut)) return shortcut;
+        changed = true;
+        return {
+          ...shortcut,
+          title: nextName,
+        };
+      });
+      if (!changed) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
@@ -3363,10 +3457,12 @@ export default function App() {
           setShortcutEditOpen(true);
         }}
         onEditShortcut={handleOpenShortcutEditor}
+        onEditFolderShortcut={handleOpenFolderChildShortcutEditor}
         onDeleteShortcut={(shortcutIndex, shortcut) => {
           setSelectedShortcut({ index: shortcutIndex, shortcut });
           setShortcutDeleteOpen(true);
         }}
+        onDeleteFolderShortcut={handleDeleteFolderChildShortcut}
         onShortcutOpen={handleShortcutActivate}
         onDeleteSelectedShortcuts={handleConfirmDeleteShortcuts}
         onCreateFolder={handleCreateFolderFromSelection}
@@ -3407,17 +3503,34 @@ export default function App() {
           />
         )}
       </ShortcutSelectionShell>
-      <ShortcutFolderDialog
-        open={Boolean(openFolderShortcut)}
-        onOpenChange={(open) => {
-          if (!open) setOpenFolderId(null);
-        }}
-        shortcut={openFolderShortcut}
-        iconCornerRadius={shortcutIconCornerRadius}
-        onShortcutOpen={handleShortcutOpen}
-        onShortcutDropIntent={handleFolderShortcutDropIntent}
-        onExtractDragStart={handleFolderExtractDragStart}
-      />
+      {useCompactFolderOverlay ? (
+        <ShortcutFolderCompactOverlay
+          open={Boolean(openFolderShortcut)}
+          onOpenChange={(open) => {
+            if (!open) setOpenFolderId(null);
+          }}
+          shortcut={openFolderShortcut}
+          iconCornerRadius={shortcutIconCornerRadius}
+          onRenameFolder={handleRenameFolderInline}
+          onShortcutOpen={handleShortcutOpen}
+          onShortcutContextMenu={handleFolderChildShortcutContextMenu}
+          onShortcutDropIntent={handleFolderShortcutDropIntent}
+          onExtractDragStart={handleFolderExtractDragStart}
+          reduceBackdropBlur={visualEffectsPolicy.disableBackdropBlur}
+        />
+      ) : (
+        <ShortcutFolderDialog
+          open={Boolean(openFolderShortcut)}
+          onOpenChange={(open) => {
+            if (!open) setOpenFolderId(null);
+          }}
+          shortcut={openFolderShortcut}
+          iconCornerRadius={shortcutIconCornerRadius}
+          onShortcutOpen={handleShortcutOpen}
+          onShortcutDropIntent={handleFolderShortcutDropIntent}
+          onExtractDragStart={handleFolderExtractDragStart}
+        />
+      )}
       <ShortcutFolderNameDialog
         open={folderNameDialogOpen}
         onOpenChange={(open) => {

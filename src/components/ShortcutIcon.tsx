@@ -300,6 +300,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   iconColor,
   iconCornerRadius = DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
   iconAppearance = DEFAULT_SHORTCUT_ICON_APPEARANCE,
+  remoteIconScale = 1,
 }: {
   icon: string;
   url: string;
@@ -319,6 +320,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   iconColor?: Shortcut['iconColor'];
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
+  remoteIconScale?: number;
 }) {
   const firefox = isFirefoxBuildTarget();
   const domain = useMemo(() => extractDomainFromUrl(url), [url]);
@@ -528,6 +530,8 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const overlaySize = 24;
   const resolvedCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
   const roundedBorderRadius = getShortcutIconBorderRadius(resolvedCornerRadius);
+  const normalizedRemoteIconScale = Math.min(1, Math.max(0.55, remoteIconScale));
+  const centeredOverlayImageSize = Math.max(12, Math.round(Math.min(size, overlaySize) * normalizedRemoteIconScale));
   void iconAppearance;
 
   useEffect(() => {
@@ -576,10 +580,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
             <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>
               <img
                 alt=""
-                className="absolute inset-0 max-w-none object-contain pointer-events-none"
+                className="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain pointer-events-none"
                 draggable={false}
                 src={src}
-                style={{ width: overlaySize, height: overlaySize }}
+                style={{ width: centeredOverlayImageSize, height: centeredOverlayImageSize }}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
               />
@@ -633,18 +637,19 @@ const ShortcutIcon = memo(function ShortcutIcon({
   }
 
   if (activeCandidate?.kind === 'local-custom') {
+    const scaledSize = size;
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
-          className="absolute inset-0 overflow-hidden"
-          style={{ borderRadius: roundedBorderRadius }}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
+          style={{ width: scaledSize, height: scaledSize, borderRadius: roundedBorderRadius }}
         >
           <img
             alt=""
             className="absolute inset-0 max-w-none object-cover pointer-events-none"
             draggable={false}
             src={src}
-            style={{ width: size, height: size }}
+            style={{ width: scaledSize, height: scaledSize }}
           />
         </div>
         <div
@@ -656,7 +661,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
     );
   }
 
-  const innerSize = isCustomActive ? size : (exact ? size : Math.max(12, Math.round(size * 2 / 3)));
+  const baseInnerSize = isCustomActive ? size : (exact ? size : Math.max(12, Math.round(size * 2 / 3)));
+  const innerSize = activeCandidate?.kind === 'favicon' || activeCandidate?.kind === 'provided'
+    ? Math.max(12, Math.round(baseInnerSize * normalizedRemoteIconScale))
+    : baseInnerSize;
   const image = (
     <img
       alt=""

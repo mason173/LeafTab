@@ -1,9 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  RiAddLine,
   RiArrowDownLine,
   RiArrowUpLine,
   RiCloseLine,
+  RiDashboardFill,
   RiDeleteBinLine,
   RiFolderChartFill,
   RiFolderTransferLine,
@@ -30,7 +32,9 @@ type ShortcutSelectionShellProps = {
   selectedScenarioId: string;
   onCreateShortcut: (insertIndex: number) => void;
   onEditShortcut: (shortcutIndex: number, shortcut: Shortcut) => void;
+  onEditFolderShortcut: (folderId: string, shortcut: Shortcut) => void;
   onDeleteShortcut: (shortcutIndex: number, shortcut: Shortcut) => void;
+  onDeleteFolderShortcut: (folderId: string, shortcut: Shortcut) => void;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onDeleteSelectedShortcuts: (selectedIndexes: number[]) => void;
   onCreateFolder: (selectedIndexes: number[]) => void;
@@ -82,7 +86,9 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   selectedScenarioId,
   onCreateShortcut,
   onEditShortcut,
+  onEditFolderShortcut,
   onDeleteShortcut,
+  onDeleteFolderShortcut,
   onShortcutOpen,
   onDeleteSelectedShortcuts,
   onCreateFolder,
@@ -236,7 +242,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
       })}
 
       {contextMenu && (
-        <div ref={contextMenuRef} className="fixed z-[15020]" data-testid="shortcut-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+        <div ref={contextMenuRef} className="fixed z-[17020]" data-testid="shortcut-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
           <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
             {contextMenu.kind === 'shortcut' ? (
               shortcutMultiSelectMode ? (
@@ -378,6 +384,71 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 </>
                 )
               )
+            ) : contextMenu.kind === 'folder-shortcut' ? (
+              <>
+                <ContextMenuItem
+                  label={t('context.open')}
+                  testId="folder-shortcut-context-open"
+                  onSelect={() => {
+                    onShortcutOpen(contextMenu.shortcut);
+                    setContextMenu(null);
+                  }}
+                />
+                <ContextMenuItem
+                  label={t('context.copyLink')}
+                  testId="folder-shortcut-context-copy-link"
+                  onSelect={() => {
+                    const raw = contextMenu.shortcut.url || '';
+                    let hostname = extractDomainFromUrl(raw);
+                    if (!hostname) {
+                      try {
+                        const normalized = raw.includes('://') ? raw : `https://${raw}`;
+                        hostname = new URL(normalized).hostname;
+                      } catch {
+                        hostname = '';
+                      }
+                    }
+                    if (!hostname) {
+                      toast.error(t('toast.linkCopyFailed'));
+                      setContextMenu(null);
+                      return;
+                    }
+                    navigator.clipboard.writeText(hostname).then(() => {
+                      toast.success(t('toast.linkCopied'));
+                    }).catch(() => {
+                      try {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = hostname;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        toast.success(t('toast.linkCopied'));
+                      } catch {
+                        toast.error(t('toast.linkCopyFailed'));
+                      }
+                    });
+                    setContextMenu(null);
+                  }}
+                />
+                <ContextMenuItem
+                  label={t('context.edit')}
+                  testId="folder-shortcut-context-edit"
+                  onSelect={() => {
+                    onEditFolderShortcut(contextMenu.folderId, contextMenu.shortcut);
+                    setContextMenu(null);
+                  }}
+                />
+                <ContextMenuItem
+                  label={t('context.delete')}
+                  testId="folder-shortcut-context-delete"
+                  onSelect={() => {
+                    onDeleteFolderShortcut(contextMenu.folderId, contextMenu.shortcut);
+                    setContextMenu(null);
+                  }}
+                  variant="destructive"
+                />
+              </>
             ) : (
               shortcutMultiSelectMode ? (
                 <>
@@ -423,7 +494,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
       )}
 
       {shortcutMultiSelectMode && (
-        <div className="fixed bottom-6 left-1/2 z-[15025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl" data-testid="shortcut-multi-select-toolbar">
+        <div className="fixed bottom-6 left-1/2 z-[17025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl" data-testid="shortcut-multi-select-toolbar">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground min-w-[88px]">
               {t('context.selectedCount', { count: selectedShortcutCount, defaultValue: '已选 {{count}} 项' })}
@@ -439,7 +510,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 aria-expanded={multiSelectMoveOpen}
                 onClick={() => setMultiSelectMoveOpen((prev) => !prev)}
               >
-                <RiFolderTransferLine className="size-4" />
+                <RiDashboardFill className="size-4" />
               </Button>
               {multiSelectMoveOpen ? (
                 <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-[15050] w-[280px] -translate-x-1/2 rounded-2xl border border-border bg-popover/95 p-2 text-foreground shadow-2xl backdrop-blur-xl">
@@ -533,7 +604,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
               title={t('context.createFolder', { defaultValue: '创建文件夹' })}
               aria-label={t('context.createFolder', { defaultValue: '创建文件夹' })}
             >
-              <RiFolderChartFill className="size-4" />
+              <RiAddLine className="size-4" />
             </Button>
             <Button
               size="icon"
