@@ -1,26 +1,79 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, useSortable, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
 import { RiCheckFill } from '@/icons/ri-compat';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import { Shortcut } from '../types';
+import type { Shortcut } from '../types';
 import { ShortcutCardRenderer } from './shortcuts/ShortcutCardRenderer';
 import {
   DEFAULT_SHORTCUT_CARD_VARIANT,
-  ShortcutCardVariant,
+  type ShortcutCardVariant,
   type ShortcutLayoutDensity,
 } from './shortcuts/shortcutCardVariant';
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
+import { getReorderTargetIndex } from '@/features/shortcuts/drag/dropEdge';
+import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDropIntent';
+import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
+import {
+  buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
+  getDragVisualCenter,
+  measureDragItems,
+  pickClosestMeasuredItem,
+  type ActivePointerDragState,
+  type MeasuredDragItem,
+  type PendingPointerDragState,
+  type PointerPoint,
+  type ProjectionOffset,
+} from '@/features/shortcuts/drag/gridDragEngine';
+import { DraggableShortcutItemFrame } from '@/features/shortcuts/components/DraggableShortcutItemFrame';
 
-const DRAG_DROP_ANIMATION_MS = 320;
-const DRAG_DROP_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-const CARD_SETTLE_TRANSITION = 'transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1.12)';
-// Keep drag preview above the expanded drawer surface/overlay.
+const DRAG_ACTIVATION_DISTANCE_PX = 8;
 const DRAG_OVERLAY_Z_INDEX = 14030;
 const DRAG_AUTO_SCROLL_EDGE_PX = 88;
 const DRAG_AUTO_SCROLL_MAX_SPEED_PX = 26;
+const DRAG_MATCH_DISTANCE_PX = 64;
+const CENTER_INTENT_DELAY_MS = 320;
+
+type RootHoverState =
+  | { type: 'item'; sortId: string; edge: 'before' | 'after' | 'center' }
+  | null;
+
+type GridItem = {
+  sortId: string;
+  shortcut: Shortcut;
+  shortcutIndex: number;
+};
+type PendingDragState = PendingPointerDragState<string> & {
+  activeSortId: string;
+  current: PointerPoint;
+};
+type DragSessionState = ActivePointerDragState<string> & {
+  activeSortId: string;
+};
+
+type CenterHoverCandidate = {
+  targetSortId: string;
+  intentType: Extract<RootShortcutDropIntent['type'], 'merge-root-shortcuts' | 'move-root-shortcut-into-folder'>;
+  startedAt: number;
+};
+
+type MeasuredGridItem = MeasuredDragItem<GridItem>;
+
+type OverlaySnapPosition = {
+  left: number;
+  top: number;
+};
+
+export type ExternalShortcutDragSession = {
+  token: number;
+  shortcutId: string;
+  pointerId: number;
+  pointerType: string;
+  pointer: PointerPoint;
+  anchor: {
+    xRatio: number;
+    yRatio: number;
+  };
+};
 
 function DragPreviewIcon({
   shortcut,
@@ -87,7 +140,6 @@ function LightweightDragPreview({
   forceTextWhite: boolean;
 }) {
   if (cardVariant === 'compact') {
-    const titleVisible = compactShowTitle;
     return (
       <div
         className="pointer-events-none select-none"
@@ -99,7 +151,7 @@ function LightweightDragPreview({
       >
         <div className="flex flex-col items-center gap-1.5">
           <DragPreviewIcon shortcut={shortcut} size={compactIconSize} cornerRadius={iconCornerRadius} />
-          {titleVisible ? (
+          {compactShowTitle ? (
             <p
               className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
               style={{ width: compactIconSize, fontSize: compactTitleFontSize }}
@@ -156,9 +208,121 @@ function findScrollableParent(node: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-function SortableShortcut({
+function deriveHoverStateFromIntent(intent: RootShortcutDropIntent | null): RootHoverState {
+  if (!intent) return null;
+
+  switch (intent.type) {
+    case 'reorder-root':
+      return {
+        type: 'item',
+        sortId: intent.overShortcutId,
+        edge: intent.edge,
+      };
+    case 'merge-root-shortcuts':
+      return {
+        type: 'item',
+        sortId: intent.targetShortcutId,
+        edge: 'center',
+      };
+    case 'move-root-shortcut-into-folder':
+      return {
+        type: 'item',
+        sortId: intent.targetFolderId,
+        edge: 'center',
+      };
+    default:
+      return null;
+  }
+}
+
+function measureGridItems(items: GridItem[], itemElements: Map<string, HTMLDivElement>): MeasuredGridItem[] {
+  return measureDragItems({
+    items,
+    itemElements,
+    getId: (item) => item.sortId,
+  });
+}
+
+function getReorderEdgeFromPointer(point: PointerPoint, rect: DOMRect): 'before' | 'after' {
+  const normalizedX = Math.min(1, Math.max(0, (point.x - rect.left) / rect.width));
+  const normalizedY = Math.min(1, Math.max(0, (point.y - rect.top) / rect.height));
+  const distanceX = Math.abs(normalizedX - 0.5);
+  const distanceY = Math.abs(normalizedY - 0.5);
+
+  if (distanceX >= distanceY) {
+    return normalizedX < 0.5 ? 'before' : 'after';
+  }
+
+  return normalizedY < 0.5 ? 'before' : 'after';
+}
+
+function buildFallbackReorderIntent(params: {
+  activeSortId: string;
+  overItem: MeasuredGridItem;
+  pointer: PointerPoint;
+  measuredItems: MeasuredGridItem[];
+}): RootShortcutDropIntent | null {
+  const { activeSortId, overItem, pointer, measuredItems } = params;
+  const activeItem = measuredItems.find((item) => item.sortId === activeSortId);
+  if (!activeItem) return null;
+
+  const edge = getReorderEdgeFromPointer(pointer, overItem.rect);
+  const targetIndex = getReorderTargetIndex(activeItem.shortcutIndex, overItem.shortcutIndex, edge);
+  if (targetIndex === activeItem.shortcutIndex) return null;
+
+  return {
+    type: 'reorder-root',
+    activeShortcutId: activeItem.shortcut.id,
+    overShortcutId: overItem.shortcut.id,
+    targetIndex,
+    edge,
+  };
+}
+
+function pickOverItem(params: {
+  activeSortId: string;
+  measuredItems: MeasuredGridItem[];
+  pointer: PointerPoint;
+}): MeasuredGridItem | null {
+  const { activeSortId, measuredItems, pointer } = params;
+  return pickClosestMeasuredItem({
+    activeId: activeSortId,
+    measuredItems,
+    pointer,
+    getId: (item) => item.sortId,
+    maxDistance: DRAG_MATCH_DISTANCE_PX,
+  });
+}
+
+function getCenterIntentTargetSortId(intent: RootShortcutDropIntent | null): string | null {
+  if (!intent) return null;
+  if (intent.type === 'merge-root-shortcuts') return intent.targetShortcutId;
+  if (intent.type === 'move-root-shortcut-into-folder') return intent.targetFolderId;
+  return null;
+}
+
+function buildReorderProjectionOffsets(params: {
+  items: GridItem[];
+  layoutSnapshot: MeasuredGridItem[] | null;
+  activeSortId: string | null;
+  hoverIntent: RootShortcutDropIntent | null;
+}): Map<string, ProjectionOffset> {
+  const { items, layoutSnapshot, activeSortId, hoverIntent } = params;
+  return buildSharedReorderProjectionOffsets({
+    items,
+    layoutSnapshot,
+    activeId: activeSortId,
+    hoveredId: hoverIntent?.type === 'reorder-root' ? hoverIntent.overShortcutId : null,
+    targetIndex: hoverIntent?.type === 'reorder-root' ? hoverIntent.targetIndex : null,
+    getId: (item) => item.sortId,
+  });
+}
+
+function ShortcutGridItem({
   sortId,
+  shortcut,
   activeDragId,
+  hoverState,
   cardVariant,
   gridColumns,
   compactShowTitle,
@@ -170,7 +334,7 @@ function SortableShortcut({
   defaultUrlFontSize,
   defaultVerticalPadding,
   forceTextWhite,
-  shortcut,
+  onPointerDown,
   onOpen,
   onContextMenu,
   selected,
@@ -178,9 +342,13 @@ function SortableShortcut({
   dragDisabled,
   disableReorderAnimation,
   firefox,
+  projectionOffset,
+  registerItemElement,
 }: {
   sortId: string;
+  shortcut: Shortcut;
   activeDragId: string | null;
+  hoverState: RootHoverState;
   cardVariant: ShortcutCardVariant;
   gridColumns: number;
   compactShowTitle: boolean;
@@ -192,7 +360,7 @@ function SortableShortcut({
   defaultUrlFontSize: number;
   defaultVerticalPadding: number;
   forceTextWhite: boolean;
-  shortcut: Shortcut;
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   selected: boolean;
@@ -200,65 +368,39 @@ function SortableShortcut({
   dragDisabled: boolean;
   disableReorderAnimation: boolean;
   firefox: boolean;
+  projectionOffset?: ProjectionOffset | null;
+  registerItemElement: (element: HTMLDivElement | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: sortId,
-    disabled: dragDisabled,
-  });
-  const isActiveDragItem = isDragging || activeDragId === sortId;
-  const showDragPlaceholder = activeDragId === sortId;
-  const compactPlaceholderHeight = compactIconSize + 24;
+  const isDragging = activeDragId === sortId;
   const defaultPlaceholderHeight = defaultIconSize + defaultVerticalPadding * 2;
-  const draggableProps = dragDisabled ? {} : { ...attributes, ...listeners };
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition: disableReorderAnimation
-      ? undefined
-      : (isActiveDragItem ? undefined : (transition || CARD_SETTLE_TRANSITION)),
-    willChange: !firefox && (isActiveDragItem || Boolean(transform)) ? 'transform' : undefined,
-  };
+  const isHovered = hoverState?.type === 'item' && hoverState.sortId === sortId;
+  const hoverEdge = isHovered ? hoverState.edge : null;
+  const centerPreviewActive = hoverEdge === 'center';
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...draggableProps}
-      className={`relative ${!firefox ? 'will-change-transform ' : ''}${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'} ${
-        selectionMode && !selected ? 'opacity-75' : ''
-      }`}
-      data-shortcut-grid-columns={gridColumns}
-      data-shortcut-drag-item="true"
-      data-testid={`shortcut-card-${sortId}`}
-      data-shortcut-id={shortcut.id}
-      data-shortcut-title={shortcut.title}
-    >
-      {showDragPlaceholder ? (
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none rounded-xl border-2 border-dashed border-primary/45 bg-primary/10 ${
-            cardVariant === 'compact' ? 'mx-auto' : 'w-full'
-          }`}
-          style={cardVariant === 'compact'
-            ? { width: compactIconSize, height: compactPlaceholderHeight }
-            : { height: defaultPlaceholderHeight }}
-        />
-      ) : (
-        <ShortcutCardRenderer
-          variant={cardVariant}
-          compactShowTitle={compactShowTitle}
-          compactIconSize={compactIconSize}
-          iconCornerRadius={iconCornerRadius}
-          compactTitleFontSize={compactTitleFontSize}
-          defaultIconSize={defaultIconSize}
-          defaultTitleFontSize={defaultTitleFontSize}
-          defaultUrlFontSize={defaultUrlFontSize}
-          defaultVerticalPadding={defaultVerticalPadding}
-          forceTextWhite={forceTextWhite}
-          shortcut={shortcut}
-          onOpen={onOpen}
-          onContextMenu={onContextMenu}
-        />
-      )}
-      {selectionMode ? (
+    <DraggableShortcutItemFrame
+      cardVariant={cardVariant}
+      compactIconSize={compactIconSize}
+      iconCornerRadius={iconCornerRadius}
+      defaultPlaceholderHeight={defaultPlaceholderHeight}
+      isDragging={isDragging}
+      hideDragPlaceholder
+      centerPreviewActive={centerPreviewActive}
+      projectionOffset={projectionOffset}
+      disableReorderAnimation={disableReorderAnimation}
+      firefox={firefox}
+      dimmed={selectionMode && !selected}
+      dragDisabled={dragDisabled}
+      registerElement={registerItemElement}
+      onPointerDown={onPointerDown}
+      frameProps={{
+        'data-shortcut-grid-columns': gridColumns,
+        'data-shortcut-drag-item': 'true',
+        'data-testid': `shortcut-card-${sortId}`,
+        'data-shortcut-id': shortcut.id,
+        'data-shortcut-title': shortcut.title,
+      }}
+      selectionOverlay={selectionMode ? (
         <div
           className="pointer-events-none absolute inset-0 rounded-xl"
           aria-hidden="true"
@@ -270,9 +412,26 @@ function SortableShortcut({
           ) : null}
         </div>
       ) : null}
-    </div>
+    >
+      <ShortcutCardRenderer
+        variant={cardVariant}
+        compactShowTitle={compactShowTitle}
+        compactIconSize={compactIconSize}
+        iconCornerRadius={iconCornerRadius}
+        compactTitleFontSize={compactTitleFontSize}
+        defaultIconSize={defaultIconSize}
+        defaultTitleFontSize={defaultTitleFontSize}
+        defaultUrlFontSize={defaultUrlFontSize}
+        defaultVerticalPadding={defaultVerticalPadding}
+        forceTextWhite={forceTextWhite}
+        shortcut={shortcut}
+        onOpen={onOpen}
+        onContextMenu={onContextMenu}
+      />
+    </DraggableShortcutItemFrame>
   );
 }
+
 interface ShortcutGridProps {
   containerHeight: number;
   bottomInset?: number;
@@ -282,6 +441,7 @@ interface ShortcutGridProps {
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, shortcutIndex: number, shortcut: Shortcut) => void;
   onShortcutReorder: (nextShortcuts: Shortcut[]) => void;
+  onShortcutDropIntent?: (intent: RootShortcutDropIntent) => void;
   onGridContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   cardVariant?: ShortcutCardVariant;
   compactShowTitle?: boolean;
@@ -300,9 +460,11 @@ interface ShortcutGridProps {
   selectionMode?: boolean;
   selectedShortcutIndexes?: ReadonlySet<number>;
   onToggleShortcutSelection?: (shortcutIndex: number) => void;
+  externalDragSession?: ExternalShortcutDragSession | null;
+  onExternalDragSessionConsumed?: (token: number) => void;
 }
 
-export const ShortcutGrid = React.memo(function ShortcutGrid({ 
+export const ShortcutGrid = React.memo(function ShortcutGrid({
   containerHeight,
   bottomInset = 0,
   shortcuts,
@@ -311,6 +473,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   onShortcutOpen,
   onShortcutContextMenu,
   onShortcutReorder,
+  onShortcutDropIntent,
   onGridContextMenu,
   cardVariant = DEFAULT_SHORTCUT_CARD_VARIANT,
   compactShowTitle = true,
@@ -329,6 +492,8 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   selectionMode = false,
   selectedShortcutIndexes,
   onToggleShortcutSelection,
+  externalDragSession,
+  onExternalDragSessionConsumed,
 }: ShortcutGridProps) {
   const firefox = isFirefoxBuildTarget();
   const compactLayout = cardVariant === 'compact';
@@ -347,28 +512,78 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     });
   }, [shortcuts]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [dragging, setDragging] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [dragPointer, setDragPointer] = useState<PointerPoint | null>(null);
+  const [dragPreviewOffset, setDragPreviewOffset] = useState<PointerPoint | null>(null);
+  const [hoverIntent, setHoverIntent] = useState<RootShortcutDropIntent | null>(null);
+  const [dragLayoutSnapshot, setDragLayoutSnapshot] = useState<MeasuredGridItem[] | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const clearOverlayTimerRef = useRef<number | null>(null);
+  const itemElementsRef = useRef(new Map<string, HTMLDivElement>());
+  const pendingDragRef = useRef<PendingDragState | null>(null);
+  const dragSessionRef = useRef<DragSessionState | null>(null);
+  const latestPointerRef = useRef<PointerPoint | null>(null);
+  const hoverIntentRef = useRef<RootShortcutDropIntent | null>(null);
+  const activeDragIdRef = useRef<string | null>(null);
+  const centerHoverCandidateRef = useRef<CenterHoverCandidate | null>(null);
+  const dropCleanupRafRef = useRef<number | null>(null);
   const ignoreClickRef = useRef(false);
   const autoScrollContainerRef = useRef<HTMLElement | null>(null);
   const autoScrollBoundsRef = useRef<{ top: number; bottom: number } | null>(null);
   const autoScrollVelocityRef = useRef(0);
   const autoScrollRafRef = useRef<number | null>(null);
-  const pointerVelocityFrameRef = useRef<number | null>(null);
-  const pendingPointerClientYRef = useRef<number | null>(null);
+  const consumedExternalDragTokenRef = useRef<number | null>(null);
+
   const actualRows = Math.ceil(items.length / Math.max(gridColumns, 1));
   const displayRows = Math.max(actualRows, minRows);
   const rowHeight = cardVariant === 'compact'
     ? (compactIconSize + 24)
     : (defaultIconSize + defaultVerticalPadding * 2);
   const gridMinHeight = displayRows * rowHeight + Math.max(0, displayRows - 1) * rowGap;
+
   const activeDragItem = useMemo(
     () => items.find((item) => item.sortId === activeDragId) ?? null,
     [activeDragId, items],
   );
+
+  const hoverState = useMemo(
+    () => deriveHoverStateFromIntent(hoverIntent),
+    [hoverIntent],
+  );
+
+  const projectionOffsets = useMemo(
+    () => buildReorderProjectionOffsets({
+      items,
+      layoutSnapshot: dragLayoutSnapshot,
+      activeSortId: activeDragId,
+      hoverIntent,
+    }),
+    [activeDragId, dragLayoutSnapshot, hoverIntent, items],
+  );
+
+  const overlaySnapPosition = useMemo<OverlaySnapPosition | null>(() => {
+    if (!activeDragId) return null;
+    const targetSortId = getCenterIntentTargetSortId(hoverIntent);
+    if (!targetSortId) return null;
+
+    const snapshotById = new Map((dragLayoutSnapshot ?? []).map((item) => [item.sortId, item]));
+    const activeRect = snapshotById.get(activeDragId)?.rect;
+    const targetRect = snapshotById.get(targetSortId)?.rect;
+    if (!activeRect || !targetRect) return null;
+
+    return {
+      left: targetRect.left + (targetRect.width - activeRect.width) / 2,
+      top: targetRect.top + (targetRect.height - activeRect.height) / 2,
+    };
+  }, [activeDragId, dragLayoutSnapshot, hoverIntent]);
+
+  useEffect(() => {
+    activeDragIdRef.current = activeDragId;
+  }, [activeDragId]);
+
+  useEffect(() => {
+    hoverIntentRef.current = hoverIntent;
+  }, [hoverIntent]);
 
   const stopAutoScroll = useCallback(() => {
     autoScrollVelocityRef.current = 0;
@@ -376,11 +591,6 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       window.cancelAnimationFrame(autoScrollRafRef.current);
       autoScrollRafRef.current = null;
     }
-    if (pointerVelocityFrameRef.current !== null) {
-      window.cancelAnimationFrame(pointerVelocityFrameRef.current);
-      pointerVelocityFrameRef.current = null;
-    }
-    pendingPointerClientYRef.current = null;
   }, []);
 
   const refreshAutoScrollBounds = useCallback(() => {
@@ -393,8 +603,143 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     autoScrollBoundsRef.current = { top: rect.top, bottom: rect.bottom };
   }, []);
 
+  const resolveIntentFromPointer = useCallback((pointer: PointerPoint): RootShortcutDropIntent | null => {
+    const activeSortId = activeDragIdRef.current;
+    const rootElement = rootRef.current;
+    const session = dragSessionRef.current;
+    if (!activeSortId || !rootElement || !session) return null;
+
+    const measuredItems = dragLayoutSnapshot ?? measureGridItems(items, itemElementsRef.current);
+    const activeItem = measuredItems.find((item) => item.sortId === activeSortId);
+    if (!activeItem) return null;
+
+    const visualCenter = getDragVisualCenter({
+      pointer,
+      previewOffset: session.previewOffset,
+      activeRect: activeItem.rect,
+    });
+    const rootRect = rootElement.getBoundingClientRect();
+    if (
+      visualCenter.x < rootRect.left
+      || visualCenter.x > rootRect.right
+      || visualCenter.y < rootRect.top
+      || visualCenter.y > rootRect.bottom
+    ) {
+      centerHoverCandidateRef.current = null;
+      return null;
+    }
+
+    const overItem = pickOverItem({
+      activeSortId,
+      measuredItems,
+      pointer: visualCenter,
+    });
+    if (!overItem) {
+      centerHoverCandidateRef.current = null;
+      return null;
+    }
+
+    const rawIntent = resolveRootDropIntent({
+      activeSortId,
+      overSortId: overItem.sortId,
+      pointer: visualCenter,
+      overRect: overItem.rect,
+      items,
+    });
+    if (!rawIntent) {
+      centerHoverCandidateRef.current = null;
+      return null;
+    }
+
+    if (rawIntent.type === 'reorder-root') {
+      centerHoverCandidateRef.current = null;
+      return rawIntent;
+    }
+
+    const currentCandidate = centerHoverCandidateRef.current;
+    const nextCandidateType = rawIntent.type;
+    const now = window.performance.now();
+
+    if (
+      currentCandidate
+      && currentCandidate.targetSortId === overItem.sortId
+      && currentCandidate.intentType === nextCandidateType
+    ) {
+      if (now - currentCandidate.startedAt >= CENTER_INTENT_DELAY_MS) {
+        return rawIntent;
+      }
+    } else {
+      centerHoverCandidateRef.current = {
+        targetSortId: overItem.sortId,
+        intentType: nextCandidateType,
+        startedAt: now,
+      };
+    }
+
+    return buildFallbackReorderIntent({
+      activeSortId,
+      overItem,
+      pointer: visualCenter,
+      measuredItems,
+    });
+  }, [dragLayoutSnapshot, items]);
+
+  const syncHoverIntent = useCallback((pointer: PointerPoint) => {
+    latestPointerRef.current = pointer;
+    setHoverIntent(resolveIntentFromPointer(pointer));
+  }, [resolveIntentFromPointer]);
+
+  useEffect(() => {
+    if (!externalDragSession) return;
+    if (dragSessionRef.current || pendingDragRef.current) return;
+    if (consumedExternalDragTokenRef.current === externalDragSession.token) return;
+
+    const activeItem = items.find((item) => item.shortcut.id === externalDragSession.shortcutId);
+    if (!activeItem) return;
+
+    const measuredItems = measureGridItems(items, itemElementsRef.current);
+    const measuredActiveItem = measuredItems.find((item) => item.sortId === activeItem.sortId);
+    if (!measuredActiveItem) return;
+
+    const previewOffset = {
+      x: Math.max(0, Math.min(measuredActiveItem.rect.width, measuredActiveItem.rect.width * externalDragSession.anchor.xRatio)),
+      y: Math.max(0, Math.min(measuredActiveItem.rect.height, measuredActiveItem.rect.height * externalDragSession.anchor.yRatio)),
+    };
+
+    const nextSession: DragSessionState = {
+      pointerId: externalDragSession.pointerId,
+      pointerType: externalDragSession.pointerType,
+      activeId: activeItem.sortId,
+      activeSortId: activeItem.sortId,
+      pointer: externalDragSession.pointer,
+      previewOffset,
+    };
+    dragSessionRef.current = nextSession;
+    latestPointerRef.current = externalDragSession.pointer;
+    autoScrollContainerRef.current = findScrollableParent(rootRef.current);
+    refreshAutoScrollBounds();
+    autoScrollVelocityRef.current = 0;
+    document.body.style.userSelect = 'none';
+    consumedExternalDragTokenRef.current = externalDragSession.token;
+
+    setDragLayoutSnapshot(measuredItems);
+    setDragging(true);
+    setActiveDragId(activeItem.sortId);
+    setDragPreviewOffset(previewOffset);
+    setDragPointer(externalDragSession.pointer);
+    syncHoverIntent(externalDragSession.pointer);
+    onExternalDragSessionConsumed?.(externalDragSession.token);
+  }, [
+    externalDragSession,
+    items,
+    onExternalDragSessionConsumed,
+    refreshAutoScrollBounds,
+    syncHoverIntent,
+  ]);
+
   const startAutoScrollLoop = useCallback(() => {
     if (autoScrollRafRef.current !== null) return;
+
     const tick = () => {
       const container = autoScrollContainerRef.current;
       const velocity = autoScrollVelocityRef.current;
@@ -402,18 +747,27 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         autoScrollRafRef.current = null;
         return;
       }
+
       const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
       const nextScrollTop = Math.max(0, Math.min(maxScrollTop, container.scrollTop + velocity));
       container.scrollTop = nextScrollTop;
+
+      const pointer = latestPointerRef.current;
+      if (pointer) {
+        syncHoverIntent(pointer);
+      }
+
       autoScrollRafRef.current = window.requestAnimationFrame(tick);
     };
+
     autoScrollRafRef.current = window.requestAnimationFrame(tick);
-  }, []);
+  }, [syncHoverIntent]);
 
   const updateAutoScrollVelocity = useCallback((clientY: number) => {
     const container = autoScrollContainerRef.current;
     const bounds = autoScrollBoundsRef.current;
     if (!container || !bounds) return;
+
     let velocity = 0;
     if (clientY < bounds.top + DRAG_AUTO_SCROLL_EDGE_PX) {
       const ratio = Math.min(1, (bounds.top + DRAG_AUTO_SCROLL_EDGE_PX - clientY) / DRAG_AUTO_SCROLL_EDGE_PX);
@@ -422,22 +776,42 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       const ratio = Math.min(1, (clientY - (bounds.bottom - DRAG_AUTO_SCROLL_EDGE_PX)) / DRAG_AUTO_SCROLL_EDGE_PX);
       velocity = DRAG_AUTO_SCROLL_MAX_SPEED_PX * ratio * ratio;
     }
-    autoScrollVelocityRef.current = velocity;
-    if (Math.abs(velocity) > 0.01) startAutoScrollLoop();
-  }, [startAutoScrollLoop]);
 
-  const scheduleAutoScrollVelocityUpdate = useCallback((clientY: number) => {
-    pendingPointerClientYRef.current = clientY;
-    if (pointerVelocityFrameRef.current !== null) return;
-    pointerVelocityFrameRef.current = window.requestAnimationFrame(() => {
-      pointerVelocityFrameRef.current = null;
-      const nextClientY = pendingPointerClientYRef.current;
-      pendingPointerClientYRef.current = null;
-      if (typeof nextClientY === 'number') {
-        updateAutoScrollVelocity(nextClientY);
-      }
+    autoScrollVelocityRef.current = velocity;
+    if (Math.abs(velocity) > 0.01) {
+      startAutoScrollLoop();
+    } else {
+      stopAutoScroll();
+    }
+  }, [startAutoScrollLoop, stopAutoScroll]);
+
+  const clearDragRuntimeState = useCallback(() => {
+    pendingDragRef.current = null;
+    dragSessionRef.current = null;
+    latestPointerRef.current = null;
+    centerHoverCandidateRef.current = null;
+    setDragging(false);
+    setActiveDragId(null);
+    setDragPointer(null);
+    setDragPreviewOffset(null);
+    setHoverIntent(null);
+    setDragLayoutSnapshot(null);
+    stopAutoScroll();
+    autoScrollContainerRef.current = null;
+    autoScrollBoundsRef.current = null;
+    document.body.style.userSelect = '';
+  }, [stopAutoScroll]);
+
+  const scheduleDragCleanup = useCallback(() => {
+    if (dropCleanupRafRef.current !== null) {
+      window.cancelAnimationFrame(dropCleanupRafRef.current);
+    }
+
+    dropCleanupRafRef.current = window.requestAnimationFrame(() => {
+      dropCleanupRafRef.current = null;
+      clearDragRuntimeState();
     });
-  }, [updateAutoScrollVelocity]);
+  }, [clearDragRuntimeState]);
 
   useEffect(() => {
     if (dragging) {
@@ -449,47 +823,133 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       }, 120);
       onDragEnd?.();
     }
-  }, [dragging, onDragStart, onDragEnd]);
+  }, [dragging, onDragEnd, onDragStart]);
 
   useEffect(() => () => {
-    if (clearOverlayTimerRef.current !== null) {
-      window.clearTimeout(clearOverlayTimerRef.current);
-      clearOverlayTimerRef.current = null;
+    if (dropCleanupRafRef.current !== null) {
+      window.cancelAnimationFrame(dropCleanupRafRef.current);
+      dropCleanupRafRef.current = null;
     }
-    stopAutoScroll();
-  }, [stopAutoScroll]);
+    clearDragRuntimeState();
+  }, [clearDragRuntimeState]);
 
   useEffect(() => {
-    if (!dragging) {
-      stopAutoScroll();
-      autoScrollBoundsRef.current = null;
-      return;
-    }
     const handlePointerMove = (event: PointerEvent) => {
-      scheduleAutoScrollVelocityUpdate(event.clientY);
+      const pending = pendingDragRef.current;
+      const session = dragSessionRef.current;
+
+      if (pending && event.pointerId === pending.pointerId) {
+        const nextPointer = { x: event.clientX, y: event.clientY };
+        pending.current = nextPointer;
+
+        if (Math.hypot(nextPointer.x - pending.origin.x, nextPointer.y - pending.origin.y) < DRAG_ACTIVATION_DISTANCE_PX) {
+          return;
+        }
+
+        const nextSession: DragSessionState = {
+          pointerId: pending.pointerId,
+          pointerType: pending.pointerType,
+          activeId: pending.activeSortId,
+          activeSortId: pending.activeSortId,
+          pointer: nextPointer,
+          previewOffset: pending.previewOffset,
+        };
+        dragSessionRef.current = nextSession;
+        pendingDragRef.current = null;
+
+        if (dropCleanupRafRef.current !== null) {
+          window.cancelAnimationFrame(dropCleanupRafRef.current);
+          dropCleanupRafRef.current = null;
+        }
+
+        autoScrollContainerRef.current = findScrollableParent(rootRef.current);
+        refreshAutoScrollBounds();
+        autoScrollVelocityRef.current = 0;
+        document.body.style.userSelect = 'none';
+        setDragLayoutSnapshot(measureGridItems(items, itemElementsRef.current));
+
+        setDragging(true);
+        setActiveDragId(nextSession.activeSortId);
+        setDragPreviewOffset(nextSession.previewOffset);
+        setDragPointer(nextPointer);
+        syncHoverIntent(nextPointer);
+        event.preventDefault();
+        return;
+      }
+
+      if (!session || event.pointerId !== session.pointerId) return;
+
+      const nextPointer = { x: event.clientX, y: event.clientY };
+      session.pointer = nextPointer;
+      setDragPointer(nextPointer);
+      updateAutoScrollVelocity(nextPointer.y);
+      syncHoverIntent(nextPointer);
+      event.preventDefault();
     };
-    const handleTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0];
-      if (touch) scheduleAutoScrollVelocityUpdate(touch.clientY);
+
+    const finishPointerInteraction = (event: PointerEvent) => {
+      const pending = pendingDragRef.current;
+      const session = dragSessionRef.current;
+
+      if (pending && event.pointerId === pending.pointerId) {
+        pendingDragRef.current = null;
+        return;
+      }
+
+      if (!session || event.pointerId !== session.pointerId) return;
+
+      const finalIntent = hoverIntentRef.current;
+      if (!finalIntent) {
+        clearDragRuntimeState();
+        return;
+      }
+
+      if (onShortcutDropIntent) {
+        onShortcutDropIntent(finalIntent);
+        scheduleDragCleanup();
+        return;
+      }
+
+      if (finalIntent.type !== 'reorder-root') {
+        scheduleDragCleanup();
+        return;
+      }
+      const activeIndex = items.findIndex((item) => item.shortcut.id === finalIntent.activeShortcutId);
+      if (activeIndex < 0) {
+        clearDragRuntimeState();
+        return;
+      }
+      const next = [...items];
+      const [moved] = next.splice(activeIndex, 1);
+      next.splice(finalIntent.targetIndex, 0, moved);
+      onShortcutReorder(next.map((item) => item.shortcut));
+      scheduleDragCleanup();
     };
-    const handleWindowResize = () => {
-      refreshAutoScrollBounds();
-    };
-    refreshAutoScrollBounds();
-    window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('resize', handleWindowResize, { passive: true });
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', finishPointerInteraction, { passive: true });
+    window.addEventListener('pointercancel', finishPointerInteraction, { passive: true });
+
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('pointerup', finishPointerInteraction);
+      window.removeEventListener('pointercancel', finishPointerInteraction);
     };
-  }, [dragging, refreshAutoScrollBounds, scheduleAutoScrollVelocityUpdate, stopAutoScroll]);
+  }, [
+    clearDragRuntimeState,
+    items,
+    onShortcutDropIntent,
+    onShortcutReorder,
+    refreshAutoScrollBounds,
+    scheduleDragCleanup,
+    syncHoverIntent,
+    updateAutoScrollVelocity,
+  ]);
 
   return (
-    <div 
+    <div
       ref={rootRef}
-      className="relative w-full" 
+      className="relative w-full"
       data-testid="shortcut-grid"
       style={{
         minHeight: Math.max(containerHeight, gridMinHeight),
@@ -497,144 +957,127 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       }}
       onContextMenu={onGridContextMenu}
     >
-      <DndContext 
-        sensors={sensors}
-        autoScroll={false}
-        onDragStart={({ active }) => {
-          if (selectionMode) return;
-          if (clearOverlayTimerRef.current !== null) {
-            window.clearTimeout(clearOverlayTimerRef.current);
-            clearOverlayTimerRef.current = null;
-          }
-          autoScrollContainerRef.current = findScrollableParent(rootRef.current);
-          refreshAutoScrollBounds();
-          autoScrollVelocityRef.current = 0;
-          setDragging(true);
-          setActiveDragId(String(active.id));
-        }}
-        onDragCancel={() => {
-          if (selectionMode) return;
-          if (clearOverlayTimerRef.current !== null) {
-            window.clearTimeout(clearOverlayTimerRef.current);
-            clearOverlayTimerRef.current = null;
-          }
-          stopAutoScroll();
-          autoScrollContainerRef.current = null;
-          autoScrollBoundsRef.current = null;
-          setDragging(false);
-          setActiveDragId(null);
-        }}
-        onDragEnd={({ active, over }) => {
-          if (selectionMode) return;
-          stopAutoScroll();
-          autoScrollContainerRef.current = null;
-          autoScrollBoundsRef.current = null;
-          setDragging(false);
-          if (clearOverlayTimerRef.current !== null) {
-            window.clearTimeout(clearOverlayTimerRef.current);
-          }
-          clearOverlayTimerRef.current = window.setTimeout(() => {
-            setActiveDragId(null);
-            clearOverlayTimerRef.current = null;
-          }, disableReorderAnimation ? 0 : DRAG_DROP_ANIMATION_MS);
-          if (!active || !over || active.id === over.id) return;
-          const oldIndex = items.findIndex(i => i.sortId === String(active.id));
-          const newIndex = items.findIndex(i => i.sortId === String(over.id));
-          if (oldIndex < 0 || newIndex < 0) return;
-          const next = arrayMove(items, oldIndex, newIndex);
-          onShortcutReorder(next.map((item) => item.shortcut));
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(gridColumns, 1)}, minmax(0, 1fr))`,
+          columnGap: compactLayout ? '12px' : '8px',
+          rowGap: `${rowGap}px`,
+          touchAction: 'pan-y',
         }}
       >
-        <SortableContext items={items.map(i => i.sortId)} strategy={rectSortingStrategy}>
-          <div 
-            className="grid"
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(gridColumns, 1)}, minmax(0, 1fr))`,
-              columnGap: compactLayout ? '12px' : '8px',
-              rowGap: `${rowGap}px`,
-              touchAction: 'pan-y',
+        {items.map((item) => (
+          <ShortcutGridItem
+            key={item.sortId}
+            sortId={item.sortId}
+            shortcut={item.shortcut}
+            activeDragId={activeDragId}
+            hoverState={hoverState}
+            cardVariant={cardVariant}
+            gridColumns={gridColumns}
+            compactShowTitle={compactShowTitle}
+            compactIconSize={compactIconSize}
+            iconCornerRadius={iconCornerRadius}
+            compactTitleFontSize={compactTitleFontSize}
+            defaultIconSize={defaultIconSize}
+            defaultTitleFontSize={defaultTitleFontSize}
+            defaultUrlFontSize={defaultUrlFontSize}
+            defaultVerticalPadding={defaultVerticalPadding}
+            forceTextWhite={forceTextWhite}
+            onPointerDown={(event) => {
+              if (selectionMode) return;
+              if (event.button !== 0) return;
+              if (!event.isPrimary) return;
+
+              const rect = event.currentTarget.getBoundingClientRect();
+              pendingDragRef.current = {
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                activeId: item.sortId,
+                activeSortId: item.sortId,
+                origin: { x: event.clientX, y: event.clientY },
+                current: { x: event.clientX, y: event.clientY },
+                previewOffset: {
+                  x: Math.max(0, event.clientX - rect.left),
+                  y: Math.max(0, event.clientY - rect.top),
+                },
+              };
             }}
-          >
-            {items.map((item) => (
-              <SortableShortcut 
-                key={item.sortId}
-                sortId={item.sortId}
-                activeDragId={activeDragId}
-                cardVariant={cardVariant}
-                gridColumns={gridColumns}
-                compactShowTitle={compactShowTitle}
-                compactIconSize={compactIconSize}
-                iconCornerRadius={iconCornerRadius}
-                compactTitleFontSize={compactTitleFontSize}
-                defaultIconSize={defaultIconSize}
-                defaultTitleFontSize={defaultTitleFontSize}
-                defaultUrlFontSize={defaultUrlFontSize}
-                defaultVerticalPadding={defaultVerticalPadding}
-                forceTextWhite={forceTextWhite}
-                shortcut={item.shortcut}
-                onOpen={() => {
-                  if (ignoreClickRef.current) return;
-                  if (selectionMode) {
-                    onToggleShortcutSelection?.(item.shortcutIndex);
-                    return;
-                  }
-                  onShortcutOpen(item.shortcut);
-                }}
-                onContextMenu={(event) => { if (!ignoreClickRef.current) onShortcutContextMenu(event, item.shortcutIndex, item.shortcut); }}
-                selected={Boolean(selectedShortcutIndexes?.has(item.shortcutIndex))}
-                selectionMode={selectionMode}
-                dragDisabled={selectionMode}
-                disableReorderAnimation={disableReorderAnimation}
-                firefox={firefox}
-              />
-            ))}
-          </div>
-        </SortableContext>
-        {typeof document !== 'undefined' ? createPortal(
-          <DragOverlay
-            dropAnimation={disableReorderAnimation || firefox ? null : { duration: DRAG_DROP_ANIMATION_MS, easing: DRAG_DROP_EASING }}
-            zIndex={DRAG_OVERLAY_Z_INDEX}
-          >
-            {activeDragItem ? (
-              <div className={`pointer-events-none ${cardVariant === 'compact' ? 'flex justify-center' : 'w-full'}`}>
-                {firefox ? (
-                  <LightweightDragPreview
-                    shortcut={activeDragItem.shortcut}
-                    cardVariant={cardVariant}
-                    firefox={firefox}
-                    compactShowTitle={compactShowTitle}
-                    compactIconSize={compactIconSize}
-                    iconCornerRadius={iconCornerRadius}
-                    compactTitleFontSize={compactTitleFontSize}
-                    defaultIconSize={defaultIconSize}
-                    defaultTitleFontSize={defaultTitleFontSize}
-                    defaultUrlFontSize={defaultUrlFontSize}
-                    defaultVerticalPadding={defaultVerticalPadding}
-                    forceTextWhite={forceTextWhite}
-                  />
-                ) : (
-                  <ShortcutCardRenderer
-                    variant={cardVariant}
-                    compactShowTitle={compactShowTitle}
-                    compactIconSize={compactIconSize}
-                    iconCornerRadius={iconCornerRadius}
-                    compactTitleFontSize={compactTitleFontSize}
-                    defaultIconSize={defaultIconSize}
-                    defaultTitleFontSize={defaultTitleFontSize}
-                    defaultUrlFontSize={defaultUrlFontSize}
-                    defaultVerticalPadding={defaultVerticalPadding}
-                    forceTextWhite={forceTextWhite}
-                    shortcut={activeDragItem.shortcut}
-                    onOpen={() => {}}
-                    onContextMenu={() => {}}
-                  />
-                )}
-              </div>
-            ) : null}
-          </DragOverlay>,
-          document.body,
-        ) : null}
-      </DndContext>
+            onOpen={() => {
+              if (ignoreClickRef.current) return;
+              if (selectionMode) {
+                onToggleShortcutSelection?.(item.shortcutIndex);
+                return;
+              }
+              onShortcutOpen(item.shortcut);
+            }}
+            onContextMenu={(event) => {
+              if (!ignoreClickRef.current) {
+                onShortcutContextMenu(event, item.shortcutIndex, item.shortcut);
+              }
+            }}
+            selected={Boolean(selectedShortcutIndexes?.has(item.shortcutIndex))}
+            selectionMode={selectionMode}
+            dragDisabled={selectionMode}
+            disableReorderAnimation={disableReorderAnimation}
+            firefox={firefox}
+            projectionOffset={projectionOffsets.get(item.sortId) ?? null}
+            registerItemElement={(element) => {
+              if (element) {
+                itemElementsRef.current.set(item.sortId, element);
+                return;
+              }
+              itemElementsRef.current.delete(item.sortId);
+            }}
+          />
+        ))}
+      </div>
+      {typeof document !== 'undefined' && activeDragItem && dragPointer && dragPreviewOffset ? createPortal(
+        <div
+          className="pointer-events-none fixed left-0 top-0"
+          style={{
+            zIndex: DRAG_OVERLAY_Z_INDEX,
+            transform: overlaySnapPosition
+              ? `translate(${overlaySnapPosition.left}px, ${overlaySnapPosition.top}px)`
+              : `translate(${dragPointer.x - dragPreviewOffset.x}px, ${dragPointer.y - dragPreviewOffset.y}px)`,
+            transition: overlaySnapPosition ? 'transform 120ms ease-out' : undefined,
+          }}
+        >
+          {firefox ? (
+            <LightweightDragPreview
+              shortcut={activeDragItem.shortcut}
+              cardVariant={cardVariant}
+              firefox={firefox}
+              compactShowTitle={compactShowTitle}
+              compactIconSize={compactIconSize}
+              iconCornerRadius={iconCornerRadius}
+              compactTitleFontSize={compactTitleFontSize}
+              defaultIconSize={defaultIconSize}
+              defaultTitleFontSize={defaultTitleFontSize}
+              defaultUrlFontSize={defaultUrlFontSize}
+              defaultVerticalPadding={defaultVerticalPadding}
+              forceTextWhite={forceTextWhite}
+            />
+          ) : (
+            <ShortcutCardRenderer
+              variant={cardVariant}
+              compactShowTitle={compactShowTitle}
+              compactIconSize={compactIconSize}
+              iconCornerRadius={iconCornerRadius}
+              compactTitleFontSize={compactTitleFontSize}
+              defaultIconSize={defaultIconSize}
+              defaultTitleFontSize={defaultTitleFontSize}
+              defaultUrlFontSize={defaultUrlFontSize}
+              defaultVerticalPadding={defaultVerticalPadding}
+              forceTextWhite={forceTextWhite}
+              shortcut={activeDragItem.shortcut}
+              onOpen={() => {}}
+              onContextMenu={() => {}}
+            />
+          )}
+        </div>,
+        document.body,
+      ) : null}
     </div>
   );
 });
