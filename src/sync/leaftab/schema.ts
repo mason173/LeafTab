@@ -1,5 +1,11 @@
 import type { LeafTabSyncEncryptionMetadata } from '@/utils/leafTabSyncEncryption';
-import type { Shortcut, ShortcutKind, ShortcutVisualMode, SyncablePreferences } from '@/types';
+import type {
+  Shortcut,
+  ShortcutFolderDisplayMode,
+  ShortcutKind,
+  ShortcutVisualMode,
+  SyncablePreferences,
+} from '@/types';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 
 export const LEAFTAB_SYNC_SCHEMA_VERSION = 2 as const;
@@ -48,6 +54,7 @@ export interface LeafTabSyncShortcutEntity extends LeafTabSyncBaseEntity {
   description: string;
   kind?: ShortcutKind;
   children?: Shortcut[];
+  folderDisplayMode?: ShortcutFolderDisplayMode;
   useOfficialIcon?: boolean;
   autoUseOfficialIcon?: boolean;
   officialIconAvailableAtSave?: boolean;

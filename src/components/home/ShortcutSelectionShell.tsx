@@ -42,6 +42,8 @@ type ShortcutSelectionShellProps = {
   onMoveSelectedShortcutsToScenario: (selectedIndexes: number[], targetScenarioId: string) => void;
   onMoveSelectedShortcutsToFolder: (selectedIndexes: number[], targetFolderId: string) => void;
   onDissolveFolder: (shortcutIndex: number, shortcut: Shortcut) => void;
+  showLargeFolderToggle?: boolean;
+  onSetFolderDisplayMode?: (shortcutIndex: number, shortcut: Shortcut, mode: 'small' | 'large') => void;
   children: (props: ShortcutSelectionRenderProps) => ReactNode;
 };
 
@@ -96,6 +98,8 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   onMoveSelectedShortcutsToScenario,
   onMoveSelectedShortcutsToFolder,
   onDissolveFolder,
+  showLargeFolderToggle = false,
+  onSetFolderDisplayMode,
   children,
 }: ShortcutSelectionShellProps) {
   const { t } = useTranslation();
@@ -284,6 +288,22 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                         setContextMenu(null);
                       }}
                     />
+                    {showLargeFolderToggle ? (
+                      <ContextMenuItem
+                        label={contextMenu.shortcut.folderDisplayMode === 'large'
+                          ? t('context.showAsSmallFolder', { defaultValue: '显示为小文件夹' })
+                          : t('context.showAsLargeFolder', { defaultValue: '显示为大文件夹' })}
+                        testId="shortcut-context-toggle-folder-display-mode"
+                        onSelect={() => {
+                          onSetFolderDisplayMode?.(
+                            contextMenu.shortcutIndex,
+                            contextMenu.shortcut,
+                            contextMenu.shortcut.folderDisplayMode === 'large' ? 'small' : 'large',
+                          );
+                          setContextMenu(null);
+                        }}
+                      />
+                    ) : null}
                     <ContextMenuItem
                       label={t('context.multiSelect', { defaultValue: '多选' })}
                       testId="shortcut-context-multi-select-folder"

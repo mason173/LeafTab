@@ -76,6 +76,8 @@ const SOURCE_PREVIEW_CHILD_FADE_MS = 140;
 const SOURCE_PREVIEW_HIDDEN_SCALE = 0.9;
 const SOURCE_PREVIEW_CLOSE_IN_MS = 220;
 const SOURCE_PREVIEW_CLOSE_IN_DELAY_MS = 140;
+const SOURCE_PREVIEW_CHILD_CLOSE_IN_MS = 96;
+const SOURCE_PREVIEW_CHILD_CLOSE_IN_DELAY_MS = 332;
 
 function copyRect(rect: DOMRect | OverlayRect | null | undefined): OverlayRect | null {
   if (!rect) return null;
@@ -202,17 +204,23 @@ function measureSourcePreviewMetrics(params: {
     try {
       sourceRect = copyRect(sourcePreview.getBoundingClientRect()) ?? getFallbackSourceRect(fallbackTargetRect);
 
-      Array.from({ length: 4 }).forEach((_, index) => {
-        const slotNode = document.querySelector<HTMLElement>(
-          `[data-folder-preview-parent-id="${escapedFolderId}"][data-folder-preview-index="${index}"]`,
-        );
-        const slotRect = copyRect(slotNode?.getBoundingClientRect());
-        if (slotRect) {
-          sourceChildSlotRects[index] = slotRect;
-        }
-      });
+      Array.from(
+        document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapedFolderId}"][data-folder-preview-index]`),
+      )
+        .sort((left, right) => {
+          const leftIndex = Number(left.dataset.folderPreviewIndex ?? '0');
+          const rightIndex = Number(right.dataset.folderPreviewIndex ?? '0');
+          return leftIndex - rightIndex;
+        })
+        .forEach((slotNode) => {
+          const slotIndex = Number(slotNode.dataset.folderPreviewIndex ?? '-1');
+          const slotRect = copyRect(slotNode.getBoundingClientRect());
+          if (slotIndex >= 0 && slotRect) {
+            sourceChildSlotRects[slotIndex] = slotRect;
+          }
+        });
 
-      shortcuts.slice(0, 4).forEach((child) => {
+      shortcuts.forEach((child) => {
         const escapedChildId = escapeSelectorValue(child.id);
         const childNode = document.querySelector<HTMLElement>(
           `[data-folder-preview-parent-id="${escapedFolderId}"][data-folder-preview-child-id="${escapedChildId}"]`,
@@ -289,6 +297,7 @@ export function ShortcutFolderCompactOverlay({
   const animatedTargetSnapshotsRef = useRef<Map<HTMLElement, AnimatedNodeStyleSnapshot>>(new Map());
   const closingVisiblePreviewChildIdsRef = useRef<string[]>([]);
   const closingFromScrolledViewportRef = useRef(false);
+  const hiddenSourcePreviewFolderIdRef = useRef<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   const children = useMemo(
@@ -475,11 +484,11 @@ export function ShortcutFolderCompactOverlay({
     }
   }, [metrics, mountedShortcut, open, refreshSourceMetrics, shortcut, transitionState]);
 
-  useEffect(() => {
-    if (!open || !shortcut || mountedShortcut?.id !== shortcut.id) return;
+  useLayoutEffect(() => {
+    if (!shortcut || mountedShortcut?.id !== shortcut.id) return;
     setMountedShortcut(shortcut);
     setDraftTitle(shortcut.title || '');
-  }, [mountedShortcut?.id, open, shortcut, shortcutId]);
+  }, [mountedShortcut?.id, shortcut, shortcutId]);
 
   useEffect(() => {
     if (!editingTitle) return;
@@ -668,6 +677,7 @@ export function ShortcutFolderCompactOverlay({
 
     if (hiddenSourcePreviewRef.current !== sourcePreview) {
       hiddenSourcePreviewRef.current = sourcePreview;
+      hiddenSourcePreviewFolderIdRef.current = mountedShortcut.id;
       sourcePreviewSnapshotRef.current = {
         opacity: sourcePreview.style.opacity,
         transition: sourcePreview.style.transition,
@@ -676,16 +686,20 @@ export function ShortcutFolderCompactOverlay({
         willChange: sourcePreview.style.willChange,
       };
     }
-    const previewChildrenChanged = hiddenSourcePreviewChildrenRef.current.length !== sourcePreviewChildren.length
-      || hiddenSourcePreviewChildrenRef.current.some((node, index) => node !== sourcePreviewChildren[index]);
-    if (previewChildrenChanged || !sourcePreviewChildSnapshotsRef.current) {
-      hiddenSourcePreviewChildrenRef.current = sourcePreviewChildren;
-      sourcePreviewChildSnapshotsRef.current = new Map(
-        sourcePreviewChildren.map((node) => [node, {
-          opacity: node.style.opacity,
-          transition: node.style.transition,
-        }]),
-      );
+    const previewChildSnapshots = sourcePreviewChildSnapshotsRef.current ?? new Map<
+      HTMLElement,
+      { opacity: string; transition: string }
+    >();
+    hiddenSourcePreviewChildrenRef.current = sourcePreviewChildren;
+    sourcePreviewChildren.forEach((node) => {
+      if (previewChildSnapshots.has(node)) return;
+      previewChildSnapshots.set(node, {
+        opacity: node.style.opacity,
+        transition: node.style.transition,
+      });
+    });
+    if (!sourcePreviewChildSnapshotsRef.current) {
+      sourcePreviewChildSnapshotsRef.current = previewChildSnapshots;
     }
 
     if (sourcePreviewFadeRafRef.current !== null) {
@@ -696,14 +710,20 @@ export function ShortcutFolderCompactOverlay({
     if (transitionState === 'closing') {
       const sourcePreviewFadeInMs = Math.min(SOURCE_PREVIEW_CLOSE_IN_MS, CLOSE_DURATION_MS);
       const sourcePreviewFadeInDelayMs = Math.max(0, Math.min(SOURCE_PREVIEW_CLOSE_IN_DELAY_MS, CLOSE_DURATION_MS - sourcePreviewFadeInMs));
+      const sourcePreviewChildFadeInMs = Math.min(SOURCE_PREVIEW_CHILD_CLOSE_IN_MS, CLOSE_DURATION_MS);
+      const sourcePreviewChildFadeInDelayMs = Math.max(
+        0,
+        Math.min(SOURCE_PREVIEW_CHILD_CLOSE_IN_DELAY_MS, CLOSE_DURATION_MS - sourcePreviewChildFadeInMs),
+      );
       sourcePreview.style.transformOrigin = 'center center';
       sourcePreview.style.willChange = 'opacity, transform';
       sourcePreview.style.transition = `opacity ${sourcePreviewFadeInMs}ms ${EASING} ${sourcePreviewFadeInDelayMs}ms, transform ${sourcePreviewFadeInMs}ms ${EASING} ${sourcePreviewFadeInDelayMs}ms`;
       sourcePreview.style.opacity = sourcePreviewSnapshotRef.current?.opacity || '1';
       sourcePreview.style.transform = sourcePreviewSnapshotRef.current?.transform || 'scale(1)';
       sourcePreviewChildren.forEach((node) => {
-        node.style.transition = 'none';
-        node.style.opacity = '0';
+        const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
+        node.style.transition = `opacity ${sourcePreviewChildFadeInMs}ms ${EASING} ${sourcePreviewChildFadeInDelayMs}ms`;
+        node.style.opacity = snapshotEntry?.opacity || '1';
       });
       return;
     }
@@ -728,6 +748,7 @@ export function ShortcutFolderCompactOverlay({
     if (mountedShortcut) return;
     const sourcePreview = hiddenSourcePreviewRef.current;
     const snapshot = sourcePreviewSnapshotRef.current;
+    const hiddenFolderId = hiddenSourcePreviewFolderIdRef.current;
     if (sourcePreview && snapshot) {
       sourcePreview.style.opacity = snapshot.opacity;
       sourcePreview.style.transition = snapshot.transition;
@@ -735,13 +756,23 @@ export function ShortcutFolderCompactOverlay({
       sourcePreview.style.transformOrigin = snapshot.transformOrigin;
       sourcePreview.style.willChange = snapshot.willChange;
     }
-    hiddenSourcePreviewChildrenRef.current.forEach((node) => {
+    const currentPreviewChildren = hiddenFolderId
+      ? Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapeSelectorValue(hiddenFolderId)}"]`),
+        )
+      : [];
+    const nodesToRestore = new Set<HTMLElement>([
+      ...hiddenSourcePreviewChildrenRef.current,
+      ...currentPreviewChildren,
+    ]);
+    nodesToRestore.forEach((node) => {
       const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
       node.style.opacity = snapshotEntry?.opacity || '';
       node.style.transition = snapshotEntry?.transition || '';
     });
     hiddenSourcePreviewRef.current = null;
     hiddenSourcePreviewChildrenRef.current = [];
+    hiddenSourcePreviewFolderIdRef.current = null;
     sourcePreviewSnapshotRef.current = null;
     sourcePreviewChildSnapshotsRef.current = null;
   }, [mountedShortcut]);
@@ -961,8 +992,8 @@ export function ShortcutFolderCompactOverlay({
               style={{
                 borderRadius: roundedCorner,
                 backgroundColor: 'rgba(15, 18, 24, 0)',
-                border: folderDragActive ? '1.5px solid rgba(255,255,255,0.92)' : '1px solid rgba(255,255,255,0)',
-                boxShadow: folderDragActive ? '0 0 0 1px rgba(255,255,255,0.18), inset 0 0 0 1px rgba(255,255,255,0.08)' : undefined,
+                border: folderDragActive ? '2.5px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0)',
+                boxShadow: folderDragActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : undefined,
                 opacity: folderDragActive ? 1 : 0,
                 transition: `opacity 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out`,
                 pointerEvents: 'none',

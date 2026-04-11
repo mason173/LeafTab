@@ -4,18 +4,24 @@ import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 import type { ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
 
 export const SHORTCUT_DRAG_SETTLE_TRANSITION = 'transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1.12)';
+const MERGE_PREVIEW_BORDER_WIDTH_PX = 2.5;
+const MERGE_PREVIEW_BORDER_COLOR = 'rgba(255,255,255,0.3)';
 
 function MergePreviewHighlight({
   cardVariant,
-  compactIconSize,
+  compactPreviewWidth,
+  compactPreviewHeight,
   iconCornerRadius,
+  compactPreviewBorderRadius,
 }: {
   cardVariant: ShortcutCardVariant;
-  compactIconSize: number;
+  compactPreviewWidth: number;
+  compactPreviewHeight: number;
   iconCornerRadius: number;
+  compactPreviewBorderRadius?: string;
 }) {
   if (cardVariant === 'compact') {
-    const borderRadius = getShortcutIconBorderRadius(iconCornerRadius);
+    const borderRadius = compactPreviewBorderRadius || getShortcutIconBorderRadius(iconCornerRadius);
     return (
       <div
         aria-hidden="true"
@@ -23,13 +29,13 @@ function MergePreviewHighlight({
         style={{ transform: 'translateX(-50%) translateY(-4px)' }}
       >
         <div
-          className="bg-white/8 dark:bg-white/[0.06]"
+          className="bg-white/[0.04] dark:bg-white/[0.03]"
           style={{
-            width: compactIconSize + 10,
-            height: compactIconSize + 10,
+            width: compactPreviewWidth + 10,
+            height: compactPreviewHeight + 10,
             borderRadius: `calc(${borderRadius} + 6px)`,
-            border: '1.5px solid rgba(255,255,255,0.92)',
-            boxShadow: '0 0 0 1px rgba(0,0,0,0.22), 0 12px 26px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.14)',
+            border: `${MERGE_PREVIEW_BORDER_WIDTH_PX}px solid ${MERGE_PREVIEW_BORDER_COLOR}`,
+            boxShadow: '0 12px 26px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05)',
           }}
         />
       </div>
@@ -41,8 +47,8 @@ function MergePreviewHighlight({
       aria-hidden="true"
       className="pointer-events-none absolute inset-[-4px] z-10 rounded-[22px] bg-white/[0.07] dark:bg-white/[0.04]"
       style={{
-        border: '1.5px solid rgba(255,255,255,0.92)',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.22), 0 12px 28px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.12)',
+        border: `${MERGE_PREVIEW_BORDER_WIDTH_PX}px solid ${MERGE_PREVIEW_BORDER_COLOR}`,
+        boxShadow: '0 12px 28px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05)',
       }}
     />
   );
@@ -50,11 +56,13 @@ function MergePreviewHighlight({
 
 export function ShortcutDragPlaceholder({
   cardVariant,
-  compactIconSize,
+  compactPlaceholderWidth,
+  compactPlaceholderHeight,
   defaultPlaceholderHeight,
 }: {
   cardVariant: ShortcutCardVariant;
-  compactIconSize: number;
+  compactPlaceholderWidth: number;
+  compactPlaceholderHeight: number;
   defaultPlaceholderHeight: number;
 }) {
   return (
@@ -64,7 +72,7 @@ export function ShortcutDragPlaceholder({
         cardVariant === 'compact' ? 'mx-auto' : 'w-full'
       }`}
       style={cardVariant === 'compact'
-        ? { width: compactIconSize, height: compactIconSize + 24 }
+        ? { width: compactPlaceholderWidth, height: compactPlaceholderHeight }
         : { height: defaultPlaceholderHeight }}
     />
   );
@@ -73,6 +81,10 @@ export function ShortcutDragPlaceholder({
 type DraggableShortcutItemFrameProps = {
   cardVariant: ShortcutCardVariant;
   compactIconSize: number;
+  compactPreviewWidth?: number;
+  compactPreviewHeight?: number;
+  compactPlaceholderHeight?: number;
+  compactPreviewBorderRadius?: string;
   iconCornerRadius: number;
   defaultPlaceholderHeight: number;
   isDragging: boolean;
@@ -95,6 +107,10 @@ type DraggableShortcutItemFrameProps = {
 export function DraggableShortcutItemFrame({
   cardVariant,
   compactIconSize,
+  compactPreviewWidth = compactIconSize,
+  compactPreviewHeight = compactIconSize,
+  compactPlaceholderHeight = compactIconSize + 24,
+  compactPreviewBorderRadius,
   iconCornerRadius,
   defaultPlaceholderHeight,
   isDragging,
@@ -143,14 +159,17 @@ export function DraggableShortcutItemFrame({
         {centerPreviewActive ? (
           <MergePreviewHighlight
             cardVariant={cardVariant}
-            compactIconSize={compactIconSize}
+            compactPreviewWidth={compactPreviewWidth}
+            compactPreviewHeight={compactPreviewHeight}
+            compactPreviewBorderRadius={compactPreviewBorderRadius}
             iconCornerRadius={iconCornerRadius}
           />
         ) : null}
         {isDragging && !hideDragPlaceholder ? (
           <ShortcutDragPlaceholder
             cardVariant={cardVariant}
-            compactIconSize={compactIconSize}
+            compactPlaceholderWidth={compactPreviewWidth}
+            compactPlaceholderHeight={compactPlaceholderHeight}
             defaultPlaceholderHeight={defaultPlaceholderHeight}
           />
         ) : isDragging ? null : children}

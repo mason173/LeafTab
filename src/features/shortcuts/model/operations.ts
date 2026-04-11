@@ -57,6 +57,10 @@ function moveItem<T>(items: readonly T[], fromIndex: number, toIndex: number): T
   return next;
 }
 
+function isLargeFolderShortcut(shortcut: Shortcut): boolean {
+  return Boolean(isShortcutFolder(shortcut) && shortcut.folderDisplayMode === 'large');
+}
+
 export function mergeShortcutsIntoNewFolder(
   shortcuts: readonly Shortcut[],
   path: ShortcutContainerPath,
@@ -154,6 +158,48 @@ export function reorderShortcutWithinContainer(
   const clampedTargetIndex = Math.min(Math.max(targetIndex, 0), Math.max(container.length - 1, 0));
   const nextContainerShortcuts = moveItem(container, currentIndex, clampedTargetIndex);
   return replaceContainerShortcuts(shortcuts, path, nextContainerShortcuts);
+}
+
+export function reorderRootShortcutPreservingLargeFolderPositions(
+  shortcuts: readonly Shortcut[],
+  shortcutId: string,
+  targetIndex: number,
+): Shortcut[] | null {
+  const activeShortcut = shortcuts.find((shortcut) => shortcut.id === shortcutId);
+  if (!activeShortcut || isLargeFolderShortcut(activeShortcut)) return null;
+
+  const smallPositions = shortcuts.flatMap((shortcut, index) => (
+    isLargeFolderShortcut(shortcut) ? [] : [index]
+  ));
+  if (smallPositions.length === 0) return null;
+
+  const targetSmallOrdinal = (() => {
+    const exactOrdinal = smallPositions.indexOf(targetIndex);
+    if (exactOrdinal >= 0) return exactOrdinal;
+    return smallPositions.filter((position) => position < targetIndex).length;
+  })();
+
+  const remainingSmallShortcuts = shortcuts.filter(
+    (shortcut) => !isLargeFolderShortcut(shortcut) && shortcut.id !== shortcutId,
+  );
+  const clampedTargetSmallOrdinal = Math.max(0, Math.min(targetSmallOrdinal, remainingSmallShortcuts.length));
+  const projectedSmallShortcuts = [...remainingSmallShortcuts];
+  projectedSmallShortcuts.splice(clampedTargetSmallOrdinal, 0, activeShortcut);
+
+  let smallCursor = 0;
+  let changed = false;
+  const nextShortcuts = shortcuts.map((shortcut) => {
+    if (isLargeFolderShortcut(shortcut)) return shortcut;
+    const nextShortcut = projectedSmallShortcuts[smallCursor];
+    if (!nextShortcut) return shortcut;
+    if (nextShortcut.id !== shortcut.id) {
+      changed = true;
+    }
+    smallCursor += 1;
+    return nextShortcut;
+  });
+
+  return changed ? nextShortcuts : null;
 }
 
 export function extractShortcutFromFolder(

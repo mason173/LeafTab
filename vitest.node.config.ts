@@ -19,6 +19,7 @@ export default defineConfig(async () => {
         'src/sync/leaftab/bookmarks.test.ts',
         'src/sync/leaftab/engine.test.ts',
         'src/sync/leaftab/fileMap.test.ts',
+        'src/sync/leaftab/legacySingleFileCompat.test.ts',
         'src/sync/leaftab/legacyWebdavMigration.test.ts',
         'src/sync/leaftab/localBackup.test.ts',
         'src/sync/leaftab/merge.test.ts',

@@ -58,6 +58,7 @@ const normalizeShortcutList = (
         url: '',
         icon: '',
         kind: 'folder',
+        folderDisplayMode: candidate.folderDisplayMode === 'large' ? 'large' : 'small',
         children: normalizeShortcutList(
           Array.isArray(candidate.children) ? candidate.children : [],
           `${scenarioId}/${nextId}`,

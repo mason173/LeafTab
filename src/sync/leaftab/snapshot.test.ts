@@ -147,4 +147,50 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
       }),
     ]);
   });
+
+  it('preserves folder display mode through a sync snapshot round trip', () => {
+    const snapshot = buildLeafTabSyncSnapshot({
+      preferences: getDefaultSyncablePreferences(),
+      deviceId: 'device',
+      scenarioModes: [
+        {
+          id: 'work',
+          name: 'Work',
+          color: '#000000',
+          icon: 'briefcase',
+        },
+      ],
+      scenarioShortcuts: {
+        work: [
+          {
+            id: 'folder-large',
+            title: 'Large Folder',
+            url: '',
+            icon: '',
+            kind: 'folder',
+            folderDisplayMode: 'large',
+            children: [
+              {
+                id: 'child-1',
+                title: 'Docs',
+                url: 'https://docs.example',
+                icon: '',
+                kind: 'link',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+
+    expect(projected.scenarioShortcuts.work).toEqual([
+      expect.objectContaining({
+        id: 'folder-large',
+        kind: 'folder',
+        folderDisplayMode: 'large',
+      }),
+    ]);
+  });
 });

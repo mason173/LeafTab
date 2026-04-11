@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScenarioShortcuts, Shortcut, ScenarioMode, ContextMenuState } from '../types';
 import { defaultScenarioModes, SCENARIO_MODES_KEY, SCENARIO_SELECTED_KEY } from "@/scenario/scenario";
@@ -399,10 +399,79 @@ export function useShortcuts(
     setShortcutDeleteOpen,
   });
 
+  const persistShortcutSnapshot = useCallback((snapshot: {
+    scenarioModes: ScenarioMode[];
+    selectedScenarioId: string;
+    scenarioShortcuts: ScenarioShortcuts;
+  }) => {
+    try {
+      persistLocalProfileSnapshot(snapshot);
+      if (userRef.current) {
+        const payload = {
+          version: 3 as const,
+          scenarioModes: snapshot.scenarioModes,
+          selectedScenarioId: snapshot.selectedScenarioId,
+          scenarioShortcuts: snapshot.scenarioShortcuts,
+        };
+        const json = JSON.stringify(payload);
+        clearLocalNeedsCloudReconcile();
+        localStorage.setItem('leaf_tab_shortcuts_cache', json);
+        if (json !== lastSavedShortcutsJson.current) {
+          localStorage.setItem('leaf_tab_sync_pending', 'true');
+        }
+      } else {
+        const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
+        if (!hasStoredCloudSession) {
+          markLocalNeedsCloudReconcile('signed_out_edit');
+        }
+      }
+    } catch {}
+  }, [lastSavedShortcutsJson]);
+
+  const setScenarioModesWithRef = useCallback<Dispatch<SetStateAction<ScenarioMode[]>>>((nextValue) => {
+    setScenarioModes((prev) => {
+      const resolved = typeof nextValue === 'function'
+        ? (nextValue as (value: ScenarioMode[]) => ScenarioMode[])(prev)
+        : nextValue;
+      scenarioModesRef.current = resolved;
+      return resolved;
+    });
+  }, []);
+
+  const setSelectedScenarioIdWithRef = useCallback<Dispatch<SetStateAction<string>>>((nextValue) => {
+    setSelectedScenarioId((prev) => {
+      const resolved = typeof nextValue === 'function'
+        ? (nextValue as (value: string) => string)(prev)
+        : nextValue;
+      selectedScenarioIdRef.current = resolved;
+      persistShortcutSnapshot({
+        scenarioModes: scenarioModesRef.current,
+        selectedScenarioId: resolved,
+        scenarioShortcuts: scenarioShortcutsRef.current,
+      });
+      return resolved;
+    });
+  }, [persistShortcutSnapshot]);
+
+  const setScenarioShortcutsWithRef = useCallback<Dispatch<SetStateAction<ScenarioShortcuts>>>((nextValue) => {
+    setScenarioShortcuts((prev) => {
+      const resolved = typeof nextValue === 'function'
+        ? (nextValue as (value: ScenarioShortcuts) => ScenarioShortcuts)(prev)
+        : nextValue;
+      scenarioShortcutsRef.current = resolved;
+      persistShortcutSnapshot({
+        scenarioModes: scenarioModesRef.current,
+        selectedScenarioId: selectedScenarioIdRef.current,
+        scenarioShortcuts: resolved,
+      });
+      return resolved;
+    });
+  }, [persistShortcutSnapshot]);
+
   return {
-    scenarioModes, setScenarioModes,
-    selectedScenarioId, setSelectedScenarioId,
-    scenarioShortcuts, setScenarioShortcuts,
+    scenarioModes, setScenarioModes: setScenarioModesWithRef,
+    selectedScenarioId, setSelectedScenarioId: setSelectedScenarioIdWithRef,
+    scenarioShortcuts, setScenarioShortcuts: setScenarioShortcutsWithRef,
     cloudSyncInitialized: legacyCloudRuntimeEnabled ? cloudSyncInitialized : Boolean(user), setCloudSyncInitialized,
     cloudSyncState,
     userRole, setUserRole,

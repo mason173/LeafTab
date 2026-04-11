@@ -119,7 +119,7 @@ describe('resolveRootDropIntent', () => {
     });
   });
 
-  it('treats a near-center drop as reorder instead of merge', () => {
+  it('treats an edge-biased drop as reorder instead of merge', () => {
     const items = createItems([
       createLink('a', 'Alpha'),
       createLink('b', 'Beta'),
@@ -129,7 +129,7 @@ describe('resolveRootDropIntent', () => {
     expect(resolveRootDropIntent({
       activeSortId: 'a',
       overSortId: 'b',
-      pointer: { x: 264, y: 150 },
+      pointer: { x: 281, y: 150 },
       overRect: baseRect,
       items,
     })).toEqual({
@@ -138,6 +138,64 @@ describe('resolveRootDropIntent', () => {
       overShortcutId: 'b',
       targetIndex: 1,
       edge: 'after',
+    });
+  });
+
+  it('uses the compact preview rect for center merge detection', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ]);
+    const compactCardRect = {
+      ...baseRect,
+      height: 124,
+      bottom: 224,
+    };
+    const compactPreviewRect = {
+      ...baseRect,
+      height: 100,
+      bottom: 200,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 250, y: 132 },
+      overRect: compactCardRect,
+      overCenterRect: compactPreviewRect,
+      items,
+    })).toEqual({
+      type: 'merge-root-shortcuts',
+      activeShortcutId: 'a',
+      targetShortcutId: 'b',
+    });
+  });
+
+  it('widens the center merge zone for compact-sized targets', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 200,
+      right: 272,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 259, y: 136 },
+      overRect: compactPreviewRect,
+      overCenterRect: compactPreviewRect,
+      items,
+    })).toEqual({
+      type: 'merge-root-shortcuts',
+      activeShortcutId: 'a',
+      targetShortcutId: 'b',
     });
   });
 });
