@@ -1,6 +1,7 @@
 /// <reference types="chrome" />
 
 import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
 import i18n from './i18n';
@@ -80,6 +81,7 @@ import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
 import { ShortcutFolderDialog } from '@/components/ShortcutFolderDialog';
 import { ShortcutFolderNameDialog } from '@/components/ShortcutFolderNameDialog';
+import type { ExternalShortcutDragSession } from '@/components/ShortcutGrid';
 import {
   LazyAppDialogs,
   LazyLeafTabSyncDialog,
@@ -129,11 +131,18 @@ import {
 import { resolveDeferredBookmarkSyncExecution } from '@/utils/deferredBookmarkSync';
 import {
   findShortcutById,
-  getShortcutChildren,
-  groupTopLevelShortcutsIntoFolder,
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
+import { ROOT_SHORTCUTS_PATH } from '@/features/shortcuts/model/paths';
+import {
+  dissolveFolder,
+  extractShortcutFromFolder,
+  mergeShortcutsIntoNewFolder,
+  moveShortcutsIntoFolder,
+  reorderShortcutWithinContainer,
+} from '@/features/shortcuts/model/operations';
+import type { FolderShortcutDropIntent, RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -698,6 +707,7 @@ export default function App() {
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
+  const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
@@ -804,7 +814,7 @@ export default function App() {
           .filter((id): id is string => Boolean(id)),
       ));
 
-      const result = groupTopLevelShortcutsIntoFolder(sourceShortcuts, validIds, (folderChildren) => ({
+      const result = mergeShortcutsIntoNewFolder(sourceShortcuts, ROOT_SHORTCUTS_PATH, validIds, (folderChildren) => ({
         id: createFolderShortcutId(),
         title: t('context.newFolder', { defaultValue: '新文件夹' }),
         url: '',
@@ -837,23 +847,9 @@ export default function App() {
           .filter((index) => isShortcutLink(sourceShortcuts[index])),
       )).sort((a, b) => a - b);
       if (validIndices.length === 0) return prev;
-      const movedShortcuts = validIndices.map((index) => sourceShortcuts[index]).filter(isShortcutLink);
-      if (movedShortcuts.length === 0) return prev;
-
-      let targetFound = false;
-      const selectedSet = new Set(validIndices);
-      const nextShortcuts = sourceShortcuts
-        .filter((_, index) => !selectedSet.has(index))
-        .map((shortcut) => {
-          if (shortcut.id !== targetFolderId || !isShortcutFolder(shortcut)) return shortcut;
-          targetFound = true;
-          return {
-            ...shortcut,
-            children: [...getShortcutChildren(shortcut), ...movedShortcuts],
-          };
-        });
-
-      if (!targetFound) return prev;
+      const shortcutIds = validIndices.map((index) => sourceShortcuts[index]?.id).filter((id): id is string => Boolean(id));
+      const nextShortcuts = moveShortcutsIntoFolder(sourceShortcuts, ROOT_SHORTCUTS_PATH, shortcutIds, targetFolderId);
+      if (!nextShortcuts) return prev;
       return {
         ...prev,
         [selectedScenarioId]: nextShortcuts,
@@ -862,22 +858,82 @@ export default function App() {
     if (!user) localDirtyRef.current = true;
   }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
-  const handleDissolveFolder = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
-    if (!isShortcutFolder(shortcut)) return;
-    const folderChildren = getShortcutChildren(shortcut);
+  const handleRootShortcutDropIntent = useCallback((intent: RootShortcutDropIntent) => {
+    let createdFolderId = '';
+    let changed = false;
+
     setScenarioShortcuts((prev) => {
       const sourceShortcuts = prev[selectedScenarioId] ?? [];
-      const resolvedIndex = sourceShortcuts[shortcutIndex]?.id === shortcut.id
-        ? shortcutIndex
-        : sourceShortcuts.findIndex((item) => item.id === shortcut.id);
-      if (resolvedIndex < 0) return prev;
+      let nextShortcuts: Shortcut[] | null = null;
+
+      switch (intent.type) {
+        case 'reorder-root':
+          nextShortcuts = reorderShortcutWithinContainer(
+            sourceShortcuts,
+            ROOT_SHORTCUTS_PATH,
+            intent.activeShortcutId,
+            intent.targetIndex,
+          );
+          break;
+        case 'merge-root-shortcuts': {
+          const result = mergeShortcutsIntoNewFolder(
+            sourceShortcuts,
+            ROOT_SHORTCUTS_PATH,
+            [intent.activeShortcutId, intent.targetShortcutId],
+            (folderChildren) => ({
+              id: createFolderShortcutId(),
+              title: t('context.newFolder', { defaultValue: '新文件夹' }),
+              url: '',
+              icon: '',
+              kind: 'folder',
+              children: folderChildren,
+            }),
+          );
+          if (result) {
+            nextShortcuts = result.nextShortcuts;
+            createdFolderId = result.folder.id;
+          }
+          break;
+        }
+        case 'move-root-shortcut-into-folder':
+          nextShortcuts = moveShortcutsIntoFolder(
+            sourceShortcuts,
+            ROOT_SHORTCUTS_PATH,
+            [intent.activeShortcutId],
+            intent.targetFolderId,
+          );
+          break;
+      }
+
+      if (!nextShortcuts) return prev;
+      changed = true;
       return {
         ...prev,
-        [selectedScenarioId]: [
-          ...sourceShortcuts.slice(0, resolvedIndex),
-          ...folderChildren,
-          ...sourceShortcuts.slice(resolvedIndex + 1),
-        ],
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+
+    if (!changed) return;
+    if (!user) localDirtyRef.current = true;
+    if (createdFolderId) {
+      setEditingFolderId(createdFolderId);
+      setFolderNameDialogOpen(true);
+    }
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, t, user]);
+
+  const handleDissolveFolder = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
+    if (!isShortcutFolder(shortcut)) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const resolvedFolderId = sourceShortcuts[shortcutIndex]?.id === shortcut.id
+        ? shortcut.id
+        : sourceShortcuts.find((item) => item.id === shortcut.id)?.id;
+      if (!resolvedFolderId) return prev;
+      const nextShortcuts = dissolveFolder(sourceShortcuts, resolvedFolderId);
+      if (!nextShortcuts) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
       };
     });
     if (!user) localDirtyRef.current = true;
@@ -886,6 +942,86 @@ export default function App() {
     }
     toast.success(t('context.folderDissolved', { defaultValue: '文件夹已解散' }));
   }, [localDirtyRef, openFolderId, selectedScenarioId, setScenarioShortcuts, t, user]);
+
+  const handleFolderShortcutDropIntent = useCallback((intent: FolderShortcutDropIntent) => {
+    let changed = false;
+
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      let nextShortcuts: Shortcut[] | null = null;
+
+      switch (intent.type) {
+        case 'reorder-folder-shortcuts':
+          nextShortcuts = reorderShortcutWithinContainer(
+            sourceShortcuts,
+            { type: 'folder', folderId: intent.folderId },
+            intent.shortcutId,
+            intent.targetIndex,
+          );
+          break;
+        case 'extract-folder-shortcut': {
+          const folderIndex = sourceShortcuts.findIndex((shortcut) => shortcut.id === intent.folderId);
+          const targetIndex = folderIndex >= 0 ? folderIndex + 1 : sourceShortcuts.length;
+          nextShortcuts = extractShortcutFromFolder(
+            sourceShortcuts,
+            intent.folderId,
+            intent.shortcutId,
+            ROOT_SHORTCUTS_PATH,
+            targetIndex,
+          );
+          break;
+        }
+      }
+
+      if (!nextShortcuts) return prev;
+      changed = true;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+
+    if (!changed) return;
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+
+  const handleFolderExtractDragStart = useCallback((payload: {
+    folderId: string;
+    shortcutId: string;
+    pointerId: number;
+    pointerType: string;
+    pointer: { x: number; y: number };
+    anchor: { xRatio: number; yRatio: number };
+  }) => {
+    const folderIndex = shortcuts.findIndex((shortcut) => shortcut.id === payload.folderId);
+    const targetIndex = folderIndex >= 0 ? folderIndex + 1 : shortcuts.length;
+    const nextShortcuts = extractShortcutFromFolder(
+      shortcuts,
+      payload.folderId,
+      payload.shortcutId,
+      ROOT_SHORTCUTS_PATH,
+      targetIndex,
+    );
+    if (!nextShortcuts) return;
+
+    flushSync(() => {
+      setScenarioShortcuts((prev) => ({
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      }));
+      setOpenFolderId(null);
+      setExternalShortcutDragSession({
+        token: Date.now(),
+        shortcutId: payload.shortcutId,
+        pointerId: payload.pointerId,
+        pointerType: payload.pointerType,
+        pointer: payload.pointer,
+        anchor: payload.anchor,
+      });
+    });
+
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, shortcuts, user]);
 
   const handleSaveFolderName = useCallback((name: string) => {
     const nextName = name.trim();
@@ -3094,10 +3230,17 @@ export default function App() {
     onShortcutOpen: handleShortcutActivate,
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
+    onShortcutDropIntent: handleRootShortcutDropIntent,
     onGridContextMenu: handleGridContextMenu,
+    externalDragSession: externalShortcutDragSession,
+    onExternalDragSessionConsumed: (token: number) => {
+      setExternalShortcutDragSession((current) => (current?.token === token ? null : current));
+    },
   }), [
+    externalShortcutDragSession,
     handleGridContextMenu,
     handleShortcutContextMenu,
+    handleRootShortcutDropIntent,
     handleShortcutActivate,
     handleShortcutReorder,
     normalizedGridColumns,
@@ -3272,6 +3415,8 @@ export default function App() {
         shortcut={openFolderShortcut}
         iconCornerRadius={shortcutIconCornerRadius}
         onShortcutOpen={handleShortcutOpen}
+        onShortcutDropIntent={handleFolderShortcutDropIntent}
+        onExtractDragStart={handleFolderExtractDragStart}
       />
       <ShortcutFolderNameDialog
         open={folderNameDialogOpen}

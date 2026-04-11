@@ -4,6 +4,43 @@ import type { Shortcut } from '@/types';
 import { getShortcutChildren } from '@/utils/shortcutFolders';
 import { clampShortcutIconCornerRadius, getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
+function FolderPreviewTile({
+  child,
+  tileSize,
+  tileRadius,
+  iconCornerRadius,
+}: {
+  child: Shortcut;
+  tileSize: number;
+  tileRadius: number;
+  iconCornerRadius: number;
+}) {
+  return (
+    <div
+      className="overflow-hidden bg-background/80"
+      style={{ width: tileSize, height: tileSize, borderRadius: tileRadius }}
+    >
+      <ShortcutIcon
+        icon={child.icon}
+        url={child.url}
+        shortcutId={child.id}
+        size={tileSize}
+        exact
+        frame="never"
+        fallbackStyle="emptyicon"
+        fallbackLabel={child.title}
+        fallbackLetterSize={Math.max(9, Math.round(tileSize * 0.46))}
+        useOfficialIcon={child.useOfficialIcon}
+        autoUseOfficialIcon={child.autoUseOfficialIcon}
+        officialIconAvailableAtSave={child.officialIconAvailableAtSave}
+        iconRendering={child.iconRendering}
+        iconColor={child.iconColor}
+        iconCornerRadius={Math.max(8, iconCornerRadius * 0.45)}
+      />
+    </div>
+  );
+}
+
 type ShortcutFolderPreviewProps = {
   shortcut: Shortcut;
   size: number;
@@ -23,7 +60,7 @@ export function ShortcutFolderPreview({
 
   return (
     <div
-      className="relative grid grid-cols-2 gap-1 border border-border/60 bg-secondary/35 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+      className="relative grid grid-cols-2 gap-1 border border-black/10 bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
       style={{
         width: size,
         height: size,
@@ -31,38 +68,18 @@ export function ShortcutFolderPreview({
       }}
     >
       {children.length > 0 ? children.map((child) => (
-        <div
+        <FolderPreviewTile
           key={child.id}
-          className="overflow-hidden bg-background/80"
-          style={{ width: tileSize, height: tileSize, borderRadius: tileRadius }}
-        >
-          <ShortcutIcon
-            icon={child.icon}
-            url={child.url}
-            shortcutId={child.id}
-            size={tileSize}
-            exact
-            frame="never"
-            fallbackStyle="emptyicon"
-            fallbackLabel={child.title}
-            useOfficialIcon={child.useOfficialIcon}
-            autoUseOfficialIcon={child.autoUseOfficialIcon}
-            officialIconAvailableAtSave={child.officialIconAvailableAtSave}
-            iconRendering={child.iconRendering}
-            iconColor={child.iconColor}
-            iconCornerRadius={Math.max(8, iconCornerRadius * 0.45)}
-          />
-        </div>
+          child={child}
+          tileSize={tileSize}
+          tileRadius={tileRadius}
+          iconCornerRadius={iconCornerRadius}
+        />
       )) : (
         <div className="col-span-2 flex items-center justify-center text-muted-foreground" style={{ fontSize: Math.max(18, Math.round(size * 0.34)) }}>
           <RiFolderChartFill aria-hidden="true" />
         </div>
       )}
-      {allChildren.length > 0 ? (
-        <span className="absolute bottom-1.5 right-1.5 rounded-full bg-background/92 px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground shadow-sm">
-          {allChildren.length}
-        </span>
-      ) : null}
     </div>
   );
 }
