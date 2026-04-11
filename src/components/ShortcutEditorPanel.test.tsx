@@ -103,4 +103,46 @@ describe('ShortcutEditorPanel', () => {
 
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('replaces the preset palette with three custom sliders and defaults to white before manual tuning', () => {
+    prepareShortcutCustomIconMock.mockResolvedValue('data:image/png;base64,custom-icon');
+    readShortcutCustomIconMock.mockReturnValue('');
+    resolveCustomIconMock.mockResolvedValue(null);
+    resolveCustomIconFromCacheMock.mockReturnValue(null);
+    const onSave = vi.fn();
+
+    render(
+      <ShortcutEditorPanel
+        mode="add"
+        initialShortcut={{ icon: 'https://github.com/favicon.ico' }}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('shortcut-color-#F4E300')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('shortcut-modal-title'), {
+      target: { value: 'GitHub' },
+    });
+    fireEvent.change(screen.getByTestId('shortcut-modal-url'), {
+      target: { value: 'https://github.com' },
+    });
+
+    const sliders = screen.getAllByRole('slider');
+    fireEvent.keyDown(sliders[0], { key: 'ArrowRight' });
+    fireEvent.keyDown(sliders[1], { key: 'ArrowLeft' });
+    fireEvent.keyDown(sliders[2], { key: 'ArrowRight' });
+    fireEvent.click(screen.getByTestId('shortcut-modal-save'));
+
+    expect(screen.getByTestId('shortcut-color-slider-brightness')).toBeInTheDocument();
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        iconColor: '#FFFFFF',
+      }),
+      expect.objectContaining({
+        useCustomIcon: false,
+      }),
+    );
+  });
 });

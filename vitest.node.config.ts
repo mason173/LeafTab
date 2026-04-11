@@ -24,6 +24,7 @@ export default defineConfig(async () => {
         'src/sync/leaftab/merge.test.ts',
         'src/sync/leaftab/snapshot.test.ts',
         'src/sync/leaftab/snapshot.bookmarks.test.ts',
+        'src/utils/shortcutColorHsl.test.ts',
         'src/utils/shortcutIconPreferences.test.ts',
         'src/utils/cloudSyncBookmarksPolicy.test.ts',
         'src/utils/shortcutsPayload.test.ts',

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { toast } from '@/components/ui/sonner';
 import ShortcutIcon from './ShortcutIcon';
+import { ShortcutColorSlider } from './ShortcutColorSlider';
 import { useTranslation } from 'react-i18next';
 import type { Shortcut, ShortcutDraft, ShortcutVisualMode } from '@/types';
 import { extractDomainFromUrl } from '@/utils';
@@ -13,11 +14,18 @@ import {
   getShortcutIconColor,
   normalizeShortcutIconColor,
   normalizeShortcutVisualMode,
-  SHORTCUT_ICON_COLOR_PALETTE,
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import { RiCheckFill, RiPencilFill } from '@/icons/ri-compat';
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
+import {
+  hexToShortcutIconHsl,
+  normalizeShortcutIconHsl,
+  shortcutIconHslToHex,
+  type ShortcutIconHsl,
+} from '@/utils/shortcutColorHsl';
+
+const DEFAULT_SHORTCUT_ICON_COLOR = '#FFFFFF';
 
 interface ShortcutEditorPanelProps {
   mode: 'add' | 'edit';
@@ -141,7 +149,6 @@ export function ShortcutEditorPanel({
   const [useOfficialIcon, setUseOfficialIcon] = useState(false);
   const [autoUseOfficialIcon, setAutoUseOfficialIcon] = useState(true);
   const [iconRendering, setIconRendering] = useState<ShortcutVisualMode>('favicon');
-  const [iconColor, setIconColor] = useState('');
   const [officialIconAvailable, setOfficialIconAvailable] = useState(false);
   const [userAdjustedIconSource, setUserAdjustedIconSource] = useState(false);
   const [selectedSource, setSelectedSource] = useState<'official' | 'favicon' | 'letter' | 'custom'>('favicon');
@@ -149,16 +156,24 @@ export function ShortcutEditorPanel({
   const [customIconLoading, setCustomIconLoading] = useState(false);
 
   const normalizedInitialColor = normalizeShortcutIconColor(initialShortcut?.iconColor);
+  const defaultColorHsl = useMemo<ShortcutIconHsl>(() => (
+    hexToShortcutIconHsl(DEFAULT_SHORTCUT_ICON_COLOR) ?? { hue: 0, saturation: 0, lightness: 100 }
+  ), []);
   const initialTitle = initialShortcut?.title || '';
   const initialUrl = initialShortcut?.url || '';
   const initialShortcutId = typeof initialShortcut?.id === 'string' ? initialShortcut.id : '';
   const initialUseOfficialIcon = initialShortcut?.useOfficialIcon === true;
   const initialAutoUseOfficialIcon = initialShortcut?.autoUseOfficialIcon !== false;
   const initialIconRendering = normalizeShortcutVisualMode(initialShortcut?.iconRendering);
+  const initialColorHsl = useMemo<ShortcutIconHsl>(
+    () => (normalizedInitialColor ? hexToShortcutIconHsl(normalizedInitialColor) : null) ?? defaultColorHsl,
+    [defaultColorHsl, normalizedInitialColor],
+  );
   const initialCustomIconDataUrl = useMemo(
     () => (initialShortcutId ? readShortcutCustomIcon(initialShortcutId) : ''),
     [initialShortcutId],
   );
+  const [colorHsl, setColorHsl] = useState<ShortcutIconHsl>(initialColorHsl);
   const hasExplicitIconPreference = Boolean(
     initialShortcut &&
     (
@@ -176,10 +191,10 @@ export function ShortcutEditorPanel({
     setUseOfficialIcon(initialUseOfficialIcon);
     setAutoUseOfficialIcon(initialAutoUseOfficialIcon);
     setIconRendering(initialIconRendering);
-    setIconColor(normalizedInitialColor);
     setOfficialIconAvailable(false);
     setUserAdjustedIconSource(false);
     setCustomIconDataUrl(initialCustomIconDataUrl);
+    setColorHsl(initialColorHsl);
     setSelectedSource(
       initialCustomIconDataUrl
         ? 'custom'
@@ -191,6 +206,7 @@ export function ShortcutEditorPanel({
     );
   }, [
     initialAutoUseOfficialIcon,
+    initialColorHsl,
     initialCustomIconDataUrl,
     initialIconRendering,
     initialTitle,
@@ -205,13 +221,16 @@ export function ShortcutEditorPanel({
     () => (domain || url || title || '').trim().toLowerCase(),
     [domain, title, url],
   );
+  const currentColorHex = useMemo(() => (
+    shortcutIconHslToHex({
+      hue: colorHsl.hue,
+      saturation: colorHsl.saturation,
+      lightness: colorHsl.lightness,
+    })
+  ), [colorHsl.hue, colorHsl.lightness, colorHsl.saturation]);
   const effectivePreviewColor = useMemo(
-    () => getShortcutIconColor(previewColorSeed, iconColor),
-    [iconColor, previewColorSeed],
-  );
-  const selectedColor = useMemo(
-    () => normalizeShortcutIconColor(iconColor),
-    [iconColor],
+    () => getShortcutIconColor(previewColorSeed, currentColorHex),
+    [currentColorHex, previewColorSeed],
   );
   const colorSelectionDisabled = selectedSource === 'custom';
   const autoOfficialLocked = officialIconAvailable && selectedSource === 'official' && useOfficialIcon;
@@ -281,7 +300,7 @@ export function ShortcutEditorPanel({
       autoUseOfficialIcon,
       officialIconAvailableAtSave: officialIconAvailable,
       iconRendering,
-      iconColor: normalizeShortcutIconColor(iconColor),
+      iconColor: normalizeShortcutIconColor(currentColorHex),
     }, {
       useCustomIcon: selectedSource === 'custom' && Boolean(customIconDataUrl),
       customIconDataUrl: selectedSource === 'custom' ? customIconDataUrl : null,
@@ -321,7 +340,7 @@ export function ShortcutEditorPanel({
     setSelectedSource(nextSource);
   };
 
-  const handleSelectColor = (color: string) => {
+  const handleColorSliderChange = (nextValue: Partial<ShortcutIconHsl>) => {
     if (colorSelectionDisabled) return;
     setUserAdjustedIconSource(true);
     if (useOfficialIcon) {
@@ -329,7 +348,10 @@ export function ShortcutEditorPanel({
       setIconRendering('favicon');
       setSelectedSource('favicon');
     }
-    setIconColor(color);
+    setColorHsl((prev) => normalizeShortcutIconHsl({
+      ...prev,
+      ...nextValue,
+    }));
   };
 
   const handleCustomButtonClick = () => {
@@ -399,6 +421,10 @@ export function ShortcutEditorPanel({
 
   const shouldShowCustomPreviewAction = selectedSource === 'custom' && hasCustomIcon;
   const previewBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
+  const hueTrackBackground = 'linear-gradient(90deg, #FF5F5F 0%, #FFB45E 16%, #F7F36A 32%, #63E281 48%, #5AD5FF 65%, #6F74FF 82%, #FF6AAE 100%)';
+  const saturationTrackBackground = `linear-gradient(90deg, hsl(${colorHsl.hue}, 0%, 50%), hsl(${colorHsl.hue}, 100%, 50%))`;
+  const lightnessTrackBackground = 'linear-gradient(90deg, #09090B 0%, #FFFFFF 100%)';
+  const currentThumbColor = currentColorHex;
 
   const previewContent = shouldShowCustomPreviewAction ? (
     <button
@@ -508,36 +534,43 @@ export function ShortcutEditorPanel({
             testId="shortcut-auto-official"
             compact={compact}
           />
-
-            <div className={`grid w-full grid-cols-7 ${compact ? 'gap-2' : 'gap-2.5'}`}>
-            {SHORTCUT_ICON_COLOR_PALETTE.map((color) => {
-              const selected = color === selectedColor;
-              const checkColor = color === '#FFFFFF' ? '#232128' : '#FFFFFF';
-              const borderClass = selected
-                ? 'border-foreground/70 shadow-[0_0_0_2px_rgba(255,255,255,0.08)]'
-                : color === '#FFFFFF'
-                  ? 'border-border/60'
-                  : 'border-transparent';
-              return (
-                <button
-                  key={color}
-                  type="button"
-                  disabled={colorSelectionDisabled}
-                  onClick={() => handleSelectColor(color)}
-                  data-testid={`shortcut-color-${color}`}
-                  className={`mx-auto flex items-center justify-center rounded-full border transition-transform ${
-                    colorSelectionDisabled
-                      ? 'cursor-not-allowed opacity-40'
-                      : 'cursor-pointer hover:scale-105'
-                  } ${borderClass} ${compact ? 'size-9' : 'aspect-square w-full'}`}
-                  style={{ backgroundColor: color }}
-                  title={color}
-                  aria-label={color}
-                >
-                  {selected ? <RiCheckFill className="size-4" style={{ color: checkColor }} /> : null}
-                </button>
-              );
-            })}
+          <div className="flex w-full flex-col" style={{ gap: 8 }}>
+            <ShortcutColorSlider
+              label={t('shortcutModal.icon.hue', { defaultValue: '色相' })}
+              value={colorHsl.hue}
+              min={0}
+              max={360}
+              background={hueTrackBackground}
+              thumbColor={currentThumbColor}
+              disabled={colorSelectionDisabled}
+              compact={compact}
+              testId="shortcut-color-slider-hue"
+              onChange={(value) => handleColorSliderChange({ hue: value })}
+            />
+            <ShortcutColorSlider
+              label={t('shortcutModal.icon.saturation', { defaultValue: '饱和度' })}
+              value={colorHsl.saturation}
+              min={0}
+              max={100}
+              background={saturationTrackBackground}
+              thumbColor={currentThumbColor}
+              disabled={colorSelectionDisabled}
+              compact={compact}
+              testId="shortcut-color-slider-saturation"
+              onChange={(value) => handleColorSliderChange({ saturation: value })}
+            />
+            <ShortcutColorSlider
+              label={t('shortcutModal.icon.brightness', { defaultValue: '亮度' })}
+              value={colorHsl.lightness}
+              min={0}
+              max={100}
+              background={lightnessTrackBackground}
+              thumbColor={currentThumbColor}
+              disabled={colorSelectionDisabled}
+              compact={compact}
+              testId="shortcut-color-slider-brightness"
+              onChange={(value) => handleColorSliderChange({ lightness: value })}
+            />
           </div>
         </div>
       </div>
