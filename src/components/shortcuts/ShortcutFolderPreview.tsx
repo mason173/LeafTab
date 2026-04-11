@@ -47,6 +47,13 @@ type ShortcutFolderPreviewProps = {
   iconCornerRadius?: number;
 };
 
+type ShortcutFolderInlinePreviewProps = {
+  shortcut: Shortcut;
+  iconSize?: number;
+  iconCornerRadius?: number;
+  maxIcons?: number;
+};
+
 export function ShortcutFolderPreview({
   shortcut,
   size,
@@ -77,6 +84,53 @@ export function ShortcutFolderPreview({
         />
       )) : (
         <div className="col-span-2 flex items-center justify-center text-muted-foreground" style={{ fontSize: Math.max(18, Math.round(size * 0.34)) }}>
+          <RiFolderChartFill aria-hidden="true" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ShortcutFolderInlinePreview({
+  shortcut,
+  iconSize = 22,
+  iconCornerRadius = 18,
+  maxIcons = 4,
+}: ShortcutFolderInlinePreviewProps) {
+  const children = getShortcutChildren(shortcut).slice(0, Math.max(2, maxIcons));
+  const tileRadius = Math.max(6, Math.round(iconSize * 0.28));
+
+  return (
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+      {children.length > 0 ? children.map((child) => (
+        <div
+          key={child.id}
+          className="shrink-0 overflow-hidden bg-background/80"
+          style={{ width: iconSize, height: iconSize, borderRadius: tileRadius }}
+        >
+          <ShortcutIcon
+            icon={child.icon}
+            url={child.url}
+            shortcutId={child.id}
+            size={iconSize}
+            exact
+            frame="never"
+            fallbackStyle="emptyicon"
+            fallbackLabel={child.title}
+            fallbackLetterSize={Math.max(9, Math.round(iconSize * 0.44))}
+            useOfficialIcon={child.useOfficialIcon}
+            autoUseOfficialIcon={child.autoUseOfficialIcon}
+            officialIconAvailableAtSave={child.officialIconAvailableAtSave}
+            iconRendering={child.iconRendering}
+            iconColor={child.iconColor}
+            iconCornerRadius={Math.max(8, iconCornerRadius * 0.45)}
+          />
+        </div>
+      )) : (
+        <div
+          className="flex shrink-0 items-center justify-center text-muted-foreground"
+          style={{ width: iconSize, height: iconSize, fontSize: Math.max(16, Math.round(iconSize * 0.8)) }}
+        >
           <RiFolderChartFill aria-hidden="true" />
         </div>
       )}

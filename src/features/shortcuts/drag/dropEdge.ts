@@ -1,5 +1,4 @@
-import type { ClientRect } from '@dnd-kit/core';
-import type { RootDropEdge } from './types';
+import type { DragRect, RootDropEdge } from './types';
 
 // WeTab's merge zone is materially wider than our previous tiny center square.
 // Use a larger middle band so vertical near-center placements can still merge.
@@ -8,7 +7,7 @@ const DROP_CENTER_THRESHOLD_Y_RATIO = 0.25;
 const DROP_CENTER_THRESHOLD_X_MAX_PX = 24;
 const DROP_CENTER_THRESHOLD_Y_MAX_PX = 24;
 
-export function getDropEdge(pointer: { x: number; y: number }, rect: ClientRect): RootDropEdge {
+export function getDropEdge(pointer: { x: number; y: number }, rect: DragRect): RootDropEdge {
   if (rect.width <= 0 || rect.height <= 0) return 'after';
 
   const normalizedX = Math.min(1, Math.max(0, (pointer.x - rect.left) / rect.width));

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import { ShortcutFolderPreview } from './ShortcutFolderPreview';
-import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
+import { ShortcutFolderInlinePreview } from './ShortcutFolderPreview';
+import { isShortcutFolder } from '@/utils/shortcutFolders';
 
 interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
@@ -98,8 +98,33 @@ export function ShortcutCardDefault({
 }: ShortcutCardDefaultProps) {
   const firefox = isFirefoxBuildTarget();
   const folder = isShortcutFolder(shortcut);
-  const folderChildrenCount = getShortcutChildren(shortcut).length;
-  const secondaryText = folder ? `${folderChildrenCount} items` : shortcut.url;
+  const secondaryText = shortcut.url;
+
+  if (folder) {
+    const previewIconSize = Math.max(18, Math.round(iconSize * 0.66));
+
+    return (
+      <div
+        className={`relative w-full cursor-pointer select-none rounded-xl ${
+          firefox ? '' : 'transition-[background-color,border-color,box-shadow] duration-150'
+        } border border-black/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] hover:bg-white/78 dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-black/32`}
+        onClick={onOpen}
+        onContextMenu={onContextMenu}
+      >
+        <div
+          className="flex w-full items-center"
+          style={{ padding: `${verticalPadding}px 10px` }}
+        >
+          <ShortcutFolderInlinePreview
+            shortcut={shortcut}
+            iconSize={previewIconSize}
+            iconCornerRadius={iconCornerRadius}
+            maxIcons={4}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -115,30 +140,22 @@ export function ShortcutCardDefault({
           style={{ paddingTop: verticalPadding, paddingBottom: verticalPadding }}
         >
           <div className="relative shrink-0" style={{ width: iconSize, height: iconSize }}>
-            {folder ? (
-              <ShortcutFolderPreview
-                shortcut={shortcut}
-                size={iconSize}
-                iconCornerRadius={iconCornerRadius}
-              />
-            ) : (
-              <ShortcutIcon
-                icon={shortcut.icon}
-                url={shortcut.url}
-                shortcutId={shortcut.id}
-                size={iconSize}
-                frame="auto"
-                fallbackStyle="emptyicon"
-                fallbackLabel={shortcut.title}
-                fallbackLetterSize={16}
-                useOfficialIcon={shortcut.useOfficialIcon}
-                autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
-                officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
-                iconRendering={shortcut.iconRendering}
-                iconColor={shortcut.iconColor}
-                iconCornerRadius={iconCornerRadius}
-              />
-            )}
+            <ShortcutIcon
+              icon={shortcut.icon}
+              url={shortcut.url}
+              shortcutId={shortcut.id}
+              size={iconSize}
+              frame="auto"
+              fallbackStyle="emptyicon"
+              fallbackLabel={shortcut.title}
+              fallbackLetterSize={16}
+              useOfficialIcon={shortcut.useOfficialIcon}
+              autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
+              officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+              iconRendering={shortcut.iconRendering}
+              iconColor={shortcut.iconColor}
+              iconCornerRadius={iconCornerRadius}
+            />
           </div>
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">
             <ScrollingText
