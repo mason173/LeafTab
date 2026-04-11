@@ -27,6 +27,7 @@ export default defineConfig(async () => {
         'src/utils/shortcutColorHsl.test.ts',
         'src/utils/shortcutIconPreferences.test.ts',
         'src/utils/cloudSyncBookmarksPolicy.test.ts',
+        'src/utils/searchSuggestionSources.test.ts',
         'src/utils/shortcutsPayload.test.ts',
         'src/utils/rolePresetRegistry.test.ts',
         'src/utils/roleProfile.test.ts',

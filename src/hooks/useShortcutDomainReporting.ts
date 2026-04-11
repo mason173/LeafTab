@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { ScenarioShortcuts } from '../types';
 import { extractDomainFromUrl } from '../utils';
 import { resolveCustomIconFromCache, warmIconLibraryManifestCache } from '@/utils/iconLibrary';
+import { flattenScenarioShortcutLinks } from '@/utils/shortcutFolders';
 
 const DOMAIN_QUEUE_KEY = 'leaftab_domain_queue_v1';
 const DOMAIN_LAST_FLUSH_AT_KEY = 'leaftab_domain_last_flush_at';
@@ -210,19 +211,16 @@ export function useShortcutDomainReporting({
       const set = new Set(
         queue.filter((d) => d && !resolveCustomIconFromCache(d)?.url).map((d) => registrableDomain(d)).filter(Boolean)
       );
-      Object.values(scenarioShortcuts).forEach((list) => {
-        if (!Array.isArray(list)) return;
-        for (const item of list) {
-          const url = item && typeof (item as any).url === 'string' ? (item as any).url : '';
-          if (!url) continue;
-          const host = extractDomainFromUrl(url);
-          const apex = registrableDomain(host);
-          if (!apex) continue;
-          if (resolveCustomIconFromCache(apex)?.url) continue;
-          set.add(apex);
-          if (set.size >= 500) break;
-        }
-      });
+      for (const item of flattenScenarioShortcutLinks(scenarioShortcuts)) {
+        const url = item?.url || '';
+        if (!url) continue;
+        const host = extractDomainFromUrl(url);
+        const apex = registrableDomain(host);
+        if (!apex) continue;
+        if (resolveCustomIconFromCache(apex)?.url) continue;
+        set.add(apex);
+        if (set.size >= 500) break;
+      }
       if (cancelled) return;
       writeDomainQueue(Array.from(set));
       try { localStorage.setItem(DOMAIN_SEEDED_KEY, user); } catch {}

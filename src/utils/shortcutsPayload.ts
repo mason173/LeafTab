@@ -13,11 +13,75 @@ const shortHash = (value: string) => {
 
 const createFallbackShortcutId = (
   scenarioId: string,
+  kind: 'link' | 'folder',
   title: string,
   url: string,
   occurrence: number,
 ) => {
-  return `sht_${shortHash(`${scenarioId}|${title}|${url}|${occurrence}`)}`;
+  const prefix = kind === 'folder' ? 'fld' : 'sht';
+  return `${prefix}_${shortHash(`${scenarioId}|${kind}|${title}|${url}|${occurrence}`)}`;
+};
+
+const normalizeShortcutList = (
+  value: unknown[],
+  scenarioId: string,
+  usedShortcutIds: Set<string>,
+): Shortcut[] => {
+  const nextShortcuts: Shortcut[] = [];
+  const localIdentityCounts = new Map<string, number>();
+
+  value.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return;
+    const candidate = item as Partial<Shortcut>;
+    const isFolder = candidate.kind === 'folder' || Array.isArray(candidate.children);
+    const title = typeof candidate.title === 'string' ? candidate.title : '';
+    const url = isFolder ? '' : (typeof candidate.url === 'string' ? candidate.url : '');
+    const icon = typeof candidate.icon === 'string' ? candidate.icon : '';
+    const seed = `${isFolder ? 'folder' : 'link'}|${title}|${url}`;
+    const occurrence = (localIdentityCounts.get(seed) || 0) + 1;
+    localIdentityCounts.set(seed, occurrence);
+
+    const requestedId = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+    let nextId = requestedId;
+    if (!nextId || usedShortcutIds.has(nextId)) {
+      nextId = createFallbackShortcutId(scenarioId, isFolder ? 'folder' : 'link', title, url, occurrence);
+      while (usedShortcutIds.has(nextId)) {
+        nextId = createFallbackShortcutId(scenarioId, isFolder ? 'folder' : 'link', title, url, occurrence + index + 1);
+      }
+    }
+
+    usedShortcutIds.add(nextId);
+    if (isFolder) {
+      nextShortcuts.push({
+        id: nextId,
+        title,
+        url: '',
+        icon: '',
+        kind: 'folder',
+        children: normalizeShortcutList(
+          Array.isArray(candidate.children) ? candidate.children : [],
+          `${scenarioId}/${nextId}`,
+          usedShortcutIds,
+        ).filter((child) => child.kind !== 'folder'),
+      });
+      return;
+    }
+
+    nextShortcuts.push({
+      id: nextId,
+      title,
+      url,
+      icon,
+      kind: 'link',
+      useOfficialIcon: candidate.useOfficialIcon !== false,
+      autoUseOfficialIcon: candidate.autoUseOfficialIcon !== false,
+      officialIconAvailableAtSave: candidate.officialIconAvailableAtSave === true,
+      iconRendering: normalizeShortcutVisualMode(candidate.iconRendering),
+      iconColor: normalizeShortcutIconColor(candidate.iconColor),
+    });
+  });
+
+  return nextShortcuts;
 };
 
 export const normalizeScenarioModesList = (raw: unknown, unnamedLabel: string): ScenarioMode[] => {
@@ -41,43 +105,7 @@ export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
   const usedShortcutIds = new Set<string>();
   Object.entries(obj).forEach(([scenarioId, value]) => {
     if (Array.isArray(value)) {
-      const nextShortcuts: Shortcut[] = [];
-      const localIdentityCounts = new Map<string, number>();
-
-      value.forEach((item, index) => {
-        if (!item || typeof item !== 'object') return;
-        const candidate = item as Partial<Shortcut>;
-        const title = typeof candidate.title === 'string' ? candidate.title : '';
-        const url = typeof candidate.url === 'string' ? candidate.url : '';
-        const icon = typeof candidate.icon === 'string' ? candidate.icon : '';
-        const seed = `${title}|${url}`;
-        const occurrence = (localIdentityCounts.get(seed) || 0) + 1;
-        localIdentityCounts.set(seed, occurrence);
-
-        const requestedId = typeof candidate.id === 'string' ? candidate.id.trim() : '';
-        let nextId = requestedId;
-        if (!nextId || usedShortcutIds.has(nextId)) {
-          nextId = createFallbackShortcutId(scenarioId, title, url, occurrence);
-          while (usedShortcutIds.has(nextId)) {
-            nextId = createFallbackShortcutId(scenarioId, title, url, occurrence + index + 1);
-          }
-        }
-
-        usedShortcutIds.add(nextId);
-        nextShortcuts.push({
-          id: nextId,
-          title,
-          url,
-          icon,
-          useOfficialIcon: candidate.useOfficialIcon !== false,
-          autoUseOfficialIcon: candidate.autoUseOfficialIcon !== false,
-          officialIconAvailableAtSave: candidate.officialIconAvailableAtSave === true,
-          iconRendering: normalizeShortcutVisualMode(candidate.iconRendering),
-          iconColor: normalizeShortcutIconColor(candidate.iconColor),
-        });
-      });
-
-      next[scenarioId] = nextShortcuts;
+      next[scenarioId] = normalizeShortcutList(value, scenarioId, usedShortcutIds);
     } else if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
       next[scenarioId] = [];
     }

@@ -2,6 +2,7 @@ import type { ScenarioMode } from '@/scenario/scenario';
 import type { ScenarioShortcuts, Shortcut, SyncablePreferences } from '@/types';
 import { getShortcutIdentityKey } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
+import { getShortcutChildren, isShortcutFolder, isShortcutLink } from '@/utils/shortcutFolders';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import type { LeafTabBookmarkTreeDraft } from './bookmarks';
 import type {
@@ -149,18 +150,40 @@ const isSameShortcutValue = (
   entity: LeafTabSyncShortcutEntity | undefined,
 ) => {
   if (!entity) return false;
+  const normalizedChildren = getNormalizedShortcutChildren(shortcut);
   return (
     entity.scenarioId === scenarioId &&
     entity.title === (shortcut.title || '') &&
     entity.url === (shortcut.url || '') &&
     entity.icon === (shortcut.icon || '') &&
     entity.description === '' &&
+    (entity.kind || 'link') === (isShortcutFolder(shortcut) ? 'folder' : 'link') &&
+    JSON.stringify(entity.children || []) === JSON.stringify(normalizedChildren || []) &&
     entity.useOfficialIcon === (shortcut.useOfficialIcon !== false) &&
     entity.autoUseOfficialIcon === (shortcut.autoUseOfficialIcon !== false) &&
     entity.officialIconAvailableAtSave === (shortcut.officialIconAvailableAtSave === true) &&
     entity.iconRendering === normalizeShortcutVisualMode(shortcut.iconRendering) &&
     (entity.iconColor || '') === normalizeShortcutIconColor(shortcut.iconColor)
   );
+};
+
+const getNormalizedShortcutChildren = (shortcut: Shortcut): Shortcut[] | undefined => {
+  if (!isShortcutFolder(shortcut)) return undefined;
+  const children = getShortcutChildren(shortcut)
+    .filter(isShortcutLink)
+    .map((child) => ({
+      id: child.id,
+      title: child.title || '',
+      url: child.url || '',
+      icon: child.icon || '',
+      kind: 'link' as const,
+      useOfficialIcon: child.useOfficialIcon !== false,
+      autoUseOfficialIcon: child.autoUseOfficialIcon !== false,
+      officialIconAvailableAtSave: child.officialIconAvailableAtSave === true,
+      iconRendering: normalizeShortcutVisualMode(child.iconRendering),
+      iconColor: normalizeShortcutIconColor(child.iconColor),
+    }));
+  return children.length > 0 ? children : [];
 };
 
 const isSameBookmarkFolderValue = (
@@ -536,6 +559,8 @@ export const buildLeafTabSyncSnapshot = (params: {
       url: shortcut.url || '',
       icon: shortcut.icon || '',
       description: '',
+      kind: isShortcutFolder(shortcut) ? 'folder' : 'link',
+      children: getNormalizedShortcutChildren(shortcut),
       useOfficialIcon: shortcut.useOfficialIcon !== false,
       autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
@@ -667,6 +692,8 @@ export const projectLeafTabSyncSnapshotToAppState = (
           title: shortcut.title,
           url: shortcut.url,
           icon: shortcut.icon,
+          kind: shortcut.kind || 'link',
+          children: shortcut.children,
           useOfficialIcon: shortcut.useOfficialIcon !== false,
           autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
           officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
@@ -689,6 +716,8 @@ export const projectLeafTabSyncSnapshotToAppState = (
         title: shortcut.title,
         url: shortcut.url,
         icon: shortcut.icon,
+        kind: shortcut.kind || 'link',
+        children: shortcut.children,
         useOfficialIcon: shortcut.useOfficialIcon !== false,
         autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
         officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,

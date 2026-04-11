@@ -5,13 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
 import i18n from './i18n';
 import {
-  RiArrowDownLine,
-  RiArrowUpLine,
   RiCloseFill,
-  RiCloseLine,
   RiCloudFill,
-  RiDeleteBinLine,
-  RiFolderTransferLine,
   RiRainyFill,
   RiSnowyFill,
   RiSunFill,
@@ -48,8 +43,8 @@ import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
 import ScenarioModeMenu from './components/ScenarioModeMenu';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
-import type { ScenarioShortcuts, SyncablePreferences } from './types';
-import { extractDomainFromUrl, normalizeApiBase } from "./utils";
+import type { Shortcut, SyncablePreferences } from './types';
+import { normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { LongTaskIndicator } from './components/LongTaskIndicator';
@@ -83,6 +78,8 @@ import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
+import { ShortcutFolderDialog } from '@/components/ShortcutFolderDialog';
+import { ShortcutFolderNameDialog } from '@/components/ShortcutFolderNameDialog';
 import {
   LazyAppDialogs,
   LazyLeafTabSyncDialog,
@@ -130,6 +127,13 @@ import {
   resolveCloudSyncBookmarksEnabled,
 } from '@/utils/cloudSyncBookmarksPolicy';
 import { resolveDeferredBookmarkSyncExecution } from '@/utils/deferredBookmarkSync';
+import {
+  findShortcutById,
+  getShortcutChildren,
+  groupTopLevelShortcutsIntoFolder,
+  isShortcutFolder,
+  isShortcutLink,
+} from '@/utils/shortcutFolders';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -145,6 +149,15 @@ type CloudLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   _retriedAfterForceUnlock?: boolean;
   _retriedAfterConflictRefresh?: boolean;
 };
+
+function createFolderShortcutId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {}
+  return `fld_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
@@ -682,6 +695,59 @@ export default function App() {
     },
   );
 
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
+
+  const openFolderShortcut = useMemo(
+    () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
+    [openFolderId, shortcuts],
+  );
+  const editingFolderShortcut = useMemo(
+    () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
+    [editingFolderId, shortcuts],
+  );
+
+  useEffect(() => {
+    if (openFolderId && !openFolderShortcut) {
+      setOpenFolderId(null);
+    }
+  }, [openFolderId, openFolderShortcut]);
+
+  useEffect(() => {
+    if (editingFolderId && !editingFolderShortcut) {
+      setEditingFolderId(null);
+      setFolderNameDialogOpen(false);
+    }
+  }, [editingFolderId, editingFolderShortcut]);
+
+  const handleShortcutActivate = useCallback((shortcut: Shortcut) => {
+    if (isShortcutFolder(shortcut)) {
+      setOpenFolderId(shortcut.id);
+      return;
+    }
+    handleShortcutOpen(shortcut);
+  }, [handleShortcutOpen]);
+
+  const handleOpenShortcutEditor = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
+    if (isShortcutFolder(shortcut)) {
+      setEditingFolderId(shortcut.id);
+      setFolderNameDialogOpen(true);
+      return;
+    }
+    setSelectedShortcut({ index: shortcutIndex, shortcut });
+    setEditingTitle(shortcut.title);
+    setEditingUrl(shortcut.url);
+    setShortcutModalMode('edit');
+    setShortcutEditOpen(true);
+  }, [
+    setEditingTitle,
+    setEditingUrl,
+    setSelectedShortcut,
+    setShortcutEditOpen,
+    setShortcutModalMode,
+  ]);
+
   const handlePinSelectedShortcuts = useCallback((selectedShortcutIndexes: number[], position: 'top' | 'bottom') => {
     if (selectedShortcutIndexes.length === 0 || shortcuts.length === 0) return;
     const validIndices = Array.from(new Set(
@@ -725,6 +791,126 @@ export default function App() {
     });
     if (!user) localDirtyRef.current = true;
   }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+
+  const handleCreateFolderFromSelection = useCallback((selectedShortcutIndexes: number[]) => {
+    let createdFolderId = '';
+    let changed = false;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const validIds = Array.from(new Set(
+        selectedShortcutIndexes
+          .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceShortcuts.length)
+          .map((index) => sourceShortcuts[index]?.id)
+          .filter((id): id is string => Boolean(id)),
+      ));
+
+      const result = groupTopLevelShortcutsIntoFolder(sourceShortcuts, validIds, (folderChildren) => ({
+        id: createFolderShortcutId(),
+        title: t('context.newFolder', { defaultValue: '新文件夹' }),
+        url: '',
+        icon: '',
+        kind: 'folder',
+        children: folderChildren,
+      }));
+      if (!result) return prev;
+
+      changed = true;
+      createdFolderId = result.folder.id;
+      return {
+        ...prev,
+        [selectedScenarioId]: result.nextShortcuts,
+      };
+    });
+    if (!createdFolderId || !changed) return;
+    if (!user) localDirtyRef.current = true;
+    setEditingFolderId(createdFolderId);
+    setFolderNameDialogOpen(true);
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, t, user]);
+
+  const handleMoveSelectedShortcutsToFolder = useCallback((selectedShortcutIndexes: number[], targetFolderId: string) => {
+    if (!targetFolderId) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const validIndices = Array.from(new Set(
+        selectedShortcutIndexes
+          .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceShortcuts.length)
+          .filter((index) => isShortcutLink(sourceShortcuts[index])),
+      )).sort((a, b) => a - b);
+      if (validIndices.length === 0) return prev;
+      const movedShortcuts = validIndices.map((index) => sourceShortcuts[index]).filter(isShortcutLink);
+      if (movedShortcuts.length === 0) return prev;
+
+      let targetFound = false;
+      const selectedSet = new Set(validIndices);
+      const nextShortcuts = sourceShortcuts
+        .filter((_, index) => !selectedSet.has(index))
+        .map((shortcut) => {
+          if (shortcut.id !== targetFolderId || !isShortcutFolder(shortcut)) return shortcut;
+          targetFound = true;
+          return {
+            ...shortcut,
+            children: [...getShortcutChildren(shortcut), ...movedShortcuts],
+          };
+        });
+
+      if (!targetFound) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+
+  const handleDissolveFolder = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
+    if (!isShortcutFolder(shortcut)) return;
+    const folderChildren = getShortcutChildren(shortcut);
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      const resolvedIndex = sourceShortcuts[shortcutIndex]?.id === shortcut.id
+        ? shortcutIndex
+        : sourceShortcuts.findIndex((item) => item.id === shortcut.id);
+      if (resolvedIndex < 0) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: [
+          ...sourceShortcuts.slice(0, resolvedIndex),
+          ...folderChildren,
+          ...sourceShortcuts.slice(resolvedIndex + 1),
+        ],
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+    if (openFolderId === shortcut.id) {
+      setOpenFolderId(null);
+    }
+    toast.success(t('context.folderDissolved', { defaultValue: '文件夹已解散' }));
+  }, [localDirtyRef, openFolderId, selectedScenarioId, setScenarioShortcuts, t, user]);
+
+  const handleSaveFolderName = useCallback((name: string) => {
+    const nextName = name.trim();
+    if (!editingFolderId || !nextName) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      let changed = false;
+      const nextShortcuts = sourceShortcuts.map((shortcut) => {
+        if (shortcut.id !== editingFolderId || !isShortcutFolder(shortcut)) return shortcut;
+        changed = true;
+        return {
+          ...shortcut,
+          title: nextName,
+        };
+      });
+      if (!changed) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+    setFolderNameDialogOpen(false);
+    setEditingFolderId(null);
+  }, [editingFolderId, localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
@@ -2905,14 +3091,14 @@ export default function App() {
     compactShowTitle: shortcutCompactShowTitle,
     iconCornerRadius: shortcutIconCornerRadius,
     disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion,
-    onShortcutOpen: handleShortcutOpen,
+    onShortcutOpen: handleShortcutActivate,
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
     onGridContextMenu: handleGridContextMenu,
   }), [
     handleGridContextMenu,
     handleShortcutContextMenu,
-    handleShortcutOpen,
+    handleShortcutActivate,
     handleShortcutReorder,
     normalizedGridColumns,
     normalizedRowsPerColumn,
@@ -3033,21 +3219,18 @@ export default function App() {
           setCurrentInsertIndex(insertIndex);
           setShortcutEditOpen(true);
         }}
-        onEditShortcut={(shortcutIndex, shortcut) => {
-          setSelectedShortcut({ index: shortcutIndex, shortcut });
-          setEditingTitle(shortcut.title);
-          setEditingUrl(shortcut.url);
-          setShortcutModalMode('edit');
-          setShortcutEditOpen(true);
-        }}
+        onEditShortcut={handleOpenShortcutEditor}
         onDeleteShortcut={(shortcutIndex, shortcut) => {
           setSelectedShortcut({ index: shortcutIndex, shortcut });
           setShortcutDeleteOpen(true);
         }}
-        onShortcutOpen={handleShortcutOpen}
+        onShortcutOpen={handleShortcutActivate}
         onDeleteSelectedShortcuts={handleConfirmDeleteShortcuts}
+        onCreateFolder={handleCreateFolderFromSelection}
         onPinSelectedShortcuts={handlePinSelectedShortcuts}
         onMoveSelectedShortcutsToScenario={handleMoveSelectedShortcutsToScenario}
+        onMoveSelectedShortcutsToFolder={handleMoveSelectedShortcutsToFolder}
+        onDissolveFolder={handleDissolveFolder}
       >
         {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
           <HomeInteractiveSurface
@@ -3081,6 +3264,24 @@ export default function App() {
           />
         )}
       </ShortcutSelectionShell>
+      <ShortcutFolderDialog
+        open={Boolean(openFolderShortcut)}
+        onOpenChange={(open) => {
+          if (!open) setOpenFolderId(null);
+        }}
+        shortcut={openFolderShortcut}
+        iconCornerRadius={shortcutIconCornerRadius}
+        onShortcutOpen={handleShortcutOpen}
+      />
+      <ShortcutFolderNameDialog
+        open={folderNameDialogOpen}
+        onOpenChange={(open) => {
+          setFolderNameDialogOpen(open);
+          if (!open) setEditingFolderId(null);
+        }}
+        initialName={editingFolderShortcut?.title || ''}
+        onSubmit={handleSaveFolderName}
+      />
       {shouldMountWallpaperSelector ? (
         <Suspense fallback={null}>
           <LazyWallpaperSelector
@@ -3171,8 +3372,12 @@ export default function App() {
             shortcutDeleteDialogProps={{
               open: shortcutDeleteOpen,
               onOpenChange: setShortcutDeleteOpen,
-              title: t('shortcutDelete.title'),
-              description: t('shortcutDelete.description'),
+              title: isShortcutFolder(selectedShortcut?.shortcut)
+                ? t('shortcutDelete.folderTitle', { defaultValue: '删除文件夹' })
+                : t('shortcutDelete.title'),
+              description: isShortcutFolder(selectedShortcut?.shortcut)
+                ? t('shortcutDelete.folderDescription', { defaultValue: '删除后，文件夹里的快捷方式也会一起删除。' })
+                : t('shortcutDelete.description'),
               onConfirm: handleConfirmDeleteShortcut,
             }}
             scenarioCreateDialogProps={{

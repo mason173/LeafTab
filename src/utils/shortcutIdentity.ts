@@ -1,6 +1,9 @@
 type ShortcutLike = {
   url?: unknown;
   id?: unknown;
+  kind?: unknown;
+  title?: unknown;
+  children?: unknown;
 };
 
 const SCHEME_PREFIX_RE = /^[a-z][a-z0-9+.-]*:/i;
@@ -57,8 +60,14 @@ export const getShortcutUrlIdentity = (rawUrl: string) => {
 };
 
 export const getShortcutIdentityKey = (shortcut: ShortcutLike, index?: number) => {
+  const kind = typeof shortcut?.kind === 'string' ? shortcut.kind : '';
   const url = typeof shortcut?.url === 'string' ? getShortcutUrlIdentity(shortcut.url) : '';
   const id = typeof shortcut?.id === 'string' ? shortcut.id : '';
+  const title = typeof shortcut?.title === 'string' ? shortcut.title.trim().toLowerCase() : '';
+  if (kind === 'folder') {
+    if (id) return `folder-id:${id}`;
+    if (title) return `folder-title:${title}`;
+  }
   if (url) return `url:${url}`;
   if (id) return `id:${id}`;
   if (typeof index === 'number') return `idx:${index}`;
@@ -72,11 +81,18 @@ export const hasShortcutUrlConflict = (
 ) => {
   const target = getShortcutUrlIdentity(rawUrl);
   if (!target) return false;
-  for (let i = 0; i < shortcuts.length; i += 1) {
-    if (i === ignoreIndex) continue;
-    const item = shortcuts[i];
-    const key = typeof item?.url === 'string' ? getShortcutUrlIdentity(item.url) : '';
-    if (key && key === target) return true;
-  }
-  return false;
+  const hasConflictInList = (items: ShortcutLike[], currentIgnoreIndex?: number): boolean => {
+    for (let i = 0; i < items.length; i += 1) {
+      if (i === currentIgnoreIndex) continue;
+      const item = items[i];
+      const key = typeof item?.url === 'string' ? getShortcutUrlIdentity(item.url) : '';
+      if (key && key === target) return true;
+      if (Array.isArray(item?.children) && hasConflictInList(item.children as ShortcutLike[])) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  return hasConflictInList(shortcuts, ignoreIndex);
 };

@@ -10,6 +10,7 @@ import {
   getSuggestionUsageBoost,
   type SuggestionUsageMap,
 } from '@/utils/suggestionPersonalization';
+import { flattenShortcutLinks } from '@/utils/shortcutFolders';
 
 type SearchHistoryLikeEntry = {
   query: string;
@@ -79,7 +80,7 @@ export function buildShortcutSearchIndex(
   const dedupedByUrl = new Map<string, IndexedShortcutSuggestion>();
   let order = 0;
 
-  shortcuts.forEach((shortcut) => {
+  flattenShortcutLinks(shortcuts).forEach((shortcut) => {
     const url = shortcut.url.trim();
     if (!url) return;
 
@@ -159,7 +160,7 @@ export function buildBuiltinSiteSuggestionItems(args: {
   return sites
     .map((site, index) => ({
       item: {
-        type: 'shortcut',
+        type: 'shortcut' as const,
         shortcutId: undefined,
         label: site.label,
         value: site.url,

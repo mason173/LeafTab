@@ -30,4 +30,41 @@ describe('normalizeScenarioShortcuts', () => {
       }),
     ]);
   });
+
+  it('normalizes folder shortcuts and their child links recursively', () => {
+    const normalized = normalizeScenarioShortcuts({
+      work: [
+        {
+          id: 'folder-1',
+          kind: 'folder',
+          title: 'Workspace',
+          children: [
+            {
+              id: 'link-1',
+              title: 'Docs',
+              url: 'https://docs.example',
+              icon: '',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalized.work).toEqual([
+      expect.objectContaining({
+        id: 'folder-1',
+        kind: 'folder',
+        title: 'Workspace',
+        url: '',
+        children: [
+          expect.objectContaining({
+            id: 'link-1',
+            kind: 'link',
+            title: 'Docs',
+            url: 'https://docs.example',
+          }),
+        ],
+      }),
+    ]);
+  });
 });

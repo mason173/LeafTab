@@ -126,16 +126,18 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
         .concat(remainingShortcutIds)
         .filter((id: string) => snapshot.shortcuts[id]?.scenarioId === scenario.id);
 
-	      return [scenario.id, shortcutIds.map((shortcutId: string) => {
-	        const shortcut = snapshot.shortcuts[shortcutId];
-	        return {
-	          id: shortcut.id,
-	          title: shortcut.title,
-	          url: shortcut.url,
-	          icon: shortcut.icon,
-	          useOfficialIcon: shortcut.useOfficialIcon,
-	          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
-	          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
+		      return [scenario.id, shortcutIds.map((shortcutId: string) => {
+		        const shortcut = snapshot.shortcuts[shortcutId];
+		        return {
+		          id: shortcut.id,
+		          title: shortcut.title,
+		          url: shortcut.url,
+		          icon: shortcut.icon,
+		          kind: shortcut.kind || 'link',
+		          children: shortcut.children,
+		          useOfficialIcon: shortcut.useOfficialIcon,
+		          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
+		          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
 	          iconRendering: shortcut.iconRendering,
 	          iconColor: shortcut.iconColor,
 	        };

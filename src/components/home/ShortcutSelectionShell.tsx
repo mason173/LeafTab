@@ -5,6 +5,7 @@ import {
   RiArrowUpLine,
   RiCloseLine,
   RiDeleteBinLine,
+  RiFolderChartFill,
   RiFolderTransferLine,
 } from '@/icons/ri-compat';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { toast } from '@/components/ui/sonner';
 import type { ContextMenuState, ScenarioMode, Shortcut } from '@/types';
 import { extractDomainFromUrl } from '@/utils';
+import { isShortcutFolder, isShortcutLink } from '@/utils/shortcutFolders';
 
 type ShortcutSelectionRenderProps = {
   selectionMode: boolean;
@@ -31,8 +33,11 @@ type ShortcutSelectionShellProps = {
   onDeleteShortcut: (shortcutIndex: number, shortcut: Shortcut) => void;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onDeleteSelectedShortcuts: (selectedIndexes: number[]) => void;
+  onCreateFolder: (selectedIndexes: number[]) => void;
   onPinSelectedShortcuts: (selectedIndexes: number[], position: 'top' | 'bottom') => void;
   onMoveSelectedShortcutsToScenario: (selectedIndexes: number[], targetScenarioId: string) => void;
+  onMoveSelectedShortcutsToFolder: (selectedIndexes: number[], targetFolderId: string) => void;
+  onDissolveFolder: (shortcutIndex: number, shortcut: Shortcut) => void;
   children: (props: ShortcutSelectionRenderProps) => ReactNode;
 };
 
@@ -80,8 +85,11 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   onDeleteShortcut,
   onShortcutOpen,
   onDeleteSelectedShortcuts,
+  onCreateFolder,
   onPinSelectedShortcuts,
   onMoveSelectedShortcutsToScenario,
+  onMoveSelectedShortcutsToFolder,
+  onDissolveFolder,
   children,
 }: ShortcutSelectionShellProps) {
   const { t } = useTranslation();
@@ -89,7 +97,9 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   const [selectedShortcutIndexesState, setSelectedShortcutIndexesState] = useState<number[]>([]);
   const [bulkShortcutDeleteOpen, setBulkShortcutDeleteOpen] = useState(false);
   const [multiSelectMoveOpen, setMultiSelectMoveOpen] = useState(false);
+  const [multiSelectFolderOpen, setMultiSelectFolderOpen] = useState(false);
   const multiSelectMoveRef = useRef<HTMLDivElement>(null);
+  const multiSelectFolderRef = useRef<HTMLDivElement>(null);
 
   const selectedShortcutIndexes = useMemo(
     () => new Set(selectedShortcutIndexesState),
@@ -100,12 +110,31 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     () => scenarioModes.filter((mode) => mode.id !== selectedScenarioId),
     [scenarioModes, selectedScenarioId],
   );
+  const moveTargetFolders = useMemo(
+    () => shortcuts.filter((shortcut) => isShortcutFolder(shortcut)),
+    [shortcuts],
+  );
+  const selectedShortcutItems = useMemo(
+    () => selectedShortcutIndexesState
+      .map((index) => shortcuts[index])
+      .filter((shortcut): shortcut is Shortcut => Boolean(shortcut)),
+    [selectedShortcutIndexesState, shortcuts],
+  );
+  const selectedLinkCount = useMemo(
+    () => selectedShortcutItems.filter((shortcut) => isShortcutLink(shortcut)).length,
+    [selectedShortcutItems],
+  );
+  const selectedFolderCount = useMemo(
+    () => selectedShortcutItems.filter((shortcut) => isShortcutFolder(shortcut)).length,
+    [selectedShortcutItems],
+  );
 
   const clearShortcutMultiSelect = useCallback(() => {
     setShortcutMultiSelectMode(false);
     setSelectedShortcutIndexesState([]);
     setBulkShortcutDeleteOpen(false);
     setMultiSelectMoveOpen(false);
+    setMultiSelectFolderOpen(false);
   }, []);
 
   const openShortcutMultiSelect = useCallback((initialIndex?: number) => {
@@ -161,6 +190,35 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     setContextMenu,
   ]);
 
+  const handleCreateFolder = useCallback(() => {
+    if (selectedLinkCount < 2 || selectedFolderCount > 0) return;
+    onCreateFolder(selectedShortcutIndexesState);
+    setContextMenu(null);
+    clearShortcutMultiSelect();
+  }, [
+    clearShortcutMultiSelect,
+    onCreateFolder,
+    selectedFolderCount,
+    selectedLinkCount,
+    selectedShortcutIndexesState,
+    setContextMenu,
+  ]);
+
+  const handleMoveSelectedShortcutsToFolder = useCallback((targetFolderId: string) => {
+    if (!targetFolderId || selectedLinkCount <= 0 || selectedFolderCount > 0) return;
+    onMoveSelectedShortcutsToFolder(selectedShortcutIndexesState, targetFolderId);
+    setMultiSelectFolderOpen(false);
+    setContextMenu(null);
+    clearShortcutMultiSelect();
+  }, [
+    clearShortcutMultiSelect,
+    onMoveSelectedShortcutsToFolder,
+    selectedFolderCount,
+    selectedLinkCount,
+    selectedShortcutIndexesState,
+    setContextMenu,
+  ]);
+
   useEffect(() => {
     setSelectedShortcutIndexesState((prev) => prev.filter((index) => index >= 0 && index < shortcuts.length));
   }, [shortcuts.length]);
@@ -210,6 +268,51 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                   />
                 </>
               ) : (
+                isShortcutFolder(contextMenu.shortcut) ? (
+                  <>
+                    <ContextMenuItem
+                      label={t('context.openFolder', { defaultValue: '打开文件夹' })}
+                      testId="shortcut-context-open-folder"
+                      onSelect={() => {
+                        onShortcutOpen(contextMenu.shortcut);
+                        setContextMenu(null);
+                      }}
+                    />
+                    <ContextMenuItem
+                      label={t('context.editFolder', { defaultValue: '重命名文件夹' })}
+                      testId="shortcut-context-edit-folder"
+                      onSelect={() => {
+                        onEditShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
+                        setContextMenu(null);
+                      }}
+                    />
+                    <ContextMenuItem
+                      label={t('context.multiSelect', { defaultValue: '多选' })}
+                      testId="shortcut-context-multi-select-folder"
+                      onSelect={() => {
+                        openShortcutMultiSelect(contextMenu.shortcutIndex);
+                        setContextMenu(null);
+                      }}
+                    />
+                    <ContextMenuItem
+                      label={t('context.dissolveFolder', { defaultValue: '解散文件夹' })}
+                      testId="shortcut-context-dissolve-folder"
+                      onSelect={() => {
+                        onDissolveFolder(contextMenu.shortcutIndex, contextMenu.shortcut);
+                        setContextMenu(null);
+                      }}
+                    />
+                    <ContextMenuItem
+                      label={t('context.delete')}
+                      testId="shortcut-context-delete-folder"
+                      onSelect={() => {
+                        onDeleteShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
+                        setContextMenu(null);
+                      }}
+                      variant="destructive"
+                    />
+                  </>
+                ) : (
                 <>
                   <ContextMenuItem
                     label={t('context.newShortcut')}
@@ -290,6 +393,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                     variant="destructive"
                   />
                 </>
+                )
               )
             ) : (
               shortcutMultiSelectMode ? (
@@ -390,6 +494,64 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                 </div>
               ) : null}
             </div>
+            <div ref={multiSelectFolderRef} className="relative">
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-8 w-8 rounded-xl"
+                data-testid="shortcut-multi-select-folder"
+                title={t('context.moveToFolder', { defaultValue: '移入文件夹' })}
+                aria-label={t('context.moveToFolder', { defaultValue: '移入文件夹' })}
+                aria-expanded={multiSelectFolderOpen}
+                disabled={selectedLinkCount <= 0 || selectedFolderCount > 0}
+                onClick={() => setMultiSelectFolderOpen((prev) => !prev)}
+              >
+                <RiFolderTransferLine className="size-4" />
+              </Button>
+              {multiSelectFolderOpen ? (
+                <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-[15050] w-[280px] -translate-x-1/2 rounded-2xl border border-border bg-popover/95 p-2 text-foreground shadow-2xl backdrop-blur-xl">
+                  <div className="px-2 pb-1 pt-1 text-xs text-muted-foreground">
+                    {t('context.moveToFolder', { defaultValue: '移入文件夹' })}
+                  </div>
+                  <div className="max-h-[260px] space-y-1 overflow-y-auto">
+                    {selectedFolderCount > 0 ? (
+                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
+                        {t('context.folderMoveOnlyLinks', { defaultValue: '暂不支持把文件夹再移入文件夹' })}
+                      </div>
+                    ) : null}
+                    {selectedFolderCount === 0 && selectedLinkCount > 0 && moveTargetFolders.map((folder) => (
+                      <button
+                        key={folder.id}
+                        type="button"
+                        data-testid={`shortcut-multi-select-folder-target-${folder.id}`}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                        onClick={() => handleMoveSelectedShortcutsToFolder(folder.id)}
+                      >
+                        <RiFolderChartFill className="size-4 text-muted-foreground" />
+                        <span className="truncate">{folder.title}</span>
+                      </button>
+                    ))}
+                    {selectedFolderCount === 0 && selectedLinkCount > 0 && moveTargetFolders.length === 0 ? (
+                      <div className="px-2 py-5 text-center text-sm text-muted-foreground">
+                        {t('context.noFolderTarget', { defaultValue: '当前还没有可用的文件夹' })}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 rounded-xl"
+              data-testid="shortcut-multi-select-create-folder"
+              onClick={handleCreateFolder}
+              disabled={selectedLinkCount < 2 || selectedFolderCount > 0}
+              title={t('context.createFolder', { defaultValue: '创建文件夹' })}
+              aria-label={t('context.createFolder', { defaultValue: '创建文件夹' })}
+            >
+              <RiFolderChartFill className="size-4" />
+            </Button>
             <Button
               size="icon"
               variant="secondary"
