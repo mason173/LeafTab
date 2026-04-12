@@ -254,6 +254,54 @@ describe('ShortcutIcon offline cache', () => {
     expect(accentTile).not.toBeNull();
   });
 
+  it('adds a subtle default gradient texture on colorful pure-color official icon tiles', async () => {
+    resolveCustomIconFromCacheMock.mockReturnValue({
+      url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+      signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+      mode: 'shape-color',
+      defaultColor: '#24292F',
+    });
+    resolveCustomIconMock.mockResolvedValue({
+      url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+      signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+      mode: 'shape-color',
+      defaultColor: '#24292F',
+    });
+
+    const view = render(
+      <ShortcutIcon
+        icon=""
+        url="https://github.com"
+        useOfficialIcon
+        autoUseOfficialIcon
+        officialIconAvailableAtSave
+        iconAppearance="colorful"
+      />,
+    );
+
+    await waitFor(() => {
+      const texturedTile = view.container.querySelector('div[style*="background-image: linear-gradient("]');
+      expect(texturedTile).not.toBeNull();
+    });
+  });
+
+  it('renders a subtle border overlay for icon tile containers', () => {
+    const view = render(
+      <ShortcutIcon
+        icon=""
+        url="https://example.com/path"
+        frame="never"
+        fallbackStyle="emptyicon"
+        fallbackLabel="Example"
+        iconAppearance="colorful"
+      />,
+    );
+
+    const borderOverlay = view.container.querySelector('div[style*="border: 1px solid color-mix("]');
+    expect(borderOverlay).not.toBeNull();
+    expect(borderOverlay?.getAttribute('style') || '').toContain('color-mix(in srgb, var(--foreground) 12%, transparent)');
+  });
+
   it('keeps legacy official svg files out of the shape-mask tint path', async () => {
     resolveCustomIconFromCacheMock.mockReturnValue({
       url: 'https://local.test/leaftab-icons/legacy/github-embed.svg',

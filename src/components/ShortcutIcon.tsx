@@ -237,6 +237,8 @@ const SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID = 'leaftab-shortcut-icon-filter-m
 const SHORTCUT_ICON_ACCENT_FILTER_ID = 'leaftab-shortcut-icon-filter-accent';
 const FIXED_WHITE_MONOCHROME_COLOR = '#FFFFFF';
 const UNIFIED_ICON_GLYPH_CONTENT_RATIO = 0.56;
+const COLORFUL_TILE_TEXTURE_GRADIENT = 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.025) 72%, rgba(0,0,0,0.06) 100%)';
+const ICON_SURFACE_BORDER_COLOR = 'color-mix(in srgb, var(--foreground) 12%, transparent)';
 const OFFICIAL_SVG_TINT_MODE_CACHE = new Map<string, Exclude<OfficialSvgTintMode, 'unknown'>>();
 const OFFICIAL_SVG_TINT_MODE_IN_FLIGHT = new Map<string, Promise<Exclude<OfficialSvgTintMode, 'unknown'>>>();
 const SVG_RASTER_CONTENT_PATTERN = /<(?:image|feImage|foreignObject)\b|(?:xlink:href|href)\s*=\s*["']data:image\/(?:png|jpeg|jpg|webp|gif|bmp|ico|avif)/i;
@@ -930,13 +932,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
     ? 'colorful'
     : requestedIconAppearance;
   const useFixedWhiteMonochrome = requestedIconAppearance === 'monochrome' && monochromeTone === 'fixed-white';
-  const isDarkTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const accentSurfaceColor = 'color-mix(in srgb, var(--primary) 14%, var(--background) 86%)';
   const monochromeSurfaceColor = useFixedWhiteMonochrome
     ? 'color-mix(in srgb, color-mix(in srgb, black 32%, var(--background) 68%) 60%, transparent)'
-    : isDarkTheme
-      ? 'color-mix(in srgb, var(--foreground) 7%, var(--background) 93%)'
-      : '#FFFFFF';
+    : 'var(--shortcut-monochrome-surface-theme-adaptive)';
   const appearanceTileBackgroundColor = requestedIconAppearance === 'accent'
     ? accentSurfaceColor
     : requestedIconAppearance === 'monochrome'
@@ -956,6 +955,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const officialTileBackgroundColor = requestedIconAppearance === 'colorful'
     ? officialBackgroundColor
     : appearanceTileBackgroundColor;
+  const colorfulTileSurfaceStyle: CSSProperties | undefined = requestedIconAppearance === 'colorful'
+    ? {
+        // Keep pure-color tiles, but add a subtle fixed texture gradient for depth.
+        backgroundImage: COLORFUL_TILE_TEXTURE_GRADIENT,
+      }
+    : undefined;
   const monochromeTileSurfaceStyle: CSSProperties | undefined = requestedIconAppearance === 'monochrome'
     ? {
         boxShadow: useFixedWhiteMonochrome
@@ -963,6 +968,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
           : 'inset 0 0 0 0.75px color-mix(in srgb, var(--foreground) 10%, transparent), 0 1px 1.5px rgba(0,0,0,0.12)',
       }
     : undefined;
+  const iconLightBorderStyle: CSSProperties = {
+    borderRadius: roundedBorderRadius,
+    border: `1px solid ${ICON_SURFACE_BORDER_COLOR}`,
+  };
 
   useEffect(() => {
     setEmptyIconColor(getShortcutIconColor(emptyIconColorSeed, iconColor));
@@ -1031,13 +1040,14 @@ const ShortcutIcon = memo(function ShortcutIcon({
           style={{
             borderRadius: roundedBorderRadius,
             backgroundColor: emptyFallbackBackgroundColor,
+            ...colorfulTileSurfaceStyle,
             ...monochromeTileSurfaceStyle,
           }}
         />
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
-          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+          style={iconLightBorderStyle}
         />
         {src ? (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -1082,8 +1092,8 @@ const ShortcutIcon = memo(function ShortcutIcon({
           >
             <div
               aria-hidden="true"
-              className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none"
-              style={{ borderRadius: roundedBorderRadius }}
+              className="absolute inset-0 pointer-events-none"
+              style={iconLightBorderStyle}
             />
             <div
               className="text-[10px] flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
@@ -1138,7 +1148,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
-          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+          style={iconLightBorderStyle}
         />
       </div>
     );
@@ -1154,13 +1164,14 @@ const ShortcutIcon = memo(function ShortcutIcon({
           style={{
             borderRadius: roundedBorderRadius,
             backgroundColor: officialTileBackgroundColor,
+            ...colorfulTileSurfaceStyle,
             ...monochromeTileSurfaceStyle,
           }}
         />
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
-          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+          style={iconLightBorderStyle}
         />
         <div className="absolute inset-0 flex items-center justify-center">
           {useOfficialSvgMask ? (
@@ -1226,8 +1237,8 @@ const ShortcutIcon = memo(function ShortcutIcon({
         >
           <div
             aria-hidden="true"
-            className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none"
-            style={{ borderRadius: roundedBorderRadius }}
+            className="absolute inset-0 pointer-events-none"
+            style={iconLightBorderStyle}
           />
           <div className="relative select-none overflow-hidden" style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}>
             {image}
