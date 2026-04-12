@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeScenarioShortcuts } from '@/utils/shortcutsPayload';
+import { parseLeafTabBackup } from '@/utils/backupData';
+import { normalizeCloudShortcutsPayload, normalizeScenarioShortcuts } from '@/utils/shortcutsPayload';
 
 describe('normalizeScenarioShortcuts', () => {
   it('preserves explicit icon colors and keeps missing colors empty', () => {
@@ -68,5 +69,149 @@ describe('normalizeScenarioShortcuts', () => {
         ],
       }),
     ]);
+  });
+
+  it('supports legacy folder and shortcut field names from historical cloud payloads', () => {
+    const normalized = normalizeScenarioShortcuts({
+      work: {
+        'p0-0': {
+          id: 'group-1',
+          name: '常用合集',
+          shortcuts: [
+            {
+              id: 'legacy-link-1',
+              name: 'Bilibili',
+              link: 'https://www.bilibili.com',
+              iconUrl: 'https://cdn.example.com/bilibili.png',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(normalized.work).toEqual([
+      expect.objectContaining({
+        id: 'group-1',
+        kind: 'folder',
+        title: '常用合集',
+        children: [
+          expect.objectContaining({
+            id: 'legacy-link-1',
+            kind: 'link',
+            title: 'Bilibili',
+            url: 'https://www.bilibili.com',
+            icon: 'https://cdn.example.com/bilibili.png',
+          }),
+        ],
+      }),
+    ]);
+  });
+});
+
+describe('normalizeCloudShortcutsPayload', () => {
+  it('accepts unwrapped legacy backup data that omits the version field', () => {
+    const normalized = normalizeCloudShortcutsPayload({
+      scenarioModes: [
+        {
+          id: 'work',
+          name: '工作模式',
+          color: '#000000',
+          icon: 'briefcase',
+        },
+      ],
+      selectedScenarioId: 'work',
+      scenarioGroups: {
+        work: {
+          'p0-0': {
+            id: 'group-1',
+            name: '常用合集',
+            shortcuts: [
+              {
+                id: 'legacy-link-1',
+                title: 'Docs',
+                url: 'https://docs.example.com',
+                icon: '',
+              },
+            ],
+          },
+        },
+      },
+    }, '未命名');
+
+    expect(normalized).toEqual(expect.objectContaining({
+      version: 3,
+      selectedScenarioId: 'work',
+      scenarioShortcuts: {
+        work: [
+          expect.objectContaining({
+            id: 'group-1',
+            kind: 'folder',
+            title: '常用合集',
+          }),
+        ],
+      },
+    }));
+  });
+
+  it('keeps legacy scenarioGroups backups parseable through the backup parser', () => {
+    const payload = parseLeafTabBackup({
+      type: 'leaftab_backup',
+      version: 2,
+      data: {
+        scenarioModes: [
+          {
+            id: 'work',
+            name: '工作模式',
+            color: '#000000',
+            icon: 'briefcase',
+          },
+        ],
+        selectedScenarioId: 'work',
+        scenarioGroups: {
+          work: {
+            'p0-0': {
+              id: 'group-1',
+              name: '常用合集',
+              shortcuts: [
+                {
+                  id: 'shortcut-1',
+                  title: 'LeafTab',
+                  url: 'https://www.leaftab.cc',
+                  icon: '',
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    expect(payload).toEqual({
+      scenarioModes: [
+        {
+          id: 'work',
+          name: '工作模式',
+          color: '#000000',
+          icon: 'briefcase',
+        },
+      ],
+      selectedScenarioId: 'work',
+      scenarioShortcuts: {
+        work: [
+          {
+            id: 'group-1',
+            name: '常用合集',
+            shortcuts: [
+              {
+                id: 'shortcut-1',
+                title: 'LeafTab',
+                url: 'https://www.leaftab.cc',
+                icon: '',
+              },
+            ],
+          },
+        ],
+      },
+    });
   });
 });

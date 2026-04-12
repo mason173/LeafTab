@@ -16,6 +16,9 @@ export type LeafTabBackupEnvelope = {
   meta?: Record<string, any>;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
 export const clampShortcutsRowsPerColumn = (value: number) => {
   if (!Number.isFinite(value)) return 4;
   return Math.min(11, Math.max(1, Math.floor(value)));
@@ -42,15 +45,22 @@ export const mergeShortcutsLocalFirst = (localShortcuts: any[], remoteShortcuts:
 const dedupeShortcutList = (list: any[]) => mergeShortcutsLocalFirst(list, []);
 
 const dedupeScenarioShortcutsMap = (raw: unknown): ScenarioShortcuts => {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  if (!isRecord(raw)) return {};
   const next: ScenarioShortcuts = {};
   Object.entries(raw as Record<string, unknown>).forEach(([modeId, value]) => {
     if (Array.isArray(value)) {
       next[modeId] = dedupeShortcutList(value);
       return;
     }
-    if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+    if (isRecord(value) && Object.keys(value as object).length === 0) {
       next[modeId] = [];
+      return;
+    }
+    if (isRecord(value)) {
+      const entries = Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([, entry]) => entry);
+      next[modeId] = dedupeShortcutList(entries);
     }
   });
   return next;
@@ -58,6 +68,7 @@ const dedupeScenarioShortcutsMap = (raw: unknown): ScenarioShortcuts => {
 
 export const toScenarioShortcuts = (data: any): ScenarioShortcuts | null => {
   if (data?.scenarioShortcuts) return data.scenarioShortcuts;
+  if (data?.scenarioGroups) return data.scenarioGroups;
   return null;
 };
 
@@ -94,11 +105,16 @@ const getRuntimePlatform = () => {
 };
 
 const normalizeToPayload = (raw: any): WebdavPayload | null => {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (!isRecord(raw)) return null;
   const scenarioModes = Array.isArray((raw as any).scenarioModes) ? (raw as any).scenarioModes : [];
   const selectedScenarioId = typeof (raw as any).selectedScenarioId === 'string' ? (raw as any).selectedScenarioId : '';
-  if ((raw as any).scenarioShortcuts && typeof (raw as any).scenarioShortcuts === 'object') {
-    const scenarioShortcuts = dedupeScenarioShortcutsMap((raw as any).scenarioShortcuts);
+  const scenarioShortcutsSource = isRecord((raw as any).scenarioShortcuts)
+    ? (raw as any).scenarioShortcuts
+    : isRecord((raw as any).scenarioGroups)
+      ? (raw as any).scenarioGroups
+      : null;
+  if (scenarioShortcutsSource) {
+    const scenarioShortcuts = dedupeScenarioShortcutsMap(scenarioShortcutsSource);
     return {
       scenarioModes,
       selectedScenarioId: selectedScenarioId || (scenarioModes[0] as any)?.id || '',
@@ -109,10 +125,10 @@ const normalizeToPayload = (raw: any): WebdavPayload | null => {
 };
 
 export const unwrapLeafTabBackupData = (raw: unknown): Record<string, unknown> | null => {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (!isRecord(raw)) return null;
   const obj = raw as Record<string, unknown>;
   if (obj.type === 'leaftab_backup') {
-    if (!obj.data || typeof obj.data !== 'object' || Array.isArray(obj.data)) return null;
+    if (!isRecord(obj.data)) return null;
     return obj.data as Record<string, unknown>;
   }
   return obj;

@@ -128,18 +128,27 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
 
 		      return [scenario.id, shortcutIds.map((shortcutId: string) => {
 		        const shortcut = snapshot.shortcuts[shortcutId];
+		        const isFolder = (
+		          shortcut.kind === 'folder'
+		          || (
+		            typeof shortcut.kind === 'undefined'
+		            && Array.isArray(shortcut.children)
+		            && shortcut.children.length > 0
+		          )
+		        );
 		        return {
 		          id: shortcut.id,
 		          title: shortcut.title,
 		          url: shortcut.url,
 		          icon: shortcut.icon,
-		          kind: shortcut.kind || 'link',
-		          children: shortcut.children,
+		          kind: isFolder ? 'folder' : 'link',
+		          ...(isFolder ? { children: shortcut.children } : {}),
 		          useOfficialIcon: shortcut.useOfficialIcon,
 		          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
 		          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
-	          iconRendering: shortcut.iconRendering,
-	          iconColor: shortcut.iconColor,
+		          iconRendering: shortcut.iconRendering,
+		          iconColor: shortcut.iconColor,
+		          ...(isFolder ? { folderDisplayMode: shortcut.folderDisplayMode } : {}),
 	        };
 	      })];
 	    }),

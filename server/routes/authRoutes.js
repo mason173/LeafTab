@@ -82,6 +82,63 @@ const resolveAvailableUsername = ({ db, validateUsername, baseUsername, callback
   });
 };
 
+const attachGoogleIdentityToExistingUser = ({
+  db,
+  email,
+  googleSub,
+  callback,
+}) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    callback(null, null);
+    return;
+  }
+
+  db.get(
+    'SELECT * FROM users WHERE lower(username) = lower(?) LIMIT 1',
+    [normalizedEmail],
+    (lookupErr, existingUser) => {
+      if (lookupErr) {
+        callback(lookupErr);
+        return;
+      }
+      if (!existingUser) {
+        callback(null, null);
+        return;
+      }
+      if (existingUser.google_sub && existingUser.google_sub !== googleSub) {
+        callback(null, null);
+        return;
+      }
+
+      db.run(
+        `UPDATE users
+         SET google_sub = ?,
+             auth_provider = CASE
+               WHEN auth_provider IS NULL OR auth_provider = '' THEN 'google'
+               ELSE auth_provider
+             END
+         WHERE id = ? AND (google_sub IS NULL OR google_sub = '' OR google_sub = ?)`,
+        [googleSub, existingUser.id, googleSub],
+        (updateErr) => {
+          if (updateErr) {
+            callback(updateErr);
+            return;
+          }
+
+          db.get('SELECT * FROM users WHERE id = ?', [existingUser.id], (readErr, linkedUser) => {
+            if (readErr) {
+              callback(readErr);
+              return;
+            }
+            callback(null, linkedUser || null);
+          });
+        },
+      );
+    },
+  );
+};
+
 const registerAuthRoutes = ({
   app,
   db,
@@ -240,6 +297,7 @@ const registerAuthRoutes = ({
     if (!googleSub) {
       return res.status(400).json({ error: 'Google sign-in is missing a stable user id' });
     }
+    const googleEmail = String(payload?.email || '').trim().toLowerCase();
 
     db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (lookupErr, existingUser) => {
       if (lookupErr) {
@@ -256,65 +314,86 @@ const registerAuthRoutes = ({
         });
       }
 
-      const baseUsername = buildGoogleBaseUsername({ payload, googleSub });
-      resolveAvailableUsername({
+      attachGoogleIdentityToExistingUser({
         db,
-        validateUsername,
-        baseUsername,
-        callback: (usernameErr, availableUsername) => {
-          if (usernameErr || !availableUsername) {
-            console.error('Failed to resolve username for Google account:', usernameErr?.message || usernameErr);
-            return res.status(500).json({ error: 'Failed to create account from Google profile' });
+        email: googleEmail,
+        googleSub,
+        callback: (attachErr, linkedUser) => {
+          if (attachErr) {
+            return res.status(500).json({ error: attachErr.message });
           }
 
-          const randomPassword = crypto.randomBytes(32).toString('hex');
-          bcrypt.hash(randomPassword, bcryptRounds, (hashErr, hashedPassword) => {
-            if (hashErr) {
-              console.error('bcrypt hash failed for Google account:', hashErr.message);
-              return res.status(500).json({ error: 'Failed to process account credentials' });
-            }
+          if (linkedUser) {
+            return issueAuthResponse({
+              res,
+              jwt,
+              secretKey,
+              row: linkedUser,
+              isNewUser: false,
+            });
+          }
 
-            const insertSql = 'INSERT INTO users (username, password, role, auth_provider, google_sub) VALUES (?, ?, ?, ?, ?)';
-            db.run(insertSql, [availableUsername, hashedPassword, 'user', 'google', googleSub], function insertGoogleUser(insertErr) {
-              if (insertErr) {
-                if (insertErr.message.includes('UNIQUE constraint failed: users.google_sub')) {
-                  return db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (raceLookupErr, raceUser) => {
-                    if (raceLookupErr) return res.status(500).json({ error: raceLookupErr.message });
-                    if (!raceUser) return res.status(500).json({ error: 'Failed to finish Google login' });
+          const baseUsername = buildGoogleBaseUsername({ payload, googleSub });
+          resolveAvailableUsername({
+            db,
+            validateUsername,
+            baseUsername,
+            callback: (usernameErr, availableUsername) => {
+              if (usernameErr || !availableUsername) {
+                console.error('Failed to resolve username for Google account:', usernameErr?.message || usernameErr);
+                return res.status(500).json({ error: 'Failed to create account from Google profile' });
+              }
+
+              const randomPassword = crypto.randomBytes(32).toString('hex');
+              bcrypt.hash(randomPassword, bcryptRounds, (hashErr, hashedPassword) => {
+                if (hashErr) {
+                  console.error('bcrypt hash failed for Google account:', hashErr.message);
+                  return res.status(500).json({ error: 'Failed to process account credentials' });
+                }
+
+                const insertSql = 'INSERT INTO users (username, password, role, auth_provider, google_sub) VALUES (?, ?, ?, ?, ?)';
+                db.run(insertSql, [availableUsername, hashedPassword, 'user', 'google', googleSub], function insertGoogleUser(insertErr) {
+                  if (insertErr) {
+                    if (insertErr.message.includes('UNIQUE constraint failed: users.google_sub')) {
+                      return db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (raceLookupErr, raceUser) => {
+                        if (raceLookupErr) return res.status(500).json({ error: raceLookupErr.message });
+                        if (!raceUser) return res.status(500).json({ error: 'Failed to finish Google login' });
+                        return issueAuthResponse({
+                          res,
+                          jwt,
+                          secretKey,
+                          row: raceUser,
+                          isNewUser: false,
+                        });
+                      });
+                    }
+                    if (insertErr.message.includes('UNIQUE constraint failed: users.username')) {
+                      return res.status(409).json({ error: 'Username collision, please retry Google login' });
+                    }
+                    if (insertErr.message.includes('database is locked')) {
+                      return res.status(503).json({ error: 'Database is busy, please retry in a moment.' });
+                    }
+                    return res.status(500).json({ error: insertErr.message });
+                  }
+
+                  return db.get('SELECT * FROM users WHERE id = ?', [this.lastID], (createdErr, createdUser) => {
+                    if (createdErr) {
+                      return res.status(500).json({ error: createdErr.message });
+                    }
+                    if (!createdUser) {
+                      return res.status(500).json({ error: 'Failed to load new Google account' });
+                    }
                     return issueAuthResponse({
                       res,
                       jwt,
                       secretKey,
-                      row: raceUser,
-                      isNewUser: false,
+                      row: createdUser,
+                      isNewUser: true,
                     });
                   });
-                }
-                if (insertErr.message.includes('UNIQUE constraint failed: users.username')) {
-                  return res.status(409).json({ error: 'Username collision, please retry Google login' });
-                }
-                if (insertErr.message.includes('database is locked')) {
-                  return res.status(503).json({ error: 'Database is busy, please retry in a moment.' });
-                }
-                return res.status(500).json({ error: insertErr.message });
-              }
-
-              return db.get('SELECT * FROM users WHERE id = ?', [this.lastID], (createdErr, createdUser) => {
-                if (createdErr) {
-                  return res.status(500).json({ error: createdErr.message });
-                }
-                if (!createdUser) {
-                  return res.status(500).json({ error: 'Failed to load new Google account' });
-                }
-                return issueAuthResponse({
-                  res,
-                  jwt,
-                  secretKey,
-                  row: createdUser,
-                  isNewUser: true,
                 });
               });
-            });
+            },
           });
         },
       });
