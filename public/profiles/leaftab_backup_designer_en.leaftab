@@ -21,203 +21,369 @@
     "scenarioShortcuts": {
       "default": [
         {
-          "id": "des-01",
-          "title": "Dribbble",
-          "url": "https://dribbble.com",
+          "id": "fld_default_large",
+          "title": "Collection",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_default_01",
+              "title": "Typewolf",
+              "url": "https://www.typewolf.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_02",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_03",
+              "title": "Stack Overflow",
+              "url": "https://stackoverflow.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_04",
+              "title": "Reddit (Programming)",
+              "url": "https://www.reddit.com/r/programming",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_05",
+              "title": "Dribbble",
+              "url": "https://dribbble.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_06",
+              "title": "Behance",
+              "url": "https://www.behance.net",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_07",
+              "title": "Pinterest",
+              "url": "https://www.pinterest.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_08",
+              "title": "Awwwards",
+              "url": "https://www.awwwards.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_09",
+              "title": "ArtStation",
+              "url": "https://www.artstation.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_10",
+              "title": "Figma",
+              "url": "https://www.figma.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "fld_default_small",
+          "title": "Tools",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_default_11",
+              "title": "Canva",
+              "url": "https://www.canva.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_12",
+              "title": "Adobe Color",
+              "url": "https://color.adobe.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_13",
+              "title": "FontAwesome",
+              "url": "https://fontawesome.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_14",
+              "title": "Google Drive",
+              "url": "https://drive.google.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_default_15",
+          "title": "Google Maps",
+          "url": "https://maps.google.com",
           "icon": ""
         },
         {
-          "id": "des-02",
-          "title": "Behance",
-          "url": "https://www.behance.net",
+          "id": "sht_default_16",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
           "icon": ""
         },
         {
-          "id": "des-03",
-          "title": "Pinterest",
-          "url": "https://www.pinterest.com",
+          "id": "sht_default_17",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
           "icon": ""
         },
         {
-          "id": "des-04",
-          "title": "Awwwards",
-          "url": "https://www.awwwards.com",
+          "id": "sht_default_18",
+          "title": "Notion",
+          "url": "https://www.notion.so",
           "icon": ""
         },
         {
-          "id": "des-05",
-          "title": "ArtStation",
-          "url": "https://www.artstation.com",
+          "id": "sht_default_19",
+          "title": "Slack",
+          "url": "https://slack.com",
           "icon": ""
         },
         {
-          "id": "tool-01",
-          "title": "Figma",
-          "url": "https://www.figma.com",
+          "id": "sht_default_20",
+          "title": "Trello",
+          "url": "https://trello.com",
           "icon": ""
         },
         {
-          "id": "tool-02",
-          "title": "Canva",
-          "url": "https://www.canva.com",
+          "id": "sht_default_21",
+          "title": "Asana",
+          "url": "https://asana.com",
           "icon": ""
         },
         {
-          "id": "tool-03",
-          "title": "Adobe Color",
-          "url": "https://color.adobe.com",
+          "id": "sht_default_22",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
           "icon": ""
         },
         {
-          "id": "tool-04",
-          "title": "FontAwesome",
-          "url": "https://fontawesome.com",
+          "id": "sht_default_23",
+          "title": "Zoom",
+          "url": "https://zoom.us",
           "icon": ""
         },
         {
-          "id": "tool-05",
-          "title": "TinyPNG",
-          "url": "https://tinypng.com",
+          "id": "sht_default_24",
+          "title": "GitLab",
+          "url": "https://gitlab.com",
           "icon": ""
         },
         {
-          "id": "res-01",
-          "title": "Unsplash",
-          "url": "https://unsplash.com",
+          "id": "sht_default_25",
+          "title": "Bitbucket",
+          "url": "https://bitbucket.org",
           "icon": ""
         },
         {
-          "id": "res-02",
-          "title": "Pexels",
-          "url": "https://www.pexels.com",
+          "id": "sht_default_26",
+          "title": "Linear",
+          "url": "https://linear.app",
           "icon": ""
         },
         {
-          "id": "res-03",
-          "title": "Iconfinder",
-          "url": "https://www.iconfinder.com",
-          "icon": ""
-        },
-        {
-          "id": "res-04",
-          "title": "Mobbin",
-          "url": "https://mobbin.com",
-          "icon": ""
-        },
-        {
-          "id": "res-05",
-          "title": "Typewolf",
-          "url": "https://www.typewolf.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-01",
-          "title": "GitHub",
-          "url": "https://github.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-02",
-          "title": "Stack Overflow",
-          "url": "https://stackoverflow.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-03",
-          "title": "Reddit (Programming)",
-          "url": "https://www.reddit.com/r/programming",
+          "id": "sht_default_27",
+          "title": "Jira",
+          "url": "https://www.atlassian.com/software/jira",
           "icon": ""
         }
       ],
       "life-mode-001": [
         {
-          "id": "ent-01",
-          "title": "YouTube",
-          "url": "https://www.youtube.com",
-          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+          "id": "fld_life_mode_001_large",
+          "title": "Collection",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_life_mode_001_01",
+              "title": "Apple",
+              "url": "https://www.apple.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_02",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "sht_life_mode_001_03",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_04",
+              "title": "Spotify",
+              "url": "https://open.spotify.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_05",
+              "title": "Twitch",
+              "url": "https://www.twitch.tv",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_06",
+              "title": "IMDb",
+              "url": "https://www.imdb.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_07",
+              "title": "CNN",
+              "url": "https://edition.cnn.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_08",
+              "title": "BBC News",
+              "url": "https://www.bbc.com/news",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_09",
+              "title": "The New York Times",
+              "url": "https://www.nytimes.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_10",
+              "title": "Reddit",
+              "url": "https://www.reddit.com",
+              "icon": ""
+            }
+          ]
         },
         {
-          "id": "ent-02",
-          "title": "Netflix",
-          "url": "https://www.netflix.com",
+          "id": "fld_life_mode_001_small",
+          "title": "Tools",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_life_mode_001_11",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_12",
+              "title": "Amazon",
+              "url": "https://www.amazon.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_13",
+              "title": "eBay",
+              "url": "https://www.ebay.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_14",
+              "title": "Google Drive",
+              "url": "https://drive.google.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_life_mode_001_15",
+          "title": "Google Maps",
+          "url": "https://maps.google.com",
           "icon": ""
         },
         {
-          "id": "ent-03",
-          "title": "Spotify",
-          "url": "https://open.spotify.com",
+          "id": "sht_life_mode_001_16",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
           "icon": ""
         },
         {
-          "id": "ent-04",
-          "title": "Twitch",
-          "url": "https://www.twitch.tv",
+          "id": "sht_life_mode_001_17",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
           "icon": ""
         },
         {
-          "id": "ent-05",
-          "title": "IMDb",
-          "url": "https://www.imdb.com",
+          "id": "sht_life_mode_001_18",
+          "title": "Notion",
+          "url": "https://www.notion.so",
           "icon": ""
         },
         {
-          "id": "read-01",
-          "title": "CNN",
-          "url": "https://edition.cnn.com",
+          "id": "sht_life_mode_001_19",
+          "title": "Figma",
+          "url": "https://www.figma.com",
           "icon": ""
         },
         {
-          "id": "read-02",
-          "title": "BBC News",
-          "url": "https://www.bbc.com/news",
+          "id": "sht_life_mode_001_20",
+          "title": "Slack",
+          "url": "https://slack.com",
           "icon": ""
         },
         {
-          "id": "read-03",
-          "title": "The New York Times",
-          "url": "https://www.nytimes.com",
+          "id": "sht_life_mode_001_21",
+          "title": "Trello",
+          "url": "https://trello.com",
           "icon": ""
         },
         {
-          "id": "read-04",
-          "title": "Reddit",
-          "url": "https://www.reddit.com",
+          "id": "sht_life_mode_001_22",
+          "title": "Asana",
+          "url": "https://asana.com",
           "icon": ""
         },
         {
-          "id": "read-05",
-          "title": "Hacker News",
-          "url": "https://news.ycombinator.com",
+          "id": "sht_life_mode_001_23",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
           "icon": ""
         },
         {
-          "id": "shop-01",
-          "title": "Amazon",
-          "url": "https://www.amazon.com",
+          "id": "sht_life_mode_001_24",
+          "title": "Canva",
+          "url": "https://www.canva.com",
           "icon": ""
         },
         {
-          "id": "shop-02",
-          "title": "eBay",
-          "url": "https://www.ebay.com",
+          "id": "sht_life_mode_001_25",
+          "title": "Zoom",
+          "url": "https://zoom.us",
           "icon": ""
         },
         {
-          "id": "shop-03",
-          "title": "Best Buy",
-          "url": "https://www.bestbuy.com",
+          "id": "sht_life_mode_001_26",
+          "title": "GitLab",
+          "url": "https://gitlab.com",
           "icon": ""
         },
         {
-          "id": "shop-04",
-          "title": "Walmart",
-          "url": "https://www.walmart.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-05",
-          "title": "Apple",
-          "url": "https://www.apple.com",
+          "id": "sht_life_mode_001_27",
+          "title": "Bitbucket",
+          "url": "https://bitbucket.org",
           "icon": ""
         }
       ]

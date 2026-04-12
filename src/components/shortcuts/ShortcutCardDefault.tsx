@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Shortcut } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import { ShortcutFolderInlinePreview } from './ShortcutFolderPreview';
+import { LIGHT_FOLDER_SURFACE_CLASSNAME, ShortcutFolderInlinePreview } from './ShortcutFolderPreview';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 
 interface ShortcutCardDefaultProps {
@@ -107,7 +107,7 @@ export function ShortcutCardDefault({
       <div
         className={`relative w-full cursor-pointer select-none rounded-xl ${
           firefox ? '' : 'transition-[background-color,border-color,box-shadow] duration-150'
-        } border border-black/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] hover:bg-white/78 dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-black/32`}
+        } border ${LIGHT_FOLDER_SURFACE_CLASSNAME} hover:bg-[rgba(212,219,226,0.48)] dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-black/32`}
         onClick={onOpen}
         onContextMenu={onContextMenu}
       >

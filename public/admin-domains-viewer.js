@@ -321,9 +321,14 @@
           icons[key] = v.trim();
           return;
         }
-        if (v && typeof v === "object" && typeof v.path === "string" && v.path.trim()) {
+        if (v && typeof v === "object") {
+          const pathValue = typeof v.path === "string" ? v.path.trim() : "";
+          const shapePathValue = typeof v.shapePath === "string" ? v.shapePath.trim() : "";
+          if (!pathValue && !shapePathValue) return;
           icons[key] = {
-            path: v.path.trim(),
+            path: pathValue || undefined,
+            shapePath: shapePathValue || undefined,
+            defaultColor: typeof v.defaultColor === "string" ? v.defaultColor.trim() : undefined,
             sha256: typeof v.sha256 === "string" ? v.sha256.trim() : undefined,
             updatedAt: typeof v.updatedAt === "string" ? v.updatedAt.trim() : undefined
           };
