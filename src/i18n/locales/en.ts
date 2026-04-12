@@ -188,11 +188,11 @@ export default {
         select: "Select"
       },
       shortcutsStyle: {
-        label: "Shortcut Style",
-        entryDescription: "Switch shortcut style and set grid columns and base rows",
+        label: "Shortcut Layout",
+        entryDescription: "Adjust grid columns and shortcut name display",
         open: "Open",
-        title: "Shortcut Style Settings",
-        description: "Choose a shortcut style and set single-page grid columns and base rows",
+        title: "Shortcut Layout Settings",
+        description: "Adjust single-page grid columns and shortcut name display",
         rich: "Rich",
         compact: "Minimal",
         showName: "Show Name",
@@ -210,7 +210,7 @@ export default {
         colorful: "Colorful",
         monochrome: "Monochrome",
         accent: "Accent",
-        modeReservedHint: "Monochrome and accent modes are reserved for now and currently render the same as colorful mode.",
+        modeReservedHint: "Monochrome and accent modes recolor supported icons with a unified palette.",
         cornerRadius: "Corner Radius",
         size: "Icon Size"
       },
@@ -443,16 +443,6 @@ export default {
         customSaved: "Custom backend URL saved",
         customCleared: "Custom backend URL cleared",
         customInvalid: "Invalid URL format"
-      },
-      iconLibrary: {
-        label: "Icon Library URL",
-        desc: "Prefer LeafTab-style icons (GitHub Pages)",
-        placeholder: "URL (e.g. https://xxx.github.io/icons)",
-        save: "Save",
-        saved: "Icon library URL saved",
-        restore: "Restore Default",
-        restored: "Default icon library URL restored",
-        invalid: "Invalid icon library URL"
       },
       about: {
         label: "About LeafTab",

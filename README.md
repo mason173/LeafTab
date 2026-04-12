@@ -123,8 +123,8 @@ npm i
 npm run dev
 ```
 
-首次执行 `npm run dev` / `npm run build` 时，如果本地不存在 `leaftab-icons-main/svgs`，脚本会自动从 `https://github.com/mason173/leaftab-icons.git` 拉取图标库到仓库根目录下的 `leaftab-icons-main/`，再同步到 `public/leaftab-icons/`。
-On the first `npm run dev` / `npm run build`, if `leaftab-icons-main/svgs` is missing locally, the script will automatically clone `https://github.com/mason173/leaftab-icons.git` into `leaftab-icons-main/` at the repo root, then sync it into `public/leaftab-icons/`.
+`npm run dev` / `npm run build` 会把本地 `leaftab-icons-main/official-icon-sources`（或旧版 `leaftab-icons-main/官方图标分层`）同步到 `public/leaftab-icons/`。项目不再自动从 GitHub 拉取官方图标库；如果本地图标源目录缺失，则保留现有的 `public/leaftab-icons/` 本地资源继续运行。
+`npm run dev` / `npm run build` syncs local icon sources from `leaftab-icons-main/official-icon-sources` (or the legacy `leaftab-icons-main/官方图标分层`) into `public/leaftab-icons/`. The project no longer auto-clones the official icon library from GitHub; if the local source directory is missing, it keeps using the existing local assets under `public/leaftab-icons/`.
 
 ## 构建（前端）/ Build (Frontend)
 
@@ -197,7 +197,7 @@ Note: The domains admin board is used by "Icon Assistant" to track missing icon 
 - 在设置里填写管理员密钥 / Fill in the admin key in settings.
 - 在管理员面板点击“打开管理页” / Click "Open Admin Page" in admin panel.
 - `Count/Users` 语义：同一域名的**唯一用户数**（同一用户重复上报不会累计） / `Count/Users` means unique users per domain.
-- 管理页支持“隐藏已适配域名”，会结合图标库 `manifest.json` 做主域匹配（如 `index.baidu.com` 视为 `baidu.com` 同品牌） / Supports hiding already-supported domains via icon-library manifest with registrable-domain matching.
+- 管理页支持“隐藏已适配域名”，会结合本地 `public/leaftab-icons/icon-library.json` 做主域匹配（如 `index.baidu.com` 视为 `baidu.com` 同品牌） / Supports hiding already-supported domains via the local `public/leaftab-icons/icon-library.json` with registrable-domain matching.
 
 ## 维护脚本 / Maintenance Scripts
 

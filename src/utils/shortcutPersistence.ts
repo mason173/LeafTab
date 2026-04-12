@@ -110,6 +110,7 @@ export function saveShortcutToLocalProfile(
     useOfficialIcon: draft.useOfficialIcon !== false,
     autoUseOfficialIcon: draft.autoUseOfficialIcon !== false,
     officialIconAvailableAtSave: draft.officialIconAvailableAtSave === true,
+    officialIconColorOverride: draft.officialIconColorOverride === true,
     iconRendering: draft.iconRendering,
     iconColor: normalizeShortcutIconColor(draft.iconColor),
   };

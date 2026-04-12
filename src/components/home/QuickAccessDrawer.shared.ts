@@ -1,5 +1,6 @@
 import type { ComponentProps, CSSProperties, RefObject } from 'react';
 import type { ShortcutGrid } from '@/components/ShortcutGrid';
+import type { ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import type { SearchExperience } from '@/components/search/SearchExperience';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 
@@ -27,6 +28,8 @@ export interface QuickAccessDrawerProps {
   drawerPanelTranslateYPx: number;
   drawerShortcutBottomInset: number;
   drawerShortcutForceWhiteText: boolean;
+  drawerShortcutMonochromeTone: ShortcutMonochromeTone;
+  drawerShortcutMonochromeTileBackdropBlur: boolean;
   drawerScrollLocked: boolean;
   reduceMotionVisuals?: boolean;
   drawerSearchSurfaceStyle?: CSSProperties;

@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useTranslation } from 'react-i18next';
-import type { Shortcut, ShortcutDraft } from '@/types';
+import type { Shortcut, ShortcutDraft, ShortcutIconAppearance } from '@/types';
 import { ShortcutEditorPanel } from '@/components/ShortcutEditorPanel';
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 
@@ -16,6 +16,7 @@ interface ShortcutModalProps {
   initialShortcut?: Partial<Shortcut> | null;
   iconCornerRadius?: number;
   iconScale?: number;
+  iconAppearance?: ShortcutIconAppearance;
   onSave: (
     value: ShortcutDraft,
     localOnly?: {
@@ -32,6 +33,7 @@ export default function ShortcutModal({
   initialShortcut,
   iconCornerRadius,
   iconScale,
+  iconAppearance,
   onSave,
 }: ShortcutModalProps) {
   const { t } = useTranslation();
@@ -51,6 +53,7 @@ export default function ShortcutModal({
           open={isOpen}
           initialShortcut={initialShortcut}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
           previewSize={scaleShortcutIconSize(76, iconScale)}
           onSave={onSave}
           onCancel={() => onOpenChange(false)}

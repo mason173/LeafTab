@@ -1,9 +1,10 @@
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
+  COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   LARGE_FOLDER_PREVIEW_VISIBLE_COUNT,
 } from '@/components/shortcuts/compactFolderLayout';
 import { RiFolderChartFill } from '@/icons/ri-compat';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren } from '@/utils/shortcutFolders';
 import { clampShortcutIconCornerRadius, getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
@@ -90,10 +91,12 @@ export function getLargeFolderBorderRadius(size: number, iconCornerRadius: numbe
 function FolderPreviewScaledIcon({
   child,
   iconCornerRadius,
+  iconAppearance,
   contentSize,
 }: {
   child: Shortcut;
   iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
   contentSize: number;
 }) {
   const previewIconScale = contentSize / FOLDER_SHARED_ICON_BASE_SIZE;
@@ -121,9 +124,11 @@ function FolderPreviewScaledIcon({
         useOfficialIcon={child.useOfficialIcon}
         autoUseOfficialIcon={child.autoUseOfficialIcon}
         officialIconAvailableAtSave={child.officialIconAvailableAtSave}
+        officialIconColorOverride={child.officialIconColorOverride}
         iconRendering={child.iconRendering}
         iconColor={child.iconColor}
         iconCornerRadius={iconCornerRadius}
+        iconAppearance={iconAppearance}
         remoteIconScale={1}
       />
     </div>
@@ -136,12 +141,14 @@ function FolderPreviewTile({
   index,
   tileSize,
   iconCornerRadius,
+  iconAppearance,
 }: {
   child: Shortcut;
   folderId: string;
   index: number;
   tileSize: number;
   iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
 }) {
   const previewIconSize = Math.max(16, Math.round(tileSize * FOLDER_PREVIEW_CONTENT_RATIO));
 
@@ -161,6 +168,7 @@ function FolderPreviewTile({
           child={child}
           contentSize={previewIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
         />
       </div>
     </div>
@@ -173,6 +181,7 @@ function LargeFolderPreviewTile({
   index,
   tileSize,
   iconCornerRadius,
+  iconAppearance,
   onOpenShortcut,
 }: {
   child: Shortcut;
@@ -180,6 +189,7 @@ function LargeFolderPreviewTile({
   index: number;
   tileSize: number;
   iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
   onOpenShortcut?: (shortcut: Shortcut) => void;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_PREVIEW_CONTENT_RATIO));
@@ -209,6 +219,7 @@ function LargeFolderPreviewTile({
           child={child}
           contentSize={previewIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
         />
       </div>
     </Element>
@@ -221,6 +232,7 @@ function LargeFolderOpenTile({
   index,
   tileSize,
   iconCornerRadius,
+  iconAppearance,
   onOpenFolder,
 }: {
   child: Shortcut;
@@ -228,6 +240,7 @@ function LargeFolderOpenTile({
   index: number;
   tileSize: number;
   iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
   onOpenFolder: () => void;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_TRIGGER_ICON_RATIO));
@@ -258,6 +271,7 @@ function LargeFolderOpenTile({
           child={child}
           contentSize={previewIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
         />
       </div>
     </button>
@@ -268,12 +282,14 @@ type ShortcutFolderPreviewProps = {
   shortcut: Shortcut;
   size: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
 };
 
 type ShortcutFolderLargePreviewProps = {
   shortcut: Shortcut;
   size: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   onOpenFolder: () => void;
   onOpenShortcut?: (shortcut: Shortcut) => void;
 };
@@ -282,6 +298,7 @@ type ShortcutFolderInlinePreviewProps = {
   shortcut: Shortcut;
   iconSize?: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   maxIcons?: number;
 };
 
@@ -289,6 +306,7 @@ export function ShortcutFolderPreview({
   shortcut,
   size,
   iconCornerRadius = 18,
+  iconAppearance,
 }: ShortcutFolderPreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, 4);
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
@@ -314,6 +332,7 @@ export function ShortcutFolderPreview({
           index={index}
           tileSize={tileSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
         />
       )) : (
         <div className="col-span-2 flex items-center justify-center text-muted-foreground" style={{ fontSize: Math.max(18, Math.round(size * 0.34)) }}>
@@ -328,6 +347,7 @@ export function ShortcutFolderLargePreview({
   shortcut,
   size,
   iconCornerRadius = 18,
+  iconAppearance,
   onOpenFolder,
   onOpenShortcut,
 }: ShortcutFolderLargePreviewProps) {
@@ -388,6 +408,7 @@ export function ShortcutFolderLargePreview({
                   index={index}
                   tileSize={tileSize}
                   iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
                   onOpenFolder={onOpenFolder}
                 />
               );
@@ -406,6 +427,7 @@ export function ShortcutFolderLargePreview({
                 index={index}
                 tileSize={tileSize}
                 iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
                 onOpenShortcut={onOpenShortcut}
               />
             );
@@ -427,6 +449,7 @@ export function ShortcutFolderInlinePreview({
   shortcut,
   iconSize = 22,
   iconCornerRadius = 18,
+  iconAppearance,
   maxIcons = 4,
 }: ShortcutFolderInlinePreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, Math.max(2, maxIcons));
@@ -454,9 +477,11 @@ export function ShortcutFolderInlinePreview({
             useOfficialIcon={child.useOfficialIcon}
             autoUseOfficialIcon={child.autoUseOfficialIcon}
             officialIconAvailableAtSave={child.officialIconAvailableAtSave}
+            officialIconColorOverride={child.officialIconColorOverride}
             iconRendering={child.iconRendering}
             iconColor={child.iconColor}
             iconCornerRadius={previewIconCornerRadius}
+            iconAppearance={iconAppearance}
             remoteIconScale={FOLDER_INLINE_REMOTE_ICON_SCALE}
           />
         </div>

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiAddLine, RiSubtractLine } from '@/icons/ri-compat';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import Scrubber from '@/components/ui/smoothui/scrubber';
@@ -11,24 +10,8 @@ import {
   clampShortcutGridColumns,
   DEFAULT_SHORTCUT_CARD_VARIANT,
   getShortcutColumnBounds,
-  getShortcutColumns,
   type ShortcutCardVariant,
 } from '@/components/shortcuts/shortcutCardVariant';
-
-const SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY = 'shortcutGridColumnsByVariant';
-
-function readColumnsByVariant(variant: ShortcutCardVariant): number | null {
-  try {
-    const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const next = Number(parsed?.[variant]);
-    if (!Number.isFinite(next)) return null;
-    return clampShortcutGridColumns(next, variant);
-  } catch {
-    return null;
-  }
-}
 
 interface ShortcutStyleSettingsDialogProps {
   open: boolean;
@@ -50,11 +33,13 @@ export function ShortcutStyleSettingsDialog({
   onSave,
 }: ShortcutStyleSettingsDialogProps) {
   const { t } = useTranslation();
-  const [draftVariant, setDraftVariant] = useState<ShortcutCardVariant>(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
-  const [draftColumns, setDraftColumns] = useState(columns);
+  // Keep the rich/default variant implementation in the codebase,
+  // but expose only the compact variant in settings.
+  const activeVariant: ShortcutCardVariant = DEFAULT_SHORTCUT_CARD_VARIANT;
+  void variant;
+  const [draftColumns, setDraftColumns] = useState(() => clampShortcutGridColumns(columns, activeVariant));
   const [draftCompactShowTitle, setDraftCompactShowTitle] = useState(compactShowTitle);
   const [isColumnsSliderInteracting, setIsColumnsSliderInteracting] = useState(false);
-  const columnsByVariantRef = useRef<Partial<Record<ShortcutCardVariant, number>>>({});
   const isSliderIsolation = isColumnsSliderInteracting;
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
 
@@ -63,59 +48,29 @@ export function ShortcutStyleSettingsDialog({
       setIsColumnsSliderInteracting(false);
       return;
     }
-    setDraftVariant(variant || DEFAULT_SHORTCUT_CARD_VARIANT);
-    setDraftColumns(columns);
+    setDraftColumns(clampShortcutGridColumns(columns, activeVariant));
     setDraftCompactShowTitle(compactShowTitle);
-    columnsByVariantRef.current[variant || DEFAULT_SHORTCUT_CARD_VARIANT] = clampShortcutGridColumns(
-      columns,
-      variant || DEFAULT_SHORTCUT_CARD_VARIANT,
-    );
-  }, [open, variant, columns, compactShowTitle]);
+  }, [activeVariant, columns, compactShowTitle, open]);
 
-  const columnBounds = useMemo(() => getShortcutColumnBounds(draftVariant), [draftVariant]);
-  const resolveColumnsForVariant = (nextVariant: ShortcutCardVariant, fallbackColumns: number): number => {
-    const remembered = columnsByVariantRef.current[nextVariant];
-    if (Number.isFinite(remembered)) {
-      return clampShortcutGridColumns(remembered as number, nextVariant);
-    }
-    const saved = readColumnsByVariant(nextVariant);
-    if (saved !== null) return saved;
-    const normalized = clampShortcutGridColumns(fallbackColumns, nextVariant);
-    if (Number.isFinite(normalized)) return normalized;
-    return getShortcutColumns(nextVariant);
-  };
+  const columnBounds = useMemo(() => getShortcutColumnBounds(activeVariant), [activeVariant]);
 
-  const emitLiveUpdate = (
-    nextVariant: ShortcutCardVariant,
-    nextCompactShowTitle: boolean,
-    nextColumns: number,
-  ) => {
+  const emitLiveUpdate = (nextCompactShowTitle: boolean, nextColumns: number) => {
     onSave({
-      variant: nextVariant,
+      variant: activeVariant,
       compactShowTitle: nextCompactShowTitle,
       columns: nextColumns,
     });
   };
 
-  const handleVariantChange = (value: string) => {
-    const nextVariant = value as ShortcutCardVariant;
-    const nextColumns = resolveColumnsForVariant(nextVariant, draftColumns);
-    setDraftVariant(nextVariant);
-    setDraftColumns(nextColumns);
-    columnsByVariantRef.current[nextVariant] = nextColumns;
-    emitLiveUpdate(nextVariant, draftCompactShowTitle, nextColumns);
-  };
-
   const handleCompactShowTitleChange = (nextCompactShowTitle: boolean) => {
     setDraftCompactShowTitle(nextCompactShowTitle);
-    emitLiveUpdate(draftVariant, nextCompactShowTitle, draftColumns);
+    emitLiveUpdate(nextCompactShowTitle, draftColumns);
   };
 
   const handleColumnsChange = (nextRawValue: number) => {
-    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue), draftVariant);
+    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue), activeVariant);
     setDraftColumns(nextColumns);
-    columnsByVariantRef.current[draftVariant] = nextColumns;
-    emitLiveUpdate(draftVariant, draftCompactShowTitle, nextColumns);
+    emitLiveUpdate(draftCompactShowTitle, nextColumns);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -144,37 +99,18 @@ export function ShortcutStyleSettingsDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <Tabs
-            value={draftVariant}
-            onValueChange={handleVariantChange}
-            className={`w-full ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}
-          >
-            <TabsList className="grid w-full grid-cols-2 rounded-[16px]">
-              <TabsTrigger value="compact" className="rounded-xl">{t('settings.shortcutsStyle.compact')}</TabsTrigger>
-              <TabsTrigger value="default" className="rounded-xl">{t('settings.shortcutsStyle.rich')}</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           <div className={`min-h-[40px] ${isolationFadeClass} ${isSliderIsolation ? 'opacity-0 pointer-events-none select-none' : ''}`}>
-            <div className={`flex items-center justify-between gap-3 rounded-xl px-1 py-1 ${draftVariant !== 'compact' ? 'opacity-55' : ''}`}>
+            <div className="flex items-center justify-between gap-3 rounded-xl px-1 py-1">
               <div className="flex flex-col">
-                <span className={`text-sm font-medium leading-none ${draftVariant !== 'compact' ? 'text-muted-foreground' : ''}`}>{t('settings.shortcutsStyle.showName')}</span>
+                <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.showName')}</span>
                 <span className="text-xs text-muted-foreground">{t('settings.shortcutsStyle.showNameDesc')}</span>
               </div>
               <Switch
-                checked={draftVariant === 'compact' ? draftCompactShowTitle : true}
-                onCheckedChange={draftVariant === 'compact' ? handleCompactShowTitleChange : undefined}
-                disabled={draftVariant !== 'compact'}
-                className={`relative flex h-6 w-10 items-center justify-start rounded-full border p-0.5 transition-colors data-[state=checked]:justify-end ${
-                  draftVariant !== 'compact'
-                    ? 'cursor-not-allowed border-border/70 data-[state=checked]:bg-secondary data-[state=unchecked]:bg-secondary'
-                    : 'border-border data-[state=checked]:bg-primary data-[state=unchecked]:bg-input'
-                }`}
+                checked={draftCompactShowTitle}
+                onCheckedChange={handleCompactShowTitleChange}
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
               >
-                <SwitchThumb
-                  className={`h-full aspect-square rounded-full ${draftVariant !== 'compact' ? '!bg-muted-foreground/55' : ''}`}
-                  pressedAnimation={{ width: 22 }}
-                />
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
               </Switch>
             </div>
           </div>

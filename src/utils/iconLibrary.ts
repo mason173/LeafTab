@@ -22,15 +22,14 @@ export type ResolvedCustomIcon = {
   defaultColor?: string;
 };
 
-const ICON_LIBRARY_URL_KEY = 'leaftab_icon_library_url';
-const ICON_LIBRARY_MANIFEST_KEY = 'leaftab_icon_library_manifest_json';
-const ICON_LIBRARY_MANIFEST_ETAG_KEY = 'leaftab_icon_library_manifest_etag';
-const ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY = 'leaftab_icon_library_manifest_fetched_at';
 const LOCAL_ICON_LIBRARY_BASE_URL = '/leaftab-icons';
 const ICON_LIBRARY_MANIFEST_FILE_CANDIDATES = ['icon-library.json', 'manifest.json'] as const;
-
-export const DEFAULT_ICON_LIBRARY_URL = 'https://mason173.github.io/leaftab-icons';
-const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
+const LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS = [
+  'leaftab_icon_library_url',
+  'leaftab_icon_library_manifest_json',
+  'leaftab_icon_library_manifest_etag',
+  'leaftab_icon_library_manifest_fetched_at',
+] as const;
 
 const normalizeHexColor = (value: string | null | undefined) => {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -85,60 +84,19 @@ const registrableDomain = (domain: string) => {
   return last2;
 };
 
-export const normalizeIconLibraryUrl = (input: string) => {
-  const trimmed = (input || '').trim();
-  if (!trimmed) return '';
-  const withProtocol = trimmed.includes('://') ? trimmed : `https://${trimmed}`;
-  try {
-    new URL(withProtocol);
-  } catch {
-    return '';
-  }
-  return withProtocol.replace(/\/+$/, '');
-};
-
-export const getIconLibraryUrl = () => {
-  try {
-    const raw = (localStorage.getItem(ICON_LIBRARY_URL_KEY) || '').trim();
-    return raw || DEFAULT_ICON_LIBRARY_URL;
-  } catch {
-    return DEFAULT_ICON_LIBRARY_URL;
-  }
-};
-
-export const setIconLibraryUrl = (url: string) => {
-  try {
-    const normalized = normalizeIconLibraryUrl(url);
-    if (!normalized) {
-      localStorage.removeItem(ICON_LIBRARY_URL_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_ETAG_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY);
-      inMemoryManifest = null;
-      inFlight = null;
-      window.dispatchEvent(new Event('leaftab-icon-library-changed'));
-      return '';
-    }
-    const prev = (localStorage.getItem(ICON_LIBRARY_URL_KEY) || '').trim();
-    localStorage.setItem(ICON_LIBRARY_URL_KEY, normalized);
-    if (prev !== normalized) {
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_ETAG_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY);
-      inMemoryManifest = null;
-      inFlight = null;
-    }
-    window.dispatchEvent(new Event('leaftab-icon-library-changed'));
-    return normalized;
-  } catch {
-    return '';
-  }
-};
-
-let inMemoryManifest: IconLibraryManifest | null = null;
-let inFlight: Promise<IconLibraryManifest | null> | null = null;
 let inMemoryLocalManifest: IconLibraryManifest | null = null;
 let inFlightLocal: Promise<IconLibraryManifest | null> | null = null;
+let legacyRemoteStorageCleared = false;
+
+const clearLegacyRemoteIconLibraryState = () => {
+  if (legacyRemoteStorageCleared || typeof localStorage === 'undefined') return;
+  legacyRemoteStorageCleared = true;
+  try {
+    for (const key of LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+  } catch {}
+};
 
 const getLocalIconLibraryUrl = () => {
   if (typeof window === 'undefined' || !window.location?.origin) {
@@ -147,164 +105,81 @@ const getLocalIconLibraryUrl = () => {
   return `${window.location.origin}${LOCAL_ICON_LIBRARY_BASE_URL}`;
 };
 
-const readStoredManifest = (): IconLibraryManifest | null => {
-  try {
-    const raw = localStorage.getItem(ICON_LIBRARY_MANIFEST_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    return parsed as IconLibraryManifest;
-  } catch {
-    return null;
-  }
-};
-
-const readStoredFetchedAt = (): number => {
-  try {
-    const raw = localStorage.getItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY) || '';
-    const n = raw ? Number(raw) : 0;
-    return Number.isFinite(n) ? n : 0;
-  } catch {
-    return 0;
-  }
-};
-
-const writeStoredManifest = (manifest: IconLibraryManifest | null, etag: string | null) => {
-  try {
-    if (!manifest) {
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_ETAG_KEY);
-      localStorage.removeItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY);
-      return;
-    }
-    localStorage.setItem(ICON_LIBRARY_MANIFEST_KEY, JSON.stringify(manifest));
-    if (etag) localStorage.setItem(ICON_LIBRARY_MANIFEST_ETAG_KEY, etag);
-    localStorage.setItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY, String(Date.now()));
-  } catch {}
-};
-
-const normalizeManifest = (raw: any): IconLibraryManifest | null => {
-  if (!raw || typeof raw !== 'object') return null;
-  const iconsRaw = (raw as any).icons;
+const normalizeManifest = (raw: unknown): IconLibraryManifest | null => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const iconsRaw = (raw as { icons?: unknown }).icons;
   const icons: Record<string, IconLibraryEntry> = {};
-  if (iconsRaw && typeof iconsRaw === 'object') {
-    for (const [k, v] of Object.entries(iconsRaw as Record<string, any>)) {
+
+  if (iconsRaw && typeof iconsRaw === 'object' && !Array.isArray(iconsRaw)) {
+    for (const [k, v] of Object.entries(iconsRaw as Record<string, unknown>)) {
       const key = normalizeDomain(k);
       if (!key) continue;
       if (typeof v === 'string') {
-        if (!v.trim()) continue;
-        icons[key] = v.trim();
+        const trimmed = v.trim();
+        if (!trimmed) continue;
+        icons[key] = trimmed;
         continue;
       }
-      if (v && typeof v === 'object') {
-        const pathValue = typeof (v as any).path === 'string' ? (v as any).path.trim() : '';
-        const shapePathValue = typeof (v as any).shapePath === 'string' ? (v as any).shapePath.trim() : '';
-        const defaultColorValue = normalizeHexColor(typeof (v as any).defaultColor === 'string' ? (v as any).defaultColor : '');
-        if (!pathValue && !shapePathValue) continue;
-        icons[key] = {
-          mode: (v as any).mode === 'shape-color' || (shapePathValue && defaultColorValue) ? 'shape-color' : undefined,
-          path: pathValue || undefined,
-          shapePath: shapePathValue || undefined,
-          defaultColor: defaultColorValue || undefined,
-          sha256: typeof (v as any).sha256 === 'string' ? (v as any).sha256.trim() : undefined,
-          updatedAt: typeof (v as any).updatedAt === 'string' ? (v as any).updatedAt.trim() : undefined,
-        };
-      }
+      if (!v || typeof v !== 'object' || Array.isArray(v)) continue;
+
+      const pathValue = typeof (v as { path?: unknown }).path === 'string' ? (v as { path: string }).path.trim() : '';
+      const shapePathValue = typeof (v as { shapePath?: unknown }).shapePath === 'string'
+        ? (v as { shapePath: string }).shapePath.trim()
+        : '';
+      const defaultColorValue = normalizeHexColor(
+        typeof (v as { defaultColor?: unknown }).defaultColor === 'string'
+          ? (v as { defaultColor: string }).defaultColor
+          : '',
+      );
+      if (!pathValue && !shapePathValue) continue;
+
+      icons[key] = {
+        mode: (v as { mode?: unknown }).mode === 'shape-color' || (shapePathValue && defaultColorValue)
+          ? 'shape-color'
+          : undefined,
+        path: pathValue || undefined,
+        shapePath: shapePathValue || undefined,
+        defaultColor: defaultColorValue || undefined,
+        sha256: typeof (v as { sha256?: unknown }).sha256 === 'string' ? (v as { sha256: string }).sha256.trim() : undefined,
+        updatedAt: typeof (v as { updatedAt?: unknown }).updatedAt === 'string'
+          ? (v as { updatedAt: string }).updatedAt.trim()
+          : undefined,
+      };
     }
   }
+
   return {
-    version: typeof (raw as any).version === 'string' ? (raw as any).version : undefined,
-    generatedAt: typeof (raw as any).generatedAt === 'string' ? (raw as any).generatedAt : undefined,
+    version: typeof (raw as { version?: unknown }).version === 'string' ? (raw as { version: string }).version : undefined,
+    generatedAt: typeof (raw as { generatedAt?: unknown }).generatedAt === 'string'
+      ? (raw as { generatedAt: string }).generatedAt
+      : undefined,
     icons,
   };
 };
 
 const fetchManifestJson = async ({
   baseUrl,
-  headers,
   cache,
 }: {
   baseUrl: string;
-  headers?: Record<string, string>;
   cache?: RequestCache;
 }) => {
   for (const fileName of ICON_LIBRARY_MANIFEST_FILE_CANDIDATES) {
     const resp = await fetch(`${baseUrl}/${fileName}`, {
       method: 'GET',
       credentials: 'omit',
-      headers,
       cache,
     });
-    if (resp.ok || resp.status === 304) {
+    if (resp.ok) {
       return resp;
     }
   }
   return null;
 };
 
-export const fetchIconLibraryManifest = async (options?: { force?: boolean }) => {
-  const baseUrl = getIconLibraryUrl();
-  if (!baseUrl) return null;
-
-  if (!options?.force && inMemoryManifest) return inMemoryManifest;
-  if (inFlight) return inFlight;
-
-  inFlight = (async () => {
-    const storedFetchedAt = readStoredFetchedAt();
-    const storedManifest = readStoredManifest();
-    if (!options?.force && storedManifest && storedFetchedAt && Date.now() - storedFetchedAt < MANIFEST_TTL_MS) {
-      inMemoryManifest = storedManifest;
-      return storedManifest;
-    }
-
-    let etag: string | null = null;
-    try {
-      etag = (localStorage.getItem(ICON_LIBRARY_MANIFEST_ETAG_KEY) || '').trim() || null;
-    } catch {}
-
-    try {
-      const headers: Record<string, string> = {};
-      if (etag) headers['If-None-Match'] = etag;
-      const resp = await fetchManifestJson({ baseUrl, headers });
-      if (!resp) {
-        inMemoryManifest = storedManifest || null;
-        return inMemoryManifest;
-      }
-      if (resp.status === 304 && storedManifest) {
-        inMemoryManifest = storedManifest;
-        try {
-          localStorage.setItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY, String(Date.now()));
-        } catch {}
-        return storedManifest;
-      }
-      if (!resp.ok) {
-        inMemoryManifest = storedManifest || null;
-        return inMemoryManifest;
-      }
-      const nextEtag = resp.headers.get('etag');
-      const json = await resp.json();
-      const normalized = normalizeManifest(json);
-      if (!normalized) {
-        inMemoryManifest = storedManifest || null;
-        return inMemoryManifest;
-      }
-      writeStoredManifest(normalized, nextEtag || etag);
-      inMemoryManifest = normalized;
-      return normalized;
-    } catch {
-      inMemoryManifest = storedManifest || null;
-      return inMemoryManifest;
-    }
-  })();
-
-  try {
-    return await inFlight;
-  } finally {
-    inFlight = null;
-  }
-};
-
 const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {
+  clearLegacyRemoteIconLibraryState();
+
   if (!options?.force && inMemoryLocalManifest) return inMemoryLocalManifest;
   if (inFlightLocal) return inFlightLocal;
 
@@ -312,7 +187,7 @@ const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {
   inFlightLocal = (async () => {
     try {
       const resp = await fetchManifestJson({ baseUrl, cache: 'force-cache' });
-      if (!resp || !resp.ok) {
+      if (!resp) {
         inMemoryLocalManifest = null;
         return null;
       }
@@ -334,8 +209,7 @@ const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {
 };
 
 export const warmIconLibraryManifestCache = async (options?: { force?: boolean }) => {
-  await fetchLocalIconLibraryManifest(options);
-  return fetchIconLibraryManifest(options);
+  return fetchLocalIconLibraryManifest(options);
 };
 
 const resolveEntry = (manifest: IconLibraryManifest, domain: string): { entry: IconLibraryEntry; key: string } | null => {
@@ -343,13 +217,14 @@ const resolveEntry = (manifest: IconLibraryManifest, domain: string): { entry: I
   if (!d) return null;
   const apex = registrableDomain(d);
   const candidates = [d, apex, `www.${apex}`].filter(Boolean);
+
   for (const key of candidates) {
     const v = manifest.icons?.[key];
     if (!v) continue;
     return { entry: v, key };
   }
-  // Fallback: treat subdomain icon keys under the same registrable domain as supported.
-  // Example: index.baidu.com entry can satisfy baidu.com matching.
+
+  // Allow subdomain-specific local icon entries to satisfy the same registrable domain.
   if (manifest.icons && apex) {
     let fallbackKey = '';
     for (const key of Object.keys(manifest.icons)) {
@@ -363,12 +238,13 @@ const resolveEntry = (manifest: IconLibraryManifest, domain: string): { entry: I
       if (entry) return { entry, key: fallbackKey };
     }
   }
+
   return null;
 };
 
 const buildResolvedCustomIcon = (
   baseUrl: string,
-  resolved: { entry: IconLibraryEntry; key: string }
+  resolved: { entry: IconLibraryEntry; key: string },
 ): ResolvedCustomIcon => {
   const { entry, key } = resolved;
   if (typeof entry === 'string') {
@@ -402,38 +278,24 @@ const buildResolvedCustomIcon = (
 };
 
 export const resolveCustomIconFromCache = (domain: string): ResolvedCustomIcon | null => {
-  const localBaseUrl = getLocalIconLibraryUrl();
-  const localManifest = inMemoryLocalManifest;
-  if (localManifest?.icons) {
-    const localResolved = resolveEntry(localManifest, domain);
-    if (localResolved) return buildResolvedCustomIcon(localBaseUrl, localResolved);
-  }
+  clearLegacyRemoteIconLibraryState();
 
-  const baseUrl = getIconLibraryUrl();
-  if (!baseUrl) return null;
-  const manifest = inMemoryManifest || readStoredManifest();
-  if (!manifest || !manifest.icons) return null;
-  inMemoryManifest = manifest;
-  const resolved = resolveEntry(manifest, domain);
-  if (!resolved) return null;
-  return buildResolvedCustomIcon(baseUrl, resolved);
+  const localManifest = inMemoryLocalManifest;
+  if (!localManifest?.icons) return null;
+
+  const localResolved = resolveEntry(localManifest, domain);
+  if (!localResolved) return null;
+  return buildResolvedCustomIcon(getLocalIconLibraryUrl(), localResolved);
 };
 
 export const resolveCustomIcon = async (domain: string) => {
-  const localBaseUrl = getLocalIconLibraryUrl();
-  const localCached = resolveCustomIconFromCache(domain);
-  const localManifest = await fetchLocalIconLibraryManifest();
-  if (localManifest?.icons) {
-    const localResolved = resolveEntry(localManifest, domain);
-    if (localResolved) return buildResolvedCustomIcon(localBaseUrl, localResolved);
-  }
+  clearLegacyRemoteIconLibraryState();
 
-  const baseUrl = getIconLibraryUrl();
-  if (!baseUrl) return localCached;
-  const cached = localCached;
-  const manifest = await fetchIconLibraryManifest();
-  if (!manifest || !manifest.icons) return cached;
-  const resolved = resolveEntry(manifest, domain);
-  if (!resolved) return cached;
-  return buildResolvedCustomIcon(baseUrl, resolved);
+  const cached = resolveCustomIconFromCache(domain);
+  const localManifest = await fetchLocalIconLibraryManifest();
+  if (!localManifest?.icons) return cached;
+
+  const localResolved = resolveEntry(localManifest, domain);
+  if (!localResolved) return cached;
+  return buildResolvedCustomIcon(getLocalIconLibraryUrl(), localResolved);
 };

@@ -147,6 +147,7 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
 		          useOfficialIcon: shortcut.useOfficialIcon,
 		          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
 		          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
+		          officialIconColorOverride: shortcut.officialIconColorOverride,
 		          iconRendering: shortcut.iconRendering,
 		          iconColor: shortcut.iconColor,
 		          ...(isFolder ? { folderDisplayMode: shortcut.folderDisplayMode } : {}),

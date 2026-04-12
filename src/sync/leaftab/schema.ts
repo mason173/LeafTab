@@ -58,6 +58,7 @@ export interface LeafTabSyncShortcutEntity extends LeafTabSyncBaseEntity {
   useOfficialIcon?: boolean;
   autoUseOfficialIcon?: boolean;
   officialIconAvailableAtSave?: boolean;
+  officialIconColorOverride?: boolean;
   iconRendering?: ShortcutVisualMode;
   iconColor?: string;
 }

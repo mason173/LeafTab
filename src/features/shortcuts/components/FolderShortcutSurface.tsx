@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact';
+import { ShortcutIconRenderContext } from '@/components/ShortcutIconRenderContext';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { DraggableShortcutItemFrame } from '@/features/shortcuts/components/DraggableShortcutItemFrame';
 import { getDropEdge, getReorderTargetIndex } from '@/features/shortcuts/drag/dropEdge';
@@ -23,6 +24,7 @@ type FolderShortcutSurfaceProps = {
   shortcuts: Shortcut[];
   emptyText: string;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   forceTextWhite?: boolean;
   showShortcutTitles?: boolean;
   maskBoundaryRef: React.RefObject<HTMLElement | null>;
@@ -179,12 +181,14 @@ function FloatingFolderShortcutPreview({
   pointer,
   previewOffset,
   iconCornerRadius,
+  iconAppearance,
   forceTextWhite,
 }: {
   shortcut: Shortcut;
   pointer: PointerPoint;
   previewOffset: PointerPoint;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   forceTextWhite?: boolean;
 }) {
   if (typeof document === 'undefined') return null;
@@ -202,6 +206,7 @@ function FloatingFolderShortcutPreview({
         showTitle
         iconSize={72}
         iconCornerRadius={iconCornerRadius}
+        iconAppearance={iconAppearance}
         titleFontSize={12}
         forceTextWhite={forceTextWhite}
         onOpen={() => {}}
@@ -217,6 +222,7 @@ export function FolderShortcutSurface({
   shortcuts,
   emptyText,
   iconCornerRadius,
+  iconAppearance,
   forceTextWhite = false,
   showShortcutTitles = true,
   maskBoundaryRef,
@@ -227,6 +233,10 @@ export function FolderShortcutSurface({
   onDragActiveChange,
 }: FolderShortcutSurfaceProps) {
   const firefox = isFirefoxBuildTarget();
+  const shortcutIconRenderContextValue = useMemo(() => ({
+    monochromeTone: 'theme-adaptive',
+    monochromeTileBackdropBlur: false,
+  }), []);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragPointer, setDragPointer] = useState<PointerPoint | null>(null);
   const [dragPreviewOffset, setDragPreviewOffset] = useState<PointerPoint | null>(null);
@@ -465,7 +475,7 @@ export function FolderShortcutSurface({
   const hoveredMask = hoverState?.type === 'mask';
 
   return (
-    <>
+    <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
       <FolderMaskDropZones
         active={Boolean(activeDragId)}
         hovered={hoveredMask}
@@ -527,6 +537,7 @@ export function FolderShortcutSurface({
                   showTitle={showShortcutTitles}
                   iconSize={72}
                   iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
                   titleFontSize={12}
                   forceTextWhite={forceTextWhite}
                   disableIconWrapperEffects
@@ -553,9 +564,10 @@ export function FolderShortcutSurface({
           pointer={dragPointer}
           previewOffset={dragPreviewOffset}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
           forceTextWhite={forceTextWhite}
         />
       ) : null}
-    </>
+    </ShortcutIconRenderContext.Provider>
   );
 }

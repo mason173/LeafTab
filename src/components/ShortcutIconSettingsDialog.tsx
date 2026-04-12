@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
+import ShortcutIcon from '@/components/ShortcutIcon';
 import Scrubber from '@/components/ui/smoothui/scrubber';
 import { RiCheckFill } from '@/icons/ri-compat';
 import aboutIcon from '@/assets/abouticon.svg';
@@ -11,7 +12,6 @@ import {
   clampShortcutIconCornerRadius,
   clampShortcutIconScale,
   DEFAULT_SHORTCUT_ICON_SCALE,
-  getShortcutIconBorderRadius,
   MAX_SHORTCUT_ICON_SCALE,
   MAX_SHORTCUT_ICON_CORNER_RADIUS,
   MIN_SHORTCUT_ICON_SCALE,
@@ -79,10 +79,8 @@ export function ShortcutIconSettingsDialog({
   const [isSliderInteracting, setIsSliderInteracting] = useState(false);
   const [activeSlider, setActiveSlider] = useState<'cornerRadius' | 'size' | null>(null);
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
-  const previewBorderRadius = getShortcutIconBorderRadius(draftCornerRadius);
   const previewStageSize = 124;
   const previewIconSize = scaleShortcutIconSize(92, draftScale);
-  void draftAppearance;
 
   useEffect(() => {
     if (!open) {
@@ -121,13 +119,13 @@ export function ShortcutIconSettingsDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          setIsSliderInteracting(false);
-          setActiveSlider(null);
-        }
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen: boolean) => {
+          if (!nextOpen) {
+            setIsSliderInteracting(false);
+            setActiveSlider(null);
+          }
         onOpenChange(nextOpen);
       }}
     >
@@ -150,30 +148,20 @@ export function ShortcutIconSettingsDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
-          <div className={`flex justify-center pt-1 ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
+          <div className={`leaftab-icon-settings-preview flex justify-center pt-1 ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
             <div className="flex items-center justify-center" style={{ width: previewStageSize, height: previewStageSize }}>
-              <div
-                className="flex items-center justify-center overflow-hidden shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
-                style={{
-                  width: previewIconSize,
-                  height: previewIconSize,
-                  borderRadius: previewBorderRadius,
-                  backgroundColor: '#22C55E',
-                }}
-              >
-                <img
-                  src={aboutIcon}
-                  alt=""
-                  aria-hidden="true"
-                  draggable={false}
-                  className="pointer-events-none select-none"
-                  style={{
-                    width: Math.max(28, Math.round(previewIconSize * 0.46)),
-                    height: Math.max(28, Math.round(previewIconSize * 0.46)),
-                    filter: 'brightness(0) invert(1)',
-                  }}
-                />
-              </div>
+              <ShortcutIcon
+                icon={aboutIcon}
+                url="https://leaftab.app/about"
+                size={previewIconSize}
+                exact
+                frame="never"
+                fallbackStyle="emptyicon"
+                fallbackLabel="About"
+                iconColor="#22C55E"
+                iconCornerRadius={draftCornerRadius}
+                iconAppearance={draftAppearance}
+              />
             </div>
           </div>
 
@@ -186,18 +174,14 @@ export function ShortcutIconSettingsDialog({
             <AppearanceCard
               selected={draftAppearance === 'monochrome'}
               onClick={() => handleAppearanceChange('monochrome')}
-              label={t('settings.shortcutIconSettings.monochrome', { defaultValue: '黑白' })}
+              label={t('settings.shortcutIconSettings.monochrome', { defaultValue: '单色' })}
             />
             <AppearanceCard
               selected={draftAppearance === 'accent'}
               onClick={() => handleAppearanceChange('accent')}
-              label={t('settings.shortcutIconSettings.accent', { defaultValue: '主题色' })}
+              label={t('settings.shortcutIconSettings.accent', { defaultValue: '强调色' })}
             />
           </div>
-
-          <p className={`text-xs text-muted-foreground ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
-            {t('settings.shortcutIconSettings.modeReservedHint', { defaultValue: '黑白和主题色模式已预留，当前版本先保持与彩色模式一致。' })}
-          </p>
 
           <div className={`${isolationFadeClass} ${activeSlider && activeSlider !== 'cornerRadius' ? 'opacity-0 pointer-events-none select-none' : ''}`}>
             <Scrubber

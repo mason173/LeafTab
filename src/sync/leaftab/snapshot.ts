@@ -2,6 +2,7 @@ import type { ScenarioMode } from '@/scenario/scenario';
 import type { ScenarioShortcuts, Shortcut, SyncablePreferences } from '@/types';
 import { getShortcutIdentityKey } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
+import { normalizeScenarioShortcuts } from '@/utils/shortcutsPayload';
 import { getShortcutChildren, isShortcutFolder, isShortcutLink } from '@/utils/shortcutFolders';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import type { LeafTabBookmarkTreeDraft } from './bookmarks';
@@ -163,6 +164,7 @@ const isSameShortcutValue = (
     entity.useOfficialIcon === (shortcut.useOfficialIcon !== false) &&
     entity.autoUseOfficialIcon === (shortcut.autoUseOfficialIcon !== false) &&
     entity.officialIconAvailableAtSave === (shortcut.officialIconAvailableAtSave === true) &&
+    entity.officialIconColorOverride === (shortcut.officialIconColorOverride === true) &&
     entity.iconRendering === normalizeShortcutVisualMode(shortcut.iconRendering) &&
     (entity.iconColor || '') === normalizeShortcutIconColor(shortcut.iconColor)
   );
@@ -181,6 +183,7 @@ const getNormalizedShortcutChildren = (shortcut: Shortcut): Shortcut[] | undefin
       useOfficialIcon: child.useOfficialIcon !== false,
       autoUseOfficialIcon: child.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: child.officialIconAvailableAtSave === true,
+      officialIconColorOverride: child.officialIconColorOverride === true,
       iconRendering: normalizeShortcutVisualMode(child.iconRendering),
       iconColor: normalizeShortcutIconColor(child.iconColor),
     }));
@@ -568,6 +571,7 @@ export const buildLeafTabSyncSnapshot = (params: {
       useOfficialIcon: shortcut.useOfficialIcon !== false,
       autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+      officialIconColorOverride: shortcut.officialIconColorOverride === true,
       iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
       iconColor: normalizeShortcutIconColor(shortcut.iconColor),
       ...metadata,
@@ -689,6 +693,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
       useOfficialIcon: shortcut.useOfficialIcon !== false,
       autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+      officialIconColorOverride: shortcut.officialIconColorOverride === true,
       iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
       iconColor: normalizeShortcutIconColor(shortcut.iconColor),
     };
@@ -730,11 +735,12 @@ export const projectLeafTabSyncSnapshotToAppState = (
       .map((shortcut) => projectShortcutEntity(shortcut));
     scenarioShortcuts[scenario.id] = orderedShortcutList.concat(unorderedShortcutList);
   });
+  const normalizedScenarioShortcuts = normalizeScenarioShortcuts(scenarioShortcuts);
 
   return {
     preferences: snapshot.preferences ? normalizeSyncablePreferences(snapshot.preferences.value) : null,
     scenarioModes,
-    scenarioShortcuts,
+    scenarioShortcuts: normalizedScenarioShortcuts,
     bookmarkFolders: snapshot.bookmarkFolders,
     bookmarkItems: snapshot.bookmarkItems,
     bookmarkOrders: snapshot.bookmarkOrders,

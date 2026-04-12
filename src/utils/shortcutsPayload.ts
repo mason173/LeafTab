@@ -1,5 +1,6 @@
 import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts, Shortcut } from '../types';
 import { defaultScenarioModes, makeScenarioId, type ScenarioIconKey } from '@/scenario/scenario';
+import { getShortcutUrlIdentity } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -45,6 +46,7 @@ const normalizeShortcutList = (
   value: unknown[],
   scenarioId: string,
   usedShortcutIds: Set<string>,
+  seenUrlIdentities: Set<string>,
 ): Shortcut[] => {
   const nextShortcuts: Shortcut[] = [];
   const localIdentityCounts = new Map<string, number>();
@@ -57,6 +59,10 @@ const normalizeShortcutList = (
     const title = readStringField(candidate, ['title', 'name']);
     const url = isFolder ? '' : readStringField(candidate, ['url', 'link', 'href', 'address', 'website']);
     const icon = readStringField(candidate, ['icon', 'iconUrl', 'favicon', 'faviconUrl']);
+    const normalizedUrlIdentity = isFolder ? '' : getShortcutUrlIdentity(url);
+    if (normalizedUrlIdentity && seenUrlIdentities.has(normalizedUrlIdentity)) {
+      return;
+    }
     const seed = `${isFolder ? 'folder' : 'link'}|${title}|${url}`;
     const occurrence = (localIdentityCounts.get(seed) || 0) + 1;
     localIdentityCounts.set(seed, occurrence);
@@ -86,11 +92,15 @@ const normalizeShortcutList = (
           children,
           `${scenarioId}/${nextId}`,
           usedShortcutIds,
+          seenUrlIdentities,
         ).filter((child) => child.kind !== 'folder'),
       });
       return;
     }
 
+    if (normalizedUrlIdentity) {
+      seenUrlIdentities.add(normalizedUrlIdentity);
+    }
     nextShortcuts.push({
       id: nextId,
       title,
@@ -100,6 +110,7 @@ const normalizeShortcutList = (
       useOfficialIcon: candidate.useOfficialIcon !== false,
       autoUseOfficialIcon: candidate.autoUseOfficialIcon !== false,
       officialIconAvailableAtSave: candidate.officialIconAvailableAtSave === true,
+      officialIconColorOverride: candidate.officialIconColorOverride === true,
       iconRendering: normalizeShortcutVisualMode(candidate.iconRendering),
       iconColor: normalizeShortcutIconColor(candidate.iconColor),
     });
@@ -128,15 +139,16 @@ export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
   const next: ScenarioShortcuts = {};
   const usedShortcutIds = new Set<string>();
   Object.entries(obj).forEach(([scenarioId, value]) => {
+    const seenUrlIdentities = new Set<string>();
     if (Array.isArray(value)) {
-      next[scenarioId] = normalizeShortcutList(value, scenarioId, usedShortcutIds);
+      next[scenarioId] = normalizeShortcutList(value, scenarioId, usedShortcutIds, seenUrlIdentities);
     } else if (isRecord(value) && Object.keys(value).length === 0) {
       next[scenarioId] = [];
     } else if (isRecord(value)) {
       const mappedEntries = Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([, entry]) => entry);
-      next[scenarioId] = normalizeShortcutList(mappedEntries, scenarioId, usedShortcutIds);
+      next[scenarioId] = normalizeShortcutList(mappedEntries, scenarioId, usedShortcutIds, seenUrlIdentities);
     }
   });
   return next;

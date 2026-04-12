@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { LIGHT_FOLDER_SURFACE_CLASSNAME, ShortcutFolderInlinePreview } from './ShortcutFolderPreview';
@@ -9,6 +9,7 @@ interface ShortcutCardDefaultProps {
   shortcut: Shortcut;
   iconSize?: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   titleFontSize?: number;
   urlFontSize?: number;
   verticalPadding?: number;
@@ -89,6 +90,7 @@ export function ShortcutCardDefault({
   shortcut,
   iconSize = 36,
   iconCornerRadius,
+  iconAppearance,
   titleFontSize = 14,
   urlFontSize = 10,
   verticalPadding = 8,
@@ -119,6 +121,7 @@ export function ShortcutCardDefault({
             shortcut={shortcut}
             iconSize={previewIconSize}
             iconCornerRadius={iconCornerRadius}
+            iconAppearance={iconAppearance}
             maxIcons={4}
           />
         </div>
@@ -152,9 +155,11 @@ export function ShortcutCardDefault({
               useOfficialIcon={shortcut.useOfficialIcon}
               autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
               officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+              officialIconColorOverride={shortcut.officialIconColorOverride}
               iconRendering={shortcut.iconRendering}
               iconColor={shortcut.iconColor}
               iconCornerRadius={iconCornerRadius}
+              iconAppearance={iconAppearance}
             />
           </div>
           <div className="content-stretch flex flex-[1_0_0] flex-col gap-[2px] items-start justify-center leading-none min-h-px min-w-px not-italic relative">

@@ -139,11 +139,11 @@ export default {
         select: "選択"
       },
       shortcutsStyle: {
-        label: "ショートカットスタイル",
-        entryDescription: "スタイルを切り替えて、グリッド列数と基本行数を設定します",
+        label: "ショートカットレイアウト",
+        entryDescription: "グリッド列数と名前表示を設定します",
         open: "開く",
-        title: "ショートカットスタイル設定",
-        description: "ショートカットスタイルを選び、単一ページのグリッド列数と基本行数を設定します",
+        title: "ショートカットレイアウト設定",
+        description: "単一ページのグリッド列数とショートカット名の表示を設定します",
         rich: "リッチ",
         compact: "ミニマル",
         showName: "名前を表示",

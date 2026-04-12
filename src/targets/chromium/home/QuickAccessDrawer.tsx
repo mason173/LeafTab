@@ -34,6 +34,8 @@ export function QuickAccessDrawer({
   drawerPanelTranslateYPx,
   drawerShortcutBottomInset,
   drawerShortcutForceWhiteText,
+  drawerShortcutMonochromeTone,
+  drawerShortcutMonochromeTileBackdropBlur,
   drawerScrollLocked,
   reduceMotionVisuals = false,
   drawerSearchSurfaceStyle,
@@ -242,6 +244,8 @@ export function QuickAccessDrawer({
                               {...shortcutGridProps}
                               bottomInset={drawerShortcutBottomInset}
                               forceTextWhite={drawerShortcutForceWhiteText}
+                              monochromeTone={drawerShortcutMonochromeTone}
+                              monochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
                               onShortcutOpen={shortcutGridProps.onShortcutOpen}
                             />
                           </div>

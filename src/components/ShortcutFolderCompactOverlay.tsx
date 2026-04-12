@@ -6,7 +6,7 @@ import {
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
 import type { FolderShortcutDropIntent } from '@/features/shortcuts/drag/types';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
 type ShortcutFolderCompactOverlayProps = {
@@ -14,6 +14,7 @@ type ShortcutFolderCompactOverlayProps = {
   onOpenChange: (open: boolean) => void;
   shortcut: Shortcut | null;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   onRenameFolder: (folderId: string, name: string) => void;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, folderId: string, shortcut: Shortcut) => void;
@@ -258,6 +259,7 @@ export function ShortcutFolderCompactOverlay({
   onOpenChange,
   shortcut,
   iconCornerRadius = 22,
+  iconAppearance,
   onRenameFolder,
   onShortcutOpen,
   onShortcutContextMenu,
@@ -401,7 +403,7 @@ export function ShortcutFolderCompactOverlay({
             rect: nextTargetChildRects.get(child.id) ?? null,
           }))
           .filter((item): item is { id: string; index: number; rect: OverlayRect } => (
-            Boolean(item.rect)
+            item.rect !== null
             && rectIntersectsVertically(item.rect, visibleScrollViewportRect, 12)
           ))
           .sort((left, right) => {
@@ -1054,6 +1056,7 @@ export function ShortcutFolderCompactOverlay({
                   shortcuts={children}
                   emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
                   iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
                   forceTextWhite
                   showShortcutTitles={labelsVisible}
                   maskBoundaryRef={surfaceRef}

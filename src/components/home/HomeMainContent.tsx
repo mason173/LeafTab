@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
@@ -124,6 +124,8 @@ export const HomeMainContent = memo(function HomeMainContent({
   const isLightTheme = resolvedTheme !== 'dark';
   const useExpandedLightSearchSurface = isLightTheme && drawer.isDrawerExpanded;
   const drawerShortcutForceWhiteText = displayMode === 'fresh' && !(isLightTheme && drawer.isDrawerExpanded);
+  const drawerShortcutMonochromeTone = 'theme-adaptive';
+  const drawerShortcutMonochromeTileBackdropBlur = false;
   const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
     ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
     : undefined;
@@ -213,6 +215,8 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerPanelTranslateYPx={drawer.drawerPanelTranslateYPx}
         drawerShortcutBottomInset={drawerShortcutBottomInset}
         drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
+        drawerShortcutMonochromeTone={drawerShortcutMonochromeTone}
+        drawerShortcutMonochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
         drawerScrollLocked={drawerScrollLocked}
         reduceMotionVisuals={reduceMotionVisuals}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}

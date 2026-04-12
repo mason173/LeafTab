@@ -81,6 +81,11 @@
   display: none;
 }
 
+.leaftab-icon-settings-preview img[data-shortcut-icon-appearance='colorful'] {
+  filter: brightness(0) invert(1);
+  -webkit-filter: brightness(0) invert(1);
+}
+
 :root {
   --font-size: 16px;
   --tint-rgb: 59 130 246;

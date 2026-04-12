@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutCardDefault } from './ShortcutCardDefault';
 import { ShortcutCardCompact } from './ShortcutCardCompact';
 import { type ShortcutCardVariant } from './shortcutCardVariant';
@@ -10,6 +10,7 @@ interface ShortcutCardRendererProps {
   shortcut: Shortcut;
   compactIconSize?: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   compactTitleFontSize?: number;
   defaultIconSize?: number;
   defaultTitleFontSize?: number;
@@ -29,6 +30,7 @@ export function ShortcutCardRenderer({
   shortcut,
   compactIconSize,
   iconCornerRadius,
+  iconAppearance,
   compactTitleFontSize,
   defaultIconSize,
   defaultTitleFontSize,
@@ -49,6 +51,7 @@ export function ShortcutCardRenderer({
           showTitle={compactShowTitle}
           iconSize={compactIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
           titleFontSize={compactTitleFontSize}
           forceTextWhite={forceTextWhite}
           enableLargeFolder={enableLargeFolder}
@@ -65,6 +68,7 @@ export function ShortcutCardRenderer({
           shortcut={shortcut}
           iconSize={defaultIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
           titleFontSize={defaultTitleFontSize}
           urlFontSize={defaultUrlFontSize}
           verticalPadding={defaultVerticalPadding}
