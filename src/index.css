@@ -109,6 +109,7 @@
   --border: color-mix(in srgb, rgba(0, 0, 0, 0.1) 95%, rgb(var(--tint-rgb)) 5%);
   --input: color-mix(in srgb, rgba(0, 0, 0, 0.1) 95.5%, rgb(var(--tint-rgb)) 4.5%);
   --input-background: color-mix(in srgb, #f2f2f2 96%, rgb(var(--tint-rgb)) 4%);
+  --shortcut-monochrome-surface-theme-adaptive: #ffffff;
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -146,6 +147,7 @@
   --destructive-foreground: #ffffff;
   --border: color-mix(in srgb, rgba(255, 255, 255, 0.11) 93%, rgb(var(--tint-rgb)) 7%);
   --input: color-mix(in srgb, #2b2b30 94%, rgb(var(--tint-rgb)) 6%);
+  --shortcut-monochrome-surface-theme-adaptive: color-mix(in srgb, var(--foreground) 7%, var(--background) 93%);
   --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);

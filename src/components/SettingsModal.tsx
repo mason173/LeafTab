@@ -83,7 +83,6 @@ interface SettingsModalProps {
   onOpenAboutModal?: (tab?: AboutLeafTabModalTab) => void;
   onOpenWallpaperSettings?: () => void;
   onOpenShortcutGuide?: () => void;
-  onOpenShortcutStyleSettings?: () => void;
   onOpenShortcutIconSettings?: () => void;
 }
 
@@ -137,7 +136,6 @@ export default function SettingsModal({
   onOpenAboutModal,
   onOpenWallpaperSettings,
   onOpenShortcutGuide,
-  onOpenShortcutStyleSettings,
   onOpenShortcutIconSettings,
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
@@ -311,12 +309,6 @@ export default function SettingsModal({
   };
   const shortcutStyleDisabled = displayMode === 'minimalist';
 
-  const handleOpenShortcutStyleSettings = () => {
-    if (shortcutStyleDisabled) return;
-    onOpenChange(false);
-    onOpenShortcutStyleSettings?.();
-  };
-
   const handleOpenShortcutIconSettings = () => {
     if (shortcutStyleDisabled) return;
     onOpenChange(false);
@@ -460,23 +452,8 @@ export default function SettingsModal({
                 size="sm"
                 className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
                 onClick={handleOpenWallpaperSettings}
-              >
-                {t('settings.shortcutsLayout.set')}
-              </Button>
-            </div>
-              <div className={`flex items-center justify-between gap-3 ${shortcutStyleDisabled ? 'opacity-55' : ''}`}>
-                <div className="flex flex-col space-y-1 items-start">
-                  <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.label')}</span>
-                  <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutsStyle.entryDescription')}</span>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className={`!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 ${shortcutStyleDisabled ? 'bg-secondary/35 text-muted-foreground cursor-not-allowed hover:bg-secondary/35' : 'bg-secondary/50 hover:bg-secondary'}`}
-                  disabled={shortcutStyleDisabled}
-                  onClick={handleOpenShortcutStyleSettings}
                 >
-                  {t('settings.shortcutsStyle.open')}
+                  {t('settings.shortcutsLayout.set')}
                 </Button>
               </div>
               <div className={`flex items-center justify-between gap-3 ${shortcutStyleDisabled ? 'opacity-55' : ''}`}>

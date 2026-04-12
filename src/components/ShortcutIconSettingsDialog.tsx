@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RiAddLine, RiCheckFill, RiSubtractLine } from '@/icons/ri-compat';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
+import { Separator } from '@/components/ui/separator';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import Scrubber from '@/components/ui/smoothui/scrubber';
-import { RiCheckFill } from '@/icons/ri-compat';
 import aboutIcon from '@/assets/abouticon.svg';
 import type { ShortcutIconAppearance } from '@/types';
+import {
+  clampShortcutGridColumns,
+  DEFAULT_SHORTCUT_CARD_VARIANT,
+  getShortcutColumnBounds,
+  type ShortcutCardVariant,
+} from '@/components/shortcuts/shortcutCardVariant';
 import {
   clampShortcutIconCornerRadius,
   clampShortcutIconScale,
@@ -23,6 +31,10 @@ interface ShortcutIconSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBackToSettings?: () => void;
+  variant: ShortcutCardVariant;
+  compactShowTitle: boolean;
+  columns: number;
+  onSaveStyle: (payload: { variant: ShortcutCardVariant; compactShowTitle: boolean; columns: number }) => void;
   appearance: ShortcutIconAppearance;
   cornerRadius: number;
   scale: number;
@@ -67,20 +79,31 @@ export function ShortcutIconSettingsDialog({
   open,
   onOpenChange,
   onBackToSettings,
+  variant,
+  compactShowTitle,
+  columns,
+  onSaveStyle,
   appearance,
   cornerRadius,
   scale,
   onSave,
 }: ShortcutIconSettingsDialogProps) {
   const { t } = useTranslation();
+  // Keep the rich/default variant implementation in the codebase,
+  // but expose only the compact variant in settings.
+  const activeVariant: ShortcutCardVariant = DEFAULT_SHORTCUT_CARD_VARIANT;
+  void variant;
+  const [draftColumns, setDraftColumns] = useState(() => clampShortcutGridColumns(columns, activeVariant));
+  const [draftCompactShowTitle, setDraftCompactShowTitle] = useState(compactShowTitle);
   const [draftAppearance, setDraftAppearance] = useState<ShortcutIconAppearance>(appearance);
   const [draftCornerRadius, setDraftCornerRadius] = useState(cornerRadius);
   const [draftScale, setDraftScale] = useState(scale);
   const [isSliderInteracting, setIsSliderInteracting] = useState(false);
-  const [activeSlider, setActiveSlider] = useState<'cornerRadius' | 'size' | null>(null);
+  const [activeSlider, setActiveSlider] = useState<'columns' | 'cornerRadius' | 'size' | null>(null);
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
   const previewStageSize = 124;
   const previewIconSize = scaleShortcutIconSize(92, draftScale);
+  const columnBounds = useMemo(() => getShortcutColumnBounds(activeVariant), [activeVariant]);
 
   useEffect(() => {
     if (!open) {
@@ -88,12 +111,33 @@ export function ShortcutIconSettingsDialog({
       setActiveSlider(null);
       return;
     }
+    setDraftColumns(clampShortcutGridColumns(columns, activeVariant));
+    setDraftCompactShowTitle(compactShowTitle);
     setDraftAppearance(appearance);
     setDraftCornerRadius(clampShortcutIconCornerRadius(cornerRadius));
     setDraftScale(clampShortcutIconScale(scale));
-  }, [appearance, cornerRadius, open, scale]);
+  }, [activeVariant, appearance, columns, compactShowTitle, cornerRadius, open, scale]);
 
-  const emitLiveUpdate = (nextAppearance: ShortcutIconAppearance, nextCornerRadius: number, nextScale: number) => {
+  const emitLiveStyleUpdate = (nextCompactShowTitle: boolean, nextColumns: number) => {
+    onSaveStyle({
+      variant: activeVariant,
+      compactShowTitle: nextCompactShowTitle,
+      columns: nextColumns,
+    });
+  };
+
+  const handleCompactShowTitleChange = (nextCompactShowTitle: boolean) => {
+    setDraftCompactShowTitle(nextCompactShowTitle);
+    emitLiveStyleUpdate(nextCompactShowTitle, draftColumns);
+  };
+
+  const handleColumnsChange = (nextRawValue: number) => {
+    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue), activeVariant);
+    setDraftColumns(nextColumns);
+    emitLiveStyleUpdate(draftCompactShowTitle, nextColumns);
+  };
+
+  const emitLiveIconUpdate = (nextAppearance: ShortcutIconAppearance, nextCornerRadius: number, nextScale: number) => {
     onSave({
       appearance: nextAppearance,
       cornerRadius: clampShortcutIconCornerRadius(nextCornerRadius),
@@ -103,32 +147,31 @@ export function ShortcutIconSettingsDialog({
 
   const handleAppearanceChange = (nextAppearance: ShortcutIconAppearance) => {
     setDraftAppearance(nextAppearance);
-    emitLiveUpdate(nextAppearance, draftCornerRadius, draftScale);
+    emitLiveIconUpdate(nextAppearance, draftCornerRadius, draftScale);
   };
 
   const handleCornerRadiusChange = (nextCornerRadius: number) => {
     const normalized = clampShortcutIconCornerRadius(nextCornerRadius);
     setDraftCornerRadius(normalized);
-    emitLiveUpdate(draftAppearance, normalized, draftScale);
+    emitLiveIconUpdate(draftAppearance, normalized, draftScale);
   };
 
   const handleScaleChange = (nextScale: number) => {
     const normalized = clampShortcutIconScale(nextScale);
     setDraftScale(normalized);
-    emitLiveUpdate(draftAppearance, draftCornerRadius, normalized);
+    emitLiveIconUpdate(draftAppearance, draftCornerRadius, normalized);
+  };
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setIsSliderInteracting(false);
+      setActiveSlider(null);
+    }
+    onOpenChange(nextOpen);
   };
 
   return (
-      <Dialog
-        open={open}
-        onOpenChange={(nextOpen: boolean) => {
-          if (!nextOpen) {
-            setIsSliderInteracting(false);
-            setActiveSlider(null);
-          }
-        onOpenChange(nextOpen);
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         overlayClassName={`${isolationFadeClass} ${isSliderInteracting ? '!opacity-0 !bg-black/0' : ''}`}
         className={`sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-[32px] flex flex-col transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
@@ -233,6 +276,70 @@ export function ShortcutIconSettingsDialog({
               valueText={`${draftScale}%`}
               trackHeight={40}
             />
+          </div>
+
+          <Separator className={`${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`} />
+
+          <div className={`min-h-[40px] ${isolationFadeClass} ${activeSlider ? 'opacity-0 pointer-events-none select-none' : ''}`}>
+            <div className="flex items-center justify-between gap-3 rounded-xl px-1 py-1">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium leading-none">{t('settings.shortcutsStyle.showName')}</span>
+                <span className="text-xs text-muted-foreground">{t('settings.shortcutsStyle.showNameDesc')}</span>
+              </div>
+              <Switch
+                checked={draftCompactShowTitle}
+                onCheckedChange={handleCompactShowTitleChange}
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              >
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+              </Switch>
+            </div>
+          </div>
+
+          <div className={`flex items-center gap-2 ${isolationFadeClass} ${activeSlider && activeSlider !== 'columns' ? 'opacity-0 pointer-events-none select-none' : ''}`}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              onClick={() => handleColumnsChange(Math.max(columnBounds.min, draftColumns - 1))}
+              disabled={draftColumns <= columnBounds.min}
+            >
+              <RiSubtractLine className="size-4" />
+            </Button>
+            <Scrubber
+              className="flex-1"
+              label={t('settings.shortcutsStyle.columns')}
+              min={columnBounds.min}
+              max={columnBounds.max}
+              step={1}
+              value={draftColumns}
+              onValueChange={handleColumnsChange}
+              onDragStart={() => {
+                setIsSliderInteracting(true);
+                setActiveSlider('columns');
+              }}
+              onDragEnd={() => {
+                setIsSliderInteracting(false);
+                setActiveSlider(null);
+              }}
+              ticks={9}
+              decimals={0}
+              showLabel
+              showValue
+              valueText={`${draftColumns}`}
+              trackHeight={40}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              onClick={() => handleColumnsChange(Math.min(columnBounds.max, draftColumns + 1))}
+              disabled={draftColumns >= columnBounds.max}
+            >
+              <RiAddLine className="size-4" />
+            </Button>
           </div>
         </div>
 

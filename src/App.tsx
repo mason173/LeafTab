@@ -443,7 +443,6 @@ export default function App() {
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
   const [shortcutGuideOpen, setShortcutGuideOpen] = useState(false);
-  const [shortcutStyleSettingsOpen, setShortcutStyleSettingsOpen] = useState(false);
   const [shortcutIconSettingsOpen, setShortcutIconSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
@@ -1741,10 +1740,6 @@ export default function App() {
 
   const handleOpenSearchSettings = useCallback(() => {
     setSearchSettingsOpen(true);
-  }, []);
-
-  const handleOpenShortcutStyleSettings = useCallback(() => {
-    setShortcutStyleSettingsOpen(true);
   }, []);
 
   const handleOpenShortcutIconSettings = useCallback(() => {
@@ -3197,7 +3192,6 @@ export default function App() {
   const handleBackToMainSettings = useCallback(() => {
     setSearchSettingsOpen(false);
     setShortcutGuideOpen(false);
-    setShortcutStyleSettingsOpen(false);
     setShortcutIconSettingsOpen(false);
     setAdminModalOpen(false);
     setAboutModalOpen(false);
@@ -3584,7 +3578,6 @@ export default function App() {
       || settingsOpen
       || searchSettingsOpen
       || shortcutGuideOpen
-      || shortcutStyleSettingsOpen
       || shortcutIconSettingsOpen
       || adminModalOpen
       || aboutModalOpen
@@ -3897,7 +3890,6 @@ export default function App() {
 	              onWebdavDisable: handleDisableWebdavSync,
 	              onVersionClick: handleVersionTap,
 	              onOpenShortcutGuide: () => setShortcutGuideOpen(true),
-	              onOpenShortcutStyleSettings: handleOpenShortcutStyleSettings,
 	            }}
 	            searchSettingsModalProps={{
 	              isOpen: searchSettingsOpen,
@@ -3923,23 +3915,18 @@ export default function App() {
 	              onOpenChange: setShortcutGuideOpen,
                 onBackToSettings: handleBackToMainSettings,
 	            }}
-	            shortcutStyleSettingsDialogProps={{
-	              open: shortcutStyleSettingsOpen,
-	              onOpenChange: setShortcutStyleSettingsOpen,
-                onBackToSettings: handleBackToMainSettings,
-	              variant: shortcutCardVariant,
-              compactShowTitle: shortcutCompactShowTitle,
-              columns: normalizedGridColumns,
-              onSave: ({ variant, compactShowTitle, columns }) => {
-                setShortcutCardVariant(variant);
-                setShortcutCompactShowTitle(compactShowTitle);
-                handleShortcutGridColumnsChange(columns);
-              },
-            }}
             shortcutIconSettingsDialogProps={{
               open: shortcutIconSettingsOpen,
               onOpenChange: setShortcutIconSettingsOpen,
               onBackToSettings: handleBackToMainSettings,
+              variant: shortcutCardVariant,
+              compactShowTitle: shortcutCompactShowTitle,
+              columns: normalizedGridColumns,
+              onSaveStyle: ({ variant, compactShowTitle, columns }) => {
+                setShortcutCardVariant(variant);
+                setShortcutCompactShowTitle(compactShowTitle);
+                handleShortcutGridColumnsChange(columns);
+              },
               appearance: shortcutIconAppearance,
               cornerRadius: shortcutIconCornerRadius,
               scale: shortcutIconScale,

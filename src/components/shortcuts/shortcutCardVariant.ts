@@ -22,7 +22,7 @@ export function getShortcutColumns(
 
 export function getShortcutColumnBounds(variant: ShortcutCardVariant): { min: number; max: number } {
   if (variant === 'compact') {
-    return { min: 3, max: 12 };
+    return { min: 5, max: 10 };
   }
   return { min: 2, max: 6 };
 }
