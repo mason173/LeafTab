@@ -136,7 +136,13 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
 
   it('preserves icon color semantics through a sync snapshot round trip', () => {
     const snapshot = buildLeafTabSyncSnapshot({
-      preferences: getDefaultSyncablePreferences(),
+      preferences: {
+        ...getDefaultSyncablePreferences(),
+        accentColor: 'dynamic',
+        shortcutIconAppearance: 'accent',
+        shortcutIconCornerRadius: 41,
+        shortcutIconScale: 113,
+      },
       deviceId: 'device',
       scenarioModes: [
         {
@@ -153,6 +159,8 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
             title: 'Custom',
             url: 'https://custom.example',
             icon: '',
+            officialIconColorOverride: true,
+            iconRendering: 'letter',
             iconColor: '#12ab90',
           },
           {
@@ -167,9 +175,17 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
 
     const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
 
+    expect(projected.preferences).toEqual(expect.objectContaining({
+      accentColor: 'dynamic',
+      shortcutIconAppearance: 'accent',
+      shortcutIconCornerRadius: 41,
+      shortcutIconScale: 113,
+    }));
     expect(projected.scenarioShortcuts.work).toEqual([
       expect.objectContaining({
         id: 'custom',
+        officialIconColorOverride: true,
+        iconRendering: 'letter',
         iconColor: '#12AB90',
       }),
       expect.objectContaining({

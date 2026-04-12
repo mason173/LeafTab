@@ -43,7 +43,6 @@ export interface SyncablePreferences {
   shortcutIconAppearance: ShortcutIconAppearance;
   shortcutIconCornerRadius: number;
   shortcutIconScale: number;
-  shortcutsRowsPerColumn: number;
   privacyConsent: boolean | null;
   theme: 'system' | 'light' | 'dark';
   language: string;

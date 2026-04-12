@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { getDefaultSyncablePreferences } from '@/utils/syncablePreferences';
+import { buildLeafTabSyncSnapshot } from './snapshot';
 import {
   createLeafTabLocalBackupBundle,
   filterLeafTabLocalBackupSnapshot,
@@ -197,5 +199,64 @@ describe('local backup bookmark scope handling', () => {
       shortcuts: false,
       bookmarks: true,
     });
+  });
+
+  it('preserves icon preference settings and per-shortcut custom colors in exported bundles', () => {
+    const snapshot = buildLeafTabSyncSnapshot({
+      deviceId: 'device-a',
+      generatedAt: '2026-03-27T12:45:00.000Z',
+      preferences: {
+        ...getDefaultSyncablePreferences(),
+        accentColor: 'dynamic',
+        shortcutIconAppearance: 'monochrome',
+        shortcutIconCornerRadius: 39,
+        shortcutIconScale: 108,
+      },
+      scenarioModes: [
+        {
+          id: 'work',
+          name: 'Work',
+          color: '#000000',
+          icon: 'briefcase',
+        },
+      ],
+      scenarioShortcuts: {
+        work: [
+          {
+            id: 'github',
+            title: 'GitHub',
+            url: 'https://github.com',
+            icon: '',
+            iconRendering: 'letter',
+            officialIconColorOverride: true,
+            iconColor: '#12ab90',
+          },
+        ],
+      },
+    });
+
+    const bundle = createLeafTabLocalBackupBundle({
+      snapshot,
+      selectedScenarioId: 'work',
+      exportScope: {
+        shortcuts: true,
+        bookmarks: true,
+      },
+      exportedAt: '2026-03-27T12:46:00.000Z',
+    });
+
+    const parsed = parseLeafTabLocalBackupImport(bundle);
+    expect(parsed?.kind).toBe('engine-bundle');
+    expect(parsed?.snapshot.preferences?.value).toEqual(expect.objectContaining({
+      accentColor: 'dynamic',
+      shortcutIconAppearance: 'monochrome',
+      shortcutIconCornerRadius: 39,
+      shortcutIconScale: 108,
+    }));
+    expect(parsed?.snapshot.shortcuts.github).toEqual(expect.objectContaining({
+      iconRendering: 'letter',
+      officialIconColorOverride: true,
+      iconColor: '#12AB90',
+    }));
   });
 });

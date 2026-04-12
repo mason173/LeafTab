@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { googleFonts, loadGoogleFont } from '../utils/googleFonts';
-import { clampShortcutsRowsPerColumn } from '../utils/backupData';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import {
   clampShortcutGridColumns,
@@ -213,10 +212,6 @@ export function useSettings() {
       ? DEFAULT_SHORTCUT_ICON_SCALE
       : clampShortcutIconScale(stored);
   });
-  const [shortcutsRowsPerColumn, setShortcutsRowsPerColumn] = useState(() => {
-    const stored = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
-    return clampShortcutsRowsPerColumn(stored);
-  });
   const [privacyConsent, setPrivacyConsent] = useState<boolean | null>(() => {
     const stored = localStorage.getItem('privacy_consent');
     if (stored === null) return null;
@@ -285,9 +280,6 @@ export function useSettings() {
     setShortcutIconAppearance(normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY) || DEFAULT_SHORTCUT_ICON_APPEARANCE));
     setShortcutIconCornerRadius(clampShortcutIconCornerRadius(localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY) ?? DEFAULT_SHORTCUT_ICON_CORNER_RADIUS));
     setShortcutIconScale(clampShortcutIconScale(localStorage.getItem(SHORTCUT_ICON_SCALE_KEY) ?? DEFAULT_SHORTCUT_ICON_SCALE));
-    const storedShortcutsRowsPerColumn = Number(localStorage.getItem('shortcutsRowsPerColumn') || '4');
-    setShortcutsRowsPerColumn(clampShortcutsRowsPerColumn(storedShortcutsRowsPerColumn));
-    
     const storedPrivacyConsent = localStorage.getItem('privacy_consent');
     if (storedPrivacyConsent !== null) {
       try {
@@ -336,6 +328,7 @@ export function useSettings() {
     queueLocalStorageSetItem(SHORTCUT_ICON_APPEARANCE_KEY, shortcutIconAppearance);
     queueLocalStorageSetItem(SHORTCUT_ICON_CORNER_RADIUS_KEY, String(clampShortcutIconCornerRadius(shortcutIconCornerRadius)));
     queueLocalStorageSetItem(SHORTCUT_ICON_SCALE_KEY, String(clampShortcutIconScale(shortcutIconScale)));
+    queueLocalStorageRemoveItem('shortcutsRowsPerColumn');
     if (privacyConsent !== null) {
       queueLocalStorageSetItem('privacy_consent', JSON.stringify(privacyConsent));
     }
@@ -401,15 +394,6 @@ export function useSettings() {
     writeShortcutGridColumnsByVariant(nextMap);
     localStorage.setItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY, String(normalized));
   }, [shortcutCardVariant, shortcutGridColumns]);
-
-  useEffect(() => {
-    const normalized = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
-    if (normalized !== shortcutsRowsPerColumn) {
-      setShortcutsRowsPerColumn(normalized);
-      return;
-    }
-    localStorage.setItem('shortcutsRowsPerColumn', String(normalized));
-  }, [shortcutsRowsPerColumn]);
 
   useEffect(() => {
     if (!ENABLE_CUSTOM_API_SERVER) {
@@ -488,8 +472,6 @@ export function useSettings() {
     setShortcutIconCornerRadius,
     shortcutIconScale,
     setShortcutIconScale,
-    shortcutsRowsPerColumn,
-    setShortcutsRowsPerColumn,
     privacyConsent,
     setPrivacyConsent,
     apiServer,

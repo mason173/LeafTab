@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import {
   getDefaultSyncablePreferences,
   normalizeSyncablePreferences,
@@ -9,7 +9,31 @@ import {
 const booleanVariants = [true, false] as const;
 const timeAnimationModes = ['on', 'off'] as const;
 
+const createMemoryStorage = () => {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      values.delete(key);
+    },
+    clear: () => {
+      values.clear();
+    },
+  };
+};
+
 describe('syncablePreferences matrix', () => {
+  beforeAll(() => {
+    if (typeof globalThis.localStorage !== 'undefined') return;
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: createMemoryStorage(),
+    });
+  });
+
   afterEach(() => {
     localStorage.clear();
   });
@@ -39,6 +63,7 @@ describe('syncablePreferences matrix', () => {
       const next = normalizeSyncablePreferences({
         ...getDefaultSyncablePreferences(),
         ...testCase,
+        accentColor: 'dynamic',
         shortcutIconAppearance: 'accent',
         shortcutIconCornerRadius: 37,
         shortcutIconScale: 112,
@@ -57,6 +82,7 @@ describe('syncablePreferences matrix', () => {
       expect(restored.showSeconds).toBe(testCase.showSeconds);
       expect(restored.showLunar).toBe(testCase.showLunar);
       expect(restored.timeAnimationMode).toBe(testCase.timeAnimationMode);
+      expect(restored.accentColor).toBe('dynamic');
       expect(restored.shortcutIconAppearance).toBe('accent');
       expect(restored.shortcutIconCornerRadius).toBe(37);
       expect(restored.shortcutIconScale).toBe(112);
