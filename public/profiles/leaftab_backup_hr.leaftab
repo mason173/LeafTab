@@ -21,203 +21,369 @@
     "scenarioShortcuts": {
       "default": [
         {
-          "id": "rec-01",
-          "title": "Boss直聘",
-          "url": "https://www.zhipin.com",
-          "icon": ""
+          "id": "fld_default_large",
+          "title": "常用合集",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_default_01",
+              "title": "HRA",
+              "url": "http://www.hra.org.cn",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_02",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_03",
+              "title": "Stack Overflow",
+              "url": "https://stackoverflow.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_04",
+              "title": "掘金",
+              "url": "https://juejin.cn",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_05",
+              "title": "Boss直聘",
+              "url": "https://www.zhipin.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_06",
+              "title": "猎聘",
+              "url": "https://www.liepin.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_07",
+              "title": "智联招聘",
+              "url": "https://www.zhaopin.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_08",
+              "title": "前程无忧",
+              "url": "https://www.51job.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_09",
+              "title": "LinkedIn",
+              "url": "https://www.linkedin.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_10",
+              "title": "飞书",
+              "url": "https://www.feishu.cn",
+              "icon": ""
+            }
+          ]
         },
         {
-          "id": "rec-02",
-          "title": "猎聘",
-          "url": "https://www.liepin.com",
-          "icon": ""
+          "id": "fld_default_small",
+          "title": "小工具",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_default_11",
+              "title": "钉钉",
+              "url": "https://www.dingtalk.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_12",
+              "title": "北森",
+              "url": "https://www.beisen.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_13",
+              "title": "Moka",
+              "url": "https://www.mokahr.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_14",
+              "title": "微信读书",
+              "url": "https://weread.qq.com",
+              "icon": ""
+            }
+          ]
         },
         {
-          "id": "rec-03",
-          "title": "智联招聘",
-          "url": "https://www.zhaopin.com",
-          "icon": ""
-        },
-        {
-          "id": "rec-04",
-          "title": "前程无忧",
-          "url": "https://www.51job.com",
-          "icon": ""
-        },
-        {
-          "id": "rec-05",
-          "title": "LinkedIn",
-          "url": "https://www.linkedin.com",
-          "icon": ""
-        },
-        {
-          "id": "hr-01",
-          "title": "飞书",
-          "url": "https://www.feishu.cn",
-          "icon": ""
-        },
-        {
-          "id": "hr-02",
-          "title": "钉钉",
-          "url": "https://www.dingtalk.com",
-          "icon": ""
-        },
-        {
-          "id": "hr-03",
-          "title": "北森",
-          "url": "https://www.beisen.com",
-          "icon": ""
-        },
-        {
-          "id": "hr-04",
-          "title": "Moka",
-          "url": "https://www.mokahr.com",
-          "icon": ""
-        },
-        {
-          "id": "hr-05",
-          "title": "电子签章",
-          "url": "https://www.fadada.com",
-          "icon": ""
-        },
-        {
-          "id": "law-01",
-          "title": "人社部",
-          "url": "http://www.mohrss.gov.cn",
-          "icon": ""
-        },
-        {
-          "id": "law-02",
-          "title": "劳动法库",
-          "url": "https://www.law-lib.com",
-          "icon": ""
-        },
-        {
-          "id": "law-03",
-          "title": "个税计算器",
-          "url": "https://gerensuodeshui.cn",
-          "icon": ""
-        },
-        {
-          "id": "law-04",
-          "title": "公文写作",
-          "url": "https://www.51wendang.com",
-          "icon": ""
-        },
-        {
-          "id": "law-05",
-          "title": "HRA",
-          "url": "http://www.hra.org.cn",
-          "icon": ""
-        },
-        {
-          "id": "dev-01",
-          "title": "GitHub",
-          "url": "https://github.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-02",
-          "title": "Stack Overflow",
-          "url": "https://stackoverflow.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-03",
-          "title": "掘金",
-          "url": "https://juejin.cn",
-          "icon": ""
-        }
-      ],
-      "life-mode-001": [
-        {
-          "id": "ent-01",
-          "title": "哔哩哔哩",
-          "url": "https://www.bilibili.com",
-          "icon": ""
-        },
-        {
-          "id": "ent-02",
-          "title": "YouTube",
-          "url": "https://www.youtube.com",
-          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
-        },
-        {
-          "id": "ent-03",
-          "title": "Netflix",
-          "url": "https://www.netflix.com",
-          "icon": ""
-        },
-        {
-          "id": "ent-04",
-          "title": "网易云音乐",
-          "url": "https://music.163.com",
-          "icon": ""
-        },
-        {
-          "id": "ent-05",
+          "id": "sht_default_15",
           "title": "豆瓣",
           "url": "https://www.douban.com",
           "icon": ""
         },
         {
-          "id": "read-01",
-          "title": "少数派",
-          "url": "https://sspai.com",
+          "id": "sht_default_16",
+          "title": "微信",
+          "url": "https://weixin.qq.com",
           "icon": ""
         },
         {
-          "id": "read-02",
-          "title": "36Kr",
-          "url": "https://36kr.com",
+          "id": "sht_default_17",
+          "title": "腾讯视频",
+          "url": "https://v.qq.com",
           "icon": ""
         },
         {
-          "id": "read-03",
-          "title": "知乎",
-          "url": "https://www.zhihu.com",
+          "id": "sht_default_18",
+          "title": "爱奇艺",
+          "url": "https://www.iqiyi.com",
           "icon": ""
         },
         {
-          "id": "read-04",
-          "title": "Hacker News",
-          "url": "https://news.ycombinator.com",
+          "id": "sht_default_19",
+          "title": "优酷",
+          "url": "https://www.youku.com",
           "icon": ""
         },
         {
-          "id": "read-05",
-          "title": "Product Hunt",
-          "url": "https://www.producthunt.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-01",
-          "title": "淘宝",
-          "url": "https://www.taobao.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-02",
-          "title": "京东",
-          "url": "https://www.jd.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-03",
-          "title": "什么值得买",
-          "url": "https://www.smzdm.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-04",
-          "title": "Apple",
-          "url": "https://www.apple.com/cn",
-          "icon": ""
-        },
-        {
-          "id": "shop-05",
+          "id": "sht_default_20",
           "title": "小红书",
           "url": "https://www.xiaohongshu.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_21",
+          "title": "抖音",
+          "url": "https://www.douyin.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_22",
+          "title": "微博",
+          "url": "https://weibo.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_23",
+          "title": "百度",
+          "url": "https://www.baidu.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_24",
+          "title": "搜狗",
+          "url": "https://www.sogou.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_25",
+          "title": "QQ邮箱",
+          "url": "https://mail.qq.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_26",
+          "title": "163邮箱",
+          "url": "https://mail.163.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_default_27",
+          "title": "百度网盘",
+          "url": "https://pan.baidu.com",
+          "icon": ""
+        }
+      ],
+      "life-mode-001": [
+        {
+          "id": "fld_life_mode_001_large",
+          "title": "常用合集",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_life_mode_001_01",
+              "title": "小红书",
+              "url": "https://www.xiaohongshu.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_02",
+              "title": "哔哩哔哩",
+              "url": "https://www.bilibili.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_03",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "sht_life_mode_001_04",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_05",
+              "title": "网易云音乐",
+              "url": "https://music.163.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_06",
+              "title": "豆瓣",
+              "url": "https://www.douban.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_07",
+              "title": "少数派",
+              "url": "https://sspai.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_08",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_09",
+              "title": "知乎",
+              "url": "https://www.zhihu.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_10",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "fld_life_mode_001_small",
+          "title": "小工具",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_life_mode_001_11",
+              "title": "Product Hunt",
+              "url": "https://www.producthunt.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_12",
+              "title": "淘宝",
+              "url": "https://www.taobao.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_13",
+              "title": "京东",
+              "url": "https://www.jd.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_14",
+              "title": "微信读书",
+              "url": "https://weread.qq.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_life_mode_001_15",
+          "title": "微信",
+          "url": "https://weixin.qq.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_16",
+          "title": "腾讯视频",
+          "url": "https://v.qq.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_17",
+          "title": "爱奇艺",
+          "url": "https://www.iqiyi.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_18",
+          "title": "优酷",
+          "url": "https://www.youku.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_19",
+          "title": "抖音",
+          "url": "https://www.douyin.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_20",
+          "title": "微博",
+          "url": "https://weibo.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_21",
+          "title": "百度",
+          "url": "https://www.baidu.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_22",
+          "title": "搜狗",
+          "url": "https://www.sogou.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_23",
+          "title": "QQ邮箱",
+          "url": "https://mail.qq.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_24",
+          "title": "163邮箱",
+          "url": "https://mail.163.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_25",
+          "title": "百度网盘",
+          "url": "https://pan.baidu.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_26",
+          "title": "语雀",
+          "url": "https://www.yuque.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_27",
+          "title": "飞书",
+          "url": "https://www.feishu.cn",
           "icon": ""
         }
       ]

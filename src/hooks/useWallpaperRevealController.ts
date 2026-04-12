@@ -4,6 +4,7 @@ import {
   WALLPAPER_COLOR_REVEAL_DELAY_MS,
   WALLPAPER_COLOR_REVEAL_DURATION_MS,
   WALLPAPER_FADE_REVEAL_DURATION_MS,
+  WALLPAPER_INITIAL_REVEAL_OPACITY,
   WALLPAPER_INITIAL_SCALE,
   WALLPAPER_SCALE_REVEAL_DURATION_MS,
 } from '@/config/animationTokens';
@@ -138,15 +139,16 @@ export function useWallpaperRevealController({
       };
     }
     if (firefox) {
+      const wallpaperRevealOpacity = wallpaperFadeRevealReady ? 1 : WALLPAPER_INITIAL_REVEAL_OPACITY;
       return {
-        opacity: wallpaperFadeRevealReady ? 1 : 0,
+        opacity: wallpaperRevealOpacity,
         filter: 'none',
         transform: 'scale(1)',
         transformOrigin: 'center center',
         transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear`,
       };
     }
-    const wallpaperImageRevealOpacity = wallpaperFadeRevealReady ? 1 : 0;
+    const wallpaperImageRevealOpacity = wallpaperFadeRevealReady ? 1 : WALLPAPER_INITIAL_REVEAL_OPACITY;
     const wallpaperImageRevealFilter = wallpaperColorRevealReady
       ? 'grayscale(0) saturate(1) brightness(1)'
       : 'grayscale(1) saturate(0) brightness(1)';

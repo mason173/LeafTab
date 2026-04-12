@@ -3,7 +3,6 @@ import { ShortcutGrid } from '@/components/ShortcutGrid';
 import { SearchExperience } from '@/components/search/SearchExperience';
 import {
   INITIAL_REVEAL_TIMING,
-  resolveInitialRevealOpacity,
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
 import {
@@ -51,7 +50,6 @@ export function QuickAccessDrawer({
   const drawerBackgroundFadeTransition = `${DRAWER_SURFACE_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const initialRevealTransition = INITIAL_REVEAL_TIMING;
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
-  const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
   const drawerSurfaceLayerOpacity = Math.max(0, Math.min(1, drawerSurfaceOpacity * DRAWER_CONTENT_BG_MAX_OPACITY));
   const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
@@ -106,7 +104,7 @@ export function QuickAccessDrawer({
         className="fixed inset-0 z-[14000]"
         style={{
           backgroundColor: '#000000',
-          opacity: normalizedOverlayOpacity * initialRevealOpacity,
+          opacity: normalizedOverlayOpacity,
           transition: interactiveTransitionsEnabled
             ? `opacity ${drawerBackgroundFadeTransition}`
             : `opacity ${initialRevealTransition}`,
@@ -136,9 +134,8 @@ export function QuickAccessDrawer({
         <div
           className="mx-auto max-w-full"
           style={{
-            opacity: initialRevealOpacity,
             transform: initialRevealTransform,
-            transition: `opacity ${initialRevealTransition}, transform ${initialRevealTransition}`,
+            transition: `transform ${initialRevealTransition}`,
           }}
         >
           <section

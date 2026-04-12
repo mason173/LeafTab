@@ -15,75 +15,185 @@
     "scenarioShortcuts": {
       "life-mode-001": [
         {
-          "id": "ent-01",
-          "title": "哔哩哔哩",
-          "url": "https://www.bilibili.com",
+          "id": "fld_life_mode_001_large",
+          "title": "常用合集",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_life_mode_001_01",
+              "title": "哔哩哔哩",
+              "url": "https://www.bilibili.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_02",
+              "title": "少数派",
+              "url": "https://sspai.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_03",
+              "title": "淘宝",
+              "url": "https://www.taobao.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_04",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "sht_life_mode_001_05",
+              "title": "36Kr",
+              "url": "https://36kr.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_06",
+              "title": "京东",
+              "url": "https://www.jd.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_07",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_08",
+              "title": "知乎",
+              "url": "https://www.zhihu.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_09",
+              "title": "什么值得买",
+              "url": "https://www.smzdm.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_10",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "fld_life_mode_001_small",
+          "title": "小工具",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_life_mode_001_11",
+              "title": "Stack Overflow",
+              "url": "https://stackoverflow.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_12",
+              "title": "掘金",
+              "url": "https://juejin.cn",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_13",
+              "title": "微信读书",
+              "url": "https://weread.qq.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_14",
+              "title": "豆瓣",
+              "url": "https://www.douban.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_life_mode_001_15",
+          "title": "微信",
+          "url": "https://weixin.qq.com",
           "icon": ""
         },
         {
-          "id": "read-01",
-          "title": "少数派",
-          "url": "https://sspai.com",
+          "id": "sht_life_mode_001_16",
+          "title": "腾讯视频",
+          "url": "https://v.qq.com",
           "icon": ""
         },
         {
-          "id": "shop-01",
-          "title": "淘宝",
-          "url": "https://www.taobao.com",
+          "id": "sht_life_mode_001_17",
+          "title": "爱奇艺",
+          "url": "https://www.iqiyi.com",
           "icon": ""
         },
         {
-          "id": "ent-02",
-          "title": "YouTube",
-          "url": "https://www.youtube.com",
-          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
-        },
-        {
-          "id": "read-02",
-          "title": "36Kr",
-          "url": "https://36kr.com",
+          "id": "sht_life_mode_001_18",
+          "title": "优酷",
+          "url": "https://www.youku.com",
           "icon": ""
         },
         {
-          "id": "shop-02",
-          "title": "京东",
-          "url": "https://www.jd.com",
+          "id": "sht_life_mode_001_19",
+          "title": "小红书",
+          "url": "https://www.xiaohongshu.com",
           "icon": ""
         },
         {
-          "id": "ent-03",
-          "title": "Netflix",
-          "url": "https://www.netflix.com",
+          "id": "sht_life_mode_001_20",
+          "title": "抖音",
+          "url": "https://www.douyin.com",
           "icon": ""
         },
         {
-          "id": "read-03",
-          "title": "知乎",
-          "url": "https://www.zhihu.com",
+          "id": "sht_life_mode_001_21",
+          "title": "微博",
+          "url": "https://weibo.com",
           "icon": ""
         },
         {
-          "id": "shop-03",
-          "title": "什么值得买",
-          "url": "https://www.smzdm.com",
+          "id": "sht_life_mode_001_22",
+          "title": "百度",
+          "url": "https://www.baidu.com",
           "icon": ""
         },
         {
-          "id": "dev-01",
-          "title": "GitHub",
-          "url": "https://github.com",
+          "id": "sht_life_mode_001_23",
+          "title": "搜狗",
+          "url": "https://www.sogou.com",
           "icon": ""
         },
         {
-          "id": "dev-02",
-          "title": "Stack Overflow",
-          "url": "https://stackoverflow.com",
+          "id": "sht_life_mode_001_24",
+          "title": "QQ邮箱",
+          "url": "https://mail.qq.com",
           "icon": ""
         },
         {
-          "id": "dev-03",
-          "title": "掘金",
-          "url": "https://juejin.cn",
+          "id": "sht_life_mode_001_25",
+          "title": "163邮箱",
+          "url": "https://mail.163.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_26",
+          "title": "百度网盘",
+          "url": "https://pan.baidu.com",
+          "icon": ""
+        },
+        {
+          "id": "sht_life_mode_001_27",
+          "title": "语雀",
+          "url": "https://www.yuque.com",
           "icon": ""
         }
       ]

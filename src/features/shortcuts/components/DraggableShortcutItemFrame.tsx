@@ -25,8 +25,11 @@ function MergePreviewHighlight({
     return (
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 z-10"
-        style={{ transform: 'translateX(-50%) translateY(-4px)' }}
+        className="pointer-events-none absolute left-1/2 z-10"
+        style={{
+          top: compactPreviewHeight / 2,
+          transform: 'translate(-50%, -50%)',
+        }}
       >
         <div
           className="bg-white/[0.04] dark:bg-white/[0.03]"

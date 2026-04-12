@@ -294,7 +294,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
         }}
       >
         <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
-          {effectiveWallpaperMode === 'weather' && visualBootSettled ? (
+          {effectiveWallpaperMode === 'weather' && freshWeatherVideo ? (
             <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
           ) : effectiveWallpaperMode === 'color' ? (
             <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />

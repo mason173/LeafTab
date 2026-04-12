@@ -5,7 +5,7 @@ import {
 import { RiFolderChartFill } from '@/icons/ri-compat';
 import type { Shortcut } from '@/types';
 import { getShortcutChildren } from '@/utils/shortcutFolders';
-import { clampShortcutIconCornerRadius } from '@/utils/shortcutIconSettings';
+import { clampShortcutIconCornerRadius, getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
 const FOLDER_PREVIEW_CONTENT_RATIO = 0.94;
 const FOLDER_INLINE_PREVIEW_CONTENT_RATIO = 0.92;
@@ -15,10 +15,43 @@ const LARGE_FOLDER_PREVIEW_PADDING = 8;
 const LARGE_FOLDER_PREVIEW_GAP = 4;
 const LARGE_FOLDER_PREVIEW_CONTENT_RATIO = 0.98;
 const LARGE_FOLDER_TRIGGER_ICON_RATIO = 0.76;
-const LARGE_FOLDER_TRIGGER_STACK_BAR_HEIGHT = 5;
-const LARGE_FOLDER_TRIGGER_STACK_BAR_WIDTH = 18;
 const SMALL_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 40;
 const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
+const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
+const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 16;
+export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/6 bg-[rgba(205,212,220,0.4)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]';
+
+function LargeFolderOpenTileGhostStack({
+  tileSize,
+  previewIconSize,
+  iconCornerRadius,
+}: {
+  tileSize: number;
+  previewIconSize: number;
+  iconCornerRadius: number;
+}) {
+  const stackTileSize = Math.min(tileSize - 2, Math.max(16, Math.round(previewIconSize * 0.92)));
+  const ghostBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      {[2, 1].map((layer) => (
+        <span
+          key={layer}
+          className="absolute border border-white/20 bg-white/18"
+          style={{
+            width: stackTileSize,
+            height: stackTileSize,
+            borderRadius: ghostBorderRadius,
+            transform: `translate(${-layer * LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX}px, ${-layer * LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX}px)`,
+            opacity: layer === 1 ? 0.55 : 0.34,
+            boxShadow: '0 8px 16px rgba(255,255,255,0.06)',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function getFolderPreviewBorderRadius(params: {
   size: number;
@@ -202,26 +235,18 @@ function LargeFolderOpenTile({
   return (
     <button
       type="button"
-      className="relative flex items-center justify-center rounded-[14px] transition-transform duration-150 ease-out hover:scale-[1.03]"
+      className="relative isolate flex items-center justify-center rounded-[14px] transition-transform duration-150 ease-out hover:scale-[1.03]"
       style={{ width: tileSize, height: tileSize }}
       onClick={(event) => {
         event.stopPropagation();
         onOpenFolder();
       }}
     >
-      <div
-        className="absolute inset-x-0 bottom-[6px] flex flex-col items-center gap-[3px]"
-        aria-hidden="true"
-      >
-        <span
-          className="block rounded-full bg-black/22 dark:bg-white/20"
-          style={{ width: LARGE_FOLDER_TRIGGER_STACK_BAR_WIDTH * 0.72, height: LARGE_FOLDER_TRIGGER_STACK_BAR_HEIGHT }}
-        />
-        <span
-          className="block rounded-full bg-black/18 dark:bg-white/16"
-          style={{ width: LARGE_FOLDER_TRIGGER_STACK_BAR_WIDTH, height: LARGE_FOLDER_TRIGGER_STACK_BAR_HEIGHT }}
-        />
-      </div>
+      <LargeFolderOpenTileGhostStack
+        tileSize={tileSize}
+        previewIconSize={previewIconSize}
+        iconCornerRadius={iconCornerRadius}
+      />
       <div
         className="relative z-[1] flex items-center justify-center"
         style={{ width: previewIconSize, height: previewIconSize }}
@@ -270,11 +295,13 @@ export function ShortcutFolderPreview({
 
   return (
     <div
-      className="relative grid grid-cols-2 gap-1 border border-black/10 bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+      className={`relative grid grid-cols-2 gap-1 border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
         borderRadius: getSmallFolderBorderRadius(size, iconCornerRadius),
+        backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
       }}
       data-folder-preview="true"
       data-folder-preview-id={shortcut.id}
@@ -305,11 +332,12 @@ export function ShortcutFolderLargePreview({
   onOpenShortcut,
 }: ShortcutFolderLargePreviewProps) {
   const children = getShortcutChildren(shortcut);
+  const hasOverflowChildren = children.length > LARGE_FOLDER_PREVIEW_VISIBLE_COUNT;
   const visibleChildren = children.slice(0, LARGE_FOLDER_PREVIEW_VISIBLE_COUNT);
-  const directOpenChildren = visibleChildren.length >= LARGE_FOLDER_PREVIEW_VISIBLE_COUNT
+  const directOpenChildren = hasOverflowChildren
     ? visibleChildren.slice(0, LARGE_FOLDER_PREVIEW_VISIBLE_COUNT - 1)
     : visibleChildren;
-  const folderOpenShortcut = visibleChildren.length >= LARGE_FOLDER_PREVIEW_VISIBLE_COUNT
+  const folderOpenShortcut = hasOverflowChildren
     ? visibleChildren[LARGE_FOLDER_PREVIEW_VISIBLE_COUNT - 1]
     : null;
   const tileSize = Math.max(
@@ -320,11 +348,13 @@ export function ShortcutFolderLargePreview({
 
   return (
     <div
-      className="relative isolate overflow-hidden border border-black/10 bg-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+      className={`relative isolate overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
         borderRadius,
+        backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
       }}
       data-folder-preview="true"
       data-folder-preview-id={shortcut.id}
@@ -334,7 +364,7 @@ export function ShortcutFolderLargePreview({
         aria-hidden="true"
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 42%)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 42%)',
           pointerEvents: 'none',
         }}
       />

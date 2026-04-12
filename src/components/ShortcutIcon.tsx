@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
-import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
+import { resolveCustomIcon, resolveCustomIconFromCache, type ResolvedCustomIcon } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
   getShortcutIconColor,
@@ -23,6 +23,7 @@ import {
   DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
   getShortcutIconBorderRadius,
 } from '@/utils/shortcutIconSettings';
+import { getAdaptiveShortcutForegroundColor } from '@/utils/shortcutColorHsl';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -218,6 +219,8 @@ type IconCandidateKind = 'official' | 'favicon' | 'provided' | 'local-custom';
 type IconCandidate = {
   src: string;
   kind: IconCandidateKind;
+  officialMode?: ResolvedCustomIcon['mode'];
+  officialDefaultColor?: string;
 };
 
 function getCachedIconSignature(domain: string) {
@@ -328,10 +331,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const skipDomainCandidates = useMemo(() => (domain ? shouldSkipDomainCandidates(domain) : false), [domain]);
   const [cachedFavicon, setCachedFavicon] = useState<string>(() => (domain ? getCachedFavicon(domain) : ''));
   const [cachedOfficialIcon, setCachedOfficialIcon] = useState<string>(() => (domain ? getCachedOfficialIcon(domain) : ''));
-  const [customIconUrl, setCustomIconUrl] = useState<string>(() => {
-    if (!domain) return '';
-    return resolveCustomIconFromCache(domain)?.url || '';
-  });
+  const [resolvedOfficialIcon, setResolvedOfficialIcon] = useState<ResolvedCustomIcon | null>(() => (
+    domain ? resolveCustomIconFromCache(domain) : null
+  ));
   const [libraryTick, setLibraryTick] = useState(0);
   const [firefoxDomainCandidatesReady, setFirefoxDomainCandidatesReady] = useState(() => !firefox);
   const resolvedIconRendering = normalizeShortcutVisualMode(iconRendering);
@@ -375,7 +377,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
       return;
     }
     const hasImmediateCandidate =
-      !!customIconUrl ||
+      !!resolvedOfficialIcon?.url ||
       !!cachedFavicon ||
       (!!icon && !isIowenFaviconUrl(icon));
     if (hasImmediateCandidate) {
@@ -390,26 +392,37 @@ const ShortcutIcon = memo(function ShortcutIcon({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [cachedFavicon, customIconUrl, domain, firefox, icon, skipDomainCandidates]);
+  }, [cachedFavicon, resolvedOfficialIcon?.url, domain, firefox, icon, skipDomainCandidates]);
 
   const candidates = useMemo<IconCandidate[]>(() => {
     const list: IconCandidate[] = [];
+    const officialIconUrl = resolvedOfficialIcon?.url || '';
     if (effectiveLocalCustomIconDataUrl) {
       list.push({ src: effectiveLocalCustomIconDataUrl, kind: 'local-custom' });
     }
     const shouldUseOfficial = shouldUseOfficialShortcutIcon({
-      officialAvailable: Boolean(customIconUrl),
+      officialAvailable: Boolean(officialIconUrl),
       shortcut: {
         useOfficialIcon,
         autoUseOfficialIcon,
         officialIconAvailableAtSave,
       },
     });
-    if (shouldUseOfficial && customIconUrl) {
+    if (shouldUseOfficial && officialIconUrl) {
       if (cachedOfficialIcon) {
-        list.push({ src: cachedOfficialIcon, kind: 'official' });
+        list.push({
+          src: cachedOfficialIcon,
+          kind: 'official',
+          officialMode: resolvedOfficialIcon?.mode,
+          officialDefaultColor: resolvedOfficialIcon?.defaultColor,
+        });
       }
-      list.push({ src: customIconUrl, kind: 'official' });
+      list.push({
+        src: officialIconUrl,
+        kind: 'official',
+        officialMode: resolvedOfficialIcon?.mode,
+        officialDefaultColor: resolvedOfficialIcon?.defaultColor,
+      });
     }
     if (resolvedIconRendering !== 'letter') {
       if (cachedFavicon && (fallbackStyle !== 'emptyicon' || cachedFavicon.startsWith('data:'))) {
@@ -446,7 +459,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
     cachedFavicon,
     cachedOfficialIcon,
     canProbeRemoteFavicon,
-    customIconUrl,
     domain,
     exact,
     fallbackStyle,
@@ -456,6 +468,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
     effectiveLocalCustomIconDataUrl,
     officialIconAvailableAtSave,
     resolvedIconRendering,
+    resolvedOfficialIcon,
     size,
     skipDomainCandidates,
     useOfficialIcon,
@@ -475,30 +488,28 @@ const ShortcutIcon = memo(function ShortcutIcon({
 
   useEffect(() => {
     if (!domain) {
-      setCustomIconUrl('');
+      setResolvedOfficialIcon(null);
       return;
     }
-    const cachedResolved = resolveCustomIconFromCache(domain);
-    setCustomIconUrl(cachedResolved?.url || '');
+    setResolvedOfficialIcon(resolveCustomIconFromCache(domain));
   }, [domain, libraryTick]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!domain) {
-        if (!cancelled) setCustomIconUrl('');
+        if (!cancelled) setResolvedOfficialIcon(null);
         return;
       }
       if (firefox) {
         if (!cancelled) {
-          const cachedResolved = resolveCustomIconFromCache(domain);
-          setCustomIconUrl(cachedResolved?.url || '');
+          setResolvedOfficialIcon(resolveCustomIconFromCache(domain));
         }
       }
       const resolved = await resolveCustomIcon(domain);
       if (cancelled) return;
       if (!resolved?.url) {
-        setCustomIconUrl('');
+        setResolvedOfficialIcon(null);
         return;
       }
       const prevSig = getCachedIconSignature(domain);
@@ -511,7 +522,15 @@ const ShortcutIcon = memo(function ShortcutIcon({
       if (resolved.signature && prevSig !== resolved.signature) {
         setCachedIconSignature(domain, resolved.signature);
       }
-      setCustomIconUrl((prev) => (prev === resolved.url ? prev : resolved.url));
+      setResolvedOfficialIcon((prev) => (
+        prev
+        && prev.url === resolved.url
+        && prev.signature === resolved.signature
+        && prev.mode === resolved.mode
+        && prev.defaultColor === resolved.defaultColor
+          ? prev
+          : resolved
+      ));
     })();
     return () => {
       cancelled = true;
@@ -524,6 +543,15 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const letter = (Array.from(labelSeed)[0] || '?').toUpperCase();
   const emptyIconColorSeed = (domain || url || fallbackLabel || '').trim().toLowerCase();
   const [emptyIconColor, setEmptyIconColor] = useState<string>(() => getShortcutIconColor(emptyIconColorSeed, iconColor));
+  const emptyIconForegroundColor = useMemo(
+    () => getAdaptiveShortcutForegroundColor(emptyIconColor),
+    [emptyIconColor],
+  );
+  const officialBackgroundColor = (
+    (typeof iconColor === 'string' && iconColor.trim())
+    || activeCandidate?.officialDefaultColor
+    || emptyIconColor
+  );
   const isCustomActive = activeCandidate?.kind === 'official' || activeCandidate?.kind === 'local-custom';
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
@@ -593,7 +621,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           <div className="absolute inset-0 flex items-center justify-center">
             <span
               className="select-none leading-none font-['PingFang_SC:Medium',sans-serif] text-foreground"
-              style={{ fontSize: fallbackLetterSize }}
+              style={{ fontSize: fallbackLetterSize, color: emptyIconForegroundColor }}
             >
               {letter}
             </span>
@@ -657,6 +685,34 @@ const ShortcutIcon = memo(function ShortcutIcon({
           className="absolute inset-0 pointer-events-none"
           style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
         />
+      </div>
+    );
+  }
+
+  if (activeCandidate?.kind === 'official' && activeCandidate.officialMode === 'shape-color') {
+    const officialInnerSize = Math.max(12, Math.round(size * 0.56));
+    return (
+      <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
+        <div
+          className="absolute inset-0 overflow-hidden"
+          style={{ borderRadius: roundedBorderRadius, backgroundColor: officialBackgroundColor }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img
+            alt=""
+            className="max-w-none object-contain pointer-events-none"
+            draggable={false}
+            src={src}
+            style={{ width: officialInnerSize, height: officialInnerSize }}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        </div>
       </div>
     );
   }

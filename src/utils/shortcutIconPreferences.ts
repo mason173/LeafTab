@@ -27,7 +27,7 @@ const normalizeHexColor = (value: string) => {
   return `#${matched[1].toUpperCase()}`;
 };
 
-export const LEGACY_SHORTCUT_ICON_COLOR = SHORTCUT_ICON_COLOR_PALETTE[0];
+export const LEGACY_SHORTCUT_ICON_COLOR = '#FFFFFF';
 
 export const normalizeShortcutIconColor = (value: string | null | undefined) => {
   const trimmed = typeof value === 'string' ? value.trim() : '';

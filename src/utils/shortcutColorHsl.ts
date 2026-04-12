@@ -67,6 +67,32 @@ const parseHexToRgb = (hex: string) => {
   };
 };
 
+const srgbToLinear = (channel: number) => {
+  const normalized = channel / 255;
+  if (normalized <= 0.04045) return normalized / 12.92;
+  return ((normalized + 0.055) / 1.055) ** 2.4;
+};
+
+const getRelativeLuminance = (hex: string) => {
+  const rgb = parseHexToRgb(hex);
+  if (!rgb) return null;
+
+  const r = srgbToLinear(rgb.r);
+  const g = srgbToLinear(rgb.g);
+  const b = srgbToLinear(rgb.b);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+const getContrastRatio = (foregroundHex: string, backgroundHex: string) => {
+  const foregroundLuminance = getRelativeLuminance(foregroundHex);
+  const backgroundLuminance = getRelativeLuminance(backgroundHex);
+  if (foregroundLuminance == null || backgroundLuminance == null) return 1;
+
+  const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+};
+
 export const hexToShortcutIconHsl = (hex: string): ShortcutIconHsl | null => {
   const rgb = parseHexToRgb(hex);
   if (!rgb) return null;
@@ -110,3 +136,51 @@ export const normalizeShortcutIconHsl = (value: ShortcutIconHsl): ShortcutIconHs
   saturation: clamp(Math.round(value.saturation), 0, 100),
   lightness: clamp(Math.round(value.lightness), 0, 100),
 });
+
+export const getAdaptiveShortcutForegroundColor = (backgroundHex: string) => {
+  const backgroundHsl = hexToShortcutIconHsl(backgroundHex);
+  if (!backgroundHsl) return '#FFFFFF';
+
+  const isLightBackground = backgroundHsl.lightness >= 58;
+  const isNearNeutral = backgroundHsl.saturation <= 8;
+  let foregroundHsl: ShortcutIconHsl;
+
+  if (isNearNeutral) {
+    foregroundHsl = {
+      hue: backgroundHsl.hue,
+      saturation: 0,
+      lightness: isLightBackground ? 28 : 94,
+    };
+  } else if (isLightBackground) {
+    foregroundHsl = {
+      hue: backgroundHsl.hue,
+      saturation: clamp(Math.round(backgroundHsl.saturation * 0.72), 18, 72),
+      lightness: clamp(Math.round(backgroundHsl.lightness - 46), 18, 36),
+    };
+  } else {
+    foregroundHsl = {
+      hue: backgroundHsl.hue,
+      saturation: clamp(Math.round(Math.max(backgroundHsl.saturation * 0.24, 12)), 12, 42),
+      lightness: clamp(Math.round(92 - backgroundHsl.lightness * 0.08), 84, 96),
+    };
+  }
+
+  let normalizedForeground = normalizeShortcutIconHsl(foregroundHsl);
+  let foregroundHex = shortcutIconHslToHex(normalizedForeground);
+  const lightnessStep = isLightBackground ? -4 : 4;
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (getContrastRatio(foregroundHex, backgroundHex) >= 4.5) break;
+
+    const nextLightness = clamp(normalizedForeground.lightness + lightnessStep, 0, 100);
+    if (nextLightness === normalizedForeground.lightness) break;
+
+    normalizedForeground = {
+      ...normalizedForeground,
+      lightness: nextLightness,
+    };
+    foregroundHex = shortcutIconHslToHex(normalizedForeground);
+  }
+
+  return foregroundHex;
+};

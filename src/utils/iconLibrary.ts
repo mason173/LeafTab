@@ -1,7 +1,10 @@
 export type IconLibraryEntry =
   | string
   | {
-      path: string;
+      mode?: 'shape-color';
+      shapePath?: string;
+      defaultColor?: string;
+      path?: string;
       sha256?: string;
       updatedAt?: string;
     };
@@ -15,6 +18,8 @@ export type IconLibraryManifest = {
 export type ResolvedCustomIcon = {
   url: string;
   signature: string;
+  mode: 'shape-color' | 'legacy-image';
+  defaultColor?: string;
 };
 
 const ICON_LIBRARY_URL_KEY = 'leaftab_icon_library_url';
@@ -26,6 +31,13 @@ const ICON_LIBRARY_MANIFEST_FILE_CANDIDATES = ['icon-library.json', 'manifest.js
 
 export const DEFAULT_ICON_LIBRARY_URL = 'https://mason173.github.io/leaftab-icons';
 const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
+
+const normalizeHexColor = (value: string | null | undefined) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  const matched = trimmed.match(/^#([0-9a-fA-F]{6})$/);
+  if (!matched) return '';
+  return `#${matched[1].toUpperCase()}`;
+};
 
 const normalizeDomain = (domain: string) => {
   if (!domain || typeof domain !== 'string') return '';
@@ -184,9 +196,16 @@ const normalizeManifest = (raw: any): IconLibraryManifest | null => {
         icons[key] = v.trim();
         continue;
       }
-      if (v && typeof v === 'object' && typeof (v as any).path === 'string' && (v as any).path.trim()) {
+      if (v && typeof v === 'object') {
+        const pathValue = typeof (v as any).path === 'string' ? (v as any).path.trim() : '';
+        const shapePathValue = typeof (v as any).shapePath === 'string' ? (v as any).shapePath.trim() : '';
+        const defaultColorValue = normalizeHexColor(typeof (v as any).defaultColor === 'string' ? (v as any).defaultColor : '');
+        if (!pathValue && !shapePathValue) continue;
         icons[key] = {
-          path: (v as any).path.trim(),
+          mode: (v as any).mode === 'shape-color' || (shapePathValue && defaultColorValue) ? 'shape-color' : undefined,
+          path: pathValue || undefined,
+          shapePath: shapePathValue || undefined,
+          defaultColor: defaultColorValue || undefined,
           sha256: typeof (v as any).sha256 === 'string' ? (v as any).sha256.trim() : undefined,
           updatedAt: typeof (v as any).updatedAt === 'string' ? (v as any).updatedAt.trim() : undefined,
         };
@@ -352,13 +371,34 @@ const buildResolvedCustomIcon = (
   resolved: { entry: IconLibraryEntry; key: string }
 ): ResolvedCustomIcon => {
   const { entry, key } = resolved;
-  const path = typeof entry === 'string' ? entry : entry.path;
+  if (typeof entry === 'string') {
+    const url = `${baseUrl}/${entry.replace(/^\/+/, '')}`;
+    return {
+      url,
+      signature: `path:${key}:${entry}`,
+      mode: 'legacy-image',
+    };
+  }
+
+  const shapePath = typeof entry.shapePath === 'string' ? entry.shapePath.trim() : '';
+  const defaultColor = normalizeHexColor(entry.defaultColor);
+  if (shapePath && defaultColor) {
+    const url = `${baseUrl}/${shapePath.replace(/^\/+/, '')}`;
+    return {
+      url,
+      signature: `shape:${key}:${shapePath}|color:${defaultColor}|sha:${entry.sha256 || ''}|u:${entry.updatedAt || ''}`,
+      mode: 'shape-color',
+      defaultColor,
+    };
+  }
+
+  const path = typeof entry.path === 'string' ? entry.path.trim() : '';
   const url = `${baseUrl}/${path.replace(/^\/+/, '')}`;
-  const signature =
-    typeof entry === 'string'
-      ? `path:${key}:${path}`
-      : `path:${key}:${entry.path}|sha:${entry.sha256 || ''}|u:${entry.updatedAt || ''}`;
-  return { url, signature };
+  return {
+    url,
+    signature: `path:${key}:${path}|sha:${entry.sha256 || ''}|u:${entry.updatedAt || ''}`,
+    mode: 'legacy-image',
+  };
 };
 
 export const resolveCustomIconFromCache = (domain: string): ResolvedCustomIcon | null => {

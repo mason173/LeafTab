@@ -25,8 +25,9 @@ describe('normalizeShortcutIconColor', () => {
     expect(normalizeShortcutIconColor('#12ab9')).toBe('');
   });
 
-  it('uses fixed legacy color when color is missing', () => {
+  it('uses a fixed white default when color is missing', () => {
     expect(normalizeShortcutIconColor('')).toBe('');
+    expect(LEGACY_SHORTCUT_ICON_COLOR).toBe('#FFFFFF');
     expect(resolveShortcutIconColor('')).toBe(LEGACY_SHORTCUT_ICON_COLOR);
     expect(getShortcutIconColor('seed-a', '')).toBe(LEGACY_SHORTCUT_ICON_COLOR);
     expect(getShortcutIconColor('seed-b', null)).toBe(LEGACY_SHORTCUT_ICON_COLOR);

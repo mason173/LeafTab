@@ -15,111 +15,185 @@
     "scenarioShortcuts": {
       "life-mode-001": [
         {
-          "id": "ent-01",
-          "title": "YouTube",
-          "url": "https://www.youtube.com",
-          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+          "id": "fld_life_mode_001_large",
+          "title": "Collection",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_life_mode_001_01",
+              "title": "Apple",
+              "url": "https://www.apple.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_02",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_03",
+              "title": "Stack Overflow",
+              "url": "https://stackoverflow.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_04",
+              "title": "Reddit (Programming)",
+              "url": "https://www.reddit.com/r/programming",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_05",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "sht_life_mode_001_06",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_07",
+              "title": "Spotify",
+              "url": "https://open.spotify.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_08",
+              "title": "Twitch",
+              "url": "https://www.twitch.tv",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_09",
+              "title": "IMDb",
+              "url": "https://www.imdb.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_10",
+              "title": "CNN",
+              "url": "https://edition.cnn.com",
+              "icon": ""
+            }
+          ]
         },
         {
-          "id": "ent-02",
-          "title": "Netflix",
-          "url": "https://www.netflix.com",
+          "id": "fld_life_mode_001_small",
+          "title": "Tools",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_life_mode_001_11",
+              "title": "BBC News",
+              "url": "https://www.bbc.com/news",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_12",
+              "title": "The New York Times",
+              "url": "https://www.nytimes.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_13",
+              "title": "Reddit",
+              "url": "https://www.reddit.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_14",
+              "title": "Google Drive",
+              "url": "https://drive.google.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_life_mode_001_15",
+          "title": "Google Maps",
+          "url": "https://maps.google.com",
           "icon": ""
         },
         {
-          "id": "ent-03",
-          "title": "Spotify",
-          "url": "https://open.spotify.com",
+          "id": "sht_life_mode_001_16",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
           "icon": ""
         },
         {
-          "id": "ent-04",
-          "title": "Twitch",
-          "url": "https://www.twitch.tv",
+          "id": "sht_life_mode_001_17",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
           "icon": ""
         },
         {
-          "id": "ent-05",
-          "title": "IMDb",
-          "url": "https://www.imdb.com",
+          "id": "sht_life_mode_001_18",
+          "title": "Notion",
+          "url": "https://www.notion.so",
           "icon": ""
         },
         {
-          "id": "read-01",
-          "title": "CNN",
-          "url": "https://edition.cnn.com",
+          "id": "sht_life_mode_001_19",
+          "title": "Figma",
+          "url": "https://www.figma.com",
           "icon": ""
         },
         {
-          "id": "read-02",
-          "title": "BBC News",
-          "url": "https://www.bbc.com/news",
+          "id": "sht_life_mode_001_20",
+          "title": "Slack",
+          "url": "https://slack.com",
           "icon": ""
         },
         {
-          "id": "read-03",
-          "title": "The New York Times",
-          "url": "https://www.nytimes.com",
+          "id": "sht_life_mode_001_21",
+          "title": "Trello",
+          "url": "https://trello.com",
           "icon": ""
         },
         {
-          "id": "read-04",
-          "title": "Reddit",
-          "url": "https://www.reddit.com",
+          "id": "sht_life_mode_001_22",
+          "title": "Asana",
+          "url": "https://asana.com",
           "icon": ""
         },
         {
-          "id": "read-05",
-          "title": "Hacker News",
-          "url": "https://news.ycombinator.com",
+          "id": "sht_life_mode_001_23",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
           "icon": ""
         },
         {
-          "id": "shop-01",
-          "title": "Amazon",
-          "url": "https://www.amazon.com",
+          "id": "sht_life_mode_001_24",
+          "title": "Canva",
+          "url": "https://www.canva.com",
           "icon": ""
         },
         {
-          "id": "shop-02",
-          "title": "eBay",
-          "url": "https://www.ebay.com",
+          "id": "sht_life_mode_001_25",
+          "title": "Zoom",
+          "url": "https://zoom.us",
           "icon": ""
         },
         {
-          "id": "shop-03",
-          "title": "Best Buy",
-          "url": "https://www.bestbuy.com",
+          "id": "sht_life_mode_001_26",
+          "title": "GitLab",
+          "url": "https://gitlab.com",
           "icon": ""
         },
         {
-          "id": "shop-04",
-          "title": "Walmart",
-          "url": "https://www.walmart.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-05",
-          "title": "Apple",
-          "url": "https://www.apple.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-01",
-          "title": "GitHub",
-          "url": "https://github.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-02",
-          "title": "Stack Overflow",
-          "url": "https://stackoverflow.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-03",
-          "title": "Reddit (Programming)",
-          "url": "https://www.reddit.com/r/programming",
+          "id": "sht_life_mode_001_27",
+          "title": "Bitbucket",
+          "url": "https://bitbucket.org",
           "icon": ""
         }
       ]

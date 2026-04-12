@@ -21,203 +21,369 @@
     "scenarioShortcuts": {
       "default": [
         {
-          "id": "mkt-01",
-          "title": "Yahoo Finance",
-          "url": "https://finance.yahoo.com",
+          "id": "fld_default_large",
+          "title": "Collection",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_default_01",
+              "title": "TurboTax",
+              "url": "https://turbotax.intuit.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_02",
+              "title": "GitHub",
+              "url": "https://github.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_03",
+              "title": "Stack Overflow",
+              "url": "https://stackoverflow.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_04",
+              "title": "Reddit (Programming)",
+              "url": "https://www.reddit.com/r/programming",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_05",
+              "title": "Yahoo Finance",
+              "url": "https://finance.yahoo.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_06",
+              "title": "Bloomberg",
+              "url": "https://www.bloomberg.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_07",
+              "title": "Investing.com",
+              "url": "https://www.investing.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_08",
+              "title": "TradingView",
+              "url": "https://www.tradingview.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_09",
+              "title": "Google Finance",
+              "url": "https://www.google.com/finance",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_10",
+              "title": "Wall Street Journal",
+              "url": "https://www.wsj.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "fld_default_small",
+          "title": "Tools",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_default_11",
+              "title": "Financial Times",
+              "url": "https://www.ft.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_12",
+              "title": "CNBC",
+              "url": "https://www.cnbc.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_13",
+              "title": "Forbes",
+              "url": "https://www.forbes.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_default_14",
+              "title": "Google Drive",
+              "url": "https://drive.google.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_default_15",
+          "title": "Google Maps",
+          "url": "https://maps.google.com",
           "icon": ""
         },
         {
-          "id": "mkt-02",
-          "title": "Bloomberg",
-          "url": "https://www.bloomberg.com",
+          "id": "sht_default_16",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
           "icon": ""
         },
         {
-          "id": "mkt-03",
-          "title": "Investing.com",
-          "url": "https://www.investing.com",
+          "id": "sht_default_17",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
           "icon": ""
         },
         {
-          "id": "mkt-04",
-          "title": "TradingView",
-          "url": "https://www.tradingview.com",
+          "id": "sht_default_18",
+          "title": "Notion",
+          "url": "https://www.notion.so",
           "icon": ""
         },
         {
-          "id": "mkt-05",
-          "title": "Google Finance",
-          "url": "https://www.google.com/finance",
+          "id": "sht_default_19",
+          "title": "Figma",
+          "url": "https://www.figma.com",
           "icon": ""
         },
         {
-          "id": "news-01",
-          "title": "Wall Street Journal",
-          "url": "https://www.wsj.com",
+          "id": "sht_default_20",
+          "title": "Slack",
+          "url": "https://slack.com",
           "icon": ""
         },
         {
-          "id": "news-02",
-          "title": "Financial Times",
-          "url": "https://www.ft.com",
+          "id": "sht_default_21",
+          "title": "Trello",
+          "url": "https://trello.com",
           "icon": ""
         },
         {
-          "id": "news-03",
-          "title": "CNBC",
-          "url": "https://www.cnbc.com",
+          "id": "sht_default_22",
+          "title": "Asana",
+          "url": "https://asana.com",
           "icon": ""
         },
         {
-          "id": "news-04",
-          "title": "Forbes",
-          "url": "https://www.forbes.com",
+          "id": "sht_default_23",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
           "icon": ""
         },
         {
-          "id": "news-05",
-          "title": "The Economist",
-          "url": "https://www.economist.com",
+          "id": "sht_default_24",
+          "title": "Canva",
+          "url": "https://www.canva.com",
           "icon": ""
         },
         {
-          "id": "reg-01",
-          "title": "SEC (EDGAR)",
-          "url": "https://www.sec.gov/edgar",
+          "id": "sht_default_25",
+          "title": "Zoom",
+          "url": "https://zoom.us",
           "icon": ""
         },
         {
-          "id": "reg-02",
-          "title": "IRS",
-          "url": "https://www.irs.gov",
+          "id": "sht_default_26",
+          "title": "GitLab",
+          "url": "https://gitlab.com",
           "icon": ""
         },
         {
-          "id": "reg-03",
-          "title": "Excel Online",
-          "url": "https://www.office.com/launch/excel",
-          "icon": ""
-        },
-        {
-          "id": "reg-04",
-          "title": "Federal Reserve",
-          "url": "https://www.federalreserve.gov",
-          "icon": ""
-        },
-        {
-          "id": "reg-05",
-          "title": "TurboTax",
-          "url": "https://turbotax.intuit.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-01",
-          "title": "GitHub",
-          "url": "https://github.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-02",
-          "title": "Stack Overflow",
-          "url": "https://stackoverflow.com",
-          "icon": ""
-        },
-        {
-          "id": "dev-03",
-          "title": "Reddit (Programming)",
-          "url": "https://www.reddit.com/r/programming",
+          "id": "sht_default_27",
+          "title": "Bitbucket",
+          "url": "https://bitbucket.org",
           "icon": ""
         }
       ],
       "life-mode-001": [
         {
-          "id": "ent-01",
-          "title": "YouTube",
-          "url": "https://www.youtube.com",
-          "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+          "id": "fld_life_mode_001_large",
+          "title": "Collection",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "large",
+          "children": [
+            {
+              "id": "sht_life_mode_001_01",
+              "title": "Apple",
+              "url": "https://www.apple.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_02",
+              "title": "YouTube",
+              "url": "https://www.youtube.com",
+              "icon": "https://api.iowen.cn/favicon/www.youtube.com.png"
+            },
+            {
+              "id": "sht_life_mode_001_03",
+              "title": "Netflix",
+              "url": "https://www.netflix.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_04",
+              "title": "Spotify",
+              "url": "https://open.spotify.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_05",
+              "title": "Twitch",
+              "url": "https://www.twitch.tv",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_06",
+              "title": "IMDb",
+              "url": "https://www.imdb.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_07",
+              "title": "CNN",
+              "url": "https://edition.cnn.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_08",
+              "title": "BBC News",
+              "url": "https://www.bbc.com/news",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_09",
+              "title": "The New York Times",
+              "url": "https://www.nytimes.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_10",
+              "title": "Reddit",
+              "url": "https://www.reddit.com",
+              "icon": ""
+            }
+          ]
         },
         {
-          "id": "ent-02",
-          "title": "Netflix",
-          "url": "https://www.netflix.com",
+          "id": "fld_life_mode_001_small",
+          "title": "Tools",
+          "url": "",
+          "icon": "",
+          "kind": "folder",
+          "folderDisplayMode": "small",
+          "children": [
+            {
+              "id": "sht_life_mode_001_11",
+              "title": "Hacker News",
+              "url": "https://news.ycombinator.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_12",
+              "title": "Amazon",
+              "url": "https://www.amazon.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_13",
+              "title": "eBay",
+              "url": "https://www.ebay.com",
+              "icon": ""
+            },
+            {
+              "id": "sht_life_mode_001_14",
+              "title": "Google Drive",
+              "url": "https://drive.google.com",
+              "icon": ""
+            }
+          ]
+        },
+        {
+          "id": "sht_life_mode_001_15",
+          "title": "Google Maps",
+          "url": "https://maps.google.com",
           "icon": ""
         },
         {
-          "id": "ent-03",
-          "title": "Spotify",
-          "url": "https://open.spotify.com",
+          "id": "sht_life_mode_001_16",
+          "title": "Gmail",
+          "url": "https://mail.google.com",
           "icon": ""
         },
         {
-          "id": "ent-04",
-          "title": "Twitch",
-          "url": "https://www.twitch.tv",
+          "id": "sht_life_mode_001_17",
+          "title": "Google Calendar",
+          "url": "https://calendar.google.com",
           "icon": ""
         },
         {
-          "id": "ent-05",
-          "title": "IMDb",
-          "url": "https://www.imdb.com",
+          "id": "sht_life_mode_001_18",
+          "title": "Notion",
+          "url": "https://www.notion.so",
           "icon": ""
         },
         {
-          "id": "read-01",
-          "title": "CNN",
-          "url": "https://edition.cnn.com",
+          "id": "sht_life_mode_001_19",
+          "title": "Figma",
+          "url": "https://www.figma.com",
           "icon": ""
         },
         {
-          "id": "read-02",
-          "title": "BBC News",
-          "url": "https://www.bbc.com/news",
+          "id": "sht_life_mode_001_20",
+          "title": "Slack",
+          "url": "https://slack.com",
           "icon": ""
         },
         {
-          "id": "read-03",
-          "title": "The New York Times",
-          "url": "https://www.nytimes.com",
+          "id": "sht_life_mode_001_21",
+          "title": "Trello",
+          "url": "https://trello.com",
           "icon": ""
         },
         {
-          "id": "read-04",
-          "title": "Reddit",
-          "url": "https://www.reddit.com",
+          "id": "sht_life_mode_001_22",
+          "title": "Asana",
+          "url": "https://asana.com",
           "icon": ""
         },
         {
-          "id": "read-05",
-          "title": "Hacker News",
-          "url": "https://news.ycombinator.com",
+          "id": "sht_life_mode_001_23",
+          "title": "Dropbox",
+          "url": "https://www.dropbox.com",
           "icon": ""
         },
         {
-          "id": "shop-01",
-          "title": "Amazon",
-          "url": "https://www.amazon.com",
+          "id": "sht_life_mode_001_24",
+          "title": "Canva",
+          "url": "https://www.canva.com",
           "icon": ""
         },
         {
-          "id": "shop-02",
-          "title": "eBay",
-          "url": "https://www.ebay.com",
+          "id": "sht_life_mode_001_25",
+          "title": "Zoom",
+          "url": "https://zoom.us",
           "icon": ""
         },
         {
-          "id": "shop-03",
-          "title": "Best Buy",
-          "url": "https://www.bestbuy.com",
+          "id": "sht_life_mode_001_26",
+          "title": "GitLab",
+          "url": "https://gitlab.com",
           "icon": ""
         },
         {
-          "id": "shop-04",
-          "title": "Walmart",
-          "url": "https://www.walmart.com",
-          "icon": ""
-        },
-        {
-          "id": "shop-05",
-          "title": "Apple",
-          "url": "https://www.apple.com",
+          "id": "sht_life_mode_001_27",
+          "title": "Bitbucket",
+          "url": "https://bitbucket.org",
           "icon": ""
         }
       ]

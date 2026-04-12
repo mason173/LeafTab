@@ -108,4 +108,21 @@ describe('ShortcutIcon offline cache', () => {
       expect(customImage?.getAttribute('src')).toBe('data:image/png;base64,updated-custom-icon');
     });
   });
+
+  it('applies an adaptive foreground color to letter fallbacks in empty icon mode', () => {
+    const view = render(
+      <ShortcutIcon
+        icon=""
+        url="https://example.com/path"
+        frame="never"
+        fallbackStyle="emptyicon"
+        fallbackLabel="Example"
+        iconRendering="letter"
+        iconColor="#FFF2A8"
+      />,
+    );
+
+    const letter = view.getByText('E') as HTMLSpanElement;
+    expect(letter.style.color).not.toBe('');
+  });
 });
