@@ -221,4 +221,76 @@ describe('LeafTabLegacySingleFileCompat.prepareLocalSnapshot', () => {
     expect(prepared.snapshot.shortcutOrders.work?.ids).toEqual(['b', 'a', 'c']);
     expect(prepared.snapshot.shortcuts.c?.url).toBe('https://example.com/c');
   });
+
+  it('writes a flattened legacy mirror so older clients keep working with folder data', async () => {
+    const baselineStore = new LeafTabSyncMemoryBaselineStore();
+    const localSnapshot = createShortcutSnapshot(['chat']);
+    localSnapshot.shortcuts.folder = {
+      id: 'folder',
+      type: 'shortcut',
+      scenarioId: 'work',
+      title: 'Folder',
+      url: '',
+      icon: '',
+      description: '',
+      kind: 'folder',
+      children: [
+        {
+          id: 'docs',
+          title: 'Docs',
+          url: 'https://docs.example',
+          icon: '',
+          kind: 'link',
+        },
+      ],
+      folderDisplayMode: 'large',
+      useOfficialIcon: true,
+      autoUseOfficialIcon: true,
+      officialIconAvailableAtSave: false,
+      iconRendering: 'favicon',
+      iconColor: '',
+      createdAt: '2026-04-11T10:00:00.000Z',
+      updatedAt: '2026-04-11T10:00:00.000Z',
+      updatedBy: 'local-device',
+      revision: 2,
+    };
+    localSnapshot.shortcutOrders.work.ids = ['folder', 'chat'];
+
+    let mirroredPayload: any = null;
+    const compat = new LeafTabLegacySingleFileCompat({
+      deviceId: 'local-device',
+      baselineStore,
+      remoteStore: {
+        async readState() {
+          return { head: null, commit: null, snapshot: null };
+        },
+      } as any,
+      legacyDriver: {
+        async readLegacyPayload() {
+          return null;
+        },
+        async writeLegacyPayload(payload) {
+          mirroredPayload = payload;
+        },
+      },
+      buildLocalSnapshot: async () => localSnapshot,
+      applyLocalSnapshot: async () => {},
+    });
+
+    await compat.writeLegacyMirrorFromSnapshot(localSnapshot);
+
+    expect(mirroredPayload?.scenarioShortcuts?.work).toEqual([
+      expect.objectContaining({
+        id: 'docs',
+        kind: 'link',
+        url: 'https://docs.example',
+      }),
+      expect.objectContaining({
+        id: 'chat',
+        kind: 'link',
+        url: 'https://example.com/chat',
+      }),
+    ]);
+    expect(mirroredPayload?.scenarioShortcuts?.work.some((shortcut: any) => shortcut.kind === 'folder')).toBe(false);
+  });
 });
