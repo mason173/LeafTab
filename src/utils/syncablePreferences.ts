@@ -4,7 +4,6 @@ import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 import { getDefaultSearchEngineForPlatform, normalizeSearchEngineForPlatform } from '@/platform/search';
 import type { SearchEngine, SyncablePreferences, SyncableWallpaperMode, WeatherManualLocation } from '@/types';
-import { clampShortcutsRowsPerColumn } from '@/utils/backupData';
 import { DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import {
@@ -182,7 +181,6 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   shortcutIconAppearance: DEFAULT_SHORTCUT_ICON_APPEARANCE,
   shortcutIconCornerRadius: DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
   shortcutIconScale: DEFAULT_SHORTCUT_ICON_SCALE,
-  shortcutsRowsPerColumn: 4,
   privacyConsent: null,
   theme: 'system',
   language: 'zh',
@@ -242,7 +240,6 @@ export const normalizeSyncablePreferences = (
     shortcutIconAppearance: normalizeShortcutIconAppearance(candidate.shortcutIconAppearance),
     shortcutIconCornerRadius: clampShortcutIconCornerRadius(candidate.shortcutIconCornerRadius),
     shortcutIconScale: clampShortcutIconScale(candidate.shortcutIconScale),
-    shortcutsRowsPerColumn: clampShortcutsRowsPerColumn(Number(candidate.shortcutsRowsPerColumn)),
     privacyConsent: readNullableBoolean(candidate.privacyConsent),
     theme: candidate.theme === 'light' || candidate.theme === 'dark' || candidate.theme === 'system'
       ? candidate.theme
@@ -314,7 +311,6 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     shortcutIconAppearance: normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY)),
     shortcutIconCornerRadius: clampShortcutIconCornerRadius(localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY)),
     shortcutIconScale: clampShortcutIconScale(localStorage.getItem(SHORTCUT_ICON_SCALE_KEY)),
-    shortcutsRowsPerColumn: clampShortcutsRowsPerColumn(Number(localStorage.getItem('shortcutsRowsPerColumn') || '4')),
     privacyConsent,
     theme: ((localStorage.getItem(THEME_KEY) || 'system').trim() as SyncablePreferences['theme']),
     language: (localStorage.getItem(LANGUAGE_KEY) || 'zh').trim() || 'zh',
@@ -364,7 +360,7 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
     SHORTCUT_GRID_COLUMNS_LEGACY_KEY,
     String(normalized.shortcutGridColumnsByVariant[normalized.shortcutCardVariant]),
   );
-  localStorage.setItem('shortcutsRowsPerColumn', String(normalized.shortcutsRowsPerColumn));
+  localStorage.removeItem('shortcutsRowsPerColumn');
   if (normalized.privacyConsent === null) {
     localStorage.removeItem('privacy_consent');
   } else {

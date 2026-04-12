@@ -19,11 +19,6 @@ export type LeafTabBackupEnvelope = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
-export const clampShortcutsRowsPerColumn = (value: number) => {
-  if (!Number.isFinite(value)) return 4;
-  return Math.min(11, Math.max(1, Math.floor(value)));
-};
-
 export const mergeShortcutsLocalFirst = (localShortcuts: any[], remoteShortcuts: any[]) => {
   const keySet = new Set<string>();
   const merged: any[] = [];

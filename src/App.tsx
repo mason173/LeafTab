@@ -69,9 +69,6 @@ import {
 } from '@/utils/cloudSyncConfig';
 import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER, IS_STORE_BUILD } from '@/config/distribution';
-import {
-  clampShortcutsRowsPerColumn,
-} from './utils/backupData';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
@@ -528,7 +525,6 @@ export default function App() {
     shortcutIconAppearance, setShortcutIconAppearance,
     shortcutIconCornerRadius, setShortcutIconCornerRadius,
     shortcutIconScale, setShortcutIconScale,
-    shortcutsRowsPerColumn, setShortcutsRowsPerColumn,
     privacyConsent, setPrivacyConsent,
     apiServer, setApiServer,
     customApiUrl, setCustomApiUrl,
@@ -705,8 +701,8 @@ export default function App() {
     snoozeCurrentRelease,
   } = useGithubReleaseUpdate(API_URL);
 
-  const normalizedRowsPerColumn = clampShortcutsRowsPerColumn(shortcutsRowsPerColumn);
   const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant, responsiveLayout.density);
+  const minShortcutRows = responsiveLayout.baseRows;
 
   const {
     scenarioModes, setScenarioModes,
@@ -740,9 +736,6 @@ export default function App() {
     openInNewTab,
     API_URL,
     handleLogout,
-    {
-      legacyCloudRuntimeEnabled: false,
-    },
   );
 
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
@@ -1487,7 +1480,6 @@ export default function App() {
         ...stored.shortcutGridColumnsByVariant,
         [shortcutCardVariant]: normalizedGridColumns,
       },
-      shortcutsRowsPerColumn: normalizedRowsPerColumn,
       privacyConsent,
       theme: theme === 'light' || theme === 'dark' || theme === 'system' ? theme : stored.theme,
       language: (i18n.language || stored.language || 'zh').trim() || 'zh',
@@ -1505,7 +1497,6 @@ export default function App() {
     i18n.language,
     is24Hour,
     normalizedGridColumns,
-    normalizedRowsPerColumn,
     openInNewTab,
     preventDuplicateNewTab,
     privacyConsent,
@@ -1592,7 +1583,6 @@ export default function App() {
     setShortcutIconAppearance(normalized.shortcutIconAppearance);
     setShortcutIconCornerRadius(normalized.shortcutIconCornerRadius);
     setShortcutIconScale(normalized.shortcutIconScale);
-    setShortcutsRowsPerColumn(normalized.shortcutsRowsPerColumn);
     setPrivacyConsent(normalized.privacyConsent);
 
     if (theme !== normalized.theme) {
@@ -1647,7 +1637,6 @@ export default function App() {
     setShortcutCardVariant,
     setShortcutCompactShowTitle,
     setShortcutGridColumns,
-    setShortcutsRowsPerColumn,
     setShowDate,
     setShowLunar,
     setShowSeconds,
@@ -1733,10 +1722,6 @@ export default function App() {
   const handleShortcutGridColumnsChange = useCallback((columns: number) => {
     setShortcutGridColumns(columns);
   }, [setShortcutGridColumns]);
-
-  const handleShortcutsRowsPerColumnChange = useCallback((rows: number) => {
-    setShortcutsRowsPerColumn(rows);
-  }, [setShortcutsRowsPerColumn]);
 
   const handleOpenSearchSettings = useCallback(() => {
     setSearchSettingsOpen(true);
@@ -3234,7 +3219,7 @@ export default function App() {
 
   const displayRows = Math.max(
     Math.ceil(shortcuts.length / Math.max(normalizedGridColumns, 1)),
-    normalizedRowsPerColumn,
+    minShortcutRows,
   );
   const scaledCompactShortcutSize = scaleShortcutIconSize(responsiveLayout.compactShortcutSize, shortcutIconScale);
   const scaledDefaultShortcutIconSize = scaleShortcutIconSize(responsiveLayout.defaultShortcutIconSize, shortcutIconScale);
@@ -3467,7 +3452,7 @@ export default function App() {
     bottomInset: 0,
     shortcuts,
     gridColumns: normalizedGridColumns,
-    minRows: normalizedRowsPerColumn,
+    minRows: minShortcutRows,
     cardVariant: shortcutCardVariant,
     layoutDensity: responsiveLayout.density,
     compactIconSize: scaledCompactShortcutSize,
@@ -3497,7 +3482,7 @@ export default function App() {
     handleShortcutActivate,
     handleShortcutReorder,
     normalizedGridColumns,
-    normalizedRowsPerColumn,
+    minShortcutRows,
     scaledCompactShortcutSize,
     responsiveLayout.compactShortcutTitleSize,
     responsiveLayout.defaultRowGap,

@@ -26,12 +26,9 @@ export function useShortcuts(
   openInNewTab: boolean,
   API_URL: string,
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void,
-  options?: {
-    legacyCloudRuntimeEnabled?: boolean;
-  },
 ) {
   const { t, i18n } = useTranslation();
-  const legacyCloudRuntimeEnabled = options?.legacyCloudRuntimeEnabled !== false;
+  const cloudSyncInitializedForUi = Boolean(user);
 
   const normalizeScenarioModesList = useCallback((raw: unknown) => {
     return normalizeScenarioModesListRaw(raw, t('scenario.unnamed'));
@@ -75,7 +72,6 @@ export function useShortcuts(
   const userRef = useRef(user);
 
   const {
-    cloudSyncInitialized,
     setCloudSyncInitialized,
     syncState: cloudSyncState,
     conflictModalOpen,
@@ -92,7 +88,7 @@ export function useShortcuts(
     applyUndoPayload,
     triggerCloudSyncNow,
   } = useCloudSync({
-    runtimeEnabled: legacyCloudRuntimeEnabled,
+    runtimeEnabled: false,
     user,
     API_URL,
     handleLogout,
@@ -126,7 +122,7 @@ export function useShortcuts(
   const { reportDomain } = useShortcutDomainReporting({
     user,
     API_URL,
-    cloudSyncInitialized: legacyCloudRuntimeEnabled ? cloudSyncInitialized : Boolean(user),
+    cloudSyncInitialized: cloudSyncInitializedForUi,
     scenarioShortcuts,
   });
 
@@ -472,7 +468,7 @@ export function useShortcuts(
     scenarioModes, setScenarioModes: setScenarioModesWithRef,
     selectedScenarioId, setSelectedScenarioId: setSelectedScenarioIdWithRef,
     scenarioShortcuts, setScenarioShortcuts: setScenarioShortcutsWithRef,
-    cloudSyncInitialized: legacyCloudRuntimeEnabled ? cloudSyncInitialized : Boolean(user), setCloudSyncInitialized,
+    cloudSyncInitialized: cloudSyncInitializedForUi, setCloudSyncInitialized,
     cloudSyncState,
     userRole, setUserRole,
     totalShortcuts,
