@@ -175,6 +175,7 @@ const createApp = () => {
     updateLimiter,
     getLatestReleaseCached,
     googleOAuthClientIds,
+    authenticateToken,
   });
 
   registerUserRoutes({

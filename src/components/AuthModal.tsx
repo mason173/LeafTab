@@ -87,6 +87,7 @@ type GoogleWebPopupMessage = {
 };
 
 type GoogleAuthMode = 'extension-identity' | 'web-popup' | 'unavailable';
+export type AuthModalMode = 'login' | 'link-google';
 
 const getExpectedOfficialGoogleRedirectUris = (runtimeId: string) => {
   const runtimeSpecificUri = OFFICIAL_GOOGLE_EXTENSION_REDIRECT_URIS_BY_RUNTIME_ID[runtimeId];
@@ -362,24 +363,30 @@ interface AuthModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onLoginSuccess?: (username: string, role?: string | null, privacyConsent?: boolean | null) => void;
+  onGoogleLinkSuccess?: () => void;
   apiServer: 'official' | 'custom';
   onApiServerChange: (next: 'official' | 'custom') => void;
   customApiUrl: string;
   customApiName: string;
   defaultApiBase: string;
   allowCustomApiServer?: boolean;
+  mode?: AuthModalMode;
+  linkedUsername?: string | null;
 }
 
 export default function AuthModal({
   isOpen,
   onOpenChange,
   onLoginSuccess,
+  onGoogleLinkSuccess,
   apiServer,
   onApiServerChange,
   customApiUrl,
   customApiName,
   defaultApiBase,
   allowCustomApiServer = true,
+  mode = 'login',
+  linkedUsername = null,
 }: AuthModalProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("login");
@@ -428,12 +435,18 @@ export default function AuthModal({
     if (!googleClientId) return false;
     return googleAuthMode === 'extension-identity' || googleAuthMode === 'web-popup';
   }, [googleClientId, googleAuthMode]);
+  const isGoogleLinkMode = mode === 'link-google';
 
   React.useEffect(() => {
     if (!allowCustomApiServer && apiServer !== 'official') {
       onApiServerChange('official');
     }
   }, [allowCustomApiServer, apiServer, onApiServerChange]);
+
+  React.useEffect(() => {
+    if (!isOpen || !isGoogleLinkMode) return;
+    setActiveTab('login');
+  }, [isGoogleLinkMode, isOpen]);
 
   const fetchCaptcha = async () => {
     try {
@@ -490,6 +503,11 @@ export default function AuthModal({
     if (errorMsg.includes('Google login popup was blocked')) return t('auth.errors.googlePopupBlocked');
     if (errorMsg.includes('Google login state mismatch')) return t('auth.errors.googleStateMismatch');
     if (errorMsg.includes('Google OAuth error')) return t('auth.errors.googleOAuthFailed');
+    if (errorMsg.includes('Google account is already linked to another user')) {
+      return t('auth.errors.googleAlreadyLinked', {
+        defaultValue: '这个 Google 账号已经绑定到另一个 LeafTab 账号',
+      });
+    }
     if (errorMsg.includes('Unable to parse Google callback URL') || errorMsg.includes('Google ID token is missing')) {
       return t('auth.errors.googleParseFailed');
     }
@@ -671,9 +689,15 @@ export default function AuthModal({
             redirectUri: webGoogleRedirectUri,
             callbackOrigin: webGoogleRedirectOrigin,
           });
-      const response = await fetch(`${API_URL}/auth/google`, {
+      const token = localStorage.getItem('token') || '';
+      const response = await fetch(
+        `${API_URL}${isGoogleLinkMode ? '/auth/google/link' : '/auth/google'}`,
+        {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isGoogleLinkMode && token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         credentials: 'include',
         body: JSON.stringify({ idToken, clientId: googleClientId }),
       });
@@ -684,6 +708,15 @@ export default function AuthModal({
           throw new Error(t('auth.errors.tooManyRequests'));
         }
         throw new Error((data as any)?.error || t('auth.errors.googleLoginFailed'));
+      }
+
+      if (isGoogleLinkMode) {
+        toast.success(t('auth.toast.googleLinked', {
+          defaultValue: 'Google 登录已绑定到当前账号',
+        }));
+        onGoogleLinkSuccess?.();
+        onOpenChange(false);
+        return;
       }
 
       handleLoginSuccessPayload(data);
@@ -701,7 +734,14 @@ export default function AuthModal({
         <DialogHeader>
           <DialogTitle className="text-foreground">LeafTab</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            {t('auth.description')}
+            {isGoogleLinkMode
+              ? t('auth.linkGoogle.description', {
+                  username: linkedUsername || '',
+                  defaultValue: linkedUsername
+                    ? `把 Google 登录绑定到当前账号 ${linkedUsername}`
+                    : '把 Google 登录绑定到当前 LeafTab 账号',
+                })
+              : t('auth.description')}
           </DialogDescription>
         </DialogHeader>
         {allowCustomApiServer ? (
@@ -720,6 +760,31 @@ export default function AuthModal({
             </Select>
           </div>
         ) : null}
+        {isGoogleLinkMode ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-[18px] border border-border/60 bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
+              {t('auth.linkGoogle.hint', {
+                defaultValue: '绑定完成后，以后直接使用这个 Google 账号登录，就会进入当前这份 LeafTab 云数据。',
+              })}
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full gap-2 rounded-[16px] bg-secondary/50 hover:bg-secondary"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+            >
+              <img
+                src={googleIcon}
+                alt=""
+                className="h-4 w-4"
+              />
+              {isLoading
+                ? t('auth.buttons.loggingIn')
+                : t('auth.linkGoogle.action', { defaultValue: '绑定 Google 登录' })}
+            </Button>
+          </div>
+        ) : (
         <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="w-full">
           <Tabs.List className="grid h-10 w-full grid-cols-2 rounded-[16px] bg-muted p-1 text-muted-foreground">
             <Tabs.Trigger
@@ -878,6 +943,7 @@ export default function AuthModal({
             </form>
           </Tabs.Content>
         </Tabs.Root>
+        )}
       </DialogContent>
     </Dialog>
   );

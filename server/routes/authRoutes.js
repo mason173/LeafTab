@@ -139,6 +139,51 @@ const attachGoogleIdentityToExistingUser = ({
   );
 };
 
+const verifyGoogleIdentityToken = async ({
+  googleOAuthClient,
+  googleClientIds,
+  idToken,
+}) => {
+  if (!googleOAuthClient || googleClientIds.length === 0) {
+    const error = new Error('Google login is not enabled on this server');
+    error.status = 503;
+    throw error;
+  }
+
+  if (!idToken) {
+    const error = new Error('Google ID token is required');
+    error.status = 400;
+    throw error;
+  }
+
+  let payload;
+  try {
+    const ticket = await googleOAuthClient.verifyIdToken({
+      idToken,
+      audience: googleClientIds,
+    });
+    payload = ticket.getPayload();
+  } catch (verifyErr) {
+    console.error('Google token verification failed:', verifyErr?.message || verifyErr);
+    const error = new Error('Invalid Google ID token');
+    error.status = 401;
+    throw error;
+  }
+
+  const googleSub = String(payload?.sub || '').trim();
+  if (!googleSub) {
+    const error = new Error('Google sign-in is missing a stable user id');
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    payload,
+    googleSub,
+    googleEmail: String(payload?.email || '').trim().toLowerCase(),
+  };
+};
+
 const registerAuthRoutes = ({
   app,
   db,
@@ -153,6 +198,7 @@ const registerAuthRoutes = ({
   updateLimiter,
   getLatestReleaseCached,
   googleOAuthClientIds = [],
+  authenticateToken,
 }) => {
   const googleClientIds = googleOAuthClientIds.map((value) => String(value || '').trim()).filter(Boolean);
   const googleOAuthClient = googleClientIds.length > 0 ? new OAuth2Client() : null;
@@ -272,32 +318,21 @@ const registerAuthRoutes = ({
   });
 
   app.post('/auth/google', authLimiter, async (req, res) => {
-    if (!googleOAuthClient || googleClientIds.length === 0) {
-      return res.status(503).json({ error: 'Google login is not enabled on this server' });
-    }
-
-    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : '';
-    if (!idToken) {
-      return res.status(400).json({ error: 'Google ID token is required' });
-    }
-
     let payload;
+    let googleSub;
+    let googleEmail;
     try {
-      const ticket = await googleOAuthClient.verifyIdToken({
-        idToken,
-        audience: googleClientIds,
+      const verified = await verifyGoogleIdentityToken({
+        googleOAuthClient,
+        googleClientIds,
+        idToken: typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : '',
       });
-      payload = ticket.getPayload();
-    } catch (verifyErr) {
-      console.error('Google token verification failed:', verifyErr?.message || verifyErr);
-      return res.status(401).json({ error: 'Invalid Google ID token' });
+      payload = verified.payload;
+      googleSub = verified.googleSub;
+      googleEmail = verified.googleEmail;
+    } catch (error) {
+      return res.status(error.status || 500).json({ error: error.message });
     }
-
-    const googleSub = String(payload?.sub || '').trim();
-    if (!googleSub) {
-      return res.status(400).json({ error: 'Google sign-in is missing a stable user id' });
-    }
-    const googleEmail = String(payload?.email || '').trim().toLowerCase();
 
     db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (lookupErr, existingUser) => {
       if (lookupErr) {
@@ -396,6 +431,73 @@ const registerAuthRoutes = ({
             },
           });
         },
+      });
+    });
+  });
+
+  app.post('/auth/google/link', authenticateToken, authLimiter, async (req, res) => {
+    let googleSub;
+    try {
+      const verified = await verifyGoogleIdentityToken({
+        googleOAuthClient,
+        googleClientIds,
+        idToken: typeof req.body?.idToken === 'string' ? req.body.idToken.trim() : '',
+      });
+      googleSub = verified.googleSub;
+    } catch (error) {
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (currentErr, currentUser) => {
+      if (currentErr) {
+        return res.status(500).json({ error: currentErr.message });
+      }
+      if (!currentUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      db.get('SELECT * FROM users WHERE google_sub = ?', [googleSub], (lookupErr, existingUser) => {
+        if (lookupErr) {
+          return res.status(500).json({ error: lookupErr.message });
+        }
+
+        if (existingUser && existingUser.id !== currentUser.id) {
+          return res.status(409).json({ error: 'Google account is already linked to another user' });
+        }
+
+        if (existingUser && existingUser.id === currentUser.id) {
+          return res.json({
+            ok: true,
+            username: currentUser.username,
+            linked: true,
+            alreadyLinked: true,
+          });
+        }
+
+        db.run(
+          'UPDATE users SET google_sub = ? WHERE id = ?',
+          [googleSub, currentUser.id],
+          (updateErr) => {
+            if (updateErr) {
+              if (updateErr.message.includes('UNIQUE constraint failed: users.google_sub')) {
+                return res.status(409).json({ error: 'Google account is already linked to another user' });
+              }
+              return res.status(500).json({ error: updateErr.message });
+            }
+
+            return res.json({
+              ok: true,
+              username: currentUser.username,
+              linked: true,
+              alreadyLinked: false,
+            });
+          },
+        );
       });
     });
   });

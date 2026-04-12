@@ -35,6 +35,7 @@ interface CloudSyncConfigDialogProps {
   onSaveSuccess?: () => void | Promise<void>;
   encryptionReady?: boolean;
   onManageEncryption?: () => void | Promise<void>;
+  onLinkGoogle?: () => void | Promise<void>;
   onLogout?: () => void | Promise<void>;
 }
 
@@ -45,6 +46,7 @@ export function CloudSyncConfigDialog({
   onSaveSuccess,
   encryptionReady = false,
   onManageEncryption,
+  onLinkGoogle,
   onLogout,
 }: CloudSyncConfigDialogProps) {
   const { t } = useTranslation();
@@ -152,6 +154,19 @@ export function CloudSyncConfigDialog({
                 saveDisabled={saving}
               />
             </div>
+            {onLinkGoogle ? (
+              <button
+                type="button"
+                className="w-full text-center text-sm font-medium text-foreground transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => {
+                  onOpenChange(false);
+                  void onLinkGoogle();
+                }}
+                disabled={saving}
+              >
+                {t('settings.backup.cloud.linkGoogle', { defaultValue: '绑定 Google 登录' })}
+              </button>
+            ) : null}
             {onLogout ? (
               <button
                 type="button"

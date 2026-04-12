@@ -499,6 +499,7 @@ export default function App() {
     handleLoginSuccess, 
     handleLogout 
   } = useAuth();
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'link-google'>('login');
 
   const {
     settingsOpen, setSettingsOpen,
@@ -1705,6 +1706,19 @@ export default function App() {
       try { localStorage.setItem('privacy_consent', JSON.stringify(consent)); } catch {}
     }
   }, [handleLoginSuccess, setPrivacyConsent]);
+  const handleAuthModalOpenChange = useCallback((open: boolean) => {
+    setIsAuthModalOpen(open);
+    if (!open) {
+      setAuthModalMode('login');
+    }
+  }, [setIsAuthModalOpen]);
+  const openGoogleLinkAuthModal = useCallback(() => {
+    if (!user) return;
+    setCloudSyncConfigOpen(false);
+    setLeafTabSyncDialogOpen(false);
+    setAuthModalMode('link-google');
+    setIsAuthModalOpen(true);
+  }, [setCloudSyncConfigOpen, setIsAuthModalOpen, setLeafTabSyncDialogOpen, user]);
   
   const handlePrivacySwitchChange = useCallback((checked: boolean) => {
     if (!checked && privacyConsent) {
@@ -2501,6 +2515,7 @@ export default function App() {
       if (webdavEnabled) {
         toast.error(t('settings.backup.webdav.disableWebdavBeforeCloudLogin'));
       } else {
+        setAuthModalMode('login');
         setIsAuthModalOpen(true);
       }
       return null;
@@ -3808,14 +3823,19 @@ export default function App() {
             }}
             authModalProps={{
               isOpen: isAuthModalOpen,
-              onOpenChange: setIsAuthModalOpen,
+              onOpenChange: handleAuthModalOpenChange,
               onLoginSuccess: onLoginSuccess,
+              onGoogleLinkSuccess: () => {
+                setAuthModalMode('login');
+              },
               apiServer,
               onApiServerChange: setApiServer,
               customApiUrl,
               customApiName,
               defaultApiBase,
               allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
+              mode: authModalMode,
+              linkedUsername: user,
             }}
             settingsModalProps={{
               isOpen: settingsOpen,
@@ -4024,6 +4044,7 @@ export default function App() {
               encryptionReady: cloudSyncEncryptionReady,
               onManageEncryption: handleManageCloudSyncEncryption,
               onSaveSuccess: handleCloudSyncConfigSaved,
+              onLinkGoogle: openGoogleLinkAuthModal,
               onLogout: requestLogoutConfirmation,
             }}
             confirmSyncDialog={{
