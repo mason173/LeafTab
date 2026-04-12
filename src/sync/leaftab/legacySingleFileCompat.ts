@@ -3,6 +3,7 @@ import {
   mergeWebdavPayload,
   type WebdavPayload,
 } from '@/utils/backupData';
+import { flattenScenarioShortcutsForLegacyMirror } from '@/utils/legacyShortcutMirror';
 import {
   createLeafTabSyncBaseline,
   type LeafTabSyncBaselineStore,
@@ -116,7 +117,7 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
       };
     });
 
-  const scenarioShortcuts = Object.fromEntries(
+  const projectedScenarioShortcuts = Object.fromEntries(
     scenarioModes.map((scenario: { id: string }) => {
       const orderedShortcutIds = snapshot.shortcutOrders[scenario.id]?.ids || [];
       const remainingShortcutIds = Object.keys(snapshot.shortcuts)
@@ -157,7 +158,7 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
   return {
     scenarioModes,
     selectedScenarioId: scenarioModes[0]?.id || '',
-    scenarioShortcuts,
+    scenarioShortcuts: flattenScenarioShortcutsForLegacyMirror(projectedScenarioShortcuts),
   };
 };
 

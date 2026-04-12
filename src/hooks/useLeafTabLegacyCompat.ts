@@ -3,6 +3,7 @@ import type { ScenarioMode, ScenarioShortcuts } from '@/types';
 import { buildCloudShortcutsPayload, normalizeCloudShortcutsPayload } from '@/utils/shortcutsPayload';
 import type { WebdavPayload } from '@/utils/backupData';
 import type { UseLeafTabSyncEngineOptions } from '@/hooks/useLeafTabSyncEngine';
+import { flattenScenarioShortcutsForLegacyMirror } from '@/utils/legacyShortcutMirror';
 
 const ENABLE_LEGACY_SYNC_MIGRATION = true;
 
@@ -26,7 +27,7 @@ const toLegacyPayload = (params: {
   return {
     scenarioModes: payload.scenarioModes,
     selectedScenarioId: payload.selectedScenarioId,
-    scenarioShortcuts: payload.scenarioShortcuts,
+    scenarioShortcuts: flattenScenarioShortcutsForLegacyMirror(payload.scenarioShortcuts),
   };
 };
 

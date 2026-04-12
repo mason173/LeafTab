@@ -31,6 +31,7 @@ export default defineConfig(async () => {
         'src/utils/shortcutIconPreferences.test.ts',
         'src/utils/shortcutFolders.test.ts',
         'src/utils/cloudSyncBookmarksPolicy.test.ts',
+        'src/utils/legacyShortcutMirror.test.ts',
         'src/utils/searchSuggestionSources.test.ts',
         'src/utils/shortcutsPayload.test.ts',
         'src/utils/rolePresetRegistry.test.ts',
