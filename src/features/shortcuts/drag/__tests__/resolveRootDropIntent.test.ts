@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Shortcut } from '@/types';
 import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDropIntent';
-import type { RootShortcutDragItem } from '@/features/shortcuts/drag/types';
+import type { DragRect, RootShortcutDragItem } from '@/features/shortcuts/drag/types';
 
 const createLink = (id: string, title: string): Shortcut => ({
   id,
@@ -26,6 +26,15 @@ const createItems = (shortcuts: Shortcut[]): RootShortcutDragItem[] =>
     shortcut,
     shortcutIndex,
   }));
+
+const inflateRect = (rect: DragRect, amount: number): DragRect => ({
+  left: rect.left - amount,
+  top: rect.top - amount,
+  right: rect.right + amount,
+  bottom: rect.bottom + amount,
+  width: rect.width + amount * 2,
+  height: rect.height + amount * 2,
+});
 
 const baseRect = {
   width: 100,
@@ -196,6 +205,93 @@ describe('resolveRootDropIntent', () => {
       type: 'merge-root-shortcuts',
       activeShortcutId: 'a',
       targetShortcutId: 'b',
+    });
+  });
+
+  it('treats the full compact preview area as a merge hit for small targets', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 200,
+      right: 272,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 206, y: 136 },
+      overRect: inflateRect(compactPreviewRect, 20),
+      overCenterRect: compactPreviewRect,
+      items,
+    })).toEqual({
+      type: 'merge-root-shortcuts',
+      activeShortcutId: 'a',
+      targetShortcutId: 'b',
+    });
+  });
+
+  it('treats the full compact preview area as an enter-folder hit for small folders', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createFolder('folder-1', 'Folder'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 200,
+      right: 272,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'folder-1',
+      pointer: { x: 206, y: 136 },
+      overRect: inflateRect(compactPreviewRect, 20),
+      overCenterRect: compactPreviewRect,
+      items,
+    })).toEqual({
+      type: 'move-root-shortcut-into-folder',
+      activeShortcutId: 'a',
+      targetFolderId: 'folder-1',
+    });
+  });
+
+  it('keeps compact hit slop outside the preview area available for reorder', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 200,
+      right: 272,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'c',
+      overSortId: 'b',
+      pointer: { x: 186, y: 136 },
+      overRect: inflateRect(compactPreviewRect, 20),
+      overCenterRect: compactPreviewRect,
+      items,
+    })).toEqual({
+      type: 'reorder-root',
+      activeShortcutId: 'c',
+      overShortcutId: 'b',
+      targetIndex: 1,
+      edge: 'before',
     });
   });
 });

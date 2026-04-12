@@ -3,7 +3,7 @@ import type { ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVar
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 import type { ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
 
-export const SHORTCUT_DRAG_SETTLE_TRANSITION = 'transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1.12)';
+export const SHORTCUT_DRAG_SETTLE_TRANSITION = 'transform 320ms ease-in-out';
 const MERGE_PREVIEW_BORDER_WIDTH_PX = 2.5;
 const MERGE_PREVIEW_BORDER_COLOR = 'rgba(255,255,255,0.3)';
 
