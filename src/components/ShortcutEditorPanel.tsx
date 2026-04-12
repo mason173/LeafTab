@@ -9,7 +9,7 @@ import {
   prepareShortcutCustomIcon,
   readShortcutCustomIcon,
 } from '@/utils/shortcutCustomIcons';
-import { resolveCustomIcon, resolveCustomIconFromCache } from '@/utils/iconLibrary';
+import { resolveCustomIcon, resolveCustomIconFromCache, type ResolvedCustomIcon } from '@/utils/iconLibrary';
 import {
   getShortcutIconColor,
   normalizeShortcutIconColor,
@@ -150,6 +150,7 @@ export function ShortcutEditorPanel({
   const [autoUseOfficialIcon, setAutoUseOfficialIcon] = useState(true);
   const [iconRendering, setIconRendering] = useState<ShortcutVisualMode>('favicon');
   const [officialIconAvailable, setOfficialIconAvailable] = useState(false);
+  const [resolvedOfficialIcon, setResolvedOfficialIcon] = useState<ResolvedCustomIcon | null>(null);
   const [userAdjustedIconSource, setUserAdjustedIconSource] = useState(false);
   const [selectedSource, setSelectedSource] = useState<'official' | 'favicon' | 'letter' | 'custom'>('favicon');
   const [customIconDataUrl, setCustomIconDataUrl] = useState('');
@@ -166,16 +167,26 @@ export function ShortcutEditorPanel({
   const initialAutoUseOfficialIcon = initialShortcut?.autoUseOfficialIcon !== false;
   const initialIconRendering = normalizeShortcutVisualMode(initialShortcut?.iconRendering);
   const hasInitialExplicitColor = Boolean(normalizedInitialColor);
-  const initialColorHsl = useMemo<ShortcutIconHsl>(
+  const initialResolvedColorHsl = useMemo<ShortcutIconHsl>(
     () => (normalizedInitialColor ? hexToShortcutIconHsl(normalizedInitialColor) : null) ?? defaultColorHsl,
     [defaultColorHsl, normalizedInitialColor],
+  );
+  const initialOfficialManualColorHsl = useMemo<ShortcutIconHsl>(
+    () => (initialUseOfficialIcon && hasInitialExplicitColor ? initialResolvedColorHsl : defaultColorHsl),
+    [defaultColorHsl, hasInitialExplicitColor, initialResolvedColorHsl, initialUseOfficialIcon],
+  );
+  const initialSharedManualColorHsl = useMemo<ShortcutIconHsl>(
+    () => (!initialUseOfficialIcon && hasInitialExplicitColor ? initialResolvedColorHsl : defaultColorHsl),
+    [defaultColorHsl, hasInitialExplicitColor, initialResolvedColorHsl, initialUseOfficialIcon],
   );
   const initialCustomIconDataUrl = useMemo(
     () => (initialShortcutId ? readShortcutCustomIcon(initialShortcutId) : ''),
     [initialShortcutId],
   );
-  const [colorHsl, setColorHsl] = useState<ShortcutIconHsl>(initialColorHsl);
-  const [hasManualColorOverride, setHasManualColorOverride] = useState(hasInitialExplicitColor);
+  const [officialColorHsl, setOfficialColorHsl] = useState<ShortcutIconHsl>(initialOfficialManualColorHsl);
+  const [sharedColorHsl, setSharedColorHsl] = useState<ShortcutIconHsl>(initialSharedManualColorHsl);
+  const [hasOfficialManualColorOverride, setHasOfficialManualColorOverride] = useState(initialUseOfficialIcon && hasInitialExplicitColor);
+  const [hasSharedManualColorOverride, setHasSharedManualColorOverride] = useState(!initialUseOfficialIcon && hasInitialExplicitColor);
   const hasExplicitIconPreference = Boolean(
     initialShortcut &&
     (
@@ -196,8 +207,10 @@ export function ShortcutEditorPanel({
     setOfficialIconAvailable(false);
     setUserAdjustedIconSource(false);
     setCustomIconDataUrl(initialCustomIconDataUrl);
-    setColorHsl(initialColorHsl);
-    setHasManualColorOverride(hasInitialExplicitColor);
+    setOfficialColorHsl(initialOfficialManualColorHsl);
+    setSharedColorHsl(initialSharedManualColorHsl);
+    setHasOfficialManualColorOverride(initialUseOfficialIcon && hasInitialExplicitColor);
+    setHasSharedManualColorOverride(!initialUseOfficialIcon && hasInitialExplicitColor);
     setSelectedSource(
       initialCustomIconDataUrl
         ? 'custom'
@@ -209,9 +222,10 @@ export function ShortcutEditorPanel({
     );
   }, [
     initialAutoUseOfficialIcon,
-    initialColorHsl,
     initialCustomIconDataUrl,
     initialIconRendering,
+    initialOfficialManualColorHsl,
+    initialSharedManualColorHsl,
     initialTitle,
     initialUrl,
     initialUseOfficialIcon,
@@ -225,18 +239,68 @@ export function ShortcutEditorPanel({
     () => (domain || url || title || '').trim().toLowerCase(),
     [domain, title, url],
   );
+  const activeColorHsl = selectedSource === 'official' ? officialColorHsl : sharedColorHsl;
+  const activeHasManualColorOverride = selectedSource === 'official'
+    ? hasOfficialManualColorOverride
+    : hasSharedManualColorOverride;
   const currentColorHex = useMemo(() => (
     shortcutIconHslToHex({
-      hue: colorHsl.hue,
-      saturation: colorHsl.saturation,
-      lightness: colorHsl.lightness,
+      hue: activeColorHsl.hue,
+      saturation: activeColorHsl.saturation,
+      lightness: activeColorHsl.lightness,
     })
-  ), [colorHsl.hue, colorHsl.lightness, colorHsl.saturation]);
+  ), [activeColorHsl.hue, activeColorHsl.lightness, activeColorHsl.saturation]);
+  const officialDefaultColor = useMemo(
+    () => (
+      resolvedOfficialIcon?.mode === 'shape-color'
+        ? normalizeShortcutIconColor(resolvedOfficialIcon.defaultColor)
+        : ''
+    ),
+    [resolvedOfficialIcon],
+  );
+  const displayedColorHex = useMemo(() => {
+    if (activeHasManualColorOverride) {
+      return getShortcutIconColor(previewColorSeed, currentColorHex);
+    }
+    if (selectedSource === 'official' && officialDefaultColor) {
+      return officialDefaultColor;
+    }
+    return DEFAULT_SHORTCUT_ICON_COLOR;
+  }, [activeHasManualColorOverride, currentColorHex, officialDefaultColor, previewColorSeed, selectedSource]);
+  const displayedColorHsl = useMemo<ShortcutIconHsl>(
+    () => {
+      if (activeHasManualColorOverride) {
+        return activeColorHsl;
+      }
+      return hexToShortcutIconHsl(displayedColorHex) ?? defaultColorHsl;
+    },
+    [activeColorHsl, activeHasManualColorOverride, defaultColorHsl, displayedColorHex],
+  );
   const effectivePreviewColor = useMemo(
-    () => (hasManualColorOverride ? getShortcutIconColor(previewColorSeed, currentColorHex) : ''),
-    [currentColorHex, hasManualColorOverride, previewColorSeed],
+    () => {
+      if (selectedSource === 'custom') return '';
+      if (selectedSource === 'official') {
+        if (hasOfficialManualColorOverride) {
+          return getShortcutIconColor(previewColorSeed, currentColorHex);
+        }
+        return officialDefaultColor || '';
+      }
+      if (hasSharedManualColorOverride) {
+        return getShortcutIconColor(previewColorSeed, currentColorHex);
+      }
+      return '';
+    },
+    [
+      currentColorHex,
+      hasOfficialManualColorOverride,
+      hasSharedManualColorOverride,
+      officialDefaultColor,
+      previewColorSeed,
+      selectedSource,
+    ],
   );
   const colorSelectionDisabled = selectedSource === 'custom';
+  const showResetColorButton = selectedSource === 'official';
   const autoOfficialLocked = officialIconAvailable && selectedSource === 'official' && useOfficialIcon;
   const hasCustomIcon = Boolean(customIconDataUrl);
   const resolvedTitle = titleOverride || (mode === 'add' ? t('shortcutModal.addTitle') : t('shortcutModal.editTitle'));
@@ -246,6 +310,7 @@ export function ShortcutEditorPanel({
     if (!open) return;
     if (!domain) {
       setOfficialIconAvailable(false);
+      setResolvedOfficialIcon(null);
       if (!hasExplicitIconPreference && !userAdjustedIconSource) {
         setUseOfficialIcon(false);
         setSelectedSource((prev) => (prev === 'custom' ? prev : fallbackSource));
@@ -257,6 +322,7 @@ export function ShortcutEditorPanel({
     const cachedResolved = resolveCustomIconFromCache(domain);
     const cachedAvailable = Boolean(cachedResolved?.url);
     setOfficialIconAvailable(cachedAvailable);
+    setResolvedOfficialIcon(cachedResolved);
 
     if (cachedAvailable && !hasExplicitIconPreference && !userAdjustedIconSource) {
       setUseOfficialIcon(true);
@@ -271,6 +337,7 @@ export function ShortcutEditorPanel({
       if (cancelled) return;
       const available = Boolean(resolved?.url);
       setOfficialIconAvailable(available);
+      setResolvedOfficialIcon(available ? resolved : null);
       if (!available) {
         setUseOfficialIcon(false);
         if (!hasExplicitIconPreference && !userAdjustedIconSource) {
@@ -304,7 +371,11 @@ export function ShortcutEditorPanel({
       autoUseOfficialIcon,
       officialIconAvailableAtSave: officialIconAvailable,
       iconRendering,
-      iconColor: hasManualColorOverride ? normalizeShortcutIconColor(currentColorHex) : '',
+      iconColor: selectedSource === 'custom'
+        ? ''
+        : selectedSource === 'official'
+          ? (hasOfficialManualColorOverride ? normalizeShortcutIconColor(currentColorHex) : '')
+          : (hasSharedManualColorOverride ? normalizeShortcutIconColor(currentColorHex) : ''),
     }, {
       useCustomIcon: selectedSource === 'custom' && Boolean(customIconDataUrl),
       customIconDataUrl: selectedSource === 'custom' ? customIconDataUrl : null,
@@ -346,11 +417,22 @@ export function ShortcutEditorPanel({
 
   const handleColorSliderChange = (nextValue: Partial<ShortcutIconHsl>) => {
     if (colorSelectionDisabled) return;
-    setHasManualColorOverride(true);
-    setColorHsl((prev) => normalizeShortcutIconHsl({
-      ...prev,
+    const nextColorHsl = normalizeShortcutIconHsl({
+      ...(activeHasManualColorOverride ? activeColorHsl : displayedColorHsl),
       ...nextValue,
-    }));
+    });
+    if (selectedSource === 'official') {
+      setHasOfficialManualColorOverride(true);
+      setOfficialColorHsl(nextColorHsl);
+      return;
+    }
+    setHasSharedManualColorOverride(true);
+    setSharedColorHsl(nextColorHsl);
+  };
+
+  const handleResetColor = () => {
+    if (!showResetColorButton) return;
+    setHasOfficialManualColorOverride(false);
   };
 
   const handleCustomButtonClick = () => {
@@ -421,9 +503,9 @@ export function ShortcutEditorPanel({
   const shouldShowCustomPreviewAction = selectedSource === 'custom' && hasCustomIcon;
   const previewBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
   const hueTrackBackground = 'linear-gradient(90deg, #FF5F5F 0%, #FFB45E 16%, #F7F36A 32%, #63E281 48%, #5AD5FF 65%, #6F74FF 82%, #FF6AAE 100%)';
-  const saturationTrackBackground = `linear-gradient(90deg, hsl(${colorHsl.hue}, 0%, 50%), hsl(${colorHsl.hue}, 100%, 50%))`;
+  const saturationTrackBackground = `linear-gradient(90deg, hsl(${displayedColorHsl.hue}, 0%, 50%), hsl(${displayedColorHsl.hue}, 100%, 50%))`;
   const lightnessTrackBackground = 'linear-gradient(90deg, #09090B 0%, #FFFFFF 100%)';
-  const currentThumbColor = currentColorHex;
+  const currentThumbColor = displayedColorHex;
 
   const previewContent = shouldShowCustomPreviewAction ? (
     <button
@@ -533,10 +615,22 @@ export function ShortcutEditorPanel({
             testId="shortcut-auto-official"
             compact={compact}
           />
+          {showResetColorButton ? (
+            <div className="flex w-full items-center justify-between">
+              <button
+                type="button"
+                onClick={handleResetColor}
+                data-testid="shortcut-color-reset"
+                className="rounded-full border border-border bg-secondary/35 px-3 py-1 text-[12px] font-medium text-foreground transition-colors hover:bg-secondary/55"
+              >
+                {t('shortcutModal.icon.resetColor', { defaultValue: '重置' })}
+              </button>
+            </div>
+          ) : null}
           <div className="flex w-full flex-col" style={{ gap: 8 }}>
             <ShortcutColorSlider
               label={t('shortcutModal.icon.hue', { defaultValue: '色相' })}
-              value={colorHsl.hue}
+              value={displayedColorHsl.hue}
               min={0}
               max={360}
               background={hueTrackBackground}
@@ -548,7 +642,7 @@ export function ShortcutEditorPanel({
             />
             <ShortcutColorSlider
               label={t('shortcutModal.icon.saturation', { defaultValue: '饱和度' })}
-              value={colorHsl.saturation}
+              value={displayedColorHsl.saturation}
               min={0}
               max={100}
               background={saturationTrackBackground}
@@ -560,7 +654,7 @@ export function ShortcutEditorPanel({
             />
             <ShortcutColorSlider
               label={t('shortcutModal.icon.brightness', { defaultValue: '亮度' })}
-              value={colorHsl.lightness}
+              value={displayedColorHsl.lightness}
               min={0}
               max={100}
               background={lightnessTrackBackground}

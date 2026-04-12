@@ -185,6 +185,12 @@ type DangerousSyncDialogState = {
   detectedToCount: number;
 };
 
+type PendingRootFolderMerge = {
+  scenarioId: string;
+  activeShortcutId: string;
+  targetShortcutId: string;
+};
+
 const formatLeafTabSyncErrorMessage = (error: unknown) => {
   if (error instanceof LeafTabDestructiveBookmarkChangeError) {
     return error.message;
@@ -740,6 +746,7 @@ export default function App() {
 
   const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [pendingRootFolderMerge, setPendingRootFolderMerge] = useState<PendingRootFolderMerge | null>(null);
   const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
   const folderOverlayActionTimerRef = useRef<number | null>(null);
@@ -758,6 +765,15 @@ export default function App() {
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
   );
+  const folderNameDialogInitialName = pendingRootFolderMerge
+    ? t('context.newFolder', { defaultValue: '新文件夹' })
+    : (editingFolderShortcut?.title || '');
+  const folderNameDialogTitle = pendingRootFolderMerge
+    ? t('context.nameFolder', { defaultValue: '给分组起个名字' })
+    : undefined;
+  const folderNameDialogDescription = pendingRootFolderMerge
+    ? t('context.nameFolderDesc', { defaultValue: '只有点确定后，这两个图标才会真正编成组。' })
+    : undefined;
 
   useEffect(() => {
     if (openFolderId) {
@@ -774,9 +790,11 @@ export default function App() {
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
       setEditingFolderId(null);
-      setFolderNameDialogOpen(false);
+      if (!pendingRootFolderMerge) {
+        setFolderNameDialogOpen(false);
+      }
     }
-  }, [editingFolderId, editingFolderShortcut]);
+  }, [editingFolderId, editingFolderShortcut, pendingRootFolderMerge]);
 
   useEffect(() => () => {
     if (folderOverlayActionTimerRef.current !== null) {
@@ -973,7 +991,17 @@ export default function App() {
   }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const handleRootShortcutDropIntent = useCallback((intent: RootShortcutDropIntent) => {
-    let createdFolderId = '';
+    if (intent.type === 'merge-root-shortcuts') {
+      setEditingFolderId(null);
+      setPendingRootFolderMerge({
+        scenarioId: selectedScenarioId,
+        activeShortcutId: intent.activeShortcutId,
+        targetShortcutId: intent.targetShortcutId,
+      });
+      setFolderNameDialogOpen(true);
+      return;
+    }
+
     let changed = false;
 
     setScenarioShortcuts((prev) => {
@@ -1003,27 +1031,6 @@ export default function App() {
               );
           break;
         }
-        case 'merge-root-shortcuts': {
-          const result = mergeShortcutsIntoNewFolder(
-            sourceShortcuts,
-            ROOT_SHORTCUTS_PATH,
-            [intent.activeShortcutId, intent.targetShortcutId],
-            (folderChildren) => ({
-              id: createFolderShortcutId(),
-              title: t('context.newFolder', { defaultValue: '新文件夹' }),
-              url: '',
-              icon: '',
-              kind: 'folder',
-              folderDisplayMode: 'small',
-              children: folderChildren,
-            }),
-          );
-          if (result) {
-            nextShortcuts = result.nextShortcuts;
-            createdFolderId = result.folder.id;
-          }
-          break;
-        }
         case 'move-root-shortcut-into-folder':
           nextShortcuts = moveShortcutsIntoFolder(
             sourceShortcuts,
@@ -1044,11 +1051,7 @@ export default function App() {
 
     if (!changed) return;
     if (!user) localDirtyRef.current = true;
-    if (createdFolderId) {
-      setEditingFolderId(createdFolderId);
-      setFolderNameDialogOpen(true);
-    }
-  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, t, user]);
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const handleDissolveFolder = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
     if (!isShortcutFolder(shortcut)) return;
@@ -1154,7 +1157,43 @@ export default function App() {
 
   const handleSaveFolderName = useCallback((name: string) => {
     const nextName = name.trim();
-    if (!editingFolderId || !nextName) return;
+    if (!nextName) return;
+
+    if (pendingRootFolderMerge) {
+      let changed = false;
+      setScenarioShortcuts((prev) => {
+        const sourceShortcuts = prev[pendingRootFolderMerge.scenarioId] ?? [];
+        const result = mergeShortcutsIntoNewFolder(
+          sourceShortcuts,
+          ROOT_SHORTCUTS_PATH,
+          [pendingRootFolderMerge.activeShortcutId, pendingRootFolderMerge.targetShortcutId],
+          (folderChildren) => ({
+            id: createFolderShortcutId(),
+            title: nextName,
+            url: '',
+            icon: '',
+            kind: 'folder',
+            folderDisplayMode: 'small',
+            children: folderChildren,
+          }),
+        );
+        if (!result) return prev;
+
+        changed = true;
+        return {
+          ...prev,
+          [pendingRootFolderMerge.scenarioId]: result.nextShortcuts,
+        };
+      });
+      if (!changed) return;
+      if (!user) localDirtyRef.current = true;
+      setPendingRootFolderMerge(null);
+      setFolderNameDialogOpen(false);
+      setEditingFolderId(null);
+      return;
+    }
+
+    if (!editingFolderId) return;
     setScenarioShortcuts((prev) => {
       const sourceShortcuts = prev[selectedScenarioId] ?? [];
       let changed = false;
@@ -1175,7 +1214,7 @@ export default function App() {
     if (!user) localDirtyRef.current = true;
     setFolderNameDialogOpen(false);
     setEditingFolderId(null);
-  }, [editingFolderId, localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+  }, [editingFolderId, localDirtyRef, pendingRootFolderMerge, selectedScenarioId, setScenarioShortcuts, user]);
 
   const handleRenameFolderInline = useCallback((folderId: string, name: string) => {
     const nextName = name.trim();
@@ -3646,9 +3685,14 @@ export default function App() {
         open={folderNameDialogOpen}
         onOpenChange={(open) => {
           setFolderNameDialogOpen(open);
-          if (!open) setEditingFolderId(null);
+          if (!open) {
+            setEditingFolderId(null);
+            setPendingRootFolderMerge(null);
+          }
         }}
-        initialName={editingFolderShortcut?.title || ''}
+        title={folderNameDialogTitle}
+        description={folderNameDialogDescription}
+        initialName={folderNameDialogInitialName}
         onSubmit={handleSaveFolderName}
       />
       {shouldMountWallpaperSelector ? (
