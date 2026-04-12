@@ -8,7 +8,6 @@ import { getDropEdge, getReorderTargetIndex } from '@/features/shortcuts/drag/dr
 import type { FolderShortcutDropIntent, RootDropEdge } from '@/features/shortcuts/drag/types';
 import {
   buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
-  getDragVisualCenter,
   measureDragItems,
   pickClosestMeasuredItem,
   pointInRect,
@@ -341,14 +340,8 @@ export function FolderShortcutSurface({
     const activeItem = measuredItems.find((item) => item.shortcut.id === session.activeShortcutId);
     if (!activeItem) return null;
 
-    const visualCenter = getDragVisualCenter({
-      pointer,
-      previewOffset: session.previewOffset,
-      activeRect: activeItem.rect,
-    });
-
     const boundaryRect = maskBoundaryRef.current?.getBoundingClientRect() ?? null;
-    if (boundaryRect && !pointInRect(visualCenter, boundaryRect)) {
+    if (boundaryRect && !pointInRect(pointer, boundaryRect)) {
       ensureExtractHandoffTimer();
       return { type: 'mask' };
     }
@@ -357,11 +350,11 @@ export function FolderShortcutSurface({
     const overItem = pickOverItem({
       activeShortcutId: session.activeShortcutId,
       measuredItems,
-      pointer: visualCenter,
+      pointer,
     });
     if (!overItem) return null;
 
-    const edge = getDropEdge(visualCenter, overItem.rect);
+    const edge = getDropEdge(pointer, overItem.rect);
     return {
       type: 'item',
       shortcutId: overItem.shortcut.id,

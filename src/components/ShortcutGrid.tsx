@@ -22,7 +22,6 @@ import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDrop
 import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 import {
   buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
-  getDragVisualCenter,
   measureDragItems,
   type ActivePointerDragState,
   type MeasuredDragItem,
@@ -1308,17 +1307,12 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     const activeItem = measuredItems.find((item) => item.sortId === activeSortId);
     if (!activeItem) return null;
 
-    const visualCenter = getDragVisualCenter({
-      pointer,
-      previewOffset: session.previewOffset,
-      activeRect: activeItem.rect,
-    });
     const rootRect = rootElement.getBoundingClientRect();
     if (
-      visualCenter.x < rootRect.left
-      || visualCenter.x > rootRect.right
-      || visualCenter.y < rootRect.top
-      || visualCenter.y > rootRect.bottom
+      pointer.x < rootRect.left
+      || pointer.x > rootRect.right
+      || pointer.y < rootRect.top
+      || pointer.y > rootRect.bottom
     ) {
       centerHoverCandidateRef.current = null;
       return null;
@@ -1382,8 +1376,8 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       ? (() => {
           const candidate = pickClosestReorderSlot({
             point: {
-              x: visualCenter.x - rootRect.left,
-              y: visualCenter.y - rootRect.top,
+              x: pointer.x - rootRect.left,
+              y: pointer.y - rootRect.top,
             },
             candidates: reorderSlotCandidates,
           });
@@ -1402,9 +1396,9 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       && pointerOverCandidate
       && !isShortcutLargeFolder(pointerOverCandidate.overItem.shortcut)
     ) {
-      // For compact small targets, only let the live pointer short-circuit
-      // positive center intents. Reorder should still be resolved from the
-      // dragged icon's visual center so grouping remains easy to trigger.
+      // For compact small targets, let the live pointer take priority once
+      // we have a positive center intent so grouping stays responsive even
+      // when the rendered icon size has been scaled by the user.
       centerHoverCandidateRef.current = null;
       return pointerRawIntent;
     }
@@ -1412,7 +1406,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     const overCandidate = pickOverItemCandidate({
       activeSortId,
       measuredItems,
-      pointer: visualCenter,
+      pointer,
       compactLayout,
       compactIconSize,
       largeFolderEnabled,
@@ -1426,7 +1420,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     const rawIntent = resolveRootDropIntent({
       activeSortId,
       overSortId: overCandidate.overItem.sortId,
-      pointer: visualCenter,
+      pointer,
       overRect: overCandidate.overRect,
       overCenterRect: overCandidate.overCenterRect,
       items,
@@ -1474,7 +1468,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     return slotIntent ?? buildFallbackReorderIntent({
       activeSortId,
       overItem: overCandidate.overItem,
-      pointer: visualCenter,
+      pointer,
       measuredItems,
     });
   }, [
