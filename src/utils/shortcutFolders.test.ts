@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Shortcut } from '@/types';
-import { groupTopLevelShortcutsIntoFolder, moveTopLevelShortcutIntoFolder } from '@/utils/shortcutFolders';
+import { groupTopLevelShortcutsIntoFolder, isShortcutFolder, moveTopLevelShortcutIntoFolder } from '@/utils/shortcutFolders';
 
 const createLink = (id: string, title: string): Shortcut => ({
   id,
@@ -97,5 +97,18 @@ describe('shortcutFolders', () => {
         ],
       },
     ]);
+  });
+
+  it('does not treat a link with empty children metadata as a folder', () => {
+    const shortcut: Shortcut = {
+      id: 'link-with-empty-children',
+      title: 'Next.js',
+      url: 'https://nextjs.org',
+      icon: '',
+      kind: 'link',
+      children: [],
+    };
+
+    expect(isShortcutFolder(shortcut)).toBe(false);
   });
 });

@@ -667,6 +667,33 @@ export const projectLeafTabSyncSnapshotToAppState = (
   bookmarkItems: Record<string, LeafTabSyncBookmarkItemEntity>;
   bookmarkOrders: Record<string, LeafTabSyncBookmarkOrder>;
 } => {
+  const projectShortcutEntity = (shortcut: LeafTabSyncShortcutEntity): Shortcut => {
+    const isFolder = (
+      shortcut.kind === 'folder'
+      || (
+        typeof shortcut.kind === 'undefined'
+        && Array.isArray(shortcut.children)
+        && shortcut.children.length > 0
+      )
+    );
+    return {
+      id: shortcut.id,
+      title: shortcut.title,
+      url: shortcut.url,
+      icon: shortcut.icon,
+      kind: isFolder ? 'folder' : 'link',
+      ...(isFolder ? {
+        children: shortcut.children,
+        folderDisplayMode: shortcut.folderDisplayMode === 'large' ? 'large' : 'small',
+      } : {}),
+      useOfficialIcon: shortcut.useOfficialIcon !== false,
+      autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
+      officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+      iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
+      iconColor: normalizeShortcutIconColor(shortcut.iconColor),
+    };
+  };
+
   const orderedScenarioIds = snapshot.scenarioOrder.ids.filter((id) => snapshot.scenarios[id]);
   const missingScenarioIds = Object.keys(snapshot.scenarios).filter(
     (id) => !orderedScenarioIds.includes(id),
@@ -689,23 +716,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
     const orderedShortcutIds = order?.ids || [];
     const orderedShortcutList = orderedShortcutIds
       .filter((id) => snapshot.shortcuts[id]?.scenarioId === scenario.id)
-      .map((id) => {
-        const shortcut = snapshot.shortcuts[id];
-        return {
-          id: shortcut.id,
-          title: shortcut.title,
-          url: shortcut.url,
-          icon: shortcut.icon,
-          kind: shortcut.kind || 'link',
-          children: shortcut.children,
-          folderDisplayMode: shortcut.folderDisplayMode === 'large' ? 'large' : 'small',
-          useOfficialIcon: shortcut.useOfficialIcon !== false,
-          autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
-          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
-          iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
-          iconColor: normalizeShortcutIconColor(shortcut.iconColor),
-        };
-      });
+      .map((id) => projectShortcutEntity(snapshot.shortcuts[id]));
     const seenShortcutIds = new Set(orderedShortcutList.map((shortcut) => shortcut.id));
     const unorderedShortcutList = Object.values(snapshot.shortcuts)
       .filter((shortcut) => shortcut.scenarioId === scenario.id && !seenShortcutIds.has(shortcut.id))
@@ -716,20 +727,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
         }
         return left.id.localeCompare(right.id);
       })
-      .map((shortcut) => ({
-        id: shortcut.id,
-        title: shortcut.title,
-        url: shortcut.url,
-        icon: shortcut.icon,
-        kind: shortcut.kind || 'link',
-        children: shortcut.children,
-        folderDisplayMode: shortcut.folderDisplayMode === 'large' ? 'large' : 'small',
-        useOfficialIcon: shortcut.useOfficialIcon !== false,
-        autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
-        officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
-        iconRendering: normalizeShortcutVisualMode(shortcut.iconRendering),
-        iconColor: normalizeShortcutIconColor(shortcut.iconColor),
-      }));
+      .map((shortcut) => projectShortcutEntity(shortcut));
     scenarioShortcuts[scenario.id] = orderedShortcutList.concat(unorderedShortcutList);
   });
 

@@ -2,6 +2,9 @@ import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts, Shortcut
 import { defaultScenarioModes, makeScenarioId, type ScenarioIconKey } from '@/scenario/scenario';
 import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
 const shortHash = (value: string) => {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -22,6 +25,22 @@ const createFallbackShortcutId = (
   return `${prefix}_${shortHash(`${scenarioId}|${kind}|${title}|${url}|${occurrence}`)}`;
 };
 
+const readStringField = (candidate: Partial<Shortcut> & Record<string, unknown>, keys: string[]) => {
+  for (const key of keys) {
+    const value = candidate[key];
+    if (typeof value === 'string') return value;
+  }
+  return '';
+};
+
+const readShortcutChildren = (candidate: Partial<Shortcut> & Record<string, unknown>): unknown[] => {
+  const childCollections = [candidate.children, candidate.shortcuts, candidate.items];
+  for (const value of childCollections) {
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+};
+
 const normalizeShortcutList = (
   value: unknown[],
   scenarioId: string,
@@ -31,12 +50,13 @@ const normalizeShortcutList = (
   const localIdentityCounts = new Map<string, number>();
 
   value.forEach((item, index) => {
-    if (!item || typeof item !== 'object') return;
-    const candidate = item as Partial<Shortcut>;
-    const isFolder = candidate.kind === 'folder' || Array.isArray(candidate.children);
-    const title = typeof candidate.title === 'string' ? candidate.title : '';
-    const url = isFolder ? '' : (typeof candidate.url === 'string' ? candidate.url : '');
-    const icon = typeof candidate.icon === 'string' ? candidate.icon : '';
+    if (!isRecord(item)) return;
+    const candidate = item as Partial<Shortcut> & Record<string, unknown>;
+    const children = readShortcutChildren(candidate);
+    const isFolder = candidate.kind === 'folder' || children.length > 0;
+    const title = readStringField(candidate, ['title', 'name']);
+    const url = isFolder ? '' : readStringField(candidate, ['url', 'link', 'href', 'address', 'website']);
+    const icon = readStringField(candidate, ['icon', 'iconUrl', 'favicon', 'faviconUrl']);
     const seed = `${isFolder ? 'folder' : 'link'}|${title}|${url}`;
     const occurrence = (localIdentityCounts.get(seed) || 0) + 1;
     localIdentityCounts.set(seed, occurrence);
@@ -58,9 +78,12 @@ const normalizeShortcutList = (
         url: '',
         icon: '',
         kind: 'folder',
-        folderDisplayMode: candidate.folderDisplayMode === 'large' ? 'large' : 'small',
+        folderDisplayMode: (
+          candidate.folderDisplayMode === 'large'
+          || candidate.displayMode === 'large'
+        ) ? 'large' : 'small',
         children: normalizeShortcutList(
-          Array.isArray(candidate.children) ? candidate.children : [],
+          children,
           `${scenarioId}/${nextId}`,
           usedShortcutIds,
         ).filter((child) => child.kind !== 'folder'),
@@ -100,15 +123,20 @@ export const normalizeScenarioModesList = (raw: unknown, unnamedLabel: string): 
 };
 
 export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  if (!isRecord(raw)) return {};
   const obj = raw as Record<string, unknown>;
   const next: ScenarioShortcuts = {};
   const usedShortcutIds = new Set<string>();
   Object.entries(obj).forEach(([scenarioId, value]) => {
     if (Array.isArray(value)) {
       next[scenarioId] = normalizeShortcutList(value, scenarioId, usedShortcutIds);
-    } else if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0) {
+    } else if (isRecord(value) && Object.keys(value).length === 0) {
       next[scenarioId] = [];
+    } else if (isRecord(value)) {
+      const mappedEntries = Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([, entry]) => entry);
+      next[scenarioId] = normalizeShortcutList(mappedEntries, scenarioId, usedShortcutIds);
     }
   });
   return next;
@@ -144,14 +172,17 @@ export const buildCloudShortcutsPayload = ({
 };
 
 export const normalizeCloudShortcutsPayload = (raw: unknown, unnamedLabel: string): CloudShortcutsPayloadV3 | null => {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (!isRecord(raw)) return null;
   const obj = raw as Record<string, unknown>;
-  const candidate = (obj.type === 'leaftab_backup' && obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data))
-    ? ({ version: 3, ...(obj.data as any) } as Record<string, unknown>)
-    : obj;
+  const hasScenarioPayloadShape = isRecord(obj.scenarioShortcuts) || isRecord(obj.scenarioGroups);
+  const candidate = (obj.type === 'leaftab_backup' && isRecord(obj.data))
+    ? ({ version: 3, ...(obj.data as Record<string, unknown>) } as Record<string, unknown>)
+    : hasScenarioPayloadShape
+      ? ({ version: 3, ...obj } as Record<string, unknown>)
+      : obj;
   if (candidate.version !== 3) return null;
   const modes = normalizeScenarioModesList(candidate.scenarioModes, unnamedLabel);
-  const shortcutsValue = normalizeScenarioShortcuts(candidate.scenarioShortcuts);
+  const shortcutsValue = normalizeScenarioShortcuts(candidate.scenarioShortcuts ?? candidate.scenarioGroups);
   const selectedIdCandidate = typeof candidate.selectedScenarioId === 'string' ? candidate.selectedScenarioId : modes[0]?.id ?? defaultScenarioModes[0].id;
   const finalSelectedId = modes.some((m) => m.id === selectedIdCandidate) ? selectedIdCandidate : modes[0]?.id ?? defaultScenarioModes[0].id;
   return {

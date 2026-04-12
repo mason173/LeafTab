@@ -193,4 +193,62 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
       }),
     ]);
   });
+
+  it('does not project empty children metadata onto normal link shortcuts', () => {
+    const snapshot = createSnapshot();
+    snapshot.shortcuts.a = {
+      ...snapshot.shortcuts.a,
+      kind: 'link',
+      children: [],
+    };
+
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+
+    expect(projected.scenarioShortcuts.work[0]).toEqual(
+      expect.objectContaining({
+        id: 'a',
+        kind: 'link',
+        url: 'https://a.example',
+      }),
+    );
+    expect(projected.scenarioShortcuts.work[0]).not.toHaveProperty('children');
+    expect(projected.scenarioShortcuts.work[0]).not.toHaveProperty('folderDisplayMode');
+  });
+
+  it('still treats legacy shortcuts with children and no kind as folders', () => {
+    const snapshot = createSnapshot();
+    snapshot.shortcuts.a = {
+      ...snapshot.shortcuts.a,
+      kind: undefined,
+      url: '',
+      children: [
+        {
+          id: 'child-1',
+          title: 'Docs',
+          url: 'https://docs.example',
+          icon: '',
+          kind: 'link',
+        },
+      ],
+      folderDisplayMode: 'large',
+    };
+
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+
+    expect(projected.scenarioShortcuts.work[0]).toEqual(
+      expect.objectContaining({
+        id: 'a',
+        kind: 'folder',
+        url: '',
+        folderDisplayMode: 'large',
+        children: [
+          expect.objectContaining({
+            id: 'child-1',
+            title: 'Docs',
+            url: 'https://docs.example',
+          }),
+        ],
+      }),
+    );
+  });
 });

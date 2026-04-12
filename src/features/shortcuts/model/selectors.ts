@@ -2,7 +2,16 @@ import type { ScenarioShortcuts, Shortcut } from '@/types';
 import type { ShortcutContainerPath, ShortcutFolder } from './types';
 
 export function isShortcutFolder(shortcut: Shortcut | null | undefined): shortcut is ShortcutFolder {
-  return Boolean(shortcut && (shortcut.kind === 'folder' || Array.isArray(shortcut.children)));
+  return Boolean(
+    shortcut && (
+      shortcut.kind === 'folder'
+      || (
+        typeof shortcut.kind === 'undefined'
+        && Array.isArray(shortcut.children)
+        && shortcut.children.length > 0
+      )
+    ),
+  );
 }
 
 export function isShortcutLink(shortcut: Shortcut | null | undefined): shortcut is Shortcut {
