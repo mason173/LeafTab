@@ -14,6 +14,26 @@ function isLargeFolderShortcut(shortcut: RootShortcutDragItem['shortcut']): bool
   return Boolean(isShortcutFolder(shortcut) && shortcut.folderDisplayMode === 'large');
 }
 
+function pointInRect(point: Point, rect: DragRect): boolean {
+  return (
+    point.x >= rect.left
+    && point.x <= rect.right
+    && point.y >= rect.top
+    && point.y <= rect.bottom
+  );
+}
+
+function rectEquals(left: DragRect, right: DragRect): boolean {
+  return (
+    left.left === right.left
+    && left.top === right.top
+    && left.right === right.right
+    && left.bottom === right.bottom
+    && left.width === right.width
+    && left.height === right.height
+  );
+}
+
 export function resolveRootDropIntent(params: {
   activeSortId: string;
   overSortId: string;
@@ -50,15 +70,25 @@ export function resolveRootDropIntent(params: {
     return null;
   })();
 
-  if (
-    centerIntent
-    && isPointInDropCenter(
-      pointer,
-      overCenterRect ?? overRect,
-      isLargeFolderShortcut(overItem.shortcut) ? undefined : SMALL_TARGET_DROP_CENTER_THRESHOLD,
-    )
-  ) {
-    return centerIntent;
+  if (centerIntent) {
+    const largeFolderShortcut = isLargeFolderShortcut(overItem.shortcut);
+    const compactSmallTargetDirectHit = Boolean(
+      overCenterRect
+      && !largeFolderShortcut
+      && !rectEquals(overCenterRect, overRect)
+      && pointInRect(pointer, overCenterRect),
+    );
+
+    if (
+      compactSmallTargetDirectHit
+      || isPointInDropCenter(
+        pointer,
+        overCenterRect ?? overRect,
+        largeFolderShortcut ? undefined : SMALL_TARGET_DROP_CENTER_THRESHOLD,
+      )
+    ) {
+      return centerIntent;
+    }
   }
 
   const edge = getDropEdge(pointer, overRect);
