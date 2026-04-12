@@ -139,11 +139,11 @@ export default {
         select: "선택"
       },
       shortcutsStyle: {
-        label: "바로가기 스타일",
-        entryDescription: "스타일을 바꾸고 그리드 열 수와 기본 행 수를 설정합니다",
+        label: "바로가기 레이아웃",
+        entryDescription: "그리드 열 수와 이름 표시를 설정합니다",
         open: "열기",
-        title: "바로가기 스타일 설정",
-        description: "바로가기 스타일을 선택하고 단일 페이지 그리드의 열 수와 기본 행 수를 설정합니다",
+        title: "바로가기 레이아웃 설정",
+        description: "단일 페이지 그리드의 열 수와 바로가기 이름 표시를 설정합니다",
         rich: "리치",
         compact: "미니멀",
         showName: "이름 표시",

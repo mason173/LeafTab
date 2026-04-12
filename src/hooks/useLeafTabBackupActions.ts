@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useState, type MutableRefObject } from 'react';
 import { toast } from '@/components/ui/sonner';
 import type { ScenarioMode, ScenarioShortcuts } from '@/types';
 import { defaultScenarioModes } from '@/scenario/scenario';
@@ -16,6 +16,10 @@ import {
 } from '@/sync/leaftab';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { normalizeLeafTabSyncSnapshot } from '@/sync/leaftab';
+import {
+  resolveLocalBackupExportBookmarksMode,
+  resolveLocalBackupImportBookmarksMode,
+} from '@/utils/localBackupScopePolicy';
 
 type LongTaskRunner = <T>(
   initial: {
@@ -51,9 +55,11 @@ type UseLeafTabBackupActionsOptions = {
   buildSnapshotFromCurrentState: (options?: {
     requestBookmarkPermission?: boolean;
     baselineStorageKey?: string;
+    includeBookmarks?: boolean;
   }) => Promise<any>;
   applySnapshotToLocalState: (snapshot: any, options?: {
     preferredSelectedScenarioId?: string | null;
+    skipBookmarkApply?: boolean;
   }) => Promise<void>;
   cloudSyncRunnerRef: MutableRefObject<(options?: CloudSyncRunnerOptions) => Promise<unknown>>;
   leafTabBookmarkSyncScope: LeafTabBookmarkSyncScope;
@@ -296,8 +302,10 @@ export function useLeafTabBackupActions({
         detail: t('settings.backup.progress.importReadingLocalDetail', { defaultValue: '正在准备合并导入内容' }),
         progress: 18,
       });
+      const bookmarkImportMode = resolveLocalBackupImportBookmarksMode(data.exportScope);
       const baseSnapshot = await buildSnapshotFromCurrentState({
         requestBookmarkPermission: false,
+        includeBookmarks: bookmarkImportMode.includeBookmarks,
       });
       reportProgress?.({
         title: t('settings.backup.progress.importMergingTitle', { defaultValue: '正在合并导入数据' }),
@@ -324,6 +332,7 @@ export function useLeafTabBackupActions({
       });
       await applySnapshotToLocalState(mergedSnapshot, {
         preferredSelectedScenarioId: nextSelectedScenarioId,
+        skipBookmarkApply: bookmarkImportMode.skipBookmarkApply,
       });
 
       let synced = true;
@@ -376,13 +385,15 @@ export function useLeafTabBackupActions({
       detail: t('settings.backup.progress.exportLongTaskDetail', { defaultValue: '正在准备快捷方式与书签内容' }),
       progress: 8,
     }, async ({ update }) => {
+      const bookmarkExportMode = resolveLocalBackupExportBookmarksMode(exportScope);
       update({
         title: t('settings.backup.progress.exportReadingLocalTitle', { defaultValue: '正在读取本地数据' }),
         detail: t('settings.backup.progress.exportReadingLocalDetail', { defaultValue: '正在收集当前设备上的快捷方式与书签' }),
         progress: 24,
       });
       const snapshot = await buildSnapshotFromCurrentState({
-        requestBookmarkPermission: true,
+        requestBookmarkPermission: bookmarkExportMode.requestBookmarkPermission,
+        includeBookmarks: bookmarkExportMode.includeBookmarks,
       });
       update({
         title: t('settings.backup.progress.exportAssemblingTitle', { defaultValue: '正在整理导出内容' }),

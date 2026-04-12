@@ -58,6 +58,7 @@ const shortcutFields: Array<keyof LeafTabSyncShortcutEntity> = [
   'useOfficialIcon',
   'autoUseOfficialIcon',
   'officialIconAvailableAtSave',
+  'officialIconColorOverride',
   'iconRendering',
   'iconColor',
 ];

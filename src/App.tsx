@@ -40,6 +40,7 @@ import { useLeafTabBackupActions } from './hooks/useLeafTabBackupActions';
 import { useSyncCenterActions } from './hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
+import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 
 // Components
 import ScenarioModeMenu from './components/ScenarioModeMenu';
@@ -3483,6 +3484,7 @@ export default function App() {
     defaultVerticalPadding: responsiveLayout.defaultShortcutVerticalPadding,
     compactShowTitle: shortcutCompactShowTitle,
     iconCornerRadius: shortcutIconCornerRadius,
+    iconAppearance: shortcutIconAppearance,
     disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion,
     onShortcutOpen: handleShortcutActivate,
     onShortcutContextMenu: handleShortcutContextMenu,
@@ -3510,6 +3512,7 @@ export default function App() {
     responsiveLayout.defaultShortcutUrlSize,
     responsiveLayout.defaultShortcutVerticalPadding,
     responsiveLayout.density,
+    shortcutIconAppearance,
     shortcutIconCornerRadius,
     shortcutCardVariant,
     shortcutCompactShowTitle,
@@ -3676,6 +3679,7 @@ export default function App() {
           }}
           shortcut={compactOverlayShortcut}
           iconCornerRadius={shortcutIconCornerRadius}
+          iconAppearance={shortcutIconAppearance}
           onRenameFolder={handleRenameFolderInline}
           onShortcutOpen={handleShortcutOpen}
           onShortcutContextMenu={handleFolderChildShortcutContextMenu}
@@ -3691,6 +3695,7 @@ export default function App() {
           }}
           shortcut={openFolderShortcut}
           iconCornerRadius={shortcutIconCornerRadius}
+          iconAppearance={shortcutIconAppearance}
           onShortcutOpen={handleShortcutOpen}
           onShortcutDropIntent={handleFolderShortcutDropIntent}
           onExtractDragStart={handleFolderExtractDragStart}
@@ -3795,6 +3800,7 @@ export default function App() {
                 : { title: editingTitle, url: editingUrl, icon: '' },
               iconCornerRadius: shortcutIconCornerRadius,
               iconScale: shortcutIconScale,
+              iconAppearance: shortcutIconAppearance,
               onSave: handleSaveShortcutEdit,
             }}
             shortcutDeleteDialogProps={{
@@ -3972,8 +3978,7 @@ export default function App() {
                 bookmarks: true,
               },
               defaultScope: {
-                shortcuts: true,
-                bookmarks: cloudSyncBookmarksEnabled,
+                ...getDefaultLocalBackupExportScope(),
               },
               onConfirm: async (scope) => {
                 await executeExportData(scope);

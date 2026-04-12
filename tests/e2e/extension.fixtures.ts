@@ -12,7 +12,6 @@ type ExtensionFixtures = {
 const extensionPath = path.resolve(__dirname, '../../build');
 const headedMode = process.env.PW_HEADLESS === 'false';
 const slowMo = Number(process.env.PW_SLOWMO || '0');
-const mockedOfficialIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#111827"/><path d="M36 36h56v56H36z" fill="#22c55e"/></svg>`;
 const baselineScenarioModes = [
   {
     id: 'life-mode-001',
@@ -99,28 +98,6 @@ export const test = base.extend<ExtensionFixtures>({
         }),
       });
     });
-    await context.route('https://mason173.github.io/leaftab-icons/manifest.json', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          version: 'e2e',
-          generatedAt: '2026-03-27T00:00:00.000Z',
-          icons: {
-            'youtube.com': 'icons/youtube.svg',
-            'bilibili.com': 'icons/bilibili.svg',
-          },
-        }),
-      });
-    });
-    await context.route('https://mason173.github.io/leaftab-icons/icons/*.svg', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'image/svg+xml',
-        body: mockedOfficialIconSvg,
-      });
-    });
-
     try {
       await use(context);
     } finally {

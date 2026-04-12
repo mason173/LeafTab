@@ -67,4 +67,26 @@ describe('syncablePreferences matrix', () => {
       });
     }
   });
+
+  it('falls back the legacy rich shortcut variant to compact when normalizing preferences', () => {
+    const normalized = normalizeSyncablePreferences({
+      ...getDefaultSyncablePreferences(),
+      shortcutCardVariant: 'default',
+    });
+
+    expect(normalized.shortcutCardVariant).toBe('compact');
+  });
+
+  it('falls back the persisted rich shortcut variant to compact when reading from storage', () => {
+    localStorage.setItem('shortcutCardVariant', 'default');
+    localStorage.setItem('shortcutGridColumnsByVariant', JSON.stringify({
+      default: 4,
+      compact: 9,
+    }));
+
+    const restored = readSyncablePreferencesFromStorage();
+
+    expect(restored.shortcutCardVariant).toBe('compact');
+    expect(restored.shortcutGridColumnsByVariant.compact).toBe(9);
+  });
 });

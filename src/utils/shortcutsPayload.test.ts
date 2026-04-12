@@ -106,6 +106,63 @@ describe('normalizeScenarioShortcuts', () => {
       }),
     ]);
   });
+
+  it('dedupes repeated shortcut urls across a scenario while keeping the first occurrence', () => {
+    const normalized = normalizeScenarioShortcuts({
+      work: [
+        {
+          id: 'primary',
+          title: 'GitHub',
+          url: 'https://github.com/',
+          icon: '',
+        },
+        {
+          id: 'duplicate-root',
+          title: 'GitHub Duplicate',
+          url: 'https://www.github.com',
+          icon: '',
+        },
+        {
+          id: 'folder-1',
+          kind: 'folder',
+          title: 'Workspace',
+          children: [
+            {
+              id: 'docs',
+              title: 'Docs',
+              url: 'https://docs.example',
+              icon: '',
+            },
+            {
+              id: 'duplicate-child',
+              title: 'GitHub Child',
+              url: 'https://github.com',
+              icon: '',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(normalized.work).toEqual([
+      expect.objectContaining({
+        id: 'primary',
+        title: 'GitHub',
+        url: 'https://github.com/',
+      }),
+      expect.objectContaining({
+        id: 'folder-1',
+        kind: 'folder',
+        children: [
+          expect.objectContaining({
+            id: 'docs',
+            title: 'Docs',
+            url: 'https://docs.example',
+          }),
+        ],
+      }),
+    ]);
+  });
 });
 
 describe('normalizeCloudShortcutsPayload', () => {

@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo, useCallback, useLayoutEffe
 import { createPortal, flushSync } from 'react-dom';
 import { RiCheckFill } from '@/icons/ri-compat';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import type { Shortcut } from '../types';
+import type { Shortcut, ShortcutIconAppearance } from '../types';
 import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX,
@@ -30,6 +30,7 @@ import {
   type ProjectionOffset,
 } from '@/features/shortcuts/drag/gridDragEngine';
 import { DraggableShortcutItemFrame } from '@/features/shortcuts/components/DraggableShortcutItemFrame';
+import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from './ShortcutIconRenderContext';
 
 const DRAG_ACTIVATION_DISTANCE_PX = 8;
 const DRAG_OVERLAY_Z_INDEX = 14030;
@@ -750,6 +751,7 @@ function ShortcutGridItem({
   compactShowTitle,
   compactIconSize,
   iconCornerRadius,
+  iconAppearance,
   compactTitleFontSize,
   defaultIconSize,
   defaultTitleFontSize,
@@ -783,6 +785,7 @@ function ShortcutGridItem({
   compactShowTitle: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
+  iconAppearance: ShortcutIconAppearance;
   compactTitleFontSize: number;
   defaultIconSize: number;
   defaultTitleFontSize: number;
@@ -875,6 +878,7 @@ function ShortcutGridItem({
           compactShowTitle={compactShowTitle}
           compactIconSize={compactIconSize}
           iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
           compactTitleFontSize={compactTitleFontSize}
           defaultIconSize={defaultIconSize}
           defaultTitleFontSize={defaultTitleFontSize}
@@ -909,12 +913,15 @@ interface ShortcutGridProps {
   layoutDensity?: ShortcutLayoutDensity;
   compactIconSize?: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   compactTitleFontSize?: number;
   defaultIconSize?: number;
   defaultTitleFontSize?: number;
   defaultUrlFontSize?: number;
   defaultVerticalPadding?: number;
   forceTextWhite?: boolean;
+  monochromeTone?: ShortcutMonochromeTone;
+  monochromeTileBackdropBlur?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
   disableReorderAnimation?: boolean;
@@ -941,12 +948,15 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   layoutDensity = 'regular',
   compactIconSize = 72,
   iconCornerRadius = 22,
+  iconAppearance = 'colorful',
   compactTitleFontSize = 12,
   defaultIconSize = 36,
   defaultTitleFontSize = 14,
   defaultUrlFontSize = 10,
   defaultVerticalPadding = 8,
   forceTextWhite = false,
+  monochromeTone = 'theme-adaptive',
+  monochromeTileBackdropBlur = false,
   onDragStart,
   onDragEnd,
   disableReorderAnimation = false,
@@ -957,6 +967,10 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   onExternalDragSessionConsumed,
 }: ShortcutGridProps) {
   const firefox = isFirefoxBuildTarget();
+  const shortcutIconRenderContextValue = useMemo(() => ({
+    monochromeTone,
+    monochromeTileBackdropBlur,
+  }), [monochromeTileBackdropBlur, monochromeTone]);
   const compactLayout = cardVariant === 'compact';
   const columnGap = compactLayout ? COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX : 8;
   const rowGap = cardVariant === 'compact'
@@ -1339,6 +1353,10 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       : null;
 
     if (pointerRawIntent && pointerRawIntent.type !== 'reorder-root') {
+      if (!pointerOverCandidate) {
+        centerHoverCandidateRef.current = null;
+        return null;
+      }
       const currentCandidate = centerHoverCandidateRef.current;
       const nextCandidateType = pointerRawIntent.type;
       const now = window.performance.now();
@@ -1762,128 +1780,40 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   ]);
 
   return (
-    <div
-      ref={rootRef}
-      className="relative w-full"
-      data-testid="shortcut-grid"
-      style={{
-        minHeight: Math.max(containerHeight, gridMinHeight),
-        paddingBottom: Math.max(0, bottomInset),
-      }}
-      onContextMenu={onGridContextMenu}
-    >
+    <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
       <div
-        className="grid"
+        ref={rootRef}
+        className="relative w-full"
+        data-testid="shortcut-grid"
         style={{
-          gridTemplateColumns: `repeat(${Math.max(gridColumns, 1)}, minmax(0, 1fr))`,
-          gridAutoRows: `${rowHeight}px`,
-          columnGap: `${columnGap}px`,
-          rowGap: `${rowGap}px`,
-          touchAction: 'pan-y',
+          minHeight: Math.max(containerHeight, gridMinHeight),
+          paddingBottom: Math.max(0, bottomInset),
         }}
+        onContextMenu={onGridContextMenu}
       >
-        {packedLayout.placedItems.map((item) => (
-          <ShortcutGridItem
-            key={item.sortId}
-            sortId={item.sortId}
-            shortcut={item.shortcut}
-            activeDragId={activeDragId}
-            hoverState={hoverState}
-            cardVariant={cardVariant}
-            gridColumns={gridColumns}
-            compactShowTitle={compactShowTitle}
-            compactIconSize={compactIconSize}
-            iconCornerRadius={iconCornerRadius}
-            compactTitleFontSize={compactTitleFontSize}
-            defaultIconSize={defaultIconSize}
-            defaultTitleFontSize={defaultTitleFontSize}
-            defaultUrlFontSize={defaultUrlFontSize}
-            defaultVerticalPadding={defaultVerticalPadding}
-            forceTextWhite={forceTextWhite}
-            enableLargeFolder={largeFolderEnabled}
-            largeFolderPreviewSize={largeFolderPreviewSize}
-            onPreviewShortcutOpen={selectionMode ? undefined : onShortcutOpen}
-            columnStart={item.columnStart}
-            rowStart={item.rowStart}
-            columnSpan={item.columnSpan}
-            rowSpan={item.rowSpan}
-            onPointerDown={(event) => {
-              if (selectionMode) return;
-              if (event.button !== 0) return;
-              if (!event.isPrimary) return;
-
-              const rect = event.currentTarget.getBoundingClientRect();
-              pendingDragRef.current = {
-                pointerId: event.pointerId,
-                pointerType: event.pointerType,
-                activeId: item.sortId,
-                activeSortId: item.sortId,
-                origin: { x: event.clientX, y: event.clientY },
-                current: { x: event.clientX, y: event.clientY },
-                previewOffset: {
-                  x: Math.max(0, event.clientX - rect.left),
-                  y: Math.max(0, event.clientY - rect.top),
-                },
-              };
-            }}
-            onOpen={() => {
-              if (ignoreClickRef.current) return;
-              if (selectionMode) {
-                onToggleShortcutSelection?.(item.shortcutIndex);
-                return;
-              }
-              onShortcutOpen(item.shortcut);
-            }}
-            onContextMenu={(event) => {
-              if (!ignoreClickRef.current) {
-                onShortcutContextMenu(event, item.shortcutIndex, item.shortcut);
-              }
-            }}
-            selected={Boolean(selectedShortcutIndexes?.has(item.shortcutIndex))}
-            selectionMode={selectionMode}
-            dragDisabled={selectionMode}
-            disableReorderAnimation={disableReorderAnimation || suppressProjectionSettleAnimation}
-            firefox={firefox}
-            projectionOffset={projectionOffsets.get(item.sortId) ?? null}
-            registerItemElement={(element) => {
-              if (element) {
-                itemElementsRef.current.set(item.sortId, element);
-                return;
-              }
-              itemElementsRef.current.delete(item.sortId);
-            }}
-          />
-        ))}
-      </div>
-      {typeof document !== 'undefined' && activeDragItem && dragPointer && dragPreviewOffset ? createPortal(
         <div
-          className="pointer-events-none fixed left-0 top-0"
+          className="grid"
           style={{
-            zIndex: DRAG_OVERLAY_Z_INDEX,
-            transform: `translate(${dragPointer.x - dragPreviewOffset.x}px, ${dragPointer.y - dragPreviewOffset.y}px)`,
+            gridTemplateColumns: `repeat(${Math.max(gridColumns, 1)}, minmax(0, 1fr))`,
+            gridAutoRows: `${rowHeight}px`,
+            columnGap: `${columnGap}px`,
+            rowGap: `${rowGap}px`,
+            touchAction: 'pan-y',
           }}
         >
-          {firefox ? (
-            <LightweightDragPreview
-              shortcut={activeDragItem.shortcut}
+          {packedLayout.placedItems.map((item) => (
+            <ShortcutGridItem
+              key={item.sortId}
+              sortId={item.sortId}
+              shortcut={item.shortcut}
+              activeDragId={activeDragId}
+              hoverState={hoverState}
               cardVariant={cardVariant}
-              firefox={firefox}
+              gridColumns={gridColumns}
               compactShowTitle={compactShowTitle}
               compactIconSize={compactIconSize}
               iconCornerRadius={iconCornerRadius}
-              compactTitleFontSize={compactTitleFontSize}
-              defaultIconSize={defaultIconSize}
-              defaultTitleFontSize={defaultTitleFontSize}
-              defaultUrlFontSize={defaultUrlFontSize}
-              defaultVerticalPadding={defaultVerticalPadding}
-              forceTextWhite={forceTextWhite}
-            />
-          ) : (
-            <ShortcutCardRenderer
-              variant={cardVariant}
-              compactShowTitle={compactShowTitle}
-              compactIconSize={compactIconSize}
-              iconCornerRadius={iconCornerRadius}
+              iconAppearance={iconAppearance}
               compactTitleFontSize={compactTitleFontSize}
               defaultIconSize={defaultIconSize}
               defaultTitleFontSize={defaultTitleFontSize}
@@ -1892,14 +1822,106 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
               forceTextWhite={forceTextWhite}
               enableLargeFolder={largeFolderEnabled}
               largeFolderPreviewSize={largeFolderPreviewSize}
-              shortcut={activeDragItem.shortcut}
-              onOpen={() => {}}
-              onContextMenu={() => {}}
+              onPreviewShortcutOpen={selectionMode ? undefined : onShortcutOpen}
+              columnStart={item.columnStart}
+              rowStart={item.rowStart}
+              columnSpan={item.columnSpan}
+              rowSpan={item.rowSpan}
+              onPointerDown={(event) => {
+                if (selectionMode) return;
+                if (event.button !== 0) return;
+                if (!event.isPrimary) return;
+
+                const rect = event.currentTarget.getBoundingClientRect();
+                pendingDragRef.current = {
+                  pointerId: event.pointerId,
+                  pointerType: event.pointerType,
+                  activeId: item.sortId,
+                  activeSortId: item.sortId,
+                  origin: { x: event.clientX, y: event.clientY },
+                  current: { x: event.clientX, y: event.clientY },
+                  previewOffset: {
+                    x: Math.max(0, event.clientX - rect.left),
+                    y: Math.max(0, event.clientY - rect.top),
+                  },
+                };
+              }}
+              onOpen={() => {
+                if (ignoreClickRef.current) return;
+                if (selectionMode) {
+                  onToggleShortcutSelection?.(item.shortcutIndex);
+                  return;
+                }
+                onShortcutOpen(item.shortcut);
+              }}
+              onContextMenu={(event) => {
+                if (!ignoreClickRef.current) {
+                  onShortcutContextMenu(event, item.shortcutIndex, item.shortcut);
+                }
+              }}
+              selected={Boolean(selectedShortcutIndexes?.has(item.shortcutIndex))}
+              selectionMode={selectionMode}
+              dragDisabled={selectionMode}
+              disableReorderAnimation={disableReorderAnimation || suppressProjectionSettleAnimation}
+              firefox={firefox}
+              projectionOffset={projectionOffsets.get(item.sortId) ?? null}
+              registerItemElement={(element) => {
+                if (element) {
+                  itemElementsRef.current.set(item.sortId, element);
+                  return;
+                }
+                itemElementsRef.current.delete(item.sortId);
+              }}
             />
-          )}
-        </div>,
-        document.body,
-      ) : null}
-    </div>
+          ))}
+        </div>
+        {typeof document !== 'undefined' && activeDragItem && dragPointer && dragPreviewOffset ? createPortal(
+          <div
+            className="pointer-events-none fixed left-0 top-0"
+            style={{
+              zIndex: DRAG_OVERLAY_Z_INDEX,
+              transform: `translate(${dragPointer.x - dragPreviewOffset.x}px, ${dragPointer.y - dragPreviewOffset.y}px)`,
+            }}
+          >
+            {firefox ? (
+              <LightweightDragPreview
+                shortcut={activeDragItem.shortcut}
+                cardVariant={cardVariant}
+                firefox={firefox}
+                compactShowTitle={compactShowTitle}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
+              />
+            ) : (
+              <ShortcutCardRenderer
+                variant={cardVariant}
+                compactShowTitle={compactShowTitle}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
+                enableLargeFolder={largeFolderEnabled}
+                largeFolderPreviewSize={largeFolderPreviewSize}
+                shortcut={activeDragItem.shortcut}
+                onOpen={() => {}}
+                onContextMenu={() => {}}
+              />
+            )}
+          </div>,
+          document.body,
+        ) : null}
+      </div>
+    </ShortcutIconRenderContext.Provider>
   );
 });

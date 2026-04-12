@@ -10,6 +10,18 @@ export const extractDomainFromUrl = (url: string) => {
   }
 };
 
+const REMOTE_FAVICON_OVERRIDES: Record<string, string> = {
+  'doubao.com': 'https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/favicon/64x64.png',
+};
+
+function normalizeFaviconCandidateDomain(domain: string) {
+  return domain.trim().toLowerCase().replace(/^www\./, '');
+}
+
+export function getRemoteFaviconOverride(domain: string) {
+  return REMOTE_FAVICON_OVERRIDES[normalizeFaviconCandidateDomain(domain)] || '';
+}
+
 function isPrivateIpv4Host(hostname: string) {
   const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (!match) return false;
@@ -46,13 +58,15 @@ export const shouldProbeRemoteFaviconForUrl = (url: string) => {
 
 export const buildFaviconCandidates = (domain: string) => {
   const safeDomain = domain.trim();
-  return [
+  const override = getRemoteFaviconOverride(safeDomain);
+  const defaults = [
     // Prefer site-hosted icons to avoid noisy third-party proxy failures in extension console
     `https://${safeDomain}/favicon.ico`,
     `https://${safeDomain}/favicon.png`,
     `https://${safeDomain}/apple-touch-icon.png`,
     `https://${safeDomain}/apple-touch-icon-precomposed.png`,
   ];
+  return override ? [override, ...defaults] : defaults;
 };
 
 export const isUrl = (str: string) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
@@ -11,6 +11,7 @@ interface ShortcutCardCompactProps {
   showTitle: boolean;
   iconSize?: number;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   titleFontSize?: number;
   forceTextWhite?: boolean;
   remoteIconScale?: number;
@@ -36,6 +37,7 @@ export function ShortcutCardCompact({
   showTitle,
   iconSize = 72,
   iconCornerRadius,
+  iconAppearance,
   titleFontSize = 12,
   forceTextWhite = false,
   remoteIconScale = 1,
@@ -86,6 +88,7 @@ export function ShortcutCardCompact({
                   shortcut={shortcut}
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
                   onOpenFolder={onOpen}
                   onOpenShortcut={onPreviewShortcutOpen}
                 />
@@ -94,6 +97,7 @@ export function ShortcutCardCompact({
                   shortcut={shortcut}
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
                 />
               )
             ) : (
@@ -109,9 +113,11 @@ export function ShortcutCardCompact({
                 useOfficialIcon={shortcut.useOfficialIcon}
                 autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
                 officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+                officialIconColorOverride={shortcut.officialIconColorOverride}
                 iconRendering={shortcut.iconRendering}
                 iconColor={shortcut.iconColor}
                 iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
                 remoteIconScale={remoteIconScale}
               />
             )}

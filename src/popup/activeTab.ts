@@ -3,6 +3,7 @@ import { getExtensionRuntime, getTabsApi } from '@/platform/runtime';
 export type ActiveTabPrefill = {
   title: string;
   url: string;
+  icon: string;
 };
 
 const SAVEABLE_PROTOCOLS = new Set(['http:', 'https:']);
@@ -34,12 +35,13 @@ export function isSaveableShortcutUrl(rawUrl: string) {
   }
 }
 
-export function buildShortcutPrefillFromTab(tab: Pick<chrome.tabs.Tab, 'url' | 'pendingUrl' | 'title'>): ActiveTabPrefill {
+export function buildShortcutPrefillFromTab(tab: Pick<chrome.tabs.Tab, 'url' | 'pendingUrl' | 'title' | 'favIconUrl'>): ActiveTabPrefill {
   const url = readTabUrl(tab);
   const title = (typeof tab.title === 'string' ? tab.title : '').trim() || buildFallbackTitle(url);
   return {
     title,
     url,
+    icon: typeof tab.favIconUrl === 'string' ? tab.favIconUrl.trim() : '',
   };
 }
 
@@ -50,6 +52,7 @@ export async function queryCurrentTabPrefill(): Promise<ActiveTabPrefill> {
     return {
       title: '',
       url: '',
+      icon: '',
     };
   }
 
@@ -59,6 +62,7 @@ export async function queryCurrentTabPrefill(): Promise<ActiveTabPrefill> {
         resolve({
           title: '',
           url: '',
+          icon: '',
         });
         return;
       }

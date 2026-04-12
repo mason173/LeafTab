@@ -169,6 +169,57 @@ describe('ShortcutEditorPanel', () => {
     expect(sliders[2]).toHaveAttribute('aria-valuenow', String(officialHsl?.lightness));
   });
 
+  it.each(['monochrome', 'accent'] as const)('disables per-icon color controls when global icon appearance is %s', async (iconAppearance) => {
+    const officialColor = '#24292F';
+    const officialHsl = hexToShortcutIconHsl(officialColor);
+    prepareShortcutCustomIconMock.mockResolvedValue('data:image/png;base64,custom-icon');
+    readShortcutCustomIconMock.mockReturnValue('');
+    resolveCustomIconFromCacheMock.mockImplementation((domain: string) => (
+      domain === 'github.com'
+        ? {
+            url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+            signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+            mode: 'shape-color',
+            defaultColor: officialColor,
+          }
+        : null
+    ));
+    resolveCustomIconMock.mockResolvedValue({
+      url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+      signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+      mode: 'shape-color',
+      defaultColor: officialColor,
+    });
+
+    render(
+      <ShortcutEditorPanel
+        mode="add"
+        iconAppearance={iconAppearance}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('shortcut-modal-url'), {
+      target: { value: 'https://github.com' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shortcut-icon-mode-official')).toHaveAttribute('aria-checked', 'true');
+    });
+
+    expect(screen.queryByTestId('shortcut-color-reset')).not.toBeInTheDocument();
+
+    const sliders = screen.getAllByRole('slider');
+    sliders.forEach((slider) => {
+      expect(slider).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    expect(officialHsl).not.toBeNull();
+    fireEvent.keyDown(sliders[0], { key: 'ArrowRight' });
+    expect(sliders[0]).toHaveAttribute('aria-valuenow', String(officialHsl?.hue));
+  });
+
   it('keeps network and letter colors shared while leaving official color independent', async () => {
     const officialColor = '#24292F';
     const officialHsl = hexToShortcutIconHsl(officialColor);
@@ -365,6 +416,71 @@ describe('ShortcutEditorPanel', () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         iconColor: '#FFFFFF',
+      }),
+      expect.objectContaining({
+        useCustomIcon: false,
+      }),
+    );
+  });
+
+  it('ignores legacy shared icon colors for official icons until the user explicitly overrides them', async () => {
+    const officialColor = '#24292F';
+    const officialHsl = hexToShortcutIconHsl(officialColor);
+    const onSave = vi.fn();
+    prepareShortcutCustomIconMock.mockResolvedValue('data:image/png;base64,custom-icon');
+    readShortcutCustomIconMock.mockReturnValue('');
+    resolveCustomIconFromCacheMock.mockImplementation((domain: string) => (
+      domain === 'github.com'
+        ? {
+            url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+            signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+            mode: 'shape-color',
+            defaultColor: officialColor,
+          }
+        : null
+    ));
+    resolveCustomIconMock.mockResolvedValue({
+      url: 'https://local.test/leaftab-icons/shapes/github.com.svg',
+      signature: 'shape:github.com:shapes/github.com.svg|color:#24292F',
+      mode: 'shape-color',
+      defaultColor: officialColor,
+    });
+
+    render(
+      <ShortcutEditorPanel
+        mode="edit"
+        initialShortcut={{
+          id: 'github',
+          title: 'GitHub',
+          url: 'https://github.com',
+          icon: '',
+          useOfficialIcon: true,
+          autoUseOfficialIcon: true,
+          officialIconAvailableAtSave: true,
+          iconColor: '#F4E300',
+        }}
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shortcut-icon-mode-official')).toHaveAttribute('aria-checked', 'true');
+    });
+
+    expect(officialHsl).not.toBeNull();
+    const sliders = screen.getAllByRole('slider');
+    expect(sliders[0]).toHaveAttribute('aria-valuenow', String(officialHsl?.hue));
+    expect(sliders[1]).toHaveAttribute('aria-valuenow', String(officialHsl?.saturation));
+    expect(sliders[2]).toHaveAttribute('aria-valuenow', String(officialHsl?.lightness));
+
+    fireEvent.click(screen.getByTestId('shortcut-modal-save'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        useOfficialIcon: true,
+        iconColor: '',
+        officialIconColorOverride: false,
       }),
       expect.objectContaining({
         useCustomIcon: false,

@@ -22,6 +22,7 @@ const toLegacyLinkShortcut = (shortcut: Shortcut): Shortcut => ({
   useOfficialIcon: shortcut.useOfficialIcon !== false,
   autoUseOfficialIcon: shortcut.autoUseOfficialIcon !== false,
   officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave === true,
+  officialIconColorOverride: shortcut.officialIconColorOverride === true,
   iconRendering: shortcut.iconRendering,
   iconColor: shortcut.iconColor || '',
 });

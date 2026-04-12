@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { execFileSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const iconRepoDir = path.join(root, 'leaftab-icons-main');
@@ -16,10 +15,6 @@ const manifestFileName = 'icon-library.json';
 const manifestPath = path.join(targetRoot, manifestFileName);
 const legacyManifestPath = path.join(targetRoot, 'manifest.json');
 const packageJsonPath = path.join(root, 'package.json');
-const iconRepoUrl = process.env.LEAFTAB_ICONS_REPO_URL || 'https://github.com/mason173/leaftab-icons.git';
-const iconRepoRef = (process.env.LEAFTAB_ICONS_GIT_REF || '').trim();
-const autoFetchEnabled = process.env.LEAFTAB_ICONS_AUTO_FETCH !== '0';
-const autoUpdateEnabled = process.env.LEAFTAB_ICONS_AUTO_UPDATE === '1';
 
 const SOURCE_FILE_PATTERN = /^(.+?)__([0-9a-fA-F]{6})\.svg$/;
 
@@ -46,13 +41,6 @@ const listSvgFiles = (dirPath) => {
 };
 
 const sha256Hex = (buffer) => crypto.createHash('sha256').update(buffer).digest('hex');
-
-const runGit = (args) => {
-  execFileSync('git', args, {
-    cwd: root,
-    stdio: 'inherit',
-  });
-};
 
 const pathExists = (targetPath) => fs.existsSync(targetPath);
 
@@ -128,45 +116,17 @@ const ensureMigratedOfficialIconSources = () => {
 const ensureLocalIconRepository = () => {
   if (pathExists(sourceDir) || pathExists(legacyLayeredRoot)) return true;
 
-  if (!autoFetchEnabled) {
-    console.warn(`[icons] source directory not found and auto-fetch is disabled: ${sourceDir}`);
+  const relativeSourceDir = path.relative(root, sourceDir);
+  const hasExistingPublicIcons = pathExists(targetShapeDir) || pathExists(manifestPath) || pathExists(legacyManifestPath);
+  if (hasExistingPublicIcons) {
+    console.warn(
+      `[icons] local icon sources not found at ${relativeSourceDir}; keeping existing public/leaftab-icons assets`,
+    );
     return false;
   }
 
-  const hasGitRepo = pathExists(path.join(iconRepoDir, '.git'));
-  try {
-    if (!hasGitRepo) {
-      if (pathExists(iconRepoDir)) {
-        fs.rmSync(iconRepoDir, { recursive: true, force: true });
-      }
-      console.log(`[icons] cloning ${iconRepoUrl} -> ${path.relative(root, iconRepoDir)}`);
-      runGit(['clone', '--depth=1', iconRepoUrl, iconRepoDir]);
-    } else if (autoUpdateEnabled) {
-      console.log(`[icons] updating local icon repo at ${path.relative(root, iconRepoDir)}`);
-      execFileSync('git', ['pull', '--ff-only'], {
-        cwd: iconRepoDir,
-        stdio: 'inherit',
-      });
-    }
-
-    if (iconRepoRef) {
-      console.log(`[icons] checking out ${iconRepoRef}`);
-      execFileSync('git', ['checkout', iconRepoRef], {
-        cwd: iconRepoDir,
-        stdio: 'inherit',
-      });
-    }
-  } catch (error) {
-    console.warn(`[icons] failed to prepare local icon repository: ${error.message}`);
-    return false;
-  }
-
-  if (!pathExists(sourceDir) && !pathExists(legacyLayeredRoot)) {
-    console.warn(`[icons] icon repository is present but ${sourceDir} is still missing`);
-    return false;
-  }
-
-  return true;
+  console.warn(`[icons] local icon sources not found at ${relativeSourceDir}`);
+  return false;
 };
 
 const cleanTargetDirectory = (dirPath, keepFileNames) => {

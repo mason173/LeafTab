@@ -6,7 +6,8 @@ export type ShortcutLayoutDensity = 'compact' | 'regular' | 'large';
 export const DEFAULT_SHORTCUT_CARD_VARIANT: ShortcutCardVariant = 'compact';
 
 export function parseShortcutCardVariant(value: string | null | undefined): ShortcutCardVariant {
-  if (value === 'default') return 'default';
+  // The rich/default card variant stays in the codebase for legacy rendering paths,
+  // but user-facing configuration is now compact-only.
   if (value === 'compact') return 'compact';
   return DEFAULT_SHORTCUT_CARD_VARIANT;
 }

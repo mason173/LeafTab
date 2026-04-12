@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -14,6 +14,7 @@ type ShortcutFolderDialogProps = {
   onOpenChange: (open: boolean) => void;
   shortcut: Shortcut | null;
   iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
@@ -24,6 +25,7 @@ export function ShortcutFolderDialog({
   onOpenChange,
   shortcut,
   iconCornerRadius,
+  iconAppearance,
   onShortcutOpen,
   onShortcutDropIntent,
   onExtractDragStart,
@@ -54,6 +56,7 @@ export function ShortcutFolderDialog({
               shortcuts={children}
               emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
               iconCornerRadius={iconCornerRadius}
+              iconAppearance={iconAppearance}
               maskBoundaryRef={contentBoundaryRef}
               onShortcutOpen={onShortcutOpen}
               onShortcutDropIntent={onShortcutDropIntent}

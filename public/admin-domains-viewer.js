@@ -1,11 +1,12 @@
 (function () {
-  const ICON_LIBRARY_URL_KEY = "leaftab_icon_library_url";
-  const ICON_LIBRARY_MANIFEST_KEY = "leaftab_icon_library_manifest_json";
-  const ICON_LIBRARY_MANIFEST_ETAG_KEY = "leaftab_icon_library_manifest_etag";
-  const ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY = "leaftab_icon_library_manifest_fetched_at";
-  const DEFAULT_ICON_LIBRARY_URL = "https://mason173.github.io/leaftab-icons";
+  const LOCAL_ICON_LIBRARY_BASE_URL = "/leaftab-icons";
   const ICON_LIBRARY_MANIFEST_FILES = ["icon-library.json", "manifest.json"];
-  const MANIFEST_TTL_MS = 12 * 60 * 60 * 1000;
+  const LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS = [
+    "leaftab_icon_library_url",
+    "leaftab_icon_library_manifest_json",
+    "leaftab_icon_library_manifest_etag",
+    "leaftab_icon_library_manifest_fetched_at"
+  ];
 
   const params = new URLSearchParams(window.location.search);
   const langRaw = (
@@ -184,6 +185,7 @@
   let page = 1;
   let pageSize = Number(el.pageSizeSelect.value) || 100;
   let iconManifest = null;
+  let legacyRemoteStorageCleared = false;
 
   function setText(id, value) {
     const node = document.getElementById(id);
@@ -342,119 +344,60 @@
     };
   }
 
-  function readStoredManifest() {
+  function clearLegacyRemoteIconLibraryState() {
+    if (legacyRemoteStorageCleared) return;
+    legacyRemoteStorageCleared = true;
     try {
-      const raw = localStorage.getItem(ICON_LIBRARY_MANIFEST_KEY);
-      if (!raw) return null;
-      return normalizeManifest(JSON.parse(raw));
-    } catch {
-      return null;
-    }
-  }
-
-  function readStoredFetchedAt() {
-    try {
-      const raw = localStorage.getItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY) || "";
-      const n = raw ? Number(raw) : 0;
-      return Number.isFinite(n) ? n : 0;
-    } catch {
-      return 0;
-    }
-  }
-
-  function writeStoredManifest(manifest, etag) {
-    try {
-      if (!manifest) {
-        localStorage.removeItem(ICON_LIBRARY_MANIFEST_KEY);
-        localStorage.removeItem(ICON_LIBRARY_MANIFEST_ETAG_KEY);
-        localStorage.removeItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY);
-        return;
-      }
-      localStorage.setItem(ICON_LIBRARY_MANIFEST_KEY, JSON.stringify(manifest));
-      if (etag) localStorage.setItem(ICON_LIBRARY_MANIFEST_ETAG_KEY, etag);
-      localStorage.setItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY, String(Date.now()));
+      LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS.forEach(function (key) {
+        localStorage.removeItem(key);
+      });
     } catch {}
   }
 
-  function getIconLibraryUrl() {
-    try {
-      const raw = (localStorage.getItem(ICON_LIBRARY_URL_KEY) || "").trim();
-      return raw || DEFAULT_ICON_LIBRARY_URL;
-    } catch {
-      return DEFAULT_ICON_LIBRARY_URL;
-    }
+  function getLocalIconLibraryUrl() {
+    if (!window.location || !window.location.origin) return LOCAL_ICON_LIBRARY_BASE_URL;
+    return window.location.origin.replace(/\/+$/, "") + LOCAL_ICON_LIBRARY_BASE_URL;
   }
 
   async function ensureIconManifest() {
-    const storedManifest = readStoredManifest();
-    const storedFetchedAt = readStoredFetchedAt();
-    if (storedManifest && storedFetchedAt && Date.now() - storedFetchedAt < MANIFEST_TTL_MS) {
-      iconManifest = storedManifest;
-      return iconManifest;
-    }
-
-    const baseUrl = getIconLibraryUrl();
-    if (!baseUrl) {
-      iconManifest = storedManifest;
-      return iconManifest;
-    }
-
-    let etag = null;
-    try {
-      etag = (localStorage.getItem(ICON_LIBRARY_MANIFEST_ETAG_KEY) || "").trim() || null;
-    } catch {}
+    if (iconManifest && iconManifest.icons) return iconManifest;
+    clearLegacyRemoteIconLibraryState();
+    const baseUrl = getLocalIconLibraryUrl();
 
     try {
-      const headers = {};
-      if (etag) headers["If-None-Match"] = etag;
-      const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
       let resp = null;
       for (const fileName of ICON_LIBRARY_MANIFEST_FILES) {
-        const candidate = await fetch(normalizedBaseUrl + "/" + fileName, {
+        const candidate = await fetch(baseUrl + "/" + fileName, {
           method: "GET",
           credentials: "omit",
-          headers: headers
+          cache: "force-cache"
         });
-        if (candidate.ok || candidate.status === 304) {
+        if (candidate.ok) {
           resp = candidate;
           break;
         }
       }
       if (!resp) {
-        iconManifest = storedManifest;
-        return iconManifest;
-      }
-
-      if (resp.status === 304 && storedManifest) {
-        iconManifest = storedManifest;
-        try {
-          localStorage.setItem(ICON_LIBRARY_MANIFEST_FETCHED_AT_KEY, String(Date.now()));
-        } catch {}
-        return iconManifest;
-      }
-
-      if (!resp.ok) {
-        iconManifest = storedManifest;
+        iconManifest = null;
         return iconManifest;
       }
 
       const json = await resp.json();
       const normalized = normalizeManifest(json);
       if (!normalized) {
-        iconManifest = storedManifest;
+        iconManifest = null;
         return iconManifest;
       }
-      writeStoredManifest(normalized, resp.headers.get("etag") || etag);
       iconManifest = normalized;
       return iconManifest;
     } catch {
-      iconManifest = storedManifest;
+      iconManifest = null;
       return iconManifest;
     }
   }
 
   function isSupportedDomain(domain) {
-    const manifest = iconManifest || readStoredManifest();
+    const manifest = iconManifest;
     if (!manifest || !manifest.icons) return false;
     const d = normalizeDomain(domain);
     if (!d) return false;

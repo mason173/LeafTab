@@ -52,6 +52,10 @@ export const resolveShortcutIconColor = (value: string | null | undefined) => {
   return normalized || LEGACY_SHORTCUT_ICON_COLOR;
 };
 
+export const hasOfficialIconColorOverride = (
+  shortcut?: Partial<Shortcut> | null,
+) => shortcut?.officialIconColorOverride === true;
+
 export const getShortcutIconColor = (seed: string, preferredColor?: string | null) => {
   void seed;
   return resolveShortcutIconColor(preferredColor);

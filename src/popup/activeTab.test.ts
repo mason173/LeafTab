@@ -7,11 +7,13 @@ describe('active tab shortcut prefill', () => {
       title: 'Example Domain',
       url: 'https://example.com/path?q=1',
       pendingUrl: undefined,
+      favIconUrl: 'https://example.com/favicon.ico',
     });
 
     expect(prefill).toEqual({
       title: 'Example Domain',
       url: 'https://example.com/path?q=1',
+      icon: 'https://example.com/favicon.ico',
     });
   });
 
@@ -20,9 +22,11 @@ describe('active tab shortcut prefill', () => {
       title: 'Extensions',
       url: 'chrome://extensions',
       pendingUrl: undefined,
+      favIconUrl: undefined,
     });
 
     expect(prefill.url).toBe('chrome://extensions');
+    expect(prefill.icon).toBe('');
     expect(isSaveableShortcutUrl('chrome://extensions')).toBe(false);
   });
 });

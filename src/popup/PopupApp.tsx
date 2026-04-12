@@ -11,11 +11,13 @@ import { readShortcutScenarioContext, saveShortcutToLocalProfile } from '@/utils
 type PrefillState = {
   title: string;
   url: string;
+  icon: string;
 };
 
 const EMPTY_PREFILL: PrefillState = {
   title: '',
   url: '',
+  icon: '',
 };
 
 export function PopupApp() {
@@ -69,7 +71,8 @@ export function PopupApp() {
   const initialShortcut = useMemo(() => ({
     title: prefill.title,
     url: prefill.url,
-  }), [prefill.title, prefill.url]);
+    icon: prefill.icon,
+  }), [prefill.icon, prefill.title, prefill.url]);
 
   const handleSave = (
     draft: ShortcutDraft,

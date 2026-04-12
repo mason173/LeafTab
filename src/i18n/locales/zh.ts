@@ -191,11 +191,11 @@ export default {
         select: "选择"
       },
       shortcutsStyle: {
-        label: "快捷方式样式",
-        entryDescription: "切换快捷方式样式并设置网格列数与基础行数",
+        label: "快捷方式布局",
+        entryDescription: "设置网格列数与名称显示方式",
         open: "打开",
-        title: "快捷方式样式设置",
-        description: "选择快捷方式样式，并设置单页网格的列数和基础行数",
+        title: "快捷方式布局设置",
+        description: "设置单页网格的列数与快捷方式名称显示方式",
         rich: "丰富",
         compact: "简约",
         showName: "显示名称",
@@ -211,9 +211,9 @@ export default {
         description: "调整快捷方式图标的颜色模式与圆角形状。",
         modeLabel: "颜色模式",
         colorful: "彩色",
-        monochrome: "黑白",
-        accent: "主题色",
-        modeReservedHint: "黑白和主题色模式已预留，当前版本先保持与彩色模式一致。",
+        monochrome: "单色",
+        accent: "强调色",
+        modeReservedHint: "单色和强调色会统一重绘图标颜色。",
         cornerRadius: "圆角",
         size: "图标大小"
       },
@@ -447,16 +447,6 @@ export default {
         customSaved: "自定义后端地址已保存",
         customCleared: "自定义后端地址已清除",
         customInvalid: "地址格式不正确"
-      },
-      iconLibrary: {
-        label: "图标库地址",
-        desc: "用于优先加载 LeafTab 风格图标（GitHub Pages）",
-        placeholder: "地址（例如：https://xxx.github.io/icons）",
-        save: "保存",
-        saved: "图标库地址已保存",
-        restore: "恢复默认",
-        restored: "已恢复默认图标库地址",
-        invalid: "图标库地址格式不正确"
       },
       about: {
         label: "关于 LeafTab",
@@ -1079,7 +1069,7 @@ export default {
       urlPlaceholder: "请输入网址",
       icon: {
         modeGroup: "图标来源",
-        modeOfficialShort: "官方",
+        modeOfficialShort: "系统",
         modeFaviconShort: "网络",
         modeLetterShort: "文字",
         modeCustomShort: "自定义",

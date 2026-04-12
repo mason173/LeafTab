@@ -1,9 +1,10 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { buildFaviconCandidates, extractDomainFromUrl, shouldProbeRemoteFaviconForUrl } from '../utils';
+import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { buildFaviconCandidates, extractDomainFromUrl, getRemoteFaviconOverride, shouldProbeRemoteFaviconForUrl } from '../utils';
 import { resolveCustomIcon, resolveCustomIconFromCache, type ResolvedCustomIcon } from '@/utils/iconLibrary';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
   getShortcutIconColor,
+  hasOfficialIconColorOverride,
   normalizeShortcutVisualMode,
   shouldUseOfficialShortcutIcon,
 } from '@/utils/shortcutIconPreferences';
@@ -24,6 +25,7 @@ import {
   getShortcutIconBorderRadius,
 } from '@/utils/shortcutIconSettings';
 import { getAdaptiveShortcutForegroundColor } from '@/utils/shortcutColorHsl';
+import { useShortcutIconRenderContext } from './ShortcutIconRenderContext';
 
 const FAVICON_CACHE_PREFIX = 'favicon_cache_v2:';
 const FAVICON_CACHE_INDEX_KEY = 'favicon_cache_v2_index';
@@ -44,6 +46,10 @@ const isIowenFaviconUrl = (value: string) => /^https:\/\/api\.iowen\.cn\/favicon
 const isDuckDuckGoIp3Url = (value: string) => /^https:\/\/icons\.duckduckgo\.com\/ip3\/.+\.ico$/i.test((value || '').trim());
 const isGoogleS2FaviconUrl = (value: string) => /^https:\/\/www\.google\.com\/s2\/favicons\?.+$/i.test((value || '').trim());
 const isGoogleGstaticFaviconV2Url = (value: string) => /^https:\/\/t\d*\.gstatic\.com\/faviconV2\?.+$/i.test((value || '').trim());
+const isSvgImageSource = (value: string) => {
+  const normalized = (value || '').trim().toLowerCase();
+  return normalized.endsWith('.svg') || normalized.startsWith('data:image/svg+xml');
+};
 
 function buildFirefoxFaviconCandidates(domain: string, preferSingleCandidate: boolean) {
   const safeDomain = domain.trim();
@@ -223,6 +229,332 @@ type IconCandidate = {
   officialDefaultColor?: string;
 };
 
+type OfficialSvgTintMode = 'unknown' | 'mask' | 'filter';
+
+const SHORTCUT_ICON_FILTER_HOST_ID = 'leaftab-shortcut-icon-filter-defs';
+const SHORTCUT_ICON_MONO_FILTER_ID = 'leaftab-shortcut-icon-filter-monochrome';
+const SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID = 'leaftab-shortcut-icon-filter-monochrome-fixed-white';
+const SHORTCUT_ICON_ACCENT_FILTER_ID = 'leaftab-shortcut-icon-filter-accent';
+const FIXED_WHITE_MONOCHROME_COLOR = '#FFFFFF';
+const UNIFIED_ICON_GLYPH_CONTENT_RATIO = 0.56;
+const OFFICIAL_SVG_TINT_MODE_CACHE = new Map<string, Exclude<OfficialSvgTintMode, 'unknown'>>();
+const OFFICIAL_SVG_TINT_MODE_IN_FLIGHT = new Map<string, Promise<Exclude<OfficialSvgTintMode, 'unknown'>>>();
+const SVG_RASTER_CONTENT_PATTERN = /<(?:image|feImage|foreignObject)\b|(?:xlink:href|href)\s*=\s*["']data:image\/(?:png|jpeg|jpg|webp|gif|bmp|ico|avif)/i;
+let shortcutIconFilterSyncRaf = 0;
+let shortcutIconFilterSyncTimeout = 0;
+let shortcutIconFilterAutoSyncInstalled = false;
+
+function decodeSvgTextFromDataUrl(value: string) {
+  const normalized = (value || '').trim();
+  if (!normalized.toLowerCase().startsWith('data:image/svg+xml')) return '';
+  const separatorIndex = normalized.indexOf(',');
+  if (separatorIndex < 0) return '';
+  const metadata = normalized.slice(0, separatorIndex).toLowerCase();
+  const payload = normalized.slice(separatorIndex + 1);
+  try {
+    return metadata.includes(';base64')
+      ? atob(payload)
+      : decodeURIComponent(payload);
+  } catch {
+    return '';
+  }
+}
+
+function classifyOfficialSvgTintMode(svgText: string): Exclude<OfficialSvgTintMode, 'unknown'> {
+  return SVG_RASTER_CONTENT_PATTERN.test(svgText) ? 'filter' : 'mask';
+}
+
+async function resolveOfficialSvgTintMode(src: string): Promise<Exclude<OfficialSvgTintMode, 'unknown'>> {
+  const normalizedSrc = (src || '').trim();
+  if (!normalizedSrc) return 'mask';
+
+  const cached = OFFICIAL_SVG_TINT_MODE_CACHE.get(normalizedSrc);
+  if (cached) return cached;
+
+  const inFlight = OFFICIAL_SVG_TINT_MODE_IN_FLIGHT.get(normalizedSrc);
+  if (inFlight) return inFlight;
+
+  const promise = (async () => {
+    try {
+      const inlineSvgText = decodeSvgTextFromDataUrl(normalizedSrc);
+      if (inlineSvgText) {
+        const mode = classifyOfficialSvgTintMode(inlineSvgText);
+        OFFICIAL_SVG_TINT_MODE_CACHE.set(normalizedSrc, mode);
+        return mode;
+      }
+
+      const response = await fetch(normalizedSrc, {
+        method: 'GET',
+        credentials: 'omit',
+        cache: 'force-cache',
+      });
+      if (!response.ok) return 'mask';
+      const svgText = await response.text();
+      const mode = classifyOfficialSvgTintMode(svgText);
+      OFFICIAL_SVG_TINT_MODE_CACHE.set(normalizedSrc, mode);
+      return mode;
+    } catch {
+      return 'mask';
+    } finally {
+      OFFICIAL_SVG_TINT_MODE_IN_FLIGHT.delete(normalizedSrc);
+    }
+  })();
+
+  OFFICIAL_SVG_TINT_MODE_IN_FLIGHT.set(normalizedSrc, promise);
+  return promise;
+}
+
+function resolveCssColor(cssColor: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const probe = document.createElement('span');
+  probe.style.position = 'absolute';
+  probe.style.opacity = '0';
+  probe.style.pointerEvents = 'none';
+  probe.style.color = cssColor;
+  document.body.appendChild(probe);
+  const resolved = window.getComputedStyle(probe).color;
+  probe.remove();
+  return resolved || null;
+}
+
+function ensureShortcutIconFilterDefs() {
+  if (typeof document === 'undefined') return null;
+
+  let host = document.getElementById(SHORTCUT_ICON_FILTER_HOST_ID) as SVGSVGElement | null;
+  if (!host) {
+    host = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    host.setAttribute('id', SHORTCUT_ICON_FILTER_HOST_ID);
+    host.setAttribute('aria-hidden', 'true');
+    host.style.position = 'absolute';
+    host.style.width = '0';
+    host.style.height = '0';
+    host.style.pointerEvents = 'none';
+    host.style.overflow = 'hidden';
+    host.innerHTML = `
+      <defs>
+        <filter id="${SHORTCUT_ICON_MONO_FILTER_ID}" color-interpolation-filters="sRGB">
+          <feComponentTransfer in="SourceGraphic" result="whiteIconBase">
+            <feFuncR type="table" tableValues="1 1"></feFuncR>
+            <feFuncG type="table" tableValues="1 1"></feFuncG>
+            <feFuncB type="table" tableValues="1 1"></feFuncB>
+          </feComponentTransfer>
+          <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="lumAlpha"></feColorMatrix>
+          <feComponentTransfer in="lumAlpha" result="lumExtract">
+            <feFuncA type="table" tableValues="0 0 0 0.2 1"></feFuncA>
+          </feComponentTransfer>
+          <feComponentTransfer in="lumExtract" result="iconMask">
+            <feFuncA type="table" tableValues="1 0"></feFuncA>
+          </feComponentTransfer>
+          <feComposite in="whiteIconBase" in2="iconMask" operator="in" result="whiteIcon"></feComposite>
+          <feFlood data-role="flood" flood-color="rgb(0, 0, 0)" result="solidColor"></feFlood>
+          <feComposite in="solidColor" in2="whiteIcon" operator="in" result="coloredIcon"></feComposite>
+          <feComposite in="coloredIcon" in2="SourceAlpha" operator="in"></feComposite>
+        </filter>
+        <filter id="${SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID}" color-interpolation-filters="sRGB">
+          <feComponentTransfer in="SourceGraphic" result="whiteIconBase">
+            <feFuncR type="table" tableValues="1 1"></feFuncR>
+            <feFuncG type="table" tableValues="1 1"></feFuncG>
+            <feFuncB type="table" tableValues="1 1"></feFuncB>
+          </feComponentTransfer>
+          <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="lumAlpha"></feColorMatrix>
+          <feComponentTransfer in="lumAlpha" result="lumExtract">
+            <feFuncA type="table" tableValues="0 0 0 0.2 1"></feFuncA>
+          </feComponentTransfer>
+          <feComponentTransfer in="lumExtract" result="iconMask">
+            <feFuncA type="table" tableValues="1 0"></feFuncA>
+          </feComponentTransfer>
+          <feComposite in="whiteIconBase" in2="iconMask" operator="in" result="whiteIcon"></feComposite>
+          <feFlood flood-color="rgb(255, 255, 255)" result="solidColor"></feFlood>
+          <feComposite in="solidColor" in2="whiteIcon" operator="in" result="coloredIcon"></feComposite>
+          <feComposite in="coloredIcon" in2="SourceAlpha" operator="in"></feComposite>
+        </filter>
+        <filter id="${SHORTCUT_ICON_ACCENT_FILTER_ID}" color-interpolation-filters="sRGB">
+          <feComponentTransfer in="SourceGraphic" result="whiteIconBase">
+            <feFuncR type="table" tableValues="1 1"></feFuncR>
+            <feFuncG type="table" tableValues="1 1"></feFuncG>
+            <feFuncB type="table" tableValues="1 1"></feFuncB>
+          </feComponentTransfer>
+          <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="lumAlpha"></feColorMatrix>
+          <feComponentTransfer in="lumAlpha" result="lumExtract">
+            <feFuncA type="table" tableValues="0 0 0 0.2 1"></feFuncA>
+          </feComponentTransfer>
+          <feComponentTransfer in="lumExtract" result="iconMask">
+            <feFuncA type="table" tableValues="1 0"></feFuncA>
+          </feComponentTransfer>
+          <feComposite in="whiteIconBase" in2="iconMask" operator="in" result="whiteIcon"></feComposite>
+          <feFlood data-role="flood" flood-color="rgb(0, 0, 0)" result="solidColor"></feFlood>
+          <feComposite in="solidColor" in2="whiteIcon" operator="in" result="coloredIcon"></feComposite>
+          <feComposite in="coloredIcon" in2="SourceAlpha" operator="in"></feComposite>
+        </filter>
+      </defs>
+    `;
+    document.body.prepend(host);
+  }
+
+  return host;
+}
+
+function syncShortcutIconFilterDefs() {
+  const host = ensureShortcutIconFilterDefs();
+  if (!host) return;
+
+  const monochromeColor = resolveCssColor('var(--foreground)');
+  const accentColor = resolveCssColor('var(--primary)');
+  if (!monochromeColor || !accentColor) return;
+
+  const monoFlood = host.querySelector(`#${SHORTCUT_ICON_MONO_FILTER_ID} feFlood[data-role="flood"]`);
+  const accentFlood = host.querySelector(`#${SHORTCUT_ICON_ACCENT_FILTER_ID} feFlood[data-role="flood"]`);
+  monoFlood?.setAttribute('flood-color', monochromeColor);
+  accentFlood?.setAttribute('flood-color', accentColor);
+}
+
+function queueShortcutIconFilterDefsSync() {
+  if (typeof window === 'undefined') return;
+
+  syncShortcutIconFilterDefs();
+
+  if (shortcutIconFilterSyncRaf) {
+    window.cancelAnimationFrame(shortcutIconFilterSyncRaf);
+  }
+  shortcutIconFilterSyncRaf = window.requestAnimationFrame(() => {
+    shortcutIconFilterSyncRaf = 0;
+    syncShortcutIconFilterDefs();
+    window.requestAnimationFrame(() => {
+      syncShortcutIconFilterDefs();
+    });
+  });
+
+  if (shortcutIconFilterSyncTimeout) {
+    window.clearTimeout(shortcutIconFilterSyncTimeout);
+  }
+  shortcutIconFilterSyncTimeout = window.setTimeout(() => {
+    shortcutIconFilterSyncTimeout = 0;
+    syncShortcutIconFilterDefs();
+  }, 120);
+}
+
+function installShortcutIconFilterDefsAutoSync() {
+  if (typeof window === 'undefined' || shortcutIconFilterAutoSyncInstalled) return;
+  shortcutIconFilterAutoSyncInstalled = true;
+
+  const handleSync = () => {
+    queueShortcutIconFilterDefsSync();
+  };
+
+  window.addEventListener('pageshow', handleSync);
+  window.addEventListener('load', handleSync);
+  window.addEventListener('leaftab-accent-color-changed', handleSync);
+
+  if (typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver(() => {
+      queueShortcutIconFilterDefsSync();
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-accent-color'],
+    });
+  }
+
+  queueShortcutIconFilterDefsSync();
+}
+
+function AppearanceAwareImage({
+  src,
+  appearance,
+  className,
+  style,
+  onLoad,
+  onError,
+}: {
+  src: string;
+  appearance: ShortcutIconAppearance;
+  className?: string;
+  style?: CSSProperties;
+  onLoad?: () => void;
+  onError?: () => void;
+}) {
+  const { monochromeTone } = useShortcutIconRenderContext();
+  const resolvedFilter = appearance === 'monochrome'
+    ? `url(#${monochromeTone === 'fixed-white' ? SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID : SHORTCUT_ICON_MONO_FILTER_ID})`
+    : appearance === 'accent'
+      ? `url(#${SHORTCUT_ICON_ACCENT_FILTER_ID})`
+      : undefined;
+
+  return (
+    <img
+      alt=""
+      data-shortcut-icon-appearance={appearance}
+      className={className}
+      draggable={false}
+      src={src}
+      style={{
+        ...style,
+        filter: resolvedFilter,
+      }}
+      onLoad={onLoad}
+      onError={onError}
+    />
+  );
+}
+
+function AppearanceAwareSvgMask({
+  src,
+  appearance,
+  color,
+  className,
+  style,
+  onLoad,
+  onError,
+}: {
+  src: string;
+  appearance: ShortcutIconAppearance;
+  color: string;
+  className?: string;
+  style?: CSSProperties;
+  onLoad?: () => void;
+  onError?: () => void;
+}) {
+  const maskImage = `url(${JSON.stringify(src)})`;
+
+  return (
+    <>
+      <img
+        alt=""
+        aria-hidden="true"
+        data-shortcut-icon-preload="true"
+        draggable={false}
+        src={src}
+        style={{
+          position: 'absolute',
+          width: 0,
+          height: 0,
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+        onLoad={onLoad}
+        onError={onError}
+      />
+      <div
+        aria-hidden="true"
+        data-shortcut-icon-appearance={appearance}
+        className={className}
+        style={{
+          ...style,
+          backgroundColor: color,
+          WebkitMaskImage: maskImage,
+          maskImage,
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+        }}
+      />
+    </>
+  );
+}
+
 function getCachedIconSignature(domain: string) {
   try {
     const d = normalizeDomain(domain);
@@ -299,6 +631,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   useOfficialIcon,
   autoUseOfficialIcon,
   officialIconAvailableAtSave,
+  officialIconColorOverride,
   iconRendering,
   iconColor,
   iconCornerRadius = DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
@@ -319,6 +652,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   useOfficialIcon?: Shortcut['useOfficialIcon'];
   autoUseOfficialIcon?: Shortcut['autoUseOfficialIcon'];
   officialIconAvailableAtSave?: Shortcut['officialIconAvailableAtSave'];
+  officialIconColorOverride?: Shortcut['officialIconColorOverride'];
   iconRendering?: Shortcut['iconRendering'];
   iconColor?: Shortcut['iconColor'];
   iconCornerRadius?: number;
@@ -326,6 +660,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   remoteIconScale?: number;
 }) {
   const firefox = isFirefoxBuildTarget();
+  const { monochromeTone } = useShortcutIconRenderContext();
   const domain = useMemo(() => extractDomainFromUrl(url), [url]);
   const canProbeRemoteFavicon = useMemo(() => isHttpFaviconEligible(url, domain), [domain, url]);
   const skipDomainCandidates = useMemo(() => (domain ? shouldSkipDomainCandidates(domain) : false), [domain]);
@@ -432,6 +767,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
       if (icon && !isIowenFaviconUrl(icon)) {
         list.push({ src: icon, kind: 'provided' });
       }
+      if (domain) {
+        const overrideIcon = getRemoteFaviconOverride(domain);
+        if (overrideIcon) {
+          list.push({ src: overrideIcon, kind: 'favicon' });
+        }
+      }
       if (domain && canProbeRemoteFavicon && !skipDomainCandidates && (!firefox || firefoxDomainCandidatesReady)) {
         list.push(
           ...(firefox
@@ -475,6 +816,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   ]);
 
   const [index, setIndex] = useState(0);
+  const [officialSvgTintMode, setOfficialSvgTintMode] = useState<OfficialSvgTintMode>('unknown');
 
   useEffect(() => {
     setIndex(0);
@@ -547,24 +889,113 @@ const ShortcutIcon = memo(function ShortcutIcon({
     () => getAdaptiveShortcutForegroundColor(emptyIconColor),
     [emptyIconColor],
   );
+  const resolvedOfficialOverrideColor = (
+    activeCandidate?.kind === 'official'
+    && hasOfficialIconColorOverride({ officialIconColorOverride })
+    && typeof iconColor === 'string'
+    && iconColor.trim()
+  )
+    ? iconColor.trim()
+    : '';
   const officialBackgroundColor = (
-    (typeof iconColor === 'string' && iconColor.trim())
+    resolvedOfficialOverrideColor
     || activeCandidate?.officialDefaultColor
     || emptyIconColor
   );
   const isCustomActive = activeCandidate?.kind === 'official' || activeCandidate?.kind === 'local-custom';
   const useFrame = frame === 'always' || (frame === 'auto' && !isCustomActive);
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
-  const overlaySize = 24;
+  const overlaySize = Math.max(12, Math.round(size * UNIFIED_ICON_GLYPH_CONTENT_RATIO));
   const resolvedCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
   const roundedBorderRadius = getShortcutIconBorderRadius(resolvedCornerRadius);
   const normalizedRemoteIconScale = Math.min(1, Math.max(0.55, remoteIconScale));
   const centeredOverlayImageSize = Math.max(12, Math.round(Math.min(size, overlaySize) * normalizedRemoteIconScale));
-  void iconAppearance;
+  const requestedIconAppearance: ShortcutIconAppearance = activeCandidate?.kind === 'local-custom'
+    ? 'colorful'
+    : iconAppearance;
+  const isOfficialSvg = activeCandidate?.kind === 'official' && isSvgImageSource(src);
+  const shouldResolveOfficialSvgTintMode = (
+    activeCandidate?.kind === 'official'
+    && activeCandidate.officialMode === 'shape-color'
+    && isSvgImageSource(src)
+    && requestedIconAppearance !== 'colorful'
+  );
+  const useOfficialSvgFilterTint = shouldResolveOfficialSvgTintMode && officialSvgTintMode === 'filter';
+  const useOfficialSvgMask = (
+    shouldResolveOfficialSvgTintMode
+    && officialSvgTintMode === 'mask'
+  );
+  const bypassImageTintForOfficialSvg = isOfficialSvg && !useOfficialSvgFilterTint;
+  const resolvedImageAppearance: ShortcutIconAppearance = bypassImageTintForOfficialSvg
+    ? 'colorful'
+    : requestedIconAppearance;
+  const useFixedWhiteMonochrome = requestedIconAppearance === 'monochrome' && monochromeTone === 'fixed-white';
+  const isDarkTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const accentSurfaceColor = 'color-mix(in srgb, var(--primary) 14%, var(--background) 86%)';
+  const monochromeSurfaceColor = useFixedWhiteMonochrome
+    ? 'color-mix(in srgb, color-mix(in srgb, black 32%, var(--background) 68%) 60%, transparent)'
+    : isDarkTheme
+      ? 'color-mix(in srgb, var(--foreground) 7%, var(--background) 93%)'
+      : '#FFFFFF';
+  const appearanceTileBackgroundColor = requestedIconAppearance === 'accent'
+    ? accentSurfaceColor
+    : requestedIconAppearance === 'monochrome'
+      ? monochromeSurfaceColor
+      : '';
+  const appearanceTileForegroundColor = requestedIconAppearance === 'accent'
+    ? 'var(--primary)'
+    : useFixedWhiteMonochrome
+      ? FIXED_WHITE_MONOCHROME_COLOR
+      : 'var(--foreground)';
+  const emptyFallbackBackgroundColor = requestedIconAppearance === 'colorful'
+    ? emptyIconColor
+    : appearanceTileBackgroundColor;
+  const emptyFallbackForegroundColor = requestedIconAppearance === 'colorful'
+    ? emptyIconForegroundColor
+    : appearanceTileForegroundColor;
+  const officialTileBackgroundColor = requestedIconAppearance === 'colorful'
+    ? officialBackgroundColor
+    : appearanceTileBackgroundColor;
+  const monochromeTileSurfaceStyle: CSSProperties | undefined = requestedIconAppearance === 'monochrome'
+    ? {
+        boxShadow: useFixedWhiteMonochrome
+          ? 'inset 0 0 0 0.5px color-mix(in srgb, black 8%, transparent), 0 1px 1.5px rgba(0,0,0,0.14)'
+          : 'inset 0 0 0 0.75px color-mix(in srgb, var(--foreground) 10%, transparent), 0 1px 1.5px rgba(0,0,0,0.12)',
+      }
+    : undefined;
 
   useEffect(() => {
     setEmptyIconColor(getShortcutIconColor(emptyIconColorSeed, iconColor));
   }, [emptyIconColorSeed, iconColor]);
+
+  useEffect(() => {
+    if (!shouldResolveOfficialSvgTintMode || !src) {
+      setOfficialSvgTintMode('unknown');
+      return;
+    }
+
+    const cached = OFFICIAL_SVG_TINT_MODE_CACHE.get(src);
+    if (cached) {
+      setOfficialSvgTintMode(cached);
+      return;
+    }
+
+    let cancelled = false;
+    setOfficialSvgTintMode('unknown');
+    void resolveOfficialSvgTintMode(src).then((mode) => {
+      if (cancelled) return;
+      setOfficialSvgTintMode(mode);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldResolveOfficialSvgTintMode, src]);
+
+  useEffect(() => {
+    if (resolvedImageAppearance === 'colorful') return;
+    installShortcutIconFilterDefsAutoSync();
+    queueShortcutIconFilterDefsSync();
+  }, [resolvedImageAppearance]);
 
   const handleImageLoad = () => {
     if (domain) clearFaviconFetchFailed(domain);
@@ -596,7 +1027,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
           className="absolute inset-0 overflow-hidden"
-          style={{ borderRadius: roundedBorderRadius, backgroundColor: emptyIconColor }}
+          data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
+          style={{
+            borderRadius: roundedBorderRadius,
+            backgroundColor: emptyFallbackBackgroundColor,
+            ...monochromeTileSurfaceStyle,
+          }}
         />
         <div
           aria-hidden="true"
@@ -606,10 +1042,9 @@ const ShortcutIcon = memo(function ShortcutIcon({
         {src ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>
-              <img
-                alt=""
+              <AppearanceAwareImage
                 className="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain pointer-events-none"
-                draggable={false}
+                appearance={resolvedImageAppearance}
                 src={src}
                 style={{ width: centeredOverlayImageSize, height: centeredOverlayImageSize }}
                 onLoad={handleImageLoad}
@@ -621,7 +1056,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           <div className="absolute inset-0 flex items-center justify-center">
             <span
               className="select-none leading-none font-['PingFang_SC:Medium',sans-serif] text-foreground"
-              style={{ fontSize: fallbackLetterSize, color: emptyIconForegroundColor }}
+              style={{ fontSize: fallbackLetterSize, color: emptyFallbackForegroundColor }}
             >
               {letter}
             </span>
@@ -638,14 +1073,26 @@ const ShortcutIcon = memo(function ShortcutIcon({
         <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
           <div
             className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
-            style={{ borderRadius: roundedBorderRadius }}
+            style={{
+              borderRadius: roundedBorderRadius,
+              backgroundColor: appearanceTileBackgroundColor || undefined,
+              ...monochromeTileSurfaceStyle,
+            }}
+            data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
           >
             <div
               aria-hidden="true"
               className="absolute border-border border-[0.5px] border-solid inset-0 pointer-events-none"
               style={{ borderRadius: roundedBorderRadius }}
             />
-            <div className="text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none" style={{ width: innerSize, height: innerSize }}>
+            <div
+              className="text-[10px] flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
+              style={{
+                width: innerSize,
+                height: innerSize,
+                color: appearanceTileForegroundColor,
+              }}
+            >
               {letter}
             </div>
           </div>
@@ -655,8 +1102,16 @@ const ShortcutIcon = memo(function ShortcutIcon({
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
-          className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 bg-secondary text-[10px] text-foreground flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
-          style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}
+          className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 text-[10px] flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
+          style={{
+            width: innerSize,
+            height: innerSize,
+            borderRadius: roundedBorderRadius,
+            backgroundColor: appearanceTileBackgroundColor || 'var(--secondary)',
+            color: appearanceTileForegroundColor,
+            ...monochromeTileSurfaceStyle,
+          }}
+          data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
         >
           {letter}
         </div>
@@ -690,12 +1145,17 @@ const ShortcutIcon = memo(function ShortcutIcon({
   }
 
   if (activeCandidate?.kind === 'official' && activeCandidate.officialMode === 'shape-color') {
-    const officialInnerSize = Math.max(12, Math.round(size * 0.56));
+    const officialInnerSize = Math.max(12, Math.round(size * UNIFIED_ICON_GLYPH_CONTENT_RATIO));
     return (
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
           className="absolute inset-0 overflow-hidden"
-          style={{ borderRadius: roundedBorderRadius, backgroundColor: officialBackgroundColor }}
+          data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
+          style={{
+            borderRadius: roundedBorderRadius,
+            backgroundColor: officialTileBackgroundColor,
+            ...monochromeTileSurfaceStyle,
+          }}
         />
         <div
           aria-hidden="true"
@@ -703,15 +1163,26 @@ const ShortcutIcon = memo(function ShortcutIcon({
           style={{ borderRadius: roundedBorderRadius, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <img
-            alt=""
-            className="max-w-none object-contain pointer-events-none"
-            draggable={false}
-            src={src}
-            style={{ width: officialInnerSize, height: officialInnerSize }}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
+          {useOfficialSvgMask ? (
+            <AppearanceAwareSvgMask
+              className="pointer-events-none"
+              appearance={requestedIconAppearance}
+              color={appearanceTileForegroundColor}
+              src={src}
+              style={{ width: officialInnerSize, height: officialInnerSize }}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          ) : (
+            <AppearanceAwareImage
+              className="max-w-none object-contain pointer-events-none"
+              appearance={resolvedImageAppearance}
+              src={src}
+              style={{ width: officialInnerSize, height: officialInnerSize }}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          )}
         </div>
       </div>
     );
@@ -721,11 +1192,20 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const innerSize = activeCandidate?.kind === 'favicon' || activeCandidate?.kind === 'provided'
     ? Math.max(12, Math.round(baseInnerSize * normalizedRemoteIconScale))
     : baseInnerSize;
-  const image = (
-    <img
-      alt=""
+  const image = useOfficialSvgMask ? (
+    <AppearanceAwareSvgMask
+      className="absolute inset-0 pointer-events-none"
+      appearance={requestedIconAppearance}
+      color={appearanceTileForegroundColor}
+      src={src}
+      style={{ width: innerSize, height: innerSize }}
+      onLoad={handleImageLoad}
+      onError={handleImageError}
+    />
+  ) : (
+    <AppearanceAwareImage
       className="absolute inset-0 max-w-none object-contain pointer-events-none"
-      draggable={false}
+      appearance={resolvedImageAppearance}
       src={src}
       style={{ width: innerSize, height: innerSize }}
       onLoad={handleImageLoad}
@@ -737,7 +1217,12 @@ const ShortcutIcon = memo(function ShortcutIcon({
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
           className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
-          style={{ borderRadius: roundedBorderRadius }}
+          style={{
+            borderRadius: roundedBorderRadius,
+            backgroundColor: requestedIconAppearance === 'colorful' ? undefined : appearanceTileBackgroundColor || undefined,
+            ...monochromeTileSurfaceStyle,
+          }}
+          data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
         >
           <div
             aria-hidden="true"

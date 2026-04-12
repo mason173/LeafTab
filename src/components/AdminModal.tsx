@@ -9,8 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/sonner";
 import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { normalizeApiBase } from "@/utils";
-import { ensureOriginPermission } from "@/utils/extensionPermissions";
-import { DEFAULT_ICON_LIBRARY_URL, getIconLibraryUrl, normalizeIconLibraryUrl, setIconLibraryUrl } from "@/utils/iconLibrary";
 import { UpdateAvailableDialog } from "@/components/UpdateAvailableDialog";
 
 export function AdminModal({
@@ -44,8 +42,6 @@ export function AdminModal({
   const [adminKey, setAdminKey] = useState<string>(() => (localStorage.getItem("admin_api_key") || "").trim());
   const [customApiNameDraft, setCustomApiNameDraft] = useState<string>(() => (customApiName || "").trim());
   const [customApiUrlDraft, setCustomApiUrlDraft] = useState<string>(() => (customApiUrl || "").trim());
-  const [iconLibraryUrl, setIconLibraryUrlState] = useState<string>(() => (getIconLibraryUrl() || "").trim());
-  const [iconLibraryUrlDraft, setIconLibraryUrlDraft] = useState<string>(() => (getIconLibraryUrl() || "").trim());
   const [domainQueueCount, setDomainQueueCount] = useState<number>(0);
   const [domainLastFlushAt, setDomainLastFlushAt] = useState<string>("");
   const [updateDebugOpen, setUpdateDebugOpen] = useState(false);
@@ -65,9 +61,6 @@ export function AdminModal({
       setDomainQueueCount(0);
     }
     setDomainLastFlushAt(localStorage.getItem("leaftab_domain_last_flush_at") || "");
-    const currentIconLibrary = (getIconLibraryUrl() || "").trim();
-    setIconLibraryUrlState(currentIconLibrary);
-    setIconLibraryUrlDraft(currentIconLibrary);
   };
 
   useEffect(() => {
@@ -75,7 +68,6 @@ export function AdminModal({
     refreshLocal();
     setCustomApiUrlDraft((customApiUrl || "").trim());
     setCustomApiNameDraft((customApiName || "").trim());
-    setIconLibraryUrlDraft((getIconLibraryUrl() || "").trim());
     setUpdateDebugOpen(false);
     const timer = window.setInterval(() => {
       try {
@@ -148,52 +140,6 @@ export function AdminModal({
     onCustomApiNameChange(nextName);
     setCustomApiNameDraft(nextName);
     toast.success(t("settings.server.customSaved"));
-  };
-
-  const handleSaveIconLibraryUrl = async () => {
-    const raw = iconLibraryUrlDraft.trim();
-    if (!raw) {
-      setIconLibraryUrl('');
-      setIconLibraryUrlState(DEFAULT_ICON_LIBRARY_URL);
-      setIconLibraryUrlDraft(DEFAULT_ICON_LIBRARY_URL);
-      toast.success(t("settings.iconLibrary.restored"));
-      return;
-    }
-    const normalized = normalizeIconLibraryUrl(raw);
-    if (!normalized) {
-      toast.error(t("settings.iconLibrary.invalid"));
-      return;
-    }
-    if (normalized === DEFAULT_ICON_LIBRARY_URL) {
-      setIconLibraryUrl('');
-      setIconLibraryUrlState(DEFAULT_ICON_LIBRARY_URL);
-      setIconLibraryUrlDraft(DEFAULT_ICON_LIBRARY_URL);
-      toast.success(t("settings.iconLibrary.restored"));
-      return;
-    }
-
-    try {
-      const granted = await ensureOriginPermission(normalized, { requestIfNeeded: true });
-      if (!granted) {
-        toast.error(t("settings.iconLibrary.permissionDenied", { defaultValue: "未授权访问该图标库域名，请在弹窗中允许站点访问权限后重试。" }));
-        return;
-      }
-    } catch {
-      toast.error(t("settings.iconLibrary.permissionRequestFailed", { defaultValue: "申请站点访问权限失败，请稍后重试。" }));
-      return;
-    }
-
-    setIconLibraryUrl(normalized);
-    setIconLibraryUrlState(normalized);
-    setIconLibraryUrlDraft(normalized);
-    toast.success(t("settings.iconLibrary.saved"));
-  };
-
-  const handleRestoreDefaultIconLibraryUrl = () => {
-    setIconLibraryUrl('');
-    setIconLibraryUrlState(DEFAULT_ICON_LIBRARY_URL);
-    setIconLibraryUrlDraft(DEFAULT_ICON_LIBRARY_URL);
-    toast.success(t("settings.iconLibrary.restored"));
   };
 
   return (
@@ -328,40 +274,6 @@ export function AdminModal({
                     </div>
                   </div>
                 ) : null}
-
-                <div className="flex flex-col gap-3 py-1">
-                  <div className="flex flex-col space-y-1 items-start">
-                    <span className="text-sm font-medium leading-none">{t("settings.iconLibrary.label")}</span>
-                    <span className="font-normal text-xs text-muted-foreground">{t("settings.iconLibrary.desc")}</span>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      value={iconLibraryUrlDraft}
-                      onChange={(e) => setIconLibraryUrlDraft(e.target.value)}
-                      placeholder={t("settings.iconLibrary.placeholder")}
-                      className="flex-1 bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                      onClick={handleSaveIconLibraryUrl}
-                    >
-                      {t("settings.iconLibrary.save")}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
-                      onClick={handleRestoreDefaultIconLibraryUrl}
-                    >
-                      {t("settings.iconLibrary.restore")}
-                    </Button>
-                  </div>
-                  {iconLibraryUrl ? (
-                    <div className="text-[11px] text-muted-foreground/80">{iconLibraryUrl}</div>
-                  ) : null}
-                </div>
 
                 <div className="flex flex-col gap-3 py-1">
                   <div className="flex flex-col space-y-1 items-start">

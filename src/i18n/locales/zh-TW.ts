@@ -139,11 +139,11 @@ export default {
         select: "選擇"
       },
       shortcutsStyle: {
-        label: "捷徑樣式",
-        entryDescription: "切換捷徑樣式並設定網格列數與基礎行數",
+        label: "捷徑版面",
+        entryDescription: "設定網格列數與名稱顯示方式",
         open: "開啟",
-        title: "捷徑樣式設定",
-        description: "選擇捷徑樣式，並設定單頁網格的列數與基礎行數",
+        title: "捷徑版面設定",
+        description: "設定單頁網格的列數與捷徑名稱顯示方式",
         rich: "豐富",
         compact: "簡約",
         showName: "顯示名稱",
@@ -544,7 +544,7 @@ export default {
       urlPlaceholder: "請輸入網址",
       icon: {
         modeGroup: "圖示來源",
-        modeOfficialShort: "官方",
+        modeOfficialShort: "系統",
         modeFaviconShort: "網路",
         modeLetterShort: "文字",
         modeCustomShort: "自訂",

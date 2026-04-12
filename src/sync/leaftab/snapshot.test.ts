@@ -103,6 +103,37 @@ describe('projectLeafTabSyncSnapshotToAppState', () => {
     ]);
   });
 
+  it('dedupes repeated shortcut urls when projecting a sync snapshot back to app state', () => {
+    const snapshot = createSnapshot();
+    snapshot.shortcuts.duplicate = {
+      id: 'duplicate',
+      type: 'shortcut',
+      scenarioId: 'work',
+      title: 'A Duplicate',
+      url: 'https://www.a.example/',
+      icon: 'duplicate-icon',
+      description: '',
+      createdAt: '2026-03-20T10:02:00.000Z',
+      updatedAt: '2026-03-20T10:02:00.000Z',
+      updatedBy: 'device',
+      revision: 1,
+    };
+    snapshot.shortcutOrders.work.ids = ['a', 'duplicate', 'b'];
+
+    const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
+
+    expect(projected.scenarioShortcuts.work).toEqual([
+      expect.objectContaining({
+        id: 'a',
+        url: 'https://a.example',
+      }),
+      expect.objectContaining({
+        id: 'b',
+        url: 'https://b.example',
+      }),
+    ]);
+  });
+
   it('preserves icon color semantics through a sync snapshot round trip', () => {
     const snapshot = buildLeafTabSyncSnapshot({
       preferences: getDefaultSyncablePreferences(),
