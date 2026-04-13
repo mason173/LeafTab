@@ -3,12 +3,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
 import type { Shortcut } from '@/types';
 
+let rafCallbacks: Array<{ id: number; callback: FrameRequestCallback }> = [];
+let nextRafId = 1;
+
 const createLink = (id: string, title: string): Shortcut => ({
   id,
   title,
   url: `https://example.com/${id}`,
   icon: '',
   kind: 'link',
+});
+
+const createFolder = (id: string, title: string, folderDisplayMode: 'small' | 'large' = 'small'): Shortcut => ({
+  id,
+  title,
+  url: '',
+  icon: '',
+  kind: 'folder',
+  folderDisplayMode,
+  children: [createLink(`${id}-child`, `${title} Child`)],
 });
 
 const shortcuts = [
@@ -37,12 +50,43 @@ function assignRect(element: Element, rect: DOMRect) {
   });
 }
 
+function assignDynamicRect(element: Element, getRect: () => DOMRect) {
+  Object.defineProperty(element, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => getRect(),
+  });
+}
+
+function assignGridRects(view: ReturnType<typeof render>, ids: string[], rootRect: DOMRect, itemRects: Record<string, DOMRect>) {
+  const root = view.getByTestId('shortcut-grid');
+  assignRect(root, rootRect);
+  Object.defineProperty(root, 'clientWidth', {
+    configurable: true,
+    value: rootRect.width,
+  });
+
+  ids.forEach((id) => {
+    assignRect(view.getByTestId(`shortcut-card-${id}`), itemRects[id]);
+  });
+}
+
 describe('ShortcutGrid compact drag projection', () => {
   beforeEach(() => {
+    rafCallbacks = [];
+    nextRafId = 1;
     vi.stubGlobal('ResizeObserver', class ResizeObserver {
       observe() {}
       disconnect() {}
       unobserve() {}
+    });
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const id = nextRafId;
+      nextRafId += 1;
+      rafCallbacks.push({ id, callback });
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      rafCallbacks = rafCallbacks.filter((entry) => entry.id !== id);
     });
   });
 
@@ -123,5 +167,216 @@ describe('ShortcutGrid compact drag projection', () => {
         expect((b as HTMLDivElement).style.transform).toContain('translate(');
       });
     }
+  });
+
+  it('shows the center merge highlight when dragging onto a regular icon', async () => {
+    const compactShortcuts = [
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ];
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={124}
+        shortcuts={compactShortcuts}
+        gridColumns={2}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+      />,
+    );
+
+    assignGridRects(
+      view,
+      ['a', 'b'],
+      new DOMRect(0, 0, 220, 124),
+      {
+        a: new DOMRect(0, 0, 100, 124),
+        b: new DOMRect(120, 0, 100, 124),
+      },
+    );
+
+    const a = view.getByTestId('shortcut-card-a');
+
+    fireEvent.pointerDown(a, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      clientX: 50,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 62,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 170,
+      clientY: 62,
+    });
+
+    await waitFor(() => {
+      expect(view.container.querySelector('mask')).not.toBeNull();
+    });
+  });
+
+  it('does not show the center merge highlight when dragging onto a folder target', async () => {
+    const compactShortcuts = [
+      createLink('a', 'Alpha'),
+      createFolder('folder-small', 'Folder'),
+      createFolder('folder-large', 'Large Folder', 'large'),
+    ];
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={124}
+        shortcuts={compactShortcuts}
+        gridColumns={3}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+      />,
+    );
+
+    assignGridRects(
+      view,
+      ['a', 'folder-small', 'folder-large'],
+      new DOMRect(0, 0, 340, 124),
+      {
+        a: new DOMRect(0, 0, 100, 124),
+        'folder-small': new DOMRect(120, 0, 100, 124),
+        'folder-large': new DOMRect(240, 0, 100, 124),
+      },
+    );
+
+    const a = view.getByTestId('shortcut-card-a');
+
+    fireEvent.pointerDown(a, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      clientX: 50,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 62,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 170,
+      clientY: 62,
+    });
+
+    await waitFor(() => {
+      expect(view.container.querySelector('mask')).toBeNull();
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 290,
+      clientY: 62,
+    });
+
+    await waitFor(() => {
+      expect(view.container.querySelector('mask')).toBeNull();
+    });
+  });
+
+  it('animates neighboring shortcuts away when switching a folder to large mode', () => {
+    const smallShortcuts = [
+      createLink('a', 'Alpha'),
+      createFolder('folder', 'Folder', 'small'),
+      createLink('c', 'Gamma'),
+      createLink('d', 'Delta'),
+      createLink('e', 'Epsilon'),
+    ];
+    const largeShortcuts = [
+      createLink('a', 'Alpha'),
+      createFolder('folder', 'Folder', 'large'),
+      createLink('c', 'Gamma'),
+      createLink('d', 'Delta'),
+      createLink('e', 'Epsilon'),
+    ];
+
+    const currentRects: Record<string, DOMRect> = {
+      root: new DOMRect(0, 0, 340, 268),
+      a: new DOMRect(0, 0, 100, 124),
+      folder: new DOMRect(120, 0, 100, 124),
+      c: new DOMRect(240, 0, 100, 124),
+      d: new DOMRect(0, 144, 100, 124),
+      e: new DOMRect(120, 144, 100, 124),
+    };
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={268}
+        shortcuts={smallShortcuts}
+        gridColumns={3}
+        minRows={2}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+      />,
+    );
+
+    const root = view.getByTestId('shortcut-grid');
+    Object.defineProperty(root, 'clientWidth', {
+      configurable: true,
+      value: currentRects.root.width,
+    });
+    assignDynamicRect(root, () => currentRects.root);
+
+    for (const id of ['a', 'folder', 'c', 'd', 'e']) {
+      assignDynamicRect(view.getByTestId(`shortcut-card-${id}`), () => currentRects[id]);
+    }
+
+    currentRects.folder = new DOMRect(120, 0, 212, 236);
+    currentRects.c = new DOMRect(0, 144, 100, 124);
+    currentRects.d = new DOMRect(0, 288, 100, 124);
+    currentRects.e = new DOMRect(120, 288, 100, 124);
+
+    view.rerender(
+      <ShortcutGrid
+        containerHeight={412}
+        shortcuts={largeShortcuts}
+        gridColumns={3}
+        minRows={2}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+      />,
+    );
+
+    const movedShortcut = view.getByTestId('shortcut-card-c') as HTMLDivElement;
+    expect(movedShortcut.style.transform).toContain('translate(240px, -144px)');
   });
 });
