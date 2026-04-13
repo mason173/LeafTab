@@ -12,7 +12,7 @@ const env = {
   VITE_BUILD_OUT_DIR: 'build',
 };
 const switchManifestScript = path.join(root, 'scripts', 'switch-manifest.js');
-const syncLocalIconLibraryScript = path.join(root, 'scripts', 'sync-local-icon-library.js');
+const buildIconLibraryScript = path.join(root, 'scripts', 'build-icon-library.mjs');
 const buildDir = path.join(root, 'build');
 const communityLocaleOverrides = {
   en: {
@@ -84,7 +84,7 @@ function applyCommunityLocaleOverrides() {
 console.log(`[build] channel: ${channel}`);
 const restoreLocales = channel === 'community' ? applyCommunityLocaleOverrides() : () => {};
 try {
-  run(`node "${syncLocalIconLibraryScript}"`);
+  run(`node "${buildIconLibraryScript}"`);
   run(`node "${switchManifestScript}" ${channel}`);
   run('npx vite build');
   if (fs.existsSync(buildDir)) {

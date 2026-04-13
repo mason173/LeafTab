@@ -1,6 +1,6 @@
 (function () {
   const LOCAL_ICON_LIBRARY_BASE_URL = "/leaftab-icons";
-  const ICON_LIBRARY_MANIFEST_FILES = ["icon-library.json", "manifest.json"];
+  const ICON_LIBRARY_MANIFEST_FILE = "icon-library.json";
   const LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS = [
     "leaftab_icon_library_url",
     "leaftab_icon_library_manifest_json",
@@ -365,19 +365,16 @@
     const baseUrl = getLocalIconLibraryUrl();
 
     try {
-      let resp = null;
-      for (const fileName of ICON_LIBRARY_MANIFEST_FILES) {
-        const candidate = await fetch(baseUrl + "/" + fileName, {
-          method: "GET",
-          credentials: "omit",
-          cache: "force-cache"
-        });
-        if (candidate.ok) {
-          resp = candidate;
-          break;
-        }
-      }
+      const resp = await fetch(baseUrl + "/" + ICON_LIBRARY_MANIFEST_FILE, {
+        method: "GET",
+        credentials: "omit",
+        cache: "force-cache"
+      });
       if (!resp) {
+        iconManifest = null;
+        return iconManifest;
+      }
+      if (!resp.ok) {
         iconManifest = null;
         return iconManifest;
       }

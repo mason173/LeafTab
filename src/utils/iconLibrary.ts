@@ -23,7 +23,7 @@ export type ResolvedCustomIcon = {
 };
 
 const LOCAL_ICON_LIBRARY_BASE_URL = '/leaftab-icons';
-const ICON_LIBRARY_MANIFEST_FILE_CANDIDATES = ['icon-library.json', 'manifest.json'] as const;
+const ICON_LIBRARY_MANIFEST_FILE = 'icon-library.json';
 const LEGACY_REMOTE_ICON_LIBRARY_STORAGE_KEYS = [
   'leaftab_icon_library_url',
   'leaftab_icon_library_manifest_json',
@@ -164,17 +164,12 @@ const fetchManifestJson = async ({
   baseUrl: string;
   cache?: RequestCache;
 }) => {
-  for (const fileName of ICON_LIBRARY_MANIFEST_FILE_CANDIDATES) {
-    const resp = await fetch(`${baseUrl}/${fileName}`, {
-      method: 'GET',
-      credentials: 'omit',
-      cache,
-    });
-    if (resp.ok) {
-      return resp;
-    }
-  }
-  return null;
+  const resp = await fetch(`${baseUrl}/${ICON_LIBRARY_MANIFEST_FILE}`, {
+    method: 'GET',
+    credentials: 'omit',
+    cache,
+  });
+  return resp.ok ? resp : null;
 };
 
 const fetchLocalIconLibraryManifest = async (options?: { force?: boolean }) => {

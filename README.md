@@ -111,6 +111,7 @@ Download the corresponding package from [Releases](https://github.com/mason173/L
 
 - `src/`：前端（扩展新标签页）/ Frontend (Extension page)
 - `public/`：扩展静态资源与 `manifest.json` / Static assets and manifest.json
+- `public/leaftab-icons/`：官方图标库源目录（`shapes/`）与自动生成的 `icon-library.json` / Canonical official icon library source (`shapes/`) and generated `icon-library.json`
 - `server/`：后端（登录/同步/统计/管理员能力）/ Backend (Auth/Sync/Stats/Admin capabilities)
   - `server/routes/`：按领域拆分的接口路由 / Route modules by domain
   - `server/lib/`：环境、鉴权、限流、数据库初始化等基础模块 / Shared infra modules (env/auth/rate-limit/db init)
@@ -123,8 +124,8 @@ npm i
 npm run dev
 ```
 
-`npm run dev` / `npm run build` 会把本地 `leaftab-icons-main/official-icon-sources`（或旧版 `leaftab-icons-main/官方图标分层`）同步到 `public/leaftab-icons/`。项目不再自动从 GitHub 拉取官方图标库；如果本地图标源目录缺失，则保留现有的 `public/leaftab-icons/` 本地资源继续运行。
-`npm run dev` / `npm run build` syncs local icon sources from `leaftab-icons-main/official-icon-sources` (or the legacy `leaftab-icons-main/官方图标分层`) into `public/leaftab-icons/`. The project no longer auto-clones the official icon library from GitHub; if the local source directory is missing, it keeps using the existing local assets under `public/leaftab-icons/`.
+`public/leaftab-icons/shapes/` 现在就是主仓库里的新版图标源目录。图标文件名必须使用 `domain_HEX.svg` 格式，例如 `www.wps.cn_FE3E53.svg`。`npm run dev`、`npm run build` 和 `npm run icons:sync` 都会自动根据这些文件重建 `public/leaftab-icons/icon-library.json`，不再依赖单独的 `leaftab-icons-main` 仓库参与本地开发。
+`public/leaftab-icons/shapes/` is now the canonical in-repo source for the new icon library. Icon file names must follow the `domain_HEX.svg` format, for example `www.wps.cn_FE3E53.svg`. `npm run dev`, `npm run build`, and `npm run icons:sync` all rebuild `public/leaftab-icons/icon-library.json` from those files automatically, without depending on the separate `leaftab-icons-main` repository for local development.
 
 ## 构建（前端）/ Build (Frontend)
 
