@@ -1,5 +1,11 @@
 import type { Shortcut } from '@/types';
 import { ROOT_SHORTCUTS_PATH } from '@/features/shortcuts/model/paths';
+export {
+  getMaxShortcutFolderDepth,
+  hasNestedShortcutFolders,
+  SUPPORTED_SHORTCUT_FOLDER_DEPTH,
+  supportsShortcutFolderDepth,
+} from '@/features/shortcuts/model/constraints';
 import {
   mergeShortcutsIntoNewFolder,
   moveShortcutIntoFolder,

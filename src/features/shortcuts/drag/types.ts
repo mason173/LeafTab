@@ -48,3 +48,28 @@ export type FolderShortcutDropIntent =
       folderId: string;
       shortcutId: string;
     };
+
+export type ShortcutDropIntent = RootShortcutDropIntent | FolderShortcutDropIntent;
+
+export type FolderExtractDragStartPayload = {
+  folderId: string;
+  shortcutId: string;
+  pointerId: number;
+  pointerType: string;
+  pointer: { x: number; y: number };
+  anchor: {
+    xRatio: number;
+    yRatio: number;
+  };
+};
+
+export type ShortcutExternalDragSessionSeed = {
+  shortcutId: string;
+  pointerId: number;
+  pointerType: string;
+  pointer: { x: number; y: number };
+  anchor: {
+    xRatio: number;
+    yRatio: number;
+  };
+};

@@ -361,7 +361,7 @@ export function ShortcutFolderLargePreview({
 }: ShortcutFolderLargePreviewProps) {
   const interactive = typeof onOpenFolder === 'function';
   const children = getShortcutChildren(shortcut);
-  const hasOverflowChildren = children.length > LARGE_FOLDER_PREVIEW_VISIBLE_COUNT;
+  const hasOverflowChildren = children.length >= LARGE_FOLDER_PREVIEW_VISIBLE_COUNT;
   const visibleChildren = children.slice(0, LARGE_FOLDER_PREVIEW_VISIBLE_COUNT);
   const directOpenChildren = hasOverflowChildren
     ? visibleChildren.slice(0, LARGE_FOLDER_PREVIEW_VISIBLE_COUNT - 1)

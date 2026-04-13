@@ -150,6 +150,8 @@ export default defineConfig(async () => {
   const { default: tailwindcss } = await import('@tailwindcss/vite');
   const browserTarget = process.env.VITE_BROWSER_TARGET === 'firefox' ? 'firefox' : 'chromium';
   const outDir = process.env.VITE_BUILD_OUT_DIR || (browserTarget === 'firefox' ? 'build-firefox' : 'build');
+  const appReactPath = path.resolve(__dirname, './node_modules/react');
+  const appReactDomPath = path.resolve(__dirname, './node_modules/react-dom');
   return {
   base: './',
   plugins: [react(), tailwindcss()],
@@ -158,7 +160,12 @@ export default defineConfig(async () => {
     },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+      dedupe: ['react', 'react-dom'],
       alias: {
+        react: appReactPath,
+        'react/jsx-runtime': path.resolve(appReactPath, 'jsx-runtime.js'),
+        'react/jsx-dev-runtime': path.resolve(appReactPath, 'jsx-dev-runtime.js'),
+        'react-dom': appReactDomPath,
         'vaul@1.1.2': 'vaul',
         'recharts@2.15.2': 'recharts',
         'react-resizable-panels@2.1.7': 'react-resizable-panels',
