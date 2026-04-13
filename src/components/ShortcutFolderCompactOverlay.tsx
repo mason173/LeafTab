@@ -2,6 +2,20 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  FOLDER_LABEL_REVEAL_START_PROGRESS,
+  FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE,
+  buildInterpolatedRectTransform,
+  clamp01,
+  easeOutCubic,
+  mix,
+  resolveBackdropAnimationProgress,
+  resolveChildAnimationProgress,
+  resolveChromeAnimationProgress,
+  resolveInterruptibleAnimationDuration,
+  resolveSourcePreviewCloseRevealProgress,
+  resolveSourcePreviewHiddenProgress,
+} from '@/components/shortcutFolderCompactAnimation';
+import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
@@ -13,6 +27,7 @@ type ShortcutFolderCompactOverlayProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   shortcut: Shortcut | null;
+  compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
   onRenameFolder: (folderId: string, name: string) => void;
@@ -58,27 +73,12 @@ type AnimatedNodeStyleSnapshot = {
 };
 
 const OVERLAY_Z_INDEX = 16000;
-const OPEN_DURATION_MS = 700;
-const CLOSE_DURATION_MS = 460;
-const EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const FOLDER_PANEL_RADIUS_PX = 32;
-const SOURCE_PREVIEW_FADE_MS = 220;
 const FOLDER_PANEL_MAX_VIEWPORT_RATIO = 0.78;
 const FOLDER_PANEL_MAX_HEIGHT_PX = 680;
 const FOLDER_PANEL_MAX_VISIBLE_ROWS = 5;
 const HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY = 0.34;
-const HIDDEN_CHILD_CLOSING_COLLAPSED_OPACITY = 0;
-const OPENING_GHOST_STAGGER_STEP_MS = 18;
-const OPENING_GHOST_STAGGER_MAX_MS = 96;
-const OPEN_TOTAL_DURATION_MS = OPEN_DURATION_MS + OPENING_GHOST_STAGGER_MAX_MS;
-const LABEL_REVEAL_OPEN_DELAY_MS = 520;
 const COLLAPSED_CHILD_CONTENT_RATIO = 0.94;
-const SOURCE_PREVIEW_CHILD_FADE_MS = 140;
-const SOURCE_PREVIEW_HIDDEN_SCALE = 0.9;
-const SOURCE_PREVIEW_CLOSE_IN_MS = 220;
-const SOURCE_PREVIEW_CLOSE_IN_DELAY_MS = 140;
-const SOURCE_PREVIEW_CHILD_CLOSE_IN_MS = 96;
-const SOURCE_PREVIEW_CHILD_CLOSE_IN_DELAY_MS = 332;
 
 function copyRect(rect: DOMRect | OverlayRect | null | undefined): OverlayRect | null {
   if (!rect) return null;
@@ -105,18 +105,6 @@ function escapeSelectorValue(value: string): string {
     return window.CSS.escape(value);
   }
   return value.replace(/["\\]/g, '\\$&');
-}
-
-function buildRectTransform(fromRect: OverlayRect, toRect: OverlayRect): string {
-  const scaleX = fromRect.width / Math.max(toRect.width, 1);
-  const scaleY = fromRect.height / Math.max(toRect.height, 1);
-  const fromCenterX = fromRect.left + fromRect.width / 2;
-  const fromCenterY = fromRect.top + fromRect.height / 2;
-  const toCenterX = toRect.left + toRect.width / 2;
-  const toCenterY = toRect.top + toRect.height / 2;
-  const translateX = fromCenterX - toCenterX;
-  const translateY = fromCenterY - toCenterY;
-  return `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`;
 }
 
 function rectIntersectsVertically(rect: OverlayRect, viewportRect: OverlayRect, margin = 0): boolean {
@@ -258,6 +246,7 @@ export function ShortcutFolderCompactOverlay({
   open,
   onOpenChange,
   shortcut,
+  compactIconSize = 72,
   iconCornerRadius = 22,
   iconAppearance,
   onRenameFolder,
@@ -271,21 +260,21 @@ export function ShortcutFolderCompactOverlay({
   const shortcutId = shortcut?.id ?? null;
   const [mountedShortcut, setMountedShortcut] = useState<Shortcut | null>(open ? shortcut : null);
   const [metrics, setMetrics] = useState<OverlayMetrics | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [transitionState, setTransitionState] = useState<'opening' | 'closing' | null>(open ? 'opening' : null);
+  const [transitionState, setTransitionState] = useState<'opening' | 'closing' | null>(null);
+  const [animationProgress, setAnimationProgress] = useState(0);
   const [folderDragActive, setFolderDragActive] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [panelHeightPx, setPanelHeightPx] = useState<number | null>(null);
-  const [labelsVisible, setLabelsVisible] = useState(false);
   const titleSectionRef = useRef<HTMLDivElement | null>(null);
   const scrollRegionRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
-  const animationTimerRef = useRef<number | null>(null);
-  const labelRevealTimerRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
-  const sourcePreviewFadeRafRef = useRef<number | null>(null);
-  const lastOpenedShortcutIdRef = useRef<string | null>(null);
+  const animationRunIdRef = useRef(0);
+  const animationProgressRef = useRef(0);
+  const animationTargetProgressRef = useRef(0);
+  const openRef = useRef(open);
+  const pendingUnmountRestoreRef = useRef(false);
   const hiddenSourcePreviewRef = useRef<HTMLElement | null>(null);
   const hiddenSourcePreviewChildrenRef = useRef<HTMLElement[]>([]);
   const sourcePreviewSnapshotRef = useRef<{
@@ -306,7 +295,6 @@ export function ShortcutFolderCompactOverlay({
     () => (mountedShortcut && isShortcutFolder(mountedShortcut) ? getShortcutChildren(mountedShortcut) : []),
     [mountedShortcut],
   );
-  const activeDurationMs = transitionState === 'closing' ? CLOSE_DURATION_MS : OPEN_DURATION_MS;
   const roundedCorner = `${FOLDER_PANEL_RADIUS_PX}px`;
   const maxPanelHeightPx = useMemo(() => {
     if (typeof window === 'undefined') return FOLDER_PANEL_MAX_HEIGHT_PX;
@@ -368,29 +356,150 @@ export function ShortcutFolderCompactOverlay({
       Math.ceil(titleHeight + Math.min(scrollHeight, visibleScrollHeight)),
     );
     setPanelHeightPx((current) => (current === nextHeight ? current : nextHeight));
-  }, [children.length, maxPanelHeightPx]);
+  }, [children.length, compactIconSize, maxPanelHeightPx]);
+
+  const restoreHiddenSourcePreview = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const sourcePreview = hiddenSourcePreviewRef.current;
+    const snapshot = sourcePreviewSnapshotRef.current;
+    const hiddenFolderId = hiddenSourcePreviewFolderIdRef.current;
+
+    if (sourcePreview && snapshot && sourcePreview.isConnected) {
+      sourcePreview.style.opacity = snapshot.opacity;
+      sourcePreview.style.transition = snapshot.transition;
+      sourcePreview.style.transform = snapshot.transform;
+      sourcePreview.style.transformOrigin = snapshot.transformOrigin;
+      sourcePreview.style.willChange = snapshot.willChange;
+    }
+
+    const currentPreviewChildren = hiddenFolderId
+      ? Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapeSelectorValue(hiddenFolderId)}"]`),
+        )
+      : [];
+    const nodesToRestore = new Set<HTMLElement>([
+      ...hiddenSourcePreviewChildrenRef.current,
+      ...currentPreviewChildren,
+    ]);
+    nodesToRestore.forEach((node) => {
+      const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
+      node.style.opacity = snapshotEntry?.opacity || '';
+      node.style.transition = snapshotEntry?.transition || '';
+    });
+
+    hiddenSourcePreviewRef.current = null;
+    hiddenSourcePreviewChildrenRef.current = [];
+    hiddenSourcePreviewFolderIdRef.current = null;
+    sourcePreviewSnapshotRef.current = null;
+    sourcePreviewChildSnapshotsRef.current = null;
+  }, []);
+
+  const cancelProgressAnimation = useCallback(() => {
+    animationRunIdRef.current += 1;
+    if (typeof window !== 'undefined' && rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+    }
+    rafRef.current = null;
+  }, []);
+
+  const finalizeClosedOverlay = useCallback(() => {
+    cancelProgressAnimation();
+    animationProgressRef.current = 0;
+    animationTargetProgressRef.current = 0;
+    closingVisiblePreviewChildIdsRef.current = [];
+    closingFromScrolledViewportRef.current = false;
+    pendingUnmountRestoreRef.current = true;
+    setAnimationProgress(0);
+    setTransitionState(null);
+    setMetrics(null);
+    setFolderDragActive(false);
+    setEditingTitle(false);
+    setMountedShortcut(null);
+  }, [cancelProgressAnimation]);
+
+  const startProgressAnimation = useCallback((targetProgress: number) => {
+    if (typeof window === 'undefined') return;
+
+    const nextTargetProgress = clamp01(targetProgress);
+    const currentProgress = animationProgressRef.current;
+    animationTargetProgressRef.current = nextTargetProgress;
+
+    if (Math.abs(currentProgress - nextTargetProgress) <= 0.0005) {
+      cancelProgressAnimation();
+      animationProgressRef.current = nextTargetProgress;
+      setAnimationProgress(nextTargetProgress);
+      setTransitionState(null);
+      if (nextTargetProgress <= 0.0005 && !openRef.current) {
+        finalizeClosedOverlay();
+      }
+      return;
+    }
+
+    cancelProgressAnimation();
+    const animationDirection = nextTargetProgress > currentProgress ? 'opening' : 'closing';
+    const durationMs = resolveInterruptibleAnimationDuration(currentProgress, nextTargetProgress);
+    const runId = animationRunIdRef.current;
+    const startTime = window.performance.now();
+
+    setTransitionState(animationDirection);
+
+    const tick = (frameTime: number) => {
+      if (animationRunIdRef.current !== runId) return;
+      const elapsedMs = frameTime - startTime;
+      const linearProgress = durationMs <= 0 ? 1 : clamp01(elapsedMs / durationMs);
+      const easedTimeProgress = easeOutCubic(linearProgress);
+      const nextProgress = mix(currentProgress, nextTargetProgress, easedTimeProgress);
+      animationProgressRef.current = nextProgress;
+      setAnimationProgress(nextProgress);
+
+      if (linearProgress >= 1) {
+        rafRef.current = null;
+        animationProgressRef.current = nextTargetProgress;
+        setAnimationProgress(nextTargetProgress);
+        setTransitionState(null);
+        if (nextTargetProgress <= 0.0005 && !openRef.current) {
+          finalizeClosedOverlay();
+        }
+        return;
+      }
+
+      rafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    if (durationMs <= 1) {
+      animationProgressRef.current = nextTargetProgress;
+      setAnimationProgress(nextTargetProgress);
+      setTransitionState(null);
+      if (nextTargetProgress <= 0.0005 && !openRef.current) {
+        finalizeClosedOverlay();
+      }
+      return;
+    }
+
+    rafRef.current = window.requestAnimationFrame(tick);
+  }, [cancelProgressAnimation, finalizeClosedOverlay]);
 
   const refreshTargetMetrics = useCallback(() => {
     const surfaceNode = surfaceRef.current;
-    if (!surfaceNode) return;
+    if (!surfaceNode || !metrics) return null;
 
     const targetRect = copyRect(surfaceNode.getBoundingClientRect());
-    if (!targetRect) return;
+    if (!targetRect) return null;
 
     const targetChildRects = measureTargetChildRects(surfaceNode, children);
-    setMetrics((current) => (current
-      ? {
-          ...current,
-          targetRect,
-          targetChildRects,
-        }
-      : current));
-  }, [children]);
+    const nextMetrics = {
+      ...metrics,
+      targetRect,
+      targetChildRects,
+    };
+    setMetrics(nextMetrics);
+    return nextMetrics;
+  }, [children, metrics]);
 
   const refreshSourceMetrics = useCallback(() => {
-    if (!mountedShortcut || typeof document === 'undefined') return;
-    const targetRect = copyRect(surfaceRef.current?.getBoundingClientRect()) ?? metrics?.targetRect;
-    if (!targetRect) return;
+    if (!mountedShortcut || !metrics || typeof document === 'undefined') return null;
+    const targetRect = copyRect(surfaceRef.current?.getBoundingClientRect()) ?? metrics.targetRect;
+    if (!targetRect) return null;
     const nextTargetChildRects = measureTargetChildRects(surfaceRef.current, children);
     const visibleScrollViewportRect = copyRect(scrollRegionRef.current?.getBoundingClientRect());
     const scrollTop = scrollRegionRef.current?.scrollTop ?? 0;
@@ -427,64 +536,60 @@ export function ShortcutFolderCompactOverlay({
       fallbackTargetRect: targetRect,
       shortcuts: children,
     });
-
-    setMetrics((current) => (current
-      ? {
-          ...current,
-          sourceRect: nextSourceMetrics.sourceRect,
-          sourceChildRects: nextSourceMetrics.sourceChildRects,
-          sourceChildSlotRects: nextSourceMetrics.sourceChildSlotRects,
-          targetRect,
-          targetChildRects: nextTargetChildRects,
-        }
-      : current));
-  }, [children, metrics?.targetRect, mountedShortcut]);
+    const nextMetrics = {
+      ...metrics,
+      sourceRect: nextSourceMetrics.sourceRect,
+      sourceChildRects: nextSourceMetrics.sourceChildRects,
+      sourceChildSlotRects: nextSourceMetrics.sourceChildSlotRects,
+      targetRect,
+      targetChildRects: nextTargetChildRects,
+    };
+    setMetrics(nextMetrics);
+    return nextMetrics;
+  }, [children, metrics, mountedShortcut]);
 
   useEffect(() => {
-    if (open && shortcut && lastOpenedShortcutIdRef.current !== shortcut.id) {
-      lastOpenedShortcutIdRef.current = shortcut.id;
-      closingVisiblePreviewChildIdsRef.current = [];
-      closingFromScrolledViewportRef.current = false;
-      setMountedShortcut(shortcut);
-      setMetrics(null);
-      setExpanded(false);
-      setLabelsVisible(false);
-      setFolderDragActive(false);
-      setEditingTitle(false);
-      setDraftTitle(shortcut.title || '');
-      setTransitionState('opening');
-      setPanelHeightPx(null);
-      return;
-    }
+    openRef.current = open;
+  }, [open]);
 
-    if (!open && mountedShortcut) {
-      lastOpenedShortcutIdRef.current = null;
-      setLabelsVisible(false);
-      setFolderDragActive(false);
-      setEditingTitle(false);
-      if (!metrics) {
-        closingVisiblePreviewChildIdsRef.current = [];
-        closingFromScrolledViewportRef.current = false;
-        setMountedShortcut(null);
-        setTransitionState(null);
-        return;
-      }
+  useEffect(() => {
+    if (!open || !shortcut) return;
+    if (mountedShortcut?.id === shortcut.id) return;
 
-      if (transitionState !== 'closing') {
-        if (rafRef.current !== null) {
-          window.cancelAnimationFrame(rafRef.current);
-        }
-        refreshSourceMetrics();
-        setTransitionState('closing');
-        rafRef.current = window.requestAnimationFrame(() => {
-          rafRef.current = window.requestAnimationFrame(() => {
-            rafRef.current = null;
-            setExpanded(false);
-          });
-        });
-      }
+    cancelProgressAnimation();
+    restoreAnimatedTargetNodes();
+    restoreHiddenSourcePreview();
+    pendingUnmountRestoreRef.current = false;
+    closingVisiblePreviewChildIdsRef.current = [];
+    closingFromScrolledViewportRef.current = false;
+    animationProgressRef.current = 0;
+    animationTargetProgressRef.current = 0;
+
+    setAnimationProgress(0);
+    setTransitionState(null);
+    setMountedShortcut(shortcut);
+    setMetrics(null);
+    setFolderDragActive(false);
+    setEditingTitle(false);
+    setDraftTitle(shortcut.title || '');
+    setPanelHeightPx(null);
+  }, [
+    cancelProgressAnimation,
+    mountedShortcut?.id,
+    open,
+    restoreAnimatedTargetNodes,
+    restoreHiddenSourcePreview,
+    shortcut,
+  ]);
+
+  useEffect(() => {
+    if (open || !mountedShortcut) return;
+    setFolderDragActive(false);
+    setEditingTitle(false);
+    if (!metrics) {
+      finalizeClosedOverlay();
     }
-  }, [metrics, mountedShortcut, open, refreshSourceMetrics, shortcut, transitionState]);
+  }, [finalizeClosedOverlay, metrics, mountedShortcut, open]);
 
   useLayoutEffect(() => {
     if (!shortcut || mountedShortcut?.id !== shortcut.id) return;
@@ -499,7 +604,7 @@ export function ShortcutFolderCompactOverlay({
   }, [editingTitle]);
 
   useLayoutEffect(() => {
-    if (!mountedShortcut || transitionState !== 'opening' || metrics || !surfaceRef.current || typeof document === 'undefined') {
+    if (!mountedShortcut || metrics || !surfaceRef.current || typeof document === 'undefined') {
       return;
     }
 
@@ -519,12 +624,12 @@ export function ShortcutFolderCompactOverlay({
       sourceChildSlotRects,
       targetChildRects: measureTargetChildRects(surfaceRef.current, children),
     });
-  }, [children, metrics, mountedShortcut, transitionState]);
+  }, [children, metrics, mountedShortcut]);
 
   useLayoutEffect(() => {
     if (!mountedShortcut) return;
     updatePanelHeight();
-  }, [children.length, mountedShortcut, updatePanelHeight]);
+  }, [children.length, compactIconSize, mountedShortcut, updatePanelHeight]);
 
   useEffect(() => {
     if (!mountedShortcut || !metrics || typeof window === 'undefined' || !surfaceRef.current) return;
@@ -543,99 +648,17 @@ export function ShortcutFolderCompactOverlay({
       window.removeEventListener('scroll', handleRefresh, true);
       scrollRegionRef.current?.removeEventListener('scroll', handleRefresh);
     };
-  }, [metrics, mountedShortcut, refreshTargetMetrics, updatePanelHeight]);
+  }, [compactIconSize, metrics, mountedShortcut, refreshTargetMetrics, updatePanelHeight]);
 
-  useEffect(() => {
-    if (!metrics || transitionState !== 'opening') return;
-
-    if (animationTimerRef.current !== null) {
-      window.clearTimeout(animationTimerRef.current);
+  useLayoutEffect(() => {
+    if (!mountedShortcut || !metrics) return;
+    const targetProgress = open && shortcut?.id === mountedShortcut.id ? 1 : 0;
+    if (Math.abs(animationTargetProgressRef.current - targetProgress) <= 0.0005) return;
+    if (targetProgress <= 0) {
+      refreshSourceMetrics();
     }
-    if (rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-    }
-
-    rafRef.current = window.requestAnimationFrame(() => {
-      rafRef.current = window.requestAnimationFrame(() => {
-        rafRef.current = null;
-        setExpanded(true);
-      });
-    });
-    animationTimerRef.current = window.setTimeout(() => {
-      animationTimerRef.current = null;
-      setTransitionState(null);
-    }, OPEN_TOTAL_DURATION_MS);
-
-    return () => {
-      if (animationTimerRef.current !== null) {
-        window.clearTimeout(animationTimerRef.current);
-        animationTimerRef.current = null;
-      }
-      if (rafRef.current !== null) {
-        window.cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [metrics, transitionState]);
-
-  useEffect(() => {
-    if (transitionState === 'closing') {
-      if (labelRevealTimerRef.current !== null) {
-        window.clearTimeout(labelRevealTimerRef.current);
-        labelRevealTimerRef.current = null;
-      }
-      setLabelsVisible(false);
-      return;
-    }
-
-    if (transitionState !== 'opening') {
-      if (mountedShortcut) {
-        setLabelsVisible(true);
-      }
-      return;
-    }
-
-    if (labelRevealTimerRef.current !== null) {
-      window.clearTimeout(labelRevealTimerRef.current);
-    }
-
-    setLabelsVisible(false);
-    labelRevealTimerRef.current = window.setTimeout(() => {
-      labelRevealTimerRef.current = null;
-      setLabelsVisible(true);
-    }, LABEL_REVEAL_OPEN_DELAY_MS);
-
-    return () => {
-      if (labelRevealTimerRef.current !== null) {
-        window.clearTimeout(labelRevealTimerRef.current);
-        labelRevealTimerRef.current = null;
-      }
-    };
-  }, [mountedShortcut, transitionState]);
-
-  useEffect(() => {
-    if (transitionState !== 'closing') return;
-
-    if (animationTimerRef.current !== null) {
-      window.clearTimeout(animationTimerRef.current);
-    }
-    animationTimerRef.current = window.setTimeout(() => {
-      animationTimerRef.current = null;
-      closingVisiblePreviewChildIdsRef.current = [];
-      closingFromScrolledViewportRef.current = false;
-      setTransitionState(null);
-      setMetrics(null);
-      setFolderDragActive(false);
-      setMountedShortcut(null);
-    }, CLOSE_DURATION_MS);
-
-    return () => {
-      if (animationTimerRef.current !== null) {
-        window.clearTimeout(animationTimerRef.current);
-        animationTimerRef.current = null;
-      }
-    };
-  }, [transitionState]);
+    startProgressAnimation(targetProgress);
+  }, [metrics, mountedShortcut, open, refreshSourceMetrics, shortcut?.id, startProgressAnimation]);
 
   useEffect(() => {
     if (!mountedShortcut) return;
@@ -653,22 +676,27 @@ export function ShortcutFolderCompactOverlay({
   }, [mountedShortcut, onOpenChange]);
 
   useEffect(() => () => {
-    if (animationTimerRef.current !== null) {
-      window.clearTimeout(animationTimerRef.current);
-    }
-    if (labelRevealTimerRef.current !== null) {
-      window.clearTimeout(labelRevealTimerRef.current);
-    }
-    if (rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-    }
-    if (sourcePreviewFadeRafRef.current !== null) {
-      window.cancelAnimationFrame(sourcePreviewFadeRafRef.current);
-    }
-  }, []);
+    cancelProgressAnimation();
+    restoreAnimatedTargetNodes();
+    restoreHiddenSourcePreview();
+  }, [cancelProgressAnimation, restoreAnimatedTargetNodes, restoreHiddenSourcePreview]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (mountedShortcut) return;
+    if (!pendingUnmountRestoreRef.current) return;
+    pendingUnmountRestoreRef.current = false;
+    restoreAnimatedTargetNodes();
+    restoreHiddenSourcePreview();
+  }, [mountedShortcut, restoreAnimatedTargetNodes, restoreHiddenSourcePreview]);
+
+  useLayoutEffect(() => {
     if (!mountedShortcut || typeof document === 'undefined') return;
+    if (
+      hiddenSourcePreviewFolderIdRef.current
+      && hiddenSourcePreviewFolderIdRef.current !== mountedShortcut.id
+    ) {
+      restoreHiddenSourcePreview();
+    }
 
     const escapedFolderId = escapeSelectorValue(mountedShortcut.id);
     const sourcePreview = document.querySelector<HTMLElement>(`[data-folder-preview-id="${escapedFolderId}"]`);
@@ -704,80 +732,24 @@ export function ShortcutFolderCompactOverlay({
       sourcePreviewChildSnapshotsRef.current = previewChildSnapshots;
     }
 
-    if (sourcePreviewFadeRafRef.current !== null) {
-      window.cancelAnimationFrame(sourcePreviewFadeRafRef.current);
-      sourcePreviewFadeRafRef.current = null;
-    }
-
-    if (transitionState === 'closing') {
-      const sourcePreviewFadeInMs = Math.min(SOURCE_PREVIEW_CLOSE_IN_MS, CLOSE_DURATION_MS);
-      const sourcePreviewFadeInDelayMs = Math.max(0, Math.min(SOURCE_PREVIEW_CLOSE_IN_DELAY_MS, CLOSE_DURATION_MS - sourcePreviewFadeInMs));
-      const sourcePreviewChildFadeInMs = Math.min(SOURCE_PREVIEW_CHILD_CLOSE_IN_MS, CLOSE_DURATION_MS);
-      const sourcePreviewChildFadeInDelayMs = Math.max(
-        0,
-        Math.min(SOURCE_PREVIEW_CHILD_CLOSE_IN_DELAY_MS, CLOSE_DURATION_MS - sourcePreviewChildFadeInMs),
-      );
-      sourcePreview.style.transformOrigin = 'center center';
-      sourcePreview.style.willChange = 'opacity, transform';
-      sourcePreview.style.transition = `opacity ${sourcePreviewFadeInMs}ms ${EASING} ${sourcePreviewFadeInDelayMs}ms, transform ${sourcePreviewFadeInMs}ms ${EASING} ${sourcePreviewFadeInDelayMs}ms`;
-      sourcePreview.style.opacity = sourcePreviewSnapshotRef.current?.opacity || '1';
-      sourcePreview.style.transform = sourcePreviewSnapshotRef.current?.transform || 'scale(1)';
-      sourcePreviewChildren.forEach((node) => {
-        const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
-        node.style.transition = `opacity ${sourcePreviewChildFadeInMs}ms ${EASING} ${sourcePreviewChildFadeInDelayMs}ms`;
-        node.style.opacity = snapshotEntry?.opacity || '1';
-      });
-      return;
-    }
-
+    const closing = transitionState === 'closing' || (!openRef.current && animationProgress < 1);
+    const previewRevealProgress = closing
+      ? resolveSourcePreviewCloseRevealProgress(animationProgress)
+      : 1 - resolveSourcePreviewHiddenProgress(animationProgress);
+    const previewOpacity = `${previewRevealProgress}`;
+    const previewScale = mix(FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE, 1, previewRevealProgress);
     sourcePreview.style.transformOrigin = 'center center';
-    sourcePreview.style.willChange = 'opacity, transform';
-    sourcePreview.style.transition = `opacity ${SOURCE_PREVIEW_FADE_MS}ms ${EASING}, transform ${SOURCE_PREVIEW_FADE_MS}ms ${EASING}`;
+    sourcePreview.style.willChange = previewRevealProgress > 0.001 && previewRevealProgress < 0.999
+      ? 'opacity, transform'
+      : (sourcePreviewSnapshotRef.current?.willChange || '');
+    sourcePreview.style.transition = 'none';
+    sourcePreview.style.opacity = previewOpacity;
+    sourcePreview.style.transform = `scale(${previewScale})`;
     sourcePreviewChildren.forEach((node) => {
-      node.style.transition = `opacity ${SOURCE_PREVIEW_CHILD_FADE_MS}ms ${EASING}`;
+      node.style.transition = 'none';
+      node.style.opacity = previewOpacity;
     });
-    sourcePreviewFadeRafRef.current = window.requestAnimationFrame(() => {
-      sourcePreviewFadeRafRef.current = null;
-      sourcePreview.style.opacity = '0';
-      sourcePreview.style.transform = `scale(${SOURCE_PREVIEW_HIDDEN_SCALE})`;
-      sourcePreviewChildren.forEach((node) => {
-        node.style.opacity = '0';
-      });
-    });
-  }, [mountedShortcut, transitionState]);
-
-  useEffect(() => {
-    if (mountedShortcut) return;
-    const sourcePreview = hiddenSourcePreviewRef.current;
-    const snapshot = sourcePreviewSnapshotRef.current;
-    const hiddenFolderId = hiddenSourcePreviewFolderIdRef.current;
-    if (sourcePreview && snapshot) {
-      sourcePreview.style.opacity = snapshot.opacity;
-      sourcePreview.style.transition = snapshot.transition;
-      sourcePreview.style.transform = snapshot.transform;
-      sourcePreview.style.transformOrigin = snapshot.transformOrigin;
-      sourcePreview.style.willChange = snapshot.willChange;
-    }
-    const currentPreviewChildren = hiddenFolderId
-      ? Array.from(
-          document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapeSelectorValue(hiddenFolderId)}"]`),
-        )
-      : [];
-    const nodesToRestore = new Set<HTMLElement>([
-      ...hiddenSourcePreviewChildrenRef.current,
-      ...currentPreviewChildren,
-    ]);
-    nodesToRestore.forEach((node) => {
-      const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
-      node.style.opacity = snapshotEntry?.opacity || '';
-      node.style.transition = snapshotEntry?.transition || '';
-    });
-    hiddenSourcePreviewRef.current = null;
-    hiddenSourcePreviewChildrenRef.current = [];
-    hiddenSourcePreviewFolderIdRef.current = null;
-    sourcePreviewSnapshotRef.current = null;
-    sourcePreviewChildSnapshotsRef.current = null;
-  }, [mountedShortcut]);
+  }, [animationProgress, mountedShortcut, restoreHiddenSourcePreview]);
 
   useLayoutEffect(() => {
     if (!surfaceRef.current || !metrics || !transitionState) return;
@@ -824,18 +796,16 @@ export function ShortcutFolderCompactOverlay({
           index,
           total: children.length,
         });
-      const collapsedTransform = buildRectTransform(sourceRect, targetRect);
-      const openingDelayMs = Math.min(OPENING_GHOST_STAGGER_MAX_MS, index * OPENING_GHOST_STAGGER_STEP_MS);
-      const collapsedOpacity = metrics.sourceChildRects.has(child.id) ? 1 : HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY;
-      const closingCollapsedOpacity = mappedPreviewSlotIndex >= 0 || metrics.sourceChildRects.has(child.id)
+      const collapsedOpacity = mappedPreviewSlotIndex >= 0 || metrics.sourceChildRects.has(child.id)
         ? 1
-        : HIDDEN_CHILD_CLOSING_COLLAPSED_OPACITY;
+        : HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY;
+      const childAnimationProgress = transitionState === 'closing'
+        ? resolveBackdropAnimationProgress(animationProgress)
+        : resolveChildAnimationProgress(animationProgress, index);
       const visibleInScrollViewport = !visibleScrollViewportRect
         || rectIntersectsVertically(targetRect, visibleScrollViewportRect, visibleViewportMargin);
-      const hiddenOnCollapse = closingCollapsedOpacity <= 0.001;
-      const closingOpacityTransition = hiddenOnCollapse
-        ? `opacity ${Math.max(160, Math.round(CLOSE_DURATION_MS * 0.42))}ms ${EASING} ${Math.max(36, Math.round(CLOSE_DURATION_MS * 0.1))}ms`
-        : `opacity ${Math.max(220, CLOSE_DURATION_MS - 100)}ms ${EASING}`;
+      const transform = buildInterpolatedRectTransform(sourceRect, targetRect, childAnimationProgress);
+      const opacity = `${mix(collapsedOpacity, 1, childAnimationProgress)}`;
 
       node.style.position = 'fixed';
       node.style.left = `${targetRect.left}px`;
@@ -849,54 +819,26 @@ export function ShortcutFolderCompactOverlay({
       node.style.willChange = 'transform, opacity';
       node.style.zIndex = String(OVERLAY_Z_INDEX + 4);
       node.style.pointerEvents = 'none';
+      node.style.transition = 'none';
+      node.style.transitionDelay = '0ms';
 
       if (!visibleInScrollViewport) {
-        node.style.transition = 'none';
-        node.style.transitionDelay = '0ms';
-        node.style.transform = transitionState === 'closing' && !expanded
-          ? collapsedTransform
-          : 'translate3d(0, 0, 0) scale(1, 1)';
+        node.style.transform = transform;
         node.style.opacity = '0';
         return;
       }
 
-      if (transitionState === 'opening' && !expanded) {
-        node.style.transition = 'none';
-        node.style.transitionDelay = '0ms';
-        node.style.transform = collapsedTransform;
-        node.style.opacity = `${collapsedOpacity}`;
-        return;
-      }
-
-      if (transitionState === 'opening' && expanded) {
-        void node.getBoundingClientRect();
-        node.style.transition = `transform ${OPEN_DURATION_MS}ms ${EASING}, opacity ${Math.max(220, OPEN_DURATION_MS - 100)}ms ${EASING}`;
-        node.style.transitionDelay = `${openingDelayMs}ms`;
-        node.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
-        node.style.opacity = '1';
-        return;
-      }
-
-      if (transitionState === 'closing' && expanded) {
-        node.style.transition = 'none';
-        node.style.transitionDelay = '0ms';
-        node.style.transform = 'translate3d(0, 0, 0) scale(1, 1)';
-        node.style.opacity = '1';
-        return;
-      }
-
-      void node.getBoundingClientRect();
-      node.style.transition = `transform ${CLOSE_DURATION_MS}ms ${EASING}, ${closingOpacityTransition}`;
-      node.style.transitionDelay = '0ms';
-      node.style.transform = collapsedTransform;
-      node.style.opacity = `${closingCollapsedOpacity}`;
+      node.style.transform = transform;
+      node.style.opacity = opacity;
     });
-  }, [children, expanded, metrics, transitionState]);
+  }, [animationProgress, children, metrics, transitionState]);
 
   useEffect(() => {
     if (transitionState) return;
+    if (!mountedShortcut) return;
+    if (!openRef.current) return;
     restoreAnimatedTargetNodes();
-  }, [restoreAnimatedTargetNodes, transitionState]);
+  }, [mountedShortcut, restoreAnimatedTargetNodes, transitionState]);
 
   useEffect(() => () => {
     restoreAnimatedTargetNodes();
@@ -922,11 +864,11 @@ export function ShortcutFolderCompactOverlay({
   };
 
   const shellReady = Boolean(metrics);
-  const closing = transitionState === 'closing';
-  const chromeVisible = labelsVisible;
-  const chromeTransition = closing
-    ? 'opacity 90ms ease-out, transform 120ms ease-out'
-    : `opacity 180ms ${EASING}, transform 260ms ${EASING}`;
+  const openProgress = clamp01(animationProgress);
+  const backdropProgress = resolveBackdropAnimationProgress(openProgress);
+  const chromeProgress = resolveChromeAnimationProgress(openProgress);
+  const chromeTranslateY = mix(8, 0, chromeProgress);
+  const shortcutTitlesVisible = openProgress >= FOLDER_LABEL_REVEAL_START_PROGRESS;
   const surfaceFrameStyle = metrics
     ? {
         left: metrics.targetRect.left,
@@ -950,11 +892,11 @@ export function ShortcutFolderCompactOverlay({
         aria-hidden="true"
         className="absolute inset-0"
         style={{
-          opacity: expanded ? 1 : 0,
+          opacity: backdropProgress,
           backgroundColor: 'rgba(8, 10, 16, 0.08)',
-          backdropFilter: reduceBackdropBlur ? undefined : `blur(${expanded ? 20 : 0}px)`,
-          WebkitBackdropFilter: reduceBackdropBlur ? undefined : `blur(${expanded ? 20 : 0}px)`,
-          transition: `opacity ${activeDurationMs}ms ${EASING}, backdrop-filter ${activeDurationMs}ms ${EASING}, -webkit-backdrop-filter ${activeDurationMs}ms ${EASING}`,
+          backdropFilter: reduceBackdropBlur ? undefined : `blur(${20 * backdropProgress}px)`,
+          WebkitBackdropFilter: reduceBackdropBlur ? undefined : `blur(${20 * backdropProgress}px)`,
+          transition: 'none',
           willChange: 'opacity, backdrop-filter',
           pointerEvents: 'none',
         }}
@@ -964,7 +906,7 @@ export function ShortcutFolderCompactOverlay({
         aria-label={t('common.close', { defaultValue: '关闭' })}
         className="absolute inset-0 appearance-none rounded-none border-0 bg-transparent p-0"
         style={{
-          pointerEvents: shellReady ? 'auto' : 'none',
+          pointerEvents: shellReady && openProgress > 0.04 ? 'auto' : 'none',
           WebkitAppearance: 'none',
           appearance: 'none',
         }}
@@ -1008,9 +950,9 @@ export function ShortcutFolderCompactOverlay({
                 ref={titleSectionRef}
                 className="px-6 pb-4 pt-6"
                 style={{
-                  opacity: chromeVisible ? 1 : 0,
-                  transform: chromeVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
-                  transition: chromeTransition,
+                  opacity: chromeProgress,
+                  transform: `translate3d(0, ${chromeTranslateY}px, 0)`,
+                  transition: 'none',
                   willChange: 'opacity, transform',
                 }}
               >
@@ -1055,10 +997,11 @@ export function ShortcutFolderCompactOverlay({
                   folderId={mountedShortcut.id}
                   shortcuts={children}
                   emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
+                  compactIconSize={compactIconSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
                   forceTextWhite
-                  showShortcutTitles={labelsVisible}
+                  showShortcutTitles={shortcutTitlesVisible}
                   maskBoundaryRef={surfaceRef}
                   onShortcutOpen={onShortcutOpen}
                   onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, mountedShortcut.id, childShortcut)}

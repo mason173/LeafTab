@@ -294,4 +294,106 @@ describe('resolveRootDropIntent', () => {
       edge: 'before',
     });
   });
+
+  it('treats the full target icon area as merge zone when full-center-rect mode is enabled', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 200,
+      right: 272,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 206, y: 136 },
+      overRect: compactPreviewRect,
+      overCenterRect: compactPreviewRect,
+      items,
+      centerHitMode: 'full-center-rect',
+    })).toEqual({
+      type: 'merge-root-shortcuts',
+      activeShortcutId: 'a',
+      targetShortcutId: 'b',
+    });
+  });
+
+  it('reorders when the pointer is in the target cell but outside the target icon area', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+    ]);
+    const compactCellRect = {
+      width: 100,
+      height: 124,
+      top: 100,
+      left: 200,
+      right: 300,
+      bottom: 224,
+    };
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 214,
+      right: 286,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 294, y: 188 },
+      overRect: compactCellRect,
+      overCenterRect: compactPreviewRect,
+      items,
+      centerHitMode: 'full-center-rect',
+    })).toEqual({
+      type: 'reorder-root',
+      activeShortcutId: 'a',
+      overShortcutId: 'b',
+      targetIndex: 1,
+      edge: 'after',
+    });
+  });
+
+  it('can disable center merge intent for yielded targets and keep reorder active', () => {
+    const items = createItems([
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+    ]);
+    const compactPreviewRect = {
+      width: 72,
+      height: 72,
+      top: 100,
+      left: 214,
+      right: 286,
+      bottom: 172,
+    };
+
+    expect(resolveRootDropIntent({
+      activeSortId: 'a',
+      overSortId: 'b',
+      pointer: { x: 250, y: 136 },
+      overRect: compactPreviewRect,
+      overCenterRect: compactPreviewRect,
+      items,
+      centerHitMode: 'full-center-rect',
+      allowCenterIntent: false,
+    })).toEqual({
+      type: 'reorder-root',
+      activeShortcutId: 'a',
+      overShortcutId: 'b',
+      targetIndex: 1,
+      edge: 'after',
+    });
+  });
 });

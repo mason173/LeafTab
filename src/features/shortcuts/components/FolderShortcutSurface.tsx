@@ -9,6 +9,7 @@ import { getDropEdge, getReorderTargetIndex } from '@/features/shortcuts/drag/dr
 import type { FolderShortcutDropIntent, RootDropEdge } from '@/features/shortcuts/drag/types';
 import {
   buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
+  getDragVisualCenter,
   measureDragItems,
   pickClosestMeasuredItem,
   pointInRect,
@@ -23,6 +24,7 @@ type FolderShortcutSurfaceProps = {
   folderId: string;
   shortcuts: Shortcut[];
   emptyText: string;
+  compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
   forceTextWhite?: boolean;
@@ -180,6 +182,7 @@ function FloatingFolderShortcutPreview({
   shortcut,
   pointer,
   previewOffset,
+  compactIconSize = 72,
   iconCornerRadius,
   iconAppearance,
   forceTextWhite,
@@ -187,6 +190,7 @@ function FloatingFolderShortcutPreview({
   shortcut: Shortcut;
   pointer: PointerPoint;
   previewOffset: PointerPoint;
+  compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
   forceTextWhite?: boolean;
@@ -204,7 +208,7 @@ function FloatingFolderShortcutPreview({
       <ShortcutCardCompact
         shortcut={shortcut}
         showTitle
-        iconSize={72}
+        iconSize={compactIconSize}
         iconCornerRadius={iconCornerRadius}
         iconAppearance={iconAppearance}
         titleFontSize={12}
@@ -221,6 +225,7 @@ export function FolderShortcutSurface({
   folderId,
   shortcuts,
   emptyText,
+  compactIconSize = 72,
   iconCornerRadius,
   iconAppearance,
   forceTextWhite = false,
@@ -349,9 +354,21 @@ export function FolderShortcutSurface({
     const measuredItems = dragLayoutSnapshot ?? measureFolderItems(shortcuts, itemElementsRef.current);
     const activeItem = measuredItems.find((item) => item.shortcut.id === session.activeShortcutId);
     if (!activeItem) return null;
+    const visualSize = Math.min(compactIconSize, activeItem.rect.width, activeItem.rect.height);
+    const recognitionPoint = getDragVisualCenter({
+      pointer,
+      previewOffset: session.previewOffset,
+      activeRect: activeItem.rect,
+      visualRect: {
+        offsetX: Math.max(0, (activeItem.rect.width - visualSize) / 2),
+        offsetY: 0,
+        width: visualSize,
+        height: visualSize,
+      },
+    });
 
     const boundaryRect = maskBoundaryRef.current?.getBoundingClientRect() ?? null;
-    if (boundaryRect && !pointInRect(pointer, boundaryRect)) {
+    if (boundaryRect && !pointInRect(recognitionPoint, boundaryRect)) {
       ensureExtractHandoffTimer();
       return { type: 'mask' };
     }
@@ -360,17 +377,17 @@ export function FolderShortcutSurface({
     const overItem = pickOverItem({
       activeShortcutId: session.activeShortcutId,
       measuredItems,
-      pointer,
+      pointer: recognitionPoint,
     });
     if (!overItem) return null;
 
-    const edge = getDropEdge(pointer, overItem.rect);
+    const edge = getDropEdge(recognitionPoint, overItem.rect);
     return {
       type: 'item',
       shortcutId: overItem.shortcut.id,
       edge: edge === 'center' ? 'after' : edge,
     };
-  }, [clearExtractHandoffTimer, dragLayoutSnapshot, ensureExtractHandoffTimer, maskBoundaryRef, shortcuts]);
+  }, [clearExtractHandoffTimer, compactIconSize, dragLayoutSnapshot, ensureExtractHandoffTimer, maskBoundaryRef, shortcuts]);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -497,9 +514,9 @@ export function FolderShortcutSurface({
             >
               <DraggableShortcutItemFrame
                 cardVariant="compact"
-                compactIconSize={72}
+                compactIconSize={compactIconSize}
                 iconCornerRadius={iconCornerRadius ?? 22}
-                defaultPlaceholderHeight={96}
+                defaultPlaceholderHeight={Math.round(compactIconSize + 24)}
                 isDragging={isDragging}
                 hideDragPlaceholder
                 projectionOffset={projectionOffset}
@@ -535,7 +552,7 @@ export function FolderShortcutSurface({
                 <ShortcutCardCompact
                   shortcut={shortcut}
                   showTitle={showShortcutTitles}
-                  iconSize={72}
+                  iconSize={compactIconSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
                   titleFontSize={12}
@@ -563,6 +580,7 @@ export function FolderShortcutSurface({
           shortcut={activeDragShortcut}
           pointer={dragPointer}
           previewOffset={dragPreviewOffset}
+          compactIconSize={compactIconSize}
           iconCornerRadius={iconCornerRadius}
           iconAppearance={iconAppearance}
           forceTextWhite={forceTextWhite}

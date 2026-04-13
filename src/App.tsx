@@ -79,6 +79,7 @@ import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weath
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
 import { ShortcutFolderCompactOverlay } from '@/components/ShortcutFolderCompactOverlay';
+import { FOLDER_CLOSE_DURATION_MS } from '@/components/shortcutFolderCompactAnimation';
 import { ShortcutFolderDialog } from '@/components/ShortcutFolderDialog';
 import { ShortcutFolderNameDialog } from '@/components/ShortcutFolderNameDialog';
 import type { ExternalShortcutDragSession } from '@/components/ShortcutGrid';
@@ -170,7 +171,7 @@ function createFolderShortcutId() {
   return `fld_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-const COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS = 460;
+const COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS = FOLDER_CLOSE_DURATION_MS;
 
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
@@ -1286,6 +1287,7 @@ export default function App() {
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
+  const [wallpaperImageReadyTick, setWallpaperImageReadyTick] = useState(0);
 
   const handlePreventDuplicateNewTabChange = useCallback((checked: boolean) => {
     if (!checked) {
@@ -1433,6 +1435,10 @@ export default function App() {
       customWallpaper,
       weatherCode,
       colorWallpaperId,
+    }, {
+      // Re-sample once the rendered wallpaper image finishes loading to avoid
+      // caching a fallback color from an early decode/load race.
+      forceImageResample: wallpaperImageReadyTick > 0,
     })
       .then((hex) => {
         if (canceled) return;
@@ -1446,7 +1452,15 @@ export default function App() {
     return () => {
       canceled = true;
     };
-  }, [accentColorSetting, effectiveWallpaperMode, bingWallpaper, customWallpaper, weatherCode, colorWallpaperId]);
+  }, [
+    accentColorSetting,
+    effectiveWallpaperMode,
+    bingWallpaper,
+    customWallpaper,
+    weatherCode,
+    colorWallpaperId,
+    wallpaperImageReadyTick,
+  ]);
 
   const buildSyncablePreferencesSnapshot = useCallback((): SyncablePreferences => {
     const stored = readSyncablePreferencesFromStorage();
@@ -3262,6 +3276,10 @@ export default function App() {
     hasWeatherVisual: effectiveWallpaperMode === 'weather' && Boolean(freshWeatherVideo),
     disableRevealAnimation: visualEffectsPolicy.disableWallpaperRevealMotion,
   });
+  const handleOverlayWallpaperReadyForRevealAndAccent = useCallback(() => {
+    handleOverlayImageReady();
+    setWallpaperImageReadyTick((prev) => prev + 1);
+  }, [handleOverlayImageReady]);
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
   }, [setSettingsOpen]);
@@ -3630,7 +3648,7 @@ export default function App() {
             colorWallpaperGradient={colorWallpaperGradient}
             effectiveOverlayWallpaperSrc={effectiveOverlayWallpaperSrc}
             overlayBackgroundAlt={overlayBackgroundAlt}
-            onOverlayImageReady={handleOverlayImageReady}
+            onOverlayImageReady={handleOverlayWallpaperReadyForRevealAndAccent}
             effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
             topNavModeProps={topNavModeProps}
             homeMainContentBaseProps={homeMainContentBaseProps}
@@ -3656,6 +3674,7 @@ export default function App() {
             if (!open) setOpenFolderId(null);
           }}
           shortcut={compactOverlayShortcut}
+          compactIconSize={scaledCompactShortcutSize}
           iconCornerRadius={shortcutIconCornerRadius}
           iconAppearance={shortcutIconAppearance}
           onRenameFolder={handleRenameFolderInline}
@@ -3672,6 +3691,7 @@ export default function App() {
             if (!open) setOpenFolderId(null);
           }}
           shortcut={openFolderShortcut}
+          compactIconSize={scaledCompactShortcutSize}
           iconCornerRadius={shortcutIconCornerRadius}
           iconAppearance={shortcutIconAppearance}
           onShortcutOpen={handleShortcutOpen}

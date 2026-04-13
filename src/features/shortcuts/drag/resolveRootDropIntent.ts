@@ -41,8 +41,19 @@ export function resolveRootDropIntent(params: {
   overRect: DragRect;
   overCenterRect?: DragRect;
   items: RootShortcutDragItem[];
+  centerHitMode?: 'threshold' | 'full-center-rect';
+  allowCenterIntent?: boolean;
 }): RootShortcutDropIntent | null {
-  const { activeSortId, overSortId, pointer, overRect, overCenterRect, items } = params;
+  const {
+    activeSortId,
+    overSortId,
+    pointer,
+    overRect,
+    overCenterRect,
+    items,
+    centerHitMode = 'threshold',
+    allowCenterIntent = true,
+  } = params;
 
   if (activeSortId === overSortId) return null;
 
@@ -70,7 +81,7 @@ export function resolveRootDropIntent(params: {
     return null;
   })();
 
-  if (centerIntent) {
+  if (centerIntent && allowCenterIntent) {
     const largeFolderShortcut = isLargeFolderShortcut(overItem.shortcut);
     const compactSmallTargetDirectHit = Boolean(
       overCenterRect
@@ -78,13 +89,19 @@ export function resolveRootDropIntent(params: {
       && !rectEquals(overCenterRect, overRect)
       && pointInRect(pointer, overCenterRect),
     );
+    const fullCenterRectHit = centerHitMode === 'full-center-rect'
+      && pointInRect(pointer, overCenterRect ?? overRect);
 
     if (
-      compactSmallTargetDirectHit
-      || isPointInDropCenter(
-        pointer,
-        overCenterRect ?? overRect,
-        largeFolderShortcut ? undefined : SMALL_TARGET_DROP_CENTER_THRESHOLD,
+      fullCenterRectHit
+      || compactSmallTargetDirectHit
+      || (
+        centerHitMode === 'threshold'
+        && isPointInDropCenter(
+          pointer,
+          overCenterRect ?? overRect,
+          largeFolderShortcut ? undefined : SMALL_TARGET_DROP_CENTER_THRESHOLD,
+        )
       )
     ) {
       return centerIntent;

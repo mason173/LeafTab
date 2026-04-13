@@ -4,8 +4,12 @@ import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 import type { ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
 
 export const SHORTCUT_DRAG_SETTLE_TRANSITION = 'transform 320ms ease-in-out';
-const MERGE_PREVIEW_BORDER_WIDTH_PX = 2.5;
-const MERGE_PREVIEW_BORDER_COLOR = 'rgba(255,255,255,0.3)';
+const MERGE_PREVIEW_DEFAULT_GLOW_SHADOW = [
+  '0 12px 28px rgba(0,0,0,0.14)',
+  '0 0 0 1px rgba(255,255,255,0.14)',
+  '0 0 0 10px rgba(255,255,255,0.05)',
+].join(', ');
+const MERGE_PREVIEW_COMPACT_TINT = 'rgba(232, 236, 240, 0.3)';
 
 function MergePreviewHighlight({
   cardVariant,
@@ -21,26 +25,64 @@ function MergePreviewHighlight({
   compactPreviewBorderRadius?: string;
 }) {
   if (cardVariant === 'compact') {
+    const maskId = React.useId();
     const borderRadius = compactPreviewBorderRadius || getShortcutIconBorderRadius(iconCornerRadius);
+    const haloInset = 6;
+    const radiusExpansionPx = 4;
+    const outerWidth = compactPreviewWidth + haloInset * 2;
+    const outerHeight = compactPreviewHeight + haloInset * 2;
+    const outerRadius = `calc(${borderRadius} + ${radiusExpansionPx}px)`;
+    const innerRadius = borderRadius;
+
     return (
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 z-10"
+        className="pointer-events-none absolute left-1/2 top-0 z-0 -translate-x-1/2 overflow-visible"
         style={{
-          top: compactPreviewHeight / 2,
-          transform: 'translate(-50%, -50%)',
+          width: outerWidth,
+          height: outerHeight,
+          top: -haloInset,
         }}
       >
-        <div
-          className="bg-white/[0.04] dark:bg-white/[0.03]"
-          style={{
-            width: compactPreviewWidth + 10,
-            height: compactPreviewHeight + 10,
-            borderRadius: `calc(${borderRadius} + 6px)`,
-            border: `${MERGE_PREVIEW_BORDER_WIDTH_PX}px solid ${MERGE_PREVIEW_BORDER_COLOR}`,
-            boxShadow: '0 12px 26px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05)',
-          }}
-        />
+        <svg
+          width={outerWidth}
+          height={outerHeight}
+          viewBox={`0 0 ${outerWidth} ${outerHeight}`}
+          className="block overflow-visible"
+        >
+          <defs>
+            <mask id={maskId}>
+              <rect
+                x="0"
+                y="0"
+                width={outerWidth}
+                height={outerHeight}
+                rx={outerRadius}
+                ry={outerRadius}
+                fill="white"
+              />
+              <rect
+                x={haloInset}
+                y={haloInset}
+                width={compactPreviewWidth}
+                height={compactPreviewHeight}
+                rx={innerRadius}
+                ry={innerRadius}
+                fill="black"
+              />
+            </mask>
+          </defs>
+          <rect
+            x="0"
+            y="0"
+            width={outerWidth}
+            height={outerHeight}
+            rx={outerRadius}
+            ry={outerRadius}
+            fill={MERGE_PREVIEW_COMPACT_TINT}
+            mask={`url(#${maskId})`}
+          />
+        </svg>
       </div>
     );
   }
@@ -48,10 +90,10 @@ function MergePreviewHighlight({
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-[-4px] z-10 rounded-[22px] bg-white/[0.07] dark:bg-white/[0.04]"
+      className="pointer-events-none absolute inset-[-2px] z-0 rounded-[22px]"
       style={{
-        border: `${MERGE_PREVIEW_BORDER_WIDTH_PX}px solid ${MERGE_PREVIEW_BORDER_COLOR}`,
-        boxShadow: '0 12px 28px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05)',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 100%)',
+        boxShadow: MERGE_PREVIEW_DEFAULT_GLOW_SHADOW,
       }}
     />
   );
@@ -145,7 +187,7 @@ export function DraggableShortcutItemFrame({
       <div
         ref={registerElement}
         {...frameProps}
-        className={`${frameClassName} ${dimmed ? 'opacity-75' : ''} ${dragDisabled ? '' : 'cursor-grab active:cursor-grabbing'} ${frameProps?.className ?? ''}`}
+        className={`${frameClassName} isolate ${dimmed ? 'opacity-75' : ''} ${dragDisabled ? '' : 'cursor-grab active:cursor-grabbing'} ${frameProps?.className ?? ''}`}
         style={{
           ...frameProps?.style,
           opacity: isDragging ? 0.32 : undefined,
@@ -168,14 +210,16 @@ export function DraggableShortcutItemFrame({
             iconCornerRadius={iconCornerRadius}
           />
         ) : null}
-        {isDragging && !hideDragPlaceholder ? (
-          <ShortcutDragPlaceholder
-            cardVariant={cardVariant}
-            compactPlaceholderWidth={compactPreviewWidth}
-            compactPlaceholderHeight={compactPlaceholderHeight}
-            defaultPlaceholderHeight={defaultPlaceholderHeight}
-          />
-        ) : isDragging ? null : children}
+        <div className="relative z-10">
+          {isDragging && !hideDragPlaceholder ? (
+            <ShortcutDragPlaceholder
+              cardVariant={cardVariant}
+              compactPlaceholderWidth={compactPreviewWidth}
+              compactPlaceholderHeight={compactPlaceholderHeight}
+              defaultPlaceholderHeight={defaultPlaceholderHeight}
+            />
+          ) : isDragging ? null : children}
+        </div>
         {selectionOverlay}
       </div>
     </div>

@@ -44,14 +44,24 @@ export function getDragVisualCenter(params: {
   pointer: PointerPoint;
   previewOffset: PointerPoint;
   activeRect: DOMRect;
+  visualRect?: {
+    offsetX: number;
+    offsetY: number;
+    width: number;
+    height: number;
+  };
 }): PointerPoint {
-  const { pointer, previewOffset, activeRect } = params;
+  const { pointer, previewOffset, activeRect, visualRect } = params;
   const visualLeft = pointer.x - previewOffset.x;
   const visualTop = pointer.y - previewOffset.y;
+  const centerRectWidth = visualRect?.width ?? activeRect.width;
+  const centerRectHeight = visualRect?.height ?? activeRect.height;
+  const centerRectOffsetX = visualRect?.offsetX ?? 0;
+  const centerRectOffsetY = visualRect?.offsetY ?? 0;
 
   return {
-    x: visualLeft + activeRect.width / 2,
-    y: visualTop + activeRect.height / 2,
+    x: visualLeft + centerRectOffsetX + centerRectWidth / 2,
+    y: visualTop + centerRectOffsetY + centerRectHeight / 2,
   };
 }
 
