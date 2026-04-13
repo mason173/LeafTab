@@ -1,0 +1,841 @@
+{
+  "version": "1.4.7",
+  "generatedAt": "2026-04-10T07:49:44.323Z",
+  "icons": {
+    "36kr.com": {
+      "path": "svgs/36kr.com.svg",
+      "sha256": "b4065bbe8255b1ca87c1406343d9dc8f33beb1f875a8f57f093b1574a178e88f",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "adobe.com": {
+      "path": "svgs/adobe.com.svg",
+      "sha256": "539c1263fbbecd47df61ecdf237a501aaea0f1a5f24341c5c3f547aaad052a9a",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "balsamiq.com": {
+      "path": "svgs/balsamiq.com.svg",
+      "sha256": "e770322830f98bbfca003d20d74e9dd1947cab40853a5fda15f84d004f8013a4",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "canvaslms.net": {
+      "path": "svgs/canvaslms.net.svg",
+      "sha256": "db1abf1e6180bbc243d5c65bc641377fa44f8fb46e24ec2620cf6995f1018d0e",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "chat.openai.com": {
+      "path": "svgs/chat.openai.com.svg",
+      "sha256": "25e919c2e67e67599da8cdaf410fa299ef56392fd57358a67fad62bd557a89dc",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "chatglm.cn": {
+      "path": "svgs/chatglm.cn.svg",
+      "sha256": "1325fdd7245b2d81232aa10100d29c06df32ca0da4ce899a8a43d4a02fed49db",
+      "updatedAt": "2026-04-10T07:03:24.671Z"
+    },
+    "claude.ai": {
+      "path": "svgs/claude.ai.svg",
+      "sha256": "ae2ffc3455845f3e836244c5622e147fed695c2e9675fb19e5c1e3c31bb5a00c",
+      "updatedAt": "2026-04-10T07:03:24.671Z"
+    },
+    "cli.im": {
+      "path": "svgs/cli.im.svg",
+      "sha256": "951af55795590dbba59b26848afd25fab15fdcae69697fd960a349bc449a09ab",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "creator.douyin.com": {
+      "path": "svgs/creator.douyin.com.svg",
+      "sha256": "eedd3bbd9c57eca7f13a1c14186802d815cee7df8278d9597dcb494a676e16dc",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "ct.ctrip.com": {
+      "path": "svgs/ct.ctrip.com.svg",
+      "sha256": "afdaad860af7395d15ca32653dd3f69b2309edb6369b19107d2327711fef4e67",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "deepseek.com": {
+      "path": "svgs/deepseek.com.svg",
+      "sha256": "b39b5fdc30f539eb36684526e99391ba4d73ff34ee5f91d5a823b322e245ed93",
+      "updatedAt": "2026-04-10T07:03:24.671Z"
+    },
+    "dev.to": {
+      "path": "svgs/dev.to.svg",
+      "sha256": "9773c6a2ab420b729a5471c060aee10efcf18e6c6323889c0a33693a4575d618",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "developer.mozilla.org": {
+      "path": "svgs/developer.mozilla.org.svg",
+      "sha256": "94419d1d3daa791882f1e9bdf629bf22051b1a3c36dc06d51038a25be76b48b5",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "docs.qq.com": {
+      "path": "svgs/docs.qq.com.svg",
+      "sha256": "9a5df0f7d6d51d78b90393911fc07205b2e46985e854c018ad3551344ff4251d",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "doubao.com": {
+      "path": "svgs/doubao.com.svg",
+      "sha256": "e33f6df969e22d2da670efbb114b5e07eff8ca7454d397b2a2bc2250a806f30c",
+      "updatedAt": "2026-04-10T07:03:24.673Z"
+    },
+    "dribbble.com": {
+      "path": "svgs/dribbble.com.svg",
+      "sha256": "02bc0eeeba45bd951b535d4ccce87f98c7dcf778fcdeeab496312eb243912c0e",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "edition.cnn.com": {
+      "path": "svgs/edition.cnn.com.svg",
+      "sha256": "d0e15b52826e346f82d1dff041ecdcf6be9d4e6279e86d5b5f6596c53e6fb641",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "excalidraw.com": {
+      "path": "svgs/excalidraw.com.svg",
+      "sha256": "9afeb190553b96cae404bc94fbb9d6a07ecb2cab3e043d97fe543a35ad2cf208",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "exmail.qq.com": {
+      "path": "svgs/exmail.qq.com.svg",
+      "sha256": "490830c0434dbf5e793e7cff0c36f87ea3adc0b375761cecae0ce7aabc9b1f1f",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "finance.sina.com.cn": {
+      "path": "svgs/finance.sina.com.cn.svg",
+      "sha256": "7f5fa19e5155558d1d2bd579eec64ec9a9fab22e95daca3e1f512a455abdd44f",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "flomoapp.com": {
+      "path": "svgs/flomoapp.com.svg",
+      "sha256": "9ff01bc6e87d8282ffafd18eeb9c27ead84391e70841ecf7b7779287def2e078",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "gerensuodeshui.cn": {
+      "path": "svgs/gerensuodeshui.cn.svg",
+      "sha256": "aa2db234c70631dd58d57131e5df4824fda6f32d871fcc62fe723112eba2c5ce",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "huaban.com": {
+      "path": "svgs/huaban.com.svg",
+      "sha256": "75722a2ff109430b4038402b84818f68297971697e7a038d0caa446a41697a53",
+      "updatedAt": "2026-04-10T07:03:24.675Z"
+    },
+    "index.baidu.com": {
+      "path": "svgs/index.baidu.com.svg",
+      "sha256": "f8793f5ef54b98536880efde6e21b796275404500c558d2fbcd92c6fb1a4a209",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "jimeng.jianying.com": {
+      "path": "svgs/jimeng.jianying.com.svg",
+      "sha256": "736c9a030726dc79aad3bd25ac91a14fe14f7082e9bae743c495d9a2e6183bc6",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "jira.atlassian.com": {
+      "path": "svgs/jira.atlassian.com.svg",
+      "sha256": "273e806bea58a7a2b8e9e3b86ab2134eea4d70c9213fd162659c5f13cebba6e2",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "json.org": {
+      "path": "svgs/json.org.svg",
+      "sha256": "55f7b387e5bcd4069d310c1896493bcaedf4180a0ce7fd82e12b83336b728111",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "jsonformatter.org": {
+      "path": "svgs/jsonformatter.org.svg",
+      "sha256": "ad2965837246ca4542d9459779d511bf9de5abdb2d1a98dd823363e6f088e764",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "jstor.org": {
+      "path": "svgs/jstor.org.svg",
+      "sha256": "be32cf044b328952105a69a2ead698ae304b6cef7f7a0511782c2e7281c65acc",
+      "updatedAt": "2026-04-10T07:03:24.673Z"
+    },
+    "juejin.cn": {
+      "path": "svgs/juejin.cn.svg",
+      "sha256": "cc394e5abfa391455fb483faf7385177afa0dce6279360f68fd809445267f143",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "linux.do": {
+      "path": "svgs/linux.do.svg",
+      "sha256": "39e9a4ddec4e03fbb56cf995c14734206ed2d98c105a877f603cf515a1bc0503",
+      "updatedAt": "2026-04-10T07:03:24.673Z"
+    },
+    "luogu.com.cn": {
+      "path": "svgs/luogu.com.cn.svg",
+      "sha256": "03f738aef9c397593ee94cb00cbcc5405d9fa37979ca34796a21ae81558240cc",
+      "updatedAt": "2026-04-10T07:03:24.673Z"
+    },
+    "mail.google.com": {
+      "path": "svgs/mail.google.com.svg",
+      "sha256": "2240f66296ba07cec1c239ba7853a512191553a2a4f00eb1f7d48cb635ae33ad",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "mail.proton.me": {
+      "path": "svgs/mail.proton.me.svg",
+      "sha256": "8c386de71fef9c2988e964b6e46dd4d1117e46940ecdfeae9a5061e862a1a14b",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "mastergo.com": {
+      "path": "svgs/mastergo.com.svg",
+      "sha256": "2b5f4015b127992cb16567f17a0acca81bc2389f836cc9a1c972d04ed67530e3",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "medium.com": {
+      "path": "svgs/medium.com.svg",
+      "sha256": "dcd6825511e36d9fc9fb818e76cc984deed2a8cbc66d9133982bb6e1cc100768",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "miro.com": {
+      "path": "svgs/miro.com.svg",
+      "sha256": "17521f16cfe1fb0c076a3d102d8b8dd94a05826874807ffe8dfc00dfa9edd875",
+      "updatedAt": "2026-04-10T07:03:24.676Z"
+    },
+    "mobbin.com": {
+      "path": "svgs/mobbin.com.svg",
+      "sha256": "ee5ba3c61f395f9a0d67046e18e5280308ae355ce4eb6583ceab41462eeadc30",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "modao.cc": {
+      "path": "svgs/modao.cc.svg",
+      "sha256": "1aaaac45a9b8ae14ec918489f5a04b36674cce044183e0d9e3c735aac5235f27",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "monday.com": {
+      "path": "svgs/monday.com.svg",
+      "sha256": "49bd2ffd319e16e0812dbb2ac7c83fd7b005cc2b6aa29fa6b65acabbc1c9ed30",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "mp.weixin.qq.com": {
+      "path": "svgs/mp.weixin.qq.com.svg",
+      "sha256": "f99421b6835e9cdee40bb4ecdc908067725f97b7256f2ece769ead2eff599881",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "music.163.com": {
+      "path": "svgs/music.163.com.svg",
+      "sha256": "6d3f1bbed33c643e25bd101ecfd174f6ed3e28b8755a9612aa06d17565e9d768",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "news.ycombinator.com": {
+      "path": "svgs/news.ycombinator.com.svg",
+      "sha256": "62a14f1bc4165464d532b76997d91247fc1c400e89940c477c190f7397429c7b",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "nextjs.org": {
+      "path": "svgs/nextjs.org.svg",
+      "sha256": "beacd219bcd6c3f2481cc1f6cbf17f3316e8684c41e3f9304783c9ed3989e699",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "open.spotify.com": {
+      "path": "svgs/open.spotify.com.svg",
+      "sha256": "5d7194860dad7883513d293945eb1d022980065e5726e2845b04fb3d0eea8466",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "outlook.live.com": {
+      "path": "svgs/outlook.live.com.svg",
+      "sha256": "6ff4a53d28c0deba0bed2bf558d64865482bb1001c3cdf318b82a0a2958de4d8",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "pubmed.ncbi.nlm.nih.gov": {
+      "path": "svgs/pubmed.ncbi.nlm.nih.gov.svg",
+      "sha256": "ef5be80cf1ef545a17ec3e8024e3b424b7ac6eecc790fffa8f19e48173407bd2",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "react.dev": {
+      "path": "svgs/react.dev.svg",
+      "sha256": "15c05476284f3203689f89289a2f2b21182055dd7d013da0396b5ba7141a0801",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "regex101.com": {
+      "path": "svgs/regex101.com.svg",
+      "sha256": "556a9323b494109383d0b4f79ab68279a157e00248a6b50483827398334b5d1e",
+      "updatedAt": "2026-04-10T07:03:24.677Z"
+    },
+    "researchgate.net": {
+      "path": "svgs/researchgate.net.svg",
+      "sha256": "19f0019cd5466e9a6c6b5cc3a13a84a5f2f6260a10fa0d65320fb2b640fdeaff",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "scamadviser.com": {
+      "path": "svgs/scamadviser.com.svg",
+      "sha256": "0259fee7aa977c05aa15520651d678d0bfa219f84aec7a173d70e99d41fcc687",
+      "updatedAt": "2026-04-10T07:03:24.674Z"
+    },
+    "scholar.google.com": {
+      "path": "svgs/scholar.google.com.svg",
+      "sha256": "088fb87a28fe756adb1c93369d3d1545890c4eb83103ead01c582f6428dba9ad",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "segmentfault.com": {
+      "path": "svgs/segmentfault.com.svg",
+      "sha256": "963de1eff7002d4e8702db98c33b6c01de79012325cc6dc3d81292aabd9289db",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "shimo.im": {
+      "path": "svgs/shimo.im.svg",
+      "sha256": "507cecfe93c2d64c8af7d5fd9a8ed30a7a07989ca491c550550eefbc03a385ff",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "slack.com": {
+      "path": "svgs/slack.com.svg",
+      "sha256": "8ad595a9e843180d03ea6d4628658ad0afcef722198917b28f2e0d4a05a52217",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "smallpdf.com": {
+      "path": "svgs/smallpdf.com.svg",
+      "sha256": "aac6231e1a84ff864ee456aa277e9705b45390d2595937c3d00dbf874107cf58",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "sspai.com": {
+      "path": "svgs/sspai.com.svg",
+      "sha256": "94e532ab42dd2151780201995b9c59da4f84d26b26a9182817b211c86c09d976",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "stackoverflow.com": {
+      "path": "svgs/stackoverflow.com.svg",
+      "sha256": "ec100ab4bd301767df1fe72a318c61d1227900065b5a3b08290de8cd9cb5f4b8",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "substack.com": {
+      "path": "svgs/substack.com.svg",
+      "sha256": "bbaa484e780f42d101e14d953940a76369deb7e50af4f106b7862e4a948c8f1a",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "tailwindcss.com": {
+      "path": "svgs/tailwindcss.com.svg",
+      "sha256": "fb5386fd855d5c73ac14c3241b24a646ae50b70074d79782c193ed2a60ba996c",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "techcrunch.com": {
+      "path": "svgs/techcrunch.com.svg",
+      "sha256": "ccae10e3723ba98021b89f3c32895179c9ce94e202b3d40929032230d7d0ea08",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "tinypng.com": {
+      "path": "svgs/tinypng.com.svg",
+      "sha256": "de3b0f400fd7cdbc61ac48a36bb46420d2c3625c3ae328ce21a53440bbd50283",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "trello.com": {
+      "path": "svgs/trello.com.svg",
+      "sha256": "f389f76002d3301d8cc25cde97d22b1caeebe7a90f2ddc9d4e7bba4676f97725",
+      "updatedAt": "2026-04-10T07:03:24.678Z"
+    },
+    "udemy.com": {
+      "path": "svgs/udemy.com.svg",
+      "sha256": "fe81f62aed870955b566eae444ff35c80015d7cc82ff4ac3cf5f8c17de22ecf6",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "unsplash.com": {
+      "path": "svgs/unsplash.com.svg",
+      "sha256": "d2aef06ac48f8b1986ea4e9595120e961f9807ceafbeaf8294a76b934df0754e",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "vercel.com": {
+      "path": "svgs/vercel.com.svg",
+      "sha256": "5d525154bec21e92a3a1f26694debdf27481dfec517deda40e9a9a841d2d78e7",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "wallstreetcn.com": {
+      "path": "svgs/wallstreetcn.com.svg",
+      "sha256": "041b878782d288c994a99bffcbf9a80b53bb94f0905d32c6541cd25ab52df21d",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "weibo.com": {
+      "path": "svgs/weibo.com.svg",
+      "sha256": "8ec68550e545a2388a2bf7875bc42909e1bdecbc4b8d3b9821ce071c9736b4c2",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "whimsical.com": {
+      "path": "svgs/whimsical.com.svg",
+      "sha256": "a23dc98654645f7625994d5639f803bd999f066b9972782e52b53db44cab2f11",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "wolframalpha.com": {
+      "path": "svgs/wolframalpha.com.svg",
+      "sha256": "251e6f016a36138d3fa034de8686d1af1bb8935c702b80e56b7ba40d08150686",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "worldcat.org": {
+      "path": "svgs/worldcat.org.svg",
+      "sha256": "070bb7c392f68e9d408d252799fc3cc547458d52d432a17c73a9eceadd6587fc",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "wplace.live": {
+      "path": "svgs/wplace.live.svg",
+      "sha256": "fe9b406e0d5c38355d380b9bf5778ac864d0bd7dd159956d6a3d819c756b950c",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "wujieai.com": {
+      "path": "svgs/wujieai.com.svg",
+      "sha256": "80096c530b773baa05c8fc4e9a1b14c737458f25a1706e26dc3d313863171fb8",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.10jqka.com.cn": {
+      "path": "svgs/www.10jqka.com.cn.svg",
+      "sha256": "0477f6e324bbbee095a7b8866dc200339d85c892a3b02f6852776526896c09f5",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.12306.cn": {
+      "path": "svgs/www.12306.cn.svg",
+      "sha256": "7688e7113fb300bbe681d463a7037f17abe3b5dc8626e832eddef9637d5dbe63",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.51job.com": {
+      "path": "svgs/www.51job.com.svg",
+      "sha256": "0bf2f7fa387afd72e7fb51df8b59e2a0b7485fae26e00ad851d1f0c7baadc67b",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.51wendang.com": {
+      "path": "svgs/www.51wendang.com.svg",
+      "sha256": "eb41c25461172cacb0fe984ee159a7a7375f6ad6e7c17ac4d2dc3a5e849752aa",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.amazon.com": {
+      "path": "svgs/www.amazon.com.svg",
+      "sha256": "d383f0c44038a1eb56c1f0b227e8d8e91ef8d326b417f10448979a4a672b6adc",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.apple.com": {
+      "path": "svgs/www.apple.com.svg",
+      "sha256": "27329f159a27f7bd861674eba0d11ce71215e38da1b387ac2d0755770689dbb3",
+      "updatedAt": "2026-04-10T07:03:24.679Z"
+    },
+    "www.atlassian.com": {
+      "path": "svgs/www.atlassian.com.svg",
+      "sha256": "454c4e0f93c89c63ddac3ab549d1ec5b45c2e4ac0dba9b740b2953d359688b7d",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.awwwards.com": {
+      "path": "svgs/www.awwwards.com.svg",
+      "sha256": "80c7cbf04ed735d70cd19fad08892be6b38abc898709fb09ba5284f2db88467c",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.axure.com": {
+      "path": "svgs/www.axure.com.svg",
+      "sha256": "9bdcde9fc72ea1a2198a7df35ae25ae7cc1be694336bd71e3bb649d626895a36",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.bbc.com": {
+      "path": "svgs/www.bbc.com.svg",
+      "sha256": "da3c8d61524dcfcd1285dfaf8bec5217fa95db997d646b928b8d99f651dacf48",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.behance.net": {
+      "path": "svgs/www.behance.net.svg",
+      "sha256": "6976f20638c9a988f53314ae26d94f356617e08adc84ae3f5c1f105bb344d088",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.beisen.com": {
+      "path": "svgs/www.beisen.com.svg",
+      "sha256": "acb84aa6790085f4e81439213af5fc9e146a33ee84153eaccfe96e0b2b82b593",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.bestbuy.com": {
+      "path": "svgs/www.bestbuy.com.svg",
+      "sha256": "18fadb1dfd00e6f6b1fd3cd70003945a17e750084ad01a2ca823098f500ce827",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.bilibili.com": {
+      "path": "svgs/www.bilibili.com.svg",
+      "sha256": "eae6adb5531c14bf46f4a8579936fc535c9e879dbdbfae5d0204ddc09fde4503",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.caixin.com": {
+      "path": "svgs/www.caixin.com.svg",
+      "sha256": "259eef7304faa466491031bf7f23267ac73a0904ed0ecc49e8d1874c59f8d4d1",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.canva.cn": {
+      "path": "svgs/www.canva.cn.svg",
+      "sha256": "1b2487a35eee9225ebe80244ee5f4745a8741bf7359bee87f4a47b69cc865c8b",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.capcut.cn": {
+      "path": "svgs/www.capcut.cn.svg",
+      "sha256": "9130bc4f243f203a70f0254bcd9172a7299d655bd2dc34bf8d95e099ccf3c356",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.chanmama.com": {
+      "path": "svgs/www.chanmama.com.svg",
+      "sha256": "84a53f30546f386c0f0fbc0ac3a1b433fc7b41e39612004934df7c78ac7adf1b",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.chuangkit.com": {
+      "path": "svgs/www.chuangkit.com.svg",
+      "sha256": "34907548c5eea3b9b51e60d1e7235dea04f7d14e18fd5f455124c7a2a8f9cf80",
+      "updatedAt": "2026-04-10T07:03:24.680Z"
+    },
+    "www.cls.cn": {
+      "path": "svgs/www.cls.cn.svg",
+      "sha256": "1e878119e0a48e41c3a4a96af3055d746c4be11cc1a279ca514590b08b9d6dd5",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.cnki.net": {
+      "path": "svgs/www.cnki.net.svg",
+      "sha256": "1e210a72c07afe4173a030f2c3aa49dbc93eb95944ee83581fd150905f0773b9",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.coursera.org": {
+      "path": "svgs/www.coursera.org.svg",
+      "sha256": "3c739abce08a07d2cc934c4781b08113e1e95bf1024c70bfba2eec4630ef4396",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.csrc.gov.cn": {
+      "path": "svgs/www.csrc.gov.cn.svg",
+      "sha256": "dbdfdfd623e401a69537aaa8ef4716644836f45047b92f4e80a10e6e8063ef22",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.deepl.com": {
+      "path": "svgs/www.deepl.com.svg",
+      "sha256": "90fd303176a15ab42a6ae6cbd61072385b12038371068daa066ab2186e80862d",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.dingtalk.com": {
+      "path": "svgs/www.dingtalk.com.svg",
+      "sha256": "f40bdc628eb7ce56f8d2832f119f557f778893a3da3ee8e9f42b872caafb7cda",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.douban.com": {
+      "path": "svgs/www.douban.com.svg",
+      "sha256": "43af796c8d6d59061252947edb1aa98d4062e72ed4e8779b7b2d277f4a3b66b2",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.eastmoney.com": {
+      "path": "svgs/www.eastmoney.com.svg",
+      "sha256": "f2107a5d58fb72f493299e77240ac841cdc96c4003837128b17defb24bbb8334",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.ebay.com": {
+      "path": "svgs/www.ebay.com.svg",
+      "sha256": "713ba725b7ad1a02805dc0a273f8d78b8f0abed4e2915f23a48353c3d726f131",
+      "updatedAt": "2026-04-10T07:03:24.681Z"
+    },
+    "www.edx.org": {
+      "path": "svgs/www.edx.org.svg",
+      "sha256": "bdfa336aec6771c0fb6dde4ad585d4e2500174bf8fd016cbaf2fcc7025939e1f",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.fadada.com": {
+      "path": "svgs/www.fadada.com.svg",
+      "sha256": "3c793408b7ffb1e576484875c4eb58829358b97feb1738cb9f2d8c2947957e3a",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.feishu.cn": {
+      "path": "svgs/www.feishu.cn.svg",
+      "sha256": "ecb945088233fbce575dda1bb1c66738ea6b29e5c2f3a15cfc502b64c9f30498",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.figma.com": {
+      "path": "svgs/www.figma.com.svg",
+      "sha256": "b8daacd152439cd2b427b4f3889fdb43c2fc56b53fe6f0d364e05a4e36ea668a",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.ftchinese.com": {
+      "path": "svgs/www.ftchinese.com.svg",
+      "sha256": "14bdf9dd47de83a5984d22346be9ca4b6c1dd839b858a9efc55dbefb61be875f",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.gelonghui.com": {
+      "path": "svgs/www.gelonghui.com.svg",
+      "sha256": "a906623258fb7bd31bc943a33c5342b99ad04d3a6cd35abcf423274033e77589",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.github.com": {
+      "path": "svgs/www.github.com.svg",
+      "sha256": "14ddbdbc5d01bc4787795f93f7aba9c4a099d74881243cd27c559de9b9996685",
+      "updatedAt": "2026-04-10T07:03:24.682Z"
+    },
+    "www.grammarly.com": {
+      "path": "svgs/www.grammarly.com.svg",
+      "sha256": "8a6afda73b44033fc604c819cb52c791a4b59efb3b016518a78d0037991938a4",
+      "updatedAt": "2026-04-10T07:03:24.683Z"
+    },
+    "www.gying.net": {
+      "path": "svgs/www.gying.net.svg",
+      "sha256": "1afee83ab9450d7d7fc7e0bb33a7d7720c529267677c8684a42d5d52c6f05bac",
+      "updatedAt": "2026-04-10T07:03:24.683Z"
+    },
+    "www.hkex.com.hk": {
+      "path": "svgs/www.hkex.com.hk.svg",
+      "sha256": "0c04f145219d7f11539b07a73979c5de1320af2756c96b8b51b0b37e9ffa33a6",
+      "updatedAt": "2026-04-10T07:03:24.683Z"
+    },
+    "www.hra.org.cn": {
+      "path": "svgs/www.hra.org.cn.svg",
+      "sha256": "76cd47466ec1c5345baea0e38ade8047ea531897d1a45f7c3241e350ec58dcb0",
+      "updatedAt": "2026-04-10T07:03:24.683Z"
+    },
+    "www.huxiu.com": {
+      "path": "svgs/www.huxiu.com.svg",
+      "sha256": "0c2461db5e6914ab9290c27afca023a85321d086de8c3ca53601c7340283eb67",
+      "updatedAt": "2026-04-10T07:03:24.683Z"
+    },
+    "www.iconfont.cn": {
+      "path": "svgs/www.iconfont.cn.svg",
+      "sha256": "c868c0d67be509e59e7f2140b3406bd4936eaba5f75b858959e026c6346289bd",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.icourse163.org": {
+      "path": "svgs/www.icourse163.org.svg",
+      "sha256": "4640810c1236775460ef60136edb721477e71c6a08555d618e2efcf7898f31b4",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.imdb.com": {
+      "path": "svgs/www.imdb.com.svg",
+      "sha256": "74e208fb28300bfb648dd3ebebc97e1f490ed0aaf91f570cd392b16d90a03496",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.ithome.com": {
+      "path": "svgs/www.ithome.com.svg",
+      "sha256": "e46d9103c8447b62e740245e2399e7f03545ea77e90a17788d566b8c72e8bd57",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.jd.com": {
+      "path": "svgs/www.jd.com.svg",
+      "sha256": "2317330692c57c8b4b3771bb7d7b6f55bea4afb1880b3e0c0a4a17da38f89295",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.jin10.com": {
+      "path": "svgs/www.jin10.com.svg",
+      "sha256": "50fd58ea2eaba953142479acf6f9e680dff62fa566acc45c6106751e5741c506",
+      "updatedAt": "2026-04-10T07:03:24.684Z"
+    },
+    "www.kuaidi100.com": {
+      "path": "svgs/www.kuaidi100.com.svg",
+      "sha256": "675c2a5517321c87ff944c8449021f6f727d61098416dcde14490a7636c4935b",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.law-lib.com": {
+      "path": "svgs/www.law-lib.com.svg",
+      "sha256": "c8c54f1181ab660e724951c96106f55675fd43fbabaae1e9d609dbb52cfa5120",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.liepin.com": {
+      "path": "svgs/www.liepin.com.svg",
+      "sha256": "a01c0e063354b4ebd2abe1ccc53a0404d5e6d08eaa0dd42694147ce89114c549",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.linkedin.com": {
+      "path": "svgs/www.linkedin.com.svg",
+      "sha256": "370c1c9956edf6d089a39a3c7aa0e219ddb302ad5f3d3b893444ac3eba493c52",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.lucidchart.com": {
+      "path": "svgs/www.lucidchart.com.svg",
+      "sha256": "508f6bc04471fd95df86785e3436878364b3c6f2d6cb9f7631a5705503cdd154",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.matpool.com": {
+      "path": "svgs/www.matpool.com.svg",
+      "sha256": "07934f445fd02298077181432ae6198f2c24f4d1dba9bed8311c2b1e74173ae4",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.miao3.cn": {
+      "path": "svgs/www.miao3.cn.svg",
+      "sha256": "bc87948371a3d4d23b75f0c7737c856ba28ffe77e232dbc9b354c0efd287e27e",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.mohrss.gov.cn": {
+      "path": "svgs/www.mohrss.gov.cn.svg",
+      "sha256": "cb71ed4f4e722453685f854a6505e156a6cd95cbb5f6853d5957cffda49a52fc",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.mokahr.com": {
+      "path": "svgs/www.mokahr.com.svg",
+      "sha256": "691b16bda9905b0c354b01673634528789bbe82e7b6300103de465ae46f42b1f",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.netflix.com": {
+      "path": "svgs/www.netflix.com.svg",
+      "sha256": "4f56831cbd61b9968fb2a87d87ecf8fa5be7036d64b5eebfaa10e546c0b52c31",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.newrank.cn": {
+      "path": "svgs/www.newrank.cn.svg",
+      "sha256": "6c927910fe4bf1e44a358fe8d8d2ab3cb0406cafdae6abdb569a6d7ff8ce3581",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.notion.so": {
+      "path": "svgs/www.notion.so.svg",
+      "sha256": "b3f02e70cb952d021958aa0741fa99524cbaa69bc361dcfd0d3c432531ac1caf",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.nytimes.com": {
+      "path": "svgs/www.nytimes.com.svg",
+      "sha256": "ad1d476c0b3bec5d6a9df2f34d8bb2d0777efd93d643a7f6ad1cbb54b7979f48",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.overleaf.com": {
+      "path": "svgs/www.overleaf.com.svg",
+      "sha256": "ad34df5e61ac51a79ef5aeb1920c980a6afb2c2dd1af4d93b1dc41fbd7eb953f",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.pbc.gov.cn": {
+      "path": "svgs/www.pbc.gov.cn.svg",
+      "sha256": "1c4b8d7806bf1d2083324250475c8ab2b11c0072e15a0959a665cf41d780b667",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.pinterest.com": {
+      "path": "svgs/www.pinterest.com.svg",
+      "sha256": "4f9eadff91cbcfec4fe1f2c73117de1e5324b5c065c40f6dd097324b450aafda",
+      "updatedAt": "2026-04-10T07:03:24.685Z"
+    },
+    "www.processon.com": {
+      "path": "svgs/www.processon.com.svg",
+      "sha256": "105e35db366e441f90e23d91c173a77fe8e7fa3b83737e49e96819cd35a565af",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.producthunt.com": {
+      "path": "svgs/www.producthunt.com.svg",
+      "sha256": "7aab7c9238efc43b9a15fa54fc63631d3c26ae454a7b57d041c0b0f521a38d3c",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.qimai.cn": {
+      "path": "svgs/www.qimai.cn.svg",
+      "sha256": "06d6e19c49cc07c66816765ae88f91a7c41144f5c799526069628ba8fd0945e8",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.reddit.com": {
+      "path": "svgs/www.reddit.com.svg",
+      "sha256": "e673aed1069bcc90b9451734855da4b72e2f7afdd7e5e8e2795b6022c2ed9366",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.rili.com.cn": {
+      "path": "svgs/www.rili.com.cn.svg",
+      "sha256": "0db11d3815439c3e358afaa3799f63d27f2ebc6e58cbc9dff6a761ac7207144d",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.smzdm.com": {
+      "path": "svgs/www.smzdm.com.svg",
+      "sha256": "1192e1c6d25877c134e029d470686f4aa42804cb98ff7dff9226ddcc7eb255dd",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.sse.com.cn": {
+      "path": "svgs/www.sse.com.cn.svg",
+      "sha256": "01235648bb0e77fdcba6632180f47acaa6227af4b5cc5b933d25c2b3ca235653",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.szse.cn": {
+      "path": "svgs/www.szse.cn.svg",
+      "sha256": "abdc265f55fea39203f8ce785b98511b722bc02ac254d4504630ddc7071c18a6",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.taobao.com": {
+      "path": "svgs/www.taobao.com.svg",
+      "sha256": "c04a8f69c4b6d2885c64fd201d1c0c318e9ed51e34fb5d8799c5906fc2d79499",
+      "updatedAt": "2026-04-10T07:03:24.686Z"
+    },
+    "www.tianyancha.com": {
+      "path": "svgs/www.tianyancha.com.svg",
+      "sha256": "54be5e791aa29118bd2c048ec8c18263497d07736e25cb7412b552d5f39e419f",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.twitch.tv": {
+      "path": "svgs/www.twitch.tv.svg",
+      "sha256": "2b3b27fe5afbd974e09868065d1195ed371e13a8d0c1e76d1abad99425536033",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.typescriptlang.org": {
+      "path": "svgs/www.typescriptlang.org.svg",
+      "sha256": "6d87b3caabd4bb662fdc24e0740c4a758237e39c45935c3ab0c46d86ee6d98b4",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.typewolf.com": {
+      "path": "svgs/www.typewolf.com.svg",
+      "sha256": "70dafd11ddf7026ed93a342b8b05c2ac852db9bcb6824d34a0d6bb777b60817e",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.ui.cn": {
+      "path": "svgs/www.ui.cn.svg",
+      "sha256": "ccdd2dc7cd806593e1b9512cede33a62c42b29eda7f2993236d27409cf83e7e2",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.v2ex.com": {
+      "path": "svgs/www.v2ex.com.svg",
+      "sha256": "512ebdfe84658e32a901b0e5927259217e5ee7c44e2ae03015579d11173184fb",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.walmart.com": {
+      "path": "svgs/www.walmart.com.svg",
+      "sha256": "e443a78b3d18435867890e4432c4fd6505ff865ca646dfbcd675f918270ae0f5",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.webofscience.com": {
+      "path": "svgs/www.webofscience.com.svg",
+      "sha256": "a17b21fad9d65849feb0a33e7dad2a7677d928903d6935950f577c1f4595dc19",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.woshipm.com": {
+      "path": "svgs/www.woshipm.com.svg",
+      "sha256": "b0125e5e696d57cce839bc06824b8921282bfd3c2fc5fbd3ad5f4109d9c25c23",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.wps.cn": {
+      "path": "svgs/www.wps.cn.svg",
+      "sha256": "4495fc27d2954ca7281423d2f545f5be900c1a0abf20285271048093a85b0d57",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.xiaohongshu.com": {
+      "path": "svgs/www.xiaohongshu.com.svg",
+      "sha256": "992b56231749281ecb8c7e3c31bf2fe48cf57c66903e90060be031e0b6185c08",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.xmind.cn": {
+      "path": "svgs/www.xmind.cn.svg",
+      "sha256": "62243c51f795bbb8ec0a6ef489c84b2c16b6d5cd96c158b6ff90230f13087c9a",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.youtube.com": {
+      "path": "svgs/www.youtube.com.svg",
+      "sha256": "c233e618a1dc77c38c9d211fd6f4456087658066ee81e800d0e35c29c343224b",
+      "updatedAt": "2026-04-10T07:03:24.687Z"
+    },
+    "www.zcool.com.cn": {
+      "path": "svgs/www.zcool.com.cn.svg",
+      "sha256": "70f9bb91b4777429333f659ac0fb49ff64d52165162c0b2067b0421503bb4fd6",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "www.zhaopin.com": {
+      "path": "svgs/www.zhaopin.com.svg",
+      "sha256": "79bfc08e031d7e53fb53b88aa64c9cdf236913a7c5f64e2a4378462ac7a2fa54",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "www.zhihu.com": {
+      "path": "svgs/www.zhihu.com.svg",
+      "sha256": "3ae826cf60707079069f38ac8306d572bde2e14c0e51238c60aacc5e22181989",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "www.zhipin.com": {
+      "path": "svgs/www.zhipin.com.svg",
+      "sha256": "851afad22e7b73fcd9754cb9337875e9a8992e74d5ccfa41101a6d76ed587098",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "www.zotero.org": {
+      "path": "svgs/www.zotero.org.svg",
+      "sha256": "4b299f906006740ee6bf87f30e3104e4646117a4abff6249c4c18993b0e1058d",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "wx.qq.com": {
+      "path": "svgs/wx.qq.com.svg",
+      "sha256": "f99421b6835e9cdee40bb4ecdc908067725f97b7256f2ece769ead2eff599881",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "xiaoheihe.cn": {
+      "path": "svgs/xiaoheihe.cn.svg",
+      "sha256": "0569d06f3ceffa71025dfdbc85f86956b21b6bbffdb1d22d9ba5e3276f0b34e8",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "xiumi.us": {
+      "path": "svgs/xiumi.us.svg",
+      "sha256": "c9cbb2172ebfb61022c0c531be967910a6d0e4f8d005dbfec6d2d85ca0725d3d",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "xueqiu.com": {
+      "path": "svgs/xueqiu.com.svg",
+      "sha256": "7e7679a49553cd689897ce4bc7412b7fbd96f2a81b1077c638e116b3676ff2e7",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    },
+    "yuketang.cn": {
+      "path": "svgs/yuketang.cn.svg",
+      "sha256": "6670b0bf33a1b4815d97701a7fc3ef92923a5f04362669ceb27bd0ae483f72fd",
+      "updatedAt": "2026-04-10T07:03:24.688Z"
+    }
+  }
+}
