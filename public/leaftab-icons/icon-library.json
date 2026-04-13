@@ -1,0 +1,1259 @@
+{
+  "version": "1.4.7",
+  "generatedAt": "2026-04-13T17:14:45.642Z",
+  "icons": {
+    "36kr.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/36kr.com_0075D7.svg",
+      "defaultColor": "#0075D7",
+      "sha256": "0c57cae80bdd9079ddfb1ac0e0fec6c78925fe2ed04a011c6f449aa8a945568c",
+      "updatedAt": "2026-04-13T17:02:18.674Z"
+    },
+    "adobe.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/adobe.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "38b0f80eb29076dbf8b1a98f32ee29c8eb9a12671b3e416ad814942f39fbb939",
+      "updatedAt": "2026-04-13T17:02:18.675Z"
+    },
+    "balsamiq.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/balsamiq.com_AE1C59.svg",
+      "defaultColor": "#AE1C59",
+      "sha256": "cb3dc9f2c1a73c3d8fb7374b8c668faa69c616e6b9fc862679dbc868a594d85b",
+      "updatedAt": "2026-04-13T17:02:18.675Z"
+    },
+    "bitbucket.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/bitbucket.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "713dfa7b02d55541145b748c271fd81f99386fabce251785e7e7fa068ae2c5ab",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "calendar.google.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/calendar.google.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "218e11be82f220dcaf0a8ab5d74a125694b80ea7bff4c5cd1c6565580adc9650",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "canvaslms.net": {
+      "mode": "shape-color",
+      "shapePath": "shapes/canvaslms.net_D43B35.svg",
+      "defaultColor": "#D43B35",
+      "sha256": "282d96646ec38d01467a38c4bcdcd4affa5a5ae17f5b65381daff329b261c3a4",
+      "updatedAt": "2026-04-13T17:02:18.675Z"
+    },
+    "chat.openai.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/chat.openai.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "d65ec6a88f7dd002a1c27d6f9eb13982ebb395fb85f1fdc2c182a8d03c0017f1",
+      "updatedAt": "2026-04-13T17:02:18.675Z"
+    },
+    "chatglm.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/chatglm.cn_3859FF.svg",
+      "defaultColor": "#3859FF",
+      "sha256": "5a581c7426f49a711144852c391eeec5efa9b817107dba535fc9a1d905857e25",
+      "updatedAt": "2026-04-13T17:02:18.676Z"
+    },
+    "claude.ai": {
+      "mode": "shape-color",
+      "shapePath": "shapes/claude.ai_D97757.svg",
+      "defaultColor": "#D97757",
+      "sha256": "32bb4aa9d98970a4dd9f38fbeefe1009f8595ff6930f9d3355002fd117215da4",
+      "updatedAt": "2026-04-13T17:02:18.676Z"
+    },
+    "cli.im": {
+      "mode": "shape-color",
+      "shapePath": "shapes/cli.im_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "49c0675df9596e2fb8c511bfa3b837943d9209ce316ef188dcaba50d5074b1cf",
+      "updatedAt": "2026-04-13T17:02:18.676Z"
+    },
+    "creator.douyin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/creator.douyin.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "370e364c1491ebe348c62458158a4b5e15f777f2bb96243d6dab0e567c13e794",
+      "updatedAt": "2026-04-13T17:02:18.677Z"
+    },
+    "ct.ctrip.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/ct.ctrip.com_2554E6.svg",
+      "defaultColor": "#2554E6",
+      "sha256": "2ecfb3f47907b89c16b144b8c0f8f6b584c1d1b6e085467f7f59f4eef08e5edd",
+      "updatedAt": "2026-04-13T17:02:18.677Z"
+    },
+    "deepseek.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/deepseek.com_4D6BFE.svg",
+      "defaultColor": "#4D6BFE",
+      "sha256": "ec8cf8ef732b7119db1e3fb15d2796cda0f87640ae20f85aa2cfe691bc8a50e4",
+      "updatedAt": "2026-04-13T17:02:18.677Z"
+    },
+    "dev.to": {
+      "mode": "shape-color",
+      "shapePath": "shapes/dev.to_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "f1f2bfbceb62de296e589acc3f49157378220160904c53f5cd9a4ab084eb0be3",
+      "updatedAt": "2026-04-13T17:02:18.677Z"
+    },
+    "developer.mozilla.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/developer.mozilla.org_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "4655471e06cc141e6d71d9b14d87a52b705b5ae115f43c0c125d91fb2b18f48a",
+      "updatedAt": "2026-04-13T17:02:18.677Z"
+    },
+    "docs.qq.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/docs.qq.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "2f09534df5b45cabae86fab8249718e3b0360f5badc57e0e7f1cfa5eeeef5f7f",
+      "updatedAt": "2026-04-13T17:02:18.678Z"
+    },
+    "doubao.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/doubao.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "5e2bf1f0e1bea1def23cb11437bf8ede34baef793e91e50254975a374d628c78",
+      "updatedAt": "2026-04-13T17:02:18.678Z"
+    },
+    "dribbble.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/dribbble.com_E74E7F.svg",
+      "defaultColor": "#E74E7F",
+      "sha256": "622c492d9022aea6b1d0b34c9f83b9838859cdd41694dc858c8be5c4e0dcfa8e",
+      "updatedAt": "2026-04-13T17:02:18.679Z"
+    },
+    "drive.google.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/drive.google.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "5ae4127e218f1dee180e10e1e3fb830df1b590afca8dbc72008b197ca0978c25",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "edition.cnn.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/edition.cnn.com_CC0000.svg",
+      "defaultColor": "#CC0000",
+      "sha256": "3ab6295ffe22839015e230265477f3852e2fdffbd7abebde1136800bd50dd3d0",
+      "updatedAt": "2026-04-13T17:02:18.679Z"
+    },
+    "excalidraw.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/excalidraw.com_7982FF.svg",
+      "defaultColor": "#7982FF",
+      "sha256": "3aab9fbce6ea55b6c7ec20c0c9d89e93a772aab06f64f2078aa2a18041c9b2a5",
+      "updatedAt": "2026-04-13T17:02:18.680Z"
+    },
+    "exmail.qq.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/exmail.qq.com_2883EC.svg",
+      "defaultColor": "#2883EC",
+      "sha256": "a6d66b5820dfda06e839cfab3419a07f4b6a27b2d6bee967a5af98b6ee36912e",
+      "updatedAt": "2026-04-13T17:02:18.680Z"
+    },
+    "finance.sina.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/finance.sina.com.cn_CD450F.svg",
+      "defaultColor": "#CD450F",
+      "sha256": "69bac0e8998923d5b08be0a53eab8b2703453328fee8c1cbc1a051b829c237dd",
+      "updatedAt": "2026-04-13T17:02:18.680Z"
+    },
+    "flomoapp.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/flomoapp.com_30CF79.svg",
+      "defaultColor": "#30CF79",
+      "sha256": "a04b63b8bc1aea67674c0cd1a96cecad4cd6e96c9ede07f5696813e1e782fd14",
+      "updatedAt": "2026-04-13T17:02:18.680Z"
+    },
+    "gerensuodeshui.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/gerensuodeshui.cn_2554E6.svg",
+      "defaultColor": "#2554E6",
+      "sha256": "81b5ab32185b90ad7a7ec912654487d617b8ca7fe6613740e42cb85bf41f1cee",
+      "updatedAt": "2026-04-13T17:02:18.680Z"
+    },
+    "gitlab.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/gitlab.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "4a9ebeb8cb1aa5e9ae2e1bd4b65abd36850fc8bdeeacb68b7bdeb110088f0c95",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "huaban.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/huaban.com_F74F4F.svg",
+      "defaultColor": "#F74F4F",
+      "sha256": "c9d0333ce4b2c521f5f31f51b3338ec06d1dcf0a665bf664031941f4aef3b173",
+      "updatedAt": "2026-04-13T17:02:18.681Z"
+    },
+    "index.baidu.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/index.baidu.com_3245DF.svg",
+      "defaultColor": "#3245DF",
+      "sha256": "3844fccbccee0ccc88c8cf50d932b2f8fb702855315e614dc5da88fcad541b94",
+      "updatedAt": "2026-04-13T17:02:18.681Z"
+    },
+    "iqiyi.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/iqiyi.com_42BC56.svg",
+      "defaultColor": "#42BC56",
+      "sha256": "fabfe214209d26b2a9fe9cf35f5866efb7938b917ba6c35feca6551c5e51c2ba",
+      "updatedAt": "2026-04-13T16:58:40.749Z"
+    },
+    "jimeng.jianying.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/jimeng.jianying.com_018BF7.svg",
+      "defaultColor": "#018BF7",
+      "sha256": "0eb9c721fc5be83a44863462f5b5640745d515bb2c8502760adda317f2fcbb72",
+      "updatedAt": "2026-04-13T17:02:18.681Z"
+    },
+    "jira.atlassian.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/jira.atlassian.com_0086FF.svg",
+      "defaultColor": "#0086FF",
+      "sha256": "709437f4baa0413cda1022476141bd510fd1b07f6d294fc589c8dedd67439e87",
+      "updatedAt": "2026-04-13T17:02:18.681Z"
+    },
+    "json.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/json.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "c634f06996245128127e5db91106979940c91b3d0cba973f9964ed301893cde0",
+      "updatedAt": "2026-04-13T17:02:18.682Z"
+    },
+    "jsonformatter.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/jsonformatter.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "ecfe61d364bed7bee71eae22cd445d80705218b8d4eb0948f0fc2f229a11f0a4",
+      "updatedAt": "2026-04-13T17:02:18.682Z"
+    },
+    "jstor.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/jstor.org_990000.svg",
+      "defaultColor": "#990000",
+      "sha256": "5f112095748502e7e1d1affa8c0d2085b63b16f583f5d734594bd8167e9ede8b",
+      "updatedAt": "2026-04-13T17:02:18.682Z"
+    },
+    "juejin.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/juejin.cn_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "1dc093e197d6384972e4dc61b21912a4786dd612e6e5e619608a6bb2112da99d",
+      "updatedAt": "2026-04-13T17:02:18.683Z"
+    },
+    "linux.do": {
+      "mode": "shape-color",
+      "shapePath": "shapes/linux.do_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "9ca9e1394a7646701379a7297121ef3b7ec33b796687e179600963b439f7ecb3",
+      "updatedAt": "2026-04-13T17:02:18.683Z"
+    },
+    "luogu.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/luogu.com.cn_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "ad7d89fe48ad795176aa23144abeb4c55e7ed1ebad86af7b55343da028f5a104",
+      "updatedAt": "2026-04-13T17:02:18.683Z"
+    },
+    "mail.google.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/mail.google.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "c3017f0302c0d07aa98416fe09da9528997a97931452a0fd99b046e100dd8114",
+      "updatedAt": "2026-04-13T17:02:18.684Z"
+    },
+    "mail.proton.me": {
+      "mode": "shape-color",
+      "shapePath": "shapes/mail.proton.me_5E59E2.svg",
+      "defaultColor": "#5E59E2",
+      "sha256": "c72217a2c696ffa083aef0464b51bf521bf46bbf1a7df990c15473db535f1d2c",
+      "updatedAt": "2026-04-13T17:02:18.684Z"
+    },
+    "maps.google.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/maps.google.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "c80c5eb50b5ef047b53dbe0819a8db936d163885067c9a61a1a0318bd1eae63e",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "mastergo.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/mastergo.com_0066FF.svg",
+      "defaultColor": "#0066FF",
+      "sha256": "fb40e75f69683fde08e7982232a6c77ec954ee9ec53c2b156047570dafb27a46",
+      "updatedAt": "2026-04-13T17:02:18.684Z"
+    },
+    "medium.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/medium.com_000000.svg",
+      "defaultColor": "#000000",
+      "sha256": "488c9b38124d883f9be1f4ff18be7eebb1e816915ef375e6a6aaa08c04f71f29",
+      "updatedAt": "2026-04-13T17:02:18.684Z"
+    },
+    "miro.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/miro.com_FFA304.svg",
+      "defaultColor": "#FFA304",
+      "sha256": "541b5a0997d28a442d5f1608c10fc43e2d2151ebc3ca257daf9e21211f5a1ddf",
+      "updatedAt": "2026-04-13T17:02:18.685Z"
+    },
+    "mobbin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/mobbin.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "eecb2bd5940198937d7789d3784f49b1f79e9a1790a10e3f8974c51f8de0d041",
+      "updatedAt": "2026-04-13T17:02:18.685Z"
+    },
+    "modao.cc": {
+      "mode": "shape-color",
+      "shapePath": "shapes/modao.cc_FF3332.svg",
+      "defaultColor": "#FF3332",
+      "sha256": "b22408266c0782673d6164db117e0240f6f8f30be93b15e74be3df410414ccde",
+      "updatedAt": "2026-04-13T17:02:18.685Z"
+    },
+    "monday.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/monday.com_FF4500.svg",
+      "defaultColor": "#FF4500",
+      "sha256": "a0c317a2e2fc00f7f11f9abbdf6cd2834873731aa3397909d63fe06b0fb3b3ba",
+      "updatedAt": "2026-04-13T17:02:18.685Z"
+    },
+    "mp.weixin.qq.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/mp.weixin.qq.com_38BE4D.svg",
+      "defaultColor": "#38BE4D",
+      "sha256": "b0df2afdcd6600da772baebf39a7534d0aa85ecb4a5644fc18c79f1eb414a800",
+      "updatedAt": "2026-04-13T17:02:18.686Z"
+    },
+    "music.163.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/music.163.com_E50914.svg",
+      "defaultColor": "#E50914",
+      "sha256": "58564dade747f5c4acff3a1d5d28da5135e814d4e6be65eb79db63616594aa73",
+      "updatedAt": "2026-04-13T17:02:18.686Z"
+    },
+    "news.ycombinator.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/news.ycombinator.com_FF8600.svg",
+      "defaultColor": "#FF8600",
+      "sha256": "ec729b7bea1d7baa5f24bd59f40b321703aa1c00f17fe8f84708ab063b050b60",
+      "updatedAt": "2026-04-13T17:02:18.686Z"
+    },
+    "nextjs.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/nextjs.org_1D1929.svg",
+      "defaultColor": "#1D1929",
+      "sha256": "0298a1e7c8c20ae61c6c4515e085e1289030e07499b0c5af6ce23a9145c6ff25",
+      "updatedAt": "2026-04-13T17:02:18.686Z"
+    },
+    "open.spotify.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/open.spotify.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "af61806cc01914497d535a0f8fb629941393dc21ea5e21eb14b90d6000fd40da",
+      "updatedAt": "2026-04-13T17:02:18.686Z"
+    },
+    "outlook.live.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/outlook.live.com_0078D8.svg",
+      "defaultColor": "#0078D8",
+      "sha256": "507a16a39b884934a9d7d9b9155a2466c33973ab022296034375f7df46efa682",
+      "updatedAt": "2026-04-13T17:02:18.687Z"
+    },
+    "pubmed.ncbi.nlm.nih.gov": {
+      "mode": "shape-color",
+      "shapePath": "shapes/pubmed.ncbi.nlm.nih.gov_205992.svg",
+      "defaultColor": "#205992",
+      "sha256": "3c0e19ad9a608e72cc05839926ae1385f0ae0e8b03833a3ecd350ef62575939b",
+      "updatedAt": "2026-04-13T17:02:18.687Z"
+    },
+    "react.dev": {
+      "mode": "shape-color",
+      "shapePath": "shapes/react.dev_00BCD4.svg",
+      "defaultColor": "#00BCD4",
+      "sha256": "4cd16b0030ad7eac2b73a2153d472ef53bda1e762b19c23269a401d9d91ff184",
+      "updatedAt": "2026-04-13T17:02:18.687Z"
+    },
+    "regex101.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/regex101.com_156DA0.svg",
+      "defaultColor": "#156DA0",
+      "sha256": "52e2d4834d9d86da6f5c779358db05cc0f7c2da0f98e6a073af33fb2262a8de1",
+      "updatedAt": "2026-04-13T17:02:18.687Z"
+    },
+    "researchgate.net": {
+      "mode": "shape-color",
+      "shapePath": "shapes/researchgate.net_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "c7991306432551f805d7f038ba93906467b027d15cb69c023318f2bd898a89ac",
+      "updatedAt": "2026-04-13T17:02:18.688Z"
+    },
+    "scamadviser.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/scamadviser.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "ddfaa4b8699f35e6a748720958a029e03bb3b4957540e78d4f8984f178970113",
+      "updatedAt": "2026-04-13T17:02:18.688Z"
+    },
+    "scholar.google.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/scholar.google.com_0066FF.svg",
+      "defaultColor": "#0066FF",
+      "sha256": "a9162302e757ce045d2f7d7d4f278b1d6b14050b3075c4ba7f7e85cb5afe6fb2",
+      "updatedAt": "2026-04-13T17:02:18.688Z"
+    },
+    "segmentfault.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/segmentfault.com_00984B.svg",
+      "defaultColor": "#00984B",
+      "sha256": "16158d14a6747af87087f9923fb59f46ee93dabb581bf2237b3730ca40edbea4",
+      "updatedAt": "2026-04-13T17:02:18.688Z"
+    },
+    "shimo.im": {
+      "mode": "shape-color",
+      "shapePath": "shapes/shimo.im_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "b807edcfc905783f993f242828e979a5179ee1e542344f11b5c9818d2262a39f",
+      "updatedAt": "2026-04-13T17:02:18.688Z"
+    },
+    "slack.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/slack.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "a4dae2bb74a651d9f82f6396d0dfd15c3dfb173ce24744f9f0f42494309842a1",
+      "updatedAt": "2026-04-13T17:02:18.689Z"
+    },
+    "smallpdf.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/smallpdf.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "8e95cedb0130ba22ce0db2c58e63eda784e80eb8f5db87694f5dde2e56eb50b2",
+      "updatedAt": "2026-04-13T17:02:18.689Z"
+    },
+    "sogou.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/sogou.com_FB6022.svg",
+      "defaultColor": "#FB6022",
+      "sha256": "507dfbadbbaa159b6e85208b7c2d8ea5822f9808eea5e70c712d0356e57e392d",
+      "updatedAt": "2026-04-13T16:58:40.749Z"
+    },
+    "sspai.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/sspai.com_D81E06.svg",
+      "defaultColor": "#D81E06",
+      "sha256": "6e1064da1e5777871d6e2c1f0fd94902c383f62fbc8dc9abf4e811e7b81f77f3",
+      "updatedAt": "2026-04-13T17:02:18.689Z"
+    },
+    "stackoverflow.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/stackoverflow.com_FF8600.svg",
+      "defaultColor": "#FF8600",
+      "sha256": "a440b6d99b07f431735ad8b4e315b463e48724d3c74057929dc65462595d47e6",
+      "updatedAt": "2026-04-13T17:02:18.689Z"
+    },
+    "substack.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/substack.com_FF6719.svg",
+      "defaultColor": "#FF6719",
+      "sha256": "08cae967dde35307cccc27e0ccfa69836cf6416bfad5c0ceb8d0b75be96b920a",
+      "updatedAt": "2026-04-13T17:02:18.689Z"
+    },
+    "tailwindcss.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/tailwindcss.com_06B6D4.svg",
+      "defaultColor": "#06B6D4",
+      "sha256": "94e06394dfa943d950a3e4293650c8f791b40f88381310faf559ce75607ce69a",
+      "updatedAt": "2026-04-13T17:02:18.690Z"
+    },
+    "techcrunch.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/techcrunch.com_28AA3C.svg",
+      "defaultColor": "#28AA3C",
+      "sha256": "9278efd075d9bd76738c0a20a044d546553004539665950aa028de99715ed5b7",
+      "updatedAt": "2026-04-13T17:02:18.690Z"
+    },
+    "tinypng.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/tinypng.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "18bb92d81cdc1cf207e5beb54261262259ab6b89b0ff4162ea71e2f585d3d70f",
+      "updatedAt": "2026-04-13T17:02:18.690Z"
+    },
+    "trello.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/trello.com_0079BF.svg",
+      "defaultColor": "#0079BF",
+      "sha256": "66dd5cdab616b718dd8c0f5fe58cde785c68e5b477e7efcc3b72f8de77b71b69",
+      "updatedAt": "2026-04-13T17:02:18.691Z"
+    },
+    "udemy.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/udemy.com_A534F0.svg",
+      "defaultColor": "#A534F0",
+      "sha256": "d1030087060366f284d99cc118ab4b02adf93b553d7c5dac6a0da72528e80a1f",
+      "updatedAt": "2026-04-13T17:02:18.691Z"
+    },
+    "unsplash.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/unsplash.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "ab0281864d1205f90af1a6db7d856c73fabe6e5b9f71755f814cdd4b18ba0668",
+      "updatedAt": "2026-04-13T17:02:18.692Z"
+    },
+    "vercel.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/vercel.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "511ef8762d9eb30041dad173524a1373a3ac9ff39a980c699cf0955c5732b1f8",
+      "updatedAt": "2026-04-13T17:02:18.692Z"
+    },
+    "wallstreetcn.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/wallstreetcn.com_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "0cb4fae5c5bd2acc3dee470ed3aa82d1369f6c48fe96fc81a46c60a5a8608520",
+      "updatedAt": "2026-04-13T17:02:18.692Z"
+    },
+    "weibo.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/weibo.com_CC2127.svg",
+      "defaultColor": "#CC2127",
+      "sha256": "c772d3995399c3e2d7a1cafe7de45c37e14b290c8b9b29b295c1168ff63e01cb",
+      "updatedAt": "2026-04-13T17:02:18.693Z"
+    },
+    "whimsical.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/whimsical.com_B333FD.svg",
+      "defaultColor": "#B333FD",
+      "sha256": "9208337ca29aad9fb9d350099c3d496df3a0353256eff06aeccc0d6911d3f0c9",
+      "updatedAt": "2026-04-13T17:02:18.693Z"
+    },
+    "wolframalpha.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/wolframalpha.com_333333.svg",
+      "defaultColor": "#333333",
+      "sha256": "6fa69b1d72c7836fb9a2097ac22549dd585423405099afb101ca2e9097e211ce",
+      "updatedAt": "2026-04-13T17:02:18.693Z"
+    },
+    "worldcat.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/worldcat.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "a7bdb7b3ec49f30ddfca0e3d6310ab5a6391c666ac24712794fccfd8127a2935",
+      "updatedAt": "2026-04-13T17:02:18.694Z"
+    },
+    "wplace.live": {
+      "mode": "shape-color",
+      "shapePath": "shapes/wplace.live_000000.svg",
+      "defaultColor": "#000000",
+      "sha256": "ce90f448762f8f501046e4a483d0d47c4d535628d05485f85b82cfb6fd72b605",
+      "updatedAt": "2026-04-13T17:02:18.694Z"
+    },
+    "wujieai.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/wujieai.com_FFBB00.svg",
+      "defaultColor": "#FFBB00",
+      "sha256": "60979453b0a47283f6a3ed613cfa55fd5e000ea9b321732349306abf47edfd91",
+      "updatedAt": "2026-04-13T17:02:18.694Z"
+    },
+    "www.10jqka.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.10jqka.com.cn_D81E06.svg",
+      "defaultColor": "#D81E06",
+      "sha256": "a8063780459c4cdcbb2847629b5967550e5ba6edb2c73dca51e630d34a5b8746",
+      "updatedAt": "2026-04-13T17:02:18.694Z"
+    },
+    "www.12306.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.12306.cn_0086F6.svg",
+      "defaultColor": "#0086F6",
+      "sha256": "07a14ee2d9e9e6ef63f40a6e5250c973d4327f1aaf9b21c52f42d2411a6cd6fa",
+      "updatedAt": "2026-04-13T17:02:18.695Z"
+    },
+    "www.51job.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.51job.com_EA571B.svg",
+      "defaultColor": "#EA571B",
+      "sha256": "ae07718644e4a2b19d3e97d28130a43f242c9d5767d6c999655c57928042b273",
+      "updatedAt": "2026-04-13T17:02:18.695Z"
+    },
+    "www.51wendang.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.51wendang.com_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "bb4340a1fb0cd0a4376fa0bc0d62788beba206caf97b406425aa03cd7e9d0ef5",
+      "updatedAt": "2026-04-13T17:02:18.695Z"
+    },
+    "www.amazon.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.amazon.com_FF7800.svg",
+      "defaultColor": "#FF7800",
+      "sha256": "4e03f7f3f3e5765159896c58a9267dc24c669c7e82084ea013924f5f9c69d88b",
+      "updatedAt": "2026-04-13T17:02:18.696Z"
+    },
+    "www.apple.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.apple.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "0ed8171c1afb700d83d0f40dd751a3d2a7dcc0e4b7499aa793a28b9c513b8815",
+      "updatedAt": "2026-04-13T17:02:18.696Z"
+    },
+    "www.atlassian.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.atlassian.com_0086FF.svg",
+      "defaultColor": "#0086FF",
+      "sha256": "145911721c3b8e77b3f80086eb998adce39c47f8656aa3252f14cbc98e0b9461",
+      "updatedAt": "2026-04-13T17:02:18.696Z"
+    },
+    "www.awwwards.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.awwwards.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "42265ba5242f6e9244f546db0d918174ca047657d8b214b9fcde3ef55083a497",
+      "updatedAt": "2026-04-13T17:02:18.697Z"
+    },
+    "www.axure.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.axure.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "2d5444fa06ce2da0529b79ee9a0d8e76c6d38cafe9faf2e95dfb61d9ecf2ad1a",
+      "updatedAt": "2026-04-13T17:02:18.697Z"
+    },
+    "www.bbc.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.bbc.com_FF0D01.svg",
+      "defaultColor": "#FF0D01",
+      "sha256": "d34c89163d4cd836d15a90172fb58c9104c931f65269d8a94859f7f58f83a7b0",
+      "updatedAt": "2026-04-13T17:02:18.697Z"
+    },
+    "www.behance.net": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.behance.net_3245DF.svg",
+      "defaultColor": "#3245DF",
+      "sha256": "f066e151cfcdead847da328d4c140dc967f9aa3ed6172fa16c8faa1539ca3ec5",
+      "updatedAt": "2026-04-13T17:02:18.697Z"
+    },
+    "www.beisen.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.beisen.com_47A141.svg",
+      "defaultColor": "#47A141",
+      "sha256": "1231f12093455561fba53e1712fbb9e1efe772e98c5b45c0a6cfedaaaa468284",
+      "updatedAt": "2026-04-13T17:02:18.698Z"
+    },
+    "www.bestbuy.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.bestbuy.com_FFEF00.svg",
+      "defaultColor": "#FFEF00",
+      "sha256": "144f879734c7b29ec32bd449a75f38f64b7fef7d5f7b9cb59ecd046039d2537d",
+      "updatedAt": "2026-04-13T17:02:18.698Z"
+    },
+    "www.bilibili.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.bilibili.com_E74E7F.svg",
+      "defaultColor": "#E74E7F",
+      "sha256": "ae443277bd7777289d06a022a80e02a60d8d876764c623b74ab56d1960c11c61",
+      "updatedAt": "2026-04-13T17:02:18.698Z"
+    },
+    "www.caixin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.caixin.com_3245DF.svg",
+      "defaultColor": "#3245DF",
+      "sha256": "d5d68bac52df17eaefa674d4702d25ee7cc52ee3059ae9726796552836663436",
+      "updatedAt": "2026-04-13T17:02:18.699Z"
+    },
+    "www.canva.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.canva.cn_446DE7.svg",
+      "defaultColor": "#446DE7",
+      "sha256": "42630338040f37055b67bc8d6caa7502b19a123851187eca53c1375b40139f4a",
+      "updatedAt": "2026-04-13T17:02:18.699Z"
+    },
+    "www.canva.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.canva.com_4245F4.svg",
+      "defaultColor": "#4245F4",
+      "sha256": "9b16bae3805fb2772f09d80259f05be1bc27652c89f2e055c0d17050435118d4",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "www.capcut.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.capcut.cn_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "579c7c6c17819cf0e9c40915190d485937f6cce12cd573177e80c28cc8d57ec3",
+      "updatedAt": "2026-04-13T17:02:18.699Z"
+    },
+    "www.chanmama.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.chanmama.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "2eeec4f24daece33e0d64dbf61b38cfb83df48fb15050207e4d4418484fa89d6",
+      "updatedAt": "2026-04-13T17:02:18.699Z"
+    },
+    "www.chuangkit.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.chuangkit.com_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "6299545e5f6d50cd33769769b0a8ac8e1a910efe115b36190640b1b4946bee0e",
+      "updatedAt": "2026-04-13T17:02:18.700Z"
+    },
+    "www.cls.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.cls.cn_C91428.svg",
+      "defaultColor": "#C91428",
+      "sha256": "db0aa23c314acb365a80281550f5b8a836cbefcbfa6d761c139603bda884ad94",
+      "updatedAt": "2026-04-13T17:02:18.700Z"
+    },
+    "www.cnki.net": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.cnki.net_C91428.svg",
+      "defaultColor": "#C91428",
+      "sha256": "e68d6f57fce673c6c156a1eb4fcc8cdbe71cb84d128f72b00158896c11e1a1fa",
+      "updatedAt": "2026-04-13T17:02:18.700Z"
+    },
+    "www.coursera.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.coursera.org_0079BF.svg",
+      "defaultColor": "#0079BF",
+      "sha256": "50b476aeeadc7f0cdf4f6c8fe0a5f23b71c7a78e24afb917028662cfec17fc0c",
+      "updatedAt": "2026-04-13T17:02:18.701Z"
+    },
+    "www.csrc.gov.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.csrc.gov.cn_C1000B.svg",
+      "defaultColor": "#C1000B",
+      "sha256": "b7da1a932bc89c2be484e28abfd3e915a3510e6e13167fa582a6f118578208b2",
+      "updatedAt": "2026-04-13T17:02:18.701Z"
+    },
+    "www.deepl.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.deepl.com_0F2B46.svg",
+      "defaultColor": "#0F2B46",
+      "sha256": "bdc131df20efce8f079e3df06e49ace07a12804dcac0edff9140fb9ad3a04130",
+      "updatedAt": "2026-04-13T17:02:18.701Z"
+    },
+    "www.dingtalk.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.dingtalk.com_59ADF8.svg",
+      "defaultColor": "#59ADF8",
+      "sha256": "95297038ffa2ae5218e6df94f72b895962f0399fc5327d62b2083cba33762db6",
+      "updatedAt": "2026-04-13T17:02:18.701Z"
+    },
+    "www.douban.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.douban.com_00B51D.svg",
+      "defaultColor": "#00B51D",
+      "sha256": "068737e11c2a7b18bbed4056508cac5f731384eb4edc281397dcd86913ff2ecc",
+      "updatedAt": "2026-04-13T17:02:18.702Z"
+    },
+    "www.dropbox.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.dropbox.com_0F82E2.svg",
+      "defaultColor": "#0F82E2",
+      "sha256": "c298c3bc20cb1c9639882e506dac043428b1f83de216d439f21ef63c1c32ba47",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    },
+    "www.eastmoney.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.eastmoney.com_E98F36.svg",
+      "defaultColor": "#E98F36",
+      "sha256": "333b2da1deca916354b3392f19497763094653b39cdedfddaf64a14df2553493",
+      "updatedAt": "2026-04-13T17:02:18.702Z"
+    },
+    "www.ebay.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.ebay.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "44441942e9a4960aa5846636aff9df646bb7f0ea2bf40b9d2ad9721f9131311e",
+      "updatedAt": "2026-04-13T17:02:18.702Z"
+    },
+    "www.edx.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.edx.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "3d8dfc3a7909a14dcf3ffc748393f8e0f0f6b4a889d06b7f694e282c74e715da",
+      "updatedAt": "2026-04-13T17:02:18.702Z"
+    },
+    "www.fadada.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.fadada.com_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "dfd9d109e437864d94b56c95deb2c2bfda28bf8f2cf46549929685ccbc580c56",
+      "updatedAt": "2026-04-13T17:02:18.702Z"
+    },
+    "www.feishu.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.feishu.cn_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "16be84d73e68700018b888947a690a13a012686b0cabc5d6d3081c88579d8167",
+      "updatedAt": "2026-04-13T17:02:18.703Z"
+    },
+    "www.figma.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.figma.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "51e9b968172f1b50d65e18fc845204e459b9d72c4ba34ec5f013fa3ed31863b2",
+      "updatedAt": "2026-04-13T17:02:18.703Z"
+    },
+    "www.ftchinese.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.ftchinese.com_FBCC9A.svg",
+      "defaultColor": "#FBCC9A",
+      "sha256": "e471842b604af9330ebdcbf6b90c3a05097baaa06cc9e5255a4557f543ada3f0",
+      "updatedAt": "2026-04-13T17:02:18.703Z"
+    },
+    "www.gelonghui.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.gelonghui.com_3E51E9.svg",
+      "defaultColor": "#3E51E9",
+      "sha256": "281bca9f3df761d153914202d69ea7a03d5e0179c808d4bb38cbbf859893f1af",
+      "updatedAt": "2026-04-13T17:02:18.703Z"
+    },
+    "www.github.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.github.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "9169a67bbeff04056e401865c363187049df1ccc1b8e9c6781a5753c9deb9c9c",
+      "updatedAt": "2026-04-13T17:02:18.703Z"
+    },
+    "www.grammarly.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.grammarly.com_227E6F.svg",
+      "defaultColor": "#227E6F",
+      "sha256": "4b1a3de96db7e48a387bfb46eebb720492ddddea97ca94c143ca6c1466634991",
+      "updatedAt": "2026-04-13T17:02:18.704Z"
+    },
+    "www.gying.net": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.gying.net_0075D7.svg",
+      "defaultColor": "#0075D7",
+      "sha256": "225fade575d4dbd80d6497b2f308327472b3e70200771fafc8bb1dcb9eb3879e",
+      "updatedAt": "2026-04-13T17:02:18.704Z"
+    },
+    "www.hkex.com.hk": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.hkex.com.hk_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "cb48e2a70f2959bf5e61a8e2949497b478027d26de7d6d3f1821caa51613abf7",
+      "updatedAt": "2026-04-13T17:02:18.704Z"
+    },
+    "www.hra.org.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.hra.org.cn_156DA0.svg",
+      "defaultColor": "#156DA0",
+      "sha256": "b55ae39fda2af402b6f8e58543e614a9cf613569852e9e3c5ddf7204069fe632",
+      "updatedAt": "2026-04-13T17:02:18.704Z"
+    },
+    "www.huxiu.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.huxiu.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "44596224ba035fd8c2f4081f727d8a82b851c6de4119a2e05a7775f7c34de24d",
+      "updatedAt": "2026-04-13T17:02:18.704Z"
+    },
+    "www.iconfont.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.iconfont.cn_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "b4ab6b6abab8c737deada4a36dea4cc3166f12d0d6622bd345a99a227916346f",
+      "updatedAt": "2026-04-13T17:02:18.705Z"
+    },
+    "www.icourse163.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.icourse163.org_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "c2ac0d17dc4fd38d09b14fef79e4cd229f11e0d50d6c3298b6acf5c7023ecf57",
+      "updatedAt": "2026-04-13T17:02:18.705Z"
+    },
+    "www.imdb.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.imdb.com_FFEF00.svg",
+      "defaultColor": "#FFEF00",
+      "sha256": "6f411ca667da623d847718b9c1748697955748ccc9ee1045d7d9f04e6f5266d8",
+      "updatedAt": "2026-04-13T17:02:18.705Z"
+    },
+    "www.ithome.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.ithome.com_FF0000.svg",
+      "defaultColor": "#FF0000",
+      "sha256": "1f4de3363f6635b54e7425c427c6727a0b1c00f9e75a6ef38b640a01956dba20",
+      "updatedAt": "2026-04-13T17:02:18.706Z"
+    },
+    "www.jd.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.jd.com_D81E06.svg",
+      "defaultColor": "#D81E06",
+      "sha256": "eefcd8929282424350adb51e175e3ad946e61aade73b715f7e609a89006feace",
+      "updatedAt": "2026-04-13T17:02:18.706Z"
+    },
+    "www.jin10.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.jin10.com_4E77E2.svg",
+      "defaultColor": "#4E77E2",
+      "sha256": "f9647fbce7a098f762e7567bbbc8fd4053897a0cf2b2e61389c4642c7d03cfc3",
+      "updatedAt": "2026-04-13T17:02:18.706Z"
+    },
+    "www.kuaidi100.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.kuaidi100.com_1296DB.svg",
+      "defaultColor": "#1296DB",
+      "sha256": "44fbd7f242576c1fe1653f301761f0b06030b4106210f917df11f3452445ff47",
+      "updatedAt": "2026-04-13T17:02:18.706Z"
+    },
+    "www.law-lib.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.law-lib.com_FF7941.svg",
+      "defaultColor": "#FF7941",
+      "sha256": "405e3ad8cd988de48f233b4e24b9468dd8babbd9b32878ac41efbe5c75a9eb9c",
+      "updatedAt": "2026-04-13T17:02:18.707Z"
+    },
+    "www.liepin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.liepin.com_FF7941.svg",
+      "defaultColor": "#FF7941",
+      "sha256": "4e55593b7a282778511a83c618d2767f063e48bd8591a340a68645e6d1ef3b59",
+      "updatedAt": "2026-04-13T17:02:18.707Z"
+    },
+    "www.linkedin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.linkedin.com_156DA0.svg",
+      "defaultColor": "#156DA0",
+      "sha256": "d971494ff0438e292d5cbe66f07d7fa99a665fa3380ad9f4ebe6c50b9711780f",
+      "updatedAt": "2026-04-13T17:02:18.707Z"
+    },
+    "www.lucidchart.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.lucidchart.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "cef8f5a38b4898b142be1be02b10977874f33ec68bddf5fcd0b5d164decaba4b",
+      "updatedAt": "2026-04-13T17:02:18.708Z"
+    },
+    "www.matpool.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.matpool.com_0061E8.svg",
+      "defaultColor": "#0061E8",
+      "sha256": "ecbf1fd27fb47330e5a670924d11e11060ec659b2ab6d18387119215a9b8b3ef",
+      "updatedAt": "2026-04-13T17:02:18.708Z"
+    },
+    "www.miao3.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.miao3.cn_FFEF00.svg",
+      "defaultColor": "#FFEF00",
+      "sha256": "faabb983cf36f0f160795e85af2e0e0fa317c45f75457508a78330534e40cedc",
+      "updatedAt": "2026-04-13T17:02:18.708Z"
+    },
+    "www.mohrss.gov.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.mohrss.gov.cn_4E77E2.svg",
+      "defaultColor": "#4E77E2",
+      "sha256": "9cffe32f682a9effc668bdd1e19bce9bab87a72f7d3b8eb560933ef69729936d",
+      "updatedAt": "2026-04-13T17:02:18.709Z"
+    },
+    "www.mokahr.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.mokahr.com_494BBF.svg",
+      "defaultColor": "#494BBF",
+      "sha256": "9777c669cba6941f59ecc66d11acdec500cb7424e0d6888f8c798c1301822377",
+      "updatedAt": "2026-04-13T17:02:18.709Z"
+    },
+    "www.netflix.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.netflix.com_E50914.svg",
+      "defaultColor": "#E50914",
+      "sha256": "b30b75e89f0dd36229173923571a6e161e2dc76a484d74438a4a05c2466d9d13",
+      "updatedAt": "2026-04-13T17:02:18.709Z"
+    },
+    "www.newrank.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.newrank.cn_FF7800.svg",
+      "defaultColor": "#FF7800",
+      "sha256": "d8cc79122307efc0f75b087ceb66055d96fafc73b0cb0a4ec6c98f070b4a23db",
+      "updatedAt": "2026-04-13T17:02:18.710Z"
+    },
+    "www.notion.so": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.notion.so_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "6094e1b9bc7b484c2cf1e12391222fa28d7adb3c0e6e4a98dc963bf46705c0f8",
+      "updatedAt": "2026-04-13T17:02:18.710Z"
+    },
+    "www.nytimes.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.nytimes.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "b86b35de66e4b911c7971220c27943fe777a7a3d87da3f079ea08ff9c0d552aa",
+      "updatedAt": "2026-04-13T17:02:18.710Z"
+    },
+    "www.overleaf.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.overleaf.com_47A141.svg",
+      "defaultColor": "#47A141",
+      "sha256": "2b1a33286d18399050548ade246dfce86687e7237056e88c902b7494245e3f3c",
+      "updatedAt": "2026-04-13T17:02:18.710Z"
+    },
+    "www.pbc.gov.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.pbc.gov.cn_C91428.svg",
+      "defaultColor": "#C91428",
+      "sha256": "71b6e63748f39331b925a012904f9564431181f36b231ec21d14ed36345476ef",
+      "updatedAt": "2026-04-13T17:02:18.710Z"
+    },
+    "www.pinterest.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.pinterest.com_CC2127.svg",
+      "defaultColor": "#CC2127",
+      "sha256": "95a2d6f0e7b2644f5a5450b9244a2b92ca2d0cadce3f9e717d246abc74ddc6e7",
+      "updatedAt": "2026-04-13T17:02:18.711Z"
+    },
+    "www.processon.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.processon.com_0075D7.svg",
+      "defaultColor": "#0075D7",
+      "sha256": "154be18b775bf5eb52eae33685a0e431d692bbe1ed270a091fbd593bd6f9d696",
+      "updatedAt": "2026-04-13T17:02:18.711Z"
+    },
+    "www.producthunt.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.producthunt.com_DE5425.svg",
+      "defaultColor": "#DE5425",
+      "sha256": "439a27400ab0bc30e7733de8e7ef610fad40348cccd39e7610225ec8829196d3",
+      "updatedAt": "2026-04-13T17:02:18.711Z"
+    },
+    "www.qimai.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.qimai.cn_54DA69.svg",
+      "defaultColor": "#54DA69",
+      "sha256": "ec581047e5cf3fb3333938200b41ef2c5234616d99a4554514e78fd0f017af5d",
+      "updatedAt": "2026-04-13T17:02:18.711Z"
+    },
+    "www.reddit.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.reddit.com_FF4500.svg",
+      "defaultColor": "#FF4500",
+      "sha256": "65e00c6c771b37a8d3ac6274adf463a94257f8458be263ff689ae529c6e7f60a",
+      "updatedAt": "2026-04-13T17:02:18.711Z"
+    },
+    "www.rili.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.rili.com.cn_C91428.svg",
+      "defaultColor": "#C91428",
+      "sha256": "363c5a640cd2996b85c7e5a6e3d40d1747a29234bf1b48f4669aaa14abea9c10",
+      "updatedAt": "2026-04-13T17:02:18.712Z"
+    },
+    "www.smzdm.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.smzdm.com_D81E06.svg",
+      "defaultColor": "#D81E06",
+      "sha256": "6cf25070fd87f55a9beeafee885c11d09b8ce29063e37f5da2bb84d222fd3875",
+      "updatedAt": "2026-04-13T17:02:18.712Z"
+    },
+    "www.sse.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.sse.com.cn_D81E06.svg",
+      "defaultColor": "#D81E06",
+      "sha256": "4e266cf2c743e768f956c22faeaca4daa80c4c46a1749a7393e5a737147c7689",
+      "updatedAt": "2026-04-13T17:02:18.712Z"
+    },
+    "www.szse.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.szse.cn_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "428c5e557213b569eac0be1b5be7f9d6982e71f4c96a56f2a0f90cacf6776051",
+      "updatedAt": "2026-04-13T17:02:18.712Z"
+    },
+    "www.taobao.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.taobao.com_FF8600.svg",
+      "defaultColor": "#FF8600",
+      "sha256": "8e730c024713535ef61e31b280fcee10611e9ad7d123d1a599aba487012f0782",
+      "updatedAt": "2026-04-13T17:02:18.712Z"
+    },
+    "www.tianyancha.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.tianyancha.com_0974EF.svg",
+      "defaultColor": "#0974EF",
+      "sha256": "a81452d16d648a1b1b1a1c563d4e9e2782fe12b7b8e06965b82126a002bae7af",
+      "updatedAt": "2026-04-13T17:02:18.713Z"
+    },
+    "www.twitch.tv": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.twitch.tv_632DE1.svg",
+      "defaultColor": "#632DE1",
+      "sha256": "0e5a80e95267b49ccb4b80d1c53c062a609ea93ab7c737e8fa6ea95fe0b7bdc7",
+      "updatedAt": "2026-04-13T17:02:18.713Z"
+    },
+    "www.typescriptlang.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.typescriptlang.org_3178C6.svg",
+      "defaultColor": "#3178C6",
+      "sha256": "ecef52742769444fdead8b695a7733821ae4a0c64410f2a62a25ffdd524c7bc8",
+      "updatedAt": "2026-04-13T17:02:18.713Z"
+    },
+    "www.typewolf.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.typewolf.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "d2bc1e855af909a0901d5e546c2665d627b8e29927fabf329f606d4c329b8e7e",
+      "updatedAt": "2026-04-13T17:02:18.713Z"
+    },
+    "www.ui.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.ui.cn_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "4c06cd2683d02620dfc0900f3ee1cdefc4f86de9f5093c0ebc5d63ebd154f181",
+      "updatedAt": "2026-04-13T17:02:18.713Z"
+    },
+    "www.v2ex.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.v2ex.com_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "26b14a67c65621ccfc0ce262f930d525e56732d004201d835ab185264a410927",
+      "updatedAt": "2026-04-13T17:02:18.714Z"
+    },
+    "www.walmart.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.walmart.com_FDBB30.svg",
+      "defaultColor": "#FDBB30",
+      "sha256": "e695ccf1d33e7ee2f6f226a09e08f1b9b7ba1edc22d00a4f35638a49f054ffcc",
+      "updatedAt": "2026-04-13T17:02:18.714Z"
+    },
+    "www.webofscience.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.webofscience.com_F8F9FA.svg",
+      "defaultColor": "#F8F9FA",
+      "sha256": "0b56cc8d02cafdc0d7d544796ec5c5d6b79a53e82aa4de5506d262994ce4d032",
+      "updatedAt": "2026-04-13T17:02:18.714Z"
+    },
+    "www.woshipm.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.woshipm.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "8a2d7f5b3e751e3eb761d3ec83ab80a87ffbc32946bc17fd23984708acad5454",
+      "updatedAt": "2026-04-13T17:02:18.715Z"
+    },
+    "www.wps.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.wps.cn_FE3E53.svg",
+      "defaultColor": "#FE3E53",
+      "sha256": "76ccc491c1cddf2edaa0b64ac53ec4bc09a5e166dde2d4b75a4655a75e9303f7",
+      "updatedAt": "2026-04-13T17:02:18.715Z"
+    },
+    "www.xiaohongshu.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.xiaohongshu.com_E54200.svg",
+      "defaultColor": "#E54200",
+      "sha256": "9acef79d28f7d340cb3b392dc1fa652f03ed220e1a2b4686c248aa2503c02873",
+      "updatedAt": "2026-04-13T17:02:18.715Z"
+    },
+    "www.xmind.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.xmind.cn_FE2139.svg",
+      "defaultColor": "#FE2139",
+      "sha256": "3ba4e8fe3f4e142129b22ebdf0aa97a17822fa84033431b1e47b9605599bb0ef",
+      "updatedAt": "2026-04-13T17:02:18.715Z"
+    },
+    "www.youtube.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.youtube.com_FF000E.svg",
+      "defaultColor": "#FF000E",
+      "sha256": "0d43017471d0164c81b80fb8f23c78231c56077cb9e4ee25678324ca681b556a",
+      "updatedAt": "2026-04-13T17:02:18.715Z"
+    },
+    "www.zcool.com.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.zcool.com.cn_FFEF00.svg",
+      "defaultColor": "#FFEF00",
+      "sha256": "a5e72d723ff78ebe519cd60fa7416beef6cce39027783a41d6dc184abe3a3f59",
+      "updatedAt": "2026-04-13T17:02:18.716Z"
+    },
+    "www.zhaopin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.zhaopin.com_002AFF.svg",
+      "defaultColor": "#002AFF",
+      "sha256": "2f2e7df6f7c0e48ea67954988c8342e1b8d1f77de1ec8aa763db18d81529f2d0",
+      "updatedAt": "2026-04-13T17:02:18.716Z"
+    },
+    "www.zhihu.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.zhihu.com_0075D7.svg",
+      "defaultColor": "#0075D7",
+      "sha256": "95dc8caad11a22b7582f2543f911109d0994e4c503cbe16c63fa3a4365cfc1b7",
+      "updatedAt": "2026-04-13T17:02:18.716Z"
+    },
+    "www.zhipin.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.zhipin.com_2FB7AE.svg",
+      "defaultColor": "#2FB7AE",
+      "sha256": "c6f00b909a68c39d34aa44c098f69f9ab45df73ce3031c5cc29351b5cb416a33",
+      "updatedAt": "2026-04-13T17:02:18.716Z"
+    },
+    "www.zotero.org": {
+      "mode": "shape-color",
+      "shapePath": "shapes/www.zotero.org_CC2936.svg",
+      "defaultColor": "#CC2936",
+      "sha256": "91338d94f4e9517b19fe56d9add18733fe69a0754e578444fe506cd4b7b870d0",
+      "updatedAt": "2026-04-13T17:02:18.717Z"
+    },
+    "wx.qq.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/wx.qq.com_38BE4D.svg",
+      "defaultColor": "#38BE4D",
+      "sha256": "a8ea674d004dd8408e65703e36cf588722024a3b4929a7435e70ac53d918f995",
+      "updatedAt": "2026-04-13T17:02:18.717Z"
+    },
+    "xiaoheihe.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/xiaoheihe.cn_232128.svg",
+      "defaultColor": "#232128",
+      "sha256": "0b9ddbcf01f3899d963b1a9fa3b771b07d1556f4731bc2039e298dad26159e0b",
+      "updatedAt": "2026-04-13T17:02:18.718Z"
+    },
+    "xiumi.us": {
+      "mode": "shape-color",
+      "shapePath": "shapes/xiumi.us_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "0e20ddac45f74456e92b4eba525f9f4321564501b2c0f3044b21606b62f08852",
+      "updatedAt": "2026-04-13T17:02:18.718Z"
+    },
+    "xueqiu.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/xueqiu.com_E69313.svg",
+      "defaultColor": "#E69313",
+      "sha256": "acc6cb6d619a0c1e968b6edee5326485e12e67645b693e760e41b13530af0ae2",
+      "updatedAt": "2026-04-13T17:02:18.718Z"
+    },
+    "youku.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/youku.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "38e14dc32b46bbdbbeffb4eb8725ef9d1339b3dbbe236ad203af1ae9cb88156b",
+      "updatedAt": "2026-04-13T16:58:40.751Z"
+    },
+    "yuketang.cn": {
+      "mode": "shape-color",
+      "shapePath": "shapes/yuketang.cn_000000.svg",
+      "defaultColor": "#000000",
+      "sha256": "a00c4624d460b1e1b34f86b76d9b85f4183b71dee5599acac1ecb2f5cbe4b67f",
+      "updatedAt": "2026-04-13T17:02:18.718Z"
+    },
+    "yuque.com": {
+      "mode": "shape-color",
+      "shapePath": "shapes/yuque.com_FFFFFF.svg",
+      "defaultColor": "#FFFFFF",
+      "sha256": "120183bd2bde7db06fdeee585bef9b6ef59f4fccd11368e2d91a9d35e3b8449b",
+      "updatedAt": "2026-04-13T16:58:40.751Z"
+    },
+    "zoom.us": {
+      "mode": "shape-color",
+      "shapePath": "shapes/zoom.us_2D8CFF.svg",
+      "defaultColor": "#2D8CFF",
+      "sha256": "6166fa2caa16c82f02ea2d44598627fba4a5031ad048edefa983339297ae402f",
+      "updatedAt": "2026-04-13T16:58:40.750Z"
+    }
+  }
+}
