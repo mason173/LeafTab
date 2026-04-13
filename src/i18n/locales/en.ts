@@ -814,6 +814,7 @@ export default {
       selectedCount: "{{count}} selected",
       deleteSelected: "Delete selected",
       moveToScenario: "Move to scenario",
+      movedToScenarioToast: "Moved {{count}} item(s) to \"{{scenario}}\"",
       noScenarioTarget: "No scenario to move to",
       selectBeforeMove: "Select shortcuts first",
       multiSelect: "Multi-select",

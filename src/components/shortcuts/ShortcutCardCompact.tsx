@@ -18,6 +18,7 @@ interface ShortcutCardCompactProps {
   enableLargeFolder?: boolean;
   largeFolderPreviewSize?: number;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
+  selectionDisabled?: boolean;
   disableIconWrapperEffects?: boolean;
   rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'onClick' | 'onContextMenu'> & {
     [key: `data-${string}`]: string | number | boolean | undefined;
@@ -44,6 +45,7 @@ export function ShortcutCardCompact({
   enableLargeFolder = false,
   largeFolderPreviewSize,
   onPreviewShortcutOpen,
+  selectionDisabled = false,
   disableIconWrapperEffects = false,
   rootProps,
   iconWrapperProps,
@@ -53,20 +55,23 @@ export function ShortcutCardCompact({
 }: ShortcutCardCompactProps) {
   const firefox = isFirefoxBuildTarget();
   const folder = isShortcutFolder(shortcut);
+  const folderSelectionDisabled = selectionDisabled && folder;
   const metrics = getCompactShortcutCardMetrics({
     shortcut,
     iconSize,
     allowLargeFolder: enableLargeFolder,
     largeFolderPreviewSize,
   });
-  const iconWrapperMotionClass = disableIconWrapperEffects || firefox
+  const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folderSelectionDisabled
     ? ''
     : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]';
 
   return (
     <div
       {...rootProps}
-      className={`relative rounded-xl cursor-pointer select-none group/shortcut ${rootProps?.className ?? ''}`}
+      className={`relative rounded-xl select-none group/shortcut ${
+        folderSelectionDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+      } ${rootProps?.className ?? ''}`}
       style={{ width: metrics.width, ...rootProps?.style }}
       onClick={onOpen}
       onContextMenu={onContextMenu}
@@ -89,8 +94,8 @@ export function ShortcutCardCompact({
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
-                  onOpenFolder={onOpen}
-                  onOpenShortcut={onPreviewShortcutOpen}
+                  onOpenFolder={folderSelectionDisabled ? undefined : onOpen}
+                  onOpenShortcut={folderSelectionDisabled ? undefined : onPreviewShortcutOpen}
                 />
               ) : (
                 <ShortcutFolderPreview
@@ -98,6 +103,7 @@ export function ShortcutCardCompact({
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
+                  selectionDisabled={folderSelectionDisabled}
                 />
               )
             ) : (

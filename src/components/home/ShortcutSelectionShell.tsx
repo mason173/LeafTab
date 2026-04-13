@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   RiAddLine,
   RiArrowDownLine,
+  RiArrowRightSLine,
   RiArrowUpLine,
   RiCloseLine,
   RiDashboardFill,
@@ -38,7 +39,7 @@ type ShortcutSelectionShellProps = {
   onShortcutOpen: (shortcut: Shortcut) => void;
   onDeleteSelectedShortcuts: (selectedIndexes: number[]) => void;
   onCreateFolder: (selectedIndexes: number[]) => void;
-  onPinSelectedShortcuts: (selectedIndexes: number[], position: 'top' | 'bottom') => void;
+  onPinSelectedShortcuts: (selectedIndexes: number[], position: 'top' | 'bottom') => number[] | void;
   onMoveSelectedShortcutsToScenario: (selectedIndexes: number[], targetScenarioId: string) => void;
   onMoveSelectedShortcutsToFolder: (selectedIndexes: number[], targetFolderId: string) => void;
   onDissolveFolder: (shortcutIndex: number, shortcut: Shortcut) => void;
@@ -79,6 +80,54 @@ function ContextMenuItem({
   );
 }
 
+function ContextMenuSubmenuItem({
+  label,
+  open,
+  disabled = false,
+  onOpenChange,
+  testId,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  disabled?: boolean;
+  onOpenChange: (open: boolean) => void;
+  testId?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => {
+        if (!disabled) onOpenChange(true);
+      }}
+      onMouseLeave={() => onOpenChange(false)}
+    >
+      <button
+        type="button"
+        data-testid={testId}
+        disabled={disabled}
+        className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors flex items-center justify-between ${
+          disabled
+            ? 'cursor-not-allowed text-muted-foreground opacity-50'
+            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
+        }`}
+      >
+        <span>{label}</span>
+        <RiArrowRightSLine className="size-4" />
+      </button>
+      {open ? (
+        <div
+          className="absolute top-[-6px] z-[17030] w-[220px] rounded-[18px] border border-border bg-popover p-[6px] shadow-lg"
+          style={{ left: 'calc(100% - 6px)' }}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   contextMenu,
   setContextMenu,
@@ -108,6 +157,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   const [bulkShortcutDeleteOpen, setBulkShortcutDeleteOpen] = useState(false);
   const [multiSelectMoveOpen, setMultiSelectMoveOpen] = useState(false);
   const [multiSelectFolderOpen, setMultiSelectFolderOpen] = useState(false);
+  const [contextScenarioMoveOpen, setContextScenarioMoveOpen] = useState(false);
   const multiSelectMoveRef = useRef<HTMLDivElement>(null);
   const multiSelectFolderRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +188,19 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     () => selectedShortcutItems.filter((shortcut) => isShortcutFolder(shortcut)).length,
     [selectedShortcutItems],
   );
+  const sortedSelectedShortcutIndexes = useMemo(
+    () => [...selectedShortcutIndexesState].sort((a, b) => a - b),
+    [selectedShortcutIndexesState],
+  );
+  const pinTopDisabled = useMemo(() => {
+    if (sortedSelectedShortcutIndexes.length === 0) return true;
+    return sortedSelectedShortcutIndexes.every((index, position) => index === position);
+  }, [sortedSelectedShortcutIndexes]);
+  const pinBottomDisabled = useMemo(() => {
+    if (sortedSelectedShortcutIndexes.length === 0) return true;
+    const startIndex = shortcuts.length - sortedSelectedShortcutIndexes.length;
+    return sortedSelectedShortcutIndexes.every((index, position) => index === startIndex + position);
+  }, [shortcuts.length, sortedSelectedShortcutIndexes]);
 
   const clearShortcutMultiSelect = useCallback(() => {
     setShortcutMultiSelectMode(false);
@@ -181,9 +244,14 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
 
   const handlePinSelectedShortcuts = useCallback((position: 'top' | 'bottom') => {
     if (selectedShortcutIndexesState.length === 0) return;
-    onPinSelectedShortcuts(selectedShortcutIndexesState, position);
+    if (position === 'top' && pinTopDisabled) return;
+    if (position === 'bottom' && pinBottomDisabled) return;
+    const nextSelectedShortcutIndexes = onPinSelectedShortcuts(selectedShortcutIndexesState, position);
+    if (Array.isArray(nextSelectedShortcutIndexes)) {
+      setSelectedShortcutIndexesState(nextSelectedShortcutIndexes);
+    }
     setContextMenu(null);
-  }, [onPinSelectedShortcuts, selectedShortcutIndexesState, setContextMenu]);
+  }, [onPinSelectedShortcuts, pinBottomDisabled, pinTopDisabled, selectedShortcutIndexesState, setContextMenu]);
 
   const handleMoveSelectedShortcutsToScenario = useCallback((targetScenarioId: string) => {
     if (!targetScenarioId || targetScenarioId === selectedScenarioId) return;
@@ -236,6 +304,18 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
   useEffect(() => {
     clearShortcutMultiSelect();
   }, [clearShortcutMultiSelect, selectedScenarioId]);
+
+  useEffect(() => {
+    setContextScenarioMoveOpen(false);
+  }, [contextMenu]);
+
+  const handleMoveSingleShortcutToScenario = useCallback((shortcutIndex: number, targetScenarioId: string) => {
+    if (!targetScenarioId || targetScenarioId === selectedScenarioId) return;
+    if (!Number.isInteger(shortcutIndex) || shortcutIndex < 0 || shortcutIndex >= shortcuts.length) return;
+    onMoveSelectedShortcutsToScenario([shortcutIndex], targetScenarioId);
+    setContextScenarioMoveOpen(false);
+    setContextMenu(null);
+  }, [onMoveSelectedShortcutsToScenario, selectedScenarioId, setContextMenu, shortcuts.length]);
 
   return (
     <>
@@ -304,14 +384,34 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                         }}
                       />
                     ) : null}
-                    <ContextMenuItem
-                      label={t('context.multiSelect', { defaultValue: '多选' })}
-                      testId="shortcut-context-multi-select-folder"
-                      onSelect={() => {
-                        openShortcutMultiSelect(contextMenu.shortcutIndex);
-                        setContextMenu(null);
-                      }}
-                    />
+                    <ContextMenuSubmenuItem
+                      label={t('context.moveToScenario', { defaultValue: '移动到' })}
+                      testId="shortcut-context-move-to-scenario-folder"
+                      open={contextScenarioMoveOpen}
+                      onOpenChange={setContextScenarioMoveOpen}
+                      disabled={moveTargetScenarioModes.length === 0}
+                    >
+                      {moveTargetScenarioModes.length > 0 ? moveTargetScenarioModes.map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          data-testid={`shortcut-context-move-folder-target-${mode.id}`}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                          onClick={() => handleMoveSingleShortcutToScenario(contextMenu.shortcutIndex, mode.id)}
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: mode.color || '#60a5fa' }}
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">{mode.name}</span>
+                        </button>
+                      )) : (
+                        <div className="px-3 py-4 text-sm text-muted-foreground">
+                          {t('context.noScenarioTarget', { defaultValue: '暂无可移动的目标情景模式' })}
+                        </div>
+                      )}
+                    </ContextMenuSubmenuItem>
                     <ContextMenuItem
                       label={t('context.dissolveFolder', { defaultValue: '解散文件夹' })}
                       testId="shortcut-context-dissolve-folder"
@@ -384,6 +484,34 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
                       setContextMenu(null);
                     }}
                   />
+                  <ContextMenuSubmenuItem
+                    label={t('context.moveToScenario', { defaultValue: '移动到' })}
+                    testId="shortcut-context-move-to-scenario"
+                    open={contextScenarioMoveOpen}
+                    onOpenChange={setContextScenarioMoveOpen}
+                    disabled={moveTargetScenarioModes.length === 0}
+                  >
+                    {moveTargetScenarioModes.length > 0 ? moveTargetScenarioModes.map((mode) => (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        data-testid={`shortcut-context-move-target-${mode.id}`}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+                        onClick={() => handleMoveSingleShortcutToScenario(contextMenu.shortcutIndex, mode.id)}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: mode.color || '#60a5fa' }}
+                          aria-hidden="true"
+                        />
+                        <span className="truncate">{mode.name}</span>
+                      </button>
+                    )) : (
+                      <div className="px-3 py-4 text-sm text-muted-foreground">
+                        {t('context.noScenarioTarget', { defaultValue: '暂无可移动的目标情景模式' })}
+                      </div>
+                    )}
+                  </ContextMenuSubmenuItem>
                   <ContextMenuItem
                     label={t('context.multiSelect', { defaultValue: '多选' })}
                     testId="shortcut-context-multi-select"
@@ -629,10 +757,10 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 rounded-xl"
+              className="h-8 w-8 rounded-xl disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-secondary/55 disabled:text-muted-foreground"
               data-testid="shortcut-multi-select-pin-top"
               onClick={() => handlePinSelectedShortcuts('top')}
-              disabled={selectedShortcutCount <= 0}
+              disabled={pinTopDisabled}
               title={t('context.pinTop', { defaultValue: '置顶已选' })}
               aria-label={t('context.pinTop', { defaultValue: '置顶已选' })}
             >
@@ -641,10 +769,10 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
             <Button
               size="icon"
               variant="secondary"
-              className="h-8 w-8 rounded-xl"
+              className="h-8 w-8 rounded-xl disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-secondary/55 disabled:text-muted-foreground"
               data-testid="shortcut-multi-select-pin-bottom"
               onClick={() => handlePinSelectedShortcuts('bottom')}
-              disabled={selectedShortcutCount <= 0}
+              disabled={pinBottomDisabled}
               title={t('context.pinBottom', { defaultValue: '置底已选' })}
               aria-label={t('context.pinBottom', { defaultValue: '置底已选' })}
             >

@@ -1050,6 +1050,7 @@ export default {
       selectedCount: "已选 {{count}} 项",
       deleteSelected: "删除已选",
       moveToScenario: "移动到情景模式",
+      movedToScenarioToast: "已将 {{count}} 项移动到“{{scenario}}”",
       noScenarioTarget: "暂无可移动的目标情景模式",
       selectBeforeMove: "请先选择快捷方式",
       multiSelect: "多选",

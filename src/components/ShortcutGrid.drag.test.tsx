@@ -307,6 +307,72 @@ describe('ShortcutGrid compact drag projection', () => {
     });
   });
 
+  it('shows a compact drop preview matching the destination icon footprint while reordering', async () => {
+    const compactShortcuts = [
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+    ];
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={124}
+        shortcuts={compactShortcuts}
+        gridColumns={2}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+      />,
+    );
+
+    assignGridRects(
+      view,
+      ['a', 'b'],
+      new DOMRect(0, 0, 220, 124),
+      {
+        a: new DOMRect(0, 0, 100, 124),
+        b: new DOMRect(120, 0, 100, 124),
+      },
+    );
+
+    const a = view.getByTestId('shortcut-card-a');
+
+    fireEvent.pointerDown(a, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      clientX: 50,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 62,
+      clientY: 62,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 214,
+      clientY: 100,
+    });
+
+    const dropPreview = await waitFor(() => view.getByTestId('shortcut-drop-preview'));
+    expect(dropPreview).toHaveStyle({
+      left: '134px',
+      top: '0px',
+      width: '72px',
+      height: '72px',
+    });
+  });
+
   it('animates neighboring shortcuts away when switching a folder to large mode', () => {
     const smallShortcuts = [
       createLink('a', 'Alpha'),
@@ -378,5 +444,116 @@ describe('ShortcutGrid compact drag projection', () => {
 
     const movedShortcut = view.getByTestId('shortcut-card-c') as HTMLDivElement;
     expect(movedShortcut.style.transform).toContain('translate(240px, -144px)');
+  });
+
+  it('shows an unselected selection indicator for non-folder shortcuts in selection mode', () => {
+    const view = render(
+      <ShortcutGrid
+        containerHeight={124}
+        shortcuts={[createLink('a', 'Alpha')]}
+        gridColumns={1}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+        selectionMode
+        selectedShortcutIndexes={new Set()}
+      />,
+    );
+
+    const indicator = view.getByTestId('shortcut-selection-indicator-a');
+    expect(indicator).toHaveAttribute('data-selected', 'false');
+    expect(indicator).toHaveClass('bg-black/35', 'border-white/35');
+    expect(indicator).toHaveStyle({
+      right: '-4px',
+      top: '-4px',
+      width: '16px',
+      height: '16px',
+    });
+    expect(indicator.querySelector('svg')).toBeNull();
+  });
+
+  it('shows a primary check indicator for selected non-folder shortcuts in selection mode', () => {
+    const view = render(
+      <ShortcutGrid
+        containerHeight={124}
+        shortcuts={[createLink('a', 'Alpha')]}
+        gridColumns={1}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+        selectionMode
+        selectedShortcutIndexes={new Set([0])}
+      />,
+    );
+
+    const indicator = view.getByTestId('shortcut-selection-indicator-a');
+    expect(indicator).toHaveAttribute('data-selected', 'true');
+    expect(indicator).toHaveClass('bg-primary', 'border-white/85', 'text-primary-foreground');
+    expect(indicator).toHaveStyle({
+      right: '-4px',
+      top: '-4px',
+      width: '16px',
+      height: '16px',
+    });
+    expect(indicator.querySelector('svg')).not.toBeNull();
+  });
+
+  it('does not show selection indicators for folders in selection mode', () => {
+    const view = render(
+      <ShortcutGrid
+        containerHeight={268}
+        shortcuts={[
+          createFolder('folder-small', 'Folder', 'small'),
+          createFolder('folder-large', 'Large Folder', 'large'),
+        ]}
+        gridColumns={2}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+        selectionMode
+        selectedShortcutIndexes={new Set([0, 1])}
+      />,
+    );
+
+    expect(view.queryByTestId('shortcut-selection-indicator-folder-small')).not.toBeInTheDocument();
+    expect(view.queryByTestId('shortcut-selection-indicator-folder-large')).not.toBeInTheDocument();
+  });
+
+  it('does not toggle folder selection in selection mode', () => {
+    const onToggleShortcutSelection = vi.fn();
+    const view = render(
+      <ShortcutGrid
+        containerHeight={268}
+        shortcuts={[
+          createLink('a', 'Alpha'),
+          createFolder('folder-small', 'Folder', 'small'),
+        ]}
+        gridColumns={2}
+        minRows={1}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+        cardVariant="compact"
+        selectionMode
+        selectedShortcutIndexes={new Set()}
+        onToggleShortcutSelection={onToggleShortcutSelection}
+      />,
+    );
+
+    fireEvent.click(view.getByTestId('shortcut-card-a'));
+    fireEvent.click(view.getByTestId('shortcut-card-folder-small'));
+
+    expect(onToggleShortcutSelection).toHaveBeenCalledTimes(1);
+    expect(onToggleShortcutSelection).toHaveBeenCalledWith(0);
   });
 });
