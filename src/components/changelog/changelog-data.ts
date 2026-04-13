@@ -19,6 +19,17 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.8",
+    date: "2026-04-13",
+    notes: [
+      t("changelog.items.release148IconColorAndRadius", { defaultValue: "快捷方式图标现支持任意自定义颜色与圆角大小，并新增彩色、单色、强调色三种图标色彩模式" }),
+      t("changelog.items.release148FolderStyles", { defaultValue: "文件夹图标现支持小文件夹与大文件夹两种样式，展示更灵活" }),
+      t("changelog.items.release148QuickAddFromAction", { defaultValue: "支持点击浏览器右上角的 LeafTab 插件图标，快速将当前网站添加为快捷方式" }),
+      t("changelog.items.release148AutoColorAlgorithm", { defaultValue: "优化自动取色算法，自动取色结果更准确、更稳定" }),
+      t("changelog.items.release148GridSimplify", { defaultValue: "移除“丰富网格”样式，统一保留当前简洁的网格布局" }),
+    ],
+  },
+  {
     version: "1.4.6",
     date: "2026-04-08",
     notes: [
