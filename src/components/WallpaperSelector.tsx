@@ -78,9 +78,14 @@ export default function WallpaperSelector({
   const firefox = isFirefoxBuildTarget();
   const { t } = useTranslation();
   const [isMaskSliderInteracting, setIsMaskSliderInteracting] = useState(false);
+  const [activeTab, setActiveTab] = useState<WallpaperMode>(mode);
   const isMaskSliderIsolation = isMaskSliderInteracting && (mode === "bing" || mode === "custom" || mode === "weather");
   const isolationFadeClass = "transition-opacity duration-220 ease-out";
   const previewWallpaperMaskOpacity = effectiveWallpaperMaskOpacity ?? wallpaperMaskOpacity;
+
+  useEffect(() => {
+    setActiveTab(mode);
+  }, [mode]);
 
   useEffect(() => {
     if (mode !== "bing" && mode !== "custom" && mode !== "weather") {
@@ -93,6 +98,17 @@ export default function WallpaperSelector({
       setIsMaskSliderInteracting(false);
     }
     onOpenChange?.(nextOpen);
+  };
+
+  const handleTabChange = (nextValue: string) => {
+    const nextMode = nextValue as WallpaperMode;
+    setActiveTab(nextMode);
+
+    if (nextMode === "custom" && !customWallpaper) {
+      return;
+    }
+
+    onModeChange(nextMode);
   };
 
   return (
@@ -118,7 +134,7 @@ export default function WallpaperSelector({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue={mode} className="w-full flex-1 flex flex-col">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col">
             <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
               <TabsList className={`grid w-full ${hideWeather ? "grid-cols-3" : "grid-cols-4"} rounded-[16px]`}>
                 <TabsTrigger

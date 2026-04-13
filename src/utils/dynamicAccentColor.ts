@@ -9,6 +9,10 @@ type DynamicAccentInput = {
   colorWallpaperId?: string;
 };
 
+type ResolveDynamicAccentOptions = {
+  forceImageResample?: boolean;
+};
+
 const imageAccentCache = new Map<string, string>();
 
 type WeatherTheme = 'sunny' | 'cloudy' | 'foggy' | 'rainy' | 'snowy' | 'thunderstorm';
@@ -74,6 +78,11 @@ const hslToHex = (h: number, s: number, l: number) => {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const normalizeHue = (value: number) => {
+  const normalized = value % 1;
+  return normalized < 0 ? normalized + 1 : normalized;
+};
+
 const hexToRgb = (hex: string) => {
   const value = hex.replace('#', '');
   const normalized = value.length === 3 ? value.split('').map((c) => c + c).join('') : value;
@@ -132,6 +141,14 @@ const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   reader.readAsDataURL(blob);
 });
 
+type AccentBucket = {
+  hueVectorX: number;
+  hueVectorY: number;
+  satWeightedSum: number;
+  lightWeightedSum: number;
+  weight: number;
+};
+
 const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerPolicy?: ReferrerPolicy }) => {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
@@ -150,41 +167,102 @@ const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerP
   });
 };
 
+export const sampleAccentFromImageData = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string => {
+  if (!data.length || width <= 0 || height <= 0) return FALLBACK_IMAGE_ACCENT;
+
+  const buckets = new Map<number, AccentBucket>();
+  let totalWeight = 0;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const alpha = data[offset + 3];
+      if (alpha < 220) continue;
+
+      const { h, s, l } = rgbToHsl(data[offset], data[offset + 1], data[offset + 2]);
+      if (s < 0.08 || l < 0.08 || l > 0.92) continue;
+
+      const dx = width > 1 ? (x / (width - 1)) * 2 - 1 : 0;
+      const dy = height > 1 ? (y / (height - 1)) * 2 - 1 : 0;
+      const radialDistance = Math.sqrt(dx * dx + dy * dy);
+      const spatialWeight = clamp(1.08 - radialDistance * 0.18, 0.82, 1.08);
+      const saturationWeight = 0.6 + clamp((s - 0.08) / 0.72, 0, 1) * 0.4;
+      const lightWeight = 0.65 + clamp(1 - Math.abs(l - 0.56) / 0.34, 0, 1) * 0.35;
+      const weight = spatialWeight * saturationWeight * lightWeight;
+      if (weight <= 0) continue;
+
+      const bucketIndex = Math.round(normalizeHue(h) * 23) % 24;
+      const bucket = buckets.get(bucketIndex) || {
+        hueVectorX: 0,
+        hueVectorY: 0,
+        satWeightedSum: 0,
+        lightWeightedSum: 0,
+        weight: 0,
+      };
+      const angle = normalizeHue(h) * Math.PI * 2;
+      bucket.hueVectorX += Math.cos(angle) * weight;
+      bucket.hueVectorY += Math.sin(angle) * weight;
+      bucket.satWeightedSum += s * weight;
+      bucket.lightWeightedSum += l * weight;
+      bucket.weight += weight;
+      buckets.set(bucketIndex, bucket);
+      totalWeight += weight;
+    }
+  }
+
+  if (!buckets.size || totalWeight <= 0) return FALLBACK_IMAGE_ACCENT;
+
+  let bestHue = 0.58;
+  let bestSat = 0.68;
+  let bestLight = 0.54;
+  let bestScore = -1;
+
+  for (const bucket of buckets.values()) {
+    const avgSat = bucket.satWeightedSum / bucket.weight;
+    const avgLight = bucket.lightWeightedSum / bucket.weight;
+    const prominence = bucket.weight / totalWeight;
+    const vividness = clamp((avgSat - 0.12) / 0.6, 0, 1);
+    const lightBalance = clamp(1 - Math.abs(avgLight - 0.56) / 0.24, 0, 1);
+    const score = prominence * 0.68 + vividness * 0.2 + lightBalance * 0.12;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestHue = normalizeHue(Math.atan2(bucket.hueVectorY, bucket.hueVectorX) / (Math.PI * 2));
+      bestSat = avgSat;
+      bestLight = avgLight;
+    }
+  }
+
+  const tunedSaturation = clamp(bestSat < 0.46 ? bestSat + 0.16 : bestSat + 0.08, 0.46, 0.76);
+  const tunedLightness = clamp(bestLight < 0.5 ? bestLight + 0.05 : bestLight - 0.03, 0.44, 0.6);
+  return hslToHex(bestHue, tunedSaturation, tunedLightness);
+};
+
 const sampleAccentFromImage = (img: HTMLImageElement): string => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('canvas-context-unavailable');
-  const sampleWidth = 48;
-  const sampleHeight = 48;
+  const sampleWidth = 64;
+  const sampleHeight = 64;
   canvas.width = sampleWidth;
   canvas.height = sampleHeight;
   ctx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
-  const data = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
-  let bestHue = 0.58;
-  let bestSat = 0.72;
-  let bestLight = 0.55;
-  let bestScore = -1;
-  for (let i = 0; i < data.length; i += 4) {
-    const alpha = data[i + 3];
-    if (alpha < 220) continue;
-    const { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-    if (s < 0.15 || l < 0.08 || l > 0.92) continue;
-    const score = s * 0.78 + (1 - Math.abs(l - 0.52)) * 0.22;
-    if (score > bestScore) {
-      bestScore = score;
-      bestHue = h;
-      bestSat = s;
-      bestLight = l;
-    }
-  }
-  const saturated = clamp(Math.max(0.58, bestSat), 0.58, 0.82);
-  const light = clamp(bestLight < 0.5 ? bestLight + 0.06 : bestLight - 0.02, 0.45, 0.62);
-  return hslToHex(bestHue, saturated, light);
+  const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
+  return sampleAccentFromImageData(imageData.data, sampleWidth, sampleHeight);
 };
 
-const resolveImageAccent = async (imageUrl: string): Promise<string> => {
+const resolveImageAccent = async (
+  imageUrl: string,
+  options?: ResolveDynamicAccentOptions,
+): Promise<string> => {
   if (!imageUrl) return FALLBACK_IMAGE_ACCENT;
-  if (imageAccentCache.has(imageUrl)) return imageAccentCache.get(imageUrl)!;
+  if (!options?.forceImageResample && imageAccentCache.has(imageUrl)) {
+    return imageAccentCache.get(imageUrl)!;
+  }
 
   const trySample = async (src: string, fromRemote: boolean) => {
     const image = await loadImage(
@@ -224,11 +302,14 @@ const resolveImageAccent = async (imageUrl: string): Promise<string> => {
   return FALLBACK_IMAGE_ACCENT;
 };
 
-export const resolveDynamicAccentColor = async (input: DynamicAccentInput) => {
+export const resolveDynamicAccentColor = async (
+  input: DynamicAccentInput,
+  options?: ResolveDynamicAccentOptions,
+) => {
   if (input.wallpaperMode === 'weather') return resolveWeatherAccent(input.weatherCode);
   if (input.wallpaperMode === 'color') return resolveColorAccent(input.colorWallpaperId);
   const source = resolveSourceImage(input);
-  return resolveImageAccent(source);
+  return resolveImageAccent(source, options);
 };
 
 export const applyDynamicAccentColor = (hex: string) => {

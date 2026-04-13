@@ -17,11 +17,18 @@ import {
   type ShortcutLayoutDensity,
 } from './shortcuts/shortcutCardVariant';
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
-import { getReorderTargetIndex } from '@/features/shortcuts/drag/dropEdge';
+import {
+  getCompactTargetCellRect as getCompactTargetCellRegionRect,
+  resolveCompactRootHoverResolution,
+  resolveCompactTargetRegions as resolveCompactTargetRegionSet,
+  type CompactRootHoverResolution,
+  type CompactTargetRegions as CompactTargetRegionSet,
+} from '@/features/shortcuts/drag/compactRootDrag';
 import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDropIntent';
 import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 import {
   buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
+  getDragVisualCenter,
   measureDragItems,
   type ActivePointerDragState,
   type MeasuredDragItem,
@@ -37,10 +44,6 @@ const DRAG_OVERLAY_Z_INDEX = 14030;
 const DRAG_AUTO_SCROLL_EDGE_PX = 88;
 const DRAG_AUTO_SCROLL_MAX_SPEED_PX = 26;
 const DRAG_MATCH_DISTANCE_PX = 64;
-const SMALL_TARGET_CENTER_INTENT_DELAY_MS = 320;
-const LARGE_FOLDER_CENTER_INTENT_DELAY_MS = 180;
-const COMPACT_SMALL_TARGET_HIT_SLOP_PX = 20;
-const COMPACT_LARGE_FOLDER_HIT_SLOP_PX = 8;
 
 type RootHoverState =
   | { type: 'item'; sortId: string; edge: 'before' | 'after' | 'center' }
@@ -66,14 +69,13 @@ type DragSessionState = ActivePointerDragState<string> & {
   activeSortId: string;
 };
 
-type CenterHoverCandidate = {
-  targetSortId: string;
-  intentType: Extract<RootShortcutDropIntent['type'], 'merge-root-shortcuts' | 'move-root-shortcut-into-folder'>;
-  startedAt: number;
-  activationDelayMs: number;
-};
-
 type MeasuredGridItem = MeasuredDragItem<GridItem>;
+type HoverResolution = CompactRootHoverResolution;
+
+const EMPTY_HOVER_RESOLUTION: HoverResolution = {
+  interactionIntent: null,
+  visualProjectionIntent: null,
+};
 
 type ReorderSlotCandidate = {
   targetIndex: number;
@@ -85,20 +87,31 @@ type ReorderSlotCandidate = {
   height: number;
 };
 
-type HitTestRect = {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-  width: number;
-  height: number;
-};
-
 type OverItemCandidate = {
   overItem: MeasuredGridItem;
-  overRect: HitTestRect;
-  overCenterRect: HitTestRect;
+  overRect: DOMRect;
+  overCenterRect: DOMRect;
 };
+
+function getProjectedCompactItemRect(params: {
+  placedItem: Pick<PlacedGridItem, 'columnStart' | 'rowStart' | 'columnSpan'>;
+  gridColumnWidth: number;
+  columnGap: number;
+  rowHeight: number;
+  rowGap: number;
+  width: number;
+  height: number;
+}): { left: number; top: number; width: number; height: number } {
+  const { placedItem, gridColumnWidth, columnGap, rowHeight, rowGap, width, height } = params;
+  const spanWidth = gridColumnWidth * placedItem.columnSpan + columnGap * Math.max(0, placedItem.columnSpan - 1);
+
+  return {
+    left: (placedItem.columnStart - 1) * (gridColumnWidth + columnGap) + Math.max(0, (spanWidth - width) / 2),
+    top: (placedItem.rowStart - 1) * (rowHeight + rowGap),
+    width,
+    height,
+  };
+}
 
 function canPlaceGridItem(params: {
   occupied: boolean[][];
@@ -295,14 +308,6 @@ function pointInSlot(point: PointerPoint, slot: ReorderSlotCandidate): boolean {
   );
 }
 
-function distanceToSlot(point: PointerPoint, slot: ReorderSlotCandidate): number {
-  const right = slot.left + slot.width;
-  const bottom = slot.top + slot.height;
-  const dx = point.x < slot.left ? slot.left - point.x : point.x > right ? point.x - right : 0;
-  const dy = point.y < slot.top ? slot.top - point.y : point.y > bottom ? point.y - bottom : 0;
-  return Math.hypot(dx, dy);
-}
-
 function distanceToSlotCenter(point: PointerPoint, slot: ReorderSlotCandidate): number {
   return Math.hypot(
     point.x - (slot.left + slot.width / 2),
@@ -316,20 +321,11 @@ function pickClosestReorderSlot(params: {
 }): ReorderSlotCandidate | null {
   const { point, candidates } = params;
   if (candidates.length === 0) return null;
+  const containingSlots = candidates
+    .filter((candidate) => pointInSlot(point, candidate))
+    .sort((a, b) => distanceToSlotCenter(point, a) - distanceToSlotCenter(point, b));
 
-  const ranked = [...candidates].sort((a, b) => {
-    const aContains = pointInSlot(point, a);
-    const bContains = pointInSlot(point, b);
-    if (aContains !== bContains) return aContains ? -1 : 1;
-
-    const aDistance = distanceToSlot(point, a);
-    const bDistance = distanceToSlot(point, b);
-    if (aDistance !== bDistance) return aDistance - bDistance;
-
-    return distanceToSlotCenter(point, a) - distanceToSlotCenter(point, b);
-  });
-
-  return ranked[0] ?? null;
+  return containingSlots[0] ?? null;
 }
 
 function buildReorderIntentFromSlotCandidate(params: {
@@ -526,202 +522,39 @@ function measureGridItems(items: GridItem[], itemElements: Map<string, HTMLDivEl
   });
 }
 
-function getReorderEdgeFromPointer(point: PointerPoint, rect: DOMRect): 'before' | 'after' {
-  const normalizedX = Math.min(1, Math.max(0, (point.x - rect.left) / rect.width));
-  const normalizedY = Math.min(1, Math.max(0, (point.y - rect.top) / rect.height));
-  const distanceX = Math.abs(normalizedX - 0.5);
-  const distanceY = Math.abs(normalizedY - 0.5);
-
-  if (distanceX >= distanceY) {
-    return normalizedX < 0.5 ? 'before' : 'after';
-  }
-
-  return normalizedY < 0.5 ? 'before' : 'after';
-}
-
-function buildFallbackReorderIntent(params: {
-  activeSortId: string;
-  overItem: MeasuredGridItem;
-  pointer: PointerPoint;
-  measuredItems: MeasuredGridItem[];
-}): RootShortcutDropIntent | null {
-  const { activeSortId, overItem, pointer, measuredItems } = params;
-  const activeItem = measuredItems.find((item) => item.sortId === activeSortId);
-  if (!activeItem) return null;
-
-  const edge = getReorderEdgeFromPointer(pointer, overItem.rect);
-  const targetIndex = getReorderTargetIndex(activeItem.shortcutIndex, overItem.shortcutIndex, edge);
-  if (targetIndex === activeItem.shortcutIndex) return null;
-
-  return {
-    type: 'reorder-root',
-    activeShortcutId: activeItem.shortcut.id,
-    overShortcutId: overItem.shortcut.id,
-    targetIndex,
-    edge,
-  };
-}
-
-function buildCompactDropCenterRect(params: {
-  rect: DOMRect;
-  shortcut: Shortcut;
-  compactIconSize: number;
-  largeFolderEnabled: boolean;
-  largeFolderPreviewSize?: number;
-}): {
-  width: number;
-  height: number;
-  top: number;
-  left: number;
-  right: number;
-  bottom: number;
-} {
-  const { rect, shortcut, compactIconSize, largeFolderEnabled, largeFolderPreviewSize } = params;
-  const metrics = getCompactShortcutCardMetrics({
-    shortcut,
-    iconSize: compactIconSize,
-    allowLargeFolder: largeFolderEnabled,
-    largeFolderPreviewSize,
-  });
-  const previewSize = Math.max(1, Math.min(metrics.previewSize, rect.width, rect.height));
-  const left = rect.left + Math.max(0, (rect.width - previewSize) / 2);
-  const top = rect.top;
-
-  return {
-    left,
-    top,
-    width: previewSize,
-    height: previewSize,
-    right: left + previewSize,
-    bottom: top + previewSize,
-  };
-}
-
-function inflateHitTestRect(rect: HitTestRect, amount: number): HitTestRect {
-  return {
-    left: rect.left - amount,
-    top: rect.top - amount,
-    right: rect.right + amount,
-    bottom: rect.bottom + amount,
-    width: rect.width + amount * 2,
-    height: rect.height + amount * 2,
-  };
-}
-
-function pointInHitTestRect(point: PointerPoint, rect: HitTestRect): boolean {
-  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-}
-
-function distanceToHitTestRect(point: PointerPoint, rect: HitTestRect): number {
-  const dx = point.x < rect.left ? rect.left - point.x : point.x > rect.right ? point.x - rect.right : 0;
-  const dy = point.y < rect.top ? rect.top - point.y : point.y > rect.bottom ? point.y - rect.bottom : 0;
-  return Math.hypot(dx, dy);
-}
-
-function distanceToHitTestRectCenter(point: PointerPoint, rect: HitTestRect): number {
-  return Math.hypot(point.x - (rect.left + rect.width / 2), point.y - (rect.top + rect.height / 2));
-}
-
-function resolveCompactHitRects(params: {
-  rect: DOMRect;
-  shortcut: Shortcut;
-  compactIconSize: number;
-  largeFolderEnabled: boolean;
-  largeFolderPreviewSize?: number;
-}): { overRect: HitTestRect; overCenterRect: HitTestRect } {
-  const { rect, shortcut, compactIconSize, largeFolderEnabled, largeFolderPreviewSize } = params;
-  const overCenterRect = buildCompactDropCenterRect({
-    rect,
-    shortcut,
-    compactIconSize,
-    largeFolderEnabled,
-    largeFolderPreviewSize,
-  });
-  const hitSlop = isShortcutLargeFolder(shortcut)
-    ? COMPACT_LARGE_FOLDER_HIT_SLOP_PX
-    : COMPACT_SMALL_TARGET_HIT_SLOP_PX;
-
-  return {
-    overCenterRect,
-    overRect: inflateHitTestRect(overCenterRect, hitSlop),
-  };
-}
-
 function pickOverItemCandidate(params: {
   activeSortId: string;
   measuredItems: MeasuredGridItem[];
   pointer: PointerPoint;
-  compactLayout: boolean;
-  compactIconSize: number;
-  largeFolderEnabled: boolean;
-  largeFolderPreviewSize?: number;
 }): OverItemCandidate | null {
-  const {
-    activeSortId,
-    measuredItems,
-    pointer,
-    compactLayout,
-    compactIconSize,
-    largeFolderEnabled,
-    largeFolderPreviewSize,
-  } = params;
-  const resolveRects = (item: MeasuredGridItem): { overRect: HitTestRect; overCenterRect: HitTestRect } => {
-    if (!compactLayout) {
-      return {
-        overRect: item.rect,
-        overCenterRect: item.rect,
-      };
-    }
-    return resolveCompactHitRects({
-      rect: item.rect,
-      shortcut: item.shortcut,
-      compactIconSize,
-      largeFolderEnabled,
-      largeFolderPreviewSize,
-    });
-  };
-
+  const { activeSortId, measuredItems, pointer } = params;
   const activeItem = measuredItems.find((item) => item.sortId === activeSortId) ?? null;
-  if (activeItem && pointInHitTestRect(pointer, resolveRects(activeItem).overRect)) {
+  if (activeItem && pointInRect(pointer, activeItem.rect)) {
     return null;
   }
 
   const ranked = measuredItems
     .filter((item) => item.sortId !== activeSortId)
     .map((item) => {
-      const { overRect, overCenterRect } = resolveRects(item);
       return {
         item,
-        overRect,
-        overCenterRect,
-        distance: distanceToHitTestRect(pointer, overRect),
-        centerDistance: distanceToHitTestRectCenter(pointer, overCenterRect),
+        distance: distanceToRect(pointer, item.rect),
+        centerDistance: distanceToRectCenter(pointer, item.rect),
       };
     })
     .sort((left, right) => {
-      if (left.distance !== right.distance) return left.distance - right.distance;
-      return left.centerDistance - right.centerDistance;
-    });
+    if (left.distance !== right.distance) return left.distance - right.distance;
+    return left.centerDistance - right.centerDistance;
+  });
 
   const best = ranked[0];
   if (!best || best.distance > DRAG_MATCH_DISTANCE_PX) return null;
 
   return {
     overItem: best.item,
-    overRect: best.overRect,
-    overCenterRect: best.overCenterRect,
+    overRect: best.item.rect,
+    overCenterRect: best.item.rect,
   };
-}
-
-function getCenterIntentActivationDelayMs(params: {
-  intent: Extract<RootShortcutDropIntent, { type: 'merge-root-shortcuts' | 'move-root-shortcut-into-folder' }>;
-  targetShortcut: Shortcut;
-}): number {
-  const { intent, targetShortcut } = params;
-  if (intent.type === 'move-root-shortcut-into-folder' && isShortcutLargeFolder(targetShortcut)) {
-    return LARGE_FOLDER_CENTER_INTENT_DELAY_MS;
-  }
-  return SMALL_TARGET_CENTER_INTENT_DELAY_MS;
 }
 
 function buildReorderProjectionOffsets(params: {
@@ -740,6 +573,7 @@ function buildReorderProjectionOffsets(params: {
     getId: (item) => item.sortId,
   });
 }
+
 
 function ShortcutGridItem({
   sortId,
@@ -992,7 +826,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragPointer, setDragPointer] = useState<PointerPoint | null>(null);
   const [dragPreviewOffset, setDragPreviewOffset] = useState<PointerPoint | null>(null);
-  const [hoverIntent, setHoverIntent] = useState<RootShortcutDropIntent | null>(null);
+  const [hoverResolution, setHoverResolution] = useState<HoverResolution>(EMPTY_HOVER_RESOLUTION);
   const [dragLayoutSnapshot, setDragLayoutSnapshot] = useState<MeasuredGridItem[] | null>(null);
   const [gridWidthPx, setGridWidthPx] = useState<number | null>(null);
   const [suppressProjectionSettleAnimation, setSuppressProjectionSettleAnimation] = useState(false);
@@ -1002,8 +836,8 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   const dragSessionRef = useRef<DragSessionState | null>(null);
   const latestPointerRef = useRef<PointerPoint | null>(null);
   const hoverIntentRef = useRef<RootShortcutDropIntent | null>(null);
+  const hoverResolutionRef = useRef<HoverResolution>(EMPTY_HOVER_RESOLUTION);
   const activeDragIdRef = useRef<string | null>(null);
-  const centerHoverCandidateRef = useRef<CenterHoverCandidate | null>(null);
   const dropCleanupRafRef = useRef<number | null>(null);
   const ignoreClickRef = useRef(false);
   const autoScrollContainerRef = useRef<HTMLElement | null>(null);
@@ -1012,6 +846,8 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   const autoScrollRafRef = useRef<number | null>(null);
   const projectionSettleResumeRafRef = useRef<number | null>(null);
   const consumedExternalDragTokenRef = useRef<number | null>(null);
+  const hoverIntent = hoverResolution.interactionIntent;
+  const visualProjectionIntent = hoverResolution.visualProjectionIntent;
 
   const largeFolderEnabled = compactLayout && gridColumns >= 2;
   const largeFolderPreviewSize = useMemo(() => {
@@ -1049,6 +885,10 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       };
     },
   }), [gridColumns, items, resolveCompactShortcutMetrics]);
+  const placedGridItemsBySortId = useMemo(
+    () => new Map(packedLayout.placedItems.map((item) => [item.sortId, item])),
+    [packedLayout.placedItems],
+  );
   const displayRows = Math.max(packedLayout.rowCount, minRows);
   const rowHeight = cardVariant === 'compact'
     ? (compactIconSize + 24)
@@ -1101,15 +941,24 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
           ? remainingSmallItems[targetSmallOrdinal]
           : remainingSmallItems[remainingSmallItems.length - 1];
         if (!placedActiveItem || !overItem) return null;
+        const projectedRect = getProjectedCompactItemRect({
+          placedItem: placedActiveItem,
+          gridColumnWidth,
+          columnGap,
+          rowHeight,
+          rowGap,
+          width: activeMetrics.width,
+          height: activeMetrics.height,
+        });
 
         return {
           targetIndex: projection.activeFullIndex,
           overShortcutId: overItem.shortcut.id,
           edge: targetSmallOrdinal < remainingSmallItems.length ? 'before' as const : 'after' as const,
-          left: (placedActiveItem.columnStart - 1) * (gridColumnWidth + columnGap),
-          top: (placedActiveItem.rowStart - 1) * (rowHeight + rowGap),
-          width: activeMetrics.width,
-          height: activeMetrics.height,
+          left: projectedRect.left,
+          top: projectedRect.top,
+          width: projectedRect.width,
+          height: projectedRect.height,
         };
       }).filter((candidate): candidate is ReorderSlotCandidate => Boolean(candidate));
     }
@@ -1138,15 +987,24 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         ? remainingItems[targetIndex]
         : remainingItems[remainingItems.length - 1];
       if (!placedActiveItem || !overItem) return null;
+      const projectedRect = getProjectedCompactItemRect({
+        placedItem: placedActiveItem,
+        gridColumnWidth,
+        columnGap,
+        rowHeight,
+        rowGap,
+        width: activeMetrics.width,
+        height: activeMetrics.height,
+      });
 
       return {
         targetIndex,
         overShortcutId: overItem.shortcut.id,
         edge: targetIndex < remainingItems.length ? 'before' as const : 'after' as const,
-        left: (placedActiveItem.columnStart - 1) * (gridColumnWidth + columnGap),
-        top: (placedActiveItem.rowStart - 1) * (rowHeight + rowGap),
-        width: activeMetrics.width,
-        height: activeMetrics.height,
+        left: projectedRect.left,
+        top: projectedRect.top,
+        width: projectedRect.width,
+        height: projectedRect.height,
       };
     }).filter((candidate): candidate is ReorderSlotCandidate => Boolean(candidate));
   }, [
@@ -1196,19 +1054,19 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     [hoverIntent],
   );
 
-  const projectionOffsets = useMemo(() => {
+  const computeProjectionOffsetsForIntent = useCallback((projectionIntent: RootShortcutDropIntent | null) => {
     if (
       usesSpanAwareReorder
       && dragLayoutSnapshot
       && activeDragId
-      && hoverIntent?.type === 'reorder-root'
+      && projectionIntent?.type === 'reorder-root'
       && gridColumnWidth
       && rootRef.current
     ) {
       const projectedItems = buildProjectedGridItemsForRootReorder({
         items,
         activeSortId: activeDragId,
-        targetIndex: hoverIntent.targetIndex,
+        targetIndex: projectionIntent.targetIndex,
         preserveLargeFolders: preserveLargeFoldersDuringSmallReorder,
       });
       if (projectedItems) {
@@ -1252,7 +1110,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       items,
       layoutSnapshot: dragLayoutSnapshot,
       activeSortId: activeDragId,
-      hoverIntent,
+      hoverIntent: projectionIntent,
     });
   }, [
     activeDragId,
@@ -1260,7 +1118,6 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     dragLayoutSnapshot,
     gridColumnWidth,
     gridColumns,
-    hoverIntent,
     items,
     preserveLargeFoldersDuringSmallReorder,
     resolveCompactShortcutMetrics,
@@ -1268,14 +1125,18 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     rowHeight,
     usesSpanAwareReorder,
   ]);
+  const interactionProjectionOffsets = useMemo(
+    () => computeProjectionOffsetsForIntent(hoverIntent),
+    [computeProjectionOffsetsForIntent, hoverIntent],
+  );
+  const projectionOffsets = useMemo(
+    () => computeProjectionOffsetsForIntent(visualProjectionIntent),
+    [computeProjectionOffsetsForIntent, visualProjectionIntent],
+  );
 
   useEffect(() => {
     activeDragIdRef.current = activeDragId;
   }, [activeDragId]);
-
-  useEffect(() => {
-    hoverIntentRef.current = hoverIntent;
-  }, [hoverIntent]);
 
   const stopAutoScroll = useCallback(() => {
     autoScrollVelocityRef.current = 0;
@@ -1311,91 +1172,50 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     autoScrollBoundsRef.current = { top: rect.top, bottom: rect.bottom };
   }, []);
 
-  const resolveIntentFromPointer = useCallback((pointer: PointerPoint): RootShortcutDropIntent | null => {
+  const resolveHoverResolutionFromPointer = useCallback((pointer: PointerPoint): HoverResolution => {
     const activeSortId = activeDragIdRef.current;
     const rootElement = rootRef.current;
     const session = dragSessionRef.current;
-    if (!activeSortId || !rootElement || !session) return null;
+    if (!activeSortId || !rootElement || !session) return EMPTY_HOVER_RESOLUTION;
+    const currentHoverResolution = hoverResolutionRef.current;
+    const currentInteractionProjectionOffsets = computeProjectionOffsetsForIntent(currentHoverResolution.interactionIntent);
+    const currentVisualProjectionOffsets = computeProjectionOffsetsForIntent(currentHoverResolution.visualProjectionIntent);
 
     const measuredItems = dragLayoutSnapshot ?? measureGridItems(items, itemElementsRef.current);
     const activeItem = measuredItems.find((item) => item.sortId === activeSortId);
-    if (!activeItem) return null;
+    if (!activeItem) return EMPTY_HOVER_RESOLUTION;
+    const activeCompactMetrics = compactLayout
+      ? resolveCompactShortcutMetrics(activeItem.shortcut)
+      : null;
+    const recognitionPoint = getDragVisualCenter({
+      pointer,
+      previewOffset: session.previewOffset,
+      activeRect: activeItem.rect,
+      visualRect: activeCompactMetrics
+        ? {
+            offsetX: Math.max(0, (activeItem.rect.width - activeCompactMetrics.previewSize) / 2),
+            offsetY: 0,
+            width: activeCompactMetrics.previewSize,
+            height: activeCompactMetrics.previewSize,
+          }
+        : undefined,
+    });
 
     const rootRect = rootElement.getBoundingClientRect();
     if (
-      pointer.x < rootRect.left
-      || pointer.x > rootRect.right
-      || pointer.y < rootRect.top
-      || pointer.y > rootRect.bottom
+      recognitionPoint.x < rootRect.left
+      || recognitionPoint.x > rootRect.right
+      || recognitionPoint.y < rootRect.top
+      || recognitionPoint.y > rootRect.bottom
     ) {
-      centerHoverCandidateRef.current = null;
-      return null;
+      return EMPTY_HOVER_RESOLUTION;
     }
-
-    const pointerOverCandidate = pickOverItemCandidate({
-      activeSortId,
-      measuredItems,
-      pointer,
-      compactLayout,
-      compactIconSize,
-      largeFolderEnabled,
-      largeFolderPreviewSize,
-    });
-    const pointerRawIntent = pointerOverCandidate
-      ? resolveRootDropIntent({
-          activeSortId,
-          overSortId: pointerOverCandidate.overItem.sortId,
-          pointer,
-          overRect: pointerOverCandidate.overRect,
-          overCenterRect: pointerOverCandidate.overCenterRect,
-          items,
-        })
-      : null;
-
-    if (pointerRawIntent && pointerRawIntent.type !== 'reorder-root') {
-      if (!pointerOverCandidate) {
-        centerHoverCandidateRef.current = null;
-        return null;
-      }
-      const currentCandidate = centerHoverCandidateRef.current;
-      const nextCandidateType = pointerRawIntent.type;
-      const now = window.performance.now();
-      const activationDelayMs = getCenterIntentActivationDelayMs({
-        intent: pointerRawIntent,
-        targetShortcut: pointerOverCandidate.overItem.shortcut,
-      });
-      if (activationDelayMs <= 0) {
-        centerHoverCandidateRef.current = null;
-        return pointerRawIntent;
-      }
-
-      if (
-        currentCandidate
-        && currentCandidate.targetSortId === pointerOverCandidate.overItem.sortId
-        && currentCandidate.intentType === nextCandidateType
-        && currentCandidate.activationDelayMs === activationDelayMs
-      ) {
-        if (now - currentCandidate.startedAt >= currentCandidate.activationDelayMs) {
-          return pointerRawIntent;
-        }
-      } else {
-        centerHoverCandidateRef.current = {
-          targetSortId: pointerOverCandidate.overItem.sortId,
-          intentType: nextCandidateType,
-          startedAt: now,
-          activationDelayMs,
-        };
-      }
-    } else {
-      centerHoverCandidateRef.current = null;
-    }
-
     const slotIntent = usesSpanAwareReorder
       ? (() => {
           const candidate = pickClosestReorderSlot({
             point: {
-              x: pointer.x - rootRect.left,
-              y: pointer.y - rootRect.top,
+              x: recognitionPoint.x - rootRect.left,
+              y: recognitionPoint.y - rootRect.top,
             },
             candidates: reorderSlotCandidates,
           });
@@ -1406,89 +1226,94 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
           });
         })()
       : null;
+    if (compactLayout) {
+      const resolveMeasuredItemCompactRegions = (item: MeasuredGridItem): CompactTargetRegionSet => {
+        const placedItem = placedGridItemsBySortId.get(item.sortId);
+        const targetCellRegion = placedItem && gridColumnWidth
+          ? getCompactTargetCellRegionRect({
+              columnStart: placedItem.columnStart,
+              rowStart: placedItem.rowStart,
+              columnSpan: placedItem.columnSpan,
+              rowSpan: placedItem.rowSpan,
+              rootRect,
+              gridColumnWidth,
+              columnGap,
+              rowHeight,
+              rowGap,
+            })
+          : {
+              left: item.rect.left,
+              top: item.rect.top,
+              right: item.rect.right,
+              bottom: item.rect.bottom,
+              width: item.rect.width,
+              height: item.rect.height,
+            };
 
-    if (
-      pointerRawIntent
-      && pointerRawIntent.type !== 'reorder-root'
-      && !isFixedLargeFolderShortcut(activeItem.shortcut)
-      && pointerOverCandidate
-      && !isShortcutLargeFolder(pointerOverCandidate.overItem.shortcut)
-    ) {
-      // For compact small targets, let the live pointer take priority once
-      // we have a positive center intent so grouping stays responsive even
-      // when the rendered icon size has been scaled by the user.
-      centerHoverCandidateRef.current = null;
-      return pointerRawIntent;
+        return resolveCompactTargetRegionSet({
+          rect: targetCellRegion,
+          shortcut: item.shortcut,
+          compactIconSize,
+          largeFolderEnabled,
+          largeFolderPreviewSize,
+        });
+      };
+
+      return resolveCompactRootHoverResolution({
+        activeSortId,
+        recognitionPoint,
+        measuredItems,
+        items,
+        previousInteractionIntent: currentHoverResolution.interactionIntent,
+        previousVisualProjectionIntent: currentHoverResolution.visualProjectionIntent,
+        interactionProjectionOffsets: currentInteractionProjectionOffsets,
+        visualProjectionOffsets: currentVisualProjectionOffsets,
+        resolveRegions: resolveMeasuredItemCompactRegions,
+        slotIntent,
+        columnGap,
+        rowGap,
+      });
     }
 
     const overCandidate = pickOverItemCandidate({
       activeSortId,
       measuredItems,
-      pointer,
-      compactLayout,
-      compactIconSize,
-      largeFolderEnabled,
-      largeFolderPreviewSize,
+      pointer: recognitionPoint,
     });
     if (!overCandidate) {
-      centerHoverCandidateRef.current = null;
-      return slotIntent;
+      return {
+        interactionIntent: slotIntent,
+        visualProjectionIntent: slotIntent,
+      };
     }
 
     const rawIntent = resolveRootDropIntent({
       activeSortId,
       overSortId: overCandidate.overItem.sortId,
-      pointer,
+      pointer: recognitionPoint,
       overRect: overCandidate.overRect,
       overCenterRect: overCandidate.overCenterRect,
       items,
     });
     if (!rawIntent) {
-      centerHoverCandidateRef.current = null;
-      return slotIntent;
-    }
-
-    if (rawIntent.type === 'reorder-root') {
-      centerHoverCandidateRef.current = null;
-      return slotIntent ?? rawIntent;
-    }
-
-    const currentCandidate = centerHoverCandidateRef.current;
-    const nextCandidateType = rawIntent.type;
-    const now = window.performance.now();
-    const activationDelayMs = getCenterIntentActivationDelayMs({
-      intent: rawIntent,
-      targetShortcut: overCandidate.overItem.shortcut,
-    });
-    if (activationDelayMs <= 0) {
-      centerHoverCandidateRef.current = null;
-      return rawIntent;
-    }
-
-    if (
-      currentCandidate
-      && currentCandidate.targetSortId === overCandidate.overItem.sortId
-      && currentCandidate.intentType === nextCandidateType
-      && currentCandidate.activationDelayMs === activationDelayMs
-    ) {
-      if (now - currentCandidate.startedAt >= currentCandidate.activationDelayMs) {
-        return rawIntent;
-      }
-    } else {
-      centerHoverCandidateRef.current = {
-        targetSortId: overCandidate.overItem.sortId,
-        intentType: nextCandidateType,
-        startedAt: now,
-        activationDelayMs,
+      return {
+        interactionIntent: slotIntent,
+        visualProjectionIntent: slotIntent,
       };
     }
 
-    return slotIntent ?? buildFallbackReorderIntent({
-      activeSortId,
-      overItem: overCandidate.overItem,
-      pointer,
-      measuredItems,
-    });
+    if (rawIntent.type === 'reorder-root') {
+      const interactionIntent = slotIntent ?? rawIntent;
+      return {
+        interactionIntent,
+        visualProjectionIntent: interactionIntent,
+      };
+    }
+
+    return {
+      interactionIntent: rawIntent,
+      visualProjectionIntent: rawIntent,
+    };
   }, [
     compactIconSize,
     compactLayout,
@@ -1496,14 +1321,19 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     items,
     largeFolderEnabled,
     largeFolderPreviewSize,
+    computeProjectionOffsetsForIntent,
     reorderSlotCandidates,
+    resolveCompactShortcutMetrics,
     usesSpanAwareReorder,
   ]);
 
-  const syncHoverIntent = useCallback((pointer: PointerPoint) => {
+  const syncHoverResolution = useCallback((pointer: PointerPoint) => {
     latestPointerRef.current = pointer;
-    setHoverIntent(resolveIntentFromPointer(pointer));
-  }, [resolveIntentFromPointer]);
+    const nextResolution = resolveHoverResolutionFromPointer(pointer);
+    hoverResolutionRef.current = nextResolution;
+    hoverIntentRef.current = nextResolution.interactionIntent;
+    setHoverResolution(nextResolution);
+  }, [resolveHoverResolutionFromPointer]);
 
   useEffect(() => {
     if (!externalDragSession) return;
@@ -1543,14 +1373,14 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     setActiveDragId(activeItem.sortId);
     setDragPreviewOffset(previewOffset);
     setDragPointer(externalDragSession.pointer);
-    syncHoverIntent(externalDragSession.pointer);
+    syncHoverResolution(externalDragSession.pointer);
     onExternalDragSessionConsumed?.(externalDragSession.token);
   }, [
     externalDragSession,
     items,
     onExternalDragSessionConsumed,
     refreshAutoScrollBounds,
-    syncHoverIntent,
+    syncHoverResolution,
   ]);
 
   const startAutoScrollLoop = useCallback(() => {
@@ -1570,14 +1400,14 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
 
       const pointer = latestPointerRef.current;
       if (pointer) {
-        syncHoverIntent(pointer);
+        syncHoverResolution(pointer);
       }
 
       autoScrollRafRef.current = window.requestAnimationFrame(tick);
     };
 
     autoScrollRafRef.current = window.requestAnimationFrame(tick);
-  }, [syncHoverIntent]);
+  }, [syncHoverResolution]);
 
   const updateAutoScrollVelocity = useCallback((clientY: number) => {
     const container = autoScrollContainerRef.current;
@@ -1605,12 +1435,13 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     pendingDragRef.current = null;
     dragSessionRef.current = null;
     latestPointerRef.current = null;
-    centerHoverCandidateRef.current = null;
+    hoverResolutionRef.current = EMPTY_HOVER_RESOLUTION;
+    hoverIntentRef.current = null;
     setDragging(false);
     setActiveDragId(null);
     setDragPointer(null);
     setDragPreviewOffset(null);
-    setHoverIntent(null);
+    setHoverResolution(EMPTY_HOVER_RESOLUTION);
     setDragLayoutSnapshot(null);
     stopAutoScroll();
     autoScrollContainerRef.current = null;
@@ -1692,7 +1523,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         setActiveDragId(nextSession.activeSortId);
         setDragPreviewOffset(nextSession.previewOffset);
         setDragPointer(nextPointer);
-        syncHoverIntent(nextPointer);
+        syncHoverResolution(nextPointer);
         event.preventDefault();
         return;
       }
@@ -1703,7 +1534,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       session.pointer = nextPointer;
       setDragPointer(nextPointer);
       updateAutoScrollVelocity(nextPointer.y);
-      syncHoverIntent(nextPointer);
+      syncHoverResolution(nextPointer);
       event.preventDefault();
     };
 
@@ -1775,7 +1606,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     onShortcutReorder,
     refreshAutoScrollBounds,
     scheduleDragCleanup,
-    syncHoverIntent,
+    syncHoverResolution,
     updateAutoScrollVelocity,
   ]);
 
