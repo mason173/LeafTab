@@ -123,8 +123,8 @@ npm i
 npm run dev
 ```
 
-`npm run dev` / `npm run build` 会先根据 `leaftab-icons-main/shapes/` 中的图标文件名自动刷新 `leaftab-icons-main/icon-library.json`，再同步官方图标库到 `public/leaftab-icons/`。推荐图标文件命名为 `domain_RRGGBB.svg`，例如 `www.wps.cn_FE3E53.svg`；其中 `RRGGBB` 会自动成为官方图标的默认品牌色。这个默认色只影响首次展示，用户在应用里依然可以自定义图标颜色。项目不再自动从 GitHub 拉取官方图标库；如果本地图标库缺失，则保留现有的 `public/leaftab-icons/` 本地资源继续运行。
-`npm run dev` / `npm run build` first refreshes `leaftab-icons-main/icon-library.json` from the icon file names under `leaftab-icons-main/shapes/`, then syncs the local official icon library into `public/leaftab-icons/`. The recommended file name format is `domain_RRGGBB.svg`, for example `www.wps.cn_FE3E53.svg`; the `RRGGBB` suffix becomes the default brand color for that official icon automatically. That default color only affects the initial appearance, and users can still customize icon colors in the app. The project no longer auto-clones the official icon library from GitHub; if the local icon library is missing, it keeps using the existing local assets under `public/leaftab-icons/`.
+`npm run dev` / `npm run build` 会把本地 `leaftab-icons-main/official-icon-sources`（或旧版 `leaftab-icons-main/官方图标分层`）同步到 `public/leaftab-icons/`。项目不再自动从 GitHub 拉取官方图标库；如果本地图标源目录缺失，则保留现有的 `public/leaftab-icons/` 本地资源继续运行。
+`npm run dev` / `npm run build` syncs local icon sources from `leaftab-icons-main/official-icon-sources` (or the legacy `leaftab-icons-main/官方图标分层`) into `public/leaftab-icons/`. The project no longer auto-clones the official icon library from GitHub; if the local source directory is missing, it keeps using the existing local assets under `public/leaftab-icons/`.
 
 ## 构建（前端）/ Build (Frontend)
 
