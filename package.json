@@ -79,8 +79,8 @@
       "scripts": {
             "dev": "npm run icons:sync && vite --host",
             "build": "npm run build:community",
-            "icons:sync": "node scripts/sync-local-icon-library.js",
-            "icons:optimize:lossless": "npx --yes svgo@3 -f leaftab-icons-main/svgs --config=scripts/svgo-lossless.config.mjs",
+            "icons:sync": "npm --prefix leaftab-icons-main run build:library && node scripts/sync-local-icon-library.js",
+            "icons:optimize:lossless": "npx --yes svgo@3 -f leaftab-icons-main/shapes --config=scripts/svgo-lossless.config.mjs",
             "icons:prepare:release": "npm run icons:optimize:lossless && npm run icons:sync",
             "test": "vitest run",
             "test:node": "vitest run -c vitest.node.config.ts",
