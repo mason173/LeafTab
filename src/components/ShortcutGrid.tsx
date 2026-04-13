@@ -7,7 +7,6 @@ import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX,
   getCompactShortcutCardMetrics,
-  isShortcutLargeFolder,
 } from '@/components/shortcuts/compactFolderLayout';
 import { getLargeFolderBorderRadius, getSmallFolderBorderRadius } from '@/components/shortcuts/ShortcutFolderPreview';
 import { ShortcutCardRenderer } from './shortcuts/ShortcutCardRenderer';
@@ -28,8 +27,11 @@ import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDrop
 import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 import {
   buildReorderProjectionOffsets as buildSharedReorderProjectionOffsets,
+  distanceToRect,
+  distanceToRectCenter,
   getDragVisualCenter,
   measureDragItems,
+  pointInRect,
   type ActivePointerDragState,
   type MeasuredDragItem,
   type PendingPointerDragState,
@@ -45,6 +47,9 @@ const DRAG_AUTO_SCROLL_EDGE_PX = 88;
 const DRAG_AUTO_SCROLL_MAX_SPEED_PX = 26;
 const DRAG_MATCH_DISTANCE_PX = 64;
 const LAYOUT_SHIFT_MIN_DISTANCE_PX = 0.5;
+const DRAG_RELEASE_SETTLE_DURATION_MS = 220;
+const SELECTION_INDICATOR_SIZE_PX = 16;
+const SELECTION_INDICATOR_OFFSET_PX = -4;
 
 type RootHoverState =
   | { type: 'item'; sortId: string; edge: 'before' | 'after' | 'center' }
@@ -92,6 +97,24 @@ type OverItemCandidate = {
   overItem: MeasuredGridItem;
   overRect: DOMRect;
   overCenterRect: DOMRect;
+};
+
+type ProjectedDropPreview = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  borderRadius: string;
+};
+
+type DragSettlePreview = {
+  sortId: string;
+  shortcut: Shortcut;
+  fromLeft: number;
+  fromTop: number;
+  toLeft: number;
+  toTop: number;
+  settling: boolean;
 };
 
 function getProjectedCompactItemRect(params: {
@@ -519,6 +542,69 @@ function shouldShowCenterDropPreview(shortcut: Shortcut, hoverEdge: 'before' | '
   return hoverEdge === 'center' && shortcut.kind !== 'folder';
 }
 
+function shouldShowSelectionIndicator(shortcut: Shortcut, selectionMode: boolean): boolean {
+  return selectionMode && shortcut.kind !== 'folder';
+}
+
+function ShortcutSelectionIndicator({
+  cardVariant,
+  compactPreviewSize,
+  defaultIconSize,
+  defaultVerticalPadding,
+  selected,
+  sortId,
+}: {
+  cardVariant: ShortcutCardVariant;
+  compactPreviewSize: number;
+  defaultIconSize: number;
+  defaultVerticalPadding: number;
+  sortId: string;
+  selected: boolean;
+}) {
+  const anchorStyle = cardVariant === 'compact'
+    ? {
+        width: compactPreviewSize,
+        height: compactPreviewSize,
+        left: '50%',
+        top: 0,
+        transform: 'translateX(-50%)',
+      }
+    : {
+        width: defaultIconSize,
+        height: defaultIconSize,
+        left: 8,
+        top: defaultVerticalPadding,
+      };
+
+  return (
+    <span
+      className="pointer-events-none absolute"
+      style={anchorStyle}
+      aria-hidden="true"
+    >
+      <span
+        data-testid={`shortcut-selection-indicator-${sortId}`}
+        data-selected={selected}
+        className={`absolute flex items-center justify-center rounded-full border shadow-[0_3px_10px_rgba(0,0,0,0.16)] ${
+          selected
+            ? 'border-white/85 bg-primary text-primary-foreground'
+            : 'border-white/35 bg-black/35 text-transparent backdrop-blur-[6px]'
+        }`}
+        style={{
+          right: SELECTION_INDICATOR_OFFSET_PX,
+          top: SELECTION_INDICATOR_OFFSET_PX,
+          width: SELECTION_INDICATOR_SIZE_PX,
+          height: SELECTION_INDICATOR_SIZE_PX,
+        }}
+      >
+        {selected ? (
+          <RiCheckFill className="size-[10px]" />
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
 function measureGridItems(items: GridItem[], itemElements: Map<string, HTMLDivElement>): MeasuredGridItem[] {
   return measureDragItems({
     items,
@@ -585,6 +671,268 @@ function buildReorderProjectionOffsets(params: {
     targetIndex: hoverIntent?.type === 'reorder-root' ? hoverIntent.targetIndex : null,
     getId: (item) => item.sortId,
   });
+}
+
+function buildProjectedDropPreview(params: {
+  cardVariant: ShortcutCardVariant;
+  items: GridItem[];
+  layoutSnapshot: MeasuredGridItem[] | null;
+  activeSortId: string | null;
+  hoverIntent: RootShortcutDropIntent | null;
+  rootElement: HTMLDivElement | null;
+  usesSpanAwareReorder: boolean;
+  preserveLargeFoldersDuringSmallReorder: boolean;
+  gridColumns: number;
+  gridColumnWidth: number | null;
+  columnGap: number;
+  rowHeight: number;
+  rowGap: number;
+  iconCornerRadius: number;
+  resolveCompactShortcutMetrics: (shortcut: Shortcut) => {
+    width: number;
+    height: number;
+    previewSize: number;
+    largeFolder?: boolean;
+    columnSpan: number;
+    rowSpan: number;
+  };
+}): ProjectedDropPreview | null {
+  const {
+    cardVariant,
+    items,
+    layoutSnapshot,
+    activeSortId,
+    hoverIntent,
+    rootElement,
+    usesSpanAwareReorder,
+    preserveLargeFoldersDuringSmallReorder,
+    gridColumns,
+    gridColumnWidth,
+    columnGap,
+    rowHeight,
+    rowGap,
+    iconCornerRadius,
+    resolveCompactShortcutMetrics,
+  } = params;
+
+  if (!layoutSnapshot || !activeSortId || !rootElement) {
+    return null;
+  }
+
+  const activeItem = items.find((item) => item.sortId === activeSortId);
+  if (!activeItem) return null;
+  const activeCompactMetrics = resolveCompactShortcutMetrics(activeItem.shortcut);
+  const compactPreviewBorderRadius = activeCompactMetrics.largeFolder
+    ? getLargeFolderBorderRadius(activeCompactMetrics.previewSize, iconCornerRadius)
+    : activeItem.shortcut.kind === 'folder'
+      ? getSmallFolderBorderRadius(activeCompactMetrics.previewSize, iconCornerRadius)
+      : getShortcutIconBorderRadius(iconCornerRadius);
+
+  const snapshotById = new Map(layoutSnapshot.map((item) => [item.sortId, item]));
+  const activeSnapshot = snapshotById.get(activeSortId);
+  if (!activeSnapshot) return null;
+  const rootRect = rootElement.getBoundingClientRect();
+
+  if (!hoverIntent) {
+    if (cardVariant === 'compact') {
+      return {
+        left: activeSnapshot.rect.left - rootRect.left + Math.max(0, (activeSnapshot.rect.width - activeCompactMetrics.previewSize) / 2),
+        top: activeSnapshot.rect.top - rootRect.top,
+        width: activeCompactMetrics.previewSize,
+        height: activeCompactMetrics.previewSize,
+        borderRadius: compactPreviewBorderRadius,
+      };
+    }
+
+    return {
+      left: activeSnapshot.rect.left - rootRect.left,
+      top: activeSnapshot.rect.top - rootRect.top,
+      width: activeSnapshot.rect.width,
+      height: activeSnapshot.rect.height,
+      borderRadius: '12px',
+    };
+  }
+
+  if (hoverIntent.type !== 'reorder-root') {
+    return null;
+  }
+
+  if (usesSpanAwareReorder && gridColumnWidth) {
+    const projectedItems = buildProjectedGridItemsForRootReorder({
+      items,
+      activeSortId,
+      targetIndex: hoverIntent.targetIndex,
+      preserveLargeFolders: preserveLargeFoldersDuringSmallReorder,
+    });
+    if (!projectedItems) return null;
+
+    const projectedLayout = packGridItems({
+      items: projectedItems,
+      gridColumns,
+      getSpan: (shortcut) => {
+        const metrics = resolveCompactShortcutMetrics(shortcut);
+        return {
+          columnSpan: metrics.columnSpan,
+          rowSpan: metrics.rowSpan,
+        };
+      },
+    });
+    const placedActiveItem = projectedLayout.placedItems.find((item) => item.sortId === activeSortId);
+    if (!placedActiveItem) return null;
+
+    const projectedRect = getProjectedCompactItemRect({
+      placedItem: placedActiveItem,
+      gridColumnWidth,
+      columnGap,
+      rowHeight,
+      rowGap,
+      width: activeCompactMetrics.previewSize,
+      height: activeCompactMetrics.previewSize,
+    });
+
+    return {
+      left: projectedRect.left,
+      top: projectedRect.top,
+      width: projectedRect.width,
+      height: projectedRect.height,
+      borderRadius: compactPreviewBorderRadius,
+    };
+  }
+
+  const originalOrder = items.map((item) => item.sortId);
+  const slotSortId = originalOrder[hoverIntent.targetIndex];
+  const slotSnapshot = slotSortId ? snapshotById.get(slotSortId) : null;
+  const resolvedSnapshot = slotSnapshot ?? activeSnapshot;
+  if (!resolvedSnapshot) return null;
+
+  if (cardVariant === 'compact') {
+    return {
+      left: resolvedSnapshot.rect.left - rootRect.left + Math.max(0, (resolvedSnapshot.rect.width - activeCompactMetrics.previewSize) / 2),
+      top: resolvedSnapshot.rect.top - rootRect.top,
+      width: activeCompactMetrics.previewSize,
+      height: activeCompactMetrics.previewSize,
+      borderRadius: compactPreviewBorderRadius,
+    };
+  }
+
+  return {
+    left: resolvedSnapshot.rect.left - rootRect.left,
+    top: resolvedSnapshot.rect.top - rootRect.top,
+    width: resolvedSnapshot.rect.width,
+    height: resolvedSnapshot.rect.height,
+    borderRadius: '12px',
+  };
+}
+
+function buildProjectedDragSettleTarget(params: {
+  items: GridItem[];
+  layoutSnapshot: MeasuredGridItem[] | null;
+  activeSortId: string | null;
+  hoverIntent: RootShortcutDropIntent | null;
+  rootElement: HTMLDivElement | null;
+  usesSpanAwareReorder: boolean;
+  preserveLargeFoldersDuringSmallReorder: boolean;
+  gridColumns: number;
+  gridColumnWidth: number | null;
+  columnGap: number;
+  rowHeight: number;
+  rowGap: number;
+  resolveCompactShortcutMetrics: (shortcut: Shortcut) => {
+    width: number;
+    height: number;
+    previewSize: number;
+    largeFolder?: boolean;
+    columnSpan: number;
+    rowSpan: number;
+  };
+}): { left: number; top: number } | null {
+  const {
+    items,
+    layoutSnapshot,
+    activeSortId,
+    hoverIntent,
+    rootElement,
+    usesSpanAwareReorder,
+    preserveLargeFoldersDuringSmallReorder,
+    gridColumns,
+    gridColumnWidth,
+    columnGap,
+    rowHeight,
+    rowGap,
+    resolveCompactShortcutMetrics,
+  } = params;
+
+  if (!layoutSnapshot || !activeSortId) {
+    return null;
+  }
+
+  const activeItem = items.find((item) => item.sortId === activeSortId);
+  if (!activeItem) return null;
+  const activeSnapshot = layoutSnapshot.find((item) => item.sortId === activeSortId)?.rect ?? null;
+
+  if (!hoverIntent) {
+    if (!activeSnapshot) return null;
+    return {
+      left: activeSnapshot.left,
+      top: activeSnapshot.top,
+    };
+  }
+
+  if (hoverIntent.type !== 'reorder-root') {
+    return null;
+  }
+
+  if (usesSpanAwareReorder && gridColumnWidth && rootElement) {
+    const projectedItems = buildProjectedGridItemsForRootReorder({
+      items,
+      activeSortId,
+      targetIndex: hoverIntent.targetIndex,
+      preserveLargeFolders: preserveLargeFoldersDuringSmallReorder,
+    });
+    if (!projectedItems) return null;
+
+    const projectedLayout = packGridItems({
+      items: projectedItems,
+      gridColumns,
+      getSpan: (shortcut) => {
+        const metrics = resolveCompactShortcutMetrics(shortcut);
+        return {
+          columnSpan: metrics.columnSpan,
+          rowSpan: metrics.rowSpan,
+        };
+      },
+    });
+    const placedActiveItem = projectedLayout.placedItems.find((item) => item.sortId === activeSortId);
+    if (!placedActiveItem) return null;
+
+    const metrics = resolveCompactShortcutMetrics(activeItem.shortcut);
+    const projectedRect = getProjectedCompactItemRect({
+      placedItem: placedActiveItem,
+      gridColumnWidth,
+      columnGap,
+      rowHeight,
+      rowGap,
+      width: metrics.width,
+      height: metrics.height,
+    });
+    const rootRect = rootElement.getBoundingClientRect();
+    return {
+      left: rootRect.left + projectedRect.left,
+      top: rootRect.top + projectedRect.top,
+    };
+  }
+
+  const snapshotById = new Map(layoutSnapshot.map((item) => [item.sortId, item.rect]));
+  const orderedRects = items
+    .map((item) => snapshotById.get(item.sortId) ?? null)
+    .filter((rect): rect is DOMRect => Boolean(rect));
+  if (orderedRects.length === 0) return null;
+
+  const targetRect = orderedRects[Math.max(0, Math.min(hoverIntent.targetIndex, orderedRects.length - 1))];
+  return {
+    left: targetRect.left,
+    top: targetRect.top,
+  };
 }
 
 
@@ -668,6 +1016,8 @@ function ShortcutGridItem({
   const isHovered = hoverState?.type === 'item' && hoverState.sortId === sortId;
   const hoverEdge = isHovered ? hoverState.edge : null;
   const centerPreviewActive = shouldShowCenterDropPreview(shortcut, hoverEdge);
+  const showSelectionIndicator = shouldShowSelectionIndicator(shortcut, selectionMode);
+  const selectionDisabled = selectionMode && shortcut.kind === 'folder';
 
   return (
     <div
@@ -709,13 +1059,18 @@ function ShortcutGridItem({
         }}
         selectionOverlay={selectionMode ? (
           <div
-            className="pointer-events-none absolute inset-0 rounded-xl"
+            className="pointer-events-none absolute inset-0 z-20 rounded-xl"
             aria-hidden="true"
           >
-            {selected ? (
-              <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <RiCheckFill className="size-3.5" />
-              </span>
+            {showSelectionIndicator ? (
+              <ShortcutSelectionIndicator
+                sortId={sortId}
+                selected={selected}
+                cardVariant={cardVariant}
+                compactPreviewSize={compactCardMetrics.previewSize}
+                defaultIconSize={defaultIconSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+              />
             ) : null}
           </div>
         ) : null}
@@ -735,6 +1090,7 @@ function ShortcutGridItem({
           enableLargeFolder={enableLargeFolder}
           largeFolderPreviewSize={largeFolderPreviewSize}
           onPreviewShortcutOpen={onPreviewShortcutOpen}
+          selectionDisabled={selectionDisabled}
           shortcut={shortcut}
           onOpen={onOpen}
           onContextMenu={onContextMenu}
@@ -845,9 +1201,11 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   const [suppressProjectionSettleAnimation, setSuppressProjectionSettleAnimation] = useState(false);
   const [layoutShiftOffsets, setLayoutShiftOffsets] = useState<Map<string, ProjectionOffset>>(new Map());
   const [disableLayoutShiftTransition, setDisableLayoutShiftTransition] = useState(false);
+  const [dragSettlePreview, setDragSettlePreview] = useState<DragSettlePreview | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const itemElementsRef = useRef(new Map<string, HTMLDivElement>());
   const previousItemRectsRef = useRef<Map<string, DOMRect> | null>(null);
+  const pendingLayoutShiftSourceRectsRef = useRef<Map<string, DOMRect> | null>(null);
   const pendingDragRef = useRef<PendingDragState | null>(null);
   const dragSessionRef = useRef<DragSessionState | null>(null);
   const latestPointerRef = useRef<PointerPoint | null>(null);
@@ -862,6 +1220,8 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   const autoScrollRafRef = useRef<number | null>(null);
   const projectionSettleResumeRafRef = useRef<number | null>(null);
   const layoutShiftResumeRafRef = useRef<number | null>(null);
+  const dragSettleStartRafRef = useRef<number | null>(null);
+  const dragSettleCleanupTimeoutRef = useRef<number | null>(null);
   const consumedExternalDragTokenRef = useRef<number | null>(null);
   const hoverIntent = hoverResolution.interactionIntent;
   const visualProjectionIntent = hoverResolution.visualProjectionIntent;
@@ -1142,14 +1502,71 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     rowHeight,
     usesSpanAwareReorder,
   ]);
-  const interactionProjectionOffsets = useMemo(
-    () => computeProjectionOffsetsForIntent(hoverIntent),
-    [computeProjectionOffsetsForIntent, hoverIntent],
-  );
   const projectionOffsets = useMemo(
     () => computeProjectionOffsetsForIntent(visualProjectionIntent),
     [computeProjectionOffsetsForIntent, visualProjectionIntent],
   );
+  const hiddenSortId = activeDragId ?? dragSettlePreview?.sortId ?? null;
+  const projectedDropPreview = useMemo(() => buildProjectedDropPreview({
+    cardVariant,
+    items,
+    layoutSnapshot: dragLayoutSnapshot,
+    activeSortId: activeDragId,
+    hoverIntent: visualProjectionIntent,
+    rootElement: rootRef.current,
+    usesSpanAwareReorder,
+    preserveLargeFoldersDuringSmallReorder,
+    gridColumns,
+    gridColumnWidth,
+    columnGap,
+    rowHeight,
+    rowGap,
+    iconCornerRadius,
+    resolveCompactShortcutMetrics,
+  }), [
+    activeDragId,
+    cardVariant,
+    columnGap,
+    dragLayoutSnapshot,
+    gridColumnWidth,
+    gridColumns,
+    iconCornerRadius,
+    items,
+    preserveLargeFoldersDuringSmallReorder,
+    resolveCompactShortcutMetrics,
+    rowGap,
+    rowHeight,
+    usesSpanAwareReorder,
+    visualProjectionIntent,
+  ]);
+  const startDragSettlePreview = useCallback((preview: Omit<DragSettlePreview, 'settling'>) => {
+    if (typeof window === 'undefined') return;
+
+    if (dragSettleStartRafRef.current !== null) {
+      window.cancelAnimationFrame(dragSettleStartRafRef.current);
+      dragSettleStartRafRef.current = null;
+    }
+    if (dragSettleCleanupTimeoutRef.current !== null) {
+      window.clearTimeout(dragSettleCleanupTimeoutRef.current);
+      dragSettleCleanupTimeoutRef.current = null;
+    }
+
+    setDragSettlePreview({ ...preview, settling: false });
+    dragSettleStartRafRef.current = window.requestAnimationFrame(() => {
+      dragSettleStartRafRef.current = window.requestAnimationFrame(() => {
+        dragSettleStartRafRef.current = null;
+        setDragSettlePreview((current) => {
+          if (!current || current.sortId !== preview.sortId) return current;
+          return { ...current, settling: true };
+        });
+      });
+    });
+
+    dragSettleCleanupTimeoutRef.current = window.setTimeout(() => {
+      dragSettleCleanupTimeoutRef.current = null;
+      setDragSettlePreview((current) => (current?.sortId === preview.sortId ? null : current));
+    }, DRAG_RELEASE_SETTLE_DURATION_MS + 80);
+  }, []);
 
   useEffect(() => {
     activeDragIdRef.current = activeDragId;
@@ -1159,11 +1576,15 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     if (typeof window === 'undefined') return;
 
     const currentRects = measureGridItemRects(itemElementsRef.current);
-    const previousRects = previousItemRectsRef.current;
+    const pendingLayoutShiftSourceRects = pendingLayoutShiftSourceRectsRef.current;
+    const previousRects = pendingLayoutShiftSourceRects ?? previousItemRectsRef.current;
+    if (pendingLayoutShiftSourceRects) {
+      pendingLayoutShiftSourceRectsRef.current = null;
+    }
     previousItemRectsRef.current = currentRects;
 
     if (
-      dragging
+      (dragging && !pendingLayoutShiftSourceRects)
       || suppressProjectionSettleAnimation
       || !previousRects
       || currentRects.size === 0
@@ -1432,6 +1853,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
     document.body.style.userSelect = 'none';
     consumedExternalDragTokenRef.current = externalDragSession.token;
 
+    setDragSettlePreview(null);
     setDragLayoutSnapshot(measuredItems);
     setDragging(true);
     setActiveDragId(activeItem.sortId);
@@ -1549,7 +1971,16 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       window.cancelAnimationFrame(layoutShiftResumeRafRef.current);
       layoutShiftResumeRafRef.current = null;
     }
+    if (dragSettleStartRafRef.current !== null) {
+      window.cancelAnimationFrame(dragSettleStartRafRef.current);
+      dragSettleStartRafRef.current = null;
+    }
+    if (dragSettleCleanupTimeoutRef.current !== null) {
+      window.clearTimeout(dragSettleCleanupTimeoutRef.current);
+      dragSettleCleanupTimeoutRef.current = null;
+    }
     clearDragRuntimeState();
+    setDragSettlePreview(null);
   }, [clearDragRuntimeState]);
 
   useEffect(() => {
@@ -1585,6 +2016,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         refreshAutoScrollBounds();
         autoScrollVelocityRef.current = 0;
         document.body.style.userSelect = 'none';
+        setDragSettlePreview(null);
         setDragLayoutSnapshot(measureGridItems(items, itemElementsRef.current));
 
         setDragging(true);
@@ -1618,7 +2050,39 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       if (!session || event.pointerId !== session.pointerId) return;
 
       const finalIntent = hoverIntentRef.current;
+      const dragReleasePreview = (() => {
+        const activeItem = items.find((item) => item.sortId === session.activeSortId);
+        const target = buildProjectedDragSettleTarget({
+          items,
+          layoutSnapshot: dragLayoutSnapshot,
+          activeSortId: session.activeSortId,
+          hoverIntent: finalIntent,
+          rootElement: rootRef.current,
+          usesSpanAwareReorder,
+          preserveLargeFoldersDuringSmallReorder,
+          gridColumns,
+          gridColumnWidth,
+          columnGap,
+          rowHeight,
+          rowGap,
+          resolveCompactShortcutMetrics,
+        });
+        if (!activeItem || !target) return null;
+
+        return {
+          sortId: session.activeSortId,
+          shortcut: activeItem.shortcut,
+          fromLeft: session.pointer.x - session.previewOffset.x,
+          fromTop: session.pointer.y - session.previewOffset.y,
+          toLeft: target.left,
+          toTop: target.top,
+        };
+      })();
+
       if (!finalIntent) {
+        if (dragReleasePreview) {
+          startDragSettlePreview(dragReleasePreview);
+        }
         clearDragRuntimeState();
         return;
       }
@@ -1627,12 +2091,16 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         if (finalIntent.type === 'reorder-root') {
           armProjectionSettleSuppression();
           flushSync(() => {
+            if (dragReleasePreview) {
+              startDragSettlePreview(dragReleasePreview);
+            }
             onShortcutDropIntent(finalIntent);
             clearDragRuntimeState();
           });
           return;
         }
 
+        pendingLayoutShiftSourceRectsRef.current = measureGridItemRects(itemElementsRef.current);
         onShortcutDropIntent(finalIntent);
         scheduleDragCleanup();
         return;
@@ -1652,6 +2120,9 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
       next.splice(finalIntent.targetIndex, 0, moved);
       armProjectionSettleSuppression();
       flushSync(() => {
+        if (dragReleasePreview) {
+          startDragSettlePreview(dragReleasePreview);
+        }
         onShortcutReorder(next.map((item) => item.shortcut));
         clearDragRuntimeState();
       });
@@ -1669,13 +2140,23 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
   }, [
     clearDragRuntimeState,
     armProjectionSettleSuppression,
+    columnGap,
     items,
+    dragLayoutSnapshot,
+    gridColumnWidth,
+    gridColumns,
     onShortcutDropIntent,
     onShortcutReorder,
+    preserveLargeFoldersDuringSmallReorder,
     refreshAutoScrollBounds,
+    resolveCompactShortcutMetrics,
+    rowGap,
+    rowHeight,
     scheduleDragCleanup,
+    startDragSettlePreview,
     syncHoverResolution,
     updateAutoScrollVelocity,
+    usesSpanAwareReorder,
   ]);
 
   return (
@@ -1690,6 +2171,20 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
         }}
         onContextMenu={onGridContextMenu}
       >
+        {dragging && projectedDropPreview ? (
+          <div
+            data-testid="shortcut-drop-preview"
+            aria-hidden="true"
+            className="pointer-events-none absolute z-0 bg-white/30"
+            style={{
+              left: projectedDropPreview.left,
+              top: projectedDropPreview.top,
+              width: projectedDropPreview.width,
+              height: projectedDropPreview.height,
+              borderRadius: projectedDropPreview.borderRadius,
+            }}
+          />
+        ) : null}
         <div
           className="grid"
           style={{
@@ -1715,7 +2210,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
               key={item.sortId}
               sortId={item.sortId}
               shortcut={item.shortcut}
-              activeDragId={activeDragId}
+              activeDragId={hiddenSortId}
               hoverState={hoverState}
               cardVariant={cardVariant}
               gridColumns={gridColumns}
@@ -1758,6 +2253,7 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
               onOpen={() => {
                 if (ignoreClickRef.current) return;
                 if (selectionMode) {
+                  if (item.shortcut.kind === 'folder') return;
                   onToggleShortcutSelection?.(item.shortcutIndex);
                   return;
                 }
@@ -1824,6 +2320,53 @@ export const ShortcutGrid = React.memo(function ShortcutGrid({
                 enableLargeFolder={largeFolderEnabled}
                 largeFolderPreviewSize={largeFolderPreviewSize}
                 shortcut={activeDragItem.shortcut}
+                onOpen={() => {}}
+                onContextMenu={() => {}}
+              />
+            )}
+          </div>,
+          document.body,
+        ) : null}
+        {typeof document !== 'undefined' && dragSettlePreview ? createPortal(
+          <div
+            className="pointer-events-none fixed left-0 top-0"
+            style={{
+              zIndex: DRAG_OVERLAY_Z_INDEX,
+              transform: `translate(${dragSettlePreview.settling ? dragSettlePreview.toLeft : dragSettlePreview.fromLeft}px, ${dragSettlePreview.settling ? dragSettlePreview.toTop : dragSettlePreview.fromTop}px)`,
+              transition: `transform ${DRAG_RELEASE_SETTLE_DURATION_MS}ms ease-out`,
+            }}
+          >
+            {firefox ? (
+              <LightweightDragPreview
+                shortcut={dragSettlePreview.shortcut}
+                cardVariant={cardVariant}
+                firefox={firefox}
+                compactShowTitle={compactShowTitle}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
+              />
+            ) : (
+              <ShortcutCardRenderer
+                variant={cardVariant}
+                compactShowTitle={compactShowTitle}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
+                compactTitleFontSize={compactTitleFontSize}
+                defaultIconSize={defaultIconSize}
+                defaultTitleFontSize={defaultTitleFontSize}
+                defaultUrlFontSize={defaultUrlFontSize}
+                defaultVerticalPadding={defaultVerticalPadding}
+                forceTextWhite={forceTextWhite}
+                enableLargeFolder={largeFolderEnabled}
+                largeFolderPreviewSize={largeFolderPreviewSize}
+                shortcut={dragSettlePreview.shortcut}
                 onOpen={() => {}}
                 onContextMenu={() => {}}
               />

@@ -20,6 +20,7 @@ interface ShortcutCardRendererProps {
   enableLargeFolder?: boolean;
   largeFolderPreviewSize?: number;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
+  selectionDisabled?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -40,6 +41,7 @@ export function ShortcutCardRenderer({
   enableLargeFolder = false,
   largeFolderPreviewSize,
   onPreviewShortcutOpen,
+  selectionDisabled = false,
   onOpen,
   onContextMenu,
 }: ShortcutCardRendererProps) {
@@ -57,6 +59,7 @@ export function ShortcutCardRenderer({
           enableLargeFolder={enableLargeFolder}
           largeFolderPreviewSize={largeFolderPreviewSize}
           onPreviewShortcutOpen={onPreviewShortcutOpen}
+          selectionDisabled={selectionDisabled}
           onOpen={onOpen}
           onContextMenu={onContextMenu}
         />
@@ -73,6 +76,7 @@ export function ShortcutCardRenderer({
           urlFontSize={defaultUrlFontSize}
           verticalPadding={defaultVerticalPadding}
           forceTextWhite={forceTextWhite}
+          selectionDisabled={selectionDisabled}
           onOpen={onOpen}
           onContextMenu={onContextMenu}
         />

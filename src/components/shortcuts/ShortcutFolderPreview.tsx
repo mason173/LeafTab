@@ -241,19 +241,23 @@ function LargeFolderOpenTile({
   tileSize: number;
   iconCornerRadius: number;
   iconAppearance?: ShortcutIconAppearance;
-  onOpenFolder: () => void;
+  onOpenFolder?: () => void;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_TRIGGER_ICON_RATIO));
+  const interactive = typeof onOpenFolder === 'function';
 
   return (
     <button
       type="button"
-      className="relative isolate flex items-center justify-center rounded-[14px] transition-transform duration-150 ease-out hover:scale-[1.03]"
+      className={`relative isolate flex items-center justify-center rounded-[14px] ${
+        interactive ? 'transition-transform duration-150 ease-out hover:scale-[1.03]' : 'cursor-not-allowed'
+      }`}
       style={{ width: tileSize, height: tileSize }}
-      onClick={(event) => {
+      onClick={interactive ? (event) => {
         event.stopPropagation();
-        onOpenFolder();
-      }}
+        onOpenFolder?.();
+      } : undefined}
+      disabled={!interactive}
     >
       <LargeFolderOpenTileGhostStack
         tileSize={tileSize}
@@ -283,6 +287,7 @@ type ShortcutFolderPreviewProps = {
   size: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
+  selectionDisabled?: boolean;
 };
 
 type ShortcutFolderLargePreviewProps = {
@@ -290,7 +295,7 @@ type ShortcutFolderLargePreviewProps = {
   size: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
-  onOpenFolder: () => void;
+  onOpenFolder?: () => void;
   onOpenShortcut?: (shortcut: Shortcut) => void;
 };
 
@@ -307,13 +312,16 @@ export function ShortcutFolderPreview({
   size,
   iconCornerRadius = 18,
   iconAppearance,
+  selectionDisabled = false,
 }: ShortcutFolderPreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, 4);
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
 
   return (
     <div
-      className={`relative grid grid-cols-2 gap-1 border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
+      className={`relative grid grid-cols-2 gap-1 border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+        selectionDisabled ? 'cursor-not-allowed' : ''
+      } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
@@ -351,6 +359,7 @@ export function ShortcutFolderLargePreview({
   onOpenFolder,
   onOpenShortcut,
 }: ShortcutFolderLargePreviewProps) {
+  const interactive = typeof onOpenFolder === 'function';
   const children = getShortcutChildren(shortcut);
   const hasOverflowChildren = children.length > LARGE_FOLDER_PREVIEW_VISIBLE_COUNT;
   const visibleChildren = children.slice(0, LARGE_FOLDER_PREVIEW_VISIBLE_COUNT);
@@ -368,7 +377,9 @@ export function ShortcutFolderLargePreview({
 
   return (
     <div
-      className={`relative isolate overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
+      className={`relative isolate overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+        interactive ? '' : 'cursor-not-allowed'
+      } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
@@ -378,7 +389,7 @@ export function ShortcutFolderLargePreview({
       }}
       data-folder-preview="true"
       data-folder-preview-id={shortcut.id}
-      onClick={onOpenFolder}
+      onClick={interactive ? onOpenFolder : undefined}
     >
       <div
         aria-hidden="true"
@@ -409,7 +420,7 @@ export function ShortcutFolderLargePreview({
                   tileSize={tileSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
-                  onOpenFolder={onOpenFolder}
+                  onOpenFolder={interactive ? onOpenFolder : undefined}
                 />
               );
             }

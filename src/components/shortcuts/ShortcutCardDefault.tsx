@@ -14,6 +14,7 @@ interface ShortcutCardDefaultProps {
   urlFontSize?: number;
   verticalPadding?: number;
   forceTextWhite?: boolean;
+  selectionDisabled?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -95,11 +96,13 @@ export function ShortcutCardDefault({
   urlFontSize = 10,
   verticalPadding = 8,
   forceTextWhite = false,
+  selectionDisabled = false,
   onOpen,
   onContextMenu,
 }: ShortcutCardDefaultProps) {
   const firefox = isFirefoxBuildTarget();
   const folder = isShortcutFolder(shortcut);
+  const folderSelectionDisabled = selectionDisabled && folder;
   const secondaryText = shortcut.url;
 
   if (folder) {
@@ -107,9 +110,13 @@ export function ShortcutCardDefault({
 
     return (
       <div
-        className={`relative w-full cursor-pointer select-none rounded-xl ${
+        className={`relative w-full select-none rounded-xl ${
+          folderSelectionDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+        } ${
           firefox ? '' : 'transition-[background-color,border-color,box-shadow] duration-150'
-        } border ${LIGHT_FOLDER_SURFACE_CLASSNAME} hover:bg-[rgba(212,219,226,0.48)] dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-black/32`}
+        } border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+          folderSelectionDisabled ? '' : 'hover:bg-[rgba(212,219,226,0.48)] dark:hover:bg-black/32'
+        } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
         onClick={onOpen}
         onContextMenu={onContextMenu}
       >

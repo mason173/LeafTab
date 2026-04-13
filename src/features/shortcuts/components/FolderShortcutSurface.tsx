@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact';
-import { ShortcutIconRenderContext } from '@/components/ShortcutIconRenderContext';
+import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
+import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
+import { getLargeFolderBorderRadius, getSmallFolderBorderRadius } from '@/components/shortcuts/ShortcutFolderPreview';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { DraggableShortcutItemFrame } from '@/features/shortcuts/components/DraggableShortcutItemFrame';
 import { getDropEdge, getReorderTargetIndex } from '@/features/shortcuts/drag/dropEdge';
@@ -19,6 +21,7 @@ import {
   type PointerPoint,
   type ProjectionOffset,
 } from '@/features/shortcuts/drag/gridDragEngine';
+import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
 type FolderShortcutSurfaceProps = {
   folderId: string;
@@ -74,6 +77,14 @@ const DRAG_MATCH_DISTANCE_PX = 72;
 const EXTRACT_HANDOFF_DELAY_MS = 520;
 const DRAG_OVERLAY_Z_INDEX = 2147483000;
 
+type FolderProjectedDropPreview = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  borderRadius: string;
+};
+
 function buildReorderProjectionOffsets(params: {
   shortcuts: Shortcut[];
   layoutSnapshot: MeasuredFolderItem[] | null;
@@ -101,6 +112,59 @@ function buildReorderProjectionOffsets(params: {
     targetIndex,
     getId: (item) => item.shortcut.id,
   });
+}
+
+function buildProjectedDropPreview(params: {
+  shortcuts: Shortcut[];
+  layoutSnapshot: MeasuredFolderItem[] | null;
+  activeShortcutId: string | null;
+  hoverState: FolderHoverState;
+  rootElement: HTMLDivElement | null;
+  compactIconSize: number;
+  iconCornerRadius: number;
+}): FolderProjectedDropPreview | null {
+  const {
+    shortcuts,
+    layoutSnapshot,
+    activeShortcutId,
+    hoverState,
+    rootElement,
+    compactIconSize,
+    iconCornerRadius,
+  } = params;
+
+  if (!layoutSnapshot || !activeShortcutId || !rootElement || hoverState?.type === 'mask') {
+    return null;
+  }
+
+  const activeShortcut = shortcuts.find((shortcut) => shortcut.id === activeShortcutId);
+  if (!activeShortcut) return null;
+
+  const snapshotById = new Map(layoutSnapshot.map((item) => [item.shortcut.id, item.rect]));
+  const activeSnapshot = snapshotById.get(activeShortcutId);
+  if (!activeSnapshot) return null;
+
+  const targetRect = hoverState?.type === 'item'
+    ? snapshotById.get(hoverState.shortcutId) ?? activeSnapshot
+    : activeSnapshot;
+  const metrics = getCompactShortcutCardMetrics({
+    shortcut: activeShortcut,
+    iconSize: compactIconSize,
+  });
+  const rootRect = rootElement.getBoundingClientRect();
+  const borderRadius = activeShortcut.kind === 'folder'
+    ? (activeShortcut.folderDisplayMode === 'large'
+        ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius)
+        : getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius))
+    : getShortcutIconBorderRadius(iconCornerRadius);
+
+  return {
+    left: targetRect.left - rootRect.left + Math.max(0, (targetRect.width - metrics.previewSize) / 2),
+    top: targetRect.top - rootRect.top,
+    width: metrics.previewSize,
+    height: metrics.previewSize,
+    borderRadius,
+  };
 }
 
 function measureFolderItems(
@@ -239,13 +303,14 @@ export function FolderShortcutSurface({
 }: FolderShortcutSurfaceProps) {
   const firefox = isFirefoxBuildTarget();
   const shortcutIconRenderContextValue = useMemo(() => ({
-    monochromeTone: 'theme-adaptive',
+    monochromeTone: 'theme-adaptive' as ShortcutMonochromeTone,
     monochromeTileBackdropBlur: false,
   }), []);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragPointer, setDragPointer] = useState<PointerPoint | null>(null);
   const [dragPreviewOffset, setDragPreviewOffset] = useState<PointerPoint | null>(null);
   const [hoverState, setHoverState] = useState<FolderHoverState>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const itemElementsRef = useRef(new Map<string, HTMLDivElement>());
   const ignoreClickRef = useRef(false);
   const pendingDragRef = useRef<PendingDragState | null>(null);
@@ -269,6 +334,22 @@ export function FolderShortcutSurface({
     }),
     [activeDragId, dragLayoutSnapshot, hoverState, shortcuts],
   );
+  const projectedDropPreview = useMemo(() => buildProjectedDropPreview({
+    shortcuts,
+    layoutSnapshot: dragLayoutSnapshot,
+    activeShortcutId: activeDragId,
+    hoverState,
+    rootElement: rootRef.current,
+    compactIconSize,
+    iconCornerRadius: iconCornerRadius ?? 22,
+  }), [
+    activeDragId,
+    compactIconSize,
+    dragLayoutSnapshot,
+    hoverState,
+    iconCornerRadius,
+    shortcuts,
+  ]);
 
   useEffect(() => {
     latestHoverStateRef.current = hoverState;
@@ -499,9 +580,24 @@ export function FolderShortcutSurface({
         boundaryRef={maskBoundaryRef}
       />
       <div
-        className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4"
+        ref={rootRef}
+        className="relative grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4"
         data-folder-shortcut-grid="true"
       >
+        {activeDragId && projectedDropPreview ? (
+          <div
+            data-testid="folder-shortcut-drop-preview"
+            aria-hidden="true"
+            className="pointer-events-none absolute z-0 bg-black/14"
+            style={{
+              left: projectedDropPreview.left,
+              top: projectedDropPreview.top,
+              width: projectedDropPreview.width,
+              height: projectedDropPreview.height,
+              borderRadius: projectedDropPreview.borderRadius,
+            }}
+          />
+        ) : null}
         {shortcuts.map((shortcut, shortcutIndex) => {
           const isDragging = activeDragId === shortcut.id;
           const projectionOffset = projectionOffsets.get(shortcut.id) ?? null;

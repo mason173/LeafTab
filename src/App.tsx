@@ -746,6 +746,10 @@ export default function App() {
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
   const folderOverlayActionTimerRef = useRef<number | null>(null);
   const lastCompactOverlayFolderIdRef = useRef<string | null>(null);
+  const [frozenBackgroundGridSnapshot, setFrozenBackgroundGridSnapshot] = useState<{
+    folderId: string;
+    shortcuts: Shortcut[];
+  } | null>(null);
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
@@ -781,6 +785,23 @@ export default function App() {
       setOpenFolderId(null);
     }
   }, [openFolderId, openFolderShortcut]);
+
+  useEffect(() => {
+    if (openFolderShortcut && !externalShortcutDragSession) {
+      setFrozenBackgroundGridSnapshot((current) => {
+        if (current?.folderId === openFolderShortcut.id) {
+          return current;
+        }
+        return {
+          folderId: openFolderShortcut.id,
+          shortcuts,
+        };
+      });
+      return;
+    }
+
+    setFrozenBackgroundGridSnapshot(null);
+  }, [externalShortcutDragSession, openFolderShortcut, shortcuts]);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -907,6 +928,10 @@ export default function App() {
   const handleMoveSelectedShortcutsToScenario = useCallback((selectedShortcutIndexes: number[], targetScenarioId: string) => {
     if (!targetScenarioId || targetScenarioId === selectedScenarioId) return;
     if (selectedShortcutIndexes.length === 0) return;
+    const targetScenarioName = scenarioModes.find((mode) => mode.id === targetScenarioId)?.name
+      ?? t('scenario.unnamed', { defaultValue: '未命名情景模式' });
+    let movedCount = 0;
+    let changed = false;
     setScenarioShortcuts((prev) => {
       const sourceShortcuts = prev[selectedScenarioId] ?? [];
       const targetShortcuts = prev[targetScenarioId] ?? [];
@@ -915,18 +940,26 @@ export default function App() {
           .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceShortcuts.length),
       )).sort((a, b) => a - b);
       if (validIndices.length === 0) return prev;
+      movedCount = validIndices.length;
       const selectedSet = new Set(validIndices);
       const movedShortcuts = validIndices.map((index) => sourceShortcuts[index]);
       const nextSourceShortcuts = sourceShortcuts.filter((_, index) => !selectedSet.has(index));
       const nextTargetShortcuts = [...targetShortcuts, ...movedShortcuts];
+      changed = true;
       return {
         ...prev,
         [selectedScenarioId]: nextSourceShortcuts,
         [targetScenarioId]: nextTargetShortcuts,
       };
     });
+    if (!changed || movedCount <= 0) return;
+    toast.success(t('context.movedToScenarioToast', {
+      count: movedCount,
+      scenario: targetScenarioName,
+      defaultValue: '已将 {{count}} 项移动到“{{scenario}}”',
+    }));
     if (!user) localDirtyRef.current = true;
-  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
+  }, [localDirtyRef, scenarioModes, selectedScenarioId, setScenarioShortcuts, t, user]);
 
   const handleCreateFolderFromSelection = useCallback((selectedShortcutIndexes: number[]) => {
     let createdFolderId = '';
@@ -3465,10 +3498,11 @@ export default function App() {
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);
+  const backgroundGridShortcuts = frozenBackgroundGridSnapshot?.shortcuts ?? shortcuts;
   const shortcutGridBaseProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
-    shortcuts,
+    shortcuts: backgroundGridShortcuts,
     gridColumns: normalizedGridColumns,
     minRows: minShortcutRows,
     cardVariant: shortcutCardVariant,
@@ -3482,7 +3516,7 @@ export default function App() {
     compactShowTitle: shortcutCompactShowTitle,
     iconCornerRadius: shortcutIconCornerRadius,
     iconAppearance: shortcutIconAppearance,
-    disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion,
+    disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion || Boolean(openFolderShortcut),
     onShortcutOpen: handleShortcutActivate,
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
@@ -3493,6 +3527,7 @@ export default function App() {
       setExternalShortcutDragSession((current) => (current?.token === token ? null : current));
     },
   }), [
+    backgroundGridShortcuts,
     externalShortcutDragSession,
     handleGridContextMenu,
     handleShortcutContextMenu,
@@ -3501,6 +3536,7 @@ export default function App() {
     handleShortcutReorder,
     normalizedGridColumns,
     minShortcutRows,
+    openFolderShortcut,
     scaledCompactShortcutSize,
     responsiveLayout.compactShortcutTitleSize,
     responsiveLayout.defaultRowGap,
@@ -3513,7 +3549,6 @@ export default function App() {
     shortcutIconCornerRadius,
     shortcutCardVariant,
     shortcutCompactShowTitle,
-    shortcuts,
     shortcutsAreaHeight,
     visualEffectsPolicy.disableShortcutReorderMotion,
   ]);
