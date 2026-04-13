@@ -1,6 +1,6 @@
 import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
-import { ShortcutGrid } from '@/components/ShortcutGrid';
+import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
@@ -52,7 +52,7 @@ interface HomeMainContentProps {
   wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
   searchExperienceProps: ComponentProps<typeof SearchExperience>;
   searchInteractionLocked: boolean;
-  shortcutGridProps: ComponentProps<typeof ShortcutGrid>;
+  shortcutGridProps: ComponentProps<typeof RootShortcutGrid>;
   onDrawerExpandedChange?: (expanded: boolean) => void;
 }
 
