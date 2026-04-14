@@ -3,8 +3,8 @@
       "version": "1.4.8",
       "private": true,
       "dependencies": {
-            "@leaftab/grid-core": "https://github.com/mason173/leaftab-grid/releases/download/v0.1.0/leaftab-grid-core-0.1.0.tgz",
-            "@leaftab/grid-react": "https://github.com/mason173/leaftab-grid/releases/download/v0.1.0/leaftab-grid-react-0.1.0.tgz",
+            "@leaftab/grid-core": "file:../leaftab-grid/packages/grid-core",
+            "@leaftab/grid-react": "file:../leaftab-grid/packages/grid-react",
             "@radix-ui/react-accordion": "^1.2.3",
             "@radix-ui/react-alert-dialog": "^1.1.6",
             "@radix-ui/react-aspect-ratio": "^1.1.2",

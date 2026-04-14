@@ -71,6 +71,32 @@ describe('applyShortcutDropIntent', () => {
     });
   });
 
+  it('still lets the large folder itself move like a normal span item', () => {
+    const shortcuts = [
+      createLink('a', 'Alpha'),
+      createLink('b', 'Beta'),
+      createLargeFolder('folder-large', 'Large', [createLink('nested', 'Nested')]),
+      createLink('c', 'Gamma'),
+    ];
+    const intent: RootShortcutDropIntent = {
+      type: 'reorder-root',
+      activeShortcutId: 'folder-large',
+      overShortcutId: 'a',
+      targetIndex: 0,
+      edge: 'before',
+    };
+
+    expect(applyShortcutDropIntent(shortcuts, intent)).toEqual({
+      kind: 'update-shortcuts',
+      shortcuts: [
+        createLargeFolder('folder-large', 'Large', [createLink('nested', 'Nested')]),
+        createLink('a', 'Alpha'),
+        createLink('b', 'Beta'),
+        createLink('c', 'Gamma'),
+      ],
+    });
+  });
+
   it('moves a root shortcut into an existing folder', () => {
     const shortcuts = [
       createLink('a', 'Alpha'),

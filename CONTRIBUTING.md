@@ -14,3 +14,9 @@ Thanks for your interest in contributing to LeafTab.
 - Ensure `npm run build` passes
 - Describe what changed and why
 
+## Grid Ownership
+
+- Shared drag hit-testing, merge bridging, reorder state machines, and other grid interaction behavior must be fixed in `leaftab-grid` first.
+- LeafTab host code should stay limited to visuals, parameters, persistence, compatibility, and thin adapters around `@leaftab/grid-react`.
+- If a change feels reusable by another app, it belongs in `leaftab-grid`, not in LeafTab host components.
+- Run `npm run grid:verify:host` before merging grid-related changes.

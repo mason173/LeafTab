@@ -124,8 +124,7 @@ const normalizeManualLocation = (value: unknown): WeatherManualLocation | null =
 };
 
 export const getDefaultShortcutGridColumnsByVariant = (): Record<ShortcutCardVariant, number> => ({
-  default: getShortcutColumns('default'),
-  compact: getShortcutColumns('compact'),
+  compact: getShortcutColumns(),
 });
 
 export const readShortcutGridColumnsByVariantFromStorage = (): Record<ShortcutCardVariant, number> => {
@@ -136,18 +135,20 @@ export const readShortcutGridColumnsByVariantFromStorage = (): Record<ShortcutCa
       const legacyRaw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY);
       const legacyValue = Number(legacyRaw);
       if (Number.isFinite(legacyValue)) {
-        const variant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
         return {
           ...defaults,
-          [variant]: clampShortcutGridColumns(legacyValue, variant),
+          compact: clampShortcutGridColumns(legacyValue),
         };
       }
       return defaults;
     }
     const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const compactValue = Number(parsed.compact);
+    const legacyDefaultValue = Number(parsed.default);
     return {
-      default: clampShortcutGridColumns(Number(parsed.default), 'default'),
-      compact: clampShortcutGridColumns(Number(parsed.compact), 'compact'),
+      compact: clampShortcutGridColumns(
+        Number.isFinite(compactValue) ? compactValue : legacyDefaultValue,
+      ),
     };
   } catch {
     return defaults;
@@ -199,6 +200,10 @@ export const normalizeSyncablePreferences = (
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaults;
   const candidate = raw as Partial<SyncablePreferences>;
   const shortcutGridColumnsByVariant = candidate.shortcutGridColumnsByVariant || {};
+  const compactColumns = Number(
+    shortcutGridColumnsByVariant.compact
+    ?? (shortcutGridColumnsByVariant as Record<string, unknown>).default,
+  );
 
   return {
     displayMode: candidate.displayMode === 'minimalist' || candidate.displayMode === 'fresh' || candidate.displayMode === 'panoramic'
@@ -234,8 +239,7 @@ export const normalizeSyncablePreferences = (
       ? candidate.shortcutCompactShowTitle
       : defaults.shortcutCompactShowTitle,
     shortcutGridColumnsByVariant: {
-      default: clampShortcutGridColumns(Number(shortcutGridColumnsByVariant.default), 'default'),
-      compact: clampShortcutGridColumns(Number(shortcutGridColumnsByVariant.compact), 'compact'),
+      compact: clampShortcutGridColumns(compactColumns),
     },
     shortcutIconAppearance: normalizeShortcutIconAppearance(candidate.shortcutIconAppearance),
     shortcutIconCornerRadius: clampShortcutIconCornerRadius(candidate.shortcutIconCornerRadius),
@@ -347,7 +351,7 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
   localStorage.setItem(VISUAL_EFFECTS_LEVEL_KEY, normalized.visualEffectsLevel);
   localStorage.removeItem(REDUCE_VISUAL_EFFECTS_KEY);
   localStorage.setItem('showTime', JSON.stringify(normalized.showTime));
-  localStorage.setItem('shortcutCardVariant', normalized.shortcutCardVariant);
+  localStorage.setItem('shortcutCardVariant', DEFAULT_SHORTCUT_CARD_VARIANT);
   localStorage.setItem('shortcutCompactShowTitle', String(normalized.shortcutCompactShowTitle));
   localStorage.setItem(
     SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY,
@@ -358,7 +362,7 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
   localStorage.setItem(SHORTCUT_ICON_SCALE_KEY, String(normalized.shortcutIconScale));
   localStorage.setItem(
     SHORTCUT_GRID_COLUMNS_LEGACY_KEY,
-    String(normalized.shortcutGridColumnsByVariant[normalized.shortcutCardVariant]),
+    String(normalized.shortcutGridColumnsByVariant.compact),
   );
   localStorage.removeItem('shortcutsRowsPerColumn');
   if (normalized.privacyConsent === null) {

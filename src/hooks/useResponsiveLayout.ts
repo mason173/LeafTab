@@ -19,12 +19,7 @@ export type ResponsiveLayout = {
   searchActionSize: number;
   compactShortcutSize: number;
   compactShortcutTitleSize: number;
-  defaultShortcutIconSize: number;
-  defaultShortcutTitleSize: number;
-  defaultShortcutUrlSize: number;
-  defaultShortcutVerticalPadding: number;
   compactRowGap: number;
-  defaultRowGap: number;
   baseRows: number;
 };
 
@@ -82,12 +77,7 @@ export function useResponsiveLayout(): ResponsiveLayout {
         searchActionSize: 38,
         compactShortcutSize: 60,
         compactShortcutTitleSize: 11,
-        defaultShortcutIconSize: 32,
-        defaultShortcutTitleSize: 13,
-        defaultShortcutUrlSize: 10,
-        defaultShortcutVerticalPadding: 7,
         compactRowGap: 16,
-        defaultRowGap: 8,
         baseRows: 3,
       };
     }
@@ -109,12 +99,7 @@ export function useResponsiveLayout(): ResponsiveLayout {
         searchActionSize: 46,
         compactShortcutSize: 80,
         compactShortcutTitleSize: 13,
-        defaultShortcutIconSize: 40,
-        defaultShortcutTitleSize: 15,
-        defaultShortcutUrlSize: 11,
-        defaultShortcutVerticalPadding: 8,
         compactRowGap: 24,
-        defaultRowGap: 8,
         baseRows: 5,
       };
     }
@@ -135,12 +120,7 @@ export function useResponsiveLayout(): ResponsiveLayout {
       searchActionSize: 42,
       compactShortcutSize: 72,
       compactShortcutTitleSize: 12,
-      defaultShortcutIconSize: 36,
-      defaultShortcutTitleSize: 14,
-      defaultShortcutUrlSize: 10,
-      defaultShortcutVerticalPadding: 8,
       compactRowGap: 20,
-      defaultRowGap: 8,
       baseRows: 4,
     };
   }, [viewport.height, viewport.width]);

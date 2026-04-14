@@ -12,9 +12,7 @@ import aboutIcon from '@/assets/abouticon.svg';
 import type { ShortcutIconAppearance } from '@/types';
 import {
   clampShortcutGridColumns,
-  DEFAULT_SHORTCUT_CARD_VARIANT,
   getShortcutColumnBounds,
-  type ShortcutCardVariant,
 } from '@/components/shortcuts/shortcutCardVariant';
 import {
   clampShortcutIconCornerRadius,
@@ -31,10 +29,9 @@ interface ShortcutIconSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBackToSettings?: () => void;
-  variant: ShortcutCardVariant;
   compactShowTitle: boolean;
   columns: number;
-  onSaveStyle: (payload: { variant: ShortcutCardVariant; compactShowTitle: boolean; columns: number }) => void;
+  onSaveStyle: (payload: { compactShowTitle: boolean; columns: number }) => void;
   appearance: ShortcutIconAppearance;
   cornerRadius: number;
   scale: number;
@@ -79,7 +76,6 @@ export function ShortcutIconSettingsDialog({
   open,
   onOpenChange,
   onBackToSettings,
-  variant,
   compactShowTitle,
   columns,
   onSaveStyle,
@@ -89,11 +85,7 @@ export function ShortcutIconSettingsDialog({
   onSave,
 }: ShortcutIconSettingsDialogProps) {
   const { t } = useTranslation();
-  // Keep the rich/default variant implementation in the codebase,
-  // but expose only the compact variant in settings.
-  const activeVariant: ShortcutCardVariant = DEFAULT_SHORTCUT_CARD_VARIANT;
-  void variant;
-  const [draftColumns, setDraftColumns] = useState(() => clampShortcutGridColumns(columns, activeVariant));
+  const [draftColumns, setDraftColumns] = useState(() => clampShortcutGridColumns(columns));
   const [draftCompactShowTitle, setDraftCompactShowTitle] = useState(compactShowTitle);
   const [draftAppearance, setDraftAppearance] = useState<ShortcutIconAppearance>(appearance);
   const [draftCornerRadius, setDraftCornerRadius] = useState(cornerRadius);
@@ -103,7 +95,7 @@ export function ShortcutIconSettingsDialog({
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
   const previewStageSize = 124;
   const previewIconSize = scaleShortcutIconSize(92, draftScale);
-  const columnBounds = useMemo(() => getShortcutColumnBounds(activeVariant), [activeVariant]);
+  const columnBounds = useMemo(() => getShortcutColumnBounds(), []);
 
   useEffect(() => {
     if (!open) {
@@ -111,16 +103,15 @@ export function ShortcutIconSettingsDialog({
       setActiveSlider(null);
       return;
     }
-    setDraftColumns(clampShortcutGridColumns(columns, activeVariant));
+    setDraftColumns(clampShortcutGridColumns(columns));
     setDraftCompactShowTitle(compactShowTitle);
     setDraftAppearance(appearance);
     setDraftCornerRadius(clampShortcutIconCornerRadius(cornerRadius));
     setDraftScale(clampShortcutIconScale(scale));
-  }, [activeVariant, appearance, columns, compactShowTitle, cornerRadius, open, scale]);
+  }, [appearance, columns, compactShowTitle, cornerRadius, open, scale]);
 
   const emitLiveStyleUpdate = (nextCompactShowTitle: boolean, nextColumns: number) => {
     onSaveStyle({
-      variant: activeVariant,
       compactShowTitle: nextCompactShowTitle,
       columns: nextColumns,
     });
@@ -132,7 +123,7 @@ export function ShortcutIconSettingsDialog({
   };
 
   const handleColumnsChange = (nextRawValue: number) => {
-    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue), activeVariant);
+    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue));
     setDraftColumns(nextColumns);
     emitLiveStyleUpdate(draftCompactShowTitle, nextColumns);
   };

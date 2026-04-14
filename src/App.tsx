@@ -70,7 +70,7 @@ import {
 import ConfirmDialog from './components/ConfirmDialog';
 import { ENABLE_CUSTOM_API_SERVER, IS_STORE_BUILD } from '@/config/distribution';
 import { useGithubReleaseUpdate } from './hooks/useGithubReleaseUpdate';
-import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
+import { DEFAULT_SHORTCUT_CARD_VARIANT, clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
@@ -527,7 +527,6 @@ export default function App() {
     showSeconds, setShowSeconds,
     visualEffectsLevel, setVisualEffectsLevel,
     showTime, setShowTime,
-    shortcutCardVariant, setShortcutCardVariant,
     shortcutCompactShowTitle, setShortcutCompactShowTitle,
     shortcutGridColumns, setShortcutGridColumns,
     shortcutIconAppearance, setShortcutIconAppearance,
@@ -709,7 +708,7 @@ export default function App() {
     snoozeCurrentRelease,
   } = useGithubReleaseUpdate(API_URL);
 
-  const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant, responsiveLayout.density);
+  const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, DEFAULT_SHORTCUT_CARD_VARIANT, responsiveLayout.density);
   const minShortcutRows = responsiveLayout.baseRows;
 
   const {
@@ -753,10 +752,6 @@ export default function App() {
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
   const folderOverlayActionTimerRef = useRef<number | null>(null);
   const lastCompactOverlayFolderIdRef = useRef<string | null>(null);
-  const [frozenBackgroundGridSnapshot, setFrozenBackgroundGridSnapshot] = useState<{
-    folderId: string;
-    shortcuts: Shortcut[];
-  } | null>(null);
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
@@ -766,7 +761,7 @@ export default function App() {
     const overlayFolderId = openFolderId ?? lastCompactOverlayFolderIdRef.current;
     return overlayFolderId ? findShortcutById(shortcuts, overlayFolderId) : null;
   }, [openFolderId, shortcuts]);
-  const useCompactFolderOverlay = shortcutCardVariant === 'compact';
+  const useCompactFolderOverlay = true;
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
@@ -792,23 +787,6 @@ export default function App() {
       setOpenFolderId(null);
     }
   }, [openFolderId, openFolderShortcut]);
-
-  useEffect(() => {
-    if (openFolderShortcut && !externalShortcutDragSession) {
-      setFrozenBackgroundGridSnapshot((current) => {
-        if (current?.folderId === openFolderShortcut.id) {
-          return current;
-        }
-        return {
-          folderId: openFolderShortcut.id,
-          shortcuts,
-        };
-      });
-      return;
-    }
-
-    setFrozenBackgroundGridSnapshot(null);
-  }, [externalShortcutDragSession, openFolderShortcut, shortcuts]);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -1448,14 +1426,14 @@ export default function App() {
       showSeconds,
       visualEffectsLevel,
       showTime,
-      shortcutCardVariant,
+      shortcutCardVariant: DEFAULT_SHORTCUT_CARD_VARIANT,
       shortcutCompactShowTitle,
       shortcutIconAppearance,
       shortcutIconCornerRadius,
       shortcutIconScale,
       shortcutGridColumnsByVariant: {
         ...stored.shortcutGridColumnsByVariant,
-        [shortcutCardVariant]: normalizedGridColumns,
+        compact: normalizedGridColumns,
       },
       privacyConsent,
       theme: theme === 'light' || theme === 'dark' || theme === 'system' ? theme : stored.theme,
@@ -1483,7 +1461,6 @@ export default function App() {
     searchRotatingPlaceholderEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
-    shortcutCardVariant,
     shortcutCompactShowTitle,
     shortcutIconAppearance,
     shortcutIconCornerRadius,
@@ -1554,9 +1531,8 @@ export default function App() {
     setShowSeconds(normalized.showSeconds);
     setVisualEffectsLevel(normalized.visualEffectsLevel);
     setShowTime(normalized.showTime);
-    setShortcutCardVariant(normalized.shortcutCardVariant);
     setShortcutCompactShowTitle(normalized.shortcutCompactShowTitle);
-    setShortcutGridColumns(normalized.shortcutGridColumnsByVariant[normalized.shortcutCardVariant]);
+    setShortcutGridColumns(normalized.shortcutGridColumnsByVariant.compact);
     setShortcutIconAppearance(normalized.shortcutIconAppearance);
     setShortcutIconCornerRadius(normalized.shortcutIconCornerRadius);
     setShortcutIconScale(normalized.shortcutIconScale);
@@ -1611,7 +1587,6 @@ export default function App() {
     setSearchRotatingPlaceholderEnabled,
     setSearchSiteDirectEnabled,
     setSearchSiteShortcutEnabled,
-    setShortcutCardVariant,
     setShortcutCompactShowTitle,
     setShortcutGridColumns,
     setShowDate,
@@ -3199,11 +3174,8 @@ export default function App() {
     minShortcutRows,
   );
   const scaledCompactShortcutSize = scaleShortcutIconSize(responsiveLayout.compactShortcutSize, shortcutIconScale);
-  const scaledDefaultShortcutIconSize = scaleShortcutIconSize(responsiveLayout.defaultShortcutIconSize, shortcutIconScale);
-  const shortcutRowHeight = shortcutCardVariant === 'compact'
-    ? (scaledCompactShortcutSize + 24)
-    : (scaledDefaultShortcutIconSize + responsiveLayout.defaultShortcutVerticalPadding * 2);
-  const shortcutRowGap = shortcutCardVariant === 'compact' ? responsiveLayout.compactRowGap : responsiveLayout.defaultRowGap;
+  const shortcutRowHeight = scaledCompactShortcutSize + 24;
+  const shortcutRowGap = responsiveLayout.compactRowGap;
   const shortcutsAreaHeight = displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
 
   useEffect(() => {
@@ -3428,21 +3400,15 @@ export default function App() {
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);
-  const backgroundGridShortcuts = frozenBackgroundGridSnapshot?.shortcuts ?? shortcuts;
   const shortcutGridBaseProps = useMemo(() => ({
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
-    shortcuts: backgroundGridShortcuts,
+    shortcuts,
     gridColumns: normalizedGridColumns,
     minRows: minShortcutRows,
-    cardVariant: shortcutCardVariant,
     layoutDensity: responsiveLayout.density,
     compactIconSize: scaledCompactShortcutSize,
     compactTitleFontSize: responsiveLayout.compactShortcutTitleSize,
-    defaultIconSize: scaledDefaultShortcutIconSize,
-    defaultTitleFontSize: responsiveLayout.defaultShortcutTitleSize,
-    defaultUrlFontSize: responsiveLayout.defaultShortcutUrlSize,
-    defaultVerticalPadding: responsiveLayout.defaultShortcutVerticalPadding,
     compactShowTitle: shortcutCompactShowTitle,
     iconCornerRadius: shortcutIconCornerRadius,
     iconAppearance: shortcutIconAppearance,
@@ -3457,7 +3423,6 @@ export default function App() {
       setExternalShortcutDragSession((current) => (current?.token === token ? null : current));
     },
   }), [
-    backgroundGridShortcuts,
     externalShortcutDragSession,
     handleGridContextMenu,
     handleShortcutContextMenu,
@@ -3469,15 +3434,9 @@ export default function App() {
     openFolderShortcut,
     scaledCompactShortcutSize,
     responsiveLayout.compactShortcutTitleSize,
-    responsiveLayout.defaultRowGap,
-    scaledDefaultShortcutIconSize,
-    responsiveLayout.defaultShortcutTitleSize,
-    responsiveLayout.defaultShortcutUrlSize,
-    responsiveLayout.defaultShortcutVerticalPadding,
     responsiveLayout.density,
     shortcutIconAppearance,
     shortcutIconCornerRadius,
-    shortcutCardVariant,
     shortcutCompactShowTitle,
     shortcutsAreaHeight,
     visualEffectsPolicy.disableShortcutReorderMotion,
@@ -3597,7 +3556,7 @@ export default function App() {
         onMoveSelectedShortcutsToScenario={handleMoveSelectedShortcutsToScenario}
         onMoveSelectedShortcutsToFolder={handleMoveSelectedShortcutsToFolder}
         onDissolveFolder={handleDissolveFolder}
-        showLargeFolderToggle={shortcutCardVariant === 'compact'}
+        showLargeFolderToggle
         onSetFolderDisplayMode={handleSetFolderDisplayMode}
       >
         {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
@@ -3647,7 +3606,6 @@ export default function App() {
           onShortcutContextMenu={handleFolderChildShortcutContextMenu}
           onShortcutDropIntent={handleFolderShortcutDropIntent}
           onExtractDragStart={handleFolderExtractDragStart}
-          reduceBackdropBlur={visualEffectsPolicy.disableBackdropBlur}
         />
       ) : (
         <ShortcutFolderDialog
@@ -3815,8 +3773,6 @@ export default function App() {
               shortcutsCount: totalShortcuts,
               displayMode,
               onDisplayModeChange: setDisplayMode,
-              shortcutCardVariant,
-              onShortcutCardVariantChange: setShortcutCardVariant,
               shortcutCompactShowTitle,
               onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
               shortcutGridColumns: normalizedGridColumns,
@@ -3889,11 +3845,9 @@ export default function App() {
               open: shortcutIconSettingsOpen,
               onOpenChange: setShortcutIconSettingsOpen,
               onBackToSettings: handleBackToMainSettings,
-              variant: shortcutCardVariant,
               compactShowTitle: shortcutCompactShowTitle,
               columns: normalizedGridColumns,
-              onSaveStyle: ({ variant, compactShowTitle, columns }) => {
-                setShortcutCardVariant(variant);
+              onSaveStyle: ({ compactShowTitle, columns }) => {
                 setShortcutCompactShowTitle(compactShowTitle);
                 handleShortcutGridColumnsChange(columns);
               },
