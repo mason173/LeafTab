@@ -9,11 +9,7 @@ import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   getCompactShortcutCardMetrics,
 } from '@/components/shortcuts/compactFolderLayout';
-import {
-  DEFAULT_SHORTCUT_CARD_VARIANT,
-  type ShortcutCardVariant,
-  type ShortcutLayoutDensity,
-} from '@/components/shortcuts/shortcutCardVariant';
+import { type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import {
   getCompactTargetCellRect as getCompactTargetCellRegionRect,
@@ -22,25 +18,21 @@ import {
 import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@/features/shortcuts/drag/types';
 import {
   computeLargeFolderPreviewSize,
-  renderDefaultShortcutGridCard,
-  renderDefaultShortcutGridDragPreview,
-  renderDefaultShortcutGridSelectionIndicator,
+  renderLeaftabDropPreview,
+  renderRootShortcutGridCard,
+  renderRootShortcutGridDragPreview,
+  renderRootShortcutGridSelectionIndicator,
   renderRootGridCenterPreview,
   resolveLeaftabRootItemLayout,
 } from './leaftabGridVisuals';
 
 export type RootShortcutGridCardRenderParams = {
   shortcut: Shortcut;
-  variant: ShortcutCardVariant;
   compactShowTitle: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
   compactTitleFontSize: number;
-  defaultIconSize: number;
-  defaultTitleFontSize: number;
-  defaultUrlFontSize: number;
-  defaultVerticalPadding: number;
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
@@ -52,17 +44,12 @@ export type RootShortcutGridCardRenderParams = {
 
 export type RootShortcutGridDragPreviewRenderParams = {
   shortcut: Shortcut;
-  variant: ShortcutCardVariant;
   firefox: boolean;
   compactShowTitle: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
   compactTitleFontSize: number;
-  defaultIconSize: number;
-  defaultTitleFontSize: number;
-  defaultUrlFontSize: number;
-  defaultVerticalPadding: number;
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
@@ -71,10 +58,7 @@ export type RootShortcutGridDragPreviewRenderParams = {
 export type RootShortcutGridSelectionIndicatorRenderParams = {
   sortId: string;
   selected: boolean;
-  cardVariant: ShortcutCardVariant;
   compactPreviewSize: number;
-  defaultIconSize: number;
-  defaultVerticalPadding: number;
 };
 
 export type RootShortcutExternalDragSession = ShortcutExternalDragSessionSeed & {
@@ -92,17 +76,12 @@ export interface RootShortcutGridProps {
   onShortcutReorder: (nextShortcuts: Shortcut[]) => void;
   onShortcutDropIntent?: (intent: RootShortcutDropIntent) => void;
   onGridContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
-  cardVariant?: ShortcutCardVariant;
   compactShowTitle?: boolean;
   layoutDensity?: ShortcutLayoutDensity;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
   compactTitleFontSize?: number;
-  defaultIconSize?: number;
-  defaultTitleFontSize?: number;
-  defaultUrlFontSize?: number;
-  defaultVerticalPadding?: number;
   forceTextWhite?: boolean;
   monochromeTone?: ShortcutMonochromeTone;
   monochromeTileBackdropBlur?: boolean;
@@ -131,17 +110,12 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   onShortcutReorder,
   onShortcutDropIntent,
   onGridContextMenu,
-  cardVariant = DEFAULT_SHORTCUT_CARD_VARIANT,
   compactShowTitle = true,
   layoutDensity = 'regular',
   compactIconSize = 72,
   iconCornerRadius = 22,
   iconAppearance = 'colorful',
   compactTitleFontSize = 12,
-  defaultIconSize = 36,
-  defaultTitleFontSize = 14,
-  defaultUrlFontSize = 10,
-  defaultVerticalPadding = 8,
   forceTextWhite = false,
   monochromeTone = 'theme-adaptive',
   monochromeTileBackdropBlur = false,
@@ -153,9 +127,9 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   onToggleShortcutSelection,
   externalDragSession,
   onExternalDragSessionConsumed,
-  renderShortcutCard = renderDefaultShortcutGridCard,
-  renderDragPreview = renderDefaultShortcutGridDragPreview,
-  renderSelectionIndicator = renderDefaultShortcutGridSelectionIndicator,
+  renderShortcutCard = renderRootShortcutGridCard,
+  renderDragPreview = renderRootShortcutGridDragPreview,
+  renderSelectionIndicator = renderRootShortcutGridSelectionIndicator,
 }: RootShortcutGridProps) {
   const firefox = isFirefoxBuildTarget();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -166,15 +140,10 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     monochromeTileBackdropBlur,
   }), [monochromeTileBackdropBlur, monochromeTone]);
 
-  const compactLayout = cardVariant === 'compact';
-  const columnGap = compactLayout ? COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX : 8;
-  const rowGap = cardVariant === 'compact'
-    ? (layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20)
-    : 8;
-  const rowHeight = cardVariant === 'compact'
-    ? (compactIconSize + 24)
-    : (defaultIconSize + defaultVerticalPadding * 2);
-  const largeFolderEnabled = compactLayout && gridColumns >= 2;
+  const columnGap = COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX;
+  const rowGap = layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20;
+  const rowHeight = compactIconSize + 24;
+  const largeFolderEnabled = gridColumns >= 2;
 
   useLayoutEffect(() => {
     const node = wrapperRef.current;
@@ -210,20 +179,16 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   const resolveItemLayout = useCallback<PackageRootShortcutGridProps['resolveItemLayout']>((shortcut) => {
     return resolveLeaftabRootItemLayout({
       shortcut,
-      compactLayout,
       compactIconSize,
       largeFolderEnabled,
       largeFolderPreviewSize,
       iconCornerRadius,
-      rowHeight,
     });
   }, [
     compactIconSize,
-    compactLayout,
     iconCornerRadius,
     largeFolderEnabled,
     largeFolderPreviewSize,
-    rowHeight,
   ]);
 
   const resolveCompactTargetRegions = useCallback<NonNullable<PackageRootShortcutGridProps['resolveCompactTargetRegions']>>((params) => {
@@ -293,8 +258,8 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           externalDragSession={externalDragSession}
           onExternalDragSessionConsumed={onExternalDragSessionConsumed}
           isFirefox={firefox}
-          resolveCompactTargetRegions={compactLayout ? resolveCompactTargetRegions : undefined}
-          resolveDropTargetRects={compactLayout && gridWidthPx
+          resolveCompactTargetRegions={resolveCompactTargetRegions}
+          resolveDropTargetRects={gridWidthPx
             ? (params) => {
                 const targetRegions = resolveCompactTargetRegions(params);
                 return {
@@ -315,16 +280,11 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               <div className="relative z-10">
                 {renderShortcutCard({
                   shortcut: params.shortcut,
-                  variant: cardVariant,
                   compactShowTitle,
                   compactIconSize,
                   iconCornerRadius,
                   iconAppearance,
                   compactTitleFontSize,
-                  defaultIconSize,
-                  defaultTitleFontSize,
-                  defaultUrlFontSize,
-                  defaultVerticalPadding,
                   forceTextWhite,
                   enableLargeFolder: largeFolderEnabled,
                   largeFolderPreviewSize,
@@ -341,10 +301,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                     {renderSelectionIndicator({
                       sortId: params.shortcut.id,
                       selected: params.selected,
-                      cardVariant,
                       compactPreviewSize: compactMetrics.previewSize,
-                      defaultIconSize,
-                      defaultVerticalPadding,
                     })}
                   </div>
                 ) : null}
@@ -356,40 +313,24 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
 
             return renderRootGridCenterPreview({
               shortcut: params.shortcut,
-              cardVariant,
               compactIconSize,
               iconCornerRadius,
               largeFolderEnabled,
               largeFolderPreviewSize,
             });
           }}
-          renderDropPreview={(params) => (
-            <div
-              data-testid="shortcut-drop-preview"
-              aria-hidden="true"
-              className="pointer-events-none absolute z-0 bg-white/30"
-              style={{
-                left: params.left,
-                top: params.top,
-                width: params.width,
-                height: params.height,
-                borderRadius: params.borderRadius,
-              }}
-            />
-          )}
+          renderDropPreview={(params) => renderLeaftabDropPreview({
+            ...params,
+            testId: 'shortcut-drop-preview',
+          })}
           renderDragPreview={(params) => renderDragPreview({
             shortcut: params.shortcut,
-            variant: cardVariant,
             firefox,
             compactShowTitle,
             compactIconSize,
             iconCornerRadius,
             iconAppearance,
             compactTitleFontSize,
-            defaultIconSize,
-            defaultTitleFontSize,
-            defaultUrlFontSize,
-            defaultVerticalPadding,
             forceTextWhite,
             enableLargeFolder: largeFolderEnabled,
             largeFolderPreviewSize,

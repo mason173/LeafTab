@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { googleFonts, loadGoogleFont } from '../utils/googleFonts';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import {
+  DEFAULT_SHORTCUT_CARD_VARIANT,
   clampShortcutGridColumns,
   getShortcutColumns,
-  parseShortcutCardVariant,
-  type ShortcutCardVariant,
 } from '@/components/shortcuts/shortcutCardVariant';
 import { type DisplayMode } from '@/displayMode/config';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
@@ -101,41 +100,42 @@ function readTimeAnimationMode(): TimeAnimationMode {
   return 'on';
 }
 
-function readShortcutGridColumnsByVariant(): Partial<Record<ShortcutCardVariant, number>> {
+function readShortcutGridColumnsByVariant(): Partial<Record<typeof DEFAULT_SHORTCUT_CARD_VARIANT, number>> {
   try {
     const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== 'object') return {};
-    const next: Partial<Record<ShortcutCardVariant, number>> = {};
-    for (const variant of ['default', 'compact'] as const) {
-      const value = Number((parsed as Record<string, unknown>)[variant]);
-      if (Number.isFinite(value)) {
-        next[variant] = clampShortcutGridColumns(value, variant);
-      }
+    const compactValue = Number(parsed.compact);
+    if (Number.isFinite(compactValue)) {
+      return { compact: clampShortcutGridColumns(compactValue) };
     }
-    return next;
+    const legacyDefaultValue = Number(parsed.default);
+    if (Number.isFinite(legacyDefaultValue)) {
+      return { compact: clampShortcutGridColumns(legacyDefaultValue) };
+    }
+    return {};
   } catch {
     return {};
   }
 }
 
-function writeShortcutGridColumnsByVariant(map: Partial<Record<ShortcutCardVariant, number>>) {
+function writeShortcutGridColumnsByVariant(map: Partial<Record<typeof DEFAULT_SHORTCUT_CARD_VARIANT, number>>) {
   try {
     localStorage.setItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY, JSON.stringify(map));
   } catch {}
 }
 
-function readShortcutGridColumns(variant: ShortcutCardVariant): number {
+function readShortcutGridColumns(): number {
   const byVariant = readShortcutGridColumnsByVariant();
-  const variantValue = byVariant[variant];
+  const variantValue = byVariant.compact;
   if (Number.isFinite(variantValue)) {
-    return clampShortcutGridColumns(variantValue as number, variant);
+    return clampShortcutGridColumns(variantValue as number);
   }
   const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY);
   const parsed = raw === null ? Number.NaN : Number(raw);
-  if (Number.isFinite(parsed)) return clampShortcutGridColumns(parsed, variant);
-  return getShortcutColumns(variant);
+  if (Number.isFinite(parsed)) return clampShortcutGridColumns(parsed);
+  return getShortcutColumns();
 }
 
 function normalizeTimeFont(value: string | null | undefined): string {
@@ -184,19 +184,12 @@ export function useSettings() {
   });
   const [customApiUrl, setCustomApiUrl] = useState(() => localStorage.getItem('leaftab_custom_api_url') || '');
   const [customApiName, setCustomApiName] = useState(() => localStorage.getItem('leaftab_custom_api_name') || '');
-  const [shortcutCardVariant, setShortcutCardVariant] = useState<ShortcutCardVariant>(() => {
-    const stored = localStorage.getItem('shortcutCardVariant');
-    return parseShortcutCardVariant(stored);
-  });
   const [shortcutCompactShowTitle, setShortcutCompactShowTitle] = useState<boolean>(() => {
     const stored = localStorage.getItem('shortcutCompactShowTitle');
     if (stored === null) return true;
     return stored === 'true';
   });
-  const [shortcutGridColumns, setShortcutGridColumns] = useState(() => {
-    const variant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
-    return readShortcutGridColumns(variant);
-  });
+  const [shortcutGridColumns, setShortcutGridColumns] = useState(() => readShortcutGridColumns());
   const [shortcutIconAppearance, setShortcutIconAppearance] = useState(() => {
     return normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY));
   });
@@ -270,13 +263,11 @@ export function useSettings() {
     const storedShowTime = localStorage.getItem('showTime');
     if (storedShowTime !== null) setShowTime(JSON.parse(storedShowTime));
     setVisualEffectsLevel(readVisualEffectsLevel());
-    setShortcutCardVariant(parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')));
     const storedShortcutCompactShowTitle = localStorage.getItem('shortcutCompactShowTitle');
     if (storedShortcutCompactShowTitle !== null) {
       setShortcutCompactShowTitle(storedShortcutCompactShowTitle === 'true');
     }
-    const nextShortcutVariant = parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant'));
-    setShortcutGridColumns(readShortcutGridColumns(nextShortcutVariant));
+    setShortcutGridColumns(readShortcutGridColumns());
     setShortcutIconAppearance(normalizeShortcutIconAppearance(localStorage.getItem(SHORTCUT_ICON_APPEARANCE_KEY) || DEFAULT_SHORTCUT_ICON_APPEARANCE));
     setShortcutIconCornerRadius(clampShortcutIconCornerRadius(localStorage.getItem(SHORTCUT_ICON_CORNER_RADIUS_KEY) ?? DEFAULT_SHORTCUT_ICON_CORNER_RADIUS));
     setShortcutIconScale(clampShortcutIconScale(localStorage.getItem(SHORTCUT_ICON_SCALE_KEY) ?? DEFAULT_SHORTCUT_ICON_SCALE));
@@ -323,7 +314,7 @@ export function useSettings() {
     queueLocalStorageSetItem(VISUAL_EFFECTS_LEVEL_KEY, visualEffectsLevel);
     queueLocalStorageRemoveItem(REDUCE_VISUAL_EFFECTS_KEY);
     queueLocalStorageSetItem('showTime', JSON.stringify(showTime));
-    queueLocalStorageSetItem('shortcutCardVariant', shortcutCardVariant);
+    queueLocalStorageSetItem('shortcutCardVariant', DEFAULT_SHORTCUT_CARD_VARIANT);
     queueLocalStorageSetItem('shortcutCompactShowTitle', String(shortcutCompactShowTitle));
     queueLocalStorageSetItem(SHORTCUT_ICON_APPEARANCE_KEY, shortcutIconAppearance);
     queueLocalStorageSetItem(SHORTCUT_ICON_CORNER_RADIUS_KEY, String(clampShortcutIconCornerRadius(shortcutIconCornerRadius)));
@@ -344,7 +335,6 @@ export function useSettings() {
     searchRotatingPlaceholderEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
-    shortcutCardVariant,
     shortcutCompactShowTitle,
     shortcutIconAppearance,
     shortcutIconCornerRadius,
@@ -381,19 +371,19 @@ export function useSettings() {
   }, [shortcutIconScale]);
 
   useEffect(() => {
-    const normalized = clampShortcutGridColumns(shortcutGridColumns, shortcutCardVariant);
+    const normalized = clampShortcutGridColumns(shortcutGridColumns);
     if (normalized !== shortcutGridColumns) {
       setShortcutGridColumns(normalized);
       return;
     }
     const currentMap = readShortcutGridColumnsByVariant();
-    const nextMap: Partial<Record<ShortcutCardVariant, number>> = {
+    const nextMap: Partial<Record<typeof DEFAULT_SHORTCUT_CARD_VARIANT, number>> = {
       ...currentMap,
-      [shortcutCardVariant]: normalized,
+      compact: normalized,
     };
     writeShortcutGridColumnsByVariant(nextMap);
     localStorage.setItem(SHORTCUT_GRID_COLUMNS_LEGACY_KEY, String(normalized));
-  }, [shortcutCardVariant, shortcutGridColumns]);
+  }, [shortcutGridColumns]);
 
   useEffect(() => {
     if (!ENABLE_CUSTOM_API_SERVER) {
@@ -460,8 +450,6 @@ export function useSettings() {
     setVisualEffectsLevel,
     showTime,
     setShowTime,
-    shortcutCardVariant,
-    setShortcutCardVariant,
     shortcutCompactShowTitle,
     setShortcutCompactShowTitle,
     shortcutGridColumns,

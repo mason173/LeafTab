@@ -8,30 +8,19 @@ import {
 import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact';
 import { getLargeFolderBorderRadius, getSmallFolderBorderRadius } from '@/components/shortcuts/ShortcutFolderPreview';
 import { ShortcutCardRenderer } from '@/components/shortcuts/ShortcutCardRenderer';
-import type { ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 
 const SELECTION_INDICATOR_SIZE_PX = 16;
 const SELECTION_INDICATOR_OFFSET_PX = -4;
-const MERGE_PREVIEW_DEFAULT_GLOW_SHADOW = [
-  '0 12px 28px rgba(0,0,0,0.14)',
-  '0 0 0 1px rgba(255,255,255,0.14)',
-  '0 0 0 10px rgba(255,255,255,0.05)',
-].join(', ');
 const MERGE_PREVIEW_COMPACT_TINT = 'rgba(232, 236, 240, 0.3)';
 
 type RootShortcutGridCardRenderParamsShape = {
   shortcut: Shortcut;
-  variant: ShortcutCardVariant;
   compactShowTitle: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
   compactTitleFontSize: number;
-  defaultIconSize: number;
-  defaultTitleFontSize: number;
-  defaultUrlFontSize: number;
-  defaultVerticalPadding: number;
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
@@ -43,17 +32,12 @@ type RootShortcutGridCardRenderParamsShape = {
 
 type RootShortcutGridDragPreviewRenderParamsShape = {
   shortcut: Shortcut;
-  variant: ShortcutCardVariant;
   firefox: boolean;
   compactShowTitle: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
   compactTitleFontSize: number;
-  defaultIconSize: number;
-  defaultTitleFontSize: number;
-  defaultUrlFontSize: number;
-  defaultVerticalPadding: number;
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
@@ -62,10 +46,7 @@ type RootShortcutGridDragPreviewRenderParamsShape = {
 type RootShortcutGridSelectionIndicatorRenderParamsShape = {
   sortId: string;
   selected: boolean;
-  cardVariant: ShortcutCardVariant;
   compactPreviewSize: number;
-  defaultIconSize: number;
-  defaultVerticalPadding: number;
 };
 
 function DragPreviewIcon({
@@ -107,101 +88,52 @@ function DragPreviewIcon({
 
 function LightweightDragPreview({
   shortcut,
-  cardVariant,
   firefox,
   compactShowTitle,
   compactIconSize,
   iconCornerRadius,
   compactTitleFontSize,
-  defaultIconSize,
-  defaultTitleFontSize,
-  defaultUrlFontSize,
-  defaultVerticalPadding,
   forceTextWhite,
 }: RootShortcutGridDragPreviewRenderParamsShape) {
-  if (cardVariant === 'compact') {
-    return (
-      <div
-        className="pointer-events-none select-none"
-        style={{
-          width: compactIconSize,
-          contain: 'layout paint style',
-          willChange: firefox ? undefined : 'transform',
-        }}
-      >
-        <div className="flex flex-col items-center gap-1.5">
-          <DragPreviewIcon shortcut={shortcut} size={compactIconSize} cornerRadius={iconCornerRadius} />
-          {compactShowTitle ? (
-            <p
-              className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-              style={{ width: compactIconSize, fontSize: compactTitleFontSize }}
-            >
-              {shortcut.title}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
-      className="pointer-events-none select-none rounded-xl border border-border/40 bg-background/95 shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
+      className="pointer-events-none select-none"
       style={{
-        width: 'min(280px, 72vw)',
-        padding: `${defaultVerticalPadding}px 8px`,
+        width: compactIconSize,
         contain: 'layout paint style',
         willChange: firefox ? undefined : 'transform',
       }}
     >
-      <div className="flex items-center gap-2">
-        <DragPreviewIcon shortcut={shortcut} size={defaultIconSize} cornerRadius={iconCornerRadius} />
-        <div className="min-w-0 flex-1 leading-none">
+      <div className="flex flex-col items-center gap-1.5">
+        <DragPreviewIcon shortcut={shortcut} size={compactIconSize} cornerRadius={iconCornerRadius} />
+        {compactShowTitle ? (
           <p
-            className={`truncate font-['PingFang_SC:Medium',sans-serif] ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-            style={{ fontSize: defaultTitleFontSize }}
+            className={`truncate text-center leading-4 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+            style={{ width: compactIconSize, fontSize: compactTitleFontSize }}
           >
             {shortcut.title}
           </p>
-          <p
-            className={`truncate font-['PingFang_SC:Regular',sans-serif] ${forceTextWhite ? 'text-white/80' : 'text-muted-foreground'}`}
-            style={{ fontSize: defaultUrlFontSize, marginTop: 3 }}
-          >
-            {shortcut.url}
-          </p>
-        </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
 function ShortcutSelectionIndicator({
-  cardVariant,
   compactPreviewSize,
-  defaultIconSize,
-  defaultVerticalPadding,
   selected,
   sortId,
 }: RootShortcutGridSelectionIndicatorRenderParamsShape) {
-  const anchorStyle = cardVariant === 'compact'
-    ? {
+  return (
+    <span
+      className="pointer-events-none absolute"
+      style={{
         width: compactPreviewSize,
         height: compactPreviewSize,
         left: '50%',
         top: 0,
         transform: 'translateX(-50%)',
-      }
-    : {
-        width: defaultIconSize,
-        height: defaultIconSize,
-        left: 8,
-        top: defaultVerticalPadding,
-      };
-
-  return (
-    <span
-      className="pointer-events-none absolute"
-      style={anchorStyle}
+      }}
       aria-hidden="true"
     >
       <span
@@ -226,90 +158,70 @@ function ShortcutSelectionIndicator({
 }
 
 function MergePreviewHighlight({
-  cardVariant,
   compactPreviewWidth,
   compactPreviewHeight,
   iconCornerRadius,
   compactPreviewBorderRadius,
 }: {
-  cardVariant: ShortcutCardVariant;
   compactPreviewWidth: number;
   compactPreviewHeight: number;
   iconCornerRadius: number;
   compactPreviewBorderRadius?: string;
 }) {
-  if (cardVariant === 'compact') {
-    const maskId = React.useId();
-    const borderRadius = compactPreviewBorderRadius || getShortcutIconBorderRadius(iconCornerRadius);
-    const haloInset = 6;
-    const radiusExpansionPx = 4;
-    const outerWidth = compactPreviewWidth + haloInset * 2;
-    const outerHeight = compactPreviewHeight + haloInset * 2;
-    const outerRadius = `calc(${borderRadius} + ${radiusExpansionPx}px)`;
-    const innerRadius = borderRadius;
-
-    return (
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 z-0 -translate-x-1/2 overflow-visible"
-        style={{
-          width: outerWidth,
-          height: outerHeight,
-          top: -haloInset,
-        }}
-      >
-        <svg
-          width={outerWidth}
-          height={outerHeight}
-          viewBox={`0 0 ${outerWidth} ${outerHeight}`}
-          className="block overflow-visible"
-        >
-          <defs>
-            <mask id={maskId}>
-              <rect x="0" y="0" width={outerWidth} height={outerHeight} rx={outerRadius} ry={outerRadius} fill="white" />
-              <rect x={haloInset} y={haloInset} width={compactPreviewWidth} height={compactPreviewHeight} rx={innerRadius} ry={innerRadius} fill="black" />
-            </mask>
-          </defs>
-          <rect
-            x="0"
-            y="0"
-            width={outerWidth}
-            height={outerHeight}
-            rx={outerRadius}
-            ry={outerRadius}
-            fill={MERGE_PREVIEW_COMPACT_TINT}
-            mask={`url(#${maskId})`}
-          />
-        </svg>
-      </div>
-    );
-  }
+  const maskId = React.useId();
+  const borderRadius = compactPreviewBorderRadius || getShortcutIconBorderRadius(iconCornerRadius);
+  const haloInset = 6;
+  const radiusExpansionPx = 4;
+  const outerWidth = compactPreviewWidth + haloInset * 2;
+  const outerHeight = compactPreviewHeight + haloInset * 2;
+  const outerRadius = `calc(${borderRadius} + ${radiusExpansionPx}px)`;
+  const innerRadius = borderRadius;
 
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-[-2px] z-0 rounded-[22px]"
+      className="pointer-events-none absolute left-1/2 top-0 z-0 -translate-x-1/2 overflow-visible"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 100%)',
-        boxShadow: MERGE_PREVIEW_DEFAULT_GLOW_SHADOW,
+        width: outerWidth,
+        height: outerHeight,
+        top: -haloInset,
       }}
-    />
+    >
+      <svg
+        width={outerWidth}
+        height={outerHeight}
+        viewBox={`0 0 ${outerWidth} ${outerHeight}`}
+        className="block overflow-visible"
+      >
+        <defs>
+          <mask id={maskId}>
+            <rect x="0" y="0" width={outerWidth} height={outerHeight} rx={outerRadius} ry={outerRadius} fill="white" />
+            <rect x={haloInset} y={haloInset} width={compactPreviewWidth} height={compactPreviewHeight} rx={innerRadius} ry={innerRadius} fill="black" />
+          </mask>
+        </defs>
+        <rect
+          x="0"
+          y="0"
+          width={outerWidth}
+          height={outerHeight}
+          rx={outerRadius}
+          ry={outerRadius}
+          fill={MERGE_PREVIEW_COMPACT_TINT}
+          mask={`url(#${maskId})`}
+        />
+      </svg>
+    </div>
   );
 }
 
-export function renderDefaultShortcutGridCard(params: RootShortcutGridCardRenderParamsShape) {
+export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderParamsShape) {
   return (
     <ShortcutCardRenderer
-      variant={params.variant}
       compactShowTitle={params.compactShowTitle}
       compactIconSize={params.compactIconSize}
       iconCornerRadius={params.iconCornerRadius}
       iconAppearance={params.iconAppearance}
       compactTitleFontSize={params.compactTitleFontSize}
-      defaultIconSize={params.defaultIconSize}
-      defaultTitleFontSize={params.defaultTitleFontSize}
-      defaultUrlFontSize={params.defaultUrlFontSize}
-      defaultVerticalPadding={params.defaultVerticalPadding}
       forceTextWhite={params.forceTextWhite}
       enableLargeFolder={params.enableLargeFolder}
       largeFolderPreviewSize={params.largeFolderPreviewSize}
@@ -322,23 +234,18 @@ export function renderDefaultShortcutGridCard(params: RootShortcutGridCardRender
   );
 }
 
-export function renderDefaultShortcutGridDragPreview(params: RootShortcutGridDragPreviewRenderParamsShape) {
+export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPreviewRenderParamsShape) {
   if (params.firefox) {
     return <LightweightDragPreview {...params} />;
   }
 
   return (
     <ShortcutCardRenderer
-      variant={params.variant}
       compactShowTitle={params.compactShowTitle}
       compactIconSize={params.compactIconSize}
       iconCornerRadius={params.iconCornerRadius}
       iconAppearance={params.iconAppearance}
       compactTitleFontSize={params.compactTitleFontSize}
-      defaultIconSize={params.defaultIconSize}
-      defaultTitleFontSize={params.defaultTitleFontSize}
-      defaultUrlFontSize={params.defaultUrlFontSize}
-      defaultVerticalPadding={params.defaultVerticalPadding}
       forceTextWhite={params.forceTextWhite}
       enableLargeFolder={params.enableLargeFolder}
       largeFolderPreviewSize={params.largeFolderPreviewSize}
@@ -349,7 +256,7 @@ export function renderDefaultShortcutGridDragPreview(params: RootShortcutGridDra
   );
 }
 
-export function renderDefaultShortcutGridSelectionIndicator(
+export function renderRootShortcutGridSelectionIndicator(
   params: RootShortcutGridSelectionIndicatorRenderParamsShape,
 ) {
   return <ShortcutSelectionIndicator {...params} />;
@@ -357,7 +264,6 @@ export function renderDefaultShortcutGridSelectionIndicator(
 
 export function renderRootGridCenterPreview(params: {
   shortcut: Shortcut;
-  cardVariant: ShortcutCardVariant;
   compactIconSize: number;
   iconCornerRadius: number;
   largeFolderEnabled: boolean;
@@ -372,7 +278,6 @@ export function renderRootGridCenterPreview(params: {
 
   return (
     <MergePreviewHighlight
-      cardVariant={params.cardVariant}
       compactPreviewWidth={compactMetrics.previewSize}
       compactPreviewHeight={compactMetrics.previewSize}
       compactPreviewBorderRadius={compactMetrics.largeFolder
@@ -387,52 +292,46 @@ export function renderRootGridCenterPreview(params: {
 
 export function resolveLeaftabRootItemLayout(params: {
   shortcut: Shortcut;
-  compactLayout: boolean;
   compactIconSize: number;
   largeFolderEnabled: boolean;
   largeFolderPreviewSize?: number;
   iconCornerRadius: number;
-  rowHeight: number;
 }) {
   const {
     shortcut,
-    compactLayout,
     compactIconSize,
     largeFolderEnabled,
     largeFolderPreviewSize,
     iconCornerRadius,
-    rowHeight,
   } = params;
 
-  if (compactLayout) {
-    const metrics = getCompactShortcutCardMetrics({
-      shortcut,
-      iconSize: compactIconSize,
-      allowLargeFolder: largeFolderEnabled,
-      largeFolderPreviewSize,
-    });
-    return {
-      width: metrics.width,
-      height: metrics.height,
-      previewWidth: metrics.previewSize,
-      previewHeight: metrics.previewSize,
-      previewBorderRadius: metrics.largeFolder
+  const metrics = getCompactShortcutCardMetrics({
+    shortcut,
+    iconSize: compactIconSize,
+    allowLargeFolder: largeFolderEnabled,
+    largeFolderPreviewSize,
+  });
+  return {
+    width: metrics.width,
+    height: metrics.height,
+    previewRect: {
+      left: 0,
+      top: 0,
+      width: metrics.previewSize,
+      height: metrics.previewSize,
+      borderRadius: metrics.largeFolder
         ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius)
         : shortcut.kind === 'folder'
           ? getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius)
           : getShortcutIconBorderRadius(iconCornerRadius),
-      columnSpan: metrics.columnSpan,
-      rowSpan: metrics.rowSpan,
-      preserveSlot: Boolean(shortcut.kind === 'folder' && shortcut.folderDisplayMode === 'large'),
-    };
-  }
-
-  return {
-    width: 1,
-    height: rowHeight,
-    previewWidth: 1,
-    previewHeight: rowHeight,
-    previewBorderRadius: '12px',
+    },
+    previewBorderRadius: metrics.largeFolder
+      ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius)
+      : shortcut.kind === 'folder'
+        ? getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius)
+        : getShortcutIconBorderRadius(iconCornerRadius),
+    columnSpan: metrics.columnSpan,
+    rowSpan: metrics.rowSpan,
   };
 }
 
@@ -477,8 +376,17 @@ export function resolveLeaftabFolderItemLayout(params: {
   return {
     width: metrics.width,
     height: metrics.height,
-    previewWidth: metrics.previewSize,
-    previewHeight: metrics.previewSize,
+    previewRect: {
+      left: 0,
+      top: 0,
+      width: metrics.previewSize,
+      height: metrics.previewSize,
+      borderRadius: shortcut.kind === 'folder'
+        ? (shortcut.folderDisplayMode === 'large'
+            ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22)
+            : getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22))
+        : getShortcutIconBorderRadius(iconCornerRadius ?? 22),
+    },
     previewBorderRadius: shortcut.kind === 'folder'
       ? (shortcut.folderDisplayMode === 'large'
           ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22)
@@ -495,6 +403,31 @@ export function renderLeaftabFolderEmptyState(emptyText: string) {
   );
 }
 
+export function renderLeaftabDropPreview(params: {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  borderRadius?: string;
+  testId?: string;
+}) {
+  return (
+    <div
+      data-testid={params.testId}
+      aria-hidden="true"
+      className="pointer-events-none absolute z-0 border border-black/15 bg-black/10"
+      style={{
+        left: params.left,
+        top: params.top,
+        width: params.width,
+        height: params.height,
+        borderRadius: params.borderRadius,
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.42)',
+      }}
+    />
+  );
+}
+
 export function renderLeaftabFolderDropPreview(params: {
   left: number;
   top: number;
@@ -502,20 +435,10 @@ export function renderLeaftabFolderDropPreview(params: {
   height: number;
   borderRadius?: string;
 }) {
-  return (
-    <div
-      data-testid="folder-shortcut-drop-preview"
-      aria-hidden="true"
-      className="pointer-events-none absolute z-0 bg-black/14"
-      style={{
-        left: params.left,
-        top: params.top,
-        width: params.width,
-        height: params.height,
-        borderRadius: params.borderRadius,
-      }}
-    />
-  );
+  return renderLeaftabDropPreview({
+    ...params,
+    testId: 'folder-shortcut-drop-preview',
+  });
 }
 
 export function renderLeaftabFolderItem(params: {

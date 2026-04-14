@@ -35,7 +35,6 @@ type ShortcutFolderCompactOverlayProps = {
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, folderId: string, shortcut: Shortcut) => void;
   onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
-  reduceBackdropBlur?: boolean;
 };
 
 type OverlayRect = {
@@ -254,7 +253,6 @@ export function ShortcutFolderCompactOverlay({
   onShortcutContextMenu,
   onShortcutDropIntent,
   onExtractDragStart,
-  reduceBackdropBlur = false,
 }: ShortcutFolderCompactOverlayProps) {
   const { t } = useTranslation();
   const shortcutId = shortcut?.id ?? null;
@@ -893,11 +891,9 @@ export function ShortcutFolderCompactOverlay({
         className="absolute inset-0"
         style={{
           opacity: backdropProgress,
-          backgroundColor: 'rgba(8, 10, 16, 0.08)',
-          backdropFilter: reduceBackdropBlur ? undefined : `blur(${20 * backdropProgress}px)`,
-          WebkitBackdropFilter: reduceBackdropBlur ? undefined : `blur(${20 * backdropProgress}px)`,
+          backgroundColor: 'rgba(8, 10, 16, 0.7)',
           transition: 'none',
-          willChange: 'opacity, backdrop-filter',
+          willChange: 'opacity',
           pointerEvents: 'none',
         }}
       />

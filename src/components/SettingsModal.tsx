@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type ShortcutCardVariant } from "./shortcuts/shortcutCardVariant";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import type { WallpaperMode } from "@/wallpaper/types";
 import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
@@ -42,8 +41,6 @@ interface SettingsModalProps {
   shortcutsCount?: number;
   displayMode: DisplayMode;
   onDisplayModeChange: (mode: DisplayMode) => void;
-  shortcutCardVariant: ShortcutCardVariant;
-  onShortcutCardVariantChange: (variant: ShortcutCardVariant) => void;
   shortcutCompactShowTitle: boolean;
   onShortcutCompactShowTitleChange: (show: boolean) => void;
   shortcutGridColumns: number;
@@ -95,8 +92,6 @@ export default function SettingsModal({
   shortcutsCount = 0,
   displayMode,
   onDisplayModeChange,
-  shortcutCardVariant,
-  onShortcutCardVariantChange,
   shortcutCompactShowTitle,
   onShortcutCompactShowTitleChange,
   shortcutGridColumns,
@@ -141,8 +136,6 @@ export default function SettingsModal({
   const { t, i18n } = useTranslation();
   const firefox = isFirefoxBuildTarget();
   const { theme, setTheme } = useTheme();
-  void shortcutCardVariant;
-  void onShortcutCardVariantChange;
   void shortcutCompactShowTitle;
   void onShortcutCompactShowTitleChange;
   void shortcutGridColumns;

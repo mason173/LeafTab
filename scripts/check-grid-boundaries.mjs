@@ -18,6 +18,10 @@ const forbiddenEngineMarkers = [
   'useDragMotionState(',
 ];
 
+const forbiddenHostEngineImports = [
+  "from '@leaftab/grid-core'",
+];
+
 async function readText(filePath) {
   return readFile(filePath, 'utf8');
 }
@@ -105,7 +109,30 @@ async function main() {
     );
   }
 
-  console.log('[grid-boundary] Host adapters still point at @leaftab/grid-react and remain thin.');
+  for (const marker of forbiddenHostEngineImports) {
+    assertExcludes(
+      rootGridSource,
+      rootGridFile,
+      marker,
+      `RootShortcutGrid host adapter should not import shared grid engine internals directly: ${marker}`,
+    );
+    assertExcludes(
+      folderSurfaceSource,
+      folderSurfaceFile,
+      marker,
+      `FolderShortcutSurface host adapter should not import shared grid engine internals directly: ${marker}`,
+    );
+    assertExcludes(
+      shortcutGridShimSource,
+      shortcutGridShimFile,
+      marker,
+      `ShortcutGrid compatibility shim should not import shared grid engine internals directly: ${marker}`,
+    );
+  }
+
+  console.log(
+    '[grid-boundary] Host adapters still point at @leaftab/grid-react, remain thin, and do not own grid engine behavior.',
+  );
 }
 
 main().catch((error) => {

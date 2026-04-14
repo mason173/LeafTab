@@ -8,6 +8,10 @@ The rule is simple:
 
 > shared grid behavior changes land in `leaftab-grid` first
 
+The team-level non-fork rule is also simple:
+
+> never grow a second grid behavior engine inside `Leaftab`
+
 That includes:
 
 - drag and reorder rules
@@ -23,6 +27,13 @@ Keep these in `Leaftab`:
 - dialogs and toasts
 - persistence
 - thin host wrappers around `@leaftab/grid-react`
+
+More explicitly:
+
+- drag hit-testing fixes go to `leaftab-grid`
+- merge bridging fixes go to `leaftab-grid`
+- reorder state machine fixes go to `leaftab-grid`
+- LeafTab host may adapt geometry inputs and visuals, but it must not introduce a separate behavior branch
 
 ## Normal Development
 
@@ -78,3 +89,8 @@ The easiest smell test is:
 
 - if another app could reuse the behavior, it belongs in `leaftab-grid`
 - if it is only about how Leaftab looks or behaves as a product, it belongs in `Leaftab`
+
+Two rules are expected to stay true over time:
+
+1. Any drag hit-testing, bridging, or reorder state-machine fix lands in `leaftab-grid` first.
+2. LeafTab host keeps only styling, parameters, compatibility, and adapter code, and must not grow new grid behavior branches.
