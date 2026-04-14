@@ -8,6 +8,14 @@ The rule is simple:
 
 > shared grid behavior changes land in `leaftab-grid` first
 
+Canonical behavior spec:
+
+- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+
+Host mirror:
+
+- `docs/compact-grid-rules.md`
+
 The team-level non-fork rule is also simple:
 
 > never grow a second grid behavior engine inside `Leaftab`
@@ -84,6 +92,11 @@ The important rule is consistency:
 ## Anti-Fork Guardrails
 
 If a future change feels like "grid engine behavior", treat that as a package change, not a host-app change.
+
+For drag semantics, read the compact grid rules before editing code:
+
+- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `docs/compact-grid-rules.md`
 
 The easiest smell test is:
 
