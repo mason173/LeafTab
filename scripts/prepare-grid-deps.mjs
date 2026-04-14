@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
-const GRID_PACKAGE_NAMES = ['@leaftab/grid-core', '@leaftab/grid-react'];
+const GRID_PACKAGE_NAMES = ['@leaftab/grid-core', '@leaftab/grid-react', '@leaftab/grid-preset-leaftab'];
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -1,4 +1,5 @@
 import { FolderShortcutSurface as PackageFolderShortcutSurface } from '@leaftab/grid-react';
+import { createLeaftabFolderSurfacePreset } from '@leaftab/grid-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
@@ -12,7 +13,6 @@ import {
   renderLeaftabFolderDropPreview,
   renderLeaftabFolderEmptyState,
   renderLeaftabFolderItem,
-  resolveLeaftabFolderItemLayout,
 } from './leaftabGridVisuals';
 
 export type { FolderExtractDragStartPayload } from '@/features/shortcuts/drag/types';
@@ -80,6 +80,11 @@ export function FolderShortcutSurface({
     };
   }, []);
 
+  const folderSurfacePreset = useMemo(() => createLeaftabFolderSurfacePreset({
+    compactIconSize,
+    iconCornerRadius,
+  }), [compactIconSize, iconCornerRadius]);
+
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
       <div ref={wrapperRef}>
@@ -92,11 +97,7 @@ export function FolderShortcutSurface({
           rowGap={20}
           maskBoundaryRef={maskBoundaryRef}
           isFirefox={firefox}
-          resolveItemLayout={(shortcut) => resolveLeaftabFolderItemLayout({
-            shortcut,
-            compactIconSize,
-            iconCornerRadius,
-          })}
+          resolveItemLayout={folderSurfacePreset.resolveItemLayout}
           renderEmptyState={() => renderLeaftabFolderEmptyState(emptyText)}
           renderDropPreview={renderLeaftabFolderDropPreview}
           renderItem={(params) => renderLeaftabFolderItem({

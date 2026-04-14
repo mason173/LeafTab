@@ -2,7 +2,8 @@ import {
   RootShortcutGrid as PackageRootShortcutGrid,
   type RootShortcutGridProps as PackageRootShortcutGridProps,
 } from '@leaftab/grid-react';
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createLeaftabRootGridPreset } from '@leaftab/grid-preset-leaftab';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
@@ -11,10 +12,6 @@ import {
 } from '@/components/shortcuts/compactFolderLayout';
 import { type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import {
-  getCompactTargetCellRect as getCompactTargetCellRegionRect,
-  resolveCompactTargetRegions as resolveCompactTargetRegionSet,
-} from '@/features/shortcuts/drag/compactRootDrag';
 import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@/features/shortcuts/drag/types';
 import {
   computeLargeFolderPreviewSize,
@@ -23,7 +20,6 @@ import {
   renderRootShortcutGridDragPreview,
   renderRootShortcutGridSelectionIndicator,
   renderRootGridCenterPreview,
-  resolveLeaftabRootItemLayout,
 } from './leaftabGridVisuals';
 
 export type RootShortcutGridCardRenderParams = {
@@ -176,51 +172,18 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     largeFolderEnabled,
   }), [columnGap, compactIconSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
 
-  const resolveItemLayout = useCallback<PackageRootShortcutGridProps['resolveItemLayout']>((shortcut) => {
-    return resolveLeaftabRootItemLayout({
-      shortcut,
-      compactIconSize,
-      largeFolderEnabled,
-      largeFolderPreviewSize,
-      iconCornerRadius,
-    });
-  }, [
+  const rootGridPreset = useMemo(() => createLeaftabRootGridPreset({
+    getRootRect: () => wrapperRef.current?.getBoundingClientRect() ?? null,
+    gridWidthPx: gridWidthPx ?? 0,
+    gridColumns,
+    rowHeight,
+    rowGap,
+    columnGap,
     compactIconSize,
     iconCornerRadius,
-    largeFolderEnabled,
     largeFolderPreviewSize,
-  ]);
-
-  const resolveCompactTargetRegions = useCallback<NonNullable<PackageRootShortcutGridProps['resolveCompactTargetRegions']>>((params) => {
-    const rootRect = wrapperRef.current?.getBoundingClientRect();
-    if (!rootRect || !gridWidthPx) {
-      return {
-        targetCellRegion: params.rect,
-        targetIconRegion: params.rect,
-        targetIconHitRegion: params.rect,
-      };
-    }
-
-    const gridColumnWidth = (gridWidthPx - columnGap * Math.max(0, gridColumns - 1)) / Math.max(gridColumns, 1);
-    const targetCellRegion = getCompactTargetCellRegionRect({
-      columnStart: params.columnStart,
-      rowStart: params.rowStart,
-      columnSpan: params.columnSpan,
-      rowSpan: params.rowSpan,
-      rootRect,
-      gridColumnWidth,
-      columnGap,
-      rowHeight,
-      rowGap,
-    });
-    return resolveCompactTargetRegionSet({
-      rect: targetCellRegion,
-      shortcut: params.shortcut,
-      compactIconSize,
-      largeFolderEnabled,
-      largeFolderPreviewSize,
-    });
-  }, [
+    largeFolderEnabled,
+  }), [
     columnGap,
     compactIconSize,
     gridColumns,
@@ -229,6 +192,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     largeFolderPreviewSize,
     rowGap,
     rowHeight,
+    iconCornerRadius,
   ]);
 
   return (
@@ -243,7 +207,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           rowHeight={rowHeight}
           rowGap={rowGap}
           columnGap={columnGap}
-          resolveItemLayout={resolveItemLayout}
+          resolveItemLayout={rootGridPreset.resolveItemLayout}
           onShortcutOpen={onShortcutOpen}
           onShortcutContextMenu={onShortcutContextMenu}
           onShortcutReorder={onShortcutReorder}
@@ -258,16 +222,8 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           externalDragSession={externalDragSession}
           onExternalDragSessionConsumed={onExternalDragSessionConsumed}
           isFirefox={firefox}
-          resolveCompactTargetRegions={resolveCompactTargetRegions}
-          resolveDropTargetRects={gridWidthPx
-            ? (params) => {
-                const targetRegions = resolveCompactTargetRegions(params);
-                return {
-                  overRect: targetRegions.targetCellRegion,
-                  overCenterRect: targetRegions.targetIconRegion,
-                };
-              }
-            : undefined}
+          resolveCompactTargetRegions={rootGridPreset.resolveCompactTargetRegions}
+          resolveDropTargetRects={rootGridPreset.resolveDropTargetRects}
           renderItem={(params) => {
             const compactMetrics = getCompactShortcutCardMetrics({
               shortcut: params.shortcut,
