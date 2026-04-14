@@ -6,6 +6,11 @@ This document summarizes the current state of the Leaftab Grid extraction so ano
 
 Move Leaftab's shortcut-grid and folder drag engine into the standalone open-source repo `leaftab-grid`, while keeping Leaftab itself as a host app with thin adapters and product-specific visuals.
 
+Read these first before touching drag behavior:
+
+- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `docs/compact-grid-rules.md`
+
 High-level product focus:
 
 - desktop-style icon grid interactions
