@@ -1,8 +1,11 @@
 import React from 'react';
+import {
+  computeLeaftabLargeFolderPreviewSize as computeSharedLeaftabLargeFolderPreviewSize,
+  resolveLeaftabRootItemLayout as resolveSharedLeaftabRootItemLayout,
+} from '@leaftab/grid-preset-leaftab';
 import { RiCheckFill } from '@/icons/ri-compat';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
-  COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX,
   getCompactShortcutCardMetrics,
 } from '@/components/shortcuts/compactFolderLayout';
 import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact';
@@ -297,42 +300,13 @@ export function resolveLeaftabRootItemLayout(params: {
   largeFolderPreviewSize?: number;
   iconCornerRadius: number;
 }) {
-  const {
-    shortcut,
-    compactIconSize,
-    largeFolderEnabled,
-    largeFolderPreviewSize,
-    iconCornerRadius,
-  } = params;
-
-  const metrics = getCompactShortcutCardMetrics({
-    shortcut,
-    iconSize: compactIconSize,
-    allowLargeFolder: largeFolderEnabled,
-    largeFolderPreviewSize,
+  return resolveSharedLeaftabRootItemLayout({
+    shortcut: params.shortcut,
+    compactIconSize: params.compactIconSize,
+    largeFolderEnabled: params.largeFolderEnabled,
+    largeFolderPreviewSize: params.largeFolderPreviewSize,
+    iconCornerRadius: params.iconCornerRadius,
   });
-  return {
-    width: metrics.width,
-    height: metrics.height,
-    previewRect: {
-      left: 0,
-      top: 0,
-      width: metrics.previewSize,
-      height: metrics.previewSize,
-      borderRadius: metrics.largeFolder
-        ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius)
-        : shortcut.kind === 'folder'
-          ? getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius)
-          : getShortcutIconBorderRadius(iconCornerRadius),
-    },
-    previewBorderRadius: metrics.largeFolder
-      ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius)
-      : shortcut.kind === 'folder'
-        ? getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius)
-        : getShortcutIconBorderRadius(iconCornerRadius),
-    columnSpan: metrics.columnSpan,
-    rowSpan: metrics.rowSpan,
-  };
 }
 
 export function computeLargeFolderPreviewSize(params: {
@@ -343,23 +317,14 @@ export function computeLargeFolderPreviewSize(params: {
   gridWidthPx: number | null;
   largeFolderEnabled: boolean;
 }) {
-  const { compactIconSize, columnGap, rowGap, gridColumns, gridWidthPx, largeFolderEnabled } = params;
-  if (!largeFolderEnabled) return undefined;
-
-  const minimumPreviewSize = compactIconSize * 2 + columnGap;
-  const maxPreviewHeight = compactIconSize * 2 + rowGap + COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX;
-
-  if (!gridWidthPx || gridColumns <= 0) {
-    return maxPreviewHeight;
-  }
-
-  const gridColumnWidth = (gridWidthPx - columnGap * Math.max(0, gridColumns - 1)) / Math.max(gridColumns, 1);
-  const maxPreviewWidth = gridColumnWidth * 2 + columnGap;
-
-  return Math.max(
-    minimumPreviewSize,
-    Math.floor(Math.min(maxPreviewWidth, maxPreviewHeight)),
-  );
+  return computeSharedLeaftabLargeFolderPreviewSize({
+    compactIconSize: params.compactIconSize,
+    columnGap: params.columnGap,
+    rowGap: params.rowGap,
+    gridColumns: params.gridColumns,
+    gridWidthPx: params.gridWidthPx,
+    largeFolderEnabled: params.largeFolderEnabled,
+  });
 }
 
 export function resolveLeaftabFolderItemLayout(params: {
