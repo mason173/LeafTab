@@ -25,6 +25,21 @@ const createFolder = (id: string, title: string, folderDisplayMode: 'small' | 'l
   children: [createLink(`${id}-child`, `${title} Child`)],
 });
 
+const createFolderWithChildren = (
+  id: string,
+  title: string,
+  childCount: number,
+  folderDisplayMode: 'small' | 'large' = 'small',
+): Shortcut => ({
+  id,
+  title,
+  url: '',
+  icon: '',
+  kind: 'folder',
+  folderDisplayMode,
+  children: Array.from({ length: childCount }, (_, index) => createLink(`${id}-child-${index + 1}`, `${title} Child ${index + 1}`)),
+});
+
 const shortcuts = [
   createLink('a', 'Alpha'),
   createLink('b', 'Beta'),
@@ -81,6 +96,23 @@ function getShortcutDragItem(view: ReturnType<typeof render>, id: string): HTMLD
     throw new Error(`Unable to find shortcut drag item: ${id}`);
   }
   return item;
+}
+
+function getFolderPreview(view: ReturnType<typeof render>, id: string): HTMLDivElement {
+  const preview = view.container.querySelector<HTMLDivElement>(`[data-folder-preview-id="${id}"]`);
+  if (!preview) {
+    throw new Error(`Unable to find folder preview: ${id}`);
+  }
+  return preview;
+}
+
+function getFolderOpenTile(view: ReturnType<typeof render>, id: string): HTMLButtonElement {
+  const preview = getFolderPreview(view, id);
+  const openTile = preview.querySelector<HTMLButtonElement>('[data-folder-preview-open-tile="true"]');
+  if (!openTile) {
+    throw new Error(`Unable to find folder open tile: ${id}`);
+  }
+  return openTile;
 }
 
 function assignGridRects(view: ReturnType<typeof render>, ids: string[], rootRect: DOMRect, itemRects: Record<string, DOMRect>) {
@@ -389,6 +421,8 @@ describe('ShortcutGrid compact drag projection', () => {
     );
 
     const a = getShortcutDragItem(view, 'a');
+    const smallFolderPreview = getFolderPreview(view, 'folder-small');
+    const largeFolderPreview = getFolderPreview(view, 'folder-large');
 
     fireEvent.pointerDown(a, {
       pointerId: 1,
@@ -418,6 +452,15 @@ describe('ShortcutGrid compact drag projection', () => {
     await waitFor(() => {
       expect(view.container.querySelector('mask')).toBeNull();
     });
+    await waitFor(() => {
+      expect(view.getByTestId('shortcut-drop-preview').style.opacity).toBe('0.01');
+      expect(smallFolderPreview).toHaveAttribute('data-folder-drop-target-active', 'true');
+      expect(smallFolderPreview).toHaveStyle({
+        borderColor: 'rgba(255,255,255,0.3)',
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
+      });
+      expect(largeFolderPreview).toHaveAttribute('data-folder-drop-target-active', 'false');
+    });
 
     fireEvent.pointerMove(window, {
       pointerId: 1,
@@ -429,6 +472,195 @@ describe('ShortcutGrid compact drag projection', () => {
 
     await waitFor(() => {
       expect(view.container.querySelector('mask')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('shortcut-drop-preview').style.opacity).toBe('0.01');
+    });
+  });
+
+  it('brightens the large folder border when dragging onto a valid folder-enter target', async () => {
+    const compactShortcuts = [
+      createLink('a', 'Alpha'),
+      createFolder('folder-large', 'Large Folder', 'large'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+    ];
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={268}
+        shortcuts={compactShortcuts}
+        gridColumns={4}
+        minRows={2}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+      />,
+    );
+
+    assignGridRects(
+      view,
+      ['a', 'folder-large', 'b', 'c'],
+      new DOMRect(0, 0, 452, 212),
+      {
+        a: new DOMRect(16, 0, 72, 96),
+        'folder-large': new DOMRect(132, 0, 188, 180),
+        b: new DOMRect(364, 0, 72, 96),
+        c: new DOMRect(16, 116, 72, 96),
+      },
+    );
+
+    const a = getShortcutDragItem(view, 'a');
+    const largeFolderPreview = getFolderPreview(view, 'folder-large');
+
+    fireEvent.pointerDown(a, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      clientX: 52,
+      clientY: 48,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 64,
+      clientY: 48,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 226,
+      clientY: 90,
+    });
+
+    await waitFor(() => {
+      expect(view.container.querySelector('mask')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(view.getByTestId('shortcut-drop-preview').style.opacity).toBe('0.01');
+      expect(largeFolderPreview).toHaveAttribute('data-folder-drop-target-active', 'true');
+      expect(largeFolderPreview).toHaveStyle({
+        borderColor: 'rgba(255,255,255,0.3)',
+        transition: 'border-color 150ms ease, box-shadow 150ms ease',
+      });
+    });
+  });
+
+  it('suppresses large-folder preview hover growth and fades the overflow open tile while dragging over the folder target', async () => {
+    const compactShortcuts = [
+      createLink('a', 'Alpha'),
+      createFolderWithChildren('folder-large', 'Large Folder', 9, 'large'),
+      createLink('b', 'Beta'),
+      createLink('c', 'Gamma'),
+    ];
+
+    const view = render(
+      <ShortcutGrid
+        containerHeight={268}
+        shortcuts={compactShortcuts}
+        gridColumns={4}
+        minRows={2}
+        onShortcutOpen={vi.fn()}
+        onShortcutContextMenu={vi.fn()}
+        onShortcutReorder={vi.fn()}
+        onGridContextMenu={vi.fn()}
+      />,
+    );
+
+    assignGridRects(
+      view,
+      ['a', 'folder-large', 'b', 'c'],
+      new DOMRect(0, 0, 452, 212),
+      {
+        a: new DOMRect(16, 0, 72, 96),
+        'folder-large': new DOMRect(132, 0, 188, 180),
+        b: new DOMRect(364, 0, 72, 96),
+        c: new DOMRect(16, 116, 72, 96),
+      },
+    );
+
+    const a = getShortcutDragItem(view, 'a');
+    const largeFolderPreview = getFolderPreview(view, 'folder-large');
+    const openTile = getFolderOpenTile(view, 'folder-large');
+    const openTileIcon = largeFolderPreview.querySelector<HTMLElement>('[data-folder-preview-open-tile-icon="true"]');
+    const ghostStack = largeFolderPreview.querySelector<HTMLElement>('[data-folder-preview-open-tile-ghost-stack="true"]');
+    const previewTiles = Array.from(
+      largeFolderPreview.querySelectorAll<HTMLElement>('[data-folder-preview-large-tile="true"]'),
+    );
+
+    expect(openTileIcon).not.toBeNull();
+    expect(ghostStack).not.toBeNull();
+    expect(previewTiles.length).toBeGreaterThan(0);
+
+    fireEvent.pointerDown(a, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      isPrimary: true,
+      clientX: 52,
+      clientY: 48,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 64,
+      clientY: 48,
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 226,
+      clientY: 90,
+    });
+
+    await waitFor(() => {
+      expect(largeFolderPreview).toHaveAttribute('data-folder-drop-target-active', 'true');
+      expect(openTile).toHaveAttribute('data-folder-preview-hover-scale-enabled', 'false');
+      previewTiles.forEach((tile) => {
+        expect(tile).toHaveAttribute('data-folder-preview-hover-scale-enabled', 'false');
+      });
+      expect(openTileIcon).toHaveStyle({
+        opacity: '0.01',
+        transition: 'opacity 150ms ease',
+      });
+      expect(ghostStack).toHaveStyle({
+        opacity: '0.01',
+        transition: 'opacity 150ms ease',
+      });
+    });
+
+    fireEvent.pointerMove(window, {
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: 340,
+      clientY: 90,
+    });
+
+    await waitFor(() => {
+      expect(largeFolderPreview).toHaveAttribute('data-folder-drop-target-active', 'false');
+      expect(openTile).toHaveAttribute('data-folder-preview-hover-scale-enabled', 'true');
+      previewTiles.forEach((tile) => {
+        expect(tile).toHaveAttribute('data-folder-preview-hover-scale-enabled', 'true');
+      });
+      expect(openTileIcon).toHaveStyle({
+        opacity: '1',
+        transition: 'opacity 150ms ease',
+      });
+      expect(ghostStack).toHaveStyle({
+        opacity: '1',
+        transition: 'opacity 150ms ease',
+      });
     });
   });
 

@@ -4,11 +4,11 @@ This file mirrors the current compact-grid behavior contract consumed by `LeafTa
 
 Canonical source of truth:
 
-- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
 
 If behavior changes:
 
-1. update `leaftab-grid` first
+1. update `leaftab-workspace` first
 2. update this mirror second
 
 ## Scope
@@ -23,7 +23,7 @@ The host app keeps:
 - persistence
 - compatibility wrappers
 
-The behavior engine lives in `@leaftab/grid-react`.
+The behavior engine lives in `@leaftab/workspace-react`.
 
 ## Core Terms
 
@@ -66,6 +66,10 @@ The root grid can resolve:
 - `merge-root-shortcuts`
 - `move-root-shortcut-into-folder`
 
+There is also one special root-drag mode:
+
+- extracted folder children re-enter the root grid as `reorder-only` slot-first drags
+
 When dragging over a target:
 
 - icon-body contact on the merge side creates merge or move-into-folder behavior
@@ -85,6 +89,10 @@ Current directional rules:
 
 This is the rule set behind the compact grid's stable round-trip behavior.
 
+This directional contract applies to normal root drags.
+
+Extracted folder-child root drags do not use this target-first directional contract while the extraction session is active.
+
 ## Three Zones
 
 The recognition point classifies each target into:
@@ -101,6 +109,8 @@ Meaning:
 - `merge` can produce folder entry or merge
 - `neutral` should not create a new yield on its own
 - `reorder` is what creates displacement and a claimed slot
+
+Extracted reorder-only root drags bypass these target zones and choose directly among projected root reorder slots.
 
 ## Claimed Slots And Bridge Preservation
 
@@ -121,6 +131,8 @@ That is true for both:
 
 - small folders
 - large folders
+
+For extracted reorder-only root drags, the current claimed root slot stays latched until another projected slot clearly beats it.
 
 ## Return-Path Contract
 
@@ -152,6 +164,12 @@ But it still inherits the same stability principles:
 - yielded slots should not collapse too early
 - reorder should not oscillate while traveling through neutral space
 
+Once extraction hands the drag back to the root surface:
+
+- the extracted child is inserted back into the root list immediately after its source folder
+- the returned root session becomes reorder-only
+- root placement is resolved slot-first instead of by directional target entry
+
 ## Variable-Span Layout
 
 Large folders participate in the same packed reorder model as every other root item.
@@ -178,7 +196,7 @@ When dragging the large folder itself:
 Before changing any drag behavior in `LeafTab`, check:
 
 - `docs/leaftab-grid-workflow.md`
-- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
 
 If the change is about:
 
@@ -189,4 +207,4 @@ If the change is about:
 - folder reorder engine behavior
 - span-aware reorder
 
-then it belongs upstream in `leaftab-grid`, not in host-only code.
+then it belongs upstream in `leaftab-workspace`, not in host-only code.

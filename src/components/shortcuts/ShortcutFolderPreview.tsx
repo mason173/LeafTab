@@ -21,21 +21,43 @@ const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
 const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 16;
 export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/6 bg-[rgba(205,212,220,0.4)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]';
+const FOLDER_DROP_TARGET_TRANSITION = 'border-color 150ms ease, box-shadow 150ms ease';
+const FOLDER_DROP_TARGET_FADE_TRANSITION = 'opacity 150ms ease';
+const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
+const ACTIVE_FOLDER_BORDER_SHADOW = 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(255,255,255,0.08)';
+
+function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
+  return {
+    transition: FOLDER_DROP_TARGET_TRANSITION,
+    borderColor: highlightBorder ? ACTIVE_FOLDER_BORDER_COLOR : undefined,
+    boxShadow: highlightBorder ? ACTIVE_FOLDER_BORDER_SHADOW : undefined,
+  };
+}
 
 function LargeFolderOpenTileGhostStack({
   tileSize,
   previewIconSize,
   iconCornerRadius,
+  fadeWhenDropTargetActive = false,
 }: {
   tileSize: number;
   previewIconSize: number;
   iconCornerRadius: number;
+  fadeWhenDropTargetActive?: boolean;
 }) {
   const stackTileSize = Math.min(tileSize - 2, Math.max(16, Math.round(previewIconSize * 0.92)));
   const ghostBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
 
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      style={{
+        opacity: fadeWhenDropTargetActive ? 0.01 : 1,
+        transition: FOLDER_DROP_TARGET_FADE_TRANSITION,
+      }}
+      data-folder-preview-open-tile-ghost-stack="true"
+    >
       {[2, 1].map((layer) => (
         <span
           key={layer}
@@ -183,6 +205,7 @@ function LargeFolderPreviewTile({
   iconCornerRadius,
   iconAppearance,
   onOpenShortcut,
+  suppressHoverScale = false,
 }: {
   child: Shortcut;
   folderId: string;
@@ -191,6 +214,7 @@ function LargeFolderPreviewTile({
   iconCornerRadius: number;
   iconAppearance?: ShortcutIconAppearance;
   onOpenShortcut?: (shortcut: Shortcut) => void;
+  suppressHoverScale?: boolean;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_PREVIEW_CONTENT_RATIO));
   const interactive = typeof onOpenShortcut === 'function';
@@ -200,9 +224,11 @@ function LargeFolderPreviewTile({
     <Element
       type={interactive ? 'button' : undefined}
       className={`relative flex items-center justify-center rounded-[14px] ${
-        interactive ? 'transition-transform duration-150 ease-out hover:scale-[1.04]' : ''
+        interactive && !suppressHoverScale ? 'transition-transform duration-150 ease-out hover:scale-[1.04]' : ''
       }`}
       style={{ width: tileSize, height: tileSize }}
+      data-folder-preview-large-tile="true"
+      data-folder-preview-hover-scale-enabled={interactive && !suppressHoverScale ? 'true' : 'false'}
       onClick={interactive ? (event) => {
         event.stopPropagation();
         onOpenShortcut?.(child);
@@ -234,6 +260,8 @@ function LargeFolderOpenTile({
   iconCornerRadius,
   iconAppearance,
   onOpenFolder,
+  suppressHoverScale = false,
+  fadeContentWhenDropTargetActive = false,
 }: {
   child: Shortcut;
   folderId: string;
@@ -242,6 +270,8 @@ function LargeFolderOpenTile({
   iconCornerRadius: number;
   iconAppearance?: ShortcutIconAppearance;
   onOpenFolder?: () => void;
+  suppressHoverScale?: boolean;
+  fadeContentWhenDropTargetActive?: boolean;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_TRIGGER_ICON_RATIO));
   const interactive = typeof onOpenFolder === 'function';
@@ -250,9 +280,13 @@ function LargeFolderOpenTile({
     <button
       type="button"
       className={`relative isolate flex items-center justify-center rounded-[14px] ${
-        interactive ? 'transition-transform duration-150 ease-out hover:scale-[1.03]' : 'cursor-not-allowed'
+        interactive
+          ? (suppressHoverScale ? '' : 'transition-transform duration-150 ease-out hover:scale-[1.03]')
+          : 'cursor-not-allowed'
       }`}
       style={{ width: tileSize, height: tileSize }}
+      data-folder-preview-open-tile="true"
+      data-folder-preview-hover-scale-enabled={interactive && !suppressHoverScale ? 'true' : 'false'}
       onClick={interactive ? (event) => {
         event.stopPropagation();
         onOpenFolder?.();
@@ -263,13 +297,20 @@ function LargeFolderOpenTile({
         tileSize={tileSize}
         previewIconSize={previewIconSize}
         iconCornerRadius={iconCornerRadius}
+        fadeWhenDropTargetActive={fadeContentWhenDropTargetActive}
       />
       <div
         className="relative z-[1] flex items-center justify-center"
-        style={{ width: previewIconSize, height: previewIconSize }}
+        style={{
+          width: previewIconSize,
+          height: previewIconSize,
+          opacity: fadeContentWhenDropTargetActive ? 0.01 : 1,
+          transition: FOLDER_DROP_TARGET_FADE_TRANSITION,
+        }}
         data-folder-preview-child-id={child.id}
         data-folder-preview-index={index}
         data-folder-preview-parent-id={folderId}
+        data-folder-preview-open-tile-icon="true"
       >
         <FolderPreviewScaledIcon
           child={child}
@@ -287,6 +328,7 @@ type ShortcutFolderPreviewProps = {
   size: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
+  highlightBorder?: boolean;
   selectionDisabled?: boolean;
 };
 
@@ -295,6 +337,7 @@ type ShortcutFolderLargePreviewProps = {
   size: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
+  highlightBorder?: boolean;
   onOpenFolder?: () => void;
   onOpenShortcut?: (shortcut: Shortcut) => void;
 };
@@ -312,6 +355,7 @@ export function ShortcutFolderPreview({
   size,
   iconCornerRadius = 18,
   iconAppearance,
+  highlightBorder = false,
   selectionDisabled = false,
 }: ShortcutFolderPreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, 4);
@@ -328,9 +372,11 @@ export function ShortcutFolderPreview({
         borderRadius: getSmallFolderBorderRadius(size, iconCornerRadius),
         backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
         WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        ...buildFolderSurfaceInteractionStyle(highlightBorder),
       }}
       data-folder-preview="true"
       data-folder-preview-id={shortcut.id}
+      data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
     >
       {children.length > 0 ? children.map((child, index) => (
         <FolderPreviewTile
@@ -356,6 +402,7 @@ export function ShortcutFolderLargePreview({
   size,
   iconCornerRadius = 18,
   iconAppearance,
+  highlightBorder = false,
   onOpenFolder,
   onOpenShortcut,
 }: ShortcutFolderLargePreviewProps) {
@@ -386,9 +433,11 @@ export function ShortcutFolderLargePreview({
         borderRadius,
         backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
         WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        ...buildFolderSurfaceInteractionStyle(highlightBorder),
       }}
       data-folder-preview="true"
       data-folder-preview-id={shortcut.id}
+      data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
       onClick={interactive ? onOpenFolder : undefined}
     >
       <div
@@ -420,6 +469,8 @@ export function ShortcutFolderLargePreview({
                   tileSize={tileSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
+                  suppressHoverScale={highlightBorder}
+                  fadeContentWhenDropTargetActive={highlightBorder}
                   onOpenFolder={interactive ? onOpenFolder : undefined}
                 />
               );
@@ -439,6 +490,7 @@ export function ShortcutFolderLargePreview({
                 tileSize={tileSize}
                 iconCornerRadius={iconCornerRadius}
                 iconAppearance={iconAppearance}
+                suppressHoverScale={highlightBorder}
                 onOpenShortcut={onOpenShortcut}
               />
             );

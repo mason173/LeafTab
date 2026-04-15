@@ -159,6 +159,7 @@ export function applyFolderExtractDragStart(
     closeFolderId: payload.folderId,
     session: {
       shortcutId: payload.shortcutId,
+      sourceRootShortcutId: payload.folderId,
       pointerId: payload.pointerId,
       pointerType: payload.pointerType,
       pointer: payload.pointer,

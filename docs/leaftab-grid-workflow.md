@@ -1,16 +1,16 @@
-# Leaftab Grid Workflow
+# Leaftab Workspace Workflow
 
-This document keeps `Leaftab` and `leaftab-grid` from drifting apart.
+This document keeps `Leaftab` and `leaftab-workspace` from drifting apart.
 
 ## Source Of Truth
 
 The rule is simple:
 
-> shared grid behavior changes land in `leaftab-grid` first
+> shared grid behavior changes land in `leaftab-workspace` first
 
 Canonical behavior spec:
 
-- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
 
 Host mirror:
 
@@ -34,13 +34,13 @@ Keep these in `Leaftab`:
 - product policy
 - dialogs and toasts
 - persistence
-- thin host wrappers around `@leaftab/grid-react`
+- thin host wrappers around `@leaftab/workspace-react`
 
 More explicitly:
 
-- drag hit-testing fixes go to `leaftab-grid`
-- merge bridging fixes go to `leaftab-grid`
-- reorder state machine fixes go to `leaftab-grid`
+- drag hit-testing fixes go to `leaftab-workspace`
+- merge bridging fixes go to `leaftab-workspace`
+- reorder state machine fixes go to `leaftab-workspace`
 - LeafTab host may adapt geometry inputs and visuals, but it must not introduce a separate behavior branch
 
 ## Normal Development
@@ -54,17 +54,17 @@ npm run grid:verify:host
 What it does:
 
 - detects whether `Leaftab` is using local `file:` grid packages or published package versions
-- builds the local `leaftab-grid` workspace automatically when local `file:` dependencies are active
-- verifies that the host adapters still point at `@leaftab/grid-react`
+- builds the local `leaftab-workspace` workspace automatically when local `file:` dependencies are active
+- verifies that the host adapters still point at `@leaftab/workspace-react`
 - verifies that the old in-app compatibility shim has stayed thin
 
 ## Recommended Change Order
 
 If you are changing shared grid behavior:
 
-1. Edit `/Users/mason/Desktop/leaftab-grid`
-2. Run `cd /Users/mason/Desktop/leaftab-grid && npm run verify`
-3. Run `cd /Users/mason/Desktop/Leaftab && npm run build:community`
+1. Edit your local `leaftab-workspace` checkout
+2. Run `cd /path/to/leaftab-workspace && npm run verify`
+3. Run `cd /path/to/Leaftab2 && npm run build:community`
 4. Commit the grid repo first
 5. Commit the host-app adaptation second
 
@@ -87,7 +87,7 @@ Local co-development is still supported when you intentionally switch back to lo
 The important rule is consistency:
 
 - do not mix local and published grid package sources
-- keep both `@leaftab/grid-core` and `@leaftab/grid-react` on the same source mode
+- keep both `@leaftab/workspace-core` and `@leaftab/workspace-react` on the same source mode
 
 ## Anti-Fork Guardrails
 
@@ -95,15 +95,15 @@ If a future change feels like "grid engine behavior", treat that as a package ch
 
 For drag semantics, read the compact grid rules before editing code:
 
-- `mason173/leaftab-grid: docs/compact-grid-rules.md`
+- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
 - `docs/compact-grid-rules.md`
 
 The easiest smell test is:
 
-- if another app could reuse the behavior, it belongs in `leaftab-grid`
+- if another app could reuse the behavior, it belongs in `leaftab-workspace`
 - if it is only about how Leaftab looks or behaves as a product, it belongs in `Leaftab`
 
 Two rules are expected to stay true over time:
 
-1. Any drag hit-testing, bridging, or reorder state-machine fix lands in `leaftab-grid` first.
+1. Any drag hit-testing, bridging, or reorder state-machine fix lands in `leaftab-workspace` first.
 2. LeafTab host keeps only styling, parameters, compatibility, and adapter code, and must not grow new grid behavior branches.

@@ -224,6 +224,7 @@ describe('applyFolderExtractDragStart', () => {
       closeFolderId: 'folder-1',
       session: {
         shortcutId: 'nested-b',
+        sourceRootShortcutId: 'folder-1',
         pointerId: 7,
         pointerType: 'mouse',
         pointer: { x: 320, y: 240 },

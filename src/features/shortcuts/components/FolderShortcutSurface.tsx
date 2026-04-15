@@ -1,5 +1,5 @@
-import { FolderShortcutSurface as PackageFolderShortcutSurface } from '@leaftab/grid-react';
-import { createLeaftabFolderSurfacePreset } from '@leaftab/grid-preset-leaftab';
+import { FolderShortcutSurface as PackageFolderShortcutSurface } from '@leaftab/workspace-react';
+import { createLeaftabFolderSurfacePreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';

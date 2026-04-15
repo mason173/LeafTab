@@ -65,6 +65,7 @@ export type FolderExtractDragStartPayload = {
 
 export type ShortcutExternalDragSessionSeed = {
   shortcutId: string;
+  sourceRootShortcutId?: string;
   pointerId: number;
   pointerType: string;
   pointer: { x: number; y: number };
