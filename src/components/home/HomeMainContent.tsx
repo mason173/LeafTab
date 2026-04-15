@@ -1,4 +1,4 @@
-import { memo, useEffect, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useCallback, useEffect, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
@@ -106,11 +106,10 @@ export const HomeMainContent = memo(function HomeMainContent({
   const homeWallpaperBottomPx = modeFlags.showHeroWallpaperClock
     ? homeTopOffsetPx + layout.wallpaperHeight
     : undefined;
-  const drawerScrollLocked = searchInteractionLocked;
   const drawer = useQuickAccessDrawer({
     viewportHeight: layout.viewportHeight,
     showShortcuts: modeFlags.showShortcuts,
-    disableScrollInteraction: drawerScrollLocked,
+    disableScrollInteraction: searchInteractionLocked,
     topContentBottomPx: homeWallpaperBottomPx,
     topContentSafeGapPx: HOME_DRAWER_WALLPAPER_SAFE_GAP_PX,
   });
@@ -130,6 +129,16 @@ export const HomeMainContent = memo(function HomeMainContent({
     ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
     : undefined;
   const isDrawerFullyExpanded = visible && drawer.isDrawerExpanded;
+
+  const handleShortcutGridDragStart = useCallback(() => {
+    shortcutGridProps.onDragStart?.();
+    drawer.handleShortcutDragStart();
+  }, [drawer.handleShortcutDragStart, shortcutGridProps.onDragStart]);
+
+  const handleShortcutGridDragEnd = useCallback(() => {
+    shortcutGridProps.onDragEnd?.();
+    drawer.handleShortcutDragEnd();
+  }, [drawer.handleShortcutDragEnd, shortcutGridProps.onDragEnd]);
 
   useEffect(() => {
     onDrawerExpandedChange?.(isDrawerFullyExpanded);
@@ -217,14 +226,18 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerShortcutForceWhiteText={drawerShortcutForceWhiteText}
         drawerShortcutMonochromeTone={drawerShortcutMonochromeTone}
         drawerShortcutMonochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
-        drawerScrollLocked={drawerScrollLocked}
+        drawerScrollLocked={drawer.drawerScrollLocked}
         reduceMotionVisuals={reduceMotionVisuals}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
         searchExperienceProps={searchExperienceProps}
-        shortcutGridProps={shortcutGridProps}
+        shortcutGridProps={{
+          ...shortcutGridProps,
+          onDragStart: handleShortcutGridDragStart,
+          onDragEnd: handleShortcutGridDragEnd,
+        }}
         onDrawerOpenChange={drawer.handleDrawerOpenChange}
         onActiveSnapPointChange={drawer.handleActiveSnapPointChange}
       />

@@ -14,6 +14,9 @@ const IOS_BOUNCE_MAX_OFFSET_PX = 30;
 const IOS_BOUNCE_SPRING_STIFFNESS = 240;
 const IOS_BOUNCE_SPRING_DAMPING = 26;
 const LOCKED_SCROLL_ALLOW_SELECTOR = '[data-allow-drawer-locked-scroll="true"]';
+const DRAG_AUTO_SCROLL_EDGE_ZONE_PX = 84;
+const DRAG_AUTO_SCROLL_HORIZONTAL_SLOP_PX = 24;
+const DRAG_AUTO_SCROLL_MAX_SPEED_PX_PER_SEC = 1680;
 
 function canUseLockedScrollRegion(event: WheelEvent): boolean {
   const eventTarget = event.target;
@@ -62,8 +65,11 @@ interface UseQuickAccessDrawerResult {
   drawerContentBackdropBlurPx: number;
   drawerPanelHeightVh: number;
   drawerPanelTranslateYPx: number;
+  drawerScrollLocked: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
+  handleShortcutDragStart: () => void;
+  handleShortcutDragEnd: () => void;
   handleDrawerOpenChange: () => void;
   handleActiveSnapPointChange: (next: number | string | null) => void;
 }
@@ -92,9 +98,20 @@ export function useQuickAccessDrawer({
   const [drawerSurfaceOpacity, setDrawerSurfaceOpacity] = useState(0);
   const [drawerLayoutProgress, setDrawerLayoutProgress] = useState(0);
   const [drawerBottomBounceOffsetPx, setDrawerBottomBounceOffsetPx] = useState(0);
+  const [dragInteractionActive, setDragInteractionActive] = useState(false);
 
   const drawerWheelAreaRef = useRef<HTMLDivElement>(null);
   const drawerShortcutScrollRef = useRef<HTMLDivElement>(null);
+  const dragInteractionActiveRef = useRef(false);
+  const dragAutoScrollRafRef = useRef<number | null>(null);
+  const dragAutoScrollLastFrameRef = useRef(0);
+  const lastDragPointerRef = useRef<{
+    x: number;
+    y: number;
+    pointerId: number;
+    pointerType: string;
+    buttons: number;
+  } | null>(null);
   const drawerSurfaceOpacityRef = useRef(0);
   const drawerLayoutProgressRef = useRef(0);
   const bottomBounceOffsetRef = useRef(0);
@@ -111,6 +128,7 @@ export function useQuickAccessDrawer({
 
   const resolvedQuickAccessSnapPoint = resolveDrawerSnapPoint(quickAccessSnapPoint, quickAccessDefaultSnapPoint);
   const isDrawerExpanded = resolvedQuickAccessSnapPoint >= quickAccessFullSnapPoint - 0.001;
+  const drawerScrollLocked = disableScrollInteraction || dragInteractionActive;
   const drawerOverlayOpacity = Math.min(drawerLayoutProgress * 1.35, 1) * DRAWER_OVERLAY_MAX_OPACITY;
   const drawerContentTopPaddingPx = DRAWER_CONTENT_TOP_PADDING_EXPANDED_DELTA_PX;
   const drawerContentBackdropBlurPx = drawerSurfaceOpacity * DRAWER_CONTENT_BACKDROP_BLUR_MAX_PX;
@@ -151,6 +169,47 @@ export function useQuickAccessDrawer({
     }
     bottomBounceVelocityRef.current = 0;
     bottomBounceLastFrameRef.current = 0;
+  }, []);
+
+  const stopDragAutoScroll = useCallback(() => {
+    if (dragAutoScrollRafRef.current !== null) {
+      window.cancelAnimationFrame(dragAutoScrollRafRef.current);
+      dragAutoScrollRafRef.current = null;
+    }
+    dragAutoScrollLastFrameRef.current = 0;
+  }, []);
+
+  const dispatchSyntheticDragPointerMove = useCallback((pointer: {
+    x: number;
+    y: number;
+    pointerId: number;
+    pointerType: string;
+    buttons: number;
+  }) => {
+    if (typeof document === 'undefined') return;
+
+    if (typeof window.PointerEvent === 'function') {
+      document.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: pointer.x,
+        clientY: pointer.y,
+        pointerId: pointer.pointerId,
+        pointerType: pointer.pointerType,
+        buttons: pointer.buttons,
+        pressure: pointer.buttons === 0 ? 0 : 0.5,
+        isPrimary: true,
+      }));
+      return;
+    }
+
+    document.dispatchEvent(new MouseEvent('mousemove', {
+      bubbles: true,
+      cancelable: true,
+      clientX: pointer.x,
+      clientY: pointer.y,
+      buttons: pointer.buttons,
+    }));
   }, []);
 
   const setBottomBounceOffsetImmediate = useCallback((value: number) => {
@@ -222,6 +281,13 @@ export function useQuickAccessDrawer({
   }, [animateDrawerLayoutProgress, animateDrawerSurfaceOpacity, quickAccessFullSnapPoint]);
 
   const handleDrawerWheel = useCallback((event: WheelEvent) => {
+    if (dragInteractionActiveRef.current) {
+      wheelIntentRef.current = 0;
+      blockedShortcutScrollSessionRef.current = null;
+      setBottomBounceOffsetImmediate(0);
+      event.preventDefault();
+      return;
+    }
     if (disableScrollInteraction) {
       if (canUseLockedScrollRegion(event)) {
         wheelIntentRef.current = 0;
@@ -310,7 +376,9 @@ export function useQuickAccessDrawer({
         return;
       }
       event.preventDefault();
-      scrollEl.scrollTop += deltaY;
+      if (scrollEl) {
+        scrollEl.scrollTop += deltaY;
+      }
       wheelIntentRef.current = 0;
       setDrawerSurfaceOpacityImmediate(1);
       setDrawerLayoutProgressImmediate(1);
@@ -336,6 +404,25 @@ export function useQuickAccessDrawer({
     quickAccessFullSnapPoint,
   ]);
 
+  const handleShortcutDragStart = useCallback(() => {
+    dragInteractionActiveRef.current = true;
+    setDragInteractionActive(true);
+    wheelIntentRef.current = 0;
+    blockedShortcutScrollSessionRef.current = null;
+    stopBottomBounceRelease();
+    setBottomBounceOffsetImmediate(0);
+  }, [setBottomBounceOffsetImmediate, stopBottomBounceRelease]);
+
+  const handleShortcutDragEnd = useCallback(() => {
+    dragInteractionActiveRef.current = false;
+    setDragInteractionActive(false);
+    lastDragPointerRef.current = null;
+    stopDragAutoScroll();
+    wheelIntentRef.current = 0;
+    blockedShortcutScrollSessionRef.current = null;
+    setBottomBounceOffsetImmediate(0);
+  }, [setBottomBounceOffsetImmediate, stopDragAutoScroll]);
+
   useEffect(() => {
     setQuickAccessSnapPoint((previous) => {
       const resolved = resolveDrawerSnapPoint(previous, quickAccessDefaultSnapPoint);
@@ -352,12 +439,119 @@ export function useQuickAccessDrawer({
     setBottomBounceOffsetImmediate(0);
   }, [disableScrollInteraction, setBottomBounceOffsetImmediate]);
 
+  useEffect(() => {
+    if (!dragInteractionActive) {
+      lastDragPointerRef.current = null;
+      stopDragAutoScroll();
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      lastDragPointerRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+        pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        buttons: event.buttons,
+      };
+    };
+
+    const clearPointer = () => {
+      lastDragPointerRef.current = null;
+    };
+
+    const tick = (now: number) => {
+      dragAutoScrollRafRef.current = null;
+
+      if (!dragInteractionActiveRef.current || !isDrawerExpanded || !showShortcuts) {
+        dragAutoScrollLastFrameRef.current = 0;
+        return;
+      }
+
+      const scrollEl = drawerShortcutScrollRef.current;
+      const pointer = lastDragPointerRef.current;
+      if (!scrollEl || !pointer) {
+        dragAutoScrollLastFrameRef.current = now;
+        dragAutoScrollRafRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
+
+      const maxScrollTop = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+      if (maxScrollTop <= 0.5) {
+        dragAutoScrollLastFrameRef.current = now;
+        dragAutoScrollRafRef.current = window.requestAnimationFrame(tick);
+        return;
+      }
+
+      const rect = scrollEl.getBoundingClientRect();
+      const withinHorizontalBounds = pointer.x >= rect.left - DRAG_AUTO_SCROLL_HORIZONTAL_SLOP_PX
+        && pointer.x <= rect.right + DRAG_AUTO_SCROLL_HORIZONTAL_SLOP_PX;
+
+      let direction = 0;
+      let depth = 0;
+
+      if (withinHorizontalBounds) {
+        const topDistance = pointer.y - rect.top;
+        const bottomDistance = rect.bottom - pointer.y;
+
+        if (topDistance <= DRAG_AUTO_SCROLL_EDGE_ZONE_PX) {
+          direction = -1;
+          depth = (DRAG_AUTO_SCROLL_EDGE_ZONE_PX - topDistance) / DRAG_AUTO_SCROLL_EDGE_ZONE_PX;
+        } else if (bottomDistance <= DRAG_AUTO_SCROLL_EDGE_ZONE_PX) {
+          direction = 1;
+          depth = (DRAG_AUTO_SCROLL_EDGE_ZONE_PX - bottomDistance) / DRAG_AUTO_SCROLL_EDGE_ZONE_PX;
+        }
+      }
+
+      const normalizedDepth = Math.max(0, Math.min(1, depth));
+      if (direction !== 0 && normalizedDepth > 0) {
+        const easedDepth = normalizedDepth * normalizedDepth;
+        const dtSeconds = Math.max(
+          0.008,
+          Math.min(0.032, (now - (dragAutoScrollLastFrameRef.current || now)) / 1000),
+        );
+        const delta = direction * DRAG_AUTO_SCROLL_MAX_SPEED_PX_PER_SEC * easedDepth * dtSeconds;
+        const nextScrollTop = Math.max(0, Math.min(maxScrollTop, scrollEl.scrollTop + delta));
+        if (Math.abs(nextScrollTop - scrollEl.scrollTop) >= 0.25) {
+          scrollEl.scrollTop = nextScrollTop;
+          dispatchSyntheticDragPointerMove(pointer);
+        }
+      }
+
+      dragAutoScrollLastFrameRef.current = now;
+      dragAutoScrollRafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    const listenerOptions: AddEventListenerOptions = { capture: true, passive: true };
+    document.addEventListener('pointermove', handlePointerMove, listenerOptions);
+    document.addEventListener('pointerup', clearPointer, listenerOptions);
+    document.addEventListener('pointercancel', clearPointer, listenerOptions);
+    dragAutoScrollRafRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove, listenerOptions);
+      document.removeEventListener('pointerup', clearPointer, listenerOptions);
+      document.removeEventListener('pointercancel', clearPointer, listenerOptions);
+      stopDragAutoScroll();
+    };
+  }, [
+    dispatchSyntheticDragPointerMove,
+    dragInteractionActive,
+    isDrawerExpanded,
+    showShortcuts,
+    stopDragAutoScroll,
+  ]);
+
   const handleDrawerOpenChange = useCallback(() => {
     setQuickAccessOpen(true);
     setQuickAccessSnapPoint(quickAccessDefaultSnapPoint);
     setDrawerSurfaceOpacityImmediate(0);
     setDrawerLayoutProgressImmediate(0);
     setBottomBounceOffsetImmediate(0);
+    dragInteractionActiveRef.current = false;
+    setDragInteractionActive(false);
+    lastDragPointerRef.current = null;
+    stopDragAutoScroll();
     wheelIntentRef.current = 0;
     blockedShortcutScrollSessionRef.current = null;
     lastWheelTimestampRef.current = 0;
@@ -366,7 +560,13 @@ export function useQuickAccessDrawer({
       window.clearTimeout(snapTransitionTimerRef.current);
       snapTransitionTimerRef.current = null;
     }
-  }, [quickAccessDefaultSnapPoint, setBottomBounceOffsetImmediate, setDrawerLayoutProgressImmediate, setDrawerSurfaceOpacityImmediate]);
+  }, [
+    quickAccessDefaultSnapPoint,
+    setBottomBounceOffsetImmediate,
+    setDrawerLayoutProgressImmediate,
+    setDrawerSurfaceOpacityImmediate,
+    stopDragAutoScroll,
+  ]);
 
   const handleActiveSnapPointChange = useCallback((next: number | string | null) => {
     setQuickAccessSnapPoint(next);
@@ -399,14 +599,21 @@ export function useQuickAccessDrawer({
       window.clearTimeout(snapTransitionTimerRef.current);
     }
     stopBottomBounceRelease();
-  }, [stopBottomBounceRelease]);
+    stopDragAutoScroll();
+  }, [stopBottomBounceRelease, stopDragAutoScroll]);
 
   useEffect(() => {
     if (!isDrawerExpanded) {
       stopBottomBounceRelease();
       setBottomBounceOffsetImmediate(0);
+      if (dragInteractionActiveRef.current) {
+        dragInteractionActiveRef.current = false;
+        setDragInteractionActive(false);
+        lastDragPointerRef.current = null;
+        stopDragAutoScroll();
+      }
     }
-  }, [isDrawerExpanded, setBottomBounceOffsetImmediate, stopBottomBounceRelease]);
+  }, [isDrawerExpanded, setBottomBounceOffsetImmediate, stopBottomBounceRelease, stopDragAutoScroll]);
 
   useEffect(() => {
     const wheelListenerOptions: AddEventListenerOptions = { passive: false, capture: true };
@@ -439,8 +646,11 @@ export function useQuickAccessDrawer({
     drawerContentBackdropBlurPx,
     drawerPanelHeightVh,
     drawerPanelTranslateYPx,
+    drawerScrollLocked,
     drawerWheelAreaRef,
     drawerShortcutScrollRef,
+    handleShortcutDragStart,
+    handleShortcutDragEnd,
     handleDrawerOpenChange,
     handleActiveSnapPointChange,
   };
