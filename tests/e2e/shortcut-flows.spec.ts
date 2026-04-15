@@ -29,6 +29,12 @@ async function readCurrentShortcutTitles(page: Page) {
   return snapshot.scenarioShortcuts[snapshot.selectedScenarioId].map((item) => item.title);
 }
 
+async function readCurrentShortcut(page: Page, title: string) {
+  const snapshot = await readLocalProfileSnapshot(page);
+  return snapshot.scenarioShortcuts[snapshot.selectedScenarioId]
+    .find((item) => item.title === title);
+}
+
 async function seedAdditionalScenario(page: Page, scenario = {
   id: 'e2e-work-mode',
   name: 'E2E Work',
@@ -97,12 +103,130 @@ async function seedTopLevelFolder(page: Page, folder = {
 }
 
 async function openGridContextMenu(page: Page) {
-  const grid = page.getByTestId('shortcut-grid');
-  await grid.click({
-    button: 'right',
-    position: { x: 8, y: 8 },
+  await page.evaluate(() => {
+    const items = Array.from(document.querySelectorAll<HTMLElement>('[data-shortcut-drag-item="true"]'));
+    if (items.length === 0) {
+      throw new Error('No shortcut drag items found while resolving grid context menu root');
+    }
+
+    const ancestorChain: HTMLElement[] = [];
+    let current = items[0]?.parentElement;
+    while (current) {
+      ancestorChain.push(current);
+      current = current.parentElement;
+    }
+
+    const gridRoot = ancestorChain.find((candidate) => items.every((item) => candidate.contains(item)));
+    if (!gridRoot) {
+      throw new Error('Unable to resolve grid root for context menu');
+    }
+
+    const rect = gridRoot.getBoundingClientRect();
+    gridRoot.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      buttons: 2,
+      clientX: rect.left + 24,
+      clientY: rect.top + 24,
+    }));
   });
   await expect(page.getByTestId('shortcut-context-menu')).toBeVisible();
+}
+
+function shortcutCards(page: Page) {
+  return page.locator('[data-shortcut-drag-item="true"]');
+}
+
+async function patchShortcut(page: Page, title: string, patch: Partial<LocalShortcutSnapshotItem>) {
+  await page.evaluate(({ shortcutTitle, shortcutPatch }) => {
+    const raw = localStorage.getItem('leaf_tab_local_profile_v1');
+    if (!raw) {
+      throw new Error('leaf_tab_local_profile_v1 is missing');
+    }
+
+    const snapshot = JSON.parse(raw);
+    const scenarioId = snapshot.selectedScenarioId;
+    const shortcuts = snapshot.scenarioShortcuts[scenarioId];
+    const shortcutIndex = shortcuts.findIndex((item: { title: string }) => item.title === shortcutTitle);
+    if (shortcutIndex < 0) {
+      throw new Error(`Unable to locate shortcut titled ${shortcutTitle}`);
+    }
+
+    shortcuts[shortcutIndex] = {
+      ...shortcuts[shortcutIndex],
+      ...shortcutPatch,
+    };
+
+    localStorage.setItem('leaf_tab_local_profile_v1', JSON.stringify(snapshot));
+    localStorage.setItem('local_shortcuts_v3', JSON.stringify(snapshot.scenarioShortcuts));
+  }, {
+    shortcutTitle: title,
+    shortcutPatch: patch,
+  });
+
+  await page.reload({ waitUntil: 'networkidle' });
+}
+
+async function dragShortcutToTarget(page: Page, options: {
+  sourceTitle: string;
+  targetTitle: string;
+  targetXRatio: number;
+  targetYRatio: number;
+  armOffsetX?: number;
+  armOffsetY?: number;
+  steps?: number;
+}) {
+  const {
+    sourceTitle,
+    targetTitle,
+    targetXRatio,
+    targetYRatio,
+    armOffsetX = 12,
+    armOffsetY = 0,
+    steps = 12,
+  } = options;
+
+  const source = page.locator(`[data-shortcut-title="${sourceTitle}"]`);
+  const target = page.locator(`[data-shortcut-title="${targetTitle}"]`);
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+
+  if (!sourceBox || !targetBox) {
+    throw new Error(`Unable to resolve shortcut card positions for ${sourceTitle} -> ${targetTitle}`);
+  }
+
+  const start = {
+    x: sourceBox.x + sourceBox.width / 2,
+    y: sourceBox.y + sourceBox.height / 2,
+  };
+  const arm = {
+    x: start.x + armOffsetX,
+    y: start.y + armOffsetY,
+  };
+  const drop = {
+    x: targetBox.x + targetBox.width * targetXRatio,
+    y: targetBox.y + targetBox.height * targetYRatio,
+  };
+
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(arm.x, arm.y, { steps: 4 });
+  await page.mouse.move(drop.x, drop.y, { steps });
+  await page.mouse.up();
+}
+
+async function clickSliderAtRatio(page: Page, testId: string, ratio: number) {
+  const slider = page.getByTestId(testId);
+  const box = await slider.boundingBox();
+  if (!box) {
+    throw new Error(`Unable to resolve slider bounds for ${testId}`);
+  }
+
+  await page.mouse.click(
+    box.x + box.width * ratio,
+    box.y + box.height / 2,
+  );
 }
 
 async function confirmDialog(page: Page) {
@@ -208,7 +332,7 @@ test.describe('LeafTab shortcut flows', () => {
     await openShortcutContextMenu(extensionPage, '哔哩哔哩');
     await extensionPage.getByTestId('shortcut-context-multi-select').click();
 
-    await extensionPage.locator('[data-testid^="shortcut-card-"]').nth(1).click();
+    await shortcutCards(extensionPage).nth(1).click();
     await extensionPage.getByTestId('shortcut-multi-select-delete').click();
 
     await confirmDialog(extensionPage);
@@ -222,54 +346,38 @@ test.describe('LeafTab shortcut flows', () => {
     const before = await readCurrentShortcutTitles(extensionPage);
     expect(before.slice(0, 2)).toEqual(['哔哩哔哩', '少数派']);
 
-    const source = extensionPage.locator('[data-shortcut-title="哔哩哔哩"]');
-    const target = extensionPage.locator('[data-shortcut-title="少数派"]');
-    const sourceBox = await source.boundingBox();
-    const targetBox = await target.boundingBox();
+    await dragShortcutToTarget(extensionPage, {
+      sourceTitle: '哔哩哔哩',
+      targetTitle: '少数派',
+      targetXRatio: 1.05,
+      targetYRatio: 0.25,
+    });
 
-    if (!sourceBox || !targetBox) {
-      throw new Error('Unable to resolve shortcut card positions for drag-and-drop test');
-    }
-
-    await extensionPage.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
-    await extensionPage.mouse.down();
-    await extensionPage.mouse.move(
-      targetBox.x + targetBox.width / 2,
-      targetBox.y + Math.max(6, targetBox.height * 0.15),
-      { steps: 12 },
-    );
-    await extensionPage.mouse.up();
-
-    await expect.poll(() => readCurrentShortcutTitles(extensionPage)).not.toEqual(before);
-
-    const after = await readCurrentShortcutTitles(extensionPage);
-    expect(after[0]).toBe('少数派');
-    expect(after[1]).toBe('哔哩哔哩');
+    await expect.poll(async () => (await readCurrentShortcutTitles(extensionPage)).slice(0, 3)).toEqual([
+      '少数派',
+      '哔哩哔哩',
+      '淘宝',
+    ]);
   });
 
   test('creates a folder when dropping a shortcut onto another shortcut center', async ({ extensionPage }) => {
-    const source = extensionPage.locator('[data-shortcut-title="哔哩哔哩"]');
-    const target = extensionPage.locator('[data-shortcut-title="少数派"]');
-    const sourceBox = await source.boundingBox();
-    const targetBox = await target.boundingBox();
+    await dragShortcutToTarget(extensionPage, {
+      sourceTitle: '哔哩哔哩',
+      targetTitle: '少数派',
+      targetXRatio: 0.5,
+      targetYRatio: 0.5,
+    });
 
-    if (!sourceBox || !targetBox) {
-      throw new Error('Unable to resolve shortcut card positions for folder-creation test');
-    }
-
-    await extensionPage.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
-    await extensionPage.mouse.down();
-    await extensionPage.mouse.move(
-      targetBox.x + targetBox.width / 2,
-      targetBox.y + targetBox.height / 2,
-      { steps: 12 },
-    );
-    await extensionPage.mouse.up();
+    const dialog = extensionPage.getByRole('dialog').last();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('textbox').fill('Playwright Folder');
+    await dialog.getByRole('button', { name: /Save|保存/ }).click();
+    await expect(dialog).toBeHidden();
 
     await expect.poll(async () => {
       const snapshot = await readLocalProfileSnapshot(extensionPage);
       const shortcuts = snapshot.scenarioShortcuts[snapshot.selectedScenarioId];
-      const folder = shortcuts.find((item) => item.kind === 'folder');
+      const folder = shortcuts.find((item) => item.kind === 'folder' && item.title === 'Playwright Folder');
       return folder?.children?.map((item) => item.title).join('|') ?? null;
     }).toBe('哔哩哔哩|少数派');
   });
@@ -328,7 +436,7 @@ test.describe('LeafTab shortcut flows', () => {
   test('keeps selected order when pinning multiple shortcuts to the top', async ({ extensionPage }) => {
     await openShortcutContextMenu(extensionPage, 'Netflix');
     await extensionPage.getByTestId('shortcut-context-multi-select').click();
-    await extensionPage.locator('[data-testid^="shortcut-card-"]').nth(7).click();
+    await shortcutCards(extensionPage).nth(7).click();
     await extensionPage.getByTestId('shortcut-multi-select-pin-top').click();
 
     const after = await readCurrentShortcutTitles(extensionPage);
@@ -411,7 +519,7 @@ test.describe('LeafTab shortcut flows', () => {
 
     await openShortcutContextMenu(extensionPage, '哔哩哔哩');
     await extensionPage.getByTestId('shortcut-context-multi-select').click();
-    await extensionPage.locator('[data-testid^="shortcut-card-"]').nth(1).click();
+    await shortcutCards(extensionPage).nth(1).click();
     await extensionPage.getByTestId('shortcut-multi-select-move').click();
     await extensionPage.getByTestId(`shortcut-multi-select-move-target-${targetScenario.id}`).click();
 
@@ -421,39 +529,46 @@ test.describe('LeafTab shortcut flows', () => {
   });
 
   test('persists icon color changes', async ({ extensionPage }) => {
+    const beforeColor = (await readCurrentShortcut(extensionPage, '京东'))?.iconColor ?? '';
+
     await openShortcutContextMenu(extensionPage, '京东');
     await extensionPage.getByTestId('shortcut-context-edit').click();
 
     await expect(extensionPage.getByTestId('shortcut-modal')).toBeVisible();
     await extensionPage.getByTestId('shortcut-icon-mode-letter').click();
-    await extensionPage.getByTestId('shortcut-color-#FA8A00').click();
+    await clickSliderAtRatio(extensionPage, 'shortcut-color-slider-hue', 0.08);
+    await clickSliderAtRatio(extensionPage, 'shortcut-color-slider-saturation', 0.85);
+    await clickSliderAtRatio(extensionPage, 'shortcut-color-slider-brightness', 0.42);
     await extensionPage.getByTestId('shortcut-modal-save').click();
 
-    const snapshot = await readLocalProfileSnapshot(extensionPage);
-    const editedShortcut = snapshot.scenarioShortcuts[snapshot.selectedScenarioId]
-      .find((item) => item.title === '京东');
-
-    expect(editedShortcut).toMatchObject({
-      iconRendering: 'letter',
-      iconColor: '#FA8A00',
-    });
+    const editedShortcut = await readCurrentShortcut(extensionPage, '京东');
+    expect(editedShortcut?.iconRendering).toBe('letter');
+    expect(editedShortcut?.iconColor).toMatch(/^#[0-9A-F]{6}$/i);
+    expect(editedShortcut?.iconColor).not.toBe(beforeColor);
   });
 
   test('persists auto-official toggle for shortcuts without official icons', async ({ extensionPage }) => {
-    await openShortcutContextMenu(extensionPage, '京东');
+    await patchShortcut(extensionPage, '36Kr', {
+      useOfficialIcon: false,
+      autoUseOfficialIcon: true,
+      officialIconAvailableAtSave: false,
+      iconRendering: 'favicon',
+      iconColor: '',
+    });
+
+    await openShortcutContextMenu(extensionPage, '36Kr');
     await extensionPage.getByTestId('shortcut-context-edit').click();
 
     await expect(extensionPage.getByTestId('shortcut-modal')).toBeVisible();
+    await expect(extensionPage.getByTestId('shortcut-auto-official-switch')).toBeEnabled();
     await extensionPage.getByTestId('shortcut-auto-official-switch').click();
     await extensionPage.getByTestId('shortcut-modal-save').click();
 
-    const snapshot = await readLocalProfileSnapshot(extensionPage);
-    const editedShortcut = snapshot.scenarioShortcuts[snapshot.selectedScenarioId]
-      .find((item) => item.title === '京东');
-
+    const editedShortcut = await readCurrentShortcut(extensionPage, '36Kr');
     expect(editedShortcut).toMatchObject({
       autoUseOfficialIcon: false,
       useOfficialIcon: false,
+      iconRendering: 'favicon',
     });
   });
 

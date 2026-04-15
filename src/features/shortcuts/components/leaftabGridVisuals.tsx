@@ -2,7 +2,7 @@ import React from 'react';
 import {
   computeLeaftabLargeFolderPreviewSize as computeSharedLeaftabLargeFolderPreviewSize,
   resolveLeaftabRootItemLayout as resolveSharedLeaftabRootItemLayout,
-} from '@leaftab/grid-preset-leaftab';
+} from '@leaftab/workspace-preset-leaftab';
 import { RiCheckFill } from '@/icons/ri-compat';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
@@ -16,6 +16,7 @@ import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
 const SELECTION_INDICATOR_SIZE_PX = 16;
 const SELECTION_INDICATOR_OFFSET_PX = -4;
 const MERGE_PREVIEW_COMPACT_TINT = 'rgba(232, 236, 240, 0.3)';
+const DROP_PREVIEW_OPACITY_TRANSITION_MS = 150;
 
 type RootShortcutGridCardRenderParamsShape = {
   shortcut: Shortcut;
@@ -27,6 +28,7 @@ type RootShortcutGridCardRenderParamsShape = {
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
+  folderDropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
   onOpen: () => void;
@@ -228,6 +230,7 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
       forceTextWhite={params.forceTextWhite}
       enableLargeFolder={params.enableLargeFolder}
       largeFolderPreviewSize={params.largeFolderPreviewSize}
+      folderDropTargetActive={params.folderDropTargetActive}
       onPreviewShortcutOpen={params.onPreviewShortcutOpen}
       selectionDisabled={params.selectionDisabled}
       shortcut={params.shortcut}
@@ -374,8 +377,29 @@ export function renderLeaftabDropPreview(params: {
   width: number;
   height: number;
   borderRadius?: string;
+  opacity?: number;
   testId?: string;
 }) {
+  return <LeaftabDropPreviewNode {...params} />;
+}
+
+function LeaftabDropPreviewNode(params: {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  borderRadius?: string;
+  opacity?: number;
+  testId?: string;
+}) {
+  const [hasAppeared, setHasAppeared] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasAppeared(true);
+  }, []);
+
+  const resolvedOpacity = hasAppeared ? (params.opacity ?? 1) : 0;
+
   return (
     <div
       data-testid={params.testId}
@@ -387,7 +411,9 @@ export function renderLeaftabDropPreview(params: {
         width: params.width,
         height: params.height,
         borderRadius: params.borderRadius,
+        opacity: resolvedOpacity,
         boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.42)',
+        transition: `opacity ${DROP_PREVIEW_OPACITY_TRANSITION_MS}ms ease`,
       }}
     />
   );

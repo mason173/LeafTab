@@ -1,8 +1,8 @@
 import {
   RootShortcutGrid as PackageRootShortcutGrid,
   type RootShortcutGridProps as PackageRootShortcutGridProps,
-} from '@leaftab/grid-react';
-import { createLeaftabRootGridPreset } from '@leaftab/grid-preset-leaftab';
+} from '@leaftab/workspace-react';
+import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
@@ -32,6 +32,7 @@ export type RootShortcutGridCardRenderParams = {
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
+  folderDropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
   onOpen: () => void;
@@ -244,6 +245,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                   forceTextWhite,
                   enableLargeFolder: largeFolderEnabled,
                   largeFolderPreviewSize,
+                  folderDropTargetActive: params.centerPreviewActive && params.shortcut.kind === 'folder',
                   onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
                   selectionDisabled: params.selectionDisabled,
                   onOpen: params.onOpen,

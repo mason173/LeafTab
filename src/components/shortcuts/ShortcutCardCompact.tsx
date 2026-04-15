@@ -17,6 +17,7 @@ interface ShortcutCardCompactProps {
   remoteIconScale?: number;
   enableLargeFolder?: boolean;
   largeFolderPreviewSize?: number;
+  folderDropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
   disableIconWrapperEffects?: boolean;
@@ -44,6 +45,7 @@ export function ShortcutCardCompact({
   remoteIconScale = 1,
   enableLargeFolder = false,
   largeFolderPreviewSize,
+  folderDropTargetActive = false,
   onPreviewShortcutOpen,
   selectionDisabled = false,
   disableIconWrapperEffects = false,
@@ -94,6 +96,7 @@ export function ShortcutCardCompact({
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
+                  highlightBorder={folderDropTargetActive}
                   onOpenFolder={folderSelectionDisabled ? undefined : onOpen}
                   onOpenShortcut={folderSelectionDisabled ? undefined : onPreviewShortcutOpen}
                 />
@@ -103,6 +106,7 @@ export function ShortcutCardCompact({
                   size={metrics.previewSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
+                  highlightBorder={folderDropTargetActive}
                   selectionDisabled={folderSelectionDisabled}
                 />
               )

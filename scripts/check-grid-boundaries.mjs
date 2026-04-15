@@ -19,6 +19,7 @@ const forbiddenEngineMarkers = [
 ];
 
 const forbiddenHostEngineImports = [
+  "from '@leaftab/workspace-core'",
   "from '@leaftab/grid-core'",
 ];
 
@@ -48,7 +49,7 @@ async function main() {
   assertIncludes(
     rootGridSource,
     rootGridFile,
-    "from '@leaftab/grid-react'",
+    "from '@leaftab/workspace-react'",
     'RootShortcutGrid host adapter must import the shared package component.',
   );
   assertIncludes(
@@ -61,7 +62,7 @@ async function main() {
   assertIncludes(
     folderSurfaceSource,
     folderSurfaceFile,
-    "from '@leaftab/grid-react'",
+    "from '@leaftab/workspace-react'",
     'FolderShortcutSurface host adapter must import the shared package component.',
   );
   assertIncludes(
@@ -131,7 +132,7 @@ async function main() {
   }
 
   console.log(
-    '[grid-boundary] Host adapters still point at @leaftab/grid-react, remain thin, and do not own grid engine behavior.',
+    '[grid-boundary] Host adapters still point at @leaftab/workspace-react, remain thin, and do not own workspace engine behavior.',
   );
 }
 
