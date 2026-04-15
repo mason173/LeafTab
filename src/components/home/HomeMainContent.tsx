@@ -132,7 +132,9 @@ export const HomeMainContent = memo(function HomeMainContent({
 
   const handleShortcutGridDragStart = useCallback(() => {
     shortcutGridProps.onDragStart?.();
-    drawer.handleShortcutDragStart();
+    drawer.handleShortcutDragStart({
+      hostAutoScroll: false,
+    });
   }, [drawer.handleShortcutDragStart, shortcutGridProps.onDragStart]);
 
   const handleShortcutGridDragEnd = useCallback(() => {

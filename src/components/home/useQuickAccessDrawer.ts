@@ -68,7 +68,7 @@ interface UseQuickAccessDrawerResult {
   drawerScrollLocked: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
-  handleShortcutDragStart: () => void;
+  handleShortcutDragStart: (options?: { hostAutoScroll?: boolean }) => void;
   handleShortcutDragEnd: () => void;
   handleDrawerOpenChange: () => void;
   handleActiveSnapPointChange: (next: number | string | null) => void;
@@ -103,6 +103,7 @@ export function useQuickAccessDrawer({
   const drawerWheelAreaRef = useRef<HTMLDivElement>(null);
   const drawerShortcutScrollRef = useRef<HTMLDivElement>(null);
   const dragInteractionActiveRef = useRef(false);
+  const dragHostAutoScrollEnabledRef = useRef(true);
   const dragAutoScrollRafRef = useRef<number | null>(null);
   const dragAutoScrollLastFrameRef = useRef(0);
   const lastDragPointerRef = useRef<{
@@ -404,8 +405,9 @@ export function useQuickAccessDrawer({
     quickAccessFullSnapPoint,
   ]);
 
-  const handleShortcutDragStart = useCallback(() => {
+  const handleShortcutDragStart = useCallback((options?: { hostAutoScroll?: boolean }) => {
     dragInteractionActiveRef.current = true;
+    dragHostAutoScrollEnabledRef.current = options?.hostAutoScroll !== false;
     setDragInteractionActive(true);
     wheelIntentRef.current = 0;
     blockedShortcutScrollSessionRef.current = null;
@@ -415,6 +417,7 @@ export function useQuickAccessDrawer({
 
   const handleShortcutDragEnd = useCallback(() => {
     dragInteractionActiveRef.current = false;
+    dragHostAutoScrollEnabledRef.current = true;
     setDragInteractionActive(false);
     lastDragPointerRef.current = null;
     stopDragAutoScroll();
@@ -440,7 +443,7 @@ export function useQuickAccessDrawer({
   }, [disableScrollInteraction, setBottomBounceOffsetImmediate]);
 
   useEffect(() => {
-    if (!dragInteractionActive) {
+    if (!dragInteractionActive || !dragHostAutoScrollEnabledRef.current) {
       lastDragPointerRef.current = null;
       stopDragAutoScroll();
       return;
@@ -463,7 +466,12 @@ export function useQuickAccessDrawer({
     const tick = (now: number) => {
       dragAutoScrollRafRef.current = null;
 
-      if (!dragInteractionActiveRef.current || !isDrawerExpanded || !showShortcuts) {
+      if (
+        !dragInteractionActiveRef.current
+        || !dragHostAutoScrollEnabledRef.current
+        || !isDrawerExpanded
+        || !showShortcuts
+      ) {
         dragAutoScrollLastFrameRef.current = 0;
         return;
       }
@@ -549,6 +557,7 @@ export function useQuickAccessDrawer({
     setDrawerLayoutProgressImmediate(0);
     setBottomBounceOffsetImmediate(0);
     dragInteractionActiveRef.current = false;
+    dragHostAutoScrollEnabledRef.current = true;
     setDragInteractionActive(false);
     lastDragPointerRef.current = null;
     stopDragAutoScroll();
@@ -608,6 +617,7 @@ export function useQuickAccessDrawer({
       setBottomBounceOffsetImmediate(0);
       if (dragInteractionActiveRef.current) {
         dragInteractionActiveRef.current = false;
+        dragHostAutoScrollEnabledRef.current = true;
         setDragInteractionActive(false);
         lastDragPointerRef.current = null;
         stopDragAutoScroll();

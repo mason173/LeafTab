@@ -1112,6 +1112,7 @@ export default function App() {
             folderDisplayMode: 'small',
             children: folderChildren,
           }),
+          pendingRootFolderMerge.targetShortcutId,
         );
         if (!result) return prev;
 

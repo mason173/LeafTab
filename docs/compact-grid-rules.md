@@ -49,6 +49,10 @@ Important rule:
 
 > target edges are the icon body's edges, not the full cell edges
 
+The reorder drop preview uses that same icon-body footprint.
+
+It must match the compact icon preview rect, not the full card height including the title block.
+
 ### Intents
 
 The runtime separates:
@@ -65,6 +69,11 @@ The root grid can resolve:
 - `reorder-root`
 - `merge-root-shortcuts`
 - `move-root-shortcut-into-folder`
+
+When two root icons merge into a new folder:
+
+- the new folder is inserted at the target icon's slot
+- not at the dragged icon's source slot
 
 There is also one special root-drag mode:
 

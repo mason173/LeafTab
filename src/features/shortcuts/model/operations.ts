@@ -66,6 +66,7 @@ export function mergeShortcutsIntoNewFolder(
   path: ShortcutContainerPath,
   shortcutIds: readonly string[],
   createFolder: CreateShortcutFolder,
+  anchorShortcutId?: string | null,
 ): { nextShortcuts: Shortcut[]; folder: Shortcut } | null {
   const container = findContainerShortcuts(shortcuts, path);
   if (!container) return null;
@@ -82,7 +83,10 @@ export function mergeShortcutsIntoNewFolder(
   const selectedIds = new Set(selectedEntries.map(({ shortcut }) => shortcut.id));
   const folderChildren = selectedEntries.map(({ shortcut }) => shortcut);
   const folder = createFolder(folderChildren);
-  const insertIndex = selectedEntries[0].index;
+  const anchorEntry = anchorShortcutId
+    ? selectedEntries.find(({ shortcut }) => shortcut.id === anchorShortcutId) ?? null
+    : null;
+  const insertIndex = anchorEntry?.index ?? selectedEntries[0].index;
   const nextContainerShortcuts: Shortcut[] = [];
 
   container.forEach((shortcut, index) => {

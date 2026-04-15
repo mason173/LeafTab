@@ -21,6 +21,26 @@ That shows up most clearly in this scenario:
 
 This plan is for the final version of the system, not a small patch. The goal is to build a drag architecture that stays correct under scroll, folder interactions, and future layout evolution.
 
+## Status Update
+
+As of the current root Drawer auto-scroll fix:
+
+- the critical scroll-time root drag bug has been fixed upstream in `leaftab-workspace`
+- the active `Leaftab` root runtime now delegates `engine="v2"` to the shared `@leaftab/workspace-react` root grid adapter
+- the host-side experimental root V2 behavior engine is no longer the preferred path
+- the current meaning of "V2" should be:
+  - shared root engine parity
+  - thin host runtime selection
+  - no competing host-side drag behavior branch
+
+This matters because the bug was solved only after the drag semantics and projection model were corrected in the shared engine itself.
+
+So the plan below should now be read as:
+
+1. continue converging the real root drag engine in `leaftab-workspace`
+2. keep `Leaftab` as a thin host with visuals, policy, and wiring
+3. use vendored/published workspace packages as the shipping path back into the app
+
 ## Product-Level Goals
 
 1. Root drag behavior must stay correct while the container auto-scrolls.
@@ -359,10 +379,11 @@ Exit criteria:
 
 - snapshot can describe current root layout without using browser element rects
 
-### Phase 2: Build Root Drag V2 Engine
+### Phase 2: Stabilize Shared Root Drag Engine
 
 Goals:
 
+- stabilize the shared root drag engine in `workspace-core` / `workspace-react`
 - resolve hover and drop intent purely from:
   - content-space pointer
   - scroll offsets
@@ -379,37 +400,43 @@ Exit criteria:
 
 - root drag decisions no longer depend on live DOM overlap
 
-### Phase 3: Build Root React Controller V2
+### Phase 3: Keep Host Runtime Thin
 
 Goals:
 
-- wire the new engine into the root grid without touching folder drag yet
+- wire the shared engine into the host root grid without touching folder drag yet
+- keep any `RootShortcutGridV2` host component as a compatibility/runtime wrapper, not a second behavior engine
 
 Work:
 
-- introduce `RootShortcutGridV2`
-- drive it from one scroll container owner
+- keep `RootShortcutGridRuntime`
+- let `RootShortcutGridV2` delegate to the shared package adapter
+- drive root drag from one scroll container owner
 - keep the render contract close to current component APIs
 
 Exit criteria:
 
 - root reorder works in both static and auto-scroll scenarios
 
-### Phase 4: Migrate Root Grid To V2 And Keep Folder On Legacy Path
+### Phase 4: Vendor And Ship Shared Root V2
 
 Goals:
 
 - reduce blast radius
+- make the shipping app depend on vendored/published shared packages instead of a sibling checkout
 
 Work:
 
-- ship V2 for root only
+- vendor refreshed `leaftab-workspace` packages into `Leaftab`
+- ship shared root V2 for root only
 - keep folder surface on the existing path temporarily
 - keep cross-surface extract handoff compatible
 
 Exit criteria:
 
-- the biggest existing pain point is solved without rewriting folder drag yet
+- the biggest existing pain point is solved in the shared engine
+- the app is back on vendored/published dependency mode
+- folder drag still stays stable
 
 ### Phase 5: Rebuild Folder Drag On The Same Coordinate System
 
@@ -457,15 +484,17 @@ The current critical bug is in root drag inside the Drawer. Solve root first and
 
 The host must not run a competing drag auto-scroll loop once root V2 is active.
 
-### Guardrail 4: Prefer Feature Flag Or Swappable Component
+### Guardrail 4: Prefer Thin Runtime Or Swappable Component
 
 The safest implementation path is either:
 
-- `RootShortcutGridV2` behind a feature flag
+- a thin `RootShortcutGridRuntime` with explicit engine selection
 
 or:
 
-- both legacy and V2 components living side by side until parity is reached
+- both legacy and shared-V2 entry points living side by side until parity is reached
+
+But the host must not grow a second long-lived root drag behavior engine.
 
 ### Guardrail 5: Projection Is Derived, Never Authoritative
 
@@ -523,13 +552,15 @@ Add root grid tests for:
 
 ### PR 3
 
-- add `RootShortcutGridV2`
-- wire root drag under a local feature flag
+- keep `RootShortcutGridRuntime`
+- delegate host `RootShortcutGridV2` to the shared root adapter
+- wire root drag under a local feature flag if needed
 
 ### PR 4
 
-- migrate Drawer root grid to V2
+- migrate Drawer root grid to shared V2
 - remove host-side competing auto-scroll behavior for root drag
+- refresh vendored workspace packages
 
 ### PR 5
 
@@ -549,8 +580,9 @@ The correct long-term direction is:
 
 - preserve existing shortcut data
 - keep intent application logic stable
-- replace root drag geometry with a content-space slot engine
-- roll it out in phases
+- converge root drag geometry inside `leaftab-workspace`
+- keep `Leaftab` as a thin host
+- roll shared changes back through vendored/published packages
 - only then migrate folder drag
 
 That gives the project a credible path toward a durable, high-end drag system without risking unnecessary churn in already-stable data logic.

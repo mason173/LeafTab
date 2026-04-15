@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
+import { RootShortcutGridRuntime as RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGridRuntime';
 import { SearchExperience } from '@/components/search/SearchExperience';
 import {
   INITIAL_REVEAL_TIMING,
@@ -241,6 +241,7 @@ export function QuickAccessDrawer({
                             }}
                           >
                             <RootShortcutGrid
+                              engine="v2"
                               {...shortcutGridProps}
                               bottomInset={drawerShortcutBottomInset}
                               forceTextWhite={drawerShortcutForceWhiteText}
