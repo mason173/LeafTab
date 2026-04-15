@@ -39,6 +39,10 @@ function classifyDependency(version) {
     return 'missing';
   }
 
+  if (version.startsWith('file:') && version.endsWith('.tgz')) {
+    return 'published';
+  }
+
   return version.startsWith('file:') ? 'local' : 'published';
 }
 

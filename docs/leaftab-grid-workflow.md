@@ -84,6 +84,28 @@ Local co-development is still supported when you intentionally switch back to lo
 
 - `npm run grid:check:local`
 
+Vendored package refresh is the safest way to pull shared behavior changes back into `Leaftab` without making the app build depend on a sibling checkout:
+
+- `npm run grid:vendor:update -- /path/to/leaftab-workspace`
+- `npm run grid:vendor:update:auto`
+- `npm run grid:vendor:refresh`
+
+That command:
+
+- builds the shared workspace packages
+- packs fresh tarballs into `vendor/leaftab-workspace`
+- updates `Leaftab` dependency refs to the new tarballs
+- refreshes the root lockfile and verifies published-mode wiring
+
+Auto mode looks for a local checkout in this order:
+
+- explicit `-- /path/to/leaftab-workspace`
+- `LEAFTAB_WORKSPACE_DIR`
+- sibling `../leaftab-workspace`
+- sibling `../leaftab-grid`
+
+`npm run grid:vendor:refresh` is the full happy path when you want to update vendored workspace packages and immediately confirm `Leaftab` still builds.
+
 The important rule is consistency:
 
 - do not mix local and published grid package sources
