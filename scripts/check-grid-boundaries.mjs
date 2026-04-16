@@ -132,7 +132,7 @@ async function main() {
   }
 
   console.log(
-    '[grid-boundary] Host adapters still point at @leaftab/workspace-react, remain thin, and do not own workspace engine behavior.',
+    '[grid-boundary] Host adapters still point at the local @leaftab/workspace-react package, remain thin, and do not own workspace engine behavior.',
   );
 }
 

@@ -2,10 +2,10 @@
       "name": "leaftab",
       "version": "1.4.8",
       "private": true,
+      "workspaces": [
+            "packages/*"
+      ],
       "dependencies": {
-            "@leaftab/workspace-core": "file:vendor/leaftab-workspace/leaftab-workspace-core-0.2.0-alpha.1.tgz",
-            "@leaftab/workspace-preset-leaftab": "file:vendor/leaftab-workspace/leaftab-workspace-preset-leaftab-0.2.0-alpha.1.tgz",
-            "@leaftab/workspace-react": "file:vendor/leaftab-workspace/leaftab-workspace-react-0.2.0-alpha.1.tgz",
             "@radix-ui/react-accordion": "^1.2.3",
             "@radix-ui/react-alert-dialog": "^1.1.6",
             "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -82,14 +82,10 @@
       "scripts": {
             "dev": "npm run grid:verify:host && npm run icons:sync && vite --host",
             "build": "npm run build:community",
-            "grid:build:local": "npm --prefix ../leaftab-workspace run build",
+            "grid:build:local": "npm run build --workspace @leaftab/workspace-core && npm run build --workspace @leaftab/workspace-react && npm run build --workspace @leaftab/workspace-preset-leaftab",
             "grid:prepare": "node scripts/prepare-grid-deps.mjs",
-            "grid:check:local": "node scripts/prepare-grid-deps.mjs --local-only --skip-build",
-            "grid:check:published": "node scripts/prepare-grid-deps.mjs --published-only --skip-build",
+            "grid:check:local": "node scripts/prepare-grid-deps.mjs --local-only",
             "grid:check:boundaries": "node scripts/check-grid-boundaries.mjs",
-            "grid:vendor:update": "node scripts/update-workspace-vendor.mjs",
-            "grid:vendor:update:auto": "node scripts/update-workspace-vendor.mjs",
-            "grid:vendor:refresh": "npm run grid:vendor:update:auto && npm run build",
             "grid:verify:host": "npm run grid:prepare && npm run grid:check:boundaries",
             "icons:build:library": "node scripts/build-icon-library.mjs",
             "icons:sync": "npm run icons:build:library",

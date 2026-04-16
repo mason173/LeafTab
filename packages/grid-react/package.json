@@ -1,0 +1,39 @@
+{
+  "name": "@leaftab/workspace-react",
+  "version": "0.2.0-alpha.1",
+  "description": "React adapters for Leaftab Workspace, including root-grid and folder-surface interactions for shortcut workspaces.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "react",
+    "grid",
+    "drag-and-drop",
+    "shortcuts",
+    "folders"
+  ],
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "dependencies": {
+    "@leaftab/workspace-core": "^0.2.0-alpha.1"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts --passWithNoTests"
+  }
+}

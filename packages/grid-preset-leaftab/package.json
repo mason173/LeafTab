@@ -1,0 +1,41 @@
+{
+  "name": "@leaftab/workspace-preset-leaftab",
+  "version": "0.2.0-alpha.1",
+  "description": "LeafTab-like layout and rendering preset for Leaftab Workspace shortcut hosts.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "react",
+    "grid",
+    "drag-and-drop",
+    "shortcut-grid",
+    "folders",
+    "preset"
+  ],
+  "peerDependencies": {
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
+  },
+  "dependencies": {
+    "@leaftab/workspace-core": "^0.2.0-alpha.1",
+    "@leaftab/workspace-react": "^0.2.0-alpha.1"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts --passWithNoTests"
+  }
+}

@@ -1,13 +1,21 @@
-import { readFile, access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
 
-const GRID_PACKAGE_NAMES = [
-  '@leaftab/workspace-core',
-  '@leaftab/workspace-react',
-  '@leaftab/workspace-preset-leaftab',
+const GRID_PACKAGES = [
+  {
+    name: '@leaftab/workspace-core',
+    dir: 'packages/grid-core',
+  },
+  {
+    name: '@leaftab/workspace-react',
+    dir: 'packages/grid-react',
+  },
+  {
+    name: '@leaftab/workspace-preset-leaftab',
+    dir: 'packages/grid-preset-leaftab',
+  },
 ];
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,12 +26,7 @@ function parseArgs(argv) {
   return {
     localOnly: argv.includes('--local-only'),
     publishedOnly: argv.includes('--published-only'),
-    skipBuild: argv.includes('--skip-build'),
   };
-}
-
-async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, 'utf8'));
 }
 
 async function assertExists(targetPath, message) {
@@ -34,130 +37,46 @@ async function assertExists(targetPath, message) {
   }
 }
 
-function classifyDependency(version) {
-  if (typeof version !== 'string' || version.trim() === '') {
-    return 'missing';
-  }
-
-  if (version.startsWith('file:') && version.endsWith('.tgz')) {
-    return 'published';
-  }
-
-  return version.startsWith('file:') ? 'local' : 'published';
-}
-
-function runCommand(command, args, cwd) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      stdio: 'inherit',
-      env: process.env,
-    });
-
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(`${command} ${args.join(' ')} failed in ${cwd}`));
-    });
-  });
-}
-
-async function resolveGridDependencies() {
-  const packageJson = await readJson(path.join(repoRoot, 'package.json'));
-  const dependencies = packageJson.dependencies ?? {};
-
-  return GRID_PACKAGE_NAMES.map((name) => {
-    const version = dependencies[name];
-    return {
-      name,
-      version,
-      mode: classifyDependency(version),
-    };
-  });
-}
-
-async function verifyLocalDependency(dep) {
-  const relativeTarget = dep.version.slice('file:'.length);
-  const packageDir = path.resolve(repoRoot, relativeTarget);
-  const packageJsonPath = path.join(packageDir, 'package.json');
-  await assertExists(
-    packageJsonPath,
-    `[grid] Local dependency for ${dep.name} is missing: ${packageJsonPath}`,
-  );
-
-  const targetPackageJson = await readJson(packageJsonPath);
-  if (targetPackageJson.name !== dep.name) {
-    throw new Error(
-      `[grid] Expected ${dep.name} at ${packageJsonPath}, found ${targetPackageJson.name || 'unknown package'} instead.`,
-    );
-  }
-
-  return {
-    packageDir,
-    repoDir: path.resolve(packageDir, '..', '..'),
-    packageVersion: targetPackageJson.version ?? '0.0.0',
-  };
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.localOnly && args.publishedOnly) {
-    throw new Error('[grid] --local-only and --published-only cannot be used together.');
-  }
 
-  const gridDependencies = await resolveGridDependencies();
-  const missing = gridDependencies.filter((dep) => dep.mode === 'missing');
-  if (missing.length > 0) {
-    throw new Error(`[grid] Missing dependencies: ${missing.map((dep) => dep.name).join(', ')}`);
-  }
-
-  const modes = new Set(gridDependencies.map((dep) => dep.mode));
-  if (modes.size !== 1) {
+  if (args.publishedOnly) {
     throw new Error(
-      `[grid] Mixed dependency sources detected. Keep ${GRID_PACKAGE_NAMES.join(', ')} all local or all published.`,
+      '[grid] Published vendor packages were removed. Grid code now lives directly in this repo under packages/.',
     );
   }
 
-  const mode = gridDependencies[0].mode;
-  if (args.localOnly && mode !== 'local') {
-    throw new Error('[grid] Expected local file: dependencies for grid packages.');
-  }
-  if (args.publishedOnly && mode !== 'published') {
-    throw new Error('[grid] Expected published version dependencies for grid packages.');
-  }
+  for (const gridPackage of GRID_PACKAGES) {
+    const packageDir = path.join(repoRoot, gridPackage.dir);
+    const packageJsonPath = path.join(packageDir, 'package.json');
+    const srcIndexPath = path.join(packageDir, 'src', 'index.ts');
 
-  if (mode === 'published') {
-    for (const dep of gridDependencies) {
-      console.log(`[grid] Using published package ${dep.name}@${dep.version}`);
+    await assertExists(
+      packageJsonPath,
+      `[grid] Missing local grid package manifest: ${packageJsonPath}`,
+    );
+    await assertExists(
+      srcIndexPath,
+      `[grid] Missing local grid package source entry: ${srcIndexPath}`,
+    );
+
+    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'));
+    if (packageJson.name !== gridPackage.name) {
+      throw new Error(
+        `[grid] Expected ${gridPackage.name} in ${packageJsonPath}, found ${packageJson.name || 'unknown package'}.`,
+      );
     }
+  }
+
+  if (args.localOnly) {
+    console.log('[grid] Verified in-repo grid packages.');
     return;
   }
 
-  const localTargets = await Promise.all(gridDependencies.map((dep) => verifyLocalDependency(dep)));
-  for (const [index, dep] of gridDependencies.entries()) {
-    console.log(
-      `[grid] Using local source of truth ${dep.name}@${localTargets[index].packageVersion} -> ${localTargets[index].packageDir}`,
-    );
-  }
-
-  if (args.skipBuild) {
-    return;
-  }
-
-  const repoDirs = [...new Set(localTargets.map((target) => target.repoDir))];
-  for (const repoDir of repoDirs) {
-    const packageJsonPath = path.join(repoDir, 'package.json');
-    await assertExists(packageJsonPath, `[grid] Missing grid workspace package.json: ${packageJsonPath}`);
-    console.log(`[grid] Building local grid workspace in ${repoDir}`);
-    await runCommand('npm', ['run', 'build'], repoDir);
-  }
+  console.log('[grid] Using in-repo grid packages from packages/.');
 }
 
 main().catch((error) => {
-  console.error(error.message);
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

@@ -1,131 +1,56 @@
-# Leaftab Workspace Workflow
+# Leaftab Grid Workflow
 
-This document keeps `Leaftab` and `leaftab-workspace` from drifting apart.
+This repo now owns the grid engine directly.
 
 ## Source Of Truth
 
-The rule is simple:
+Grid behavior lives in these in-repo packages:
 
-> shared grid behavior changes land in `leaftab-workspace` first
+- `packages/grid-core`
+- `packages/grid-react`
+- `packages/grid-preset-leaftab`
 
-Canonical behavior spec:
-
-- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
-
-Host mirror:
+The compact drag behavior contract lives here:
 
 - `docs/compact-grid-rules.md`
 
-The team-level non-fork rule is also simple:
+## Ownership Boundary
 
-> never grow a second grid behavior engine inside `Leaftab`
+Keep shared grid behavior in the package source:
 
-That includes:
+- drag hit-testing
+- merge bridging
+- reorder state transitions
+- claimed-slot rules
+- folder extraction and folder-surface reorder behavior
+- reusable geometry and layout logic
 
-- drag and reorder rules
-- merge and folder extraction behavior
-- drop preview and settle behavior
-- reusable grid math and layout logic
-- reusable React grid adapters
-
-Keep these in `Leaftab`:
+Keep product-specific behavior in the host app:
 
 - visuals
 - product policy
 - dialogs and toasts
 - persistence
-- thin host wrappers around `@leaftab/workspace-react`
-
-More explicitly:
-
-- drag hit-testing fixes go to `leaftab-workspace`
-- merge bridging fixes go to `leaftab-workspace`
-- reorder state machine fixes go to `leaftab-workspace`
-- LeafTab host may adapt geometry inputs and visuals, but it must not introduce a separate behavior branch
+- thin wrappers in `src/features/shortcuts/components`
 
 ## Normal Development
 
-`Leaftab` now checks grid integration before builds:
+The host app still verifies the boundary before builds:
 
 ```bash
 npm run grid:verify:host
 ```
 
-What it does:
+What it checks:
 
-- detects whether `Leaftab` is using local `file:` grid packages or published package versions
-- builds the local `leaftab-workspace` workspace automatically when local `file:` dependencies are active
-- verifies that the host adapters still point at `@leaftab/workspace-react`
-- verifies that the old in-app compatibility shim has stayed thin
+- the local grid packages exist under `packages/`
+- the host adapters still point at `@leaftab/workspace-react`
+- the old compatibility shim stays thin
 
-## Recommended Change Order
+## Working On Grid Behavior
 
-If you are changing shared grid behavior:
+1. Edit the package source inside `packages/`.
+2. Run `npm run dev` or `npm run build:community` from the repo root.
+3. If needed, build package outputs explicitly with `npm run grid:build:local`.
 
-1. Edit your local `leaftab-workspace` checkout
-2. Run `cd /path/to/leaftab-workspace && npm run verify`
-3. Run `cd /path/to/Leaftab2 && npm run build:community`
-4. Commit the grid repo first
-5. Commit the host-app adaptation second
-
-If you are changing only visuals or product policy:
-
-1. Edit `Leaftab`
-2. Keep the shared package APIs stable if possible
-3. Run `npm run build:community`
-
-## Dependency Modes
-
-Current default mode uses published GitHub release tarballs:
-
-- `npm run grid:check:published`
-
-Local co-development is still supported when you intentionally switch back to local dependencies:
-
-- `npm run grid:check:local`
-
-Vendored package refresh is the safest way to pull shared behavior changes back into `Leaftab` without making the app build depend on a sibling checkout:
-
-- `npm run grid:vendor:update -- /path/to/leaftab-workspace`
-- `npm run grid:vendor:update:auto`
-- `npm run grid:vendor:refresh`
-
-That command:
-
-- builds the shared workspace packages
-- packs fresh tarballs into `vendor/leaftab-workspace`
-- updates `Leaftab` dependency refs to the new tarballs
-- refreshes the root lockfile and verifies published-mode wiring
-
-Auto mode looks for a local checkout in this order:
-
-- explicit `-- /path/to/leaftab-workspace`
-- `LEAFTAB_WORKSPACE_DIR`
-- sibling `../leaftab-workspace`
-- sibling `../leaftab-grid`
-
-`npm run grid:vendor:refresh` is the full happy path when you want to update vendored workspace packages and immediately confirm `Leaftab` still builds.
-
-The important rule is consistency:
-
-- do not mix local and published grid package sources
-- keep both `@leaftab/workspace-core` and `@leaftab/workspace-react` on the same source mode
-
-## Anti-Fork Guardrails
-
-If a future change feels like "grid engine behavior", treat that as a package change, not a host-app change.
-
-For drag semantics, read the compact grid rules before editing code:
-
-- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
-- `docs/compact-grid-rules.md`
-
-The easiest smell test is:
-
-- if another app could reuse the behavior, it belongs in `leaftab-workspace`
-- if it is only about how Leaftab looks or behaves as a product, it belongs in `Leaftab`
-
-Two rules are expected to stay true over time:
-
-1. Any drag hit-testing, bridging, or reorder state-machine fix lands in `leaftab-workspace` first.
-2. LeafTab host keeps only styling, parameters, compatibility, and adapter code, and must not grow new grid behavior branches.
+There is no separate `leaftab-workspace` repo or vendor tarball refresh step anymore.

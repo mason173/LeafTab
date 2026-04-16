@@ -1,15 +1,11 @@
 # Compact Grid Rules
 
-This file mirrors the current compact-grid behavior contract consumed by `LeafTab`.
-
-Canonical source of truth:
-
-- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
+This file is the compact-grid behavior contract consumed by `LeafTab`.
 
 If behavior changes:
 
-1. update `leaftab-workspace` first
-2. update this mirror second
+1. update the in-repo grid package source under `packages/`
+2. update this document in the same change
 
 ## Scope
 
@@ -196,7 +192,7 @@ When dragging the large folder itself:
 Before changing any drag behavior in `LeafTab`, check:
 
 - `docs/leaftab-grid-workflow.md`
-- `mason173/leaftab-workspace: docs/compact-grid-rules.md`
+- this file
 
 If the change is about:
 
@@ -207,4 +203,4 @@ If the change is about:
 - folder reorder engine behavior
 - span-aware reorder
 
-then it belongs upstream in `leaftab-workspace`, not in host-only code.
+then it belongs in the local grid packages under `packages/`, not in host-only code.
