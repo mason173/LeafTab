@@ -24,7 +24,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@target/*": ["src/targets/chromium/*"]
+      "@target/*": ["src/targets/chromium/*"],
+      "@leaftab/workspace-core": ["packages/grid-core/src/index.ts"],
+      "@leaftab/workspace-react": ["packages/grid-react/src/index.ts"],
+      "@leaftab/workspace-preset-leaftab": ["packages/grid-preset-leaftab/src/index.ts"]
     }
   },
   "include": ["src"],

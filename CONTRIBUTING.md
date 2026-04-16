@@ -16,8 +16,11 @@ Thanks for your interest in contributing to LeafTab.
 
 ## Grid Ownership
 
-- Shared drag hit-testing, merge bridging, reorder state machines, and other grid interaction behavior must be fixed in `leaftab-workspace` first.
+- Shared drag hit-testing, merge bridging, reorder state machines, and other grid interaction behavior now lives in this repo under `packages/`.
 - LeafTab host code should stay limited to visuals, parameters, persistence, compatibility, and thin adapters around `@leaftab/workspace-react`.
-- If a change feels reusable by another app, it belongs in `leaftab-workspace`, not in LeafTab host components.
-- Read `mason173/leaftab-workspace: docs/compact-grid-rules.md` before changing compact drag semantics, and sync `docs/compact-grid-rules.md` after upstream behavior changes.
+- If a change is truly grid-engine behavior, change the local package source first:
+  - `packages/grid-core`
+  - `packages/grid-react`
+  - `packages/grid-preset-leaftab`
+- Read `docs/compact-grid-rules.md` before changing compact drag semantics.
 - Run `npm run grid:verify:host` before merging grid-related changes.

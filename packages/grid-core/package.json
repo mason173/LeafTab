@@ -1,0 +1,32 @@
+{
+  "name": "@leaftab/workspace-core",
+  "version": "0.2.0-alpha.1",
+  "description": "Pure layout, drag, and folder-aware shortcut workspace logic for Leaftab Workspace.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "grid",
+    "drag-and-drop",
+    "layout",
+    "shortcuts",
+    "folders"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  }
+}

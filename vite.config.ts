@@ -162,6 +162,9 @@ export default defineConfig(async () => {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       dedupe: ['react', 'react-dom'],
       alias: {
+        '@leaftab/workspace-core': path.resolve(__dirname, './packages/grid-core/src/index.ts'),
+        '@leaftab/workspace-react': path.resolve(__dirname, './packages/grid-react/src/index.ts'),
+        '@leaftab/workspace-preset-leaftab': path.resolve(__dirname, './packages/grid-preset-leaftab/src/index.ts'),
         react: appReactPath,
         'react/jsx-runtime': path.resolve(appReactPath, 'jsx-runtime.js'),
         'react/jsx-dev-runtime': path.resolve(appReactPath, 'jsx-dev-runtime.js'),
