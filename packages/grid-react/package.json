@@ -33,7 +33,6 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --tsconfig tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --config vitest.config.ts --passWithNoTests"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

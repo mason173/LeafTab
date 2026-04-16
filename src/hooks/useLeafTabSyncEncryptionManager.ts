@@ -25,7 +25,7 @@ export type LeafTabSyncEncryptionDialogState = {
   metadata: LeafTabSyncEncryptionMetadata | null;
 };
 
-type EncryptionTransport = {
+export type LeafTabSyncEncryptionTransport = {
   readEncryptionState: () => Promise<{ metadata: LeafTabSyncEncryptionMetadata | null }>;
 } | null;
 
@@ -35,9 +35,9 @@ type UseLeafTabSyncEncryptionManagerOptions = {
   setWebdavDialogOpen: (open: boolean) => void;
   setCloudSyncConfigOpen: (open: boolean) => void;
   leafTabWebdavEncryptionScopeKey: string;
-  leafTabWebdavEncryptedTransport: EncryptionTransport;
+  leafTabWebdavEncryptedTransport: LeafTabSyncEncryptionTransport;
   cloudSyncEncryptionScopeKey: string;
-  cloudSyncEncryptedTransport: EncryptionTransport;
+  cloudSyncEncryptedTransport: LeafTabSyncEncryptionTransport;
 };
 
 export function useLeafTabSyncEncryptionManager({
@@ -144,7 +144,7 @@ export function useLeafTabSyncEncryptionManager({
   const ensureSyncEncryptionAccess = useCallback(async (params: {
     providerLabel: string;
     scopeKey: string;
-    transport: EncryptionTransport;
+    transport: LeafTabSyncEncryptionTransport;
   }) => {
     if (!params.scopeKey) return false;
     const localConfig = readLeafTabSyncEncryptionConfig(params.scopeKey);

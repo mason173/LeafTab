@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
 import { Button } from "./ui/button";

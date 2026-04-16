@@ -157,10 +157,18 @@ const concatBytes = (left: Uint8Array, right: Uint8Array) => {
   return merged;
 };
 
+const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
+  if (bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer;
+  }
+  return bytes.slice().buffer;
+};
+
 const createVerifierBytes = async (keyBytes: Uint8Array) => {
+  const verifierBytes = concatBytes(encoder.encode(ENCRYPTION_VERIFIER_LABEL), keyBytes);
   const digest = await getCrypto().subtle.digest(
     'SHA-256',
-    concatBytes(encoder.encode(ENCRYPTION_VERIFIER_LABEL), keyBytes),
+    toArrayBuffer(verifierBytes),
   );
   return new Uint8Array(digest);
 };
@@ -168,7 +176,7 @@ const createVerifierBytes = async (keyBytes: Uint8Array) => {
 const importAesKey = async (keyBytes: Uint8Array) => {
   return getCrypto().subtle.importKey(
     'raw',
-    keyBytes,
+    toArrayBuffer(keyBytes),
     { name: 'AES-GCM' },
     false,
     ['encrypt', 'decrypt'],

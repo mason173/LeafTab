@@ -6,6 +6,7 @@ import type {
 import { ROOT_SHORTCUTS_PATH } from '../model/paths';
 import { SUPPORTED_SHORTCUT_FOLDER_DEPTH, supportsShortcutFolderDepth } from '../model/constraints';
 import {
+  applyBigFolderBlockInsert,
   extractShortcutFromFolder,
   moveShortcutsIntoFolder,
   reorderRootShortcutPreservingLargeFolderPositions,
@@ -78,18 +79,26 @@ export function applyShortcutDropIntent(
 
   switch (intent.type) {
     case 'reorder-root':
-      nextShortcuts = shouldPreserveLargeFolderPositions(shortcuts, intent.activeShortcutId)
-        ? reorderRootShortcutPreservingLargeFolderPositions(
+      nextShortcuts = intent.placement?.kind === 'big-folder-block-insert'
+        ? applyBigFolderBlockInsert({
             shortcuts,
-            intent.activeShortcutId,
-            intent.targetIndex,
-          )
-        : reorderShortcutWithinContainer(
-            shortcuts,
-            ROOT_SHORTCUTS_PATH,
-            intent.activeShortcutId,
-            intent.targetIndex,
-          );
+            shortcutId: intent.activeShortcutId,
+            targetFootprint: intent.placement.targetFootprint,
+            gridColumns: intent.placement.gridColumns,
+            rowCount: intent.placement.rowCount,
+          })
+        : shouldPreserveLargeFolderPositions(shortcuts, intent.activeShortcutId)
+          ? reorderRootShortcutPreservingLargeFolderPositions(
+              shortcuts,
+              intent.activeShortcutId,
+              intent.targetIndex,
+            )
+          : reorderShortcutWithinContainer(
+              shortcuts,
+              ROOT_SHORTCUTS_PATH,
+              intent.activeShortcutId,
+              intent.targetIndex,
+            );
       break;
     case 'move-root-shortcut-into-folder':
       nextShortcuts = moveShortcutsIntoFolder(

@@ -3,7 +3,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { RiImageFill } from "@/icons/ri-compat";
 import { useTranslation } from "react-i18next";
-import { forwardRef, useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
+import type { BingWallpaperRefreshResult } from "@/hooks/useWallpaper";
 import type { WallpaperMode } from "@/wallpaper/types";
 import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
@@ -34,7 +35,7 @@ interface WallpaperSelectorProps {
   onModeChange: (mode: WallpaperMode) => void;
   bingWallpaper: string;
   isBingWallpaperRefreshing?: boolean;
-  onRefreshBingWallpaper?: () => Promise<void> | void;
+  onRefreshBingWallpaper?: () => Promise<BingWallpaperRefreshResult> | BingWallpaperRefreshResult;
   weatherCode: number;
   customWallpaper: string | null;
   onCustomWallpaperChange: (url: string) => void;
@@ -45,7 +46,6 @@ interface WallpaperSelectorProps {
   onWallpaperMaskOpacityChange: (value: number) => void;
   darkModeAutoDimWallpaperEnabled: boolean;
   onDarkModeAutoDimWallpaperEnabledChange: (enabled: boolean) => void;
-  reduceVisualEffects?: boolean;
   hideWeather?: boolean;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -68,7 +68,6 @@ export default function WallpaperSelector({
   onWallpaperMaskOpacityChange,
   darkModeAutoDimWallpaperEnabled,
   onDarkModeAutoDimWallpaperEnabledChange,
-  reduceVisualEffects = false,
   hideWeather = false,
   trigger,
   open,

@@ -11,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { extractDomainFromUrl, isUrl } from '@/utils';
 import { parseSiteSearchShortcut } from '@/utils/siteSearch';
 import {
-  getEngineIcon,
   SEARCH_ENGINE_BRAND_NAMES,
 } from '@/components/search/searchEngineSwitcher.shared';
 import type { SearchSuggestionsPanelProps } from '@/components/search/SearchSuggestionsPanel.shared';
@@ -166,7 +165,6 @@ export function SearchSuggestionsPanel({
     action,
     item,
     index,
-    isCurrentTab,
     shortcutDomain,
     secondaryLabel,
     showShortcutDomain,
@@ -175,7 +173,6 @@ export function SearchSuggestionsPanel({
     action: SearchAction;
     item: SearchAction['item'];
     index: number;
-    isCurrentTab: boolean;
     shortcutDomain: string;
     secondaryLabel: string;
     showShortcutDomain: boolean;

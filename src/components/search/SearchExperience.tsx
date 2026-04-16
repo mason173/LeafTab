@@ -683,7 +683,6 @@ export const SearchExperience = memo(function SearchExperience({
     historyOpen,
     openHistoryPanel,
     closeHistoryPanel,
-    historySelectedIndex,
     setHistorySelectedIndex,
     searchActions,
     activateSearchAction,

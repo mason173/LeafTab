@@ -1,14 +1,23 @@
+import type {
+  ScenarioShortcuts as CoreScenarioShortcuts,
+  Shortcut as CoreShortcut,
+  ShortcutDraft as CoreShortcutDraft,
+  ShortcutFolderDisplayMode as CoreShortcutFolderDisplayMode,
+  ShortcutIconAppearance as CoreShortcutIconAppearance,
+  ShortcutKind as CoreShortcutKind,
+  ShortcutVisualMode as CoreShortcutVisualMode,
+} from '@leaftab/workspace-core';
 import { ScenarioMode } from './scenario/scenario';
 import type { ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
 import type { DisplayMode } from '@/displayMode/config';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 
-export type ShortcutVisualMode = 'favicon' | 'letter';
-export type ShortcutIconAppearance = 'colorful' | 'monochrome' | 'accent';
+export type ShortcutVisualMode = CoreShortcutVisualMode;
+export type ShortcutIconAppearance = CoreShortcutIconAppearance;
 export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
-export type ShortcutKind = 'link' | 'folder';
-export type ShortcutFolderDisplayMode = 'small' | 'large';
+export type ShortcutKind = CoreShortcutKind;
+export type ShortcutFolderDisplayMode = CoreShortcutFolderDisplayMode;
 
 export interface WeatherManualLocation {
   city: string;
@@ -54,25 +63,11 @@ export interface SyncablePreferences {
   weatherManualLocation: WeatherManualLocation | null;
 }
 
-export interface Shortcut {
-  id: string;
-  title: string;
-  url: string;
-  icon: string;
-  kind?: ShortcutKind;
-  children?: Shortcut[];
-  folderDisplayMode?: ShortcutFolderDisplayMode;
-  useOfficialIcon?: boolean;
-  autoUseOfficialIcon?: boolean;
-  officialIconAvailableAtSave?: boolean;
-  officialIconColorOverride?: boolean;
-  iconRendering?: ShortcutVisualMode;
-  iconColor?: string;
-}
+export type Shortcut = CoreShortcut;
 
-export type ShortcutDraft = Omit<Shortcut, 'id' | 'kind' | 'children'>;
+export type ShortcutDraft = CoreShortcutDraft;
 
-export type ScenarioShortcuts = Record<string, Shortcut[]>;
+export type ScenarioShortcuts = CoreScenarioShortcuts;
 
 export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
 

@@ -1,6 +1,50 @@
 import type { Shortcut } from '../shortcutTypes';
 
 export type RootDropEdge = 'before' | 'after' | 'center';
+
+export type GridCellCoord = {
+  row: number;
+  column: number;
+};
+
+export type SerpentineGridCell = GridCellCoord & {
+  sequence: number;
+};
+
+export type GridWorldSpec = {
+  columns: number;
+  cellSize: number;
+  origin?: {
+    x: number;
+    y: number;
+  };
+  rowCount?: number;
+};
+
+export type BigFolderAnchorPolicy = 'center';
+
+export type BigFolderFootprint = {
+  anchorPolicy: BigFolderAnchorPolicy;
+  columnStart: number;
+  rowStart: number;
+  columnSpan: 2;
+  rowSpan: 2;
+  cells: SerpentineGridCell[];
+};
+
+export type RootReorderPlacement =
+  | {
+      kind: 'stable-insert';
+    }
+  | {
+      kind: 'big-folder-block-insert';
+      gridColumns: number;
+      rowCount?: number;
+      targetFootprint: BigFolderFootprint;
+    };
+
+export type RootDragInteractionMode = 'normal' | 'reorder-only' | 'external-insert';
+
 export type DragRect = {
   width: number;
   height: number;
@@ -23,6 +67,7 @@ export type RootShortcutDropIntent =
       overShortcutId: string;
       targetIndex: number;
       edge: Exclude<RootDropEdge, 'center'>;
+      placement?: RootReorderPlacement;
     }
   | {
       type: 'merge-root-shortcuts';
@@ -33,6 +78,24 @@ export type RootShortcutDropIntent =
       type: 'move-root-shortcut-into-folder';
       activeShortcutId: string;
       targetFolderId: string;
+    };
+
+export type RootShortcutIntentCandidate =
+  | {
+      type: 'reorder-candidate';
+      intent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }>;
+    }
+  | {
+      type: 'group-candidate';
+      intent: Extract<RootShortcutDropIntent, { type: 'merge-root-shortcuts' }>;
+    }
+  | {
+      type: 'move-into-folder-candidate';
+      intent: Extract<RootShortcutDropIntent, { type: 'move-root-shortcut-into-folder' }>;
+    }
+  | {
+      type: 'merge-into-big-folder-candidate';
+      intent: Extract<RootShortcutDropIntent, { type: 'move-root-shortcut-into-folder' }>;
     };
 
 export type FolderShortcutDropIntent =

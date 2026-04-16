@@ -371,7 +371,39 @@ export function renderLeaftabFolderEmptyState(emptyText: string) {
   );
 }
 
+export function resolveLeaftabShadowPreviewGeometry(params: {
+  shortcut: Shortcut;
+  iconSize: number;
+  iconCornerRadius?: number;
+  allowLargeFolder?: boolean;
+  largeFolderPreviewSize?: number;
+}): {
+  shadowWidth: number;
+  shadowHeight: number;
+  shadowBorderRadius: string;
+} {
+  const metrics = getCompactShortcutCardMetrics({
+    shortcut: params.shortcut,
+    iconSize: params.iconSize,
+    allowLargeFolder: params.allowLargeFolder,
+    largeFolderPreviewSize: params.largeFolderPreviewSize,
+  });
+
+  const shadowBorderRadius = params.shortcut.kind === 'folder'
+    ? (metrics.largeFolder
+        ? getLargeFolderBorderRadius(metrics.previewSize, params.iconCornerRadius ?? 22)
+        : getSmallFolderBorderRadius(metrics.previewSize, params.iconCornerRadius ?? 22))
+    : getShortcutIconBorderRadius(params.iconCornerRadius ?? 22);
+
+  return {
+    shadowWidth: metrics.previewSize,
+    shadowHeight: metrics.previewSize,
+    shadowBorderRadius,
+  };
+}
+
 export function renderLeaftabDropPreview(params: {
+  shortcut?: Shortcut;
   left: number;
   top: number;
   width: number;
@@ -379,11 +411,17 @@ export function renderLeaftabDropPreview(params: {
   borderRadius?: string;
   opacity?: number;
   testId?: string;
+  shadowWidth?: number;
+  shadowHeight?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowBorderRadius?: string;
 }) {
   return <LeaftabDropPreviewNode {...params} />;
 }
 
 function LeaftabDropPreviewNode(params: {
+  shortcut?: Shortcut;
   left: number;
   top: number;
   width: number;
@@ -391,6 +429,11 @@ function LeaftabDropPreviewNode(params: {
   borderRadius?: string;
   opacity?: number;
   testId?: string;
+  shadowWidth?: number;
+  shadowHeight?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowBorderRadius?: string;
 }) {
   const [hasAppeared, setHasAppeared] = React.useState(false);
 
@@ -404,27 +447,44 @@ function LeaftabDropPreviewNode(params: {
     <div
       data-testid={params.testId}
       aria-hidden="true"
-      className="pointer-events-none absolute z-0 border border-black/15 bg-black/10"
+      className="pointer-events-none absolute z-0"
       style={{
         left: params.left,
         top: params.top,
         width: params.width,
         height: params.height,
-        borderRadius: params.borderRadius,
         opacity: resolvedOpacity,
-        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.42)',
         transition: `opacity ${DROP_PREVIEW_OPACITY_TRANSITION_MS}ms ease`,
       }}
-    />
+    >
+      <div
+        className="absolute border border-black/12 bg-black/8"
+        style={{
+          left: params.shadowOffsetX ?? 0,
+          top: params.shadowOffsetY ?? 0,
+          width: params.shadowWidth ?? params.width,
+          height: params.shadowHeight ?? params.height,
+          borderRadius: params.shadowBorderRadius ?? params.borderRadius,
+          boxShadow: '0 10px 18px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(255,255,255,0.34)',
+          filter: 'blur(0.2px)',
+        }}
+      />
+    </div>
   );
 }
 
 export function renderLeaftabFolderDropPreview(params: {
+  shortcut: Shortcut;
   left: number;
   top: number;
   width: number;
   height: number;
   borderRadius?: string;
+  shadowWidth?: number;
+  shadowHeight?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowBorderRadius?: string;
 }) {
   return renderLeaftabDropPreview({
     ...params,

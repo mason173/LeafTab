@@ -168,6 +168,7 @@ export function useCloudSync({
     const snapshot = readLocalProfileSnapshot();
     if (!snapshot) return null;
     return {
+      version: 3,
       scenarioModes: normalizeScenarioModesList(snapshot.scenarioModes),
       selectedScenarioId: snapshot.selectedScenarioId,
       scenarioShortcuts: normalizeScenarioShortcuts(snapshot.scenarioShortcuts),

@@ -33,8 +33,6 @@ interface CloudSyncConfigDialogProps {
   onOpenChange: (open: boolean) => void;
   onBackToParent?: () => void;
   onSaveSuccess?: () => void | Promise<void>;
-  encryptionReady?: boolean;
-  onManageEncryption?: () => void | Promise<void>;
   onLinkGoogle?: () => void | Promise<void>;
   onLogout?: () => void | Promise<void>;
 }
@@ -44,8 +42,6 @@ export function CloudSyncConfigDialog({
   onOpenChange,
   onBackToParent,
   onSaveSuccess,
-  encryptionReady = false,
-  onManageEncryption,
   onLinkGoogle,
   onLogout,
 }: CloudSyncConfigDialogProps) {

@@ -304,7 +304,7 @@ export const buildChangelogSections = (t: TFunction): ChangelogSection[] => {
   const stableItems = items.filter((item) => (item.channel || "stable") === "stable");
   const previewItems = items.filter((item) => item.channel === "preview");
 
-  return [
+  const sections = [
     {
       id: "stable",
       title: t("changelog.sections.stable", { defaultValue: "正式版本" }),
@@ -317,5 +317,7 @@ export const buildChangelogSections = (t: TFunction): ChangelogSection[] => {
       description: t("changelog.sections.previewDescription", { defaultValue: "Alpha / Beta 测试版本，功能和细节可能继续调整" }),
       items: previewItems,
     },
-  ].filter((section) => section.items.length > 0);
+  ] satisfies ChangelogSection[];
+
+  return sections.filter((section) => section.items.length > 0);
 };

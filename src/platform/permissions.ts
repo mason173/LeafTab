@@ -109,7 +109,7 @@ export async function containsExtensionPermission(permission: string): Promise<b
   if (!declared.optional.includes(permission)) return false;
 
   try {
-    return await callPermissionsContains({ permissions: [permission] });
+    return await callPermissionsContains({ permissions: [permission as chrome.runtime.ManifestPermission] });
   } catch {
     return false;
   }
@@ -132,7 +132,7 @@ export async function requestExtensionPermission(permission: string): Promise<bo
   if (!declared.optional.includes(permission)) return false;
 
   try {
-    return await callPermissionsRequest({ permissions: [permission] });
+    return await callPermissionsRequest({ permissions: [permission as chrome.runtime.ManifestPermission] });
   } catch {
     return false;
   }

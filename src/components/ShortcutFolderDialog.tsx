@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { FolderShortcutDropIntent } from '@leaftab/workspace-core';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,7 +8,6 @@ import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
-import type { FolderShortcutDropIntent } from '@/features/shortcuts/drag/types';
 
 type ShortcutFolderDialogProps = {
   open: boolean;

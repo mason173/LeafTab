@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { googleFonts, loadGoogleFont, toCssFontFamily } from '../utils/googleFonts';
 import { RiCheckFill } from '@/icons/ri-compat';
 import { cn } from './ui/utils';

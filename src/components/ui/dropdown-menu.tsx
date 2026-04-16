@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu@2.1.6";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import {
   RiArrowRightSLine as ChevronRightIcon,
   RiCheckFill as CheckIcon,

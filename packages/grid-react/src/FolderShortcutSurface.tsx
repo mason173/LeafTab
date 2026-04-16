@@ -8,13 +8,16 @@ import {
   hasPointerDragActivated,
   measureDragItemRects,
   measureDragItems,
+  offsetRect,
   pointInRect,
+  toGlobalPoint,
   type ActivePointerDragState,
   type FolderExtractDragStartPayload,
   type FolderShortcutDropIntent,
   type PendingPointerDragState,
   type PointerPoint,
   type ProjectionOffset,
+  type ScrollOffset,
   type Shortcut,
 } from '@leaftab/workspace-core';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +32,7 @@ import {
 import { GridDragItemFrame } from './GridDragItemFrame';
 import { normalizePreviewGeometry, type GridPreviewRect } from './previewGeometry';
 import { resolveFinalHoverIntent } from './rootShortcutGridHelpers';
+import { packItemsIntoSerpentineGrid } from './serpentineWorldGrid';
 import { useDragMotionState } from './useDragMotionState';
 
 const EXTRACT_HANDOFF_DELAY_MS = 520;
@@ -72,6 +76,7 @@ type MeasuredFolderItem = {
 };
 
 type FolderProjectedDropPreview = {
+  shortcut: Shortcut;
   left: number;
   top: number;
   width: number;
@@ -111,6 +116,7 @@ export interface FolderShortcutSurfaceProps {
   emptyText?: string;
   renderEmptyState?: () => React.ReactNode;
   columns?: number;
+  cellSize?: number;
   columnGap?: number;
   rowGap?: number;
   overlayZIndex?: number;
@@ -222,30 +228,39 @@ function findScrollableParent(node: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-function offsetDomRectByScrollY(rect: DOMRect, scrollOffsetY: number): DOMRect {
-  if (Math.abs(scrollOffsetY) < 0.01) {
+function offsetDomRectByScrollOffset(rect: DOMRect, scrollOffset: ScrollOffset): DOMRect {
+  if (Math.abs(scrollOffset.x) < 0.01 && Math.abs(scrollOffset.y) < 0.01) {
     return rect;
   }
 
+  const worldRect = offsetRect({
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  }, scrollOffset);
+
   return new DOMRect(
-    rect.x,
-    rect.y - scrollOffsetY,
-    rect.width,
-    rect.height,
+    worldRect.left,
+    worldRect.top,
+    worldRect.width,
+    worldRect.height,
   );
 }
 
-function offsetMeasuredFolderItemsByScrollY(
+function offsetMeasuredFolderItemsByScrollOffset(
   snapshot: MeasuredFolderItem[] | null,
-  scrollOffsetY: number,
+  scrollOffset: ScrollOffset,
 ): MeasuredFolderItem[] | null {
-  if (!snapshot || Math.abs(scrollOffsetY) < 0.01) {
+  if (!snapshot || (Math.abs(scrollOffset.x) < 0.01 && Math.abs(scrollOffset.y) < 0.01)) {
     return snapshot;
   }
 
   return snapshot.map((item) => ({
     ...item,
-    rect: offsetDomRectByScrollY(item.rect, scrollOffsetY),
+    rect: offsetDomRectByScrollOffset(item.rect, scrollOffset),
   }));
 }
 
@@ -311,6 +326,7 @@ function buildProjectedDropPreview(params: {
   const rootRect = rootElement.getBoundingClientRect();
 
   return {
+    shortcut: activeItem.shortcut,
     left: target.left - rootRect.left + activeItem.layout.previewOffsetX,
     top: target.top - rootRect.top + activeItem.layout.previewOffsetY,
     width: activeItem.layout.previewWidth,
@@ -381,6 +397,23 @@ function buildVisualRect(params: {
   };
 }
 
+function isPointInsideFolderPreviewRect(params: {
+  point: PointerPoint;
+  rect: DOMRect;
+  layout: Pick<FolderItemLayout, 'previewOffsetX' | 'previewOffsetY' | 'previewWidth' | 'previewHeight'>;
+}): boolean {
+  const { point, rect, layout } = params;
+  const localX = point.x - rect.left;
+  const localY = point.y - rect.top;
+
+  return (
+    localX >= layout.previewOffsetX
+    && localX <= layout.previewOffsetX + layout.previewWidth
+    && localY >= layout.previewOffsetY
+    && localY <= layout.previewOffsetY + layout.previewHeight
+  );
+}
+
 function FolderMaskDropZones({
   active,
   hovered,
@@ -436,6 +469,7 @@ export function FolderShortcutSurface({
   emptyText = '',
   renderEmptyState,
   columns = 3,
+  cellSize,
   columnGap = 16,
   rowGap = 20,
   overlayZIndex = DRAG_OVERLAY_Z_INDEX,
@@ -499,12 +533,27 @@ export function FolderShortcutSurface({
     () => measuredItems.find((item) => item.shortcut.id === activeDragId) ?? null,
     [activeDragId, measuredItems],
   );
+  const packedLayout = useMemo(() => packItemsIntoSerpentineGrid({
+    items: measuredItems,
+    gridColumns: columns,
+    getSpan: () => ({
+      columnSpan: 1,
+      rowSpan: 1,
+    }),
+  }), [columns, measuredItems]);
+  const placedItemsByShortcutId = useMemo(
+    () => new Map(packedLayout.placedItems.map((item) => [item.shortcut.id, item])),
+    [packedLayout.placedItems],
+  );
 
-  const hoverIntent = hoverResolution.interactionIntent;
   const visualProjectionIntent = hoverResolution.visualProjectionIntent;
+  const dragScrollOffset = useMemo<ScrollOffset>(() => ({
+    x: 0,
+    y: dragScrollOffsetY,
+  }), [dragScrollOffsetY]);
   const projectionLayoutSnapshot = useMemo(
-    () => offsetMeasuredFolderItemsByScrollY(dragLayoutSnapshot, dragScrollOffsetY),
-    [dragLayoutSnapshot, dragScrollOffsetY],
+    () => offsetMeasuredFolderItemsByScrollOffset(dragLayoutSnapshot, dragScrollOffset),
+    [dragLayoutSnapshot, dragScrollOffset],
   );
 
   const commitDragLayoutSnapshot = useCallback((nextSnapshot: MeasuredFolderItem[] | null) => {
@@ -636,7 +685,7 @@ export function FolderShortcutSurface({
     if (!session) return;
 
     const activeItem = (
-      offsetMeasuredFolderItemsByScrollY(dragLayoutSnapshotRef.current, dragScrollOffsetY)
+      offsetMeasuredFolderItemsByScrollOffset(dragLayoutSnapshotRef.current, dragScrollOffset)
       ?? measureFolderItems(measuredItems, itemElementsRef.current)
     )
       .find((item) => item.shortcut.id === session.activeShortcutId);
@@ -656,7 +705,7 @@ export function FolderShortcutSurface({
       pointer,
       anchor,
     });
-  }, [clearDragState, dragScrollOffsetY, folderId, measuredItems, onExtractDragStart]);
+  }, [clearDragState, dragScrollOffset, folderId, measuredItems, onExtractDragStart]);
 
   const clearExtractHandoffTimer = useCallback(() => {
     if (extractHandoffTimerRef.current !== null) {
@@ -678,22 +727,31 @@ export function FolderShortcutSurface({
   }, [performExtractHandoff]);
 
   const resolveFolderCompactRegions = useCallback((item: MeasuredFolderItem): CompactTargetRegions => {
-    const rootRect = rootRef.current?.getBoundingClientRect() ?? null;
+    const rootViewportRect = rootRef.current?.getBoundingClientRect() ?? null;
+    const rootRect = rootViewportRect
+      ? offsetDomRectByScrollOffset(rootViewportRect, dragScrollOffset)
+      : null;
     const safeColumns = Math.max(columns, 1);
     const columnWidth = rootRect
-      ? (rootRect.width - columnGap * Math.max(0, safeColumns - 1)) / safeColumns
+      ? rootRect.width / safeColumns
       : item.rect.width;
-    const columnIndex = item.shortcutIndex % safeColumns;
+    const resolvedCellSize = cellSize ?? item.rect.height;
+    const placedItem = placedItemsByShortcutId.get(item.shortcut.id) ?? null;
+    const columnIndex = Math.max(0, (placedItem?.columnStart ?? 1) - 1);
+    const rowIndex = Math.max(0, (placedItem?.rowStart ?? 1) - 1);
     const cellLeft = rootRect
-      ? rootRect.left + columnIndex * (columnWidth + columnGap)
+      ? rootRect.left + columnIndex * columnWidth
       : item.rect.left;
+    const cellTop = rootRect
+      ? rootRect.top + rowIndex * resolvedCellSize
+      : item.rect.top;
     const targetCellRegion: CompactTargetRegion = {
       left: cellLeft,
-      top: item.rect.top,
+      top: cellTop,
       right: cellLeft + columnWidth,
-      bottom: item.rect.bottom,
+      bottom: cellTop + resolvedCellSize,
       width: columnWidth,
-      height: item.rect.height,
+      height: resolvedCellSize,
     };
     const targetIconRegion: CompactTargetRegion = {
       left: item.rect.left + item.layout.previewOffsetX,
@@ -709,7 +767,7 @@ export function FolderShortcutSurface({
       targetIconRegion,
       targetIconHitRegion: targetIconRegion,
     };
-  }, [columnGap, columns]);
+  }, [cellSize, columns, dragScrollOffset, placedItemsByShortcutId]);
 
   const resolveHoverState = useCallback((
     pointer: PointerPoint,
@@ -725,7 +783,11 @@ export function FolderShortcutSurface({
     }
 
     latestPointerRef.current = pointer;
-    const snapshot = measuredItemsOverride ?? measureFolderItems(measuredItems, itemElementsRef.current);
+    const globalPointer = toGlobalPoint(pointer, dragScrollOffset);
+    const snapshot = offsetMeasuredFolderItemsByScrollOffset(
+      measuredItemsOverride ?? measureFolderItems(measuredItems, itemElementsRef.current),
+      dragScrollOffset,
+    ) ?? [];
     const activeItem = snapshot.find((item) => item.shortcut.id === session.activeShortcutId);
     if (!activeItem) {
       return {
@@ -736,7 +798,7 @@ export function FolderShortcutSurface({
     }
 
     const recognitionPoint = getDragVisualCenter({
-      pointer,
+      pointer: globalPointer,
       previewOffset: session.previewOffset,
       activeRect: activeItem.rect,
       visualRect: {
@@ -747,7 +809,7 @@ export function FolderShortcutSurface({
       },
     });
     const activeVisualRect = buildVisualRect({
-      pointer,
+      pointer: globalPointer,
       previewOffset: session.previewOffset,
       width: activeItem.layout.previewWidth,
       height: activeItem.layout.previewHeight,
@@ -755,7 +817,10 @@ export function FolderShortcutSurface({
       offsetY: activeItem.layout.previewOffsetY,
     });
 
-    const boundaryRect = maskBoundaryRef.current?.getBoundingClientRect() ?? null;
+    const boundaryViewportRect = maskBoundaryRef.current?.getBoundingClientRect() ?? null;
+    const boundaryRect = boundaryViewportRect
+      ? offsetDomRectByScrollOffset(boundaryViewportRect, dragScrollOffset)
+      : null;
     if (boundaryRect && !pointInRect(recognitionPoint, boundaryRect)) {
       ensureExtractHandoffTimer();
       return {
@@ -798,6 +863,7 @@ export function FolderShortcutSurface({
   }, [
     clearExtractHandoffTimer,
     columnGap,
+    dragScrollOffset,
     ensureExtractHandoffTimer,
     maskBoundaryRef,
     measuredItems,
@@ -1046,13 +1112,14 @@ export function FolderShortcutSurface({
         className="relative grid"
         style={{
           gridTemplateColumns: `repeat(${Math.max(columns, 1)}, minmax(0, 1fr))`,
+          gridAutoRows: cellSize ? `${cellSize}px` : measuredItems[0]?.layout.height ? `${measuredItems[0].layout.height}px` : undefined,
           columnGap: `${columnGap}px`,
           rowGap: `${rowGap}px`,
         }}
         data-folder-shortcut-grid="true"
       >
         {activeDragId && projectedDropPreview ? renderDropPreview(projectedDropPreview) : null}
-        {measuredItems.map((item) => {
+        {packedLayout.placedItems.map((item) => {
           const isDragging = hiddenShortcutId === item.shortcut.id;
           const dragProjectionOffset = projectionOffsets.get(item.shortcut.id) ?? null;
           const layoutShiftOffset = layoutShiftOffsets.get(item.shortcut.id) ?? null;
@@ -1065,6 +1132,10 @@ export function FolderShortcutSurface({
             <div
               key={item.shortcut.id}
               className="relative flex justify-center"
+              style={{
+                gridColumn: `${item.columnStart} / span ${item.columnSpan}`,
+                gridRow: `${item.rowStart} / span ${item.rowSpan}`,
+              }}
               data-folder-shortcut-grid-item="true"
             >
               <GridDragItemFrame
@@ -1083,6 +1154,13 @@ export function FolderShortcutSurface({
                 onPointerDown={(event) => {
                   if (event.button !== 0 || !event.isPrimary) return;
                   const rect = event.currentTarget.getBoundingClientRect();
+                  if (!isPointInsideFolderPreviewRect({
+                    point: { x: event.clientX, y: event.clientY },
+                    rect,
+                    layout: item.layout,
+                  })) {
+                    return;
+                  }
                   pendingDragRef.current = {
                     pointerId: event.pointerId,
                     pointerType: event.pointerType,
@@ -1099,6 +1177,11 @@ export function FolderShortcutSurface({
                 placeholder={buildDefaultPlaceholder(item.layout)}
                 frameProps={{
                   'data-folder-shortcut-id': item.shortcut.id,
+                  style: {
+                    width: item.layout.width,
+                    height: item.layout.height,
+                    overflow: 'visible',
+                  },
                 }}
               >
                 {renderItem({

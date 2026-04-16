@@ -8,12 +8,15 @@ import {
   getDragVisualCenter,
   getProjectedGridItemRect,
   hasPointerDragActivated,
+  isRootDragModeReorderOnly,
   isShortcutFolder,
   measureDragItemRects,
   measureDragItems,
-  packGridItems,
+  offsetRect,
   pointInRect,
+  resolveRootDragInteractionMode,
   resolveRootDropIntent,
+  toGlobalPoint,
   type ActivePointerDragState,
   type DragRect,
   type MeasuredDragItem,
@@ -21,6 +24,7 @@ import {
   type PointerPoint,
   type ProjectionOffset,
   type RootShortcutDropIntent,
+  type ScrollOffset,
   type Shortcut,
   type ShortcutExternalDragSessionSeed,
 } from '@leaftab/workspace-core';
@@ -28,7 +32,9 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal, flushSync } from 'react-dom';
 import { GridDragItemFrame } from './GridDragItemFrame';
 import {
-  resolveCompactRootHoverResolution,
+  resolveModeAwareCompactRootHoverResolution,
+  resolveReorderOnlyRootHoverResolution,
+  resolveModeScopedRootReorderIntent,
   type CompactRootHoverResolution,
   type CompactTargetRegion,
   type CompactTargetRegions,
@@ -48,6 +54,7 @@ import {
   type RootShortcutGridItem,
   type RootShortcutGridItemLayout,
 } from './rootShortcutGridHelpers';
+import { packItemsIntoSerpentineGrid } from './serpentineWorldGrid';
 import { useDragMotionState } from './useDragMotionState';
 
 export type { RootShortcutGridItemLayout } from './rootShortcutGridHelpers';
@@ -82,12 +89,8 @@ type OverItemCandidate = {
 
 type HoverResolution = CompactRootHoverResolution;
 
-type RootDragResolutionMode =
-  | 'normal'
-  | 'large-folder-reorder-only'
-  | 'extracted-reorder-only';
-
 type ProjectedDropPreview = {
+  shortcut: Shortcut;
   left: number;
   top: number;
   width: number;
@@ -113,32 +116,6 @@ function extractPreviousRootReorderIntents(resolution: HoverResolution): {
       ? resolution.visualProjectionIntent
       : null,
   };
-}
-
-function buildReorderOnlyHoverResolution(params: {
-  nextIntent: RootShortcutDropIntent | null;
-  previousInteractionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
-  previousVisualProjectionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
-}): HoverResolution {
-  const { nextIntent, previousInteractionIntent, previousVisualProjectionIntent } = params;
-  return {
-    interactionIntent: nextIntent ?? previousInteractionIntent,
-    visualProjectionIntent: nextIntent ?? previousVisualProjectionIntent ?? previousInteractionIntent,
-  };
-}
-
-function resolveRootDragResolutionMode(params: {
-  sourceRootShortcutId: string | null;
-  activeShortcut: Shortcut;
-}): RootDragResolutionMode {
-  const { sourceRootShortcutId, activeShortcut } = params;
-  if (sourceRootShortcutId) {
-    return 'extracted-reorder-only';
-  }
-  if (isShortcutFolder(activeShortcut) && activeShortcut.folderDisplayMode === 'large') {
-    return 'large-folder-reorder-only';
-  }
-  return 'normal';
 }
 
 export type RootShortcutExternalDragSession = ShortcutExternalDragSessionSeed & {
@@ -212,6 +189,26 @@ function buildVisualRect(params: {
     width,
     height,
   };
+}
+
+function isPointInsidePreviewRect(params: {
+  point: PointerPoint;
+  rect: DOMRect;
+  layout: Pick<
+    NormalizedRootShortcutGridItemLayout,
+    'previewOffsetX' | 'previewOffsetY' | 'previewWidth' | 'previewHeight'
+  >;
+}): boolean {
+  const { point, rect, layout } = params;
+  const localX = point.x - rect.left;
+  const localY = point.y - rect.top;
+
+  return (
+    localX >= layout.previewOffsetX
+    && localX <= layout.previewOffsetX + layout.previewWidth
+    && localY >= layout.previewOffsetY
+    && localY <= layout.previewOffsetY + layout.previewHeight
+  );
 }
 
 export interface RootShortcutGridProps {
@@ -352,30 +349,39 @@ function measureGridItems(
   });
 }
 
-function offsetDomRectByScrollY(rect: DOMRect, scrollOffsetY: number): DOMRect {
-  if (Math.abs(scrollOffsetY) < 0.01) {
+function offsetDomRectByScrollOffset(rect: DOMRect, scrollOffset: ScrollOffset): DOMRect {
+  if (Math.abs(scrollOffset.x) < 0.01 && Math.abs(scrollOffset.y) < 0.01) {
     return rect;
   }
 
+  const worldRect = offsetRect({
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  }, scrollOffset);
+
   return new DOMRect(
-    rect.x,
-    rect.y - scrollOffsetY,
-    rect.width,
-    rect.height,
+    worldRect.left,
+    worldRect.top,
+    worldRect.width,
+    worldRect.height,
   );
 }
 
-function offsetMeasuredGridItemsByScrollY(
+function offsetMeasuredGridItemsByScrollOffset(
   snapshot: MeasuredGridItem[] | null,
-  scrollOffsetY: number,
+  scrollOffset: ScrollOffset,
 ): MeasuredGridItem[] | null {
-  if (!snapshot || Math.abs(scrollOffsetY) < 0.01) {
+  if (!snapshot || (Math.abs(scrollOffset.x) < 0.01 && Math.abs(scrollOffset.y) < 0.01)) {
     return snapshot;
   }
 
   return snapshot.map((item) => ({
     ...item,
-    rect: offsetDomRectByScrollY(item.rect, scrollOffsetY),
+    rect: offsetDomRectByScrollOffset(item.rect, scrollOffset),
   }));
 }
 
@@ -491,6 +497,7 @@ function buildProjectedDropPreview(params: {
 
   if (!hoverIntent) {
     return {
+      shortcut: activeItem.shortcut,
       left: activeSnapshot.rect.left - rootRect.left + activeItem.layout.previewOffsetX,
       top: activeSnapshot.rect.top - rootRect.top + activeItem.layout.previewOffsetY,
       width: activeItem.layout.previewWidth,
@@ -510,6 +517,7 @@ function buildProjectedDropPreview(params: {
     frozenSortIds,
   })) {
     return {
+      shortcut: activeItem.shortcut,
       left: activeSnapshot.rect.left - rootRect.left + activeItem.layout.previewOffsetX,
       top: activeSnapshot.rect.top - rootRect.top + activeItem.layout.previewOffsetY,
       width: activeItem.layout.previewWidth,
@@ -527,7 +535,7 @@ function buildProjectedDropPreview(params: {
     });
     if (!projectedItems) return null;
 
-    const projectedLayout = packGridItems({
+    const projectedLayout = packItemsIntoSerpentineGrid({
       items: projectedItems,
       gridColumns,
       getSpan: (item) => ({
@@ -545,6 +553,7 @@ function buildProjectedDropPreview(params: {
       rowHeight,
       rowGap,
       layout: activeItem.layout,
+      shortcut: activeItem.shortcut,
     });
   }
 
@@ -555,6 +564,7 @@ function buildProjectedDropPreview(params: {
   if (!resolvedSnapshot) return null;
 
   return {
+    shortcut: activeItem.shortcut,
     left: resolvedSnapshot.rect.left - rootRect.left + activeItem.layout.previewOffsetX,
     top: resolvedSnapshot.rect.top - rootRect.top + activeItem.layout.previewOffsetY,
     width: activeItem.layout.previewWidth,
@@ -632,7 +642,7 @@ function buildProjectedDragSettleTarget(params: {
     });
     if (!projectedItems) return null;
 
-    const projectedLayout = packGridItems({
+    const projectedLayout = packItemsIntoSerpentineGrid({
       items: projectedItems,
       gridColumns,
       getSpan: (item) => ({
@@ -769,7 +779,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     setDragScrollOffsetY((current) => (Math.abs(current - nextOffset) < 0.01 ? current : nextOffset));
   }, []);
 
-  const packedLayout = useMemo(() => packGridItems({
+  const packedLayout = useMemo(() => packItemsIntoSerpentineGrid({
     items,
     gridColumns,
     getSpan: (item) => ({
@@ -894,9 +904,13 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   }, []);
 
   const hoverState = useMemo(() => deriveHoverStateFromIntent(hoverIntent), [hoverIntent]);
+  const dragScrollOffset = useMemo<ScrollOffset>(() => ({
+    x: 0,
+    y: dragScrollOffsetY,
+  }), [dragScrollOffsetY]);
   const projectionLayoutSnapshot = useMemo(
-    () => offsetMeasuredGridItemsByScrollY(dragLayoutSnapshot, dragScrollOffsetY),
-    [dragLayoutSnapshot, dragScrollOffsetY],
+    () => offsetMeasuredGridItemsByScrollOffset(dragLayoutSnapshot, dragScrollOffset),
+    [dragLayoutSnapshot, dragScrollOffset],
   );
 
   const computeProjectionOffsetsForIntent = useCallback((projectionIntent: RootShortcutDropIntent | null) => {
@@ -915,7 +929,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
         frozenSortIds: frozenSpanItemSortIds,
       });
       if (projectedItems) {
-        const projectedLayout = packGridItems({
+        const projectedLayout = packItemsIntoSerpentineGrid({
           items: projectedItems,
           gridColumns,
           getSpan: (item) => ({
@@ -1088,7 +1102,11 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     const currentInteractionProjectionOffsets = computeProjectionOffsetsForIntent(currentHoverResolution.interactionIntent);
     const currentVisualProjectionOffsets = computeProjectionOffsetsForIntent(currentHoverResolution.visualProjectionIntent);
 
-    const measuredItems = measuredItemsOverride ?? measureGridItems(items, itemElementsRef.current);
+    const globalPointer = toGlobalPoint(pointer, dragScrollOffset);
+    const measuredItems = offsetMeasuredGridItemsByScrollOffset(
+      measuredItemsOverride ?? measureGridItems(items, itemElementsRef.current),
+      dragScrollOffset,
+    ) ?? [];
     const activeItem = measuredItems.find((item) => item.sortId === nextActiveDragId);
     if (!activeItem) return EMPTY_HOVER_RESOLUTION;
     const extractedSourceRootShortcutId = session.sourceRootShortcutId ?? activeSourceRootShortcutId;
@@ -1112,32 +1130,32 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
       : [];
 
     const recognitionPoint = getDragVisualCenter({
-	      pointer,
-	      previewOffset: session.previewOffset,
-	      activeRect: activeItem.rect,
+      pointer: globalPointer,
+      previewOffset: session.previewOffset,
+      activeRect: activeItem.rect,
       visualRect: {
         offsetX: activeItem.layout.previewOffsetX,
         offsetY: activeItem.layout.previewOffsetY,
         width: activeItem.layout.previewWidth,
         height: activeItem.layout.previewHeight,
-	      },
-	    });
-	    const activeVisualRect = buildVisualRect({
-	      pointer,
-	      previewOffset: session.previewOffset,
-	      width: activeItem.layout.previewWidth,
-	      height: activeItem.layout.previewHeight,
-	      offsetX: activeItem.layout.previewOffsetX,
-	      offsetY: activeItem.layout.previewOffsetY,
-	    });
+      },
+    });
+    const activeVisualRect = buildVisualRect({
+      pointer: globalPointer,
+      previewOffset: session.previewOffset,
+      width: activeItem.layout.previewWidth,
+      height: activeItem.layout.previewHeight,
+      offsetX: activeItem.layout.previewOffsetX,
+      offsetY: activeItem.layout.previewOffsetY,
+    });
     const activeItemRect = {
-      left: pointer.x - session.previewOffset.x,
-      top: pointer.y - session.previewOffset.y,
+      left: globalPointer.x - session.previewOffset.x,
+      top: globalPointer.y - session.previewOffset.y,
       width: activeItem.layout.width,
       height: activeItem.layout.height,
     };
 
-    const rootRect = rootElement.getBoundingClientRect();
+    const rootRect = offsetDomRectByScrollOffset(rootElement.getBoundingClientRect(), dragScrollOffset);
     const activeSlotCandidates = extractedSourceRootShortcutId
       ? activeExtractedSlotCandidates
       : reorderSlotCandidates;
@@ -1214,7 +1232,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           });
         })()
       : null;
-    const resolutionMode = resolveRootDragResolutionMode({
+    const dragMode = resolveRootDragInteractionMode({
       sourceRootShortcutId: extractedSourceRootShortcutId,
       activeShortcut: activeItem.shortcut,
     });
@@ -1233,32 +1251,16 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
         })()
       : null;
 
-    if (resolutionMode === 'large-folder-reorder-only') {
-      return buildReorderOnlyHoverResolution({
-        nextIntent: slotIntent,
-        previousInteractionIntent: previousReorderIntent,
-        previousVisualProjectionIntent: previousVisualReorderIntent,
-      });
-    }
-
-    if (resolutionMode === 'extracted-reorder-only') {
-      return buildReorderOnlyHoverResolution({
-        nextIntent: extractedSlotIntent,
-        previousInteractionIntent: previousReorderIntent,
-        previousVisualProjectionIntent: previousVisualReorderIntent,
-      });
-    }
-
     if (resolveCompactTargetRegions) {
-      return resolveCompactRootHoverResolution({
+      return resolveModeAwareCompactRootHoverResolution({
         activeSortId: nextActiveDragId,
+        dragMode,
         recognitionPoint,
         previousRecognitionPoint: recognitionPointRef.current,
         activeVisualRect,
         measuredItems,
         items,
-        previousInteractionIntent: currentHoverResolution.interactionIntent,
-        previousVisualProjectionIntent: currentHoverResolution.visualProjectionIntent,
+        previousResolution: currentHoverResolution,
         interactionProjectionOffsets: currentInteractionProjectionOffsets,
         visualProjectionOffsets: currentVisualProjectionOffsets,
         resolveRegions: buildResolveMeasuredItemCompactRegions({
@@ -1266,9 +1268,21 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           placementsBySortId: placedGridItemsBySortId,
         }),
         slotIntent,
+        externalInsertSlotIntent: extractedSlotIntent,
         preferSlotIntentForReorder: usesSparseRootSlotReorder,
         columnGap,
         rowGap,
+      });
+    }
+
+    if (isRootDragModeReorderOnly(dragMode)) {
+      return resolveReorderOnlyRootHoverResolution({
+        nextIntent: resolveModeScopedRootReorderIntent({
+          dragMode,
+          slotIntent,
+          externalInsertSlotIntent: extractedSlotIntent,
+        }),
+        previousResolution: currentHoverResolution,
       });
     }
 
@@ -1307,6 +1321,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
       overRect: resolvedDropTargetRects.overRect,
       overCenterRect: resolvedDropTargetRects.overCenterRect,
       items,
+      mode: dragMode,
     });
     if (!rawIntent) {
       return {
@@ -1331,7 +1346,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     activeSourceRootShortcutId,
     columnGap,
     computeProjectionOffsetsForIntent,
-    dragLayoutSnapshot,
+    dragScrollOffset,
     extractedReorderSlotCandidates,
     gridColumnWidth,
     items,
@@ -1351,7 +1366,10 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     measuredItemsOverride?: MeasuredGridItem[],
   ) => {
     latestPointerRef.current = pointer;
-    const measuredItems = measuredItemsOverride ?? measureGridItems(items, itemElementsRef.current);
+    const measuredItems = offsetMeasuredGridItemsByScrollOffset(
+      measuredItemsOverride ?? measureGridItems(items, itemElementsRef.current),
+      dragScrollOffset,
+    ) ?? [];
     const nextResolution = resolveHoverResolutionFromPointer(pointer, measuredItems);
     const nextActiveDragId = activeDragIdRef.current;
     const session = dragSessionRef.current;
@@ -1362,7 +1380,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
       activeItem
       && session
         ? getDragVisualCenter({
-            pointer,
+            pointer: toGlobalPoint(pointer, dragScrollOffset),
             previewOffset: session.previewOffset,
             activeRect: activeItem.rect,
             visualRect: {
@@ -1376,7 +1394,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     );
     hoverResolutionRef.current = nextResolution;
     setHoverResolution(nextResolution);
-  }, [resolveHoverResolutionFromPointer]);
+  }, [dragScrollOffset, resolveHoverResolutionFromPointer]);
 
   useEffect(() => {
     if (!externalDragSession) return;
@@ -1633,9 +1651,9 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
         const activeItem = items.find((item) => item.sortId === session.activeSortId);
         const target = buildProjectedDragSettleTarget({
           items,
-          layoutSnapshot: offsetMeasuredGridItemsByScrollY(
+          layoutSnapshot: offsetMeasuredGridItemsByScrollOffset(
             dragLayoutSnapshotRef.current,
-            dragScrollOffsetY,
+            dragScrollOffset,
           ),
           activeSortId: session.activeSortId,
           hoverIntent: finalIntent,
@@ -1729,7 +1747,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     clearDragSettlePreview,
     columnGap,
     commitDragLayoutSnapshot,
-    dragScrollOffsetY,
+    dragScrollOffset,
     frozenSpanItemSortIds,
     gridColumnWidth,
     gridColumns,
@@ -1821,6 +1839,13 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                   if (!event.isPrimary) return;
 
                   const rect = event.currentTarget.getBoundingClientRect();
+                  if (!isPointInsidePreviewRect({
+                    point: { x: event.clientX, y: event.clientY },
+                    rect,
+                    layout: item.layout,
+                  })) {
+                    return;
+                  }
                   pendingDragRef.current = {
                     pointerId: event.pointerId,
                     pointerType: event.pointerType,
@@ -1840,6 +1865,11 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                   'data-shortcut-drag-item': 'true',
                   'data-shortcut-id': item.shortcut.id,
                   'data-shortcut-title': item.shortcut.title,
+                  style: {
+                    width: item.layout.width,
+                    height: item.layout.height,
+                    overflow: 'visible',
+                  },
                 }}
               >
                 {renderItem({

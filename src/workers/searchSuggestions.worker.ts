@@ -19,7 +19,10 @@ type SearchSuggestionsWorkerResponse =
       error: string;
     };
 
-const workerScope = self as DedicatedWorkerGlobalScope;
+const workerScope = self as typeof globalThis & {
+  onmessage: ((event: MessageEvent<SearchSuggestionsWorkerRequest>) => void) | null;
+  postMessage: (message: SearchSuggestionsWorkerResponse) => void;
+};
 
 workerScope.onmessage = (event: MessageEvent<SearchSuggestionsWorkerRequest>) => {
   const { id, input } = event.data;
