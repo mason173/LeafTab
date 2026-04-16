@@ -5,3 +5,17 @@ declare module '*.png?url' {
   export default content;
 }
 
+declare const __BROWSER_TARGET__: 'chromium' | 'firefox';
+
+declare module 'lunar-javascript' {
+  export const Solar: {
+    fromDate(date: Date): {
+      getLunar(): {
+        getMonth(): number;
+        getDay(): number;
+        getMonthInChinese(): string;
+        getDayInChinese(): string;
+      };
+    };
+  };
+}

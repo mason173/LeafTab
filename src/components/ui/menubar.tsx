@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as MenubarPrimitive from "@radix-ui/react-menubar@1.1.6";
+import * as MenubarPrimitive from "@radix-ui/react-menubar";
 import {
   RiArrowRightSLine as ChevronRightIcon,
   RiCheckFill as CheckIcon,

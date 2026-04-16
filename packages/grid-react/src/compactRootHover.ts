@@ -1,12 +1,12 @@
 import {
-  distanceToRectCenter,
+  buildRootCenterIntentCandidate,
   getReorderTargetIndex,
   isShortcutFolder,
-  isShortcutLink,
   resolveRootDropIntent,
   type MeasuredDragItem,
   type ProjectionOffset,
   type PointerPoint,
+  type RootDragInteractionMode,
   type RootShortcutDropIntent,
   type Shortcut,
 } from '@leaftab/workspace-core';
@@ -24,6 +24,7 @@ export type CompactTargetRegions = {
   targetCellRegion: CompactTargetRegion;
   targetIconRegion: CompactTargetRegion;
   targetIconHitRegion: CompactTargetRegion;
+  bigFolderMergeHitArea?: CompactTargetRegion;
 };
 
 export type CompactRootHoverResolution = {
@@ -60,6 +61,52 @@ type RelativeTargetDirection = 'above' | 'below' | 'left' | 'right' | 'overlap';
 type TargetEdge = 'left' | 'right' | 'top' | 'bottom';
 type DirectionalCompactZone = 'merge' | 'reorder' | 'neutral';
 type RectLike = Pick<CompactTargetRegion, 'left' | 'top' | 'right' | 'bottom'>;
+
+function extractPreviousRootReorderIntents(resolution: CompactRootHoverResolution): {
+  interactionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
+  visualProjectionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
+} {
+  return {
+    interactionIntent: resolution.interactionIntent?.type === 'reorder-root'
+      ? resolution.interactionIntent
+      : null,
+    visualProjectionIntent: resolution.visualProjectionIntent?.type === 'reorder-root'
+      ? resolution.visualProjectionIntent
+      : null,
+  };
+}
+
+export function resolveReorderOnlyRootHoverResolution(params: {
+  nextIntent: RootShortcutDropIntent | null;
+  previousResolution: CompactRootHoverResolution;
+}): CompactRootHoverResolution {
+  const { nextIntent, previousResolution } = params;
+  const previousReorderIntents = extractPreviousRootReorderIntents(previousResolution);
+  return {
+    interactionIntent: nextIntent ?? previousReorderIntents.interactionIntent,
+    visualProjectionIntent: nextIntent
+      ?? previousReorderIntents.visualProjectionIntent
+      ?? previousReorderIntents.interactionIntent,
+  };
+}
+
+export function resolveModeScopedRootReorderIntent(params: {
+  dragMode?: RootDragInteractionMode;
+  slotIntent?: RootShortcutDropIntent | null;
+  externalInsertSlotIntent?: RootShortcutDropIntent | null;
+}): RootShortcutDropIntent | null {
+  const {
+    dragMode = 'normal',
+    slotIntent = null,
+    externalInsertSlotIntent = null,
+  } = params;
+
+  if (dragMode === 'external-insert') {
+    return externalInsertSlotIntent;
+  }
+
+  return slotIntent;
+}
 
 function resolveActiveSourceIconRegion<TItem extends CompactHoverItem>(params: {
   activeMeasuredItem: CompactMeasuredItem<TItem> | null;
@@ -193,7 +240,14 @@ function offsetTargetRegions(
     targetCellRegion: offsetTargetRegion(regions.targetCellRegion, offset),
     targetIconRegion: offsetTargetRegion(regions.targetIconRegion, offset),
     targetIconHitRegion: offsetTargetRegion(regions.targetIconHitRegion, offset),
+    bigFolderMergeHitArea: regions.bigFolderMergeHitArea
+      ? offsetTargetRegion(regions.bigFolderMergeHitArea, offset)
+      : undefined,
   };
+}
+
+function resolveBigFolderMergeHitArea(regions: CompactTargetRegions): CompactTargetRegion {
+  return regions.bigFolderMergeHitArea ?? regions.targetIconRegion;
 }
 
 function resolveRelativeTargetDirection(params: {
@@ -721,26 +775,14 @@ function pickCompactTargetCandidate<TItem extends CompactHoverItem>(params: {
 function buildCompactCenterIntent<TItem extends CompactHoverItem>(params: {
   activeItem: CompactMeasuredItem<TItem>;
   overItem: CompactMeasuredItem<TItem>;
+  dragMode?: RootDragInteractionMode;
 }): RootShortcutDropIntent | null {
-  const { activeItem, overItem } = params;
-
-  if (isShortcutLink(activeItem.shortcut) && isShortcutFolder(overItem.shortcut)) {
-    return {
-      type: 'move-root-shortcut-into-folder',
-      activeShortcutId: activeItem.shortcut.id,
-      targetFolderId: overItem.shortcut.id,
-    };
-  }
-
-  if (isShortcutLink(activeItem.shortcut) && isShortcutLink(overItem.shortcut)) {
-    return {
-      type: 'merge-root-shortcuts',
-      activeShortcutId: activeItem.shortcut.id,
-      targetShortcutId: overItem.shortcut.id,
-    };
-  }
-
-  return null;
+  const { activeItem, overItem, dragMode = 'normal' } = params;
+  return buildRootCenterIntentCandidate({
+    activeItem,
+    overItem,
+    mode: dragMode,
+  })?.intent ?? null;
 }
 
 function buildDirectionalCompactReorderIntent<TItem extends CompactHoverItem>(params: {
@@ -823,8 +865,9 @@ function buildFallbackCompactReorderIntent<TItem extends CompactHoverItem>(param
   candidate: CompactOverCandidate<TItem>;
   pointer: PointerPoint;
   items: TItem[];
+  dragMode?: RootDragInteractionMode;
 }): CompactReorderHoverIntent | null {
-  const { activeItem, candidate, pointer, items } = params;
+  const { activeItem, candidate, pointer, items, dragMode = 'reorder-only' } = params;
   return extractCompactReorderIntent(resolveRootDropIntent({
     activeSortId: activeItem.sortId,
     overSortId: candidate.overItem.sortId,
@@ -832,6 +875,7 @@ function buildFallbackCompactReorderIntent<TItem extends CompactHoverItem>(param
     overRect: candidate.overRect,
     overCenterRect: candidate.overCenterRect,
     items,
+    mode: dragMode,
     centerHitMode: 'full-center-rect',
     allowCenterIntent: false,
   }));
@@ -854,6 +898,8 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
   activeItem: CompactMeasuredItem<TItem>;
   activeSourceRegion: CompactTargetRegion;
   candidate: CompactOverCandidate<TItem>;
+  candidateRegions: CompactTargetRegions;
+  dragMode?: RootDragInteractionMode;
   pointer: PointerPoint;
   previousRecognitionPoint?: PointerPoint | null;
   previousInteractionIntent?: RootShortcutDropIntent | null;
@@ -863,6 +909,8 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
     activeItem,
     activeSourceRegion,
     candidate,
+    candidateRegions,
+    dragMode = 'normal',
     pointer,
     previousRecognitionPoint = null,
     previousInteractionIntent = null,
@@ -872,14 +920,10 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
     activeRect: activeSourceRegion,
     targetRect: candidate.overRect,
   });
-  const zone = resolveDirectionalCompactZone({
-    activeRect: activeSourceRegion,
-    targetRect: candidate.overRect,
-    pointer,
-  });
   const centerIntent = buildCompactCenterIntent({
     activeItem,
     overItem: candidate.overItem,
+    dragMode,
   });
   const targetIsLargeFolder = (
     isShortcutFolder(candidate.overItem.shortcut)
@@ -892,11 +936,21 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
       ? previousInteractionIntent
       : null
   );
+  const mergeHitArea = targetIsLargeFolder
+    ? resolveBigFolderMergeHitArea(candidateRegions)
+    : candidate.overRect;
+  const zone = pointInTargetRegion(pointer, mergeHitArea)
+    ? 'merge'
+    : resolveDirectionalCompactZone({
+        activeRect: activeSourceRegion,
+        targetRect: candidate.overRect,
+        pointer,
+      });
 
   if (zone === 'merge' && centerIntent) {
     const enteredTargetIconThisFrame = resolveEnteredTargetThisFrame({
       previousRecognitionPoint,
-      targetRect: candidate.overRect,
+      targetRect: mergeHitArea,
       pointer,
     });
     const mergeEdges = resolveDirectionalMergeEdges(relativeDirection);
@@ -909,11 +963,11 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
       const entryEdge = resolveCrossedTargetEdge({
         fromPoint: previousRecognitionPoint!,
         toPoint: pointer,
-        targetRect: candidate.overRect,
+        targetRect: mergeHitArea,
         relativeDirection,
       }) ?? resolveNearestTargetEdge({
         pointer: previousRecognitionPoint!,
-        targetRect: candidate.overRect,
+        targetRect: mergeHitArea,
         relativeDirection,
       });
 
@@ -925,7 +979,7 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
     if (
       targetIsLargeFolder
       && previousRecognitionPoint
-      && pointInTargetRegion(previousRecognitionPoint, candidate.overRect)
+      && pointInTargetRegion(previousRecognitionPoint, mergeHitArea)
       && previousInteractionIntent?.type !== 'move-root-shortcut-into-folder'
     ) {
       return null;
@@ -935,11 +989,11 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
       const entryEdge = resolveCrossedTargetEdge({
         fromPoint: previousRecognitionPoint!,
         toPoint: pointer,
-        targetRect: candidate.overRect,
+        targetRect: mergeHitArea,
         relativeDirection,
       }) ?? resolveNearestTargetEdge({
         pointer: previousRecognitionPoint!,
-        targetRect: candidate.overRect,
+        targetRect: mergeHitArea,
         relativeDirection,
       });
 
@@ -959,6 +1013,7 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
             candidate,
             pointer,
             items,
+            dragMode,
           })
         );
 
@@ -994,6 +1049,7 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
       candidate,
       pointer,
       items,
+      dragMode,
     })
   );
   if (reorderIntent) {
@@ -1007,6 +1063,7 @@ function buildDirectionalCompactIntent<TItem extends CompactHoverItem>(params: {
       overRect: candidate.overRect,
       overCenterRect: candidate.overCenterRect,
       items,
+      mode: dragMode,
       centerHitMode: 'full-center-rect',
       allowCenterIntent: zone === 'merge',
     });
@@ -1479,6 +1536,7 @@ export function resolveCompactReorderOnlyHoverResolution<TItem extends CompactHo
 
 export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem>(params: {
   activeSortId: string;
+  dragMode?: RootDragInteractionMode;
   recognitionPoint: PointerPoint;
   previousRecognitionPoint?: PointerPoint | null;
   activeVisualRect?: CompactTargetRegion | null;
@@ -1497,6 +1555,7 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
 }): CompactRootHoverResolution {
   const {
     activeSortId,
+    dragMode = 'normal',
     recognitionPoint,
     previousRecognitionPoint = null,
     activeVisualRect = null,
@@ -1603,10 +1662,25 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
       item: CompactMeasuredItem<CompactHoverItem>,
     ) => CompactTargetRegions,
   });
+  const mergeExitIntent = activeMeasuredItem
+    ? resolveReorderIntentFromPreviousMergeExit({
+        activeSortId,
+        recognitionPoint,
+        previousRecognitionPoint,
+        measuredItems,
+        previousInteractionIntent,
+        activeSourceRegionOverride,
+        resolveRegions: resolveDisplayedRegions,
+      })
+    : null;
 
   if (!preferSlotIntentForReorder && previousInteractionIntent?.type === 'reorder-root') {
     const previousTarget = findMeasuredItemByShortcutId(measuredItems, previousInteractionIntent.overShortcutId);
     const previousTargetRegions = previousTarget ? resolveDisplayedRegions(previousTarget) : null;
+    const previousMergeHitArea = previousTargetRegions && isShortcutFolder(previousTarget?.shortcut)
+      && previousTarget.shortcut.folderDisplayMode === 'large'
+      ? resolveBigFolderMergeHitArea(previousTargetRegions)
+      : previousTargetRegions?.targetIconRegion ?? null;
     if (
       previousTarget
       && previousTargetRegions
@@ -1615,6 +1689,7 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
         visualProjectionOffsets,
       })
       && pointInTargetRegion(recognitionPoint, previousTargetRegions.targetCellRegion)
+      && (!previousMergeHitArea || !pointInTargetRegion(recognitionPoint, previousMergeHitArea))
     ) {
       return toResolution(previousInteractionIntent);
     }
@@ -1623,14 +1698,23 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
   if (claimedReorderIntent?.type === 'reorder-root') {
     const claimedTarget = findMeasuredItemByShortcutId(measuredItems, claimedReorderIntent.overShortcutId);
     const claimedTargetRegions = claimedTarget ? resolveRegions(claimedTarget) : null;
+    const claimedMergeHitArea = claimedTargetRegions && isShortcutFolder(claimedTarget?.shortcut)
+      && claimedTarget.shortcut.folderDisplayMode === 'large'
+      ? resolveBigFolderMergeHitArea(claimedTargetRegions)
+      : claimedTargetRegions?.targetIconRegion ?? null;
 
     if (
       claimedTarget
       && claimedTargetRegions
       && pointInTargetRegion(recognitionPoint, claimedTargetRegions.targetCellRegion)
+      && (!claimedMergeHitArea || !pointInTargetRegion(recognitionPoint, claimedMergeHitArea))
     ) {
       return toResolution(claimedReorderIntent);
     }
+  }
+
+  if (mergeExitIntent) {
+    return toResolution(mergeExitIntent);
   }
 
   const pointerOverCandidate = pickCompactTargetCandidate({
@@ -1640,17 +1724,6 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
     resolveRegions: resolveDisplayedRegions,
   });
   if (!activeMeasuredItem || !pointerOverCandidate) {
-    const mergeExitIntent = activeMeasuredItem
-      ? resolveReorderIntentFromPreviousMergeExit({
-          activeSortId,
-          recognitionPoint,
-          previousRecognitionPoint,
-          measuredItems,
-          previousInteractionIntent,
-          activeSourceRegionOverride,
-          resolveRegions: resolveDisplayedRegions,
-        })
-      : null;
     const resolution = toResolution(mergeExitIntent ?? slotIntent ?? previousStickyReorderIntent);
     if (!mergeExitIntent && !slotIntent && !previousStickyReorderIntent && claimedReorderIntent) {
       return toResolution(claimedReorderIntent);
@@ -1674,6 +1747,8 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
     activeItem: activeMeasuredItem,
     activeSourceRegion: activeSourceIconRegion,
     candidate: pointerOverCandidate,
+    candidateRegions: resolveDisplayedRegions(pointerOverCandidate.overItem),
+    dragMode,
     pointer: recognitionPoint,
     previousRecognitionPoint,
     previousInteractionIntent,
@@ -1729,4 +1804,53 @@ export function resolveCompactRootHoverResolution<TItem extends CompactHoverItem
   }
 
   return toResolution(rawIntent);
+}
+
+export function resolveModeAwareCompactRootHoverResolution<TItem extends CompactHoverItem>(params: {
+  dragMode?: RootDragInteractionMode;
+  activeSortId: string;
+  recognitionPoint: PointerPoint;
+  previousRecognitionPoint?: PointerPoint | null;
+  activeVisualRect?: CompactTargetRegion | null;
+  activeSourceRegionOverride?: CompactTargetRegion | null;
+  measuredItems: CompactMeasuredItem<TItem>[];
+  items: TItem[];
+  previousResolution: CompactRootHoverResolution;
+  interactionProjectionOffsets: Map<string, ProjectionOffset>;
+  visualProjectionOffsets: Map<string, ProjectionOffset>;
+  resolveRegions: (item: CompactMeasuredItem<TItem>) => CompactTargetRegions;
+  slotIntent?: RootShortcutDropIntent | null;
+  externalInsertSlotIntent?: RootShortcutDropIntent | null;
+  preferSlotIntentForReorder?: boolean;
+  columnGap: number;
+  rowGap: number;
+}): CompactRootHoverResolution {
+  const {
+    dragMode = 'normal',
+    previousResolution,
+    slotIntent = null,
+    externalInsertSlotIntent = null,
+    ...rest
+  } = params;
+
+  const reorderOnlyIntent = resolveModeScopedRootReorderIntent({
+    dragMode,
+    slotIntent,
+    externalInsertSlotIntent,
+  });
+
+  if (dragMode !== 'normal') {
+    return resolveReorderOnlyRootHoverResolution({
+      nextIntent: reorderOnlyIntent,
+      previousResolution,
+    });
+  }
+
+  return resolveCompactRootHoverResolution({
+    dragMode,
+    previousInteractionIntent: previousResolution.interactionIntent,
+    previousVisualProjectionIntent: previousResolution.visualProjectionIntent,
+    slotIntent,
+    ...rest,
+  });
 }

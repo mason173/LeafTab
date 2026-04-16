@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as SheetPrimitive from "@radix-ui/react-dialog@1.1.6";
+import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { RiCloseFill as XIcon } from "@/icons/ri-compat";
 
 import { cn } from "./utils";

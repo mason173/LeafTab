@@ -1,9 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiShieldCheckFill, RiShieldCrossFill } from '@/icons/ri-compat';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 interface PrivacyConsentModalProps {
   isOpen: boolean;

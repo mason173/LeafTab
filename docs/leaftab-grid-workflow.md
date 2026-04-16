@@ -19,11 +19,13 @@ The compact drag behavior contract lives here:
 Keep shared grid behavior in the package source:
 
 - drag hit-testing
+- drag modes and candidate-state policy
 - merge bridging
 - reorder state transitions
 - claimed-slot rules
 - folder extraction and folder-surface reorder behavior
 - reusable geometry and layout logic
+- world-coordinate and serpentine-sequence helpers
 
 Keep product-specific behavior in the host app:
 
@@ -52,5 +54,10 @@ What it checks:
 1. Edit the package source inside `packages/`.
 2. Run `npm run dev` or `npm run build:community` from the repo root.
 3. If needed, build package outputs explicitly with `npm run grid:build:local`.
+
+When a React package consumes new exports from `@leaftab/workspace-core`:
+
+1. rebuild the local grid packages if needed with `npm run grid:build:local`
+2. then run the host app or package tests again so `workspace-react` does not keep using stale `dist/` output
 
 There is no separate `leaftab-workspace` repo or vendor tarball refresh step anymore.

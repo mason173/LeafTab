@@ -1,18 +1,16 @@
 import {
   RootShortcutGrid as PackageRootShortcutGrid,
-  type RootShortcutGridProps as PackageRootShortcutGridProps,
 } from '@leaftab/workspace-react';
 import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@leaftab/workspace-core';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
-  COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   getCompactShortcutCardMetrics,
 } from '@/components/shortcuts/compactFolderLayout';
 import { type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@/features/shortcuts/drag/types';
 import {
   computeLargeFolderPreviewSize,
   renderLeaftabDropPreview,
@@ -20,6 +18,7 @@ import {
   renderRootShortcutGridDragPreview,
   renderRootShortcutGridSelectionIndicator,
   renderRootGridCenterPreview,
+  resolveLeaftabShadowPreviewGeometry,
 } from './leaftabGridVisuals';
 
 export type RootShortcutGridCardRenderParams = {
@@ -108,7 +107,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   onShortcutDropIntent,
   onGridContextMenu,
   compactShowTitle = true,
-  layoutDensity = 'regular',
+  layoutDensity: _layoutDensity = 'regular',
   compactIconSize = 72,
   iconCornerRadius = 22,
   iconAppearance = 'colorful',
@@ -137,9 +136,31 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     monochromeTileBackdropBlur,
   }), [monochromeTileBackdropBlur, monochromeTone]);
 
-  const columnGap = COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX;
-  const rowGap = layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20;
-  const rowHeight = compactIconSize + 24;
+  const fallbackCellSize = useMemo(
+    () => Math.max(compactIconSize / 0.8, compactIconSize + 16),
+    [compactIconSize],
+  );
+  const rowHeight = useMemo(() => {
+    if (!gridWidthPx || gridColumns <= 0) {
+      return fallbackCellSize;
+    }
+
+    return gridWidthPx / Math.max(gridColumns, 1);
+  }, [fallbackCellSize, gridColumns, gridWidthPx]);
+  const columnGap = 0;
+  const rowGap = 0;
+  const resolvedTitleBlockHeight = useMemo(
+    () => Math.max(12, Math.round(rowHeight * 0.2)),
+    [rowHeight],
+  );
+  const resolvedInteractionPreviewSize = useMemo(
+    () => Math.max(24, Math.round(rowHeight - resolvedTitleBlockHeight)),
+    [resolvedTitleBlockHeight, rowHeight],
+  );
+  const resolvedVisualTitleFontSize = useMemo(
+    () => Math.max(10, Math.min(compactTitleFontSize, Math.round(resolvedTitleBlockHeight * 0.58))),
+    [compactTitleFontSize, resolvedTitleBlockHeight],
+  );
   const largeFolderEnabled = gridColumns >= 2;
 
   useLayoutEffect(() => {
@@ -165,13 +186,13 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   }, []);
 
   const largeFolderPreviewSize = useMemo(() => computeLargeFolderPreviewSize({
-    compactIconSize,
+    compactIconSize: resolvedInteractionPreviewSize,
     columnGap,
     rowGap,
     gridColumns,
     gridWidthPx,
     largeFolderEnabled,
-  }), [columnGap, compactIconSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
+  }), [columnGap, resolvedInteractionPreviewSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
 
   const rootGridPreset = useMemo(() => createLeaftabRootGridPreset({
     getRootRect: () => wrapperRef.current?.getBoundingClientRect() ?? null,
@@ -180,17 +201,19 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     rowHeight,
     rowGap,
     columnGap,
-    compactIconSize,
+    compactIconSize: resolvedInteractionPreviewSize,
+    titleBlockHeight: resolvedTitleBlockHeight,
     iconCornerRadius,
     largeFolderPreviewSize,
     largeFolderEnabled,
   }), [
     columnGap,
-    compactIconSize,
     gridColumns,
     gridWidthPx,
     largeFolderEnabled,
     largeFolderPreviewSize,
+    resolvedInteractionPreviewSize,
+    resolvedTitleBlockHeight,
     rowGap,
     rowHeight,
     iconCornerRadius,
@@ -241,7 +264,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                   compactIconSize,
                   iconCornerRadius,
                   iconAppearance,
-                  compactTitleFontSize,
+                  compactTitleFontSize: resolvedVisualTitleFontSize,
                   forceTextWhite,
                   enableLargeFolder: largeFolderEnabled,
                   largeFolderPreviewSize,
@@ -277,10 +300,23 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               largeFolderPreviewSize,
             });
           }}
-          renderDropPreview={(params) => renderLeaftabDropPreview({
-            ...params,
-            testId: 'shortcut-drop-preview',
-          })}
+          renderDropPreview={(params) => {
+            const shadowGeometry = resolveLeaftabShadowPreviewGeometry({
+              shortcut: params.shortcut,
+              iconSize: compactIconSize,
+              iconCornerRadius,
+              allowLargeFolder: largeFolderEnabled,
+              largeFolderPreviewSize,
+            });
+
+            return renderLeaftabDropPreview({
+              ...params,
+              ...shadowGeometry,
+              shadowOffsetX: (params.width - shadowGeometry.shadowWidth) / 2,
+              shadowOffsetY: (params.height - shadowGeometry.shadowHeight) / 2,
+              testId: 'shortcut-drop-preview',
+            });
+          }}
           renderDragPreview={(params) => renderDragPreview({
             shortcut: params.shortcut,
             firefox,
@@ -288,7 +324,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
             compactIconSize,
             iconCornerRadius,
             iconAppearance,
-            compactTitleFontSize,
+            compactTitleFontSize: resolvedVisualTitleFontSize,
             forceTextWhite,
             enableLargeFolder: largeFolderEnabled,
             largeFolderPreviewSize,

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk@1.1.1";
+import { Command as CommandPrimitive } from "cmdk";
 import { RiSearchLine as SearchIcon } from "@/icons/ri-compat";
 
 import { cn } from "./utils";

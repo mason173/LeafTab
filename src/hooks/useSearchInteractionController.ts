@@ -16,7 +16,6 @@ type UseSearchInteractionControllerArgs = {
   historyOpen: boolean;
   openHistoryPanel: (options?: { select?: 'keep' | 'first' | 'none'; itemCount?: number }) => void;
   closeHistoryPanel: (reason?: 'manual' | 'escape' | 'outside' | 'submit' | 'selection' | 'hotkey') => void;
-  historySelectedIndex: number;
   setHistorySelectedIndex: (next: number | ((prev: number) => number)) => void;
   searchActions: SearchAction[];
   activateSearchAction: (action: SearchAction) => void;
@@ -40,7 +39,6 @@ export function useSearchInteractionController({
   historyOpen,
   openHistoryPanel,
   closeHistoryPanel,
-  historySelectedIndex,
   setHistorySelectedIndex,
   searchActions,
   activateSearchAction,

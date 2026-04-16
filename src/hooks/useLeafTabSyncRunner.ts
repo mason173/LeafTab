@@ -34,7 +34,10 @@ type ExecuteLeafTabSyncRunParams<TResult, TOptions extends LeafTabSyncRunnerOpti
   options?: TOptions;
   runSync: (
     mode: LeafTabSyncInitialChoice | 'auto',
-    progressOptions?: { onProgress?: (progress: LeafTabSyncEngineProgress) => void },
+    progressOptions?: {
+      onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+      allowDestructiveBookmarkChanges?: boolean;
+    },
   ) => Promise<TResult | null>;
   refreshAnalysis?: () => Promise<unknown>;
   resolveSyncEncryptionError?: (providerLabel: string, error: unknown) => Promise<boolean>;

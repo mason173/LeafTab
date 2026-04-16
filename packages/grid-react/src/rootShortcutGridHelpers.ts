@@ -1,11 +1,13 @@
 import {
   getProjectedGridItemRect,
-  packGridItems,
-  type PackedGridItem,
   type RootShortcutDropIntent,
   type Shortcut,
 } from '@leaftab/workspace-core';
 import { normalizePreviewGeometry, type GridPreviewRect } from './previewGeometry';
+import {
+  packItemsIntoSerpentineGrid,
+  type SerpentinePackedGridItem,
+} from './serpentineWorldGrid';
 
 export type RootShortcutGridItemLayout = {
   width: number;
@@ -221,12 +223,12 @@ export function buildRootReorderSlotCandidates<TShortcut extends Shortcut>(param
   if (!activeItem) return [];
 
   const seenPhysicalPlacements = new Set<string>();
-  const registerCandidate = (candidate: {
-    targetIndex: number;
-    overShortcutId: string;
-    edge: 'before' | 'after';
-    placedActiveItem: Pick<PackedGridItem<unknown>, 'columnStart' | 'rowStart' | 'columnSpan'>;
-  }): RootReorderSlotCandidate | null => {
+    const registerCandidate = (candidate: {
+      targetIndex: number;
+      overShortcutId: string;
+      edge: 'before' | 'after';
+      placedActiveItem: Pick<SerpentinePackedGridItem<unknown>, 'columnStart' | 'rowStart' | 'columnSpan'>;
+    }): RootReorderSlotCandidate | null => {
     const placementKey = `${candidate.placedActiveItem.columnStart}:${candidate.placedActiveItem.rowStart}`;
     if (seenPhysicalPlacements.has(placementKey)) {
       return null;
@@ -243,6 +245,7 @@ export function buildRootReorderSlotCandidates<TShortcut extends Shortcut>(param
       height: activeItem.layout.height,
     });
     const previewRect = buildProjectedRootItemPreviewRect({
+      shortcut: activeItem.shortcut,
       placedItem: candidate.placedActiveItem,
       gridColumnWidth,
       columnGap,
@@ -306,7 +309,7 @@ export function buildRootReorderSlotCandidates<TShortcut extends Shortcut>(param
       });
       if (!projection) return null;
 
-      const projectedLayout = packGridItems({
+      const projectedLayout = packItemsIntoSerpentineGrid({
         items: projection.projectedItems,
         gridColumns,
         getSpan: (item) => ({
@@ -336,7 +339,7 @@ export function buildRootReorderSlotCandidates<TShortcut extends Shortcut>(param
     const projectedItems = [...remainingItems];
     projectedItems.splice(targetIndex, 0, activeItem);
 
-    const projectedLayout = packGridItems({
+    const projectedLayout = packItemsIntoSerpentineGrid({
       items: projectedItems,
       gridColumns,
       getSpan: (item) => ({
@@ -486,7 +489,8 @@ export function resolveRootReorderSlotIntent(params: {
 }
 
 export function buildProjectedRootItemPreviewRect(params: {
-  placedItem: Pick<PackedGridItem<unknown>, 'columnStart' | 'rowStart' | 'columnSpan'>;
+  shortcut: Shortcut;
+  placedItem: Pick<SerpentinePackedGridItem<unknown>, 'columnStart' | 'rowStart' | 'columnSpan'>;
   gridColumnWidth: number;
   columnGap: number;
   rowHeight: number;
@@ -495,7 +499,7 @@ export function buildProjectedRootItemPreviewRect(params: {
     NormalizedRootShortcutGridItemLayout,
     'width' | 'height' | 'previewWidth' | 'previewHeight' | 'previewOffsetX' | 'previewOffsetY' | 'previewBorderRadius'
   >;
-}): { left: number; top: number; width: number; height: number; borderRadius?: string } {
+}): { shortcut: Shortcut; left: number; top: number; width: number; height: number; borderRadius?: string } {
   const { placedItem, gridColumnWidth, columnGap, rowHeight, rowGap, layout } = params;
   const projectedItemRect = getProjectedGridItemRect({
     placedItem,
@@ -508,6 +512,7 @@ export function buildProjectedRootItemPreviewRect(params: {
   });
 
   return {
+    shortcut: params.shortcut,
     left: projectedItemRect.left + layout.previewOffsetX,
     top: projectedItemRect.top + layout.previewOffsetY,
     width: layout.previewWidth,
@@ -517,7 +522,7 @@ export function buildProjectedRootItemPreviewRect(params: {
 }
 
 export function buildProjectedRootItemAnchorRect(params: {
-  placedItem: Pick<PackedGridItem<unknown>, 'columnStart' | 'rowStart'>;
+  placedItem: Pick<SerpentinePackedGridItem<unknown>, 'columnStart' | 'rowStart'>;
   gridColumnWidth: number;
   columnGap: number;
   rowHeight: number;

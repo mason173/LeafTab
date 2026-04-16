@@ -1,5 +1,12 @@
 import { isShortcutFolder, isShortcutLink } from '../model/selectors';
-import type { DragRect, RootShortcutDragItem, RootShortcutDropIntent } from './types';
+import type { Shortcut } from '../shortcutTypes';
+import type {
+  DragRect,
+  RootDragInteractionMode,
+  RootShortcutDragItem,
+  RootShortcutDropIntent,
+  RootShortcutIntentCandidate,
+} from './types';
 import { getDropEdge, getReorderTargetIndex, isPointInDropCenter } from './dropEdge';
 
 type Point = { x: number; y: number };
@@ -34,16 +41,76 @@ function rectEquals(left: DragRect, right: DragRect): boolean {
   );
 }
 
-export function resolveRootDropIntent(params: {
+export function rootDragModeAllowsCenterIntent(mode: RootDragInteractionMode = 'normal'): boolean {
+  return mode === 'normal';
+}
+
+export function isRootDragModeReorderOnly(mode: RootDragInteractionMode = 'normal'): boolean {
+  return mode === 'reorder-only' || mode === 'external-insert';
+}
+
+export function resolveRootDragInteractionMode(params: {
+  sourceRootShortcutId: string | null;
+  activeShortcut: Shortcut;
+}): RootDragInteractionMode {
+  const { sourceRootShortcutId, activeShortcut } = params;
+  if (sourceRootShortcutId) {
+    return 'external-insert';
+  }
+  if (isLargeFolderShortcut(activeShortcut)) {
+    return 'reorder-only';
+  }
+  return 'normal';
+}
+
+export function buildRootCenterIntentCandidate(params: {
+  activeItem: RootShortcutDragItem;
+  overItem: RootShortcutDragItem;
+  mode?: RootDragInteractionMode;
+}): Exclude<RootShortcutIntentCandidate, { type: 'reorder-candidate' }> | null {
+  const { activeItem, overItem, mode = 'normal' } = params;
+  if (!rootDragModeAllowsCenterIntent(mode)) {
+    return null;
+  }
+
+  if (isShortcutLink(activeItem.shortcut) && isShortcutFolder(overItem.shortcut)) {
+    return {
+      type: overItem.shortcut.folderDisplayMode === 'large'
+        ? 'merge-into-big-folder-candidate'
+        : 'move-into-folder-candidate',
+      intent: {
+        type: 'move-root-shortcut-into-folder',
+        activeShortcutId: activeItem.shortcut.id,
+        targetFolderId: overItem.shortcut.id,
+      },
+    };
+  }
+
+  if (isShortcutLink(activeItem.shortcut) && isShortcutLink(overItem.shortcut)) {
+    return {
+      type: 'group-candidate',
+      intent: {
+        type: 'merge-root-shortcuts',
+        activeShortcutId: activeItem.shortcut.id,
+        targetShortcutId: overItem.shortcut.id,
+      },
+    };
+  }
+
+  return null;
+}
+
+export function resolveRootDropIntentCandidate(params: {
   activeSortId: string;
   overSortId: string;
   pointer: Point;
   overRect: DragRect;
   overCenterRect?: DragRect;
   items: RootShortcutDragItem[];
+  mode?: RootDragInteractionMode;
   centerHitMode?: 'threshold' | 'full-center-rect';
   allowCenterIntent?: boolean;
-}): RootShortcutDropIntent | null {
+}): RootShortcutIntentCandidate | null {
   const {
     activeSortId,
     overSortId,
@@ -51,6 +118,7 @@ export function resolveRootDropIntent(params: {
     overRect,
     overCenterRect,
     items,
+    mode = 'normal',
     centerHitMode = 'threshold',
     allowCenterIntent = true,
   } = params;
@@ -61,27 +129,13 @@ export function resolveRootDropIntent(params: {
   const overItem = items.find((item) => item.sortId === overSortId);
   if (!activeItem || !overItem) return null;
 
-  const centerIntent = (() => {
-    if (isShortcutLink(activeItem.shortcut) && isShortcutFolder(overItem.shortcut)) {
-      return {
-        type: 'move-root-shortcut-into-folder',
-        activeShortcutId: activeItem.shortcut.id,
-        targetFolderId: overItem.shortcut.id,
-      } satisfies RootShortcutDropIntent;
-    }
+  const centerCandidate = buildRootCenterIntentCandidate({
+    activeItem,
+    overItem,
+    mode,
+  });
 
-    if (isShortcutLink(activeItem.shortcut) && isShortcutLink(overItem.shortcut)) {
-      return {
-        type: 'merge-root-shortcuts',
-        activeShortcutId: activeItem.shortcut.id,
-        targetShortcutId: overItem.shortcut.id,
-      } satisfies RootShortcutDropIntent;
-    }
-
-    return null;
-  })();
-
-  if (centerIntent && allowCenterIntent) {
+  if (centerCandidate && allowCenterIntent) {
     const largeFolderShortcut = isLargeFolderShortcut(overItem.shortcut);
     const compactSmallTargetDirectHit = Boolean(
       overCenterRect
@@ -104,7 +158,7 @@ export function resolveRootDropIntent(params: {
         )
       )
     ) {
-      return centerIntent;
+      return centerCandidate;
     }
   }
 
@@ -114,10 +168,27 @@ export function resolveRootDropIntent(params: {
   if (targetIndex === activeItem.shortcutIndex) return null;
 
   return {
-    type: 'reorder-root',
-    activeShortcutId: activeItem.shortcut.id,
-    overShortcutId: overItem.shortcut.id,
-    targetIndex,
-    edge: reorderEdge,
+    type: 'reorder-candidate',
+    intent: {
+      type: 'reorder-root',
+      activeShortcutId: activeItem.shortcut.id,
+      overShortcutId: overItem.shortcut.id,
+      targetIndex,
+      edge: reorderEdge,
+    },
   };
+}
+
+export function resolveRootDropIntent(params: {
+  activeSortId: string;
+  overSortId: string;
+  pointer: Point;
+  overRect: DragRect;
+  overCenterRect?: DragRect;
+  items: RootShortcutDragItem[];
+  mode?: RootDragInteractionMode;
+  centerHitMode?: 'threshold' | 'full-center-rect';
+  allowCenterIntent?: boolean;
+}): RootShortcutDropIntent | null {
+  return resolveRootDropIntentCandidate(params)?.intent ?? null;
 }

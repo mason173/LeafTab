@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as ContextMenuPrimitive from "@radix-ui/react-context-menu@2.2.6";
+import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import {
   RiArrowRightSLine as ChevronRightIcon,
   RiCheckFill as CheckIcon,

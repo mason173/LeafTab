@@ -171,7 +171,6 @@ export function SearchSuggestionsPanel({
     action,
     item,
     index,
-    isCurrentTab,
     shortcutDomain,
     secondaryLabel,
     showShortcutDomain,
@@ -180,7 +179,6 @@ export function SearchSuggestionsPanel({
     action: SearchAction;
     item: SearchAction['item'];
     index: number;
-    isCurrentTab: boolean;
     shortcutDomain: string;
     secondaryLabel: string;
     showShortcutDomain: boolean;

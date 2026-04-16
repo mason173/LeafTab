@@ -199,10 +199,12 @@ export const normalizeSyncablePreferences = (
   const defaults = getDefaultSyncablePreferences();
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaults;
   const candidate = raw as Partial<SyncablePreferences>;
-  const shortcutGridColumnsByVariant = candidate.shortcutGridColumnsByVariant || {};
+  const shortcutGridColumnsByVariant = (
+    candidate.shortcutGridColumnsByVariant || {}
+  ) as Partial<Record<ShortcutCardVariant, unknown>> & Record<string, unknown>;
   const compactColumns = Number(
     shortcutGridColumnsByVariant.compact
-    ?? (shortcutGridColumnsByVariant as Record<string, unknown>).default,
+    ?? shortcutGridColumnsByVariant.default,
   );
 
   return {

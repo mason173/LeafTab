@@ -20,4 +20,6 @@ export * from './drag/gridDragEngine';
 export * from './drag/gridLayout';
 export * from './drag/pointerDragSession';
 export * from './drag/resolveRootDropIntent';
+export * from './drag/serpentineGrid';
 export * from './drag/types';
+export * from './drag/worldCoordinates';

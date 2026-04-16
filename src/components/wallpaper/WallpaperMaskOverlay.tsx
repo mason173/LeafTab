@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface WallpaperMaskOverlayProps {
   opacity: number;
   className?: string;
@@ -23,4 +21,3 @@ export function WallpaperMaskOverlay({
     />
   );
 }
-

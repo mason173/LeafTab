@@ -8,11 +8,16 @@ import {
   ROLE_PRESET_VERSION_STORAGE_KEY,
 } from '@/utils/rolePresetRegistry';
 
-let confettiModulePromise: Promise<typeof import('canvas-confetti')> | null = null;
+type ConfettiFn = (options?: Record<string, unknown>) => unknown;
+
+let confettiModulePromise: Promise<ConfettiFn> | null = null;
 
 function loadConfettiModule() {
   if (!confettiModulePromise) {
-    confettiModulePromise = import('canvas-confetti');
+    confettiModulePromise = import('canvas-confetti').then((module) => {
+      const maybeDefault = (module as { default?: unknown }).default;
+      return (typeof maybeDefault === 'function' ? maybeDefault : module) as unknown as ConfettiFn;
+    });
   }
   return confettiModulePromise;
 }
@@ -88,7 +93,7 @@ export function useRole(
       toast.success(t('settings.importSuccess'));
 
       void loadConfettiModule()
-        .then(({ default: confetti }) => {
+        .then((confetti) => {
           const duration = 1500;
           const animationEnd = Date.now() + duration;
           const interval = window.setInterval(() => {

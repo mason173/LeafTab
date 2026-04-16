@@ -331,6 +331,7 @@ export function resolveLeaftabCompactTargetRegions(
     targetIconHitRegion: isLargeFolder
       ? inflateLeaftabRect(targetIconRegion, largeFolderHitSlop)
       : targetIconRegion,
+    bigFolderMergeHitArea: isLargeFolder ? targetIconRegion : undefined,
   };
 }
 

@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties, type MouseEvent } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
@@ -46,7 +46,7 @@ import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy
 import ScenarioModeMenu from './components/ScenarioModeMenu';
 import { Toaster, toast } from './components/ui/sonner';
 import { Button } from "@/components/ui/button";
-import type { Shortcut, SyncablePreferences } from './types';
+import type { Shortcut, ShortcutFolderDisplayMode, SyncablePreferences } from './types';
 import { normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
@@ -132,27 +132,23 @@ import {
 } from '@/utils/cloudSyncBookmarksPolicy';
 import { resolveDeferredBookmarkSyncExecution } from '@/utils/deferredBookmarkSync';
 import {
+  applyFolderExtractDragStart,
+  applyShortcutDropIntent,
+  dissolveFolder,
+  mergeShortcutsIntoNewFolder,
+  moveShortcutsIntoFolder,
+  ROOT_SHORTCUTS_PATH,
+  type FolderExtractDragStartPayload,
+  type FolderShortcutDropIntent,
+  type RootShortcutDropIntent,
+  type ShortcutDropIntent,
+  type ShortcutInteractionApplication,
+} from '@leaftab/workspace-core';
+import {
   findShortcutById,
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
-import { ROOT_SHORTCUTS_PATH } from '@/features/shortcuts/model/paths';
-import {
-  dissolveFolder,
-  mergeShortcutsIntoNewFolder,
-  moveShortcutsIntoFolder,
-} from '@/features/shortcuts/model/operations';
-import type {
-  FolderExtractDragStartPayload,
-  FolderShortcutDropIntent,
-  RootShortcutDropIntent,
-  ShortcutDropIntent,
-} from '@/features/shortcuts/drag/types';
-import {
-  applyFolderExtractDragStart,
-  applyShortcutDropIntent,
-  type ShortcutInteractionApplication,
-} from '@/features/shortcuts/domain/dropIntents';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -317,8 +313,6 @@ const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const CLOUD_AUTO_SYNC_BUSY_RETRY_DELAY_MS = 5 * 1000;
 const CLOUD_AUTO_SYNC_FAILURE_RETRY_DELAY_MS = 15 * 1000;
 const LONG_TASK_INDICATOR_DELAY_MS = 180;
-const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
-const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const DARK_MODE_AUTO_DIM_OPACITY = 12;
 const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
 const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 4 * 60 * 1000;
@@ -496,7 +490,6 @@ export default function App() {
   // Initialize Hooks
   const { 
     user, 
-    setUser, 
     isAuthModalOpen,
     setIsAuthModalOpen,
     loginBannerVisible, 
@@ -715,7 +708,7 @@ export default function App() {
     scenarioModes, setScenarioModes,
     selectedScenarioId, setSelectedScenarioId,
     scenarioShortcuts, setScenarioShortcuts,
-    userRole, setUserRole,
+    setUserRole,
     totalShortcuts,
     contextMenu, setContextMenu,
     shortcutEditOpen, setShortcutEditOpen,
@@ -724,9 +717,9 @@ export default function App() {
     selectedShortcut, setSelectedShortcut,
     editingTitle, setEditingTitle,
     editingUrl, setEditingUrl,
-    isDragging, setIsDragging,
-    currentEditScenarioId, setCurrentEditScenarioId,
-    currentInsertIndex, setCurrentInsertIndex,
+    isDragging,
+    currentEditScenarioId,
+    setCurrentInsertIndex,
     shortcuts,
     localDirtyRef,
     handleCreateScenarioMode, handleOpenEditScenarioMode, handleUpdateScenarioMode, handleDeleteScenarioMode,
@@ -877,7 +870,7 @@ export default function App() {
   ]);
 
   const handleFolderChildShortcutContextMenu = useCallback((
-    event: MouseEvent<HTMLDivElement>,
+    event: ReactMouseEvent<HTMLDivElement>,
     folderId: string,
     shortcut: Shortcut,
   ) => {
@@ -1191,7 +1184,7 @@ export default function App() {
       let changed = false;
       const nextShortcuts = sourceShortcuts.map((item) => {
         if (item.id !== resolvedFolderId || !isShortcutFolder(item)) return item;
-        const nextMode = mode === 'large' ? 'large' : 'small';
+        const nextMode: ShortcutFolderDisplayMode = mode === 'large' ? 'large' : 'small';
         if ((item.folderDisplayMode || 'small') === nextMode) return item;
         changed = true;
         return {
@@ -1204,7 +1197,7 @@ export default function App() {
       const nextScenarioShortcuts = {
         ...prev,
         [selectedScenarioId]: nextShortcuts,
-      };
+      } satisfies typeof prev;
       try {
         persistLocalProfileSnapshot({
           scenarioModes,
@@ -1618,7 +1611,7 @@ export default function App() {
     selectedScenarioId,
   ]);
 
-  const { roleSelectorOpen, setRoleSelectorOpen, handleRoleSelect } = useRole(
+  const { roleSelectorOpen, handleRoleSelect } = useRole(
     user, setUserRole, setScenarioModes, setSelectedScenarioId, setScenarioShortcuts, localDirtyRef, API_URL
   );
 
@@ -1639,7 +1632,7 @@ export default function App() {
     } catch {}
   };
 
-  const onLoginSuccess = useCallback((username: string, role?: string | null, consent?: boolean | null) => {
+  const onLoginSuccess = useCallback((username: string, _role?: string | null, consent?: boolean | null) => {
     handleLoginSuccess(username);
     setCloudLoginSyncPendingUser(username);
     if (typeof consent !== 'undefined') {
@@ -1761,6 +1754,7 @@ export default function App() {
       url: config.url,
       username: config.username,
       password: config.password,
+      filePath: config.filePath,
       rootPath: resolveLeafTabSyncRootPath(config),
       requestPermission: true,
     };
@@ -2046,7 +2040,6 @@ export default function App() {
     handleSyncEncryptionDialogOpenChange,
     handleSubmitSyncEncryptionDialog,
     ensureSyncEncryptionAccess,
-    handleManageCloudSyncEncryption,
     resolveSyncEncryptionError,
   } = useLeafTabSyncEncryptionManager({
     setSettingsOpen,
@@ -3180,7 +3173,7 @@ export default function App() {
 
   useEffect(() => {
     if (!contextMenu) return;
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) setContextMenu(null);
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -3957,8 +3950,6 @@ export default function App() {
               open: cloudSyncConfigOpen,
               onBackToParent: handleBackFromSyncProviderConfig,
               onOpenChange: setCloudSyncConfigOpen,
-              encryptionReady: cloudSyncEncryptionReady,
-              onManageEncryption: handleManageCloudSyncEncryption,
               onSaveSuccess: handleCloudSyncConfigSaved,
               onLinkGoogle: openGoogleLinkAuthModal,
               onLogout: requestLogoutConfirmation,
@@ -4217,22 +4208,5 @@ export default function App() {
         </div>
       )}
     </div>
-  );
-}
-
-function ContextMenuItem({ label, onSelect, variant = 'default', disabled = false, iconRight }: { label: string; onSelect: () => void; variant?: 'default' | 'destructive'; disabled?: boolean; iconRight?: React.ReactNode }) {
-  return (
-    <button
-      onClick={onSelect}
-      disabled={disabled}
-      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between ${
-        variant === 'destructive'
-          ? 'text-destructive hover:bg-destructive/15 dark:hover:bg-destructive/25 font-medium'
-          : 'text-foreground hover:bg-accent hover:text-accent-foreground'
-      } ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-    >
-      <span>{label}</span>
-      {iconRight}
-    </button>
   );
 }

@@ -1,21 +1,22 @@
 import { FolderShortcutSurface as PackageFolderShortcutSurface } from '@leaftab/workspace-react';
 import { createLeaftabFolderSurfacePreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Shortcut, ShortcutIconAppearance } from '@/types';
-import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type {
   FolderExtractDragStartPayload,
   FolderShortcutDropIntent,
-} from '@/features/shortcuts/drag/types';
+} from '@leaftab/workspace-core';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
+import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
+import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
   renderLeaftabFolderDragPreview,
   renderLeaftabFolderDropPreview,
   renderLeaftabFolderEmptyState,
   renderLeaftabFolderItem,
+  resolveLeaftabShadowPreviewGeometry,
 } from './leaftabGridVisuals';
 
-export type { FolderExtractDragStartPayload } from '@/features/shortcuts/drag/types';
+export type { FolderExtractDragStartPayload } from '@leaftab/workspace-core';
 
 type FolderShortcutSurfaceProps = {
   folderId: string;
@@ -53,6 +54,7 @@ export function FolderShortcutSurface({
   const firefox = isFirefoxBuildTarget();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(4);
+  const [gridWidthPx, setGridWidthPx] = useState<number | null>(null);
   const shortcutIconRenderContextValue = useMemo(() => ({
     monochromeTone: 'theme-adaptive' as ShortcutMonochromeTone,
     monochromeTileBackdropBlur: false,
@@ -65,6 +67,8 @@ export function FolderShortcutSurface({
     const updateColumns = () => {
       const nextColumns = node.clientWidth >= 640 ? 4 : 3;
       setColumns((current) => (current === nextColumns ? current : nextColumns));
+      const nextWidth = Math.round(node.clientWidth);
+      setGridWidthPx((current) => (current === nextWidth ? current : nextWidth));
     };
 
     updateColumns();
@@ -80,10 +84,31 @@ export function FolderShortcutSurface({
     };
   }, []);
 
+  const fallbackCellSize = useMemo(
+    () => Math.max(compactIconSize / 0.8, compactIconSize + 16),
+    [compactIconSize],
+  );
+  const cellSize = useMemo(() => {
+    if (!gridWidthPx || columns <= 0) {
+      return fallbackCellSize;
+    }
+
+    return gridWidthPx / Math.max(columns, 1);
+  }, [columns, fallbackCellSize, gridWidthPx]);
+  const resolvedTitleBlockHeight = useMemo(
+    () => Math.max(12, Math.round(cellSize * 0.2)),
+    [cellSize],
+  );
+  const resolvedInteractionPreviewSize = useMemo(
+    () => Math.max(24, Math.round(cellSize - resolvedTitleBlockHeight)),
+    [cellSize, resolvedTitleBlockHeight],
+  );
+
   const folderSurfacePreset = useMemo(() => createLeaftabFolderSurfacePreset({
-    compactIconSize,
+    compactIconSize: resolvedInteractionPreviewSize,
+    titleBlockHeight: resolvedTitleBlockHeight,
     iconCornerRadius,
-  }), [compactIconSize, iconCornerRadius]);
+  }), [iconCornerRadius, resolvedInteractionPreviewSize, resolvedTitleBlockHeight]);
 
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
@@ -93,13 +118,28 @@ export function FolderShortcutSurface({
           shortcuts={shortcuts}
           emptyText={emptyText}
           columns={columns}
-          columnGap={16}
-          rowGap={20}
+          cellSize={cellSize}
+          columnGap={0}
+          rowGap={0}
           maskBoundaryRef={maskBoundaryRef}
           isFirefox={firefox}
           resolveItemLayout={folderSurfacePreset.resolveItemLayout}
           renderEmptyState={() => renderLeaftabFolderEmptyState(emptyText)}
-          renderDropPreview={renderLeaftabFolderDropPreview}
+          renderDropPreview={(params) => {
+            const shadowGeometry = resolveLeaftabShadowPreviewGeometry({
+              shortcut: params.shortcut,
+              iconSize: compactIconSize,
+              iconCornerRadius,
+              allowLargeFolder: true,
+            });
+
+            return renderLeaftabFolderDropPreview({
+              ...params,
+              ...shadowGeometry,
+              shadowOffsetX: (params.width - shadowGeometry.shadowWidth) / 2,
+              shadowOffsetY: (params.height - shadowGeometry.shadowHeight) / 2,
+            });
+          }}
           renderItem={(params) => renderLeaftabFolderItem({
             shortcut: params.shortcut,
             compactIconSize,

@@ -166,7 +166,10 @@ const mergePreferenceValues = (params: {
   preferLocal: boolean;
 }) => {
   const defaults = getDefaultSyncablePreferences();
-  const merged = cloneJsonValue(defaults);
+  const merged: SyncablePreferences = cloneJsonValue(defaults);
+  const setMergedPreference = <K extends keyof SyncablePreferences>(key: K, value: SyncablePreferences[K]) => {
+    merged[key] = cloneJsonValue(value);
+  };
 
   (Object.keys(defaults) as Array<keyof SyncablePreferences>).forEach((key) => {
     const baseValue = params.base[key];
@@ -176,23 +179,23 @@ const mergePreferenceValues = (params: {
     const remoteChanged = !haveSamePreferenceValue(remoteValue, baseValue);
 
     if (localChanged && !remoteChanged) {
-      merged[key] = cloneJsonValue(localValue);
+      setMergedPreference(key, localValue);
       return;
     }
     if (!localChanged && remoteChanged) {
-      merged[key] = cloneJsonValue(remoteValue);
+      setMergedPreference(key, remoteValue);
       return;
     }
     if (!localChanged && !remoteChanged) {
-      merged[key] = cloneJsonValue(localValue);
+      setMergedPreference(key, localValue);
       return;
     }
     if (haveSamePreferenceValue(localValue, remoteValue)) {
-      merged[key] = cloneJsonValue(localValue);
+      setMergedPreference(key, localValue);
       return;
     }
 
-    merged[key] = cloneJsonValue(params.preferLocal ? localValue : remoteValue);
+    setMergedPreference(key, params.preferLocal ? localValue : remoteValue);
   });
 
   return normalizeSyncablePreferences(merged);

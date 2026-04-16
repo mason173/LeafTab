@@ -1,27 +1,40 @@
-import type { Shortcut } from '@/types';
-import { ROOT_SHORTCUTS_PATH } from '@/features/shortcuts/model/paths';
-export {
-  getMaxShortcutFolderDepth,
-  hasNestedShortcutFolders,
-  SUPPORTED_SHORTCUT_FOLDER_DEPTH,
-  supportsShortcutFolderDepth,
-} from '@/features/shortcuts/model/constraints';
 import {
+  ROOT_SHORTCUTS_PATH,
+  collectShortcutIds,
+  countShortcutLinks,
+  findShortcutById,
+  flattenScenarioShortcutLinks,
+  flattenShortcutLinks,
+  getMaxShortcutFolderDepth,
+  getShortcutChildren,
+  hasNestedShortcutFolders,
+  isShortcutFolder,
+  isShortcutLink,
+  mapShortcutTree,
   mergeShortcutsIntoNewFolder,
   moveShortcutIntoFolder,
-} from '@/features/shortcuts/model/operations';
+  removeShortcutById,
+  SUPPORTED_SHORTCUT_FOLDER_DEPTH,
+  supportsShortcutFolderDepth,
+} from '@leaftab/workspace-core';
+import type { Shortcut } from '@/types';
 export {
   collectShortcutIds,
   countShortcutLinks,
   findShortcutById,
   flattenScenarioShortcutLinks,
   flattenShortcutLinks,
+  getMaxShortcutFolderDepth,
   getShortcutChildren,
+  hasNestedShortcutFolders,
   isShortcutFolder,
   isShortcutLink,
   mapShortcutTree,
+  mergeShortcutsIntoNewFolder,
   removeShortcutById,
-} from '@/features/shortcuts/model/selectors';
+  SUPPORTED_SHORTCUT_FOLDER_DEPTH,
+  supportsShortcutFolderDepth,
+};
 
 export function groupTopLevelShortcutsIntoFolder(
   shortcuts: readonly Shortcut[],

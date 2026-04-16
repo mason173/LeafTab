@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { OTPInput, OTPInputContext } from "input-otp@1.4.2";
+import { OTPInput, OTPInputContext } from "input-otp";
 import { RiSubtractFill as MinusIcon } from "@/icons/ri-compat";
 
 import { cn } from "./utils";

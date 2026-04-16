@@ -204,6 +204,7 @@ export function getCalculatorPreview(rawInput: string): CalculatorPreview | null
   if (!rpn) return null;
 
   const result = evaluateRpn(rpn);
+  if (result === null) return null;
   if (!Number.isFinite(result)) return null;
 
   return {

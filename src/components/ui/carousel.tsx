@@ -3,7 +3,7 @@
 import * as React from "react";
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
-} from "embla-carousel-react@8.6.0";
+} from "embla-carousel-react";
 import { RiArrowLeftSLine as ArrowLeft, RiArrowRightSLine as ArrowRight } from "@/icons/ri-compat";
 
 import { cn } from "./utils";

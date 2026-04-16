@@ -54,6 +54,37 @@ The runtime separates:
 
 The UI may keep showing an older projected slot even after the semantic interaction has moved on to folder entry or merge. That separation is intentional and prevents flicker.
 
+### Root Modes
+
+The root drag pipeline now treats these modes as first-class runtime state:
+
+- `normal`
+- `reorder-only`
+- `external-insert`
+
+Meaning:
+
+- `normal` can produce reorder, grouping, or folder-entry candidates
+- `reorder-only` can only produce reorder candidates
+- `external-insert` stays reorder-only until commit and must not re-enable grouping or folder entry early
+
+Current mapping:
+
+- dragging a normal `1x1` root icon uses `normal`
+- dragging a large folder uses `reorder-only`
+- dragging an extracted folder child on the root surface uses `external-insert`
+
+### Root Candidates
+
+Before commit, root hover now has explicit candidate semantics:
+
+- `reorder-candidate`
+- `group-candidate`
+- `move-into-folder-candidate`
+- `merge-into-big-folder-candidate`
+
+These are candidate states, not final persistence operations.
+
 ## Root Behavior
 
 The root grid can resolve:
@@ -61,10 +92,6 @@ The root grid can resolve:
 - `reorder-root`
 - `merge-root-shortcuts`
 - `move-root-shortcut-into-folder`
-
-There is also one special root-drag mode:
-
-- extracted folder children re-enter the root grid as `reorder-only` slot-first drags
 
 When dragging over a target:
 
@@ -107,6 +134,33 @@ Meaning:
 - `reorder` is what creates displacement and a claimed slot
 
 Extracted reorder-only root drags bypass these target zones and choose directly among projected root reorder slots.
+
+## World Coordinates
+
+Auto-scroll-aware drag logic uses world coordinates, not viewport-only geometry.
+
+Authoritative rule:
+
+- `globalPosition = mousePosition + scrollOffset`
+
+Important consequences:
+
+- auto-scroll changes `scrollOffset`, not sequence
+- auto-scroll does not mutate the world grid
+- preview anchors must stay continuous while the viewport moves
+- index resolution must not be derived from raw DOM viewport positions alone
+
+## Hit Areas
+
+For compact root hit-testing:
+
+- normal `1x1` targets use the `A`-region / icon-body semantics
+- large folders use a dedicated `bigFolderMergeHitArea`
+
+Important rule:
+
+- `bigFolderMergeHitArea` is not just another alias for the normal `A` region
+- large-folder merge entry should use that dedicated area while reorder-yield still respects the surrounding cell and icon geometry
 
 ## Claimed Slots And Bridge Preservation
 
@@ -163,8 +217,9 @@ But it still inherits the same stability principles:
 Once extraction hands the drag back to the root surface:
 
 - the extracted child is inserted back into the root list immediately after its source folder
-- the returned root session becomes reorder-only
+- the returned root session becomes `external-insert`
 - root placement is resolved slot-first instead of by directional target entry
+- grouping and folder entry stay disabled until commit returns the drag to `normal`
 
 ## Variable-Span Layout
 
@@ -186,6 +241,29 @@ When dragging a small item:
 When dragging the large folder itself:
 
 - it still uses the same shared reorder pipeline
+
+### Sequence Semantics
+
+The packed root layout is sequence-first.
+
+Important invariants:
+
+- Z rows are `0-based`
+- `row % 2 === 0` flows left-to-right
+- `row % 2 === 1` flows right-to-left
+- reorder semantics use `remove + insert + stable shift`
+- `swap` is never the persistence rule, even if the visual result resembles a swap
+
+### Large Folder Insert
+
+Large-folder insertion is now modeled as explicit block insert.
+
+Rules:
+
+- the large folder uses a logical center anchor
+- the same `globalPosition + gridSpec` must map to one stable `2x2` footprint
+- conflicts under that footprint are collected by ascending sequence
+- conflict handling must not depend on DOM order, screen geometry order, or footprint traversal order
 
 ## Host Boundary
 

@@ -337,6 +337,7 @@ function _Classdojo() {
     </svg>
   );
 }
+void _Classdojo;
 
 function Clearbit() {
   return (
@@ -557,6 +558,7 @@ function _Gainsight() {
     </svg>
   );
 }
+void _Gainsight;
 
 function _Handshake() {
   return (
@@ -620,6 +622,7 @@ function _Handshake() {
     </svg>
   );
 }
+void _Handshake;
 
 function IDEO() {
   return (

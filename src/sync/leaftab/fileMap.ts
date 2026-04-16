@@ -166,7 +166,7 @@ const buildSnapshotPayloadMap = (
       version: LEAFTAB_SYNC_SCHEMA_VERSION,
       kind: 'preferences',
       generatedAt: snapshot.meta.generatedAt,
-      state: snapshot.preferences,
+      state: snapshot.preferences ?? null,
     } satisfies LeafTabSyncPreferencesPackFile;
   }
   manifestPacks.push(

@@ -294,7 +294,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     const force = options?.force ?? true;
     if (!force) {
       const cachedPayload = readCachedLeafTabSyncAnalysisPayload(analysisStorageKey);
-      if (!analysisStaleRef.current && isLeafTabSyncAnalysisCacheFresh(cachedPayload, options?.maxAgeMs)) {
+      if (cachedPayload && !analysisStaleRef.current && isLeafTabSyncAnalysisCacheFresh(cachedPayload, options?.maxAgeMs)) {
         setAnalysis(cachedPayload.analysis);
         setIsReady(true);
         return cachedPayload.analysis;

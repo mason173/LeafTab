@@ -1,9 +1,9 @@
 import {
-  buildBackupDataV4,
   mergeWebdavPayload,
   type WebdavPayload,
 } from '@/utils/backupData';
 import { flattenScenarioShortcutsForLegacyMirror } from '@/utils/legacyShortcutMirror';
+import type { ScenarioShortcuts, Shortcut } from '@/types';
 import {
   createLeafTabSyncBaseline,
   type LeafTabSyncBaselineStore,
@@ -117,7 +117,7 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
       };
     });
 
-  const projectedScenarioShortcuts = Object.fromEntries(
+  const projectedScenarioShortcuts: ScenarioShortcuts = Object.fromEntries(
     scenarioModes.map((scenario: { id: string }) => {
       const orderedShortcutIds = snapshot.shortcutOrders[scenario.id]?.ids || [];
       const remainingShortcutIds = Object.keys(snapshot.shortcuts)
@@ -127,34 +127,34 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
         .concat(remainingShortcutIds)
         .filter((id: string) => snapshot.shortcuts[id]?.scenarioId === scenario.id);
 
-		      return [scenario.id, shortcutIds.map((shortcutId: string) => {
-		        const shortcut = snapshot.shortcuts[shortcutId];
-		        const isFolder = (
-		          shortcut.kind === 'folder'
-		          || (
-		            typeof shortcut.kind === 'undefined'
-		            && Array.isArray(shortcut.children)
-		            && shortcut.children.length > 0
-		          )
-		        );
-		        return {
-		          id: shortcut.id,
-		          title: shortcut.title,
-		          url: shortcut.url,
-		          icon: shortcut.icon,
-		          kind: isFolder ? 'folder' : 'link',
-		          ...(isFolder ? { children: shortcut.children } : {}),
-		          useOfficialIcon: shortcut.useOfficialIcon,
-		          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
-		          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
-		          officialIconColorOverride: shortcut.officialIconColorOverride,
-		          iconRendering: shortcut.iconRendering,
-		          iconColor: shortcut.iconColor,
-		          ...(isFolder ? { folderDisplayMode: shortcut.folderDisplayMode } : {}),
-	        };
-	      })];
-	    }),
-	  );
+      return [scenario.id, shortcutIds.map((shortcutId: string) => {
+        const shortcut = snapshot.shortcuts[shortcutId];
+        const isFolder = (
+          shortcut.kind === 'folder'
+          || (
+            typeof shortcut.kind === 'undefined'
+            && Array.isArray(shortcut.children)
+            && shortcut.children.length > 0
+          )
+        );
+        return {
+          id: shortcut.id,
+          title: shortcut.title,
+          url: shortcut.url,
+          icon: shortcut.icon,
+          kind: (isFolder ? 'folder' : 'link') as Shortcut['kind'],
+          ...(isFolder ? { children: shortcut.children } : {}),
+          useOfficialIcon: shortcut.useOfficialIcon,
+          autoUseOfficialIcon: shortcut.autoUseOfficialIcon,
+          officialIconAvailableAtSave: shortcut.officialIconAvailableAtSave,
+          officialIconColorOverride: shortcut.officialIconColorOverride,
+          iconRendering: shortcut.iconRendering,
+          iconColor: shortcut.iconColor,
+          ...(isFolder ? { folderDisplayMode: shortcut.folderDisplayMode } : {}),
+        } satisfies Shortcut;
+      })];
+    }),
+  );
 
   return {
     scenarioModes,

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import type { FolderShortcutDropIntent } from '@leaftab/workspace-core';
 import {
   FOLDER_LABEL_REVEAL_START_PROGRESS,
   FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE,
@@ -19,7 +20,6 @@ import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
-import type { FolderShortcutDropIntent } from '@/features/shortcuts/drag/types';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 

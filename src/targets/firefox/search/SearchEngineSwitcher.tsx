@@ -86,9 +86,6 @@ export function SearchEngineSwitcher({
         align="start"
         side="bottom"
         sideOffset={10}
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-        }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
         }}

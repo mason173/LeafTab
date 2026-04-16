@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot@1.1.2";
+import { Slot } from "@radix-ui/react-slot";
 import { RiArrowRightSLine as ChevronRight, RiMoreFill as MoreHorizontal } from "@/icons/ri-compat";
 
 import { cn } from "./utils";

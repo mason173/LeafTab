@@ -4,6 +4,7 @@ import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { readCloudSyncConfigFromStorage } from '@/utils/cloudSyncConfig';
 import type { LeafTabSyncInitialChoice } from '@/sync/leaftab';
 import type { WebdavConfig } from '@/types/webdav';
+import type { LeafTabSyncEncryptionTransport } from '@/hooks/useLeafTabSyncEncryptionManager';
 
 type LongTaskRunner = <T>(
   initial: {
@@ -47,10 +48,6 @@ type WebdavSyncActionOptions = {
   onProgress?: (progress: SyncProgress) => void;
 };
 
-type EncryptionTransport = {
-  readEncryptionState: () => Promise<unknown>;
-} | null;
-
 type UseSyncCenterActionsOptions = {
   user: string | null;
   t: (key: string, options?: any) => string;
@@ -60,11 +57,11 @@ type UseSyncCenterActionsOptions = {
   webdavSyncBookmarksEnabled: boolean;
   cloudSyncBookmarksEnabled: boolean;
   cloudSyncEncryptionScopeKey: string;
-  cloudSyncEncryptedTransport: EncryptionTransport;
+  cloudSyncEncryptedTransport: LeafTabSyncEncryptionTransport;
   ensureSyncEncryptionAccess: (params: {
     providerLabel: string;
     scopeKey: string;
-    transport: EncryptionTransport;
+    transport: LeafTabSyncEncryptionTransport;
   }) => Promise<boolean>;
   ensureCloudLegacyMigrationReady: () => Promise<boolean>;
   handleCloudLeafTabSync: (options?: CloudSyncActionOptions) => Promise<any>;

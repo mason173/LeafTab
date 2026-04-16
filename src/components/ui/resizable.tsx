@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { RiDraggable as GripVerticalIcon } from "@/icons/ri-compat";
-import * as ResizablePrimitive from "react-resizable-panels@2.1.7";
+import * as ResizablePrimitive from "react-resizable-panels";
 
 import { cn } from "./utils";
 
