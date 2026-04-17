@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,22 +9,32 @@ const repoRoot = path.resolve(__dirname, '..');
 const rootGridFile = path.join(repoRoot, 'src/features/shortcuts/components/RootShortcutGrid.tsx');
 const folderSurfaceFile = path.join(repoRoot, 'src/features/shortcuts/components/FolderShortcutSurface.tsx');
 const shortcutGridShimFile = path.join(repoRoot, 'src/components/ShortcutGrid.tsx');
+const srcRoot = path.join(repoRoot, 'src');
 
-const forbiddenEngineMarkers = [
-  'resolveRootDropIntent(',
-  'packGridItems(',
-  'measureDragItems(',
-  'buildProjectedGridItemsForRootReorder(',
-  'useDragMotionState(',
-];
-
-const forbiddenHostEngineImports = [
-  "from '@leaftab/workspace-core'",
-  "from '@leaftab/grid-core'",
+const forbiddenWorkspaceImports = [
+  '@leaftab/workspace-core',
+  '@leaftab/workspace-react',
+  '@leaftab/workspace-preset-leaftab',
 ];
 
 async function readText(filePath) {
   return readFile(filePath, 'utf8');
+}
+
+async function collectSourceFiles(dirPath) {
+  const entries = await readdir(dirPath, { withFileTypes: true });
+  const files = await Promise.all(entries.map(async (entry) => {
+    const entryPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      return collectSourceFiles(entryPath);
+    }
+    if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name)) {
+      return [];
+    }
+    return [entryPath];
+  }));
+
+  return files.flat();
 }
 
 function assertIncludes(text, filePath, pattern, message) {
@@ -40,99 +50,68 @@ function assertExcludes(text, filePath, pattern, message) {
 }
 
 async function main() {
-  const [rootGridSource, folderSurfaceSource, shortcutGridShimSource] = await Promise.all([
+  const [rootGridSource, folderSurfaceSource, shortcutGridShimSource, sourceFiles] = await Promise.all([
     readText(rootGridFile),
     readText(folderSurfaceFile),
     readText(shortcutGridShimFile),
+    collectSourceFiles(srcRoot),
   ]);
-
-  assertIncludes(
-    rootGridSource,
-    rootGridFile,
-    "from '@leaftab/workspace-react'",
-    'RootShortcutGrid host adapter must import the shared package component.',
-  );
-  assertIncludes(
-    rootGridSource,
-    rootGridFile,
-    'PackageRootShortcutGrid',
-    'RootShortcutGrid host adapter should stay a thin wrapper around the package component.',
-  );
-
-  assertIncludes(
-    folderSurfaceSource,
-    folderSurfaceFile,
-    "from '@leaftab/workspace-react'",
-    'FolderShortcutSurface host adapter must import the shared package component.',
-  );
-  assertIncludes(
-    folderSurfaceSource,
-    folderSurfaceFile,
-    'PackageFolderShortcutSurface',
-    'FolderShortcutSurface host adapter should stay a thin wrapper around the package component.',
-  );
 
   assertIncludes(
     shortcutGridShimSource,
     shortcutGridShimFile,
     "from '@/features/shortcuts/components/RootShortcutGrid'",
-    'ShortcutGrid compatibility shim must forward to the host RootShortcutGrid wrapper.',
+    'ShortcutGrid compatibility shim must forward to the self-owned RootShortcutGrid implementation.',
   );
 
-  const shortcutGridLines = shortcutGridShimSource
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (shortcutGridLines.length > 20) {
-    throw new Error(
-      `[grid-boundary] ShortcutGrid compatibility shim has grown too large (${shortcutGridShimFile}). Keep engine logic out of this file.`,
-    );
-  }
+  assertIncludes(
+    rootGridSource,
+    rootGridFile,
+    "from '@/features/shortcuts/drag/useResolvedPointerDragSession'",
+    'RootShortcutGrid should bind through the shared self-owned drag session hook.',
+  );
+  assertIncludes(
+    folderSurfaceSource,
+    folderSurfaceFile,
+    "from '@/features/shortcuts/drag/useResolvedPointerDragSession'",
+    'FolderShortcutSurface should bind through the shared self-owned drag session hook.',
+  );
 
-  for (const marker of forbiddenEngineMarkers) {
+  for (const marker of forbiddenWorkspaceImports) {
     assertExcludes(
       rootGridSource,
       rootGridFile,
       marker,
-      `RootShortcutGrid host adapter should not re-implement shared grid engine logic: ${marker}`,
+      `RootShortcutGrid must not import deprecated workspace packages: ${marker}`,
     );
     assertExcludes(
       folderSurfaceSource,
       folderSurfaceFile,
       marker,
-      `FolderShortcutSurface host adapter should not re-implement shared grid engine logic: ${marker}`,
+      `FolderShortcutSurface must not import deprecated workspace packages: ${marker}`,
     );
     assertExcludes(
       shortcutGridShimSource,
       shortcutGridShimFile,
       marker,
-      `ShortcutGrid compatibility shim should not re-implement shared grid engine logic: ${marker}`,
+      `ShortcutGrid shim must not import deprecated workspace packages: ${marker}`,
     );
   }
 
-  for (const marker of forbiddenHostEngineImports) {
-    assertExcludes(
-      rootGridSource,
-      rootGridFile,
-      marker,
-      `RootShortcutGrid host adapter should not import shared grid engine internals directly: ${marker}`,
-    );
-    assertExcludes(
-      folderSurfaceSource,
-      folderSurfaceFile,
-      marker,
-      `FolderShortcutSurface host adapter should not import shared grid engine internals directly: ${marker}`,
-    );
-    assertExcludes(
-      shortcutGridShimSource,
-      shortcutGridShimFile,
-      marker,
-      `ShortcutGrid compatibility shim should not import shared grid engine internals directly: ${marker}`,
-    );
+  for (const filePath of sourceFiles) {
+    const source = await readText(filePath);
+    for (const marker of forbiddenWorkspaceImports) {
+      assertExcludes(
+        source,
+        filePath,
+        marker,
+        `Application source must stay fully self-owned and not import workspace packages: ${marker}`,
+      );
+    }
   }
 
   console.log(
-    '[grid-boundary] Host adapters still point at @leaftab/workspace-react, remain thin, and do not own workspace engine behavior.',
+    '[grid-boundary] Grid runtime source stays self-owned, ShortcutGrid still forwards to RootShortcutGrid, and no workspace package imports remain under src/.',
   );
 }
 

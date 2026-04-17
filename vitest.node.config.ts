@@ -29,6 +29,7 @@ export default defineConfig(async () => {
         'src/features/shortcuts/drag/__tests__/gridLayout.test.ts',
         'src/features/shortcuts/drag/__tests__/pointerDragSession.test.ts',
         'src/features/shortcuts/drag/__tests__/resolveRootDropIntent.test.ts',
+        'src/features/shortcuts/engine/__tests__/gridEngine.test.ts',
         'src/features/shortcuts/domain/__tests__/dropIntents.test.ts',
         'src/features/shortcuts/model/__tests__/constraints.test.ts',
         'src/features/shortcuts/model/__tests__/operations.test.ts',

@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ShortcutGrid } from '@/components/ShortcutGrid';
+import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 import type { Shortcut } from '@/types';
 
 let rafCallbacks: Array<{ id: number; callback: FrameRequestCallback }> = [];
@@ -283,7 +284,7 @@ describe('ShortcutGrid compact drag projection', () => {
     });
   });
 
-  it('animates remaining shortcuts into place after moving a shortcut into a folder', async () => {
+  it('reflows remaining shortcuts immediately after moving a shortcut into a folder when drag animations are disabled', async () => {
     const initialShortcuts = [
       createLink('a', 'Alpha'),
       createFolder('folder-small', 'Folder'),
@@ -383,10 +384,8 @@ describe('ShortcutGrid compact drag projection', () => {
       expect(view.queryByText('Alpha')).not.toBeInTheDocument();
     });
 
-    await waitFor(() => {
-      const movedShortcut = getShortcutDragItem(view, 'c');
-      expect(movedShortcut.style.transform).toContain('translate(116px, 0px)');
-    });
+    const movedShortcut = getShortcutDragItem(view, 'c');
+    expect(movedShortcut.style.transform).toBe('');
   });
 
   it('does not show the center merge highlight when dragging onto a folder target', async () => {
@@ -1516,7 +1515,7 @@ describe('ShortcutGrid compact drag projection', () => {
     });
   });
 
-  it('animates neighboring shortcuts away when switching a folder to large mode', () => {
+  it('reflows neighboring shortcuts immediately when switching a folder to large mode with drag animations disabled', () => {
     const smallShortcuts = [
       createLink('a', 'Alpha'),
       createFolder('folder', 'Folder', 'small'),
@@ -1590,7 +1589,7 @@ describe('ShortcutGrid compact drag projection', () => {
     );
 
     const movedShortcut = getShortcutDragItem(view, 'c');
-    expect(movedShortcut.style.transform).toContain('translate(-248px, -116px)');
+    expect(movedShortcut.style.transform).toBe('');
   });
 
   it('keeps the previously claimed slot latched while crossing the next icon gap and backing out of its merge zone', async () => {

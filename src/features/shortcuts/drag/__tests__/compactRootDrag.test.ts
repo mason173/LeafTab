@@ -99,7 +99,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('b', 'Beta'),
       createLink('c', 'Gamma'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegions(0),
       b: createRegions(120),
       c: createRegions(240),
@@ -156,7 +156,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('c', 'Gamma'),
       createLink('d', 'Delta'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: {
         targetCellRegion: {
           left: 0,
@@ -319,7 +319,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('b', 'Beta'),
       createLink('c', 'Gamma'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegions(0),
       b: createRegions(120),
       c: createRegions(240),
@@ -365,7 +365,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('b', 'Beta'),
       createLink('c', 'Gamma'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegions(0),
       b: createRegions(120),
       c: createRegions(240),
@@ -412,7 +412,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('c', 'Gamma'),
       createLink('d', 'Delta'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegions(0),
       b: createRegions(120),
       c: createRegions(240),
@@ -484,7 +484,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('c', 'Gamma'),
       createLink('d', 'Delta'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegions(0),
       b: createRegions(120),
       c: createRegions(240),
@@ -554,7 +554,7 @@ describe('resolveCompactRootHoverResolution', () => {
       createLink('e', 'Epsilon'),
       createLink('f', 'Zeta'),
     ]);
-    const regionsById = {
+    const regionsById: Record<string, CompactTargetRegions> = {
       a: createRegionsAt(0, 0),
       b: createRegionsAt(120, 0),
       c: createRegionsAt(240, 0),

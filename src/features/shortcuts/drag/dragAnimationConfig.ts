@@ -1,0 +1,1 @@
+export const DRAG_MOTION_ANIMATIONS_ENABLED = false;

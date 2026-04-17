@@ -1,9 +1,6 @@
 import React from 'react';
-import {
-  computeLeaftabLargeFolderPreviewSize as computeSharedLeaftabLargeFolderPreviewSize,
-  resolveLeaftabRootItemLayout as resolveSharedLeaftabRootItemLayout,
-} from '@leaftab/workspace-preset-leaftab';
 import { RiCheckFill } from '@/icons/ri-compat';
+import { DRAG_MOTION_ANIMATIONS_ENABLED } from '@/features/shortcuts/drag/dragAnimationConfig';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
   getCompactShortcutCardMetrics,
@@ -12,47 +9,19 @@ import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact'
 import { getLargeFolderBorderRadius, getSmallFolderBorderRadius } from '@/components/shortcuts/ShortcutFolderPreview';
 import { ShortcutCardRenderer } from '@/components/shortcuts/ShortcutCardRenderer';
 import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
+import type {
+  FolderShortcutDragPreviewRenderParams,
+  FolderShortcutItemRenderParams,
+  RootGridCenterPreviewRenderParams,
+  RootShortcutGridCardRenderParams,
+  RootShortcutGridDragPreviewRenderParams,
+  RootShortcutGridSelectionIndicatorRenderParams,
+} from './shortcutGridVisualAdapters';
 
 const SELECTION_INDICATOR_SIZE_PX = 16;
 const SELECTION_INDICATOR_OFFSET_PX = -4;
 const MERGE_PREVIEW_COMPACT_TINT = 'rgba(232, 236, 240, 0.3)';
 const DROP_PREVIEW_OPACITY_TRANSITION_MS = 150;
-
-type RootShortcutGridCardRenderParamsShape = {
-  shortcut: Shortcut;
-  compactShowTitle: boolean;
-  compactIconSize: number;
-  iconCornerRadius: number;
-  iconAppearance: ShortcutIconAppearance;
-  compactTitleFontSize: number;
-  forceTextWhite: boolean;
-  enableLargeFolder: boolean;
-  largeFolderPreviewSize?: number;
-  folderDropTargetActive?: boolean;
-  onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
-  selectionDisabled: boolean;
-  onOpen: () => void;
-  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
-};
-
-type RootShortcutGridDragPreviewRenderParamsShape = {
-  shortcut: Shortcut;
-  firefox: boolean;
-  compactShowTitle: boolean;
-  compactIconSize: number;
-  iconCornerRadius: number;
-  iconAppearance: ShortcutIconAppearance;
-  compactTitleFontSize: number;
-  forceTextWhite: boolean;
-  enableLargeFolder: boolean;
-  largeFolderPreviewSize?: number;
-};
-
-type RootShortcutGridSelectionIndicatorRenderParamsShape = {
-  sortId: string;
-  selected: boolean;
-  compactPreviewSize: number;
-};
 
 function DragPreviewIcon({
   shortcut,
@@ -99,7 +68,7 @@ function LightweightDragPreview({
   iconCornerRadius,
   compactTitleFontSize,
   forceTextWhite,
-}: RootShortcutGridDragPreviewRenderParamsShape) {
+}: RootShortcutGridDragPreviewRenderParams) {
   return (
     <div
       className="pointer-events-none select-none"
@@ -128,7 +97,7 @@ function ShortcutSelectionIndicator({
   compactPreviewSize,
   selected,
   sortId,
-}: RootShortcutGridSelectionIndicatorRenderParamsShape) {
+}: RootShortcutGridSelectionIndicatorRenderParams) {
   return (
     <span
       className="pointer-events-none absolute"
@@ -219,7 +188,26 @@ function MergePreviewHighlight({
   );
 }
 
-export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderParamsShape) {
+function resolveShortcutPreviewBorderRadius(params: {
+  shortcut: Shortcut;
+  previewSize: number;
+  iconCornerRadius: number;
+  allowLargeFolder?: boolean;
+}) {
+  const { shortcut, previewSize, iconCornerRadius, allowLargeFolder = true } = params;
+
+  if (shortcut.kind !== 'folder') {
+    return getShortcutIconBorderRadius(iconCornerRadius);
+  }
+
+  if (allowLargeFolder && shortcut.folderDisplayMode === 'large') {
+    return getLargeFolderBorderRadius(previewSize, iconCornerRadius);
+  }
+
+  return getSmallFolderBorderRadius(previewSize, iconCornerRadius);
+}
+
+export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderParams) {
   return (
     <ShortcutCardRenderer
       compactShowTitle={params.compactShowTitle}
@@ -240,7 +228,7 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
   );
 }
 
-export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPreviewRenderParamsShape) {
+export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPreviewRenderParams) {
   if (params.firefox) {
     return <LightweightDragPreview {...params} />;
   }
@@ -263,18 +251,12 @@ export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPr
 }
 
 export function renderRootShortcutGridSelectionIndicator(
-  params: RootShortcutGridSelectionIndicatorRenderParamsShape,
+  params: RootShortcutGridSelectionIndicatorRenderParams,
 ) {
   return <ShortcutSelectionIndicator {...params} />;
 }
 
-export function renderRootGridCenterPreview(params: {
-  shortcut: Shortcut;
-  compactIconSize: number;
-  iconCornerRadius: number;
-  largeFolderEnabled: boolean;
-  largeFolderPreviewSize?: number;
-}) {
+export function renderRootGridCenterPreview(params: RootGridCenterPreviewRenderParams) {
   const compactMetrics = getCompactShortcutCardMetrics({
     shortcut: params.shortcut,
     iconSize: params.compactIconSize,
@@ -286,11 +268,12 @@ export function renderRootGridCenterPreview(params: {
     <MergePreviewHighlight
       compactPreviewWidth={compactMetrics.previewSize}
       compactPreviewHeight={compactMetrics.previewSize}
-      compactPreviewBorderRadius={compactMetrics.largeFolder
-        ? getLargeFolderBorderRadius(compactMetrics.previewSize, params.iconCornerRadius)
-        : params.shortcut.kind === 'folder'
-          ? getSmallFolderBorderRadius(compactMetrics.previewSize, params.iconCornerRadius)
-          : getShortcutIconBorderRadius(params.iconCornerRadius)}
+      compactPreviewBorderRadius={resolveShortcutPreviewBorderRadius({
+        shortcut: params.shortcut,
+        previewSize: compactMetrics.previewSize,
+        iconCornerRadius: params.iconCornerRadius,
+        allowLargeFolder: compactMetrics.largeFolder,
+      })}
       iconCornerRadius={params.iconCornerRadius}
     />
   );
@@ -303,13 +286,33 @@ export function resolveLeaftabRootItemLayout(params: {
   largeFolderPreviewSize?: number;
   iconCornerRadius: number;
 }) {
-  return resolveSharedLeaftabRootItemLayout({
+  const metrics = getCompactShortcutCardMetrics({
     shortcut: params.shortcut,
-    compactIconSize: params.compactIconSize,
-    largeFolderEnabled: params.largeFolderEnabled,
+    iconSize: params.compactIconSize,
+    allowLargeFolder: params.largeFolderEnabled,
     largeFolderPreviewSize: params.largeFolderPreviewSize,
-    iconCornerRadius: params.iconCornerRadius,
   });
+  const previewBorderRadius = resolveShortcutPreviewBorderRadius({
+    shortcut: params.shortcut,
+    previewSize: metrics.previewSize,
+    iconCornerRadius: params.iconCornerRadius,
+    allowLargeFolder: metrics.largeFolder,
+  });
+
+  return {
+    width: metrics.previewSize,
+    height: metrics.height,
+    previewRect: {
+      left: 0,
+      top: 0,
+      width: metrics.previewSize,
+      height: metrics.previewSize,
+      borderRadius: previewBorderRadius,
+    },
+    columnSpan: metrics.columnSpan,
+    rowSpan: metrics.rowSpan,
+    previewBorderRadius,
+  };
 }
 
 export function computeLargeFolderPreviewSize(params: {
@@ -320,14 +323,24 @@ export function computeLargeFolderPreviewSize(params: {
   gridWidthPx: number | null;
   largeFolderEnabled: boolean;
 }) {
-  return computeSharedLeaftabLargeFolderPreviewSize({
-    compactIconSize: params.compactIconSize,
-    columnGap: params.columnGap,
-    rowGap: params.rowGap,
-    gridColumns: params.gridColumns,
-    gridWidthPx: params.gridWidthPx,
-    largeFolderEnabled: params.largeFolderEnabled,
-  });
+  if (!params.largeFolderEnabled) {
+    return undefined;
+  }
+
+  const minimumPreviewSize = params.compactIconSize * 2 + params.columnGap;
+  const maxPreviewHeight = minimumPreviewSize + params.rowGap + 24 - params.columnGap;
+
+  if (!params.gridWidthPx || params.gridColumns <= 0) {
+    return maxPreviewHeight;
+  }
+
+  const gridColumnWidth = (params.gridWidthPx - params.columnGap * Math.max(0, params.gridColumns - 1)) / Math.max(params.gridColumns, 1);
+  const maxPreviewWidth = gridColumnWidth * 2 + params.columnGap;
+
+  return Math.max(
+    minimumPreviewSize,
+    Math.floor(Math.min(maxPreviewWidth, maxPreviewHeight)),
+  );
 }
 
 export function resolveLeaftabFolderItemLayout(params: {
@@ -336,9 +349,15 @@ export function resolveLeaftabFolderItemLayout(params: {
   iconCornerRadius?: number;
 }) {
   const { shortcut, compactIconSize, iconCornerRadius } = params;
+  const resolvedCornerRadius = iconCornerRadius ?? 22;
   const metrics = getCompactShortcutCardMetrics({
     shortcut,
     iconSize: compactIconSize,
+  });
+  const previewBorderRadius = resolveShortcutPreviewBorderRadius({
+    shortcut,
+    previewSize: metrics.previewSize,
+    iconCornerRadius: resolvedCornerRadius,
   });
 
   return {
@@ -349,17 +368,9 @@ export function resolveLeaftabFolderItemLayout(params: {
       top: 0,
       width: metrics.previewSize,
       height: metrics.previewSize,
-      borderRadius: shortcut.kind === 'folder'
-        ? (shortcut.folderDisplayMode === 'large'
-            ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22)
-            : getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22))
-        : getShortcutIconBorderRadius(iconCornerRadius ?? 22),
+      borderRadius: previewBorderRadius,
     },
-    previewBorderRadius: shortcut.kind === 'folder'
-      ? (shortcut.folderDisplayMode === 'large'
-          ? getLargeFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22)
-          : getSmallFolderBorderRadius(metrics.previewSize, iconCornerRadius ?? 22))
-      : getShortcutIconBorderRadius(iconCornerRadius ?? 22),
+    previewBorderRadius,
   };
 }
 
@@ -398,7 +409,9 @@ function LeaftabDropPreviewNode(params: {
     setHasAppeared(true);
   }, []);
 
-  const resolvedOpacity = hasAppeared ? (params.opacity ?? 1) : 0;
+  const resolvedOpacity = DRAG_MOTION_ANIMATIONS_ENABLED
+    ? (hasAppeared ? (params.opacity ?? 1) : 0)
+    : (params.opacity ?? 1);
 
   return (
     <div
@@ -413,23 +426,44 @@ function LeaftabDropPreviewNode(params: {
         borderRadius: params.borderRadius,
         opacity: resolvedOpacity,
         boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.42)',
-        transition: `opacity ${DROP_PREVIEW_OPACITY_TRANSITION_MS}ms ease`,
+        transition: DRAG_MOTION_ANIMATIONS_ENABLED
+          ? `opacity ${DROP_PREVIEW_OPACITY_TRANSITION_MS}ms ease`
+          : undefined,
       }}
     />
   );
 }
 
-export function renderLeaftabFolderDropPreview(params: {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-  borderRadius?: string;
+function renderFolderShortcutCard(params: {
+  shortcut: Shortcut;
+  compactIconSize: number;
+  iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
+  forceTextWhite: boolean;
+  showTitle: boolean;
+  iconContentDataId?: string;
+  onOpen: () => void;
+  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }) {
-  return renderLeaftabDropPreview({
-    ...params,
-    testId: 'folder-shortcut-drop-preview',
-  });
+  return (
+    <ShortcutCardCompact
+      shortcut={params.shortcut}
+      showTitle={params.showTitle}
+      iconSize={params.compactIconSize}
+      iconCornerRadius={params.iconCornerRadius}
+      iconAppearance={params.iconAppearance}
+      titleFontSize={12}
+      forceTextWhite={params.forceTextWhite}
+      disableIconWrapperEffects
+      iconContentProps={params.iconContentDataId
+        ? {
+            'data-folder-overlay-child-id': params.iconContentDataId,
+          }
+        : undefined}
+      onOpen={params.onOpen}
+      onContextMenu={params.onContextMenu}
+    />
+  );
 }
 
 export function renderLeaftabFolderItem(params: {
@@ -442,43 +476,18 @@ export function renderLeaftabFolderItem(params: {
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }) {
-  return (
-    <ShortcutCardCompact
-      shortcut={params.shortcut}
-      showTitle={params.showShortcutTitles}
-      iconSize={params.compactIconSize}
-      iconCornerRadius={params.iconCornerRadius}
-      iconAppearance={params.iconAppearance}
-      titleFontSize={12}
-      forceTextWhite={params.forceTextWhite}
-      disableIconWrapperEffects
-      iconContentProps={{
-        'data-folder-overlay-child-id': params.shortcut.id,
-      }}
-      onOpen={params.onOpen}
-      onContextMenu={params.onContextMenu}
-    />
-  );
+  return renderFolderShortcutCard({
+    ...params,
+    showTitle: params.showShortcutTitles,
+    iconContentDataId: params.shortcut.id,
+  });
 }
 
-export function renderLeaftabFolderDragPreview(params: {
-  shortcut: Shortcut;
-  compactIconSize: number;
-  iconCornerRadius?: number;
-  iconAppearance?: ShortcutIconAppearance;
-  forceTextWhite: boolean;
-}) {
-  return (
-    <ShortcutCardCompact
-      shortcut={params.shortcut}
-      showTitle
-      iconSize={params.compactIconSize}
-      iconCornerRadius={params.iconCornerRadius}
-      iconAppearance={params.iconAppearance}
-      titleFontSize={12}
-      forceTextWhite={params.forceTextWhite}
-      onOpen={() => {}}
-      onContextMenu={() => {}}
-    />
-  );
+export function renderLeaftabFolderDragPreview(params: FolderShortcutDragPreviewRenderParams) {
+  return renderFolderShortcutCard({
+    ...params,
+    showTitle: true,
+    onOpen: () => {},
+    onContextMenu: () => {},
+  });
 }

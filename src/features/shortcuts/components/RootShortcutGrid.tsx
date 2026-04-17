@@ -1,66 +1,30 @@
-import {
-  RootShortcutGrid as PackageRootShortcutGrid,
-  type RootShortcutGridProps as PackageRootShortcutGridProps,
-} from '@leaftab/workspace-react';
-import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { isFirefoxBuildTarget } from '@/platform/browserTarget';
-import type { Shortcut, ShortcutIconAppearance } from '@/types';
-import {
-  COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
-  getCompactShortcutCardMetrics,
-} from '@/components/shortcuts/compactFolderLayout';
+import React from 'react';
 import { type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardVariant';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@/features/shortcuts/drag/types';
 import {
-  computeLargeFolderPreviewSize,
-  renderLeaftabDropPreview,
-  renderRootShortcutGridCard,
-  renderRootShortcutGridDragPreview,
-  renderRootShortcutGridSelectionIndicator,
-  renderRootGridCenterPreview,
-} from './leaftabGridVisuals';
+  RootGridScene,
+} from '@/features/shortcuts/components/shortcutGridSceneRenderers';
+import {
+  type RootShortcutExternalDragSession,
+  useRootShortcutGridSceneController,
+} from '@/features/shortcuts/components/shortcutGridSceneControllers';
+import { resolveRootShortcutGridComponentState } from '@/features/shortcuts/components/shortcutGridComponentAdapters';
+import type {
+  RootShortcutGridCardRenderParams,
+  RootShortcutGridDragPreviewRenderParams,
+  RootShortcutGridSelectionIndicatorRenderParams,
+} from '@/features/shortcuts/components/shortcutGridVisualAdapters';
+import type { ResolvedPointerDragHover } from '@/features/shortcuts/drag/useResolvedPointerDragSession';
+import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 
-export type RootShortcutGridCardRenderParams = {
-  shortcut: Shortcut;
-  compactShowTitle: boolean;
-  compactIconSize: number;
-  iconCornerRadius: number;
-  iconAppearance: ShortcutIconAppearance;
-  compactTitleFontSize: number;
-  forceTextWhite: boolean;
-  enableLargeFolder: boolean;
-  largeFolderPreviewSize?: number;
-  folderDropTargetActive?: boolean;
-  onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
-  selectionDisabled: boolean;
-  onOpen: () => void;
-  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
-};
+export type {
+  RootShortcutGridCardRenderParams,
+  RootShortcutGridDragPreviewRenderParams,
+  RootShortcutGridSelectionIndicatorRenderParams,
+} from '@/features/shortcuts/components/shortcutGridVisualAdapters';
 
-export type RootShortcutGridDragPreviewRenderParams = {
-  shortcut: Shortcut;
-  firefox: boolean;
-  compactShowTitle: boolean;
-  compactIconSize: number;
-  iconCornerRadius: number;
-  iconAppearance: ShortcutIconAppearance;
-  compactTitleFontSize: number;
-  forceTextWhite: boolean;
-  enableLargeFolder: boolean;
-  largeFolderPreviewSize?: number;
-};
-
-export type RootShortcutGridSelectionIndicatorRenderParams = {
-  sortId: string;
-  selected: boolean;
-  compactPreviewSize: number;
-};
-
-export type RootShortcutExternalDragSession = ShortcutExternalDragSessionSeed & {
-  token: number;
-};
+export type { RootShortcutExternalDragSession } from '@/features/shortcuts/components/shortcutGridSceneControllers';
 
 export interface RootShortcutGridProps {
   containerHeight: number;
@@ -95,206 +59,13 @@ export interface RootShortcutGridProps {
   renderSelectionIndicator?: (params: RootShortcutGridSelectionIndicatorRenderParams) => React.ReactNode;
 }
 
-
-export const RootShortcutGrid = React.memo(function RootShortcutGrid({
-  containerHeight,
-  bottomInset = 0,
-  shortcuts,
-  gridColumns,
-  minRows,
-  onShortcutOpen,
-  onShortcutContextMenu,
-  onShortcutReorder,
-  onShortcutDropIntent,
-  onGridContextMenu,
-  compactShowTitle = true,
-  layoutDensity = 'regular',
-  compactIconSize = 72,
-  iconCornerRadius = 22,
-  iconAppearance = 'colorful',
-  compactTitleFontSize = 12,
-  forceTextWhite = false,
-  monochromeTone = 'theme-adaptive',
-  monochromeTileBackdropBlur = false,
-  onDragStart,
-  onDragEnd,
-  disableReorderAnimation = false,
-  selectionMode = false,
-  selectedShortcutIndexes,
-  onToggleShortcutSelection,
-  externalDragSession,
-  onExternalDragSessionConsumed,
-  renderShortcutCard = renderRootShortcutGridCard,
-  renderDragPreview = renderRootShortcutGridDragPreview,
-  renderSelectionIndicator = renderRootShortcutGridSelectionIndicator,
-}: RootShortcutGridProps) {
-  const firefox = isFirefoxBuildTarget();
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [gridWidthPx, setGridWidthPx] = useState<number | null>(null);
-
-  const shortcutIconRenderContextValue = useMemo(() => ({
-    monochromeTone,
-    monochromeTileBackdropBlur,
-  }), [monochromeTileBackdropBlur, monochromeTone]);
-
-  const columnGap = COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX;
-  const rowGap = layoutDensity === 'compact' ? 16 : layoutDensity === 'large' ? 24 : 20;
-  const rowHeight = compactIconSize + 24;
-  const largeFolderEnabled = gridColumns >= 2;
-
-  useLayoutEffect(() => {
-    const node = wrapperRef.current;
-    if (!node || typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return;
-
-    const updateWidth = () => {
-      const nextWidth = Math.round(node.clientWidth);
-      setGridWidthPx((current) => (current === nextWidth ? current : nextWidth));
-    };
-
-    updateWidth();
-    const resizeObserver = new ResizeObserver(() => {
-      updateWidth();
-    });
-    resizeObserver.observe(node);
-    window.addEventListener('resize', updateWidth, { passive: true });
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateWidth);
-    };
-  }, []);
-
-  const largeFolderPreviewSize = useMemo(() => computeLargeFolderPreviewSize({
-    compactIconSize,
-    columnGap,
-    rowGap,
-    gridColumns,
-    gridWidthPx,
-    largeFolderEnabled,
-  }), [columnGap, compactIconSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
-
-  const rootGridPreset = useMemo(() => createLeaftabRootGridPreset({
-    getRootRect: () => wrapperRef.current?.getBoundingClientRect() ?? null,
-    gridWidthPx: gridWidthPx ?? 0,
-    gridColumns,
-    rowHeight,
-    rowGap,
-    columnGap,
-    compactIconSize,
-    iconCornerRadius,
-    largeFolderPreviewSize,
-    largeFolderEnabled,
-  }), [
-    columnGap,
-    compactIconSize,
-    gridColumns,
-    gridWidthPx,
-    largeFolderEnabled,
-    largeFolderPreviewSize,
-    rowGap,
-    rowHeight,
-    iconCornerRadius,
-  ]);
+export const RootShortcutGrid = React.memo(function RootShortcutGrid(props: RootShortcutGridProps) {
+  const { controllerParams } = resolveRootShortcutGridComponentState(props);
+  const { shortcutIconRenderContextValue, sceneProps } = useRootShortcutGridSceneController(controllerParams);
 
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
-      <div ref={wrapperRef} className="w-full">
-        <PackageRootShortcutGrid
-          containerHeight={containerHeight}
-          bottomInset={bottomInset}
-          shortcuts={shortcuts}
-          gridColumns={gridColumns}
-          minRows={minRows}
-          rowHeight={rowHeight}
-          rowGap={rowGap}
-          columnGap={columnGap}
-          resolveItemLayout={rootGridPreset.resolveItemLayout}
-          onShortcutOpen={onShortcutOpen}
-          onShortcutContextMenu={onShortcutContextMenu}
-          onShortcutReorder={onShortcutReorder}
-          onShortcutDropIntent={onShortcutDropIntent}
-          onGridContextMenu={onGridContextMenu}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          disableReorderAnimation={disableReorderAnimation}
-          selectionMode={selectionMode}
-          selectedShortcutIndexes={selectedShortcutIndexes}
-          onToggleShortcutSelection={onToggleShortcutSelection}
-          externalDragSession={externalDragSession}
-          onExternalDragSessionConsumed={onExternalDragSessionConsumed}
-          isFirefox={firefox}
-          resolveCompactTargetRegions={rootGridPreset.resolveCompactTargetRegions}
-          resolveDropTargetRects={rootGridPreset.resolveDropTargetRects}
-          renderItem={(params) => {
-            const compactMetrics = getCompactShortcutCardMetrics({
-              shortcut: params.shortcut,
-              iconSize: compactIconSize,
-              allowLargeFolder: largeFolderEnabled,
-              largeFolderPreviewSize,
-            });
-
-            return (
-              <div className="relative z-10">
-                {renderShortcutCard({
-                  shortcut: params.shortcut,
-                  compactShowTitle,
-                  compactIconSize,
-                  iconCornerRadius,
-                  iconAppearance,
-                  compactTitleFontSize,
-                  forceTextWhite,
-                  enableLargeFolder: largeFolderEnabled,
-                  largeFolderPreviewSize,
-                  folderDropTargetActive: params.centerPreviewActive && params.shortcut.kind === 'folder',
-                  onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
-                  selectionDisabled: params.selectionDisabled,
-                  onOpen: params.onOpen,
-                  onContextMenu: params.onContextMenu,
-                })}
-                {selectionMode && params.shortcut.kind !== 'folder' ? (
-                  <div
-                    className="pointer-events-none absolute inset-0 z-20 rounded-xl"
-                    aria-hidden="true"
-                  >
-                    {renderSelectionIndicator({
-                      sortId: params.shortcut.id,
-                      selected: params.selected,
-                      compactPreviewSize: compactMetrics.previewSize,
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            );
-          }}
-          renderCenterPreview={(params) => {
-            if (params.shortcut.kind === 'folder') return null;
-
-            return renderRootGridCenterPreview({
-              shortcut: params.shortcut,
-              compactIconSize,
-              iconCornerRadius,
-              largeFolderEnabled,
-              largeFolderPreviewSize,
-            });
-          }}
-          renderDropPreview={(params) => renderLeaftabDropPreview({
-            ...params,
-            testId: 'shortcut-drop-preview',
-          })}
-          renderDragPreview={(params) => renderDragPreview({
-            shortcut: params.shortcut,
-            firefox,
-            compactShowTitle,
-            compactIconSize,
-            iconCornerRadius,
-            iconAppearance,
-            compactTitleFontSize,
-            forceTextWhite,
-            enableLargeFolder: largeFolderEnabled,
-            largeFolderPreviewSize,
-          })}
-        />
-      </div>
+      <RootGridScene {...sceneProps} />
     </ShortcutIconRenderContext.Provider>
   );
 });
