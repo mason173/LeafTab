@@ -1,9 +1,10 @@
 import {
   RootShortcutGrid as PackageRootShortcutGrid,
+  type RootShortcutDropIntent,
+  type ShortcutExternalDragSessionSeed,
 } from '@leaftab/workspace-react';
 import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { RootShortcutDropIntent, ShortcutExternalDragSessionSeed } from '@leaftab/workspace-core';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {

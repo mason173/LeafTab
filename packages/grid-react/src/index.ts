@@ -1,6 +1,12 @@
 export {
   FolderShortcutSurface,
 } from './FolderShortcutSurface';
+export type {
+  FolderExtractDragStartPayload,
+  FolderShortcutDropIntent,
+  RootShortcutDropIntent,
+  ShortcutExternalDragSessionSeed,
+} from '@leaftab/workspace-core';
 export {
   GRID_DRAG_SETTLE_TRANSITION,
   GridDragItemFrame,

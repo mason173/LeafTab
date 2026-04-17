@@ -1,10 +1,10 @@
-import { FolderShortcutSurface as PackageFolderShortcutSurface } from '@leaftab/workspace-react';
+import {
+  FolderShortcutSurface as PackageFolderShortcutSurface,
+  type FolderExtractDragStartPayload,
+  type FolderShortcutDropIntent,
+} from '@leaftab/workspace-react';
 import { createLeaftabFolderSurfacePreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type {
-  FolderExtractDragStartPayload,
-  FolderShortcutDropIntent,
-} from '@leaftab/workspace-core';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
@@ -16,7 +16,7 @@ import {
   resolveLeaftabShadowPreviewGeometry,
 } from './leaftabGridVisuals';
 
-export type { FolderExtractDragStartPayload } from '@leaftab/workspace-core';
+export type { FolderExtractDragStartPayload } from '@leaftab/workspace-react';
 
 type FolderShortcutSurfaceProps = {
   folderId: string;
