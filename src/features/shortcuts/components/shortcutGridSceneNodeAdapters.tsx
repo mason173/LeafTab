@@ -9,13 +9,6 @@ import { FolderMaskDropZones } from './FolderMaskDropZones';
 import { ProjectedDropPreviewLayer } from './ProjectedDropPreviewLayer';
 import { renderFolderGridItemNodes, renderRootGridItemNodes } from './shortcutGridItemRenderers';
 import {
-  buildShortcutGridItemStateBindings,
-  buildShortcutSceneItemNodeBindings,
-  buildFolderShortcutRenderBindings,
-  buildRootShortcutRenderBindings,
-  buildShortcutSceneInteractionParams,
-} from './shortcutGridSceneSharedAdapters';
-import {
   resolveFolderGridItemStates,
   resolveRootGridItemStates,
 } from './shortcutGridItemStateAdapters';
@@ -28,37 +21,6 @@ import type {
   RootShortcutRenderBindings,
   ShortcutSceneInteractionParams,
 } from './shortcutGridSceneSharedTypes';
-import type {
-  FolderShortcutVisualOptions,
-  RootShortcutVisualOptions,
-} from './shortcutGridVisualAdapters';
-
-export function buildSharedSceneNodeInteractionParams<TPendingDragRef, TOnShortcutContextMenu>(
-  params: ShortcutSceneInteractionParams<TPendingDragRef, TOnShortcutContextMenu>,
-) {
-  return buildShortcutSceneInteractionParams(params);
-}
-
-function buildSceneItemNodes<TItemState, TResult>(params: {
-  resolveItemStates: () => TItemState[];
-  renderItemNodes: (itemStates: TItemState[]) => TResult;
-}): TResult {
-  return params.renderItemNodes(params.resolveItemStates());
-}
-
-function resolveGridItemNodes<TItemState, TRenderParams>(params: {
-  resolveItemStates: () => TItemState[];
-  buildRenderParams: () => TRenderParams;
-  renderItemNodes: (params: { itemStates: TItemState[] } & TRenderParams) => React.ReactNode;
-}) {
-  return buildSceneItemNodes({
-    resolveItemStates: params.resolveItemStates,
-    renderItemNodes: (itemStates) => params.renderItemNodes({
-      itemStates,
-      ...params.buildRenderParams(),
-    }),
-  });
-}
 
 export function renderProjectedDropPreviewNode(params: {
   preview: import('@/features/shortcuts/drag/linearReorderProjection').ProjectedDropPreview | null;
@@ -152,59 +114,33 @@ type RootGridItemNodeParams<T extends RootDragRenderableItem & {
   onToggleShortcutSelection?: (shortcutIndex: number) => void;
 } & RootShortcutRenderBindings;
 
-function buildRootGridItemStateParams<T extends RootDragRenderableItem & {
-  shortcutIndex: number;
-  layout: { previewWidth: number };
-}>(params: RootGridItemNodeParams<T>) {
-  return {
-    packedItems: params.packedItems,
-    gridColumnWidth: params.gridColumnWidth,
-    compactIconSize: params.compactIconSize,
-    columnGap: params.columnGap,
-    rowHeight: params.rowHeight,
-    rowGap: params.rowGap,
-    selectionMode: params.selectionMode,
-    ...buildShortcutGridItemStateBindings(params),
-    rootDragVisualState: params.rootDragVisualState,
-    selectedShortcutIndexes: params.selectedShortcutIndexes,
-  };
-}
-
-function buildRootGridItemRenderNodeParams<T extends RootDragRenderableItem & {
-  shortcutIndex: number;
-  layout: { previewWidth: number };
-}>(params: RootGridItemNodeParams<T>) {
-  const itemNodeBindings = buildShortcutSceneItemNodeBindings({
-    interactionParams: params.interactionParams,
-    visualOptions: params.rootVisualOptions,
-    layoutShiftOffsets: params.layoutShiftOffsets,
-  });
-
-  return {
-    selectionMode: params.selectionMode,
-    disableReorderAnimation: params.disableReorderAnimation,
-    activeDragId: params.interactionParams.activeDragId,
-    interactionParams: itemNodeBindings.interactionParams,
-    onToggleShortcutSelection: params.onToggleShortcutSelection,
-    ...buildRootShortcutRenderBindings({
-      rootVisualOptions: itemNodeBindings.visualOptions,
-      renderCenterPreview: params.renderCenterPreview,
-      renderSelectionIndicator: params.renderSelectionIndicator,
-      renderShortcutCard: params.renderShortcutCard,
-    }),
-  };
-}
-
 export function buildRootGridItemNodes<T extends RootDragRenderableItem & {
   shortcutIndex: number;
   layout: { previewWidth: number };
 }>(params: RootGridItemNodeParams<T>) {
-  return resolveGridItemNodes({
-    resolveItemStates: () => resolveRootGridItemStates(
-      buildRootGridItemStateParams(params),
-    ),
-    buildRenderParams: () => buildRootGridItemRenderNodeParams(params),
-    renderItemNodes: renderRootGridItemNodes,
+  return renderRootGridItemNodes({
+    itemStates: resolveRootGridItemStates({
+      packedItems: params.packedItems,
+      gridColumnWidth: params.gridColumnWidth,
+      compactIconSize: params.compactIconSize,
+      columnGap: params.columnGap,
+      rowHeight: params.rowHeight,
+      rowGap: params.rowGap,
+      selectionMode: params.selectionMode,
+      activeDragId: params.interactionParams.activeDragId,
+      projectionOffsets: params.projectionOffsets,
+      layoutShiftOffsets: params.layoutShiftOffsets,
+      rootDragVisualState: params.rootDragVisualState,
+      selectedShortcutIndexes: params.selectedShortcutIndexes,
+    }),
+    selectionMode: params.selectionMode,
+    disableReorderAnimation: params.disableReorderAnimation,
+    interactionParams: params.interactionParams,
+    onToggleShortcutSelection: params.onToggleShortcutSelection,
+    rootVisualOptions: params.rootVisualOptions,
+    renderCenterPreview: params.renderCenterPreview,
+    renderSelectionIndicator: params.renderSelectionIndicator,
+    renderShortcutCard: params.renderShortcutCard,
   });
 }
 
@@ -220,41 +156,18 @@ type FolderGridItemNodeParams<T extends FolderDragRenderableItem & { shortcutInd
   >;
 } & FolderShortcutRenderBindings;
 
-function buildFolderGridItemStateParams<T extends FolderDragRenderableItem & { shortcutIndex: number }>(
-  params: FolderGridItemNodeParams<T>,
-) {
-  return {
-    items: params.items,
-    hiddenItemId: params.hiddenItemId,
-    ...buildShortcutGridItemStateBindings(params),
-  };
-}
-
-function buildFolderGridItemRenderNodeParams<T extends FolderDragRenderableItem & { shortcutIndex: number }>(
-  params: FolderGridItemNodeParams<T>,
-) {
-  const itemNodeBindings = buildShortcutSceneItemNodeBindings({
-    interactionParams: params.interactionParams,
-    visualOptions: params.folderVisualOptions,
-    layoutShiftOffsets: params.layoutShiftOffsets,
-  });
-
-  return {
-    suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
-    interactionParams: itemNodeBindings.interactionParams,
-    ...buildFolderShortcutRenderBindings({
-      folderVisualOptions: itemNodeBindings.visualOptions,
-      renderShortcutCard: params.renderShortcutCard,
-    }),
-  };
-}
-
 export function buildFolderGridItemNodes<T extends FolderDragRenderableItem & { shortcutIndex: number }>(params: FolderGridItemNodeParams<T>) {
-  return resolveGridItemNodes({
-    resolveItemStates: () => resolveFolderGridItemStates(
-      buildFolderGridItemStateParams(params),
-    ),
-    buildRenderParams: () => buildFolderGridItemRenderNodeParams(params),
-    renderItemNodes: renderFolderGridItemNodes,
+  return renderFolderGridItemNodes({
+    itemStates: resolveFolderGridItemStates({
+      items: params.items,
+      hiddenItemId: params.hiddenItemId,
+      activeDragId: params.interactionParams.activeDragId,
+      projectionOffsets: params.projectionOffsets,
+      layoutShiftOffsets: params.layoutShiftOffsets,
+    }),
+    suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
+    interactionParams: params.interactionParams,
+    folderVisualOptions: params.folderVisualOptions,
+    renderShortcutCard: params.renderShortcutCard,
   });
 }

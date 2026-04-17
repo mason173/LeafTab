@@ -6,6 +6,7 @@ import {
   type ActiveDragSession,
   type PendingDragSession,
 } from './dragSessionRuntime';
+import { buildRootDragDirectionMap } from './compactRootDrag';
 import {
   measureNullableElementDomRect,
   resolveRootHoverTargetRegions,
@@ -57,7 +58,6 @@ export function useRootDragSessionBridge<T extends RootDragRenderableItem>(param
     handleHoverResolved,
     clearHoverState,
   } = useRootPointerHoverSession({
-    activeDragRef: params.activeDragRef,
     items: params.items,
     shortcuts: params.shortcuts,
     gridColumns: params.gridColumns,
@@ -65,7 +65,6 @@ export function useRootDragSessionBridge<T extends RootDragRenderableItem>(param
     columnGap: params.columnGap,
     rowHeight: params.rowHeight,
     rowGap: params.rowGap,
-    getDragLayoutSnapshot: params.getDragLayoutSnapshot,
     measureCurrentItems: params.measureCurrentItems,
     resolveRootRect: () => measureNullableElementDomRect(params.rootRef.current),
     resolveRegions,
@@ -79,6 +78,14 @@ export function useRootDragSessionBridge<T extends RootDragRenderableItem>(param
     shortcuts: params.shortcuts,
     captureDragLayoutSnapshot: params.captureDragLayoutSnapshot,
     measureCurrentItems: params.measureCurrentItems,
+    buildDirectionMap: ({ activeDrag }) => {
+      const frozenMeasuredItems = params.getDragLayoutSnapshot(params.measureCurrentItems);
+      return buildRootDragDirectionMap({
+        activeSortId: activeDrag.activeId,
+        measuredItems: frozenMeasuredItems,
+        resolveRegions,
+      });
+    },
     resolveHover,
     handleHoverResolved,
     clearHoverState,

@@ -1,31 +1,33 @@
 import { useMemo } from 'react';
 import type React from 'react';
+import type { DragHoverResolution } from '@/features/shortcuts/drag/dragSessionRuntime';
+import type { MeasuredDragItem, ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
+import type { PackedGridItem } from '@/features/shortcuts/drag/gridLayout';
 import { resolveRootGridLayoutState } from '@/features/shortcuts/drag/rootGridLayoutState';
+import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
+import type { DragSettlePreview } from '@/features/shortcuts/drag/useDragMotionState';
 import {
   useFolderShortcutSurfaceInteractionControllerState,
   useRootShortcutGridInteractionControllerState,
 } from '@/features/shortcuts/drag/useShortcutGridInteractionControllerState';
+import type { Shortcut } from '@/types';
 import { renderRootGridCenterPreview } from './leaftabGridVisuals';
 import {
-  buildFolderShortcutSurfaceInteractionParams,
-  buildFolderShortcutSurfaceStateParams,
-  buildRootGridLayoutStateParams,
-  buildRootShortcutGridInteractionParams,
-  buildRootShortcutSurfaceStateParams,
-} from './shortcutGridSceneControllerParamAdapters';
-import {
-  buildSceneControllerState,
-  buildSceneInteractionState,
-  buildSceneLayoutState,
+  resolveFolderShortcutSurfaceInteractionState,
+  resolveRootShortcutGridInteractionState,
 } from './shortcutGridSceneControllerStateAdapters';
 import {
   buildFolderShortcutSurfaceSceneAssemblyParams,
   buildRootShortcutGridSceneAssemblyParams,
 } from './shortcutGridSceneAssemblyParamAdapters';
 import {
-  resolveFolderShortcutSurfaceSceneState,
-  resolveRootShortcutGridSceneState,
-} from './shortcutGridSceneStateAdapters';
+  resolveFolderShortcutSurfaceSceneAssembly,
+  resolveRootShortcutGridSceneAssembly,
+} from './shortcutGridSceneAssemblyAdapters';
+import type {
+  FolderShortcutPendingDragSession,
+  RootShortcutPendingDragSession,
+} from './shortcutGridSceneSharedTypes';
 import { useFolderShortcutSurfaceState, useRootShortcutSurfaceState } from './shortcutGridSurfaceAdapters';
 import type { FolderShortcutSurfaceSceneControllerParams } from './folderShortcutSurfaceSceneController';
 import type { RootShortcutGridSceneControllerParams } from './rootShortcutGridSceneController';
@@ -35,35 +37,6 @@ type SceneControllerRefs = {
   rootRef: React.RefObject<HTMLDivElement | null>;
 };
 
-function resolveShortcutSceneState<TControllerParams, TLayoutState extends object, TInteractionState extends object, TVisualOptions, TAssemblyParams, TResult>(params: {
-  refs: SceneControllerRefs;
-  controllerParams: TControllerParams;
-  firefox: boolean;
-  visualOptions: TVisualOptions;
-  sceneState: {
-    layoutState: TLayoutState;
-    interactionState: TInteractionState;
-  };
-  buildAssemblyParams: (params: {
-    refs: SceneControllerRefs;
-    controllerParams: TControllerParams;
-    firefox: boolean;
-    visualOptions: TVisualOptions;
-    layoutState: TLayoutState;
-    interactionState: TInteractionState;
-  }) => TAssemblyParams;
-  resolveSceneState: (params: TAssemblyParams) => TResult;
-}): TResult {
-  return params.resolveSceneState(params.buildAssemblyParams({
-    refs: params.refs,
-    controllerParams: params.controllerParams,
-    firefox: params.firefox,
-    visualOptions: params.visualOptions,
-    layoutState: params.sceneState.layoutState,
-    interactionState: params.sceneState.interactionState,
-  }));
-}
-
 function useResolvedRootGridLayoutControllerState<TItem extends {
   layout: { columnSpan: number; rowSpan: number };
 }>(params: {
@@ -71,14 +44,14 @@ function useResolvedRootGridLayoutControllerState<TItem extends {
   controllerParams: RootShortcutGridSceneControllerParams;
   gridWidthPx: number | null;
 }) {
-  return useMemo(() => resolveRootGridLayoutState(buildRootGridLayoutStateParams({
+  return useMemo(() => resolveRootGridLayoutState({
     items: params.items,
     gridColumns: params.controllerParams.gridColumns,
     minRows: params.controllerParams.minRows,
     gridWidthPx: params.gridWidthPx,
     compactIconSize: params.controllerParams.compactIconSize,
     layoutDensity: params.controllerParams.layoutDensity,
-  })), [
+  }), [
     params.controllerParams.compactIconSize,
     params.controllerParams.gridColumns,
     params.controllerParams.layoutDensity,
@@ -99,10 +72,18 @@ export function useRootShortcutGridResolvedSceneProps(params: {
     largeFolderEnabled,
     largeFolderPreviewSize,
     rootVisualOptions,
-  } = useRootShortcutSurfaceState(buildRootShortcutSurfaceStateParams({
-    controllerParams: params.controllerParams,
+  } = useRootShortcutSurfaceState({
+    shortcuts: params.controllerParams.shortcuts,
+    gridColumns: params.controllerParams.gridColumns,
     gridWidthPx: params.gridWidthPx,
-  }));
+    layoutDensity: params.controllerParams.layoutDensity,
+    compactShowTitle: params.controllerParams.compactShowTitle,
+    compactIconSize: params.controllerParams.compactIconSize,
+    iconCornerRadius: params.controllerParams.iconCornerRadius,
+    iconAppearance: params.controllerParams.iconAppearance,
+    compactTitleFontSize: params.controllerParams.compactTitleFontSize,
+    forceTextWhite: params.controllerParams.forceTextWhite,
+  });
 
   const {
     columnGap,
@@ -129,7 +110,7 @@ export function useRootShortcutGridResolvedSceneProps(params: {
     layoutShiftOffsets,
     disableLayoutShiftTransition,
     dragLayoutSnapshot,
-  } = useRootShortcutGridInteractionControllerState(buildRootShortcutGridInteractionParams({
+  } = useRootShortcutGridInteractionControllerState({
     rootRef: params.refs.rootRef,
     items,
     shortcuts: params.controllerParams.shortcuts,
@@ -141,16 +122,21 @@ export function useRootShortcutGridResolvedSceneProps(params: {
     compactIconSize: params.controllerParams.compactIconSize,
     largeFolderEnabled,
     largeFolderPreviewSize,
-    controllerParams: params.controllerParams,
-  }));
+    onShortcutReorder: params.controllerParams.onShortcutReorder,
+    onShortcutDropIntent: params.controllerParams.onShortcutDropIntent,
+    onDragStart: params.controllerParams.onDragStart,
+    onDragEnd: params.controllerParams.onDragEnd,
+    externalDragSession: params.controllerParams.externalDragSession,
+    onExternalDragSessionConsumed: params.controllerParams.onExternalDragSessionConsumed,
+  });
 
-  return resolveShortcutSceneState({
-    refs: params.refs,
-    controllerParams: params.controllerParams,
-    firefox: params.firefox,
-    visualOptions: rootVisualOptions,
-    sceneState: buildSceneControllerState({
-      layoutState: buildSceneLayoutState({
+  return resolveRootShortcutGridSceneAssembly(
+    buildRootShortcutGridSceneAssemblyParams({
+      refs: params.refs,
+      controllerParams: params.controllerParams,
+      firefox: params.firefox,
+      visualOptions: rootVisualOptions,
+      layoutState: {
         items,
         packedItems: packedLayout.placedItems,
         gridMinHeight,
@@ -159,8 +145,8 @@ export function useRootShortcutGridResolvedSceneProps(params: {
         rowHeight,
         rowGap,
         usesSpanAwareReorder,
-      }),
-      interactionState: buildSceneInteractionState({
+      },
+      interactionState: resolveRootShortcutGridInteractionState({
         layoutSnapshot: dragLayoutSnapshot,
         activeDragId,
         hoverResolution,
@@ -172,13 +158,9 @@ export function useRootShortcutGridResolvedSceneProps(params: {
         itemElements: itemElementsRef.current,
         ignoreClickRef,
       }),
-    }),
-    buildAssemblyParams: (sceneParams) => buildRootShortcutGridSceneAssemblyParams({
-      ...sceneParams,
       renderCenterPreview: renderRootGridCenterPreview,
     }),
-    resolveSceneState: resolveRootShortcutGridSceneState,
-  });
+  );
 }
 
 export function useFolderShortcutSurfaceResolvedSceneProps(params: {
@@ -190,7 +172,14 @@ export function useFolderShortcutSurfaceResolvedSceneProps(params: {
   const {
     items: measuredItems,
     folderVisualOptions,
-  } = useFolderShortcutSurfaceState(buildFolderShortcutSurfaceStateParams(params.controllerParams));
+  } = useFolderShortcutSurfaceState({
+    shortcuts: params.controllerParams.shortcuts,
+    compactIconSize: params.controllerParams.compactIconSize,
+    iconCornerRadius: params.controllerParams.iconCornerRadius,
+    iconAppearance: params.controllerParams.iconAppearance,
+    forceTextWhite: params.controllerParams.forceTextWhite,
+    showShortcutTitles: params.controllerParams.showShortcutTitles,
+  });
 
   const {
     pendingDragRef,
@@ -206,24 +195,29 @@ export function useFolderShortcutSurfaceResolvedSceneProps(params: {
     suppressProjectionSettleAnimation,
     dragSettlePreview,
     dragLayoutSnapshot,
-  } = useFolderShortcutSurfaceInteractionControllerState(buildFolderShortcutSurfaceInteractionParams({
+  } = useFolderShortcutSurfaceInteractionControllerState({
     rootRef: params.refs.rootRef,
+    maskBoundaryRef: params.controllerParams.maskBoundaryRef,
+    folderId: params.controllerParams.folderId,
+    shortcuts: params.controllerParams.shortcuts,
     measuredItems,
     columns: params.columns,
-    controllerParams: params.controllerParams,
-  }));
+    onShortcutDropIntent: params.controllerParams.onShortcutDropIntent,
+    onExtractDragStart: params.controllerParams.onExtractDragStart,
+    onDragActiveChange: params.controllerParams.onDragActiveChange,
+  });
 
-  return resolveShortcutSceneState({
-    refs: params.refs,
-    controllerParams: params.controllerParams,
-    firefox: params.firefox,
-    visualOptions: folderVisualOptions,
-    sceneState: buildSceneControllerState({
-      layoutState: buildSceneLayoutState({
+  return resolveFolderShortcutSurfaceSceneAssembly(
+    buildFolderShortcutSurfaceSceneAssemblyParams({
+      refs: params.refs,
+      controllerParams: params.controllerParams,
+      firefox: params.firefox,
+      visualOptions: folderVisualOptions,
+      layoutState: {
         items: measuredItems,
         columns: params.columns,
-      }),
-      interactionState: buildSceneInteractionState({
+      },
+      interactionState: resolveFolderShortcutSurfaceInteractionState({
         layoutSnapshot: dragLayoutSnapshot,
         activeDragId,
         hoverResolution,
@@ -239,7 +233,5 @@ export function useFolderShortcutSurfaceResolvedSceneProps(params: {
         ignoreClickRef,
       }),
     }),
-    buildAssemblyParams: buildFolderShortcutSurfaceSceneAssemblyParams,
-    resolveSceneState: resolveFolderShortcutSurfaceSceneState,
-  });
+  );
 }

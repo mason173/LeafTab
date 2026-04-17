@@ -1,5 +1,8 @@
 import type { Shortcut } from '@/types';
-import { reorderRootShortcutPreservingLargeFolderPositions } from '@/features/shortcuts/model/operations';
+import {
+  reorderRootShortcutPreservingLargeFolderPositions,
+  resolveRootShortcutInsertionIndexPreservingLargeFolderPositions,
+} from '@/features/shortcuts/model/operations';
 import { resolveMeasuredCompactHoverState } from './compactHoverState';
 import {
   resolveCompactReorderOnlyHoverResolution,
@@ -11,7 +14,63 @@ import { buildFolderReorderProjectionOffsets, type FolderDragRenderableItem } fr
 import { getProjectedGridItemRect, packGridItems } from './gridLayout';
 import type { MeasuredDragItem } from './gridDragEngine';
 import { buildRootReorderProjectionOffsets, type RootDragRenderableItem } from './rootDragRenderState';
-import type { DragPoint, DragRect, RootDragDirectionMap, RootShortcutDropIntent } from './types';
+import type {
+  DragPoint,
+  DragRect,
+  RootDragActiveTarget,
+  RootDragDirectionMap,
+  RootShortcutDropIntent,
+} from './types';
+
+function buildRootSlotReorderIntent(params: {
+  shortcuts: Shortcut[];
+  activeSortId: string;
+  targetIndex: number;
+}): RootShortcutDropIntent | null {
+  const { shortcuts, activeSortId, targetIndex } = params;
+  const normalizedTargetIndex = resolveRootShortcutInsertionIndexPreservingLargeFolderPositions(
+    shortcuts,
+    activeSortId,
+    targetIndex,
+  );
+  const reorderedShortcuts = reorderRootShortcutPreservingLargeFolderPositions(
+    shortcuts,
+    activeSortId,
+    targetIndex,
+  );
+  if (normalizedTargetIndex === null || !reorderedShortcuts) {
+    return null;
+  }
+
+  const activeIndex = reorderedShortcuts.findIndex((shortcut) => shortcut.id === activeSortId);
+  if (activeIndex < 0) {
+    return null;
+  }
+
+  const previousShortcut = reorderedShortcuts[activeIndex - 1] ?? null;
+  if (previousShortcut) {
+    return {
+      type: 'reorder-root',
+      activeShortcutId: activeSortId,
+      overShortcutId: previousShortcut.id,
+      targetIndex: normalizedTargetIndex,
+      edge: 'after',
+    };
+  }
+
+  const nextShortcut = reorderedShortcuts[activeIndex + 1] ?? null;
+  if (nextShortcut) {
+    return {
+      type: 'reorder-root',
+      activeShortcutId: activeSortId,
+      overShortcutId: nextShortcut.id,
+      targetIndex: normalizedTargetIndex,
+      edge: 'before',
+    };
+  }
+
+  return null;
+}
 
 export function buildRootSlotIntent<T extends RootDragRenderableItem>(params: {
   items: readonly T[];
@@ -43,10 +102,9 @@ export function buildRootSlotIntent<T extends RootDragRenderableItem>(params: {
 
   let bestIntent: RootShortcutDropIntent | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  const activeIndex = items.findIndex((item) => item.sortId === activeSortId);
   const itemById = new Map(items.map((item) => [item.shortcut.id, item] as const));
 
-  for (let targetIndex = 0; targetIndex < items.length; targetIndex += 1) {
+  for (let targetIndex = 0; targetIndex <= items.length; targetIndex += 1) {
     const nextShortcuts = reorderRootShortcutPreservingLargeFolderPositions(shortcuts, activeSortId, targetIndex);
     if (!nextShortcuts) continue;
 
@@ -79,17 +137,15 @@ export function buildRootSlotIntent<T extends RootDragRenderableItem>(params: {
     const distance = Math.hypot(recognitionPoint.x - centerX, recognitionPoint.y - centerY);
     if (distance >= bestDistance) continue;
 
-    const overShortcut = shortcuts[Math.min(targetIndex, shortcuts.length - 1)];
-    if (!overShortcut) continue;
+    const slotIntent = buildRootSlotReorderIntent({
+      shortcuts,
+      activeSortId,
+      targetIndex,
+    });
+    if (!slotIntent) continue;
 
     bestDistance = distance;
-    bestIntent = {
-      type: 'reorder-root',
-      activeShortcutId: activeSortId,
-      overShortcutId: overShortcut.id,
-      targetIndex,
-      edge: targetIndex > activeIndex ? 'after' : 'before',
-    };
+    bestIntent = slotIntent;
   }
 
   return bestIntent;
@@ -104,6 +160,7 @@ export function resolveRootCompactHoverState<T extends RootDragRenderableItem>(p
   measuredItems: readonly MeasuredDragItem<T>[];
   previousRecognitionPoint?: DragPoint | null;
   previousHoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  previousActiveTarget: RootDragActiveTarget | null;
   directionMap: RootDragDirectionMap;
   createEmptyHoverResolution: () => DragHoverResolution<RootShortcutDropIntent>;
   rootRect: DOMRect;
@@ -123,6 +180,7 @@ export function resolveRootCompactHoverState<T extends RootDragRenderableItem>(p
     measuredItems,
     previousRecognitionPoint = null,
     previousHoverResolution,
+    previousActiveTarget,
     createEmptyHoverResolution,
     directionMap,
     rootRect,
@@ -142,6 +200,9 @@ export function resolveRootCompactHoverState<T extends RootDragRenderableItem>(p
     previousRecognitionPoint,
     previousHoverResolution,
     createEmptyHoverResolution,
+    createEmptyResolvedState: () => ({
+      activeTarget: null as RootDragActiveTarget | null,
+    }),
     getId: (item) => item.sortId,
     getVisualBounds: (item) => ({
       offsetX: item.layout.previewOffsetX,
@@ -175,17 +236,20 @@ export function resolveRootCompactHoverState<T extends RootDragRenderableItem>(p
         previousRecognitionPoint: nextPreviousRecognitionPoint,
         measuredItems: nextMeasuredItems,
         items,
+        previousActiveTarget,
         previousInteractionIntent: nextPreviousHoverResolution.interactionIntent,
         previousVisualProjectionIntent: nextPreviousHoverResolution.visualProjectionIntent,
         directionMap,
         interactionProjectionOffsets: buildRootReorderProjectionOffsets({
           items,
+          shortcuts,
           layoutSnapshot: Array.from(nextMeasuredItems),
           activeSortId: nextActiveId,
           hoverIntent: nextPreviousHoverResolution.interactionIntent,
         }),
         visualProjectionOffsets: buildRootReorderProjectionOffsets({
           items,
+          shortcuts,
           layoutSnapshot: Array.from(nextMeasuredItems),
           activeSortId: nextActiveId,
           hoverIntent: nextPreviousHoverResolution.visualProjectionIntent,
@@ -197,8 +261,11 @@ export function resolveRootCompactHoverState<T extends RootDragRenderableItem>(p
       });
 
       return {
-        interactionIntent: nextResolution.interactionIntent,
-        visualProjectionIntent: nextResolution.visualProjectionIntent,
+        hoverResolution: {
+          interactionIntent: nextResolution.interactionIntent,
+          visualProjectionIntent: nextResolution.visualProjectionIntent,
+        },
+        activeTarget: nextResolution.activeTarget,
       };
     },
   });
@@ -211,8 +278,10 @@ export function resolveFolderCompactHoverState<T extends FolderDragRenderableIte
   measuredItems: readonly MeasuredDragItem<T>[];
   previousRecognitionPoint?: DragPoint | null;
   previousHoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  previousActiveTarget: RootDragActiveTarget | null;
   createEmptyHoverResolution: () => DragHoverResolution<RootShortcutDropIntent>;
   shortcuts: Shortcut[];
+  directionMap: RootDragDirectionMap;
   resolveRegions: (item: MeasuredDragItem<T>) => CompactTargetRegions;
 }) {
   const {
@@ -222,8 +291,10 @@ export function resolveFolderCompactHoverState<T extends FolderDragRenderableIte
     measuredItems,
     previousRecognitionPoint = null,
     previousHoverResolution,
+    previousActiveTarget,
     createEmptyHoverResolution,
     shortcuts,
+    directionMap,
     resolveRegions,
   } = params;
 
@@ -235,6 +306,9 @@ export function resolveFolderCompactHoverState<T extends FolderDragRenderableIte
     previousRecognitionPoint,
     previousHoverResolution,
     createEmptyHoverResolution,
+    createEmptyResolvedState: () => ({
+      activeTarget: null as RootDragActiveTarget | null,
+    }),
     getId: (item) => item.shortcut.id,
     getVisualBounds: (item) => ({
       offsetX: item.layout.previewOffsetX,
@@ -249,30 +323,42 @@ export function resolveFolderCompactHoverState<T extends FolderDragRenderableIte
       previousRecognitionPoint: nextPreviousRecognitionPoint,
       previousHoverResolution: nextPreviousHoverResolution,
       recognitionPoint,
-    }) => resolveCompactReorderOnlyHoverResolution({
-      activeSortId: nextActiveId,
-      recognitionPoint,
-      previousRecognitionPoint: nextPreviousRecognitionPoint,
-      activeVisualRect: activeVisualRect as DragRect,
-      measuredItems: nextMeasuredItems,
-      items: nextMeasuredItems,
-      previousInteractionIntent: nextPreviousHoverResolution.interactionIntent,
-      previousVisualProjectionIntent: nextPreviousHoverResolution.visualProjectionIntent,
-      interactionProjectionOffsets: buildFolderReorderProjectionOffsets({
-        shortcuts,
-        layoutSnapshot: Array.from(nextMeasuredItems),
-        activeShortcutId: nextActiveId,
-        hoverIntent: nextPreviousHoverResolution.interactionIntent,
-      }),
-      visualProjectionOffsets: buildFolderReorderProjectionOffsets({
-        shortcuts,
-        layoutSnapshot: Array.from(nextMeasuredItems),
-        activeShortcutId: nextActiveId,
-        hoverIntent: nextPreviousHoverResolution.visualProjectionIntent,
-      }),
-      resolveRegions,
-      columnGap: 16,
-      rowGap: 20,
-    }),
+    }) => {
+      const nextResolution = resolveCompactReorderOnlyHoverResolution({
+        activeSortId: nextActiveId,
+        recognitionPoint,
+        previousRecognitionPoint: nextPreviousRecognitionPoint,
+        activeVisualRect: activeVisualRect as DragRect,
+        measuredItems: nextMeasuredItems,
+        items: nextMeasuredItems,
+        previousActiveTarget,
+        previousInteractionIntent: nextPreviousHoverResolution.interactionIntent,
+        previousVisualProjectionIntent: nextPreviousHoverResolution.visualProjectionIntent,
+        interactionProjectionOffsets: buildFolderReorderProjectionOffsets({
+          shortcuts,
+          layoutSnapshot: Array.from(nextMeasuredItems),
+          activeShortcutId: nextActiveId,
+          hoverIntent: nextPreviousHoverResolution.interactionIntent,
+        }),
+        visualProjectionOffsets: buildFolderReorderProjectionOffsets({
+          shortcuts,
+          layoutSnapshot: Array.from(nextMeasuredItems),
+          activeShortcutId: nextActiveId,
+          hoverIntent: nextPreviousHoverResolution.visualProjectionIntent,
+        }),
+        directionMap,
+        resolveRegions,
+        columnGap: 16,
+        rowGap: 20,
+      });
+
+      return {
+        hoverResolution: {
+          interactionIntent: nextResolution.interactionIntent,
+          visualProjectionIntent: nextResolution.visualProjectionIntent,
+        },
+        activeTarget: nextResolution.activeTarget,
+      };
+    },
   });
 }

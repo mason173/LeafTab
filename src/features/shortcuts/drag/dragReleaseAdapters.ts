@@ -1,6 +1,6 @@
 import type { Shortcut } from '@/types';
 import { reorderRootShortcutPreservingLargeFolderPositions } from '@/features/shortcuts/model/operations';
-import { resolveLinearReorderTargetIndex, buildLinearProjectedDragSettleTarget } from './linearReorderProjection';
+import { buildLinearProjectedDragSettleTarget } from './linearReorderProjection';
 import { resolveFinalHoverIntent, type ActiveDragSession, type DragHoverResolution } from './dragSessionRuntime';
 import type { MeasuredDragItem } from './gridDragEngine';
 import type { FolderShortcutDropIntent, RootShortcutDropIntent } from './types';
@@ -91,6 +91,7 @@ export function resolveFolderDragRelease(params: {
     activeId: activeShortcutId,
     hoverIntent: finalHoverIntent,
     getId: (item) => item.shortcut.id,
+    resolveTargetIndex: (intent) => intent.targetIndex,
   });
   const settlePreview = !activeItem || !target
     ? null
@@ -111,23 +112,8 @@ export function resolveFolderDragRelease(params: {
     };
   }
 
-  const targetShortcutIndex = shortcuts.findIndex((shortcut) => shortcut.id === finalHoverIntent.overShortcutId);
-  if (targetShortcutIndex < 0) {
-    return {
-      settlePreview,
-      dropIntent: null,
-      shouldSuppressProjectionSettle: false,
-    };
-  }
-
-  const targetIndex = resolveLinearReorderTargetIndex({
-    items: shortcuts,
-    activeId: activeShortcutId,
-    overId: finalHoverIntent.overShortcutId,
-    edge: finalHoverIntent.edge,
-    getId: (shortcut) => shortcut.id,
-  });
-  if (targetIndex === null || targetIndex === activeShortcutIndex) {
+  const targetIndex = finalHoverIntent.targetIndex;
+  if (targetIndex === activeShortcutIndex) {
     return {
       settlePreview,
       dropIntent: null,

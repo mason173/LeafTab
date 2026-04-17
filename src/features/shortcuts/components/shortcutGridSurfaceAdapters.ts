@@ -12,8 +12,6 @@ import {
   resolveRootGridRowGap,
 } from '@/features/shortcuts/drag/rootGridLayoutState';
 import {
-  buildFolderShortcutVisualOptions,
-  buildRootShortcutVisualOptions,
   type FolderShortcutVisualOptions,
   type RootShortcutVisualOptions,
 } from './shortcutGridVisualAdapters';
@@ -95,7 +93,7 @@ export function useRootShortcutSurfaceState(params: {
     previewRowGap,
   ]);
 
-  const rootVisualOptions = useMemoizedShortcutSurfaceValue(() => buildRootShortcutVisualOptions({
+  const rootVisualOptions = useMemoizedShortcutSurfaceValue(() => ({
     compactShowTitle: params.compactShowTitle,
     compactIconSize: params.compactIconSize,
     iconCornerRadius: params.iconCornerRadius,
@@ -153,7 +151,7 @@ export function useFolderShortcutSurfaceState(params: {
   items: FolderShortcutRenderableItem[];
   folderVisualOptions: FolderShortcutVisualOptions;
 } {
-  const folderVisualOptions = useMemoizedShortcutSurfaceValue(() => buildFolderShortcutVisualOptions({
+  const folderVisualOptions = useMemoizedShortcutSurfaceValue(() => ({
     compactIconSize: params.compactIconSize,
     iconCornerRadius: params.iconCornerRadius,
     iconAppearance: params.iconAppearance,

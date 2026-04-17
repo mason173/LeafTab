@@ -4,55 +4,40 @@ import type {
   RootGridSceneProps,
 } from './shortcutGridSceneAdapters';
 
-function renderScenePrimaryNodes(params: {
-  projectedDropPreviewNode: React.ReactNode;
-  itemNodes: React.ReactNode;
-}) {
+export function RootGridScene(props: RootGridSceneProps) {
   return (
-    <>
-      {params.projectedDropPreviewNode}
-      {params.itemNodes}
-    </>
-  );
-}
-
-function renderGridScene({
-  wrapperRef,
-  wrapperClassName,
-  rootRef,
-  beforeRootNode,
-  projectedDropPreviewNode,
-  itemNodes,
-  insideRootTrailingNode,
-  afterRootNode,
-  rootClassName,
-  rootStyle,
-  rootProps,
-}: RootGridSceneProps | FolderGridSceneProps) {
-  return (
-    <div ref={wrapperRef} className={wrapperClassName}>
-      {beforeRootNode}
+    <div ref={props.wrapperRef} className={props.wrapperClassName}>
+      {props.beforeRootNode}
       <div
-        ref={rootRef}
-        className={rootClassName}
-        style={rootStyle}
-        {...rootProps}
+        ref={props.rootRef}
+        className={props.rootClassName}
+        style={props.rootStyle}
+        {...props.rootProps}
       >
-        {renderScenePrimaryNodes({
-          projectedDropPreviewNode,
-          itemNodes,
-        })}
-        {insideRootTrailingNode}
+        {props.projectedDropPreviewNode}
+        {props.itemNodes}
+        {props.insideRootTrailingNode}
       </div>
-      {afterRootNode}
+      {props.afterRootNode}
     </div>
   );
 }
 
-export function RootGridScene(props: RootGridSceneProps) {
-  return renderGridScene(props);
-}
-
 export function FolderGridScene(props: FolderGridSceneProps) {
-  return renderGridScene(props);
+  return (
+    <div ref={props.wrapperRef} className={props.wrapperClassName}>
+      {props.beforeRootNode}
+      <div
+        ref={props.rootRef}
+        className={props.rootClassName}
+        style={props.rootStyle}
+        {...props.rootProps}
+      >
+        {props.projectedDropPreviewNode}
+        {props.itemNodes}
+        {props.insideRootTrailingNode}
+      </div>
+      {props.afterRootNode}
+    </div>
+  );
 }

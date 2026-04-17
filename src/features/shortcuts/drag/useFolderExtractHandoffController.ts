@@ -4,13 +4,9 @@ import type { Shortcut } from '@/types';
 import { buildDragAnchor } from './pointerDragSession';
 import type { ActiveDragSession } from './dragSessionRuntime';
 import type { MeasuredDragItem } from './gridDragEngine';
-import type { FolderExtractDragStartPayload } from './types';
+import type { FolderDragSessionMeta, FolderExtractDragStartPayload } from './types';
 
 const EXTRACT_HANDOFF_DELAY_MS = 520;
-
-type FolderDragSessionMeta = {
-  activeShortcutIndex: number;
-};
 
 export function useFolderExtractHandoffController<TItem extends { shortcut: Shortcut }>(params: {
   folderId: string;

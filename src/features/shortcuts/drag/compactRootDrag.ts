@@ -1,16 +1,21 @@
-import {
-  getCompactShortcutCardMetrics,
-  isShortcutLargeFolder,
-} from '@/components/shortcuts/compactFolderLayout';
+import { isShortcutLargeFolder } from '@/components/shortcuts/compactFolderLayout';
 import { isShortcutFolder, isShortcutLink } from '@/features/shortcuts/model/selectors';
 import { getReorderTargetIndex } from '@/features/shortcuts/drag/dropEdge';
 import { resolveRootDropIntent } from '@/features/shortcuts/drag/resolveRootDropIntent';
 import type { ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
-import type { DragPoint, RootDragDirectionMap, RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
+import type {
+  DragPoint,
+  RootDragActiveTarget,
+  RootDragDirectionMap,
+  RootShortcutDropIntent,
+} from '@/features/shortcuts/drag/types';
+import { createRootDragDirectionMap } from '@/features/shortcuts/drag/types';
 import type { Shortcut } from '@/types';
 
 const COMPACT_SMALL_TARGET_HIT_SLOP_PX = 0;
 const COMPACT_LARGE_FOLDER_HIT_SLOP_PX = 8;
+const COMPACT_INTERACTION_SIZE_RATIO = 0.8;
+const COMPACT_INTERACTION_TOP_OFFSET_RATIO = 0.08;
 
 export type CompactTargetRegion = {
   left: number;
@@ -28,7 +33,7 @@ export type CompactTargetRegions = {
 };
 
 export type CompactRootHoverResolution = {
-  hoveredSortId: string | null;
+  activeTarget: RootDragActiveTarget | null;
   interactionIntent: RootShortcutDropIntent | null;
   visualProjectionIntent: RootShortcutDropIntent | null;
 };
@@ -75,31 +80,32 @@ function expandRect(rect: CompactTargetRegion, padding: { x: number; y: number }
   };
 }
 
-function buildCompactDropCenterRect(params: {
+function buildCompactInteractionRect(params: {
   rect: HitTestRect;
   shortcut: Shortcut;
   compactIconSize: number;
   largeFolderEnabled: boolean;
   largeFolderPreviewSize?: number;
 }): HitTestRect {
-  const { rect, shortcut, compactIconSize, largeFolderEnabled, largeFolderPreviewSize } = params;
-  const metrics = getCompactShortcutCardMetrics({
-    shortcut,
-    iconSize: compactIconSize,
-    allowLargeFolder: largeFolderEnabled,
-    largeFolderPreviewSize,
-  });
-  const previewSize = Math.max(1, Math.min(metrics.previewSize, rect.width, rect.height));
-  const left = rect.left + Math.max(0, (rect.width - previewSize) / 2);
-  const top = rect.top;
+  const { rect } = params;
+  const widthBasis = Math.max(1, rect.width);
+  const interactionSize = Math.max(
+    1,
+    Math.min(widthBasis * COMPACT_INTERACTION_SIZE_RATIO, rect.width, rect.height),
+  );
+  const left = rect.left + Math.max(0, (rect.width - interactionSize) / 2);
+  const top = rect.top + Math.max(
+    0,
+    Math.min(rect.height - interactionSize, widthBasis * COMPACT_INTERACTION_TOP_OFFSET_RATIO),
+  );
 
   return {
     left,
     top,
-    width: previewSize,
-    height: previewSize,
-    right: left + previewSize,
-    bottom: top + previewSize,
+    width: interactionSize,
+    height: interactionSize,
+    right: left + interactionSize,
+    bottom: top + interactionSize,
   };
 }
 
@@ -122,7 +128,7 @@ export function resolveCompactTargetRegions(params: {
   largeFolderPreviewSize?: number;
 }): CompactTargetRegions {
   const { rect, shortcut, compactIconSize, largeFolderEnabled, largeFolderPreviewSize } = params;
-  const targetIconRegion = buildCompactDropCenterRect({
+  const targetIconRegion = buildCompactInteractionRect({
     rect,
     shortcut,
     compactIconSize,
@@ -153,6 +159,10 @@ type CompactCandidate<T extends { sortId: string; shortcut: Shortcut; shortcutIn
   overCenterRect: CompactTargetRegion;
 };
 
+function buildActiveTarget(targetSortId: string): RootDragActiveTarget {
+  return { targetSortId };
+}
+
 function resolveActiveSourceIconRegion<T extends { sortId: string; shortcut: Shortcut; shortcutIndex: number }>(params: {
   activeMeasuredItem: CompactMeasuredItem<T> | null;
   resolveRegions: (item: CompactMeasuredItem<T>) => CompactTargetRegions;
@@ -176,6 +186,13 @@ function resolveIntentTargetShortcutId(intent: RootShortcutDropIntent | null): s
     default:
       return null;
   }
+}
+
+function resolvePreviousTargetSortId(
+  previousActiveTarget: RootDragActiveTarget | null | undefined,
+  previousInteractionIntent: RootShortcutDropIntent | null,
+): string | null {
+  return previousActiveTarget?.targetSortId ?? resolveIntentTargetShortcutId(previousInteractionIntent);
 }
 
 function isCenterIntent(intent: RootShortcutDropIntent | null): boolean {
@@ -207,9 +224,12 @@ function resolveRelativeTargetDirection(params: {
 }
 
 function resolveFrozenTargetDirection(
-  directionMap: RootDragDirectionMap,
+  directionMap: RootDragDirectionMap | null | undefined,
   targetSortId: string,
 ): CompactDirection | null {
+  if (!directionMap) {
+    return null;
+  }
   if (directionMap.upper.has(targetSortId)) {
     return 'above';
   }
@@ -236,12 +256,7 @@ export function buildRootDragDirectionMap<T extends { sortId: string; shortcut: 
     resolveRegions: params.resolveRegions,
   });
   if (!activeMeasuredItem || !activeSourceRegion) {
-    return {
-      upper: new Set(),
-      lower: new Set(),
-      left: new Set(),
-      right: new Set(),
-    };
+    return createRootDragDirectionMap();
   }
 
   const upper = new Set<string>();
@@ -277,21 +292,12 @@ export function buildRootDragDirectionMap<T extends { sortId: string; shortcut: 
     }
   });
 
-  return {
+  return createRootDragDirectionMap({
     upper,
     lower,
     left,
     right,
-  };
-}
-
-function createEmptyRootDragDirectionMap(): RootDragDirectionMap {
-  return {
-    upper: new Set(),
-    lower: new Set(),
-    left: new Set(),
-    right: new Set(),
-  };
+  });
 }
 
 function buildStickyReorderBridgeRegion(params: {
@@ -530,6 +536,43 @@ function extractCompactReorderIntent(intent: RootShortcutDropIntent | null): Com
   return intent?.type === 'reorder-root' ? intent : null;
 }
 
+function buildCompactCandidateFromItem<T extends { sortId: string; shortcut: Shortcut; shortcutIndex: number }>(
+  item: CompactMeasuredItem<T>,
+  resolveRegions: (item: CompactMeasuredItem<T>) => CompactTargetRegions,
+): CompactCandidate<T> {
+  const regions = resolveRegions(item);
+  return {
+    overItem: item,
+    overRect: regions.targetIconRegion,
+    overCenterRect: regions.targetIconRegion,
+  };
+}
+
+function resolveLockedTargetCandidate<T extends { sortId: string; shortcut: Shortcut; shortcutIndex: number }>(params: {
+  activeSortId: string;
+  previousActiveTarget: RootDragActiveTarget | null;
+  measuredItems: readonly CompactMeasuredItem<T>[];
+  recognitionPoint: DragPoint;
+  resolveRegions: (item: CompactMeasuredItem<T>) => CompactTargetRegions;
+}): CompactCandidate<T> | null {
+  const targetShortcutId = params.previousActiveTarget?.targetSortId ?? null;
+  if (!targetShortcutId) {
+    return null;
+  }
+
+  const targetItem = findMeasuredItemByShortcutId(params.measuredItems, targetShortcutId);
+  if (!targetItem || targetItem.sortId === params.activeSortId) {
+    return null;
+  }
+
+  const targetRegions = params.resolveRegions(targetItem);
+  if (!pointInRect(params.recognitionPoint, targetRegions.targetIconHitRegion)) {
+    return null;
+  }
+
+  return buildCompactCandidateFromItem(targetItem, params.resolveRegions);
+}
+
 function buildCompactCenterIntent<T extends { sortId: string; shortcut: Shortcut; shortcutIndex: number }>(params: {
   activeItem: CompactMeasuredItem<T>;
   overItem: CompactMeasuredItem<T>;
@@ -639,7 +682,7 @@ function pickCompactTargetCandidate<T extends { sortId: string; shortcut: Shortc
         item,
         overRect: regions.targetIconRegion,
         overCenterRect: regions.targetIconRegion,
-        inside: pointInRect(pointer, regions.targetCellRegion),
+        inside: pointInRect(pointer, regions.targetIconHitRegion),
         centerDistance: distanceToRectCenter(pointer, regions.targetIconRegion),
       };
     })
@@ -698,7 +741,6 @@ function shouldKeepStickyReorderIntent<T extends { sortId: string; shortcut: Sho
   }
 
   const previousTargetRegions = resolveRegions(previousTarget);
-  const targetCellRegion = previousTargetRegions.targetCellRegion;
   const targetIconRegion = previousTargetRegions.targetIconRegion;
   const targetIconHitRegion = previousTargetRegions.targetIconHitRegion;
   const relativeDirection = resolveFrozenTargetDirection(directionMap, previousTarget.sortId);
@@ -706,7 +748,7 @@ function shouldKeepStickyReorderIntent<T extends { sortId: string; shortcut: Sho
     return false;
   }
 
-  if (pointInRect(recognitionPoint, targetCellRegion)) {
+  if (pointInRect(recognitionPoint, targetIconHitRegion)) {
     return resolveDirectionalCompactZone({
       targetRect: targetIconRegion,
       pointer: recognitionPoint,
@@ -963,13 +1005,13 @@ function resolveLatchedVisualProjectionFromPreviousMerge<T extends { sortId: str
   }
 
   const mergeTargetRegions = resolveRegions(mergeTarget);
-  if (pointInRect(recognitionPoint, mergeTargetRegions.targetCellRegion)) {
+  if (pointInRect(recognitionPoint, mergeTargetRegions.targetIconHitRegion)) {
     return previousVisualProjectionIntent;
   }
 
   if (claimedTarget) {
     const claimedTargetRegions = resolveRegions(claimedTarget);
-    if (pointInRect(recognitionPoint, claimedTargetRegions.targetCellRegion)) {
+    if (pointInRect(recognitionPoint, claimedTargetRegions.targetIconHitRegion)) {
       return previousVisualProjectionIntent;
     }
   }
@@ -1027,6 +1069,12 @@ function buildDirectionalCompactIntent<T extends { sortId: string; shortcut: Sho
   const previousReorderIntentForSameTarget = sameTargetAsPrevious && previousInteractionIntent?.type === 'reorder-root'
     ? previousInteractionIntent
     : null;
+  const mergeEdges = resolveDirectionalMergeEdges(relativeDirection);
+  const currentBoundaryEdge = resolveNearestTargetEdge({
+    pointer,
+    targetRect: candidate.overRect,
+    relativeDirection,
+  });
 
   if (zone === 'merge' && centerIntent) {
     const enteredTargetIconThisFrame = resolveEnteredTargetThisFrame({
@@ -1034,26 +1082,17 @@ function buildDirectionalCompactIntent<T extends { sortId: string; shortcut: Sho
       targetRect: candidate.overRect,
       pointer,
     });
-    const mergeEdges = resolveDirectionalMergeEdges(relativeDirection);
+    const effectiveBoundaryEdge = enteredTargetIconThisFrame
+      ? resolveCrossedTargetEdge({
+          fromPoint: previousRecognitionPoint ?? pointer,
+          toPoint: pointer,
+          targetRect: candidate.overRect,
+          relativeDirection,
+        }) ?? currentBoundaryEdge
+      : currentBoundaryEdge;
 
     if (previousReorderIntentForSameTarget) {
-      if (!enteredTargetIconThisFrame) {
-        return previousRecognitionPoint || relativeDirection === 'above' || relativeDirection === 'below'
-          ? previousReorderIntentForSameTarget
-          : centerIntent;
-      }
-
-      const entryEdge = resolveCrossedTargetEdge({
-        fromPoint: previousRecognitionPoint ?? pointer,
-        toPoint: pointer,
-        targetRect: candidate.overRect,
-        relativeDirection,
-      }) ?? resolveNearestTargetEdge({
-        pointer: previousRecognitionPoint ?? pointer,
-        targetRect: candidate.overRect,
-        relativeDirection,
-      });
-      if (!mergeEdges.includes(entryEdge)) {
+      if (!mergeEdges.includes(effectiveBoundaryEdge)) {
         return previousReorderIntentForSameTarget;
       }
     }
@@ -1068,18 +1107,7 @@ function buildDirectionalCompactIntent<T extends { sortId: string; shortcut: Sho
     }
 
     if (enteredTargetIconThisFrame) {
-      const entryEdge = resolveCrossedTargetEdge({
-        fromPoint: previousRecognitionPoint ?? pointer,
-        toPoint: pointer,
-        targetRect: candidate.overRect,
-        relativeDirection,
-      }) ?? resolveNearestTargetEdge({
-        pointer: previousRecognitionPoint ?? pointer,
-        targetRect: candidate.overRect,
-        relativeDirection,
-      });
-
-      if (!mergeEdges.includes(entryEdge)) {
+      if (!mergeEdges.includes(effectiveBoundaryEdge)) {
         if (targetIsLargeFolder) {
           return null;
         }
@@ -1219,6 +1247,7 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
   activeSortId: string;
   recognitionPoint: DragPoint;
   previousRecognitionPoint?: DragPoint | null;
+  previousActiveTarget: RootDragActiveTarget | null;
   activeVisualRect?: CompactTargetRegion | null;
   measuredItems: Array<T & { rect: CompactTargetRegion }>;
   items: readonly T[];
@@ -1226,6 +1255,7 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
   previousVisualProjectionIntent: RootShortcutDropIntent | null;
   interactionProjectionOffsets?: ReadonlyMap<string, ProjectionOffset>;
   visualProjectionOffsets?: ReadonlyMap<string, ProjectionOffset>;
+  directionMap: RootDragDirectionMap;
   resolveRegions: (item: T) => CompactTargetRegions;
   columnGap: number;
   rowGap: number;
@@ -1244,7 +1274,7 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
       measuredItems: params.measuredItems,
       recognitionPoint: params.recognitionPoint,
       resolveRegions: params.resolveRegions,
-      directionMap: createEmptyRootDragDirectionMap(),
+      directionMap: params.directionMap,
       columnGap: params.columnGap,
       rowGap: params.rowGap,
     })) {
@@ -1254,8 +1284,11 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
   })();
 
   const activeMeasuredItem = params.measuredItems.find((item) => item.sortId === params.activeSortId) ?? null;
-  const toResolution = (interactionIntent: RootShortcutDropIntent | null): CompactRootHoverResolution => ({
-    hoveredSortId: interactionIntent ? resolveIntentTargetShortcutId(interactionIntent) : null,
+  const toResolution = (
+    interactionIntent: RootShortcutDropIntent | null,
+    activeTarget: RootDragActiveTarget | null = null,
+  ): CompactRootHoverResolution => ({
+    activeTarget,
     interactionIntent,
     visualProjectionIntent: interactionIntent ?? stickyVisualReorderIntent,
   });
@@ -1277,7 +1310,7 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
       measuredItems: params.measuredItems,
       recognitionPoint: params.recognitionPoint,
       resolveRegions: params.resolveRegions,
-      directionMap: createEmptyRootDragDirectionMap(),
+      directionMap: params.directionMap,
       columnGap: params.columnGap,
       rowGap: params.rowGap,
     })) {
@@ -1298,15 +1331,14 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
   });
 
   if (params.previousInteractionIntent?.type === 'reorder-root') {
-    const previousTarget = findMeasuredItemByShortcutId(
-      params.measuredItems,
-      params.previousInteractionIntent.overShortcutId,
+    const previousTargetSortId = resolvePreviousTargetSortId(
+      params.previousActiveTarget,
+      params.previousInteractionIntent,
     );
+    const previousTarget = previousTargetSortId
+      ? params.measuredItems.find((item) => item.sortId === previousTargetSortId) ?? null
+      : null;
     const previousTargetRegions = previousTarget ? params.resolveRegions(previousTarget) : null;
-    const activeSourceIconRegion = resolveActiveSourceIconRegion({
-      activeMeasuredItem,
-      resolveRegions: params.resolveRegions,
-    });
 
     if (
       previousTarget
@@ -1315,26 +1347,46 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
         interactionProjectionOffsets: params.interactionProjectionOffsets,
         visualProjectionOffsets: params.visualProjectionOffsets,
       })
-      && pointInRect(params.recognitionPoint, previousTargetRegions.targetCellRegion)
-      && resolveDirectionalCompactZone({
-        activeRect: activeSourceIconRegion ?? previousTargetRegions.targetIconRegion,
-        targetRect: previousTargetRegions.targetIconRegion,
-        pointer: params.recognitionPoint,
-      }) !== 'merge'
+      && pointInRect(params.recognitionPoint, previousTargetRegions.targetIconHitRegion)
+      && (() => {
+        const relativeDirection = resolveFrozenTargetDirection(params.directionMap, previousTarget.sortId);
+        if (!relativeDirection) {
+          return false;
+        }
+
+        return resolveDirectionalCompactZone({
+          targetRect: previousTargetRegions.targetIconRegion,
+          pointer: params.recognitionPoint,
+          relativeDirection,
+        }) !== 'merge';
+      })()
     ) {
-      return toResolution(params.previousInteractionIntent);
+      return toResolution(
+        params.previousInteractionIntent,
+        params.previousActiveTarget ?? buildActiveTarget(previousTarget.sortId),
+      );
     }
   }
 
-  const pointerOverCandidate = pickCompactTargetCandidate({
+  const pointerOverCandidate = resolveLockedTargetCandidate({
+    activeSortId: params.activeSortId,
+    previousActiveTarget: params.previousActiveTarget,
+    measuredItems: params.measuredItems,
+    recognitionPoint: params.recognitionPoint,
+    resolveRegions: params.resolveRegions,
+  }) ?? pickCompactTargetCandidate({
     activeSortId: params.activeSortId,
     measuredItems: params.measuredItems,
     pointer: params.recognitionPoint,
     resolveRegions: params.resolveRegions,
   });
 
+  const pointerActiveTarget = pointerOverCandidate
+    ? buildActiveTarget(pointerOverCandidate.overItem.sortId)
+    : null;
+
   if (!activeMeasuredItem || !pointerOverCandidate) {
-    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent);
+    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent, null);
   }
 
   const activeSourceIconRegion = resolveActiveSourceIconRegion({
@@ -1342,16 +1394,21 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
     resolveRegions: params.resolveRegions,
   });
   if (!activeSourceIconRegion) {
-    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent);
+    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent, pointerActiveTarget);
+  }
+
+  const relativeDirection = resolveFrozenTargetDirection(
+    params.directionMap,
+    pointerOverCandidate.overItem.sortId,
+  );
+  if (!relativeDirection) {
+    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent, pointerActiveTarget);
   }
 
   const rawIntent = buildDirectionalCompactReorderIntent({
     activeItem: activeMeasuredItem,
     overItem: pointerOverCandidate.overItem,
-    relativeDirection: resolveRelativeTargetDirection({
-      activeRect: activeSourceIconRegion,
-      targetRect: pointerOverCandidate.overRect,
-    }),
+    relativeDirection,
     items: params.items,
   }) ?? (pointInRect(params.recognitionPoint, pointerOverCandidate.overRect)
     ? buildFallbackCompactReorderIntent({
@@ -1371,6 +1428,7 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
       measuredItems: params.measuredItems,
       recognitionPoint: params.recognitionPoint,
       resolveRegions: params.resolveRegions,
+      directionMap: params.directionMap,
       interactionProjectionOffsets: params.interactionProjectionOffsets,
       visualProjectionOffsets: params.visualProjectionOffsets,
     });
@@ -1379,10 +1437,11 @@ export function resolveCompactReorderOnlyHoverResolution<T extends {
       shouldHoldPreviousReorder && params.previousInteractionIntent?.type === 'reorder-root'
         ? params.previousInteractionIntent
         : previousStickyReorderIntent ?? claimedReorderIntent,
+      pointerActiveTarget,
     );
   }
 
-  return toResolution(rawIntent);
+  return toResolution(rawIntent, pointerActiveTarget);
 }
 
 export function resolveCompactRootHoverResolution<T extends {
@@ -1393,6 +1452,7 @@ export function resolveCompactRootHoverResolution<T extends {
   activeSortId: string;
   recognitionPoint: DragPoint;
   previousRecognitionPoint?: DragPoint | null;
+  previousActiveTarget: RootDragActiveTarget | null;
   activeVisualRect?: CompactTargetRegion | null;
   measuredItems: Array<T & { rect: CompactTargetRegion }>;
   items: readonly T[];
@@ -1443,8 +1503,11 @@ export function resolveCompactRootHoverResolution<T extends {
     rowGap: params.rowGap,
   });
 
-  const toResolution = (interactionIntent: RootShortcutDropIntent | null): CompactRootHoverResolution => ({
-    hoveredSortId: interactionIntent ? resolveIntentTargetShortcutId(interactionIntent) : null,
+  const toResolution = (
+    interactionIntent: RootShortcutDropIntent | null,
+    activeTarget: RootDragActiveTarget | null = null,
+  ): CompactRootHoverResolution => ({
+    activeTarget,
     interactionIntent,
     visualProjectionIntent: buildMergeVisualProjectionIntent({
       interactionIntent,
@@ -1497,15 +1560,14 @@ export function resolveCompactRootHoverResolution<T extends {
   });
 
   if (params.previousInteractionIntent?.type === 'reorder-root') {
-    const previousTarget = findMeasuredItemByShortcutId(
-      params.measuredItems,
-      params.previousInteractionIntent.overShortcutId,
+    const previousTargetSortId = resolvePreviousTargetSortId(
+      params.previousActiveTarget,
+      params.previousInteractionIntent,
     );
+    const previousTarget = previousTargetSortId
+      ? params.measuredItems.find((item) => item.sortId === previousTargetSortId) ?? null
+      : null;
     const previousTargetRegions = previousTarget ? params.resolveRegions(previousTarget) : null;
-    const activeSourceIconRegion = resolveActiveSourceIconRegion({
-      activeMeasuredItem,
-      resolveRegions: params.resolveRegions,
-    });
 
     if (
       previousTarget
@@ -1514,7 +1576,7 @@ export function resolveCompactRootHoverResolution<T extends {
         interactionProjectionOffsets: params.interactionProjectionOffsets,
         visualProjectionOffsets: params.visualProjectionOffsets,
       })
-      && pointInRect(params.recognitionPoint, previousTargetRegions.targetCellRegion)
+      && pointInRect(params.recognitionPoint, previousTargetRegions.targetIconHitRegion)
       && (() => {
         const relativeDirection = resolveFrozenTargetDirection(params.directionMap, previousTarget.sortId);
         if (!relativeDirection) {
@@ -1528,16 +1590,28 @@ export function resolveCompactRootHoverResolution<T extends {
         }) !== 'merge';
       })()
     ) {
-      return toResolution(params.previousInteractionIntent);
+      return toResolution(
+        params.previousInteractionIntent,
+        params.previousActiveTarget ?? buildActiveTarget(previousTarget.sortId),
+      );
     }
   }
 
-  const pointerOverCandidate = pickCompactTargetCandidate({
+  const pointerOverCandidate = resolveLockedTargetCandidate({
+    activeSortId: params.activeSortId,
+    previousActiveTarget: params.previousActiveTarget,
+    measuredItems: params.measuredItems,
+    recognitionPoint: params.recognitionPoint,
+    resolveRegions: params.resolveRegions,
+  }) ?? pickCompactTargetCandidate({
     activeSortId: params.activeSortId,
     measuredItems: params.measuredItems,
     pointer: params.recognitionPoint,
     resolveRegions: params.resolveRegions,
   });
+  const pointerActiveTarget = pointerOverCandidate
+    ? buildActiveTarget(pointerOverCandidate.overItem.sortId)
+    : null;
 
   if (!activeMeasuredItem || !pointerOverCandidate) {
     const mergeExitIntent = activeMeasuredItem
@@ -1552,9 +1626,9 @@ export function resolveCompactRootHoverResolution<T extends {
           directionMap: params.directionMap,
         })
       : null;
-    const resolution = toResolution(mergeExitIntent ?? params.slotIntent ?? previousStickyReorderIntent);
+    const resolution = toResolution(mergeExitIntent ?? params.slotIntent ?? previousStickyReorderIntent, null);
     if (!mergeExitIntent && !params.slotIntent && !previousStickyReorderIntent && claimedReorderIntent) {
-      return toResolution(claimedReorderIntent);
+      return toResolution(claimedReorderIntent, null);
     }
     return resolution;
   }
@@ -1564,7 +1638,7 @@ export function resolveCompactRootHoverResolution<T extends {
     resolveRegions: params.resolveRegions,
   });
   if (!activeSourceIconRegion) {
-    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent);
+    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent, pointerActiveTarget);
   }
 
   const relativeDirection = resolveFrozenTargetDirection(
@@ -1572,7 +1646,7 @@ export function resolveCompactRootHoverResolution<T extends {
     pointerOverCandidate.overItem.sortId,
   );
   if (!relativeDirection) {
-    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent);
+    return toResolution(previousStickyReorderIntent ?? claimedReorderIntent, pointerActiveTarget);
   }
 
   const rawIntent = buildDirectionalCompactIntent({
@@ -1591,7 +1665,7 @@ export function resolveCompactRootHoverResolution<T extends {
     && claimedReorderIntent?.type === 'reorder-root'
   ) {
     return {
-      hoveredSortId: resolveIntentTargetShortcutId(rawIntent),
+      activeTarget: pointerActiveTarget,
       interactionIntent: rawIntent,
       visualProjectionIntent: claimedReorderIntent,
     };
@@ -1615,8 +1689,9 @@ export function resolveCompactRootHoverResolution<T extends {
       shouldHoldPreviousReorder && params.previousInteractionIntent?.type === 'reorder-root'
         ? params.previousInteractionIntent
         : previousStickyReorderIntent ?? claimedReorderIntent,
+      pointerActiveTarget,
     );
   }
 
-  return toResolution(rawIntent);
+  return toResolution(rawIntent, pointerActiveTarget);
 }

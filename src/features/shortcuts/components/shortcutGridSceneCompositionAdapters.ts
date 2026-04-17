@@ -1,6 +1,6 @@
 import type React from 'react';
 import type { Shortcut } from '@/types';
-import type { DragHoverResolution } from '@/features/shortcuts/drag/dragSessionRuntime';
+import type { ResolvedDragHoverState } from '@/features/shortcuts/drag/dragSessionRuntime';
 import type { FolderDragRenderableItem } from '@/features/shortcuts/drag/folderDragRenderState';
 import type { MeasuredDragItem, ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
 import type { PackedGridItem } from '@/features/shortcuts/drag/gridLayout';
@@ -13,11 +13,6 @@ import {
   buildFolderGridItemNodes,
   buildRootGridItemNodes,
 } from './shortcutGridSceneNodeAdapters';
-import {
-  buildShortcutSceneCompositionBindings,
-  buildFolderShortcutRenderBindings,
-  buildRootShortcutRenderBindings,
-} from './shortcutGridSceneSharedAdapters';
 import type {
   FolderShortcutContextMenuHandler,
   FolderShortcutDragPreviewRenderer,
@@ -27,7 +22,6 @@ import type {
   RootShortcutDragPreviewRenderer,
   RootShortcutPendingDragSession,
   RootShortcutRenderBindings,
-  ShortcutSceneInteractionParams,
   ShortcutOpenHandler,
 } from './shortcutGridSceneSharedTypes';
 import type {
@@ -35,90 +29,39 @@ import type {
   RootShortcutVisualOptions,
 } from './shortcutGridVisualAdapters';
 
-type SceneCompositionResult<TActiveDragItem> = {
+type RootSceneCompositionResult<TActiveDragItem> = {
+  projectedDropPreview: ProjectedDropPreview | null;
+  itemNodes: React.ReactNode;
+  activeDragItem: TActiveDragItem | null;
+  dragPreviewRenderer: (item: TActiveDragItem) => React.ReactNode;
+};
+type FolderSceneCompositionResult<TActiveDragItem> = {
   projectedDropPreview: ProjectedDropPreview | null;
   itemNodes: React.ReactNode;
   activeDragItem: TActiveDragItem | null;
   dragPreviewRenderer: (item: TActiveDragItem) => React.ReactNode;
 };
 
-function buildSceneCompositionResult<TActiveDragItem>(
-  params: SceneCompositionResult<TActiveDragItem>,
-): SceneCompositionResult<TActiveDragItem> {
-  return params;
-}
-
-type SharedScenePresentation<TActiveDragItem> = {
-  projectedDropPreview: ProjectedDropPreview | null;
-  activeDragItem: TActiveDragItem | null;
-  dragPreviewRenderer: (item: TActiveDragItem) => React.ReactNode;
-};
-
-function resolveSceneComposition<TPresentation extends SharedScenePresentation<TActiveDragItem>, TActiveDragItem>(params: {
-  resolvePresentation: () => TPresentation;
-  buildItemNodes: (presentation: TPresentation) => React.ReactNode;
-}): SceneCompositionResult<TActiveDragItem> {
-  const presentation = params.resolvePresentation();
-
-  return buildSceneCompositionResult({
-    projectedDropPreview: presentation.projectedDropPreview,
-    itemNodes: params.buildItemNodes(presentation),
-    activeDragItem: presentation.activeDragItem,
-    dragPreviewRenderer: presentation.dragPreviewRenderer,
-  });
-}
-
-type SharedSceneCompositionBaseParams<
-  TItem,
-  TVisualOptions,
-  TRenderDragPreview,
-  TPendingDragRef,
-  TOnShortcutContextMenu,
-> = {
+type RootSceneCompositionParams<TItem extends RootDragRenderableItem & {
+  shortcutIndex: number;
+  layout: { previewWidth: number };
+}> = {
   shortcuts: Shortcut[];
   items: readonly TItem[];
   layoutSnapshot: Array<MeasuredDragItem<TItem>> | null;
   activeDragId: string | null;
-  hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  hoverState: ResolvedDragHoverState<RootShortcutDropIntent>;
   rootElement: HTMLDivElement | null;
   firefox: boolean;
-  visualOptions: TVisualOptions;
-  renderDragPreview: TRenderDragPreview;
+  visualOptions: RootShortcutVisualOptions;
+  renderDragPreview: RootShortcutDragPreviewRenderer;
   layoutShiftOffsets?: ReadonlyMap<string, ProjectionOffset>;
   disableLayoutShiftTransition: boolean;
-  pendingDragRef: React.MutableRefObject<TPendingDragRef>;
+  pendingDragRef: React.MutableRefObject<RootShortcutPendingDragSession>;
   itemElements: Map<string, HTMLDivElement>;
   ignoreClickRef: React.MutableRefObject<boolean>;
   onShortcutOpen: ShortcutOpenHandler;
-  onShortcutContextMenu: TOnShortcutContextMenu;
-};
-
-function buildSceneCompositionBindings<
-  TItem,
-  TVisualOptions,
-  TRenderDragPreview,
-  TPendingDragRef,
-  TOnShortcutContextMenu,
->(params: SharedSceneCompositionBaseParams<
-  TItem,
-  TVisualOptions,
-  TRenderDragPreview,
-  TPendingDragRef,
-  TOnShortcutContextMenu
->) {
-  return buildShortcutSceneCompositionBindings(params);
-}
-
-type RootSceneCompositionParams<TItem extends RootDragRenderableItem & {
-  shortcutIndex: number;
-  layout: { previewWidth: number };
-}> = SharedSceneCompositionBaseParams<
-  TItem,
-  RootShortcutVisualOptions,
-  RootShortcutDragPreviewRenderer,
-  RootShortcutPendingDragSession,
-  RootShortcutContextMenuHandler
-> & {
+  onShortcutContextMenu: RootShortcutContextMenuHandler;
   packedItems: Array<PackedGridItem<TItem>>;
   usesSpanAwareReorder: boolean;
   gridColumns: number;
@@ -136,126 +79,120 @@ type RootSceneCompositionParams<TItem extends RootDragRenderableItem & {
 export function resolveRootGridSceneComposition<TItem extends RootDragRenderableItem & {
   shortcutIndex: number;
   layout: { previewWidth: number };
-}>(params: RootSceneCompositionParams<TItem>) {
-  return resolveSceneComposition({
-    resolvePresentation: () => resolveRootShortcutGridPresentation(
-      buildRootScenePresentationParams(params),
-    ),
-    buildItemNodes: (presentation) => buildRootGridItemNodes(
-      buildRootSceneItemNodeParams({
-        params,
-        presentation,
-      }),
-    ),
-  });
-}
-
-type FolderSceneCompositionParams<TItem extends FolderDragRenderableItem & { shortcutIndex: number }> = SharedSceneCompositionBaseParams<
-  TItem,
-  FolderShortcutVisualOptions,
-  FolderShortcutDragPreviewRenderer,
-  FolderShortcutPendingDragSession,
-  FolderShortcutContextMenuHandler
-> & {
-  dragSettlePreview: DragSettlePreview<Shortcut> | null;
-  suppressProjectionSettleAnimation: boolean;
-} & FolderShortcutRenderBindings;
-
-export function resolveFolderGridSceneComposition<TItem extends FolderDragRenderableItem & { shortcutIndex: number }>(
-  params: FolderSceneCompositionParams<TItem>,
-) {
-  return resolveSceneComposition({
-    resolvePresentation: () => resolveFolderShortcutGridPresentation(
-      buildFolderScenePresentationParams(params),
-    ),
-    buildItemNodes: (presentation) => buildFolderGridItemNodes(
-      buildFolderSceneItemNodeParams({
-        params,
-        presentation,
-      }),
-    ),
-  });
-}
-
-function buildRootScenePresentationParams<TItem extends RootDragRenderableItem & {
-  shortcutIndex: number;
-  layout: { previewWidth: number };
-}>(params: RootSceneCompositionParams<TItem>) {
-  const compositionBindings = buildSceneCompositionBindings(params);
-
-  return {
-    ...compositionBindings.presentationParams,
+}>(params: RootSceneCompositionParams<TItem>): RootSceneCompositionResult<TItem> {
+  const presentation = resolveRootShortcutGridPresentation({
+    shortcuts: params.shortcuts,
+    items: params.items,
+    layoutSnapshot: params.layoutSnapshot,
+    activeDragId: params.activeDragId,
+    hoverState: params.hoverState,
+    rootElement: params.rootElement,
+    firefox: params.firefox,
+    visualOptions: params.visualOptions,
+    renderDragPreview: params.renderDragPreview,
     usesSpanAwareReorder: params.usesSpanAwareReorder,
     gridColumns: params.gridColumns,
     gridColumnWidth: params.gridColumnWidth,
     columnGap: params.columnGap,
     rowHeight: params.rowHeight,
     rowGap: params.rowGap,
-  };
-}
-
-function buildRootSceneItemNodeParams<TItem extends RootDragRenderableItem & {
-  shortcutIndex: number;
-  layout: { previewWidth: number };
-}>(context: {
-  params: RootSceneCompositionParams<TItem>;
-  presentation: ReturnType<typeof resolveRootShortcutGridPresentation<TItem>>;
-}) {
-  const { params, presentation } = context;
-  const compositionBindings = buildSceneCompositionBindings(params);
+  });
 
   return {
-    packedItems: params.packedItems,
-    gridColumnWidth: params.gridColumnWidth,
-    compactIconSize: params.compactIconSize,
-    columnGap: params.columnGap,
-    rowHeight: params.rowHeight,
-    rowGap: params.rowGap,
-    selectionMode: params.selectionMode,
-    projectionOffsets: presentation.projectionOffsets,
-    rootDragVisualState: presentation.rootDragVisualState,
-    disableReorderAnimation: params.disableReorderAnimation,
-    selectedShortcutIndexes: params.selectedShortcutIndexes,
-    interactionParams: compositionBindings.itemNodeBindings.interactionParams,
-    layoutShiftOffsets: compositionBindings.itemNodeBindings.layoutShiftOffsets,
-    onToggleShortcutSelection: params.onToggleShortcutSelection,
-    ...buildRootShortcutRenderBindings({
-      rootVisualOptions: compositionBindings.itemNodeBindings.visualOptions,
+    projectedDropPreview: presentation.projectedDropPreview,
+    itemNodes: buildRootGridItemNodes({
+      packedItems: params.packedItems,
+      gridColumnWidth: params.gridColumnWidth,
+      compactIconSize: params.compactIconSize,
+      columnGap: params.columnGap,
+      rowHeight: params.rowHeight,
+      rowGap: params.rowGap,
+      selectionMode: params.selectionMode,
+      projectionOffsets: presentation.projectionOffsets,
+      rootDragVisualState: presentation.rootDragVisualState,
+      disableReorderAnimation: params.disableReorderAnimation,
+      selectedShortcutIndexes: params.selectedShortcutIndexes,
+      interactionParams: {
+        activeDragId: params.activeDragId,
+        disableLayoutShiftTransition: params.disableLayoutShiftTransition,
+        firefox: params.firefox,
+        pendingDragRef: params.pendingDragRef,
+        itemElements: params.itemElements,
+        ignoreClickRef: params.ignoreClickRef,
+        onShortcutOpen: params.onShortcutOpen,
+        onShortcutContextMenu: params.onShortcutContextMenu,
+      },
+      layoutShiftOffsets: params.layoutShiftOffsets,
+      onToggleShortcutSelection: params.onToggleShortcutSelection,
+      rootVisualOptions: params.visualOptions,
       renderCenterPreview: params.renderCenterPreview,
       renderSelectionIndicator: params.renderSelectionIndicator,
       renderShortcutCard: params.renderShortcutCard,
     }),
+    activeDragItem: presentation.activeDragItem,
+    dragPreviewRenderer: presentation.dragPreviewRenderer,
   };
 }
 
-function buildFolderScenePresentationParams<TItem extends FolderDragRenderableItem & { shortcutIndex: number }>(
+type FolderSceneCompositionParams<TItem extends FolderDragRenderableItem & { shortcutIndex: number }> = {
+  shortcuts: Shortcut[];
+  items: readonly TItem[];
+  layoutSnapshot: Array<MeasuredDragItem<TItem>> | null;
+  activeDragId: string | null;
+  hoverState: ResolvedDragHoverState<RootShortcutDropIntent>;
+  rootElement: HTMLDivElement | null;
+  firefox: boolean;
+  visualOptions: FolderShortcutVisualOptions;
+  renderDragPreview: FolderShortcutDragPreviewRenderer;
+  layoutShiftOffsets?: ReadonlyMap<string, ProjectionOffset>;
+  disableLayoutShiftTransition: boolean;
+  pendingDragRef: React.MutableRefObject<FolderShortcutPendingDragSession>;
+  itemElements: Map<string, HTMLDivElement>;
+  ignoreClickRef: React.MutableRefObject<boolean>;
+  onShortcutOpen: ShortcutOpenHandler;
+  onShortcutContextMenu: FolderShortcutContextMenuHandler;
+  dragSettlePreview: DragSettlePreview<Shortcut> | null;
+  suppressProjectionSettleAnimation: boolean;
+} & FolderShortcutRenderBindings;
+
+export function resolveFolderGridSceneComposition<TItem extends FolderDragRenderableItem & { shortcutIndex: number }>(
   params: FolderSceneCompositionParams<TItem>,
-) {
-  const compositionBindings = buildSceneCompositionBindings(params);
-
-  return {
-    ...compositionBindings.presentationParams,
-    dragSettlePreview: params.dragSettlePreview,
-  };
-}
-
-function buildFolderSceneItemNodeParams<TItem extends FolderDragRenderableItem & { shortcutIndex: number }>(context: {
-  params: FolderSceneCompositionParams<TItem>;
-  presentation: ReturnType<typeof resolveFolderShortcutGridPresentation<TItem>>;
-}) {
-  const { params, presentation } = context;
-  const compositionBindings = buildSceneCompositionBindings(params);
-
-  return {
+): FolderSceneCompositionResult<TItem> {
+  const presentation = resolveFolderShortcutGridPresentation({
+    shortcuts: params.shortcuts,
     items: params.items,
-    hiddenItemId: presentation.hiddenShortcutId,
-    projectionOffsets: presentation.projectionOffsets,
-    suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
-    interactionParams: compositionBindings.itemNodeBindings.interactionParams,
-    layoutShiftOffsets: compositionBindings.itemNodeBindings.layoutShiftOffsets,
-    ...buildFolderShortcutRenderBindings({
-      folderVisualOptions: compositionBindings.itemNodeBindings.visualOptions,
+    layoutSnapshot: params.layoutSnapshot,
+    activeDragId: params.activeDragId,
+    hoverState: params.hoverState,
+    rootElement: params.rootElement,
+    firefox: params.firefox,
+    visualOptions: params.visualOptions,
+    renderDragPreview: params.renderDragPreview,
+    dragSettlePreview: params.dragSettlePreview,
+  });
+
+  return {
+    projectedDropPreview: presentation.projectedDropPreview,
+    itemNodes: buildFolderGridItemNodes({
+      items: params.items,
+      hiddenItemId: presentation.hiddenShortcutId,
+      projectionOffsets: presentation.projectionOffsets,
+      suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
+      interactionParams: {
+        activeDragId: params.activeDragId,
+        disableLayoutShiftTransition: params.disableLayoutShiftTransition,
+        firefox: params.firefox,
+        pendingDragRef: params.pendingDragRef,
+        itemElements: params.itemElements,
+        ignoreClickRef: params.ignoreClickRef,
+        onShortcutOpen: params.onShortcutOpen,
+        onShortcutContextMenu: params.onShortcutContextMenu,
+      },
+      layoutShiftOffsets: params.layoutShiftOffsets,
+      folderVisualOptions: params.visualOptions,
       renderShortcutCard: params.renderShortcutCard,
     }),
+    activeDragItem: presentation.activeDragItem,
+    dragPreviewRenderer: presentation.dragPreviewRenderer,
   };
 }

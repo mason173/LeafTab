@@ -70,16 +70,6 @@ export type FolderShortcutItemRenderParams = FolderShortcutSharedRenderParams & 
 
 export type FolderShortcutDragPreviewRenderParams = FolderShortcutSharedRenderParams;
 
-function buildShortcutVisualParams<TVisualOptions extends object, TExtra extends object>(
-  visualOptions: TVisualOptions,
-  extra: TExtra,
-): TVisualOptions & TExtra {
-  return {
-    ...visualOptions,
-    ...extra,
-  };
-}
-
 function buildFolderShortcutSharedRenderParams(params: {
   shortcut: Shortcut;
   visualOptions: FolderShortcutVisualOptions;
@@ -93,22 +83,14 @@ function buildFolderShortcutSharedRenderParams(params: {
   };
 }
 
-function buildShortcutActionRenderParams(
-  params: ShortcutActionRenderParams,
-): ShortcutActionRenderParams {
-  return {
-    onOpen: params.onOpen,
-    onContextMenu: params.onContextMenu,
-  };
-}
-
 function buildRootShortcutSharedRenderParams(params: {
   shortcut: Shortcut;
   visualOptions: RootShortcutVisualOptions;
 }): RootShortcutSharedRenderParams {
-  return buildShortcutVisualParams(params.visualOptions, {
+  return {
+    ...params.visualOptions,
     shortcut: params.shortcut,
-  });
+  };
 }
 
 function buildRootGridCenterPreviewVisualParams(
@@ -120,14 +102,6 @@ function buildRootGridCenterPreviewVisualParams(
     largeFolderEnabled: visualOptions.enableLargeFolder,
     largeFolderPreviewSize: visualOptions.largeFolderPreviewSize,
   };
-}
-
-export function buildRootShortcutVisualOptions(params: RootShortcutVisualOptions): RootShortcutVisualOptions {
-  return params;
-}
-
-export function buildFolderShortcutVisualOptions(params: FolderShortcutVisualOptions): FolderShortcutVisualOptions {
-  return params;
 }
 
 export function buildRootShortcutCardRenderParams(params: {
@@ -147,7 +121,8 @@ export function buildRootShortcutCardRenderParams(params: {
     folderDropTargetActive: params.folderDropTargetActive,
     onPreviewShortcutOpen: params.onPreviewShortcutOpen,
     selectionDisabled: params.selectionDisabled,
-    ...buildShortcutActionRenderParams(params),
+    onOpen: params.onOpen,
+    onContextMenu: params.onContextMenu,
   };
 }
 
@@ -163,12 +138,6 @@ export function buildRootShortcutDragPreviewRenderParams(params: {
     }),
     firefox: params.firefox,
   };
-}
-
-export function buildRootShortcutSelectionIndicatorRenderParams(
-  params: RootShortcutGridSelectionIndicatorRenderParams,
-): RootShortcutGridSelectionIndicatorRenderParams {
-  return params;
 }
 
 export function buildRootGridCenterPreviewRenderParams(params: {
@@ -193,7 +162,8 @@ export function buildFolderShortcutItemRenderParams(params: {
       visualOptions: params.visualOptions,
     }),
     showShortcutTitles: params.visualOptions.showShortcutTitles,
-    ...buildShortcutActionRenderParams(params),
+    onOpen: params.onOpen,
+    onContextMenu: params.onContextMenu,
   };
 }
 

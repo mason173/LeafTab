@@ -1,8 +1,7 @@
 import type { Shortcut } from '@/types';
-import type { DragHoverResolution } from './dragSessionRuntime';
 import { resolveGridDragFrameState } from './dragFrameRenderState';
 import { buildDragPlaceholderStyle } from './dragItemLayout';
-import { buildLinearProjectedDropPreview, resolveLinearReorderTargetIndex } from './linearReorderProjection';
+import { buildLinearProjectedDropPreview } from './linearReorderProjection';
 import { buildReorderProjectionOffsets, type MeasuredDragItem, type ProjectionOffset } from './gridDragEngine';
 import type { RootShortcutDropIntent } from './types';
 
@@ -55,20 +54,13 @@ export function buildFolderReorderProjectionOffsets<T extends FolderDragRenderab
   }
 
   const items = shortcuts.map((shortcut, shortcutIndex) => ({ shortcut, shortcutIndex }));
-  const targetIndex = resolveLinearReorderTargetIndex({
-    items,
-    activeId: activeShortcutId,
-    overId: hoverIntent.overShortcutId,
-    edge: hoverIntent.edge,
-    getId: (item) => item.shortcut.id,
-  });
 
   return buildReorderProjectionOffsets({
     items,
     layoutSnapshot,
     activeId: activeShortcutId,
     hoveredId: hoverIntent.overShortcutId,
-    targetIndex,
+    targetIndex: hoverIntent.targetIndex,
     getId: (item) => item.shortcut.id,
   });
 }
@@ -78,7 +70,7 @@ export function resolveFolderDragRenderState<T extends FolderDragRenderableItem>
   items: readonly T[];
   layoutSnapshot: Array<MeasuredDragItem<T>> | null;
   activeShortcutId: string | null;
-  hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  visualProjectionIntent: RootShortcutDropIntent | null;
   rootElement: HTMLDivElement | null;
 }) {
   return {
@@ -86,16 +78,17 @@ export function resolveFolderDragRenderState<T extends FolderDragRenderableItem>
       shortcuts: params.shortcuts,
       layoutSnapshot: params.layoutSnapshot,
       activeShortcutId: params.activeShortcutId,
-      hoverIntent: params.hoverResolution.visualProjectionIntent,
+      hoverIntent: params.visualProjectionIntent,
     }),
     projectedDropPreview: buildLinearProjectedDropPreview({
       items: params.items,
       layoutSnapshot: params.layoutSnapshot,
       activeId: params.activeShortcutId,
-      hoverIntent: params.hoverResolution.visualProjectionIntent,
+      hoverIntent: params.visualProjectionIntent,
       rootElement: params.rootElement,
       getId: (item) => item.shortcut.id,
       getLayout: (item) => item.layout,
+      resolveTargetIndex: (intent) => intent.targetIndex,
     }),
   };
 }

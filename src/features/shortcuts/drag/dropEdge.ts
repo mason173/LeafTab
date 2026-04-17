@@ -1,4 +1,5 @@
 import type { DragPoint, DragRect, RootDropEdge, RootShortcutDragItem } from './types';
+import { resolveRootShortcutInsertionIndexPreservingLargeFolderPositions } from '@/features/shortcuts/model/operations';
 import { resolveLinearReorderTargetIndex } from './linearReorderProjection';
 
 function resolveCenterRect(rect: DragRect, centerRect?: DragRect): DragRect {
@@ -40,11 +41,20 @@ export function getReorderTargetIndex(params: {
   edge: RootDropEdge;
 }): number | null {
   const { items, activeSortId, overSortId, edge } = params;
-  return resolveLinearReorderTargetIndex({
+  const rawTargetIndex = resolveLinearReorderTargetIndex({
     items,
     activeId: activeSortId,
     overId: overSortId,
     edge,
     getId: (item) => item.sortId,
   });
+  if (rawTargetIndex === null) {
+    return null;
+  }
+
+  return resolveRootShortcutInsertionIndexPreservingLargeFolderPositions(
+    items.map((item) => item.shortcut),
+    activeSortId,
+    rawTargetIndex,
+  );
 }

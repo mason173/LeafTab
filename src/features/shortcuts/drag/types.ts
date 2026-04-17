@@ -31,8 +31,71 @@ export type RootDragDirectionMap = {
   right: ReadonlySet<string>;
 };
 
+class ReadonlySetView<T> implements ReadonlySet<T> {
+  readonly size: number;
+
+  constructor(private readonly source: ReadonlySet<T>) {
+    this.size = source.size;
+  }
+
+  has(value: T): boolean {
+    return this.source.has(value);
+  }
+
+  forEach(
+    callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void,
+    thisArg?: unknown,
+  ): void {
+    this.source.forEach((value) => {
+      callbackfn.call(thisArg, value, value, this);
+    });
+  }
+
+  entries(): SetIterator<[T, T]> {
+    return this.source.entries();
+  }
+
+  keys(): SetIterator<T> {
+    return this.source.keys();
+  }
+
+  values(): SetIterator<T> {
+    return this.source.values();
+  }
+
+  [Symbol.iterator](): SetIterator<T> {
+    return this.source[Symbol.iterator]();
+  }
+}
+
+function createReadonlySet<T>(values: Iterable<T>): ReadonlySet<T> {
+  return new ReadonlySetView(new Set(values));
+}
+
+export function createRootDragDirectionMap(params?: {
+  upper?: Iterable<string>;
+  lower?: Iterable<string>;
+  left?: Iterable<string>;
+  right?: Iterable<string>;
+}): RootDragDirectionMap {
+  return {
+    upper: createReadonlySet(params?.upper ?? []),
+    lower: createReadonlySet(params?.lower ?? []),
+    left: createReadonlySet(params?.left ?? []),
+    right: createReadonlySet(params?.right ?? []),
+  };
+}
+
+export type RootDragActiveTarget = {
+  targetSortId: string;
+};
+
 export type RootDragSessionMeta = {
   directionMap?: RootDragDirectionMap;
+};
+
+export type FolderDragSessionMeta = RootDragSessionMeta & {
+  activeShortcutIndex: number;
 };
 
 export type RootShortcutDropIntent =

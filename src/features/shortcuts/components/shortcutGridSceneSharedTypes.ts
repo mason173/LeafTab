@@ -1,7 +1,7 @@
 import type React from 'react';
 import type { PendingDragSession } from '@/features/shortcuts/drag/dragSessionRuntime';
 import type { Shortcut } from '@/types';
-import type { RootDragSessionMeta } from '@/features/shortcuts/drag/types';
+import type { FolderDragSessionMeta, RootDragSessionMeta } from '@/features/shortcuts/drag/types';
 import type {
   FolderShortcutItemRenderParams,
   FolderShortcutDragPreviewRenderParams,
@@ -12,10 +12,6 @@ import type {
   RootShortcutGridSelectionIndicatorRenderParams,
   RootShortcutVisualOptions,
 } from './shortcutGridVisualAdapters';
-
-export type FolderDragSessionMeta = {
-  activeShortcutIndex: number;
-};
 
 export type RootShortcutPendingDragSession = PendingDragSession<string, RootDragSessionMeta> | null;
 
@@ -78,20 +74,14 @@ export type ShortcutSceneInteractionParams<TPendingDragRef, TOnShortcutContextMe
     activeDragId: string | null;
   };
 
-export type RootShortcutRendererBundle = {
+export type RootShortcutRenderBindings = {
+  rootVisualOptions: RootShortcutVisualOptions;
   renderCenterPreview: RootShortcutCenterPreviewRenderer;
   renderSelectionIndicator: RootShortcutSelectionIndicatorRenderer;
   renderShortcutCard: RootShortcutCardRenderer;
 };
 
-export type FolderShortcutRendererBundle = {
-  renderShortcutCard: FolderShortcutCardRenderer;
-};
-
-export type RootShortcutRenderBindings = {
-  rootVisualOptions: RootShortcutVisualOptions;
-} & RootShortcutRendererBundle;
-
 export type FolderShortcutRenderBindings = {
   folderVisualOptions: FolderShortcutVisualOptions;
-} & FolderShortcutRendererBundle;
+  renderShortcutCard: FolderShortcutCardRenderer;
+};

@@ -4,7 +4,7 @@ import { resolveRootCompactHoverState } from './compactHoverAdapters';
 import type { CompactTargetRegions } from './compactRootDrag';
 import type { DragHoverResolution } from './dragSessionRuntime';
 import type { RootDragRenderableItem } from './rootDragRenderState';
-import type { DragPoint, RootDragDirectionMap, RootShortcutDropIntent } from './types';
+import type { DragPoint, RootDragActiveTarget, RootDragDirectionMap, RootShortcutDropIntent } from './types';
 
 export function resolveRootPointerHoverState<T extends RootDragRenderableItem>(params: {
   items: readonly T[];
@@ -15,6 +15,7 @@ export function resolveRootPointerHoverState<T extends RootDragRenderableItem>(p
   measuredItems: readonly MeasuredDragItem<T>[];
   previousRecognitionPoint?: DragPoint | null;
   previousHoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  previousActiveTarget: RootDragActiveTarget | null;
   directionMap: RootDragDirectionMap;
   rootRect: DOMRect;
   gridColumns: number;
@@ -33,6 +34,7 @@ export function resolveRootPointerHoverState<T extends RootDragRenderableItem>(p
     measuredItems: params.measuredItems,
     previousRecognitionPoint: params.previousRecognitionPoint,
     previousHoverResolution: params.previousHoverResolution,
+    previousActiveTarget: params.previousActiveTarget,
     directionMap: params.directionMap,
     createEmptyHoverResolution: () => ({
       interactionIntent: null,
@@ -48,6 +50,7 @@ export function resolveRootPointerHoverState<T extends RootDragRenderableItem>(p
   });
 
   return {
+    activeTarget: nextHoverState.activeTarget,
     hoverResolution: nextHoverState.hoverResolution,
     recognitionPoint: nextHoverState.recognitionPoint,
   };

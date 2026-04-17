@@ -8,6 +8,7 @@ import {
 import type { FolderShortcutRenderableItem, RootShortcutRenderableItem } from './dragRenderableItems';
 import type {
   FolderExtractDragStartPayload,
+  FolderDragSessionMeta,
   FolderShortcutDropIntent,
   RootDragSessionMeta,
   RootShortcutDropIntent,
@@ -25,10 +26,6 @@ import type { Shortcut } from '@/types';
 
 type PendingRootDragState = PendingDragSession<string, RootDragSessionMeta>;
 type ActiveRootDragState = ActiveDragSession<string, RootDragSessionMeta>;
-
-type FolderDragSessionMeta = {
-  activeShortcutIndex: number;
-};
 
 type PendingFolderDragState = PendingDragSession<string, FolderDragSessionMeta>;
 type ActiveFolderDragSession = ActiveDragSession<string, FolderDragSessionMeta>;

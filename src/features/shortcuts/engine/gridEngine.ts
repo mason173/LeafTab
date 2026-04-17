@@ -1,4 +1,5 @@
-import type { DragPoint } from '@/features/shortcuts/drag/types';
+import { createRootDragDirectionMap } from '@/features/shortcuts/drag/types';
+import type { DragPoint, RootDragDirectionMap } from '@/features/shortcuts/drag/types';
 
 export type GridNodeKind = 'icon' | 'smallFolder' | 'bigFolder';
 export type DragMode = 'normal' | 'reorder-only' | 'external-insert';
@@ -60,6 +61,7 @@ export type DragSession = {
   mode: DragMode;
   activeNode: GridNode;
   activeTarget: HoverTarget | null;
+  directionMap: RootDragDirectionMap;
   gridSpec: GridSpec;
   occupancy: readonly GridNode[];
 };
@@ -139,6 +141,28 @@ function resolveEntryEdge(point: DragPoint, rect: { left: number; top: number; r
   return distances[0]?.edge ?? 'left';
 }
 
+function resolveFrozenTargetDirection(
+  directionMap: RootDragDirectionMap | null | undefined,
+  targetNodeId: string,
+): 'above' | 'below' | 'left' | 'right' | null {
+  if (!directionMap) {
+    return null;
+  }
+  if (directionMap.upper.has(targetNodeId)) {
+    return 'above';
+  }
+  if (directionMap.lower.has(targetNodeId)) {
+    return 'below';
+  }
+  if (directionMap.left.has(targetNodeId)) {
+    return 'left';
+  }
+  if (directionMap.right.has(targetNodeId)) {
+    return 'right';
+  }
+  return null;
+}
+
 function resolveSequenceFromPosition(globalPosition: DragPoint, gridSpec: GridSpec): number {
   const localX = globalPosition.x - (gridSpec.originX ?? 0);
   const localY = globalPosition.y - (gridSpec.originY ?? 0);
@@ -199,57 +223,83 @@ export function resolveHoverTarget(
   return null;
 }
 
+export function buildGridDirectionMap(params: {
+  activeNode: GridNode;
+  occupancy: readonly GridNode[];
+  gridSpec: GridSpec;
+}): RootDragDirectionMap {
+  const activeCoord = sequenceToCoord(params.activeNode.sequence, params.gridSpec.columns);
+  const upper = new Set<string>();
+  const lower = new Set<string>();
+  const left = new Set<string>();
+  const right = new Set<string>();
+
+  params.occupancy.forEach((node) => {
+    if (node.id === params.activeNode.id) {
+      return;
+    }
+
+    const targetCoord = sequenceToCoord(node.sequence, params.gridSpec.columns);
+    if (targetCoord.row < activeCoord.row) {
+      upper.add(node.id);
+      return;
+    }
+    if (targetCoord.row > activeCoord.row) {
+      lower.add(node.id);
+      return;
+    }
+    if (targetCoord.col < activeCoord.col) {
+      left.add(node.id);
+      return;
+    }
+    if (targetCoord.col > activeCoord.col) {
+      right.add(node.id);
+    }
+  });
+
+  return createRootDragDirectionMap({
+    upper,
+    lower,
+    left,
+    right,
+  });
+}
+
 export function resolveActiveTarget(
   prevActiveTarget: HoverTarget | null,
   hoverTarget: HoverTarget | null,
   dragSession: Omit<DragSession, 'activeTarget'>,
 ): HoverTarget | null {
-  if (!hoverTarget) {
-    return null;
-  }
-
-  if (hoverTarget.type === 'big-folder-merge') {
+  if (hoverTarget?.type === 'big-folder-merge') {
     return hoverTarget;
   }
 
-  if (!prevActiveTarget) {
-    return hoverTarget;
+  if (prevActiveTarget?.type === 'big-folder-merge') {
+    const previousBigFolder = dragSession.occupancy.find((node) => node.id === prevActiveTarget.nodeId);
+    if (previousBigFolder && pointInRect(dragSession.globalPosition, getBigFolderMergeRect(previousBigFolder, dragSession.gridSpec))) {
+      return prevActiveTarget;
+    }
   }
 
-  if (prevActiveTarget.type === 'interaction' && prevActiveTarget.nodeId === hoverTarget.nodeId) {
-    return hoverTarget;
-  }
-
-  const previousNode = dragSession.occupancy.find((node) => node.id === prevActiveTarget.nodeId);
-  if (!previousNode) {
-    return hoverTarget;
-  }
-
-  const previousRect = getInteractionRect(previousNode, dragSession.gridSpec);
-  if (pointInRect(dragSession.globalPosition, previousRect)) {
-    return {
-      type: 'interaction',
-      nodeId: previousNode.id,
-      entryEdge: prevActiveTarget.type === 'interaction' ? prevActiveTarget.entryEdge : hoverTarget.entryEdge,
-    };
+  if (prevActiveTarget?.type === 'interaction') {
+    const previousNode = dragSession.occupancy.find((node) => node.id === prevActiveTarget.nodeId);
+    if (previousNode) {
+      const previousRect = getInteractionRect(previousNode, dragSession.gridSpec);
+      if (pointInRect(dragSession.globalPosition, previousRect)) {
+        return {
+          type: 'interaction',
+          nodeId: previousNode.id,
+          entryEdge: resolveEntryEdge(dragSession.globalPosition, previousRect),
+        };
+      }
+    }
   }
 
   return hoverTarget;
 }
 
-function resolveRelativeTargetDirection(activeNode: GridNode, targetNode: GridNode, columns: number): 'above' | 'below' | 'left' | 'right' | 'same' {
-  const activeCoord = sequenceToCoord(activeNode.sequence, columns);
-  const targetCoord = sequenceToCoord(targetNode.sequence, columns);
-
-  if (targetCoord.row < activeCoord.row) return 'above';
-  if (targetCoord.row > activeCoord.row) return 'below';
-  if (targetCoord.col < activeCoord.col) return 'left';
-  if (targetCoord.col > activeCoord.col) return 'right';
-  return 'same';
-}
-
 export function resolveInteractionState(dragSession: DragSession): InteractionState {
-  const { activeTarget, activeNode, occupancy, gridSpec, mode } = dragSession;
+  const { activeTarget, activeNode, occupancy, directionMap, mode } = dragSession;
   if (!activeTarget) {
     return 'idle';
   }
@@ -271,7 +321,10 @@ export function resolveInteractionState(dragSession: DragSession): InteractionSt
     return 'reorder-candidate';
   }
 
-  const relativeDirection = resolveRelativeTargetDirection(activeNode, targetNode, gridSpec.columns);
+  const relativeDirection = resolveFrozenTargetDirection(directionMap, targetNode.id);
+  if (!relativeDirection) {
+    return 'reorder-candidate';
+  }
   const entryEdge = activeTarget.entryEdge;
 
   if (relativeDirection === 'above') {

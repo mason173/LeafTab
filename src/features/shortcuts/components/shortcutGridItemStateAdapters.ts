@@ -21,21 +21,6 @@ export type FolderGridItemState<T> = {
   itemRenderState: FolderGridItemRenderState;
 };
 
-function buildGridItemState<TItem, TItemRenderState>(params: {
-  item: TItem;
-  itemRenderState: TItemRenderState;
-}) {
-  return params;
-}
-
-function buildSelectedGridItemState<TItem, TItemRenderState>(params: {
-  item: TItem;
-  itemRenderState: TItemRenderState;
-  selected: boolean;
-}) {
-  return params;
-}
-
 function mapGridItemStates<TItem, TState>(items: readonly TItem[], resolveState: (item: TItem) => TState): TState[] {
   return items.map(resolveState);
 }
@@ -60,7 +45,7 @@ export function resolveRootGridItemStates<T extends {
 }): RootGridItemState<T>[] {
   return mapGridItemStates(params.packedItems, (placedItem) => {
     const item = placedItem as typeof placedItem & T;
-    return buildSelectedGridItemState({
+    return {
       item,
       itemRenderState: resolveRootGridItemRenderState({
         item,
@@ -76,7 +61,7 @@ export function resolveRootGridItemStates<T extends {
         rootDragVisualState: params.rootDragVisualState,
       }),
       selected: params.selectedShortcutIndexes?.has(item.shortcutIndex) ?? false,
-    });
+    };
   });
 }
 
@@ -87,7 +72,7 @@ export function resolveFolderGridItemStates<T extends { shortcut: { id: string }
   projectionOffsets: ReadonlyMap<string, ProjectionOffset>;
   layoutShiftOffsets?: ReadonlyMap<string, ProjectionOffset>;
 }): FolderGridItemState<T>[] {
-  return mapGridItemStates(params.items, (item) => buildGridItemState({
+  return mapGridItemStates(params.items, (item) => ({
     item,
     itemRenderState: resolveFolderGridItemRenderState({
       item,

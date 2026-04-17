@@ -115,8 +115,9 @@ export function useResolvedPointerDragSession<
         event,
         pointer,
       });
+      const nextActiveDrag = activeDragRef.current ?? activeDrag;
       publishHoverResolution({
-        activeDrag,
+        activeDrag: nextActiveDrag,
         event,
         pointer,
         phase: 'activated',

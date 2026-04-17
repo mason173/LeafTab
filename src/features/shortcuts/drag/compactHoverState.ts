@@ -2,14 +2,18 @@ import { deriveDragSessionGeometry, type DragHoverResolution, type DragSessionVi
 import type { MeasuredDragItem } from './gridDragEngine';
 import type { DragPoint, DragRect } from './types';
 
-export type CompactHoverState<TItem, TIntent> = {
+export type CompactHoverResolutionResult<TIntent, TResolved extends object = object> = {
+  hoverResolution: DragHoverResolution<TIntent>;
+} & TResolved;
+
+export type CompactHoverState<TItem, TIntent, TResolved extends object = object> = {
   activeItem: MeasuredDragItem<TItem> | null;
   activeVisualRect: DragRect | null;
   hoverResolution: DragHoverResolution<TIntent>;
   recognitionPoint: DragPoint | null;
-};
+} & TResolved;
 
-export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
+export function resolveMeasuredCompactHoverState<TItem, TIntent, TResolved extends object = object>(params: {
   activeId: string;
   pointer: DragPoint;
   previewOffset: DragPoint;
@@ -17,6 +21,7 @@ export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
   previousRecognitionPoint?: DragPoint | null;
   previousHoverResolution: DragHoverResolution<TIntent>;
   createEmptyHoverResolution: () => DragHoverResolution<TIntent>;
+  createEmptyResolvedState: () => TResolved;
   getId: (item: MeasuredDragItem<TItem>) => string;
   getVisualBounds: (item: MeasuredDragItem<TItem>) => DragSessionVisualBounds;
   resolveHoverResolution: (params: {
@@ -27,8 +32,8 @@ export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
     previousRecognitionPoint?: DragPoint | null;
     previousHoverResolution: DragHoverResolution<TIntent>;
     recognitionPoint: DragPoint;
-  }) => DragHoverResolution<TIntent>;
-}): CompactHoverState<TItem, TIntent> {
+  }) => CompactHoverResolutionResult<TIntent, TResolved>;
+}): CompactHoverState<TItem, TIntent, TResolved> {
   const {
     activeId,
     pointer,
@@ -37,6 +42,7 @@ export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
     previousRecognitionPoint = null,
     previousHoverResolution,
     createEmptyHoverResolution,
+    createEmptyResolvedState,
     getId,
     getVisualBounds,
     resolveHoverResolution,
@@ -48,6 +54,7 @@ export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
       activeVisualRect: null,
       hoverResolution: createEmptyHoverResolution(),
       recognitionPoint: null,
+      ...createEmptyResolvedState(),
     };
   }
 
@@ -61,7 +68,7 @@ export function resolveMeasuredCompactHoverState<TItem, TIntent>(params: {
   return {
     activeItem,
     activeVisualRect: visualRect,
-    hoverResolution: resolveHoverResolution({
+    ...resolveHoverResolution({
       activeId,
       activeItem,
       activeVisualRect: visualRect,

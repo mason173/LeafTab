@@ -10,7 +10,6 @@ import {
   buildFolderShortcutDragPreviewRenderParams,
   buildRootGridCenterPreviewRenderParams,
   buildRootShortcutDragPreviewRenderParams,
-  buildRootShortcutSelectionIndicatorRenderParams,
   type FolderShortcutVisualOptions,
   type RootShortcutVisualOptions,
 } from './shortcutGridVisualAdapters';
@@ -25,28 +24,6 @@ function createDragPreviewRenderer<TItem, TRenderParams>(params: {
   renderPreview: (params: TRenderParams) => React.ReactNode;
 }) {
   return (item: TItem) => params.renderPreview(params.buildRenderParams(item));
-}
-
-function buildRootDragPreviewRenderParams(params: {
-  item: RootDragPreviewItem;
-  firefox: boolean;
-  visualOptions: RootShortcutVisualOptions;
-}) {
-  return buildRootShortcutDragPreviewRenderParams({
-    shortcut: params.item.shortcut,
-    visualOptions: params.visualOptions,
-    firefox: params.firefox,
-  });
-}
-
-function buildFolderDragPreviewRenderParams(params: {
-  item: FolderDragPreviewItem;
-  visualOptions: FolderShortcutVisualOptions;
-}) {
-  return buildFolderShortcutDragPreviewRenderParams({
-    shortcut: 'shortcut' in params.item ? params.item.shortcut : params.item,
-    visualOptions: params.visualOptions,
-  });
 }
 
 function renderConditionalNode<TParams>(params: {
@@ -88,7 +65,7 @@ export function renderRootSelectionOverlayNode(params: {
 }) {
   return renderConditionalNode({
     active: params.visible,
-    buildRenderParams: () => buildRootShortcutSelectionIndicatorRenderParams({
+    buildRenderParams: () => ({
       sortId: params.sortId,
       selected: params.selected,
       compactPreviewSize: params.compactPreviewSize,
@@ -104,10 +81,10 @@ export function createRootDragPreviewRenderer(params: {
   renderDragPreview: RootShortcutDragPreviewRenderer;
 }) {
   return createDragPreviewRenderer({
-    buildRenderParams: (item: RootDragPreviewItem) => buildRootDragPreviewRenderParams({
-      item,
-      firefox: params.firefox,
+    buildRenderParams: (item: RootDragPreviewItem) => buildRootShortcutDragPreviewRenderParams({
+      shortcut: item.shortcut,
       visualOptions: params.visualOptions,
+      firefox: params.firefox,
     }),
     renderPreview: params.renderDragPreview,
   });
@@ -118,8 +95,8 @@ export function createFolderDragPreviewRenderer(params: {
   renderDragPreview: FolderShortcutDragPreviewRenderer;
 }) {
   return createDragPreviewRenderer({
-    buildRenderParams: (item: FolderDragPreviewItem) => buildFolderDragPreviewRenderParams({
-      item,
+    buildRenderParams: (item: FolderDragPreviewItem) => buildFolderShortcutDragPreviewRenderParams({
+      shortcut: 'shortcut' in item ? item.shortcut : item,
       visualOptions: params.visualOptions,
     }),
     renderPreview: params.renderDragPreview,

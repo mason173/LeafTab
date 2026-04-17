@@ -66,7 +66,7 @@ export function buildLinearProjectedDragSettleTarget<T>(params: {
 
   const targetIndex = resolveTargetIndex
     ? resolveTargetIndex(hoverIntent)
-    : resolveLinearReorderTargetIndex({
+    : hoverIntent.targetIndex ?? resolveLinearReorderTargetIndex({
         items,
         activeId,
         overId: hoverIntent.overShortcutId,

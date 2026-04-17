@@ -7,6 +7,12 @@ export type DragHoverResolution<TIntent> = {
   visualProjectionIntent: TIntent | null;
 };
 
+export type ResolvedDragHoverState<TIntent> = {
+  interactionIntent: TIntent | null;
+  visualProjectionIntent: TIntent | null;
+  finalIntent: TIntent | null;
+};
+
 export type PendingDragSession<TActiveId extends string = string, TMeta extends object = object> =
   PendingPointerDragState
   & TMeta
@@ -132,4 +138,14 @@ export function resolveFinalHoverIntent<TIntent>(
   hoverResolution: DragHoverResolution<TIntent>,
 ): TIntent | null {
   return hoverResolution.interactionIntent ?? hoverResolution.visualProjectionIntent;
+}
+
+export function resolveDragHoverState<TIntent>(
+  hoverResolution: DragHoverResolution<TIntent>,
+): ResolvedDragHoverState<TIntent> {
+  return {
+    interactionIntent: hoverResolution.interactionIntent,
+    visualProjectionIntent: hoverResolution.visualProjectionIntent,
+    finalIntent: resolveFinalHoverIntent(hoverResolution),
+  };
 }

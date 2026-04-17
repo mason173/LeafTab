@@ -5,7 +5,7 @@ import type { DragHoverResolution } from './dragSessionRuntime';
 import { resolveFolderMaskHoverState } from './folderMaskHoverState';
 import type { FolderDragRenderableItem } from './folderDragRenderState';
 import type { MeasuredDragItem } from './gridDragEngine';
-import type { DragPoint, RootShortcutDropIntent } from './types';
+import type { DragPoint, RootDragActiveTarget, RootDragDirectionMap, RootShortcutDropIntent } from './types';
 
 export function resolveFolderPointerHoverState<T extends FolderDragRenderableItem>(params: {
   activeId: string;
@@ -14,7 +14,9 @@ export function resolveFolderPointerHoverState<T extends FolderDragRenderableIte
   measuredItems: readonly MeasuredDragItem<T>[];
   previousRecognitionPoint?: DragPoint | null;
   previousHoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  previousActiveTarget: RootDragActiveTarget | null;
   shortcuts: Shortcut[];
+  directionMap: RootDragDirectionMap;
   resolveRegions: (item: MeasuredDragItem<T>) => CompactTargetRegions;
   boundaryRect: Pick<DOMRect, 'left' | 'top' | 'right' | 'bottom'> | null;
 }) {
@@ -25,11 +27,13 @@ export function resolveFolderPointerHoverState<T extends FolderDragRenderableIte
     measuredItems: params.measuredItems,
     previousRecognitionPoint: params.previousRecognitionPoint,
     previousHoverResolution: params.previousHoverResolution,
+    previousActiveTarget: params.previousActiveTarget,
     createEmptyHoverResolution: () => ({
       interactionIntent: null,
       visualProjectionIntent: null,
     }),
     shortcuts: params.shortcuts,
+    directionMap: params.directionMap,
     resolveRegions: params.resolveRegions,
   });
 
@@ -37,5 +41,6 @@ export function resolveFolderPointerHoverState<T extends FolderDragRenderableIte
     hoverResolution: nextHoverState.hoverResolution,
     recognitionPoint: nextHoverState.recognitionPoint,
     boundaryRect: params.boundaryRect,
+    activeTarget: nextHoverState.activeTarget,
   });
 }

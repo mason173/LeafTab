@@ -1,6 +1,8 @@
-import { reorderRootShortcutPreservingLargeFolderPositions } from '@/features/shortcuts/model/operations';
+import {
+  reorderRootShortcutPreservingLargeFolderPositions,
+  resolveRootShortcutInsertionIndexPreservingLargeFolderPositions,
+} from '@/features/shortcuts/model/operations';
 import type { Shortcut } from '@/types';
-import type { DragHoverResolution } from './dragSessionRuntime';
 import { resolveGridDragFrameState } from './dragFrameRenderState';
 import { buildLinearProjectedDropPreview, type ProjectedDropPreview } from './linearReorderProjection';
 import { buildReorderProjectionOffsets, type MeasuredDragItem, type ProjectionOffset } from './gridDragEngine';
@@ -74,21 +76,30 @@ function buildProjectedItemsForIntent<T extends RootDragRenderableItem>(params: 
 
 export function buildRootReorderProjectionOffsets<T extends RootDragRenderableItem>(params: {
   items: readonly T[];
+  shortcuts: Shortcut[];
   layoutSnapshot: Array<MeasuredDragItem<T>> | null;
   activeSortId: string | null;
   hoverIntent: RootShortcutDropIntent | null;
 }): Map<string, ProjectionOffset> {
-  const { items, layoutSnapshot, activeSortId, hoverIntent } = params;
+  const { items, shortcuts, layoutSnapshot, activeSortId, hoverIntent } = params;
   if (!layoutSnapshot || !activeSortId) {
     return new Map();
   }
+
+  const normalizedTargetIndex = hoverIntent?.type === 'reorder-root'
+    ? resolveRootShortcutInsertionIndexPreservingLargeFolderPositions(
+        shortcuts,
+        activeSortId,
+        hoverIntent.targetIndex,
+      )
+    : null;
 
   return buildReorderProjectionOffsets({
     items,
     layoutSnapshot,
     activeId: activeSortId,
     hoveredId: hoverIntent?.type === 'reorder-root' ? hoverIntent.overShortcutId : null,
-    targetIndex: hoverIntent?.type === 'reorder-root' ? hoverIntent.targetIndex : null,
+    targetIndex: normalizedTargetIndex,
     getId: (item) => item.sortId,
   });
 }
@@ -176,7 +187,11 @@ function buildRootProjectedDropPreview<T extends RootDragRenderableItem>(params:
     rootElement,
     getId: (item) => item.sortId,
     getLayout: (item) => item.layout,
-    resolveTargetIndex: (intent) => intent.targetIndex,
+    resolveTargetIndex: (intent) => resolveRootShortcutInsertionIndexPreservingLargeFolderPositions(
+      shortcuts,
+      activeSortId,
+      intent.targetIndex,
+    ),
   });
 }
 
@@ -229,7 +244,8 @@ export function resolveRootDragRenderState<T extends RootDragRenderableItem>(par
   shortcuts: Shortcut[];
   layoutSnapshot: Array<MeasuredDragItem<T>> | null;
   activeSortId: string | null;
-  hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  interactionIntent: RootShortcutDropIntent | null;
+  visualProjectionIntent: RootShortcutDropIntent | null;
   rootElement: HTMLDivElement | null;
   usesSpanAwareReorder: boolean;
   gridColumns: number;
@@ -244,9 +260,10 @@ export function resolveRootDragRenderState<T extends RootDragRenderableItem>(par
 } {
   const projectionOffsets = buildRootReorderProjectionOffsets({
     items: params.items,
+    shortcuts: params.shortcuts,
     layoutSnapshot: params.layoutSnapshot,
     activeSortId: params.activeSortId,
-    hoverIntent: params.hoverResolution.visualProjectionIntent,
+    hoverIntent: params.visualProjectionIntent,
   });
 
   const basePreview = buildRootProjectedDropPreview({
@@ -254,7 +271,7 @@ export function resolveRootDragRenderState<T extends RootDragRenderableItem>(par
     shortcuts: params.shortcuts,
     layoutSnapshot: params.layoutSnapshot,
     activeSortId: params.activeSortId,
-    hoverIntent: params.hoverResolution.visualProjectionIntent,
+    hoverIntent: params.visualProjectionIntent,
     rootElement: params.rootElement,
     usesSpanAwareReorder: params.usesSpanAwareReorder,
     gridColumns: params.gridColumns,
@@ -264,7 +281,7 @@ export function resolveRootDragRenderState<T extends RootDragRenderableItem>(par
     rowGap: params.rowGap,
   });
   const visualState = resolveRootDragVisualState(
-    params.hoverResolution.interactionIntent,
+    params.interactionIntent,
     basePreview?.opacity,
   );
 

@@ -13,6 +13,10 @@ function reorderArray<T>(items: readonly T[], fromIndex: number, toIndex: number
   return nextItems;
 }
 
+function clampInsertionIndex(targetIndex: number, length: number): number {
+  return Math.max(0, Math.min(targetIndex, length));
+}
+
 function replaceContainerShortcuts(
   shortcuts: readonly Shortcut[],
   path: ShortcutContainerPath,
@@ -50,6 +54,48 @@ function replaceRootFolder(shortcuts: readonly Shortcut[], folderId: string, rep
 
 function isLargeFolder(shortcut: Shortcut | null | undefined): shortcut is ShortcutFolder {
   return Boolean(isShortcutFolder(shortcut) && (shortcut.folderDisplayMode || 'small') === 'large');
+}
+
+function insertRootShortcutPreservingLargeFolderPositions(
+  shortcuts: readonly Shortcut[],
+  shortcut: Shortcut,
+  targetIndex: number,
+): Shortcut[] {
+  if (isLargeFolder(shortcut)) {
+    const insertionIndex = clampInsertionIndex(targetIndex, shortcuts.length);
+    const nextShortcuts = [...shortcuts];
+    nextShortcuts.splice(insertionIndex, 0, shortcut);
+    return nextShortcuts;
+  }
+
+  const fixedLargeFolderEntries = shortcuts
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isLargeFolder(item));
+  const fixedLargeFolderIndexes = new Set(fixedLargeFolderEntries.map(({ index }) => index));
+  const resultLength = shortcuts.length + 1;
+  const availableIndexes = Array.from({ length: resultLength }, (_, index) => index)
+    .filter((index) => !fixedLargeFolderIndexes.has(index));
+  const movableShortcuts = shortcuts.filter((item) => !isLargeFolder(item));
+  const desiredRank = availableIndexes.filter((index) => index < targetIndex).length;
+  const insertionRank = clampInsertionIndex(desiredRank, movableShortcuts.length);
+  const reorderedMovableShortcuts = [...movableShortcuts];
+  reorderedMovableShortcuts.splice(insertionRank, 0, shortcut);
+
+  const nextShortcuts = new Array<Shortcut>(resultLength);
+  fixedLargeFolderEntries.forEach(({ item, index }) => {
+    nextShortcuts[index] = item;
+  });
+
+  let movableCursor = 0;
+  for (let index = 0; index < resultLength; index += 1) {
+    if (fixedLargeFolderIndexes.has(index)) {
+      continue;
+    }
+    nextShortcuts[index] = reorderedMovableShortcuts[movableCursor] ?? nextShortcuts[index];
+    movableCursor += 1;
+  }
+
+  return nextShortcuts.filter((item): item is Shortcut => Boolean(item));
 }
 
 export function mergeShortcutsIntoNewFolder(
@@ -169,31 +215,26 @@ export function reorderRootShortcutPreservingLargeFolderPositions(
     return reorderArray(shortcuts, sourceIndex, targetIndex);
   }
 
-  const fixedLargeFolderEntries = shortcuts
-    .map((shortcut, index) => ({ shortcut, index }))
-    .filter(({ shortcut }) => isLargeFolder(shortcut));
-  const fixedLargeFolderIndexes = new Set(fixedLargeFolderEntries.map(({ index }) => index));
-  const availableIndexes = shortcuts
-    .map((_, index) => index)
-    .filter((index) => !fixedLargeFolderIndexes.has(index));
-  const movableShortcuts = shortcuts.filter((shortcut) => !isLargeFolder(shortcut));
-  const movableSourceIndex = movableShortcuts.findIndex((shortcut) => shortcut.id === shortcutId);
-  if (movableSourceIndex === -1) return null;
+  const baseShortcuts = shortcuts.filter((shortcut) => shortcut.id !== shortcutId);
+  return insertRootShortcutPreservingLargeFolderPositions(baseShortcuts, activeShortcut, targetIndex);
+}
 
-  const desiredRank = availableIndexes.filter((index) => index < targetIndex).length;
-  const reorderedMovableShortcuts = reorderArray(movableShortcuts, movableSourceIndex, desiredRank);
-  const nextShortcuts = [...shortcuts];
-  let movableCursor = 0;
+export function resolveRootShortcutInsertionIndexPreservingLargeFolderPositions(
+  shortcuts: readonly Shortcut[],
+  shortcutId: string,
+  targetIndex: number,
+): number | null {
+  const reorderedShortcuts = reorderRootShortcutPreservingLargeFolderPositions(
+    shortcuts,
+    shortcutId,
+    targetIndex,
+  );
+  if (!reorderedShortcuts) {
+    return null;
+  }
 
-  nextShortcuts.forEach((shortcut, index) => {
-    if (fixedLargeFolderIndexes.has(index)) {
-      return;
-    }
-    nextShortcuts[index] = reorderedMovableShortcuts[movableCursor] ?? shortcut;
-    movableCursor += 1;
-  });
-
-  return nextShortcuts;
+  const insertionIndex = reorderedShortcuts.findIndex((shortcut) => shortcut.id === shortcutId);
+  return insertionIndex >= 0 ? insertionIndex : null;
 }
 
 export function extractShortcutFromFolder(
@@ -232,9 +273,11 @@ export function extractShortcutFromFolder(
   }
 
   const insertionIndex = Math.max(0, Math.min(targetIndex, nextRootShortcuts.length));
-  const nextShortcuts = [...nextRootShortcuts];
-  nextShortcuts.splice(insertionIndex, 0, extractedShortcut);
-  return nextShortcuts;
+  return insertRootShortcutPreservingLargeFolderPositions(
+    nextRootShortcuts,
+    extractedShortcut,
+    insertionIndex,
+  );
 }
 
 export function dissolveFolder(shortcuts: readonly Shortcut[], folderId: string): Shortcut[] | null {

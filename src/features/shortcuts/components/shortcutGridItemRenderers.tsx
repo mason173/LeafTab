@@ -11,11 +11,6 @@ import {
   renderRootSelectionOverlayNode,
 } from '@/features/shortcuts/components/shortcutGridRenderAdapters';
 import { buildAbsoluteGridItemStyle, renderGridItemPlaceholder } from '@/features/shortcuts/components/shortcutGridNodeAdapters';
-import {
-  buildFolderShortcutRenderBindings,
-  buildRootShortcutRenderBindings,
-  buildShortcutVisualBindings,
-} from '@/features/shortcuts/components/shortcutGridSceneSharedAdapters';
 import type {
   FolderShortcutContextMenuHandler,
   FolderShortcutRenderBindings,
@@ -40,22 +35,15 @@ import type {
 type SharedItemRendererInteractionParams<TPendingDragRef, TOnShortcutContextMenu> =
   ShortcutInteractionBindings<TPendingDragRef, TOnShortcutContextMenu>;
 
-function buildSharedItemRenderNodeBaseParams<
-  TPendingDragRef,
-  TOnShortcutContextMenu,
-  TVisualOptions,
->(params: {
-  interactionParams: SharedItemRendererInteractionParams<TPendingDragRef, TOnShortcutContextMenu>;
-  visualOptions: TVisualOptions;
-}) {
-  return buildShortcutVisualBindings(params);
-}
-
 function renderGridItemNodes<TItemState>(
   itemStates: readonly TItemState[],
   renderItemNode: (itemState: TItemState) => React.ReactNode,
 ) {
   return itemStates.map(renderItemNode);
+}
+
+function hasProjectionMotion(params: { x: number; y: number }): boolean {
+  return params.x !== 0 || params.y !== 0;
 }
 
 export type RootGridRenderableItem = {
@@ -69,7 +57,7 @@ export type RootGridRenderableItem = {
 
 function buildRootGridItemInteractionRenderParams(params: {
   item: RootGridRenderableItem;
-  activeDragId: string | null;
+  itemRenderState: RootGridItemState<RootGridRenderableItem>['itemRenderState'];
   disableReorderAnimation: boolean;
   selectionMode: boolean;
   interactionParams: SharedItemRendererInteractionParams<
@@ -95,7 +83,8 @@ function buildRootGridItemInteractionRenderParams(params: {
       disableReorderAnimation:
         params.disableReorderAnimation
         || params.interactionParams.disableLayoutShiftTransition
-        || Boolean(params.activeDragId),
+        || params.itemRenderState.frameState.isDragging
+        || hasProjectionMotion(params.itemRenderState.frameState.projectionOffset),
       firefox: params.interactionParams.firefox,
       itemElements: params.interactionParams.itemElements,
       pendingDragRef: params.interactionParams.pendingDragRef,
@@ -109,7 +98,6 @@ function buildRootGridItemInteractionRenderParams(params: {
 export function renderRootGridItemNode(params: {
   item: RootGridRenderableItem;
   itemRenderState: RootGridItemState<RootGridRenderableItem>['itemRenderState'];
-  activeDragId: string | null;
   disableReorderAnimation: boolean;
   selectionMode: boolean;
   selected: boolean;
@@ -121,7 +109,7 @@ export function renderRootGridItemNode(params: {
 } & RootShortcutRenderBindings) {
   const { cardActionRenderParams, frameBindings } = buildRootGridItemInteractionRenderParams({
     item: params.item,
-    activeDragId: params.activeDragId,
+    itemRenderState: params.itemRenderState,
     disableReorderAnimation: params.disableReorderAnimation,
     selectionMode: params.selectionMode,
     interactionParams: params.interactionParams,
@@ -169,40 +157,9 @@ export function renderRootGridItemNode(params: {
   );
 }
 
-function buildRootGridItemNodeParams(params: {
-  selectionMode: boolean;
-  activeDragId: string | null;
-  disableReorderAnimation: boolean;
-  interactionParams: SharedItemRendererInteractionParams<
-    RootShortcutPendingDragSession,
-    RootShortcutContextMenuHandler
-  >;
-  onToggleShortcutSelection?: (shortcutIndex: number) => void;
-} & RootShortcutRenderBindings) {
-  const sharedRenderNodeBaseParams = buildSharedItemRenderNodeBaseParams({
-    interactionParams: params.interactionParams,
-    visualOptions: params.rootVisualOptions,
-  });
-
-  return {
-    selectionMode: params.selectionMode,
-    activeDragId: params.activeDragId,
-    disableReorderAnimation: params.disableReorderAnimation,
-    interactionParams: sharedRenderNodeBaseParams.interactionParams,
-    onToggleShortcutSelection: params.onToggleShortcutSelection,
-    ...buildRootShortcutRenderBindings({
-      rootVisualOptions: sharedRenderNodeBaseParams.visualOptions,
-      renderCenterPreview: params.renderCenterPreview,
-      renderSelectionIndicator: params.renderSelectionIndicator,
-      renderShortcutCard: params.renderShortcutCard,
-    }),
-  };
-}
-
 export function renderRootGridItemNodes<T extends RootGridRenderableItem>(params: {
   itemStates: RootGridItemState<T>[];
   selectionMode: boolean;
-  activeDragId: string | null;
   disableReorderAnimation: boolean;
   interactionParams: SharedItemRendererInteractionParams<
     RootShortcutPendingDragSession,
@@ -215,17 +172,14 @@ export function renderRootGridItemNodes<T extends RootGridRenderableItem>(params
       item,
       itemRenderState,
       selected,
-      ...buildRootGridItemNodeParams({
-        selectionMode: params.selectionMode,
-        activeDragId: params.activeDragId,
-        disableReorderAnimation: params.disableReorderAnimation,
-        interactionParams: params.interactionParams,
-        rootVisualOptions: params.rootVisualOptions,
-        onToggleShortcutSelection: params.onToggleShortcutSelection,
-        renderCenterPreview: params.renderCenterPreview,
-        renderSelectionIndicator: params.renderSelectionIndicator,
-        renderShortcutCard: params.renderShortcutCard,
-      }),
+      selectionMode: params.selectionMode,
+      disableReorderAnimation: params.disableReorderAnimation,
+      interactionParams: params.interactionParams,
+      onToggleShortcutSelection: params.onToggleShortcutSelection,
+      rootVisualOptions: params.rootVisualOptions,
+      renderCenterPreview: params.renderCenterPreview,
+      renderSelectionIndicator: params.renderSelectionIndicator,
+      renderShortcutCard: params.renderShortcutCard,
     });
   });
 }
@@ -302,28 +256,6 @@ export function renderFolderGridItemNode(params: {
   );
 }
 
-function buildFolderGridItemNodeParams(params: {
-  suppressProjectionSettleAnimation: boolean;
-  interactionParams: SharedItemRendererInteractionParams<
-    FolderShortcutPendingDragSession,
-    FolderShortcutContextMenuHandler
-  >;
-} & FolderShortcutRenderBindings) {
-  const sharedRenderNodeBaseParams = buildSharedItemRenderNodeBaseParams({
-    interactionParams: params.interactionParams,
-    visualOptions: params.folderVisualOptions,
-  });
-
-  return {
-    suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
-    interactionParams: sharedRenderNodeBaseParams.interactionParams,
-    ...buildFolderShortcutRenderBindings({
-      folderVisualOptions: sharedRenderNodeBaseParams.visualOptions,
-      renderShortcutCard: params.renderShortcutCard,
-    }),
-  };
-}
-
 export function renderFolderGridItemNodes<T extends FolderGridRenderableItem>(params: {
   itemStates: FolderGridItemState<T>[];
   suppressProjectionSettleAnimation: boolean;
@@ -336,12 +268,10 @@ export function renderFolderGridItemNodes<T extends FolderGridRenderableItem>(pa
     return renderFolderGridItemNode({
       item,
       itemRenderState,
-      ...buildFolderGridItemNodeParams({
-        suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
-        interactionParams: params.interactionParams,
-        folderVisualOptions: params.folderVisualOptions,
-        renderShortcutCard: params.renderShortcutCard,
-      }),
+      suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
+      interactionParams: params.interactionParams,
+      folderVisualOptions: params.folderVisualOptions,
+      renderShortcutCard: params.renderShortcutCard,
     });
   });
 }

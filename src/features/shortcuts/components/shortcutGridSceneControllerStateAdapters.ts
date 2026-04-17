@@ -1,22 +1,10 @@
 import type React from 'react';
-import type { DragHoverResolution } from '@/features/shortcuts/drag/dragSessionRuntime';
+import type { DragHoverResolution, ResolvedDragHoverState } from '@/features/shortcuts/drag/dragSessionRuntime';
+import { resolveDragHoverState } from '@/features/shortcuts/drag/dragSessionRuntime';
 import type { MeasuredDragItem, ProjectionOffset } from '@/features/shortcuts/drag/gridDragEngine';
 import type { RootShortcutDropIntent } from '@/features/shortcuts/drag/types';
 
-export function buildSceneControllerState<TLayoutState, TInteractionState>(params: {
-  layoutState: TLayoutState;
-  interactionState: TInteractionState;
-}) {
-  return params;
-}
-
-export function buildSceneLayoutState<TItem, TExtra extends object>(params: {
-  items: readonly TItem[];
-} & TExtra) {
-  return params;
-}
-
-export function buildSceneInteractionState<TItem, TPendingDragRef, TExtra extends object = {}>(params: {
+type PointerDragInteractionStateParams<TItem, TPendingDragRef> = {
   layoutSnapshot: Array<MeasuredDragItem<TItem>> | null;
   activeDragId: string | null;
   hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
@@ -27,6 +15,40 @@ export function buildSceneInteractionState<TItem, TPendingDragRef, TExtra extend
   pendingDragRef: React.MutableRefObject<TPendingDragRef>;
   itemElements: Map<string, HTMLDivElement>;
   ignoreClickRef: React.MutableRefObject<boolean>;
-} & TExtra) {
-  return params;
+};
+
+function resolvePointerDragInteractionState<TItem, TPendingDragRef>(
+  params: PointerDragInteractionStateParams<TItem, TPendingDragRef>,
+) {
+  return {
+    layoutSnapshot: params.layoutSnapshot,
+    activeDragId: params.activeDragId,
+    hoverState: resolveDragHoverState(params.hoverResolution) as ResolvedDragHoverState<RootShortcutDropIntent>,
+    dragPointer: params.dragPointer,
+    dragPreviewOffset: params.dragPreviewOffset,
+    layoutShiftOffsets: params.layoutShiftOffsets,
+    disableLayoutShiftTransition: params.disableLayoutShiftTransition,
+    pendingDragRef: params.pendingDragRef,
+    itemElements: params.itemElements,
+    ignoreClickRef: params.ignoreClickRef,
+  };
+}
+
+export function resolveRootShortcutGridInteractionState<TItem, TPendingDragRef>(
+  params: PointerDragInteractionStateParams<TItem, TPendingDragRef>,
+) {
+  return resolvePointerDragInteractionState(params);
+}
+
+export function resolveFolderShortcutSurfaceInteractionState<TItem, TPendingDragRef, TExtra extends {
+  dragSettlePreview: unknown;
+  hoveredMask: boolean;
+  suppressProjectionSettleAnimation: boolean;
+}>(params: PointerDragInteractionStateParams<TItem, TPendingDragRef> & TExtra) {
+  return {
+    ...resolvePointerDragInteractionState(params),
+    dragSettlePreview: params.dragSettlePreview,
+    hoveredMask: params.hoveredMask,
+    suppressProjectionSettleAnimation: params.suppressProjectionSettleAnimation,
+  };
 }

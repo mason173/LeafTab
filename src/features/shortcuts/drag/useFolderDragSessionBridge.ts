@@ -6,19 +6,16 @@ import {
   type ActiveDragSession,
   type PendingDragSession,
 } from './dragSessionRuntime';
+import { buildRootDragDirectionMap } from './compactRootDrag';
 import {
   measureNullableElementDomRect,
   resolveFolderHoverTargetRegions,
 } from './dragHoverResolvers';
 import type { MeasuredDragItem } from './gridDragEngine';
 import type { FolderDragRenderableItem } from './folderDragRenderState';
-import type { DragPoint, RootShortcutDropIntent } from './types';
+import type { DragPoint, FolderDragSessionMeta, RootShortcutDropIntent } from './types';
 import { useFolderPointerHoverSession } from './useFolderPointerHoverSession';
 import { useFolderResolvedDragSession } from './useFolderResolvedDragSession';
-
-type FolderDragSessionMeta = {
-  activeShortcutIndex: number;
-};
 
 const EMPTY_FOLDER_HOVER_RESOLUTION = createEmptyDragHoverResolution<RootShortcutDropIntent>();
 
@@ -98,6 +95,14 @@ export function useFolderDragSessionBridge<T extends FolderDragRenderableItem & 
     hoveredMaskRef,
     captureDragLayoutSnapshot: params.captureDragLayoutSnapshot,
     measureCurrentItems: params.measureCurrentItems,
+    buildDirectionMap: ({ activeDrag }) => {
+      const frozenMeasuredItems = params.getDragLayoutSnapshot(params.measureCurrentItems);
+      return buildRootDragDirectionMap({
+        activeSortId: activeDrag.activeId,
+        measuredItems: frozenMeasuredItems,
+        resolveRegions,
+      });
+    },
     resolveHover: ({ activeDrag, pointer, previousHoverResolution }) => {
       params.publishLatestPointer(pointer);
       return resolveHover({

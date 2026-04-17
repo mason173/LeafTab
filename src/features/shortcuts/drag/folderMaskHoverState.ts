@@ -1,8 +1,9 @@
 import { createEmptyDragHoverResolution, type DragHoverResolution } from './dragSessionRuntime';
-import type { DragPoint, RootShortcutDropIntent } from './types';
+import type { DragPoint, RootDragActiveTarget, RootShortcutDropIntent } from './types';
 
 export type FolderMaskHoverState = {
   hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  activeTarget: RootDragActiveTarget | null;
   hoveredMask: boolean;
   recognitionPoint: DragPoint | null;
   shouldScheduleExtractHandoff: boolean;
@@ -10,15 +11,17 @@ export type FolderMaskHoverState = {
 
 export function resolveFolderMaskHoverState(params: {
   hoverResolution: DragHoverResolution<RootShortcutDropIntent>;
+  activeTarget: RootDragActiveTarget | null;
   recognitionPoint: DragPoint | null;
   boundaryRect: Pick<DOMRect, 'left' | 'top' | 'right' | 'bottom'> | null;
 }): FolderMaskHoverState {
-  const { hoverResolution, recognitionPoint, boundaryRect } = params;
+  const { hoverResolution, activeTarget, recognitionPoint, boundaryRect } = params;
   const emptyHoverResolution = createEmptyDragHoverResolution<RootShortcutDropIntent>();
 
   if (!recognitionPoint) {
     return {
       hoverResolution: emptyHoverResolution,
+      activeTarget: null,
       hoveredMask: false,
       recognitionPoint: null,
       shouldScheduleExtractHandoff: false,
@@ -35,6 +38,7 @@ export function resolveFolderMaskHoverState(params: {
   if (!withinBoundary) {
     return {
       hoverResolution: emptyHoverResolution,
+      activeTarget: null,
       hoveredMask: true,
       recognitionPoint,
       shouldScheduleExtractHandoff: true,
@@ -43,6 +47,7 @@ export function resolveFolderMaskHoverState(params: {
 
   return {
     hoverResolution,
+    activeTarget,
     hoveredMask: false,
     recognitionPoint,
     shouldScheduleExtractHandoff: false,

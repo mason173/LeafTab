@@ -1,13 +1,9 @@
 import type { MutableRefObject } from 'react';
 import type { Shortcut } from '@/types';
-import type { RootShortcutDropIntent } from './types';
+import type { FolderDragSessionMeta, RootDragActiveTarget, RootShortcutDropIntent } from './types';
 import type { ActiveDragSession, DragHoverResolution, PendingDragSession } from './dragSessionRuntime';
 import { applyFolderDragRelease, resolveFolderDragRelease } from './dragReleaseAdapters';
 import { useResolvedPointerDragSession, type ResolvedPointerDragHover } from './useResolvedPointerDragSession';
-
-type FolderDragSessionMeta = {
-  activeShortcutIndex: number;
-};
 
 export function useFolderResolvedDragSession<TItem>(params: {
   pendingDragRef: MutableRefObject<PendingDragSession<string, FolderDragSessionMeta> | null>;
@@ -20,12 +16,23 @@ export function useFolderResolvedDragSession<TItem>(params: {
   hoveredMaskRef: MutableRefObject<boolean>;
   captureDragLayoutSnapshot: <TResult>(measure: () => TResult) => TResult;
   measureCurrentItems: () => unknown;
+  buildDirectionMap: (params: {
+    activeDrag: ActiveDragSession<string, FolderDragSessionMeta>;
+  }) => NonNullable<FolderDragSessionMeta['directionMap']>;
   resolveHover: (params: {
     activeDrag: ActiveDragSession<string, FolderDragSessionMeta>;
     pointer: { x: number; y: number };
     previousHoverResolution: DragHoverResolution<RootShortcutDropIntent>;
-  }) => ResolvedPointerDragHover<RootShortcutDropIntent, { hoveredMask: boolean; recognitionPoint: { x: number; y: number } | null }>;
-  handleHoverResolved: (resolvedHover: { hoveredMask: boolean; recognitionPoint: { x: number; y: number } | null }) => void;
+  }) => ResolvedPointerDragHover<RootShortcutDropIntent, {
+    activeTarget: RootDragActiveTarget | null;
+    hoveredMask: boolean;
+    recognitionPoint: { x: number; y: number } | null;
+  }>;
+  handleHoverResolved: (resolvedHover: {
+    activeTarget: RootDragActiveTarget | null;
+    hoveredMask: boolean;
+    recognitionPoint: { x: number; y: number } | null;
+  }) => void;
   clearHoverState: () => void;
   armProjectionSettleSuppression: () => void;
   startDragSettlePreview: (preview: {
@@ -50,8 +57,12 @@ export function useFolderResolvedDragSession<TItem>(params: {
       pointer,
       previousHoverResolution,
     }),
-    onActivated: ({ event }) => {
+    onActivated: ({ activeDrag, event }) => {
       params.captureDragLayoutSnapshot(params.measureCurrentItems);
+      params.activeDragRef.current = {
+        ...activeDrag,
+        directionMap: params.buildDirectionMap({ activeDrag }),
+      };
       params.setUserSelect('none');
       event.preventDefault();
     },
