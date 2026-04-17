@@ -1,6 +1,6 @@
 {
       "name": "leaftab",
-      "version": "1.4.8",
+      "version": "1.4.8-alpha.2",
       "private": true,
       "workspaces": [
             "packages/*"

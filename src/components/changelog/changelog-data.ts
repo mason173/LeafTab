@@ -19,6 +19,17 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.8-alpha.2",
+    date: "2026-04-17",
+    channel: "preview",
+    tag: "alpha",
+    notes: [
+      t("changelog.items.release148Alpha2WorkspaceInline", { defaultValue: "将快捷方式网格工作区代码正式内联进 LeafTab 主仓库，不再依赖单独的外部 workspace 仓库" }),
+      t("changelog.items.release148Alpha2BuildUnify", { defaultValue: "统一 workspace 类型与构建链路，降低主仓库构建和后续维护成本" }),
+      t("changelog.items.release148Alpha2DragCheckpoint", { defaultValue: "继续整理抽屉拖拽与网格边界相关实现，为后续稳定版打基础" }),
+    ],
+  },
+  {
     version: "1.4.8",
     date: "2026-04-13",
     notes: [
