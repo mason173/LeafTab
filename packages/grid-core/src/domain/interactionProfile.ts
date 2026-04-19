@@ -83,7 +83,7 @@ const GRID_INTERACTION_PROFILE_PRESETS: Record<GridInteractionProfileKind, GridI
     allowMerge: false,
     allowEnterFolder: false,
     treatAllTargetZonesAsReorder: true,
-    reorderDwellMs: 200,
+    reorderDwellMs: 0,
     mergeDwellMs: 100,
     bypassReorderDwellAfterLeavingCore: true,
     allowBoundaryExtract: true,

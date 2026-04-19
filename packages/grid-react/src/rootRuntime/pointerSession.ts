@@ -19,6 +19,7 @@ type ActiveRootPointerSession = {
   activeSortId: string;
   previewOffset: PointerPoint;
   sourceRootShortcutId?: string;
+  ignoreNextPointerCancel?: boolean;
 };
 
 export function activatePendingRootDragSession<
@@ -83,6 +84,7 @@ export function updateRootDragSessionPointer<TSession extends ActiveRootPointerS
   } = params;
 
   session.pointer = pointer;
+  session.ignoreNextPointerCancel = false;
   setDragPointer(pointer);
   updateAutoScrollVelocity(pointer.y);
   syncHoverResolution(pointer);
@@ -111,6 +113,10 @@ export function finalizeReleasedRootHoverResolution<TSession extends ActiveRootP
   } = params;
 
   if (eventType === 'pointercancel') {
+    if (session.ignoreNextPointerCancel) {
+      session.ignoreNextPointerCancel = false;
+      return confirmedHoverResolutionRef.current;
+    }
     return confirmedHoverResolutionRef.current;
   }
 
@@ -224,6 +230,11 @@ export function finishRootPointerInteraction<
 
   if (!session || event.pointerId !== session.pointerId) {
     return false;
+  }
+
+  if (event.type === 'pointercancel' && session.ignoreNextPointerCancel) {
+    session.ignoreNextPointerCancel = false;
+    return true;
   }
 
   finalizeReleasedRootHoverResolution({

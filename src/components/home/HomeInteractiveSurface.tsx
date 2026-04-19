@@ -10,7 +10,7 @@ import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { SearchExperience, type SearchInteractionState } from '@/components/search/SearchExperience';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { WallpaperMode } from '@/wallpaper/types';
-import { clamp01, mix } from '@/components/shortcutFolderCompactAnimation';
+import { clamp01 } from '@/components/shortcutFolderCompactAnimation';
 
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
@@ -51,7 +51,7 @@ type HomeInteractiveSurfaceProps = {
   topNavModeProps: ComponentProps<typeof TopNavBar>;
   homeMainContentBaseProps: Omit<
     ComponentProps<typeof HomeMainContent>,
-    'initialRevealReady' | 'visible' | 'modeFlags' | 'wallpaperClockProps' | 'searchExperienceProps' | 'searchInteractionLocked' | 'onDrawerExpandedChange' | 'shortcutGridProps'
+    'initialRevealReady' | 'visible' | 'modeFlags' | 'wallpaperClockProps' | 'searchExperienceProps' | 'searchInteractionLocked' | 'onDrawerExpandedChange' | 'shortcutGridProps' | 'folderImmersiveProgress'
   >;
   shortcutGridProps: ComponentProps<typeof HomeMainContent>['shortcutGridProps'];
   wallpaperClockBaseProps: Omit<
@@ -357,9 +357,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
     return {
       opacity: 1 - immersiveProgress,
-      transform: `scale(${mix(1, 0.9, immersiveProgress)})`,
-      transformOrigin: 'center center',
-      willChange: 'opacity, transform',
+      willChange: 'opacity',
       pointerEvents: 'none',
     };
   }, [folderImmersiveProgress]);
@@ -369,18 +367,19 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       {overlayWallpaperLayer}
       <div style={immersiveUiShellStyle}>
         {fixedTopNavLayer}
-        <HomeMainContent
-          {...homeMainContentBaseProps}
-          initialRevealReady={initialRevealReady}
-          visible={visible}
-          modeFlags={modeFlags}
-          wallpaperClockProps={wallpaperClockProps}
-          searchExperienceProps={searchExperienceProps}
-          searchInteractionLocked={searchInteractionLocked}
-          onDrawerExpandedChange={setDrawerExpanded}
-          shortcutGridProps={shortcutGridProps}
-        />
       </div>
+      <HomeMainContent
+        {...homeMainContentBaseProps}
+        initialRevealReady={initialRevealReady}
+        visible={visible}
+        modeFlags={modeFlags}
+        wallpaperClockProps={wallpaperClockProps}
+        searchExperienceProps={searchExperienceProps}
+        searchInteractionLocked={searchInteractionLocked}
+        onDrawerExpandedChange={setDrawerExpanded}
+        shortcutGridProps={shortcutGridProps}
+        folderImmersiveProgress={folderImmersiveProgress}
+      />
     </>
   );
 });

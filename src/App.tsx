@@ -1064,13 +1064,13 @@ export default function App() {
   const commitShortcutInteractionOutcome = useCallback((outcome: ShortcutInteractionApplication) => {
     if (outcome.kind === 'start-root-drag-session') {
       flushSync(() => {
+        if (outcome.closeFolderId) {
+          folderTransitionController.clearImmediately();
+        }
         setScenarioShortcuts((prev) => ({
           ...prev,
           [selectedScenarioId]: outcome.shortcuts,
         }));
-        if (openFolderId === outcome.closeFolderId) {
-          folderTransitionController.clearImmediately();
-        }
         setExternalShortcutDragSession({
           token: Date.now(),
           ...outcome.session,
@@ -1078,7 +1078,7 @@ export default function App() {
       });
       markShortcutStateDirty();
     }
-  }, [folderTransitionController, markShortcutStateDirty, openFolderId, selectedScenarioId, setScenarioShortcuts]);
+  }, [folderTransitionController, markShortcutStateDirty, selectedScenarioId, setScenarioShortcuts]);
 
   const handleShortcutDropIntent = useCallback((intent: ShortcutDropIntent) => {
     const outcome = applyShortcutDropIntent(shortcuts, intent);

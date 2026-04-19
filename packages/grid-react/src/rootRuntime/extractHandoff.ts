@@ -53,8 +53,7 @@ export function scheduleRootExtractHandoff<TSession extends RootExtractDragSessi
     return;
   }
 
-  extractHandoffTimerRef.current = window.setTimeout(() => {
-    extractHandoffTimerRef.current = null;
+  const commitExtractHandoff = () => {
     const latestPointer = latestPointerRef.current;
     if (!latestPointer || !onExtractDragStart) {
       return;
@@ -78,6 +77,16 @@ export function scheduleRootExtractHandoff<TSession extends RootExtractDragSessi
       pointer: latestPointer,
     }));
     clearDragRuntimeState();
+  };
+
+  if (delayMs <= 0) {
+    commitExtractHandoff();
+    return;
+  }
+
+  extractHandoffTimerRef.current = window.setTimeout(() => {
+    extractHandoffTimerRef.current = null;
+    commitExtractHandoff();
   }, delayMs);
 }
 

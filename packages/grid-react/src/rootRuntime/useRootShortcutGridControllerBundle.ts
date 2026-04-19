@@ -7,7 +7,7 @@ import {
   buildPreviewOffsetFromPointer,
   measureDragItemRects,
 } from '@leaftab/workspace-core';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { MeasuredRootGridItem } from '../rootGeometry/measurement';
 import { createRootGridMeasurementController } from '../rootGeometry/measurement';
 import type { RootShortcutGridHeatZoneInspector } from '../rootResolution/compactHover';
@@ -539,7 +539,7 @@ export function useRootShortcutGridControllerBundle({
     pendingDragRef,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     externalDragSessionController.activate();
   }, [externalDragSessionController]);
 

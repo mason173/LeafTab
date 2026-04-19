@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
@@ -21,6 +21,7 @@ interface ShortcutCardCompactProps {
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
   disableIconWrapperEffects?: boolean;
+  animateTitleOnMount?: boolean;
   rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'onClick' | 'onContextMenu'> & {
     [key: `data-${string}`]: string | number | boolean | undefined;
   };
@@ -50,6 +51,7 @@ export function ShortcutCardCompact({
   onPreviewShortcutOpen,
   selectionDisabled = false,
   disableIconWrapperEffects = false,
+  animateTitleOnMount = false,
   rootProps,
   iconWrapperProps,
   iconContentProps,
@@ -66,10 +68,30 @@ export function ShortcutCardCompact({
     largeFolderPreviewSize,
     ignoreTitleHeight: floatTitle,
   });
-  const floatingTitle = showTitle && floatTitle;
+  const floatingTitle = floatTitle;
+  const [titleFadeReady, setTitleFadeReady] = useState(() => !animateTitleOnMount || !showTitle);
   const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folder || folderSelectionDisabled
     ? ''
     : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]';
+  const resolvedTitleOpacity = showTitle
+    ? (animateTitleOnMount ? (titleFadeReady ? 1 : 0) : 1)
+    : 0;
+
+  useEffect(() => {
+    if (!animateTitleOnMount) return;
+    if (!showTitle) {
+      setTitleFadeReady(false);
+      return;
+    }
+
+    let rafId = window.requestAnimationFrame(() => {
+      setTitleFadeReady(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [animateTitleOnMount, showTitle, shortcut.id]);
 
   return (
     <div
@@ -124,22 +146,22 @@ export function ShortcutCardCompact({
         </div>
         {floatingTitle ? (
           <p
-            className={`pointer-events-none absolute left-1/2 truncate text-center leading-4 transition-opacity duration-150 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+            className={`pointer-events-none absolute left-1/2 truncate text-center leading-4 transition-opacity duration-300 ease-out ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
             style={{
               top: metrics.previewSize + 4,
               width: metrics.width,
               fontSize: titleFontSize,
-              opacity: 1,
+              opacity: resolvedTitleOpacity,
               transform: 'translateX(-50%)',
             }}
-            aria-hidden={false}
+            aria-hidden={!showTitle}
           >
             {shortcut.title}
           </p>
         ) : (
           <p
-            className={`truncate text-center leading-4 transition-opacity duration-150 ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-            style={{ width: metrics.width, fontSize: titleFontSize, opacity: showTitle ? 1 : 0 }}
+            className={`truncate text-center leading-4 transition-opacity duration-300 ease-out ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
+            style={{ width: metrics.width, fontSize: titleFontSize, opacity: resolvedTitleOpacity }}
             aria-hidden={!showTitle}
           >
             {shortcut.title}

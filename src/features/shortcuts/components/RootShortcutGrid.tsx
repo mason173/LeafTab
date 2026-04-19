@@ -148,6 +148,7 @@ export interface RootShortcutGridProps {
   bottomInset?: number;
   shortcuts: Shortcut[];
   hiddenShortcutId?: string | null;
+  overlayZIndex?: number;
   gridColumns: number;
   minRows: number;
   rowHeightOverride?: number;
@@ -193,6 +194,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   bottomInset = 0,
   shortcuts,
   hiddenShortcutId = null,
+  overlayZIndex,
   gridColumns,
   minRows,
   rowHeightOverride,
@@ -341,6 +343,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           containerHeight={containerHeight}
           bottomInset={bottomInset}
           shortcuts={shortcuts}
+          overlayZIndex={overlayZIndex}
           gridColumns={gridColumns}
           minRows={minRows}
           rowHeight={rowHeight}
@@ -381,9 +384,31 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               return (
                 <div
                   className="relative z-10"
-                  style={{ width: compactMetrics.width, height: compactMetrics.height }}
+                  style={{
+                    width: compactMetrics.width,
+                    height: compactMetrics.height,
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
+                  }}
                   aria-hidden="true"
-                />
+                >
+                  {renderShortcutCard({
+                    shortcut: params.shortcut,
+                    compactShowTitle,
+                    compactIconSize,
+                    iconCornerRadius,
+                    iconAppearance,
+                    compactTitleFontSize: resolvedVisualTitleFontSize,
+                    forceTextWhite,
+                    enableLargeFolder: largeFolderEnabled,
+                    largeFolderPreviewSize,
+                    dropTargetActive: params.centerPreviewActive,
+                    onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
+                    selectionDisabled: params.selectionDisabled,
+                    onOpen: params.onOpen,
+                    onContextMenu: params.onContextMenu,
+                  })}
+                </div>
               );
             }
 

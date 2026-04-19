@@ -60,37 +60,35 @@ export function UpdateAvailableDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] p-0 flex flex-col">
         <div className="relative px-3 pt-3 shrink-0">
-          <div className="relative flex h-[190px] flex-col items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-secondary/20 px-5 text-center">
+          <div className="relative flex h-[164px] flex-col items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-secondary/20 px-5 text-center">
             {resolvedLatestVersion ? (
               <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-primary px-3 py-1 text-[14px] font-normal text-primary-foreground">
                 {t('updateNotice.badge', { defaultValue: '新版本 v{{version}}', version: resolvedLatestVersion })}
               </span>
             ) : null}
-            <div className="relative flex h-[60px] w-[60px] items-center justify-center rounded-[20px] bg-background ring-1 ring-border/60">
+            <div className="relative flex h-[54px] w-[54px] items-center justify-center rounded-[18px] bg-background ring-1 ring-border/60">
               <img
                 src={aboutIcon}
                 alt=""
                 aria-hidden="true"
-                className="h-9 w-9"
+                className="h-8 w-8"
                 draggable={false}
               />
             </div>
-            <div className="relative mt-3 flex w-full max-w-[440px] flex-col items-center gap-1">
-              <div className="max-w-full text-[22px] font-medium leading-none tracking-[-0.05em] text-foreground">
+            <div className="relative mt-2.5 flex w-full max-w-[440px] flex-col items-center gap-0.5">
+              <div className="max-w-full text-[18px] font-bold leading-none tracking-[-0.03em] text-foreground">
                 {heroCopy.title}
               </div>
-              <div className="max-w-[260px] text-[12px] font-normal leading-[1.35] text-foreground/78">
+              <div className="max-w-[250px] text-[11px] font-normal leading-[1.3] text-foreground/78">
                 {heroCopy.subtitle}
               </div>
             </div>
-            <div className="relative mt-3 flex flex-wrap items-center justify-center gap-1.5">
-              {heroCopy.badges.map((badge) => (
-                <span
-                  key={badge}
-                  className="inline-flex min-h-8 items-center justify-center rounded-full border border-border/70 bg-secondary/35 px-4 py-1.5 text-[12px] font-normal text-foreground/70 sm:min-w-[96px]"
-                >
-                  {badge}
-                </span>
+            <div className="relative mt-2 flex flex-wrap items-center justify-center gap-x-2 text-[11px] font-medium text-foreground/70">
+              {heroCopy.badges.map((badge, index) => (
+                <div key={badge} className="inline-flex items-center gap-x-2">
+                  {index > 0 ? <span aria-hidden="true" className="text-foreground/35">•</span> : null}
+                  <span>{badge}</span>
+                </div>
               ))}
             </div>
           </div>

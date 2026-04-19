@@ -11,6 +11,7 @@ import {
   resolveBackdropAnimationProgress,
   resolveChildAnimationProgress,
   resolveChromeAnimationProgress,
+  resolveFolderShellVisibility,
 } from '@/components/shortcutFolderCompactAnimation';
 import type {
   FolderTransitionPhase,
@@ -21,6 +22,10 @@ import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
+import {
+  getFolderPreviewRoot,
+  getFolderPreviewSlotEntries,
+} from '@/components/shortcuts/folderPreviewRegistry';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
@@ -62,6 +67,21 @@ const GHOST_ICON_BASE_SIZE = 72;
 const PANEL_WIDTH_CLASSNAME = 'w-[min(720px,calc(100vw-24px))] max-w-[720px]';
 const PANEL_HORIZONTAL_MARGIN_PX = 24;
 const PANEL_MAX_WIDTH_PX = 720;
+const FOLDER_TITLE_PADDING_CLASSNAME = 'px-6 pb-5 pt-7';
+const FOLDER_SCROLL_REGION_CLASSNAME = 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden';
+const FOLDER_ANIMATED_TITLE_CLASSNAME = `absolute inset-x-0 top-0 ${FOLDER_TITLE_PADDING_CLASSNAME} text-center`;
+function buildFolderPanelSurfaceStyle(borderRadius: string, opacity = 1): React.CSSProperties {
+  return {
+    borderRadius,
+    opacity,
+    border: '1px solid transparent',
+    backgroundColor: 'transparent',
+    backgroundImage: 'none',
+    boxShadow: 'none',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
+  };
+}
 
 function copyRect(rect: DOMRect | OverlayRect | null | undefined): OverlayRect | null {
   if (!rect) return null;
@@ -102,6 +122,13 @@ function escapeSelectorValue(value: string) {
 function resolvePredictedPanelWidthPx() {
   if (typeof window === 'undefined') return PANEL_MAX_WIDTH_PX;
   return Math.max(320, Math.min(PANEL_MAX_WIDTH_PX, window.innerWidth - PANEL_HORIZONTAL_MARGIN_PX));
+}
+
+function readElementBorderRadiusPx(element: HTMLElement | null | undefined) {
+  if (!element || typeof window === 'undefined') return null;
+  const computedStyle = window.getComputedStyle(element);
+  const resolvedRadius = Number.parseFloat(computedStyle.borderTopLeftRadius || '0');
+  return Number.isFinite(resolvedRadius) ? resolvedRadius : null;
 }
 
 function getFallbackSourceRect(targetRect: OverlayRect): OverlayRect {
@@ -236,7 +263,7 @@ function FolderPanelTitle({
   return (
     <div
       ref={bindLayoutRef}
-      className="px-6 pb-4 pt-6"
+      className={FOLDER_TITLE_PADDING_CLASSNAME}
     >
       <div className="text-center">
         {allowEditing ? (
@@ -293,6 +320,8 @@ export function ShortcutFolderCompactOverlay({
 }: ShortcutFolderCompactOverlayProps) {
   const { t } = useTranslation();
   const [metrics, setMetrics] = useState<OverlayMetrics | null>(null);
+  const [committedMetrics, setCommittedMetrics] = useState<OverlayMetrics | null>(null);
+  const [closingSourceSnapshot, setClosingSourceSnapshot] = useState<ShortcutFolderOpeningSourceSnapshot | null>(null);
   const [folderDragActive, setFolderDragActive] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
@@ -319,13 +348,18 @@ export function ShortcutFolderCompactOverlay({
     [shortcut?.id],
   );
 
+  const activeSourceSnapshot = transitionPhase === 'closing-measure' || transitionPhase === 'closing-animate'
+    ? (closingSourceSnapshot ?? openingSourceSnapshot ?? null)
+    : (openingSourceSnapshot ?? null);
   const sourceChildRects = useMemo(() => new Map(
-    (openingSourceSnapshot?.sourceChildRects ?? []).map((entry) => [entry.childId, entry.rect] as const),
-  ), [openingSourceSnapshot?.sourceChildRects]);
-  const sourceChildSlotRects = openingSourceSnapshot?.sourceChildSlotRects ?? [];
+    (activeSourceSnapshot?.sourceChildRects ?? []).map((entry) => [entry.childId, entry.rect] as const),
+  ), [activeSourceSnapshot?.sourceChildRects]);
+  const sourceChildSlotRects = activeSourceSnapshot?.sourceChildSlotRects ?? [];
 
   useLayoutEffect(() => {
     setMetrics(null);
+    setCommittedMetrics(null);
+    setClosingSourceSnapshot(null);
     setFolderDragActive(false);
     setEditingTitle(false);
     setPanelHeightPx(null);
@@ -366,9 +400,21 @@ export function ShortcutFolderCompactOverlay({
     const columnCount = gridStyles?.gridTemplateColumns
       ? gridStyles.gridTemplateColumns.split(' ').filter(Boolean).length
       : 1;
-    const rowHeight = gridItem?.getBoundingClientRect().height ?? 0;
+    const gridAutoRows = gridStyles ? parseFloat(gridStyles.gridAutoRows || '0') : 0;
+    const rowHeight = gridAutoRows > 0
+      ? gridAutoRows
+      : (gridItem?.getBoundingClientRect().height ?? 0);
     const totalRows = columnCount > 0 ? Math.ceil(children.length / columnCount) : 0;
-    const visibleRows = totalRows > 0 ? Math.min(FOLDER_PANEL_MAX_VISIBLE_ROWS, totalRows) : 0;
+    const availableScrollHeight = Math.max(0, maxPanelHeightPx - titleHeight);
+    const maxRowsThatFitViewport = rowHeight > 0
+      ? Math.max(
+          1,
+          Math.floor((availableScrollHeight - paddingTop - paddingBottom + rowGap) / Math.max(1, rowHeight + rowGap)),
+        )
+      : FOLDER_PANEL_MAX_VISIBLE_ROWS;
+    const visibleRows = totalRows > 0
+      ? Math.min(FOLDER_PANEL_MAX_VISIBLE_ROWS, totalRows, maxRowsThatFitViewport)
+      : 0;
     const visibleScrollHeight = visibleRows > 0 && rowHeight > 0
       ? Math.ceil(
           paddingTop
@@ -406,13 +452,53 @@ export function ShortcutFolderCompactOverlay({
     return nextMetrics;
   }, [children]);
 
-  const layoutPhaseActive = transitionPhase !== 'idle';
+  const measureClosingSourceSnapshot = useCallback(() => {
+    if (!shortcut) return null;
+
+    const sourcePreview = getFolderPreviewRoot(shortcut.id);
+    const sourceRect = copyRect(sourcePreview?.getBoundingClientRect());
+    if (!sourceRect) return null;
+
+    const previewSlots = getFolderPreviewSlotEntries(shortcut.id);
+    const nextSourceChildSlotRects: OverlayRect[] = [];
+    const nextSourceChildRects: ShortcutFolderOpeningSourceSnapshot['sourceChildRects'] = [];
+
+    previewSlots.forEach((slot) => {
+      const rect = copyRect(slot.element.getBoundingClientRect());
+      if (!rect) return;
+      nextSourceChildSlotRects[slot.index] = rect;
+      nextSourceChildRects.push({
+        childId: slot.childId,
+        rect,
+      });
+    });
+
+    return {
+      folderId: shortcut.id,
+      sourceRect,
+      sourceBorderRadius: readElementBorderRadiusPx(sourcePreview),
+      sourceChildRects: nextSourceChildRects,
+      sourceChildSlotRects: nextSourceChildSlotRects.filter(Boolean),
+    };
+  }, [shortcut]);
+
+  const resolvedMetrics = committedMetrics ?? metrics;
+  const layoutPhaseActive = transitionPhase === 'opening-measure'
+    || transitionPhase === 'open'
+    || transitionPhase === 'closing-measure';
 
   useLayoutEffect(() => {
     if (!shortcut || !layoutPhaseActive) return;
     updatePanelHeight();
     measureOverlayLayout();
   }, [layoutPhaseActive, measureOverlayLayout, panelHeightPx, shortcut, updatePanelHeight]);
+
+  useLayoutEffect(() => {
+    if (transitionPhase !== 'closing-measure') return;
+    const nextSnapshot = measureClosingSourceSnapshot();
+    if (!nextSnapshot) return;
+    setClosingSourceSnapshot(nextSnapshot);
+  }, [measureClosingSourceSnapshot, transitionPhase]);
 
   useEffect(() => {
     if (!shortcut || typeof window === 'undefined' || !layoutPhaseActive) return undefined;
@@ -456,6 +542,7 @@ export function ShortcutFolderCompactOverlay({
   useLayoutEffect(() => {
     if (!shortcut || !metrics) return;
     if (transitionPhase === 'opening-measure' && !openingReadyReportedRef.current) {
+      setCommittedMetrics(metrics);
       openingReadyReportedRef.current = true;
       onOpeningLayoutReady?.();
     }
@@ -507,41 +594,41 @@ export function ShortcutFolderCompactOverlay({
   }
 
   const openProgress = clamp01(transitionProgress);
-  const backdropProgress = resolveBackdropAnimationProgress(openProgress);
+  const motionPhase = transitionPhase === 'closing-measure' || transitionPhase === 'closing-animate'
+    ? 'closing'
+    : 'opening';
+  const backdropProgress = resolveBackdropAnimationProgress(openProgress, motionPhase);
   const backdropBlurPx = mix(0, 24, backdropProgress);
-  const chromeProgress = resolveChromeAnimationProgress(openProgress);
+  const chromeProgress = resolveChromeAnimationProgress(openProgress, motionPhase);
   const chromeTranslateY = mix(10, 0, chromeProgress);
-  const sourceRect = openingSourceSnapshot?.sourceRect
-    ?? (metrics ? getFallbackSourceRect(metrics.targetRect) : null);
+  const sourceRect = activeSourceSnapshot?.sourceRect
+    ?? (resolvedMetrics ? getFallbackSourceRect(resolvedMetrics.targetRect) : null);
   const sourceBorderRadius = Math.max(
     0,
-    openingSourceSnapshot?.sourceBorderRadius
+    activeSourceSnapshot?.sourceBorderRadius
       ?? (sourceRect ? Math.min(sourceRect.width, sourceRect.height) * 0.28 : FOLDER_PANEL_RADIUS_PX),
   );
-  const shellReady = Boolean(metrics && sourceRect);
-  const showAnimationLayer = Boolean(metrics && sourceRect && (
+  const shellReady = Boolean(resolvedMetrics && sourceRect);
+  const showAnimationLayer = Boolean(resolvedMetrics && sourceRect && (
     transitionPhase === 'opening-animate' || transitionPhase === 'closing-animate'
   ));
-  const showSettledLayer = Boolean(metrics && (
+  const showSettledLayer = Boolean(resolvedMetrics && (
     transitionPhase === 'open' || transitionPhase === 'closing-measure'
   ));
-  const targetFrameStyle = metrics
+  const targetFrameStyle = resolvedMetrics
     ? {
-        left: metrics.targetRect.left,
-        top: metrics.targetRect.top,
-        width: metrics.targetRect.width,
-        height: metrics.targetRect.height,
+        left: resolvedMetrics.targetRect.left,
+        top: resolvedMetrics.targetRect.top,
+        width: resolvedMetrics.targetRect.width,
+        height: resolvedMetrics.targetRect.height,
       }
     : null;
-  const animatedPanelRect = showAnimationLayer && metrics && sourceRect
-    ? interpolateRect(sourceRect, metrics.targetRect, openProgress)
+  const animatedPanelRect = showAnimationLayer && resolvedMetrics && sourceRect
+    ? interpolateRect(sourceRect, resolvedMetrics.targetRect, openProgress)
     : null;
   const animatedPanelBorderRadius = mix(sourceBorderRadius, FOLDER_PANEL_RADIUS_PX, openProgress);
   const animationShortcutTitlesVisible = openProgress >= FOLDER_LABEL_REVEAL_START_PROGRESS;
-  const shellShadowAlpha = mix(0.08, 0.16, openProgress);
-  const shellBorderAlpha = mix(0.16, 0.12, openProgress);
-  const shellFillTopAlpha = mix(0.22, 0.12, openProgress);
-  const shellFillBottomAlpha = mix(0.12, 0.05, openProgress);
+  const shellVisibility = resolveFolderShellVisibility(openProgress);
 
   const folderTitle = shortcut.title || t('context.folder', { defaultValue: '文件夹' });
 
@@ -574,7 +661,7 @@ export function ShortcutFolderCompactOverlay({
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div
           ref={measureSurfaceRef}
-          className={`relative overflow-visible ${PANEL_WIDTH_CLASSNAME}`}
+          className={`relative overflow-hidden ${PANEL_WIDTH_CLASSNAME}`}
           style={{
             borderRadius: roundedCorner,
             height: panelHeightPx ? `${panelHeightPx}px` : undefined,
@@ -585,17 +672,12 @@ export function ShortcutFolderCompactOverlay({
           <div
             aria-hidden="true"
             className="absolute inset-0"
-            style={{
-              borderRadius: roundedCorner,
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
-            }}
+            style={buildFolderPanelSurfaceStyle(roundedCorner)}
           />
           <div className="relative flex h-full flex-col">
             <div
               ref={measureTitleRef}
-              className="px-6 pb-4 pt-6"
+              className={FOLDER_TITLE_PADDING_CLASSNAME}
             >
               <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white">
                 {folderTitle}
@@ -604,7 +686,7 @@ export function ShortcutFolderCompactOverlay({
             <div
               ref={measureScrollRef}
               data-folder-overlay-scroll-region="true"
-              className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className={FOLDER_SCROLL_REGION_CLASSNAME}
             >
               <FolderShortcutSurface
                 folderId={shortcut.id}
@@ -636,17 +718,17 @@ export function ShortcutFolderCompactOverlay({
               top: animatedPanelRect.top,
               width: animatedPanelRect.width,
               height: animatedPanelRect.height,
-              borderRadius: `${animatedPanelBorderRadius}px`,
-              background: `linear-gradient(180deg, rgba(255,255,255,${shellFillTopAlpha}), rgba(255,255,255,${shellFillBottomAlpha}))`,
-              border: `1px solid rgba(255,255,255,${shellBorderAlpha})`,
-              boxShadow: `0 24px 64px rgba(0,0,0,${shellShadowAlpha})`,
+              ...buildFolderPanelSurfaceStyle(`${animatedPanelBorderRadius}px`, shellVisibility),
+              backgroundImage: 'none',
+              border: '1px solid transparent',
+              boxShadow: 'none',
               zIndex: OVERLAY_Z_INDEX + 3,
               willChange: 'left, top, width, height, border-radius',
             }}
           >
             {chromeProgress > 0.001 ? (
               <div
-                className="absolute inset-x-0 top-0 px-6 pb-4 pt-6 text-center"
+                className={FOLDER_ANIMATED_TITLE_CLASSNAME}
                 style={{
                   opacity: chromeProgress,
                   transform: `translate3d(0, ${chromeTranslateY}px, 0)`,
@@ -660,8 +742,8 @@ export function ShortcutFolderCompactOverlay({
             ) : null}
           </div>
 
-          {metrics ? children.map((child, index) => {
-            const targetRect = metrics.targetChildRects.get(child.id);
+          {resolvedMetrics ? children.map((child, index) => {
+            const targetRect = resolvedMetrics.targetChildRects.get(child.id);
             if (!targetRect || !sourceRect) return null;
 
             const sourceChildRect = sourceChildRects.get(child.id)
@@ -671,7 +753,7 @@ export function ShortcutFolderCompactOverlay({
                 index,
                 total: children.length,
               });
-            const childProgress = resolveChildAnimationProgress(openProgress, index);
+            const childProgress = resolveChildAnimationProgress(openProgress, index, motionPhase);
             const animatedChildRect = interpolateRect(sourceChildRect, targetRect, childProgress);
             const opacity = mix(
               sourceChildRects.has(child.id) || index < sourceChildSlotRects.length
@@ -713,7 +795,7 @@ export function ShortcutFolderCompactOverlay({
           <div className="absolute" style={{ ...targetFrameStyle, zIndex: OVERLAY_Z_INDEX + 4 }}>
             <div
               ref={openSurfaceRef}
-              className="pointer-events-auto relative h-full w-full overflow-visible"
+              className="pointer-events-auto relative h-full w-full overflow-hidden"
               style={{ borderRadius: roundedCorner }}
               onClick={(event) => {
                 event.stopPropagation();
@@ -722,12 +804,7 @@ export function ShortcutFolderCompactOverlay({
               <div
                 aria-hidden="true"
                 className="absolute inset-0"
-                style={{
-                  borderRadius: roundedCorner,
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
-                }}
+                style={buildFolderPanelSurfaceStyle(roundedCorner)}
               />
               <div
                 aria-hidden="true"
@@ -755,7 +832,7 @@ export function ShortcutFolderCompactOverlay({
                     onCancel={cancelTitleEdit}
                   />
                 ) : (
-                  <div className="px-6 pb-4 pt-6">
+                  <div className={FOLDER_TITLE_PADDING_CLASSNAME}>
                     <div className="text-center">
                       {transitionPhase === 'open' ? (
                         <button
@@ -774,7 +851,7 @@ export function ShortcutFolderCompactOverlay({
                   </div>
                 )}
                 <div
-                  className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                  className={FOLDER_SCROLL_REGION_CLASSNAME}
                 >
                   <FolderShortcutSurface
                     folderId={shortcut.id}

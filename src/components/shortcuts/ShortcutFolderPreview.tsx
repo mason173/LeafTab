@@ -20,8 +20,8 @@ const LARGE_FOLDER_TRIGGER_ICON_RATIO = 0.76;
 const SMALL_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 40;
 const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
-const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 16;
-export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/6 bg-[rgba(205,212,220,0.4)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]';
+const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 18;
+export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/8 bg-[rgba(122,132,145,0.16)] shadow-[0_10px_24px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.18)]';
 const FOLDER_DROP_TARGET_TRANSITION = 'none';
 const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
@@ -33,6 +33,19 @@ function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
     borderColor: highlightBorder ? ACTIVE_FOLDER_BORDER_COLOR : undefined,
     boxShadow: highlightBorder ? ACTIVE_FOLDER_BORDER_SHADOW : undefined,
   };
+}
+
+function buildFolderPreviewGlassStyle() {
+  return {
+    backgroundColor: 'rgba(108, 118, 132, 0.18)',
+    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(126,136,149,0.16) 100%)',
+    backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.18)`,
+    WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.18)`,
+    transform: 'translateZ(0)',
+    WebkitTransform: 'translateZ(0)',
+    willChange: 'backdrop-filter',
+    backfaceVisibility: 'hidden',
+  } as const;
 }
 
 function LargeFolderOpenTileGhostStack({
@@ -366,15 +379,14 @@ export function ShortcutFolderPreview({
   return (
     <div
       ref={folderPreviewRootRef}
-      className={`relative grid grid-cols-2 gap-1 border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+      className={`relative grid grid-cols-2 gap-1 overflow-hidden border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         selectionDisabled ? 'cursor-not-allowed' : ''
       } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
         borderRadius: getSmallFolderBorderRadius(size, iconCornerRadius),
-        backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
-        WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        ...buildFolderPreviewGlassStyle(),
         ...buildFolderSurfaceInteractionStyle(highlightBorder),
       }}
       data-folder-preview="true"
@@ -429,15 +441,14 @@ export function ShortcutFolderLargePreview({
   return (
     <div
       ref={folderPreviewRootRef}
-      className={`relative isolate overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+      className={`relative overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         interactive ? '' : 'cursor-not-allowed'
       } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
       style={{
         width: size,
         height: size,
         borderRadius,
-        backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
-        WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px)`,
+        ...buildFolderPreviewGlassStyle(),
         ...buildFolderSurfaceInteractionStyle(highlightBorder),
       }}
       data-folder-preview="true"
@@ -453,9 +464,9 @@ export function ShortcutFolderLargePreview({
           pointerEvents: 'none',
         }}
       />
-      {children.length > 0 ? (
+        {children.length > 0 ? (
         <div
-          className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 grid-cols-3"
+          className="absolute left-1/2 top-1/2 z-[1] grid -translate-x-1/2 -translate-y-1/2 grid-cols-3"
           style={{
             width: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,
             height: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,

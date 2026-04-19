@@ -11,6 +11,7 @@ type BaseRootDragSession = {
   pointer: PointerPoint;
   previewOffset: PointerPoint;
   sourceRootShortcutId?: string;
+  ignoreNextPointerCancel?: boolean;
 };
 
 type ActivateRootDragSessionParams<TSession extends BaseRootDragSession> = {
@@ -68,6 +69,7 @@ export function buildRootDragSessionFromExternalSeed(params: {
       sourceRootShortcutId: externalDragSession.sourceRootShortcutId,
       pointer: externalDragSession.pointer,
       previewOffset,
+      ignoreNextPointerCancel: true,
     },
     previewOffset,
   };

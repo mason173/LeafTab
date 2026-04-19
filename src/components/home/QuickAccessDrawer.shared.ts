@@ -11,6 +11,7 @@ type QuickAccessModeFlags = Pick<
 
 export interface QuickAccessDrawerProps {
   initialRevealReady: boolean;
+  folderImmersiveProgress: number;
   modeFlags: QuickAccessModeFlags;
   contentWidth: number;
   quickAccessOpen: boolean;

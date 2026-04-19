@@ -329,8 +329,9 @@ export function renderLeaftabFolderItem(params: {
     <ShortcutCardCompact
       shortcut={params.shortcut}
       showTitle={params.showShortcutTitles}
+      animateTitleOnMount
       iconSize={params.compactIconSize}
-      floatTitle={params.showShortcutTitles}
+      floatTitle
       rootProps={{
         'data-folder-shortcut-grid-item': 'true',
       }}

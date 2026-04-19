@@ -17,6 +17,7 @@ import {
 
 export function QuickAccessDrawer({
   initialRevealReady,
+  folderImmersiveProgress,
   modeFlags,
   contentWidth,
   quickAccessOpen,
@@ -53,6 +54,7 @@ export function QuickAccessDrawer({
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
   const drawerSurfaceLayerOpacity = Math.max(0, Math.min(1, drawerSurfaceOpacity * DRAWER_CONTENT_BG_MAX_OPACITY));
+  const normalizedFolderImmersiveOpacity = Math.max(0, Math.min(1, 1 - folderImmersiveProgress));
   const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(modeFlags.showShortcuts);
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
@@ -141,12 +143,15 @@ export function QuickAccessDrawer({
           <section
             className="relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden border-transparent bg-transparent shadow-none pointer-events-auto"
             style={{
+              opacity: normalizedFolderImmersiveOpacity,
               height: `${drawerPanelHeightVh}vh`,
               maxHeight: `${drawerPanelHeightVh}vh`,
               transform: drawerPanelTranslateYPx > 0.01 ? `translate3d(0, ${drawerPanelTranslateYPx.toFixed(3)}px, 0)` : 'translate3d(0, 0, 0)',
               borderTopLeftRadius: `${drawerTopCornerRadius.toFixed(2)}px`,
               borderTopRightRadius: `${drawerTopCornerRadius.toFixed(2)}px`,
-              transition: interactiveTransitionsEnabled ? `transform ${drawerLinkedTransition}` : 'none',
+              transition: interactiveTransitionsEnabled
+                ? `opacity ${drawerLinkedTransition}, transform ${drawerLinkedTransition}`
+                : 'opacity 180ms ease-out',
             }}
             aria-label="Quick Access Drawer"
           >
@@ -211,7 +216,7 @@ export function QuickAccessDrawer({
                           transitionDuration: `${SHORTCUTS_FADE_DURATION_MS}ms`,
                           pointerEvents: shortcutsPaintVisible ? 'auto' : 'none',
                           visibility: shortcutsPaintVisible ? 'visible' : 'hidden',
-                          contain: 'layout paint style',
+                          contain: 'layout style',
                         }}
                         aria-hidden={!shortcutsPaintVisible}
                       >

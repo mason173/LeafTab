@@ -17,6 +17,7 @@ import {
 
 export function QuickAccessDrawer({
   initialRevealReady,
+  folderImmersiveProgress,
   modeFlags,
   contentWidth,
   quickAccessOpen,
@@ -54,6 +55,7 @@ export function QuickAccessDrawer({
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
   const drawerSurfaceLayerOpacity = Math.max(0, Math.min(1, drawerSurfaceOpacity * DRAWER_CONTENT_BG_MAX_OPACITY));
+  const normalizedFolderImmersiveOpacity = Math.max(0, Math.min(1, 1 - folderImmersiveProgress));
   const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(modeFlags.showShortcuts);
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
@@ -143,6 +145,7 @@ export function QuickAccessDrawer({
           <section
             className="relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden border-transparent bg-transparent shadow-none pointer-events-auto"
             style={{
+              opacity: normalizedFolderImmersiveOpacity,
               backdropFilter: !reduceMotionVisuals && drawerContentBackdropBlurPx > 0 ? `blur(${drawerContentBackdropBlurPx.toFixed(1)}px)` : undefined,
               WebkitBackdropFilter: !reduceMotionVisuals && drawerContentBackdropBlurPx > 0 ? `blur(${drawerContentBackdropBlurPx.toFixed(1)}px)` : undefined,
               height: `${drawerPanelHeightVh}vh`,
@@ -154,12 +157,13 @@ export function QuickAccessDrawer({
                 ? (reduceMotionVisuals
                     ? `transform ${drawerLinkedTransition}`
                     : [
+                        `opacity ${drawerLinkedTransition}`,
                         `transform ${drawerLinkedTransition}`,
                         `backdrop-filter ${drawerLinkedTransition}`,
                         `-webkit-backdrop-filter ${drawerLinkedTransition}`,
                       ].join(', '))
-                : 'none',
-              willChange: 'transform',
+                : 'opacity 180ms ease-out',
+              willChange: 'opacity, transform',
             }}
             aria-label="Quick Access Drawer"
           >
@@ -224,7 +228,7 @@ export function QuickAccessDrawer({
                           transitionDuration: `${SHORTCUTS_FADE_DURATION_MS}ms`,
                           pointerEvents: shortcutsPaintVisible ? 'auto' : 'none',
                           visibility: shortcutsPaintVisible ? 'visible' : 'hidden',
-                          contain: 'layout paint style',
+                          contain: 'layout style',
                         }}
                         aria-hidden={!shortcutsPaintVisible}
                       >

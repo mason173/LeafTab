@@ -119,6 +119,7 @@ const FOLDER_GRID_COLUMN_GAP_PX = 18;
 const FOLDER_GRID_ROW_GAP_PX = 16;
 const FOLDER_GRID_MAX_COLUMNS = 4;
 const FOLDER_GRID_PREFERRED_COLUMNS = 4;
+const FOLDER_OPEN_OVERLAY_DRAG_Z_INDEX = 16030;
 
 function resolveFolderRootColumnCap(rootGridColumns?: number) {
   const resolvedColumns = Number(rootGridColumns);
@@ -214,11 +215,10 @@ export function FolderShortcutSurface({
     monochromeTileBackdropBlur: false,
   }), []);
   const rowHeight = useMemo(() => {
-    const titleAllowance = showShortcutTitles
-      ? Math.max(22, Math.round(compactIconSize * 0.32))
-      : 0;
+    // Always reserve the same label lane so title fade-ins don't nudge icon positions.
+    const titleAllowance = Math.max(22, Math.round(compactIconSize * 0.32));
     return Math.max(compactIconSize + titleAllowance, compactIconSize + 24);
-  }, [compactIconSize, showShortcutTitles]);
+  }, [compactIconSize]);
 
   useLayoutEffect(() => {
     const node = wrapperRef.current;
@@ -318,6 +318,7 @@ export function FolderShortcutSurface({
         <RootShortcutGrid
           containerHeight={0}
           shortcuts={shortcuts}
+          overlayZIndex={FOLDER_OPEN_OVERLAY_DRAG_Z_INDEX}
           gridColumns={columns}
           minRows={1}
           rowHeightOverride={rowHeight}
@@ -342,7 +343,6 @@ export function FolderShortcutSurface({
           extractBoundaryRef={maskBoundaryRef}
           onExtractDragStart={handleExtractDragStart}
           onBoundaryHoverChange={handleBoundaryHoverChange}
-          disableReorderAnimation
           renderShortcutCard={(params) => renderLeaftabFolderItem({
             shortcut: params.shortcut,
             compactIconSize: params.compactIconSize,

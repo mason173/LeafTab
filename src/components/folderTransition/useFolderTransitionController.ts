@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FOLDER_CLOSE_DURATION_MS,
-  FOLDER_OPEN_TOTAL_DURATION_MS,
+  FOLDER_OPEN_DURATION_MS,
   clamp01,
-  easeInOutCubic,
+  resolveBackdropAnimationProgress,
+  resolveFolderMotionProgress,
 } from '@/components/shortcutFolderCompactAnimation';
 
 export type ShortcutFolderOverlayRect = {
@@ -48,10 +49,16 @@ const IDLE_STATE: FolderTransitionState = {
   sourceSnapshot: null,
 };
 
-function resolveAnimationDurationMs(fromProgress: number, toProgress: number) {
+function resolveAnimationDurationMs(
+  fromProgress: number,
+  toProgress: number,
+  activePhase: 'opening-animate' | 'closing-animate',
+) {
   const distance = Math.abs(clamp01(toProgress) - clamp01(fromProgress));
   if (distance <= 0.0001) return 0;
-  const baseDuration = Math.max(FOLDER_OPEN_TOTAL_DURATION_MS, FOLDER_CLOSE_DURATION_MS);
+  const baseDuration = activePhase === 'closing-animate'
+    ? FOLDER_CLOSE_DURATION_MS
+    : FOLDER_OPEN_DURATION_MS;
   return Math.max(1, Math.round(baseDuration * distance));
 }
 
@@ -83,7 +90,8 @@ export function useFolderTransitionController() {
     const currentState = stateRef.current;
     const fromProgress = clamp01(currentState.progress);
     const toProgress = clamp01(targetProgress);
-    const durationMs = resolveAnimationDurationMs(fromProgress, toProgress);
+    const durationMs = resolveAnimationDurationMs(fromProgress, toProgress, activePhase);
+    const motionPhase = activePhase === 'closing-animate' ? 'closing' : 'opening';
 
     cancelAnimation();
 
@@ -108,7 +116,7 @@ export function useFolderTransitionController() {
       if (animationRunIdRef.current !== runId) return;
       const elapsed = timestamp - startTime;
       const timeProgress = clamp01(elapsed / durationMs);
-      const easedProgress = easeInOutCubic(timeProgress);
+      const easedProgress = resolveFolderMotionProgress(timeProgress, motionPhase);
       const nextProgress = fromProgress + ((toProgress - fromProgress) * easedProgress);
       const nextState: FolderTransitionState = {
         ...stateRef.current,
@@ -221,7 +229,10 @@ export function useFolderTransitionController() {
     if (state.phase === 'idle' || state.phase === 'opening-measure') {
       return 0;
     }
-    return clamp01(state.progress);
+    if (state.phase === 'closing-measure' || state.phase === 'closing-animate') {
+      return resolveBackdropAnimationProgress(state.progress, 'closing');
+    }
+    return resolveBackdropAnimationProgress(state.progress, 'opening');
   }, [state.phase, state.progress]);
 
   return {

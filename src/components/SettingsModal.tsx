@@ -326,46 +326,44 @@ export default function SettingsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[calc(100vh-2.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible">
+      <DialogContent className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible">
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>
         <ScrollArea
-          className="max-h-[72vh]"
+          className="max-h-[78vh]"
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
         >
           <div className="flex flex-col gap-5">
-            <div className="relative flex h-[162px] flex-col items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-secondary/20 px-4 text-center">
+            <div className="relative flex h-[142px] flex-col items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-secondary/20 px-4 text-center">
               {DIST_CHANNEL === 'community' ? (
                 <div className="absolute right-3 top-3 rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[9px] font-normal text-foreground/70 backdrop-blur">
                   {languageValue === 'zh' || languageValue === 'zh-TW' ? '社区版' : 'Community'}
                 </div>
               ) : null}
-              <div className="relative flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-background ring-1 ring-border/60">
+              <div className="relative flex h-[48px] w-[48px] items-center justify-center rounded-[16px] bg-background ring-1 ring-border/60">
                 <img
                   src={aboutIcon}
                   alt=""
                   aria-hidden="true"
-                  className="h-7 w-7"
+                  className="h-[26px] w-[26px]"
                   draggable={false}
                 />
               </div>
-              <div className="relative mt-2.5 flex w-full max-w-[420px] flex-col items-center gap-0.5">
-                <h2 className="max-w-full text-[19px] font-medium leading-none tracking-[-0.045em] text-foreground sm:text-[20px]">
+              <div className="relative mt-2 flex w-full max-w-[420px] flex-col items-center gap-0.5">
+                <h2 className="max-w-full text-[16px] font-bold leading-none tracking-[-0.03em] text-foreground">
                   {settingsHeroCopy.title}
                 </h2>
-                <p className="max-w-[250px] text-[11px] font-normal leading-[1.3] text-foreground/78">
+                <p className="max-w-[240px] text-[10px] font-normal leading-[1.25] text-foreground/78">
                   {settingsHeroCopy.subtitle}
                 </p>
               </div>
-              <div className="relative mt-2.5 flex flex-wrap items-center justify-center gap-1.5">
-                {settingsHeroCopy.badges.map((badge) => (
-                  <span
-                    key={badge}
-                    className="inline-flex min-h-7 items-center justify-center rounded-full border border-border/70 bg-secondary/35 px-3.5 py-1 text-[11px] font-normal text-foreground/70 sm:min-w-[84px]"
-                  >
-                    {badge}
-                  </span>
+              <div className="relative mt-1.5 flex flex-wrap items-center justify-center gap-x-2 text-[10px] font-medium text-foreground/70">
+                {settingsHeroCopy.badges.map((badge, index) => (
+                  <div key={badge} className="inline-flex items-center gap-x-2">
+                    {index > 0 ? <span aria-hidden="true" className="text-foreground/35">•</span> : null}
+                    <span>{badge}</span>
+                  </div>
                 ))}
               </div>
             </div>
