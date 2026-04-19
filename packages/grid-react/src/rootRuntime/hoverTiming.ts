@@ -1,5 +1,6 @@
 import {
   resolveGridInteractionProfileForRoot,
+  type PointerPoint,
   type GridInteractionProfile,
   type GridInteractionProfileLike,
   type RootShortcutDropIntent,
@@ -7,7 +8,6 @@ import {
 } from '@leaftab/workspace-core';
 import type React from 'react';
 import { type CompactRootHoverResolution } from '../compactRootHover';
-import { type RootShortcutGridItem } from '../rootShortcutGridHelpers';
 
 export type RootHoverResolution = CompactRootHoverResolution;
 
@@ -80,16 +80,6 @@ export function shouldBypassReorderDwell(params: {
   return previousTargetId === nextIntent.overShortcutId;
 }
 
-export function shouldSkipReorderDwellForDraggedItem(
-  activeItem: Pick<RootShortcutGridItem, 'layout'> | null,
-): boolean {
-  if (!activeItem) {
-    return false;
-  }
-
-  return activeItem.layout.columnSpan > 1 || activeItem.layout.rowSpan > 1;
-}
-
 export function extractPreviousRootReorderIntents(resolution: RootHoverResolution): {
   interactionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
   visualProjectionIntent: Extract<RootShortcutDropIntent, { type: 'reorder-root' }> | null;
@@ -137,17 +127,35 @@ export type ResolveCurrentRootInteractionProfile = () => GridInteractionProfile 
 
 export type CommitRootHoverResolution = (
   resolution: RootHoverResolution,
-  options?: { scheduleConfirm?: boolean },
+  options?: {
+    scheduleConfirm?: boolean;
+    dwellPoint?: PointerPoint | null;
+  },
 ) => RootHoverResolution;
+
+const REORDER_DWELL_STATIONARY_TOLERANCE_PX = 1;
+
+function hasMovedBeyondDwellTolerance(
+  previousPoint: PointerPoint | null,
+  nextPoint: PointerPoint | null,
+): boolean {
+  if (!previousPoint || !nextPoint) {
+    return false;
+  }
+
+  return Math.hypot(
+    nextPoint.x - previousPoint.x,
+    nextPoint.y - previousPoint.y,
+  ) > REORDER_DWELL_STATIONARY_TOLERANCE_PX;
+}
 
 export function createRootHoverIntentController(params: {
   emptyHoverResolution: RootHoverResolution;
-  items: RootShortcutGridItem[];
-  activeDragIdRef: React.MutableRefObject<string | null>;
   hoverResolutionRef: React.MutableRefObject<RootHoverResolution>;
   confirmedHoverResolutionRef: React.MutableRefObject<RootHoverResolution>;
   hoverConfirmTimerRef: React.MutableRefObject<number | null>;
   pendingHoverIntentKeyRef: React.MutableRefObject<string | null>;
+  pendingHoverIntentPointRef: React.MutableRefObject<PointerPoint | null>;
   reorderDwellMs: number;
   mergeDwellMs: number;
   resolveCurrentInteractionProfile?: ResolveCurrentRootInteractionProfile;
@@ -155,12 +163,11 @@ export function createRootHoverIntentController(params: {
 }) {
   const {
     emptyHoverResolution,
-    items,
-    activeDragIdRef,
     hoverResolutionRef,
     confirmedHoverResolutionRef,
     hoverConfirmTimerRef,
     pendingHoverIntentKeyRef,
+    pendingHoverIntentPointRef,
     reorderDwellMs,
     mergeDwellMs,
     resolveCurrentInteractionProfile,
@@ -173,6 +180,7 @@ export function createRootHoverIntentController(params: {
       hoverConfirmTimerRef.current = null;
     }
     pendingHoverIntentKeyRef.current = null;
+    pendingHoverIntentPointRef.current = null;
   };
 
   const syncConfirmedHoverResolution = (nextResolution: RootHoverResolution) => {
@@ -190,7 +198,7 @@ export function createRootHoverIntentController(params: {
     rawResolution,
     options,
   ) => {
-    const { scheduleConfirm = true } = options ?? {};
+    const { scheduleConfirm = true, dwellPoint = null } = options ?? {};
     const rawIntent = rawResolution.interactionIntent;
     const rawIntentKey = resolveHoverIntentKey(rawIntent);
     const previousConfirmedIntent = confirmedHoverResolutionRef.current.interactionIntent;
@@ -225,11 +233,7 @@ export function createRootHoverIntentController(params: {
         previousDisplayIntent: hoverResolutionRef.current.interactionIntent,
         previousConfirmedIntent: confirmedIntent,
       });
-    const currentActiveDragItem = items.find((item) => item.sortId === activeDragIdRef.current) ?? null;
-    const shouldSkipReorderDwell = rawIntent.type === 'reorder-root'
-      && shouldSkipReorderDwellForDraggedItem(currentActiveDragItem);
-
-    if (shouldConfirmImmediately || shouldSkipReorderDwell) {
+    if (shouldConfirmImmediately) {
       clearHoverConfirmTimer();
       syncConfirmedHoverResolution(rawResolution);
       return rawResolution;
@@ -240,9 +244,18 @@ export function createRootHoverIntentController(params: {
       : currentInteractionProfile?.mergeDwellMs ?? mergeDwellMs;
 
     if (scheduleConfirm && rawIntentKey) {
-      if (pendingHoverIntentKeyRef.current !== rawIntentKey) {
+      const shouldRestartTimer = (
+        pendingHoverIntentKeyRef.current !== rawIntentKey
+        || (
+          rawIntent.type === 'reorder-root'
+          && hasMovedBeyondDwellTolerance(pendingHoverIntentPointRef.current, dwellPoint)
+        )
+      );
+
+      if (shouldRestartTimer) {
         clearHoverConfirmTimer();
         pendingHoverIntentKeyRef.current = rawIntentKey;
+        pendingHoverIntentPointRef.current = dwellPoint;
         hoverConfirmTimerRef.current = window.setTimeout(() => {
           if (pendingHoverIntentKeyRef.current !== rawIntentKey) {
             return;
@@ -250,6 +263,7 @@ export function createRootHoverIntentController(params: {
 
           hoverConfirmTimerRef.current = null;
           pendingHoverIntentKeyRef.current = null;
+          pendingHoverIntentPointRef.current = null;
           syncConfirmedHoverResolution(rawResolution);
         }, delayMs);
       }

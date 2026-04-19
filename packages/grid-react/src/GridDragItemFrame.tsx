@@ -1,7 +1,8 @@
 import type { ProjectionOffset } from '@leaftab/workspace-core';
 import type { CSSProperties, HTMLAttributes, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 
-export const GRID_DRAG_SETTLE_TRANSITION = 'transform 320ms ease-in-out';
+export const GRID_DRAG_SETTLE_TRANSITION =
+  'transform 320ms ease-in-out';
 
 export type GridDragItemFrameProps = {
   isDragging: boolean;

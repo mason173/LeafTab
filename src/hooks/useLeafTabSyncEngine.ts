@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLeafTabSyncRuntime } from '@/lazy/sync';
 import { useSyncState } from '@/sync/useSyncState';
 import type { CloudShortcutsPayloadV3 } from '@/types';
 import type { WebdavPayload } from '@/utils/backupData';
 import {
-  LeafTabLegacyCloudCompat,
-  LeafTabSyncCloudRemoteStoreError,
-  LeafTabSyncEngine,
-  LeafTabSyncEncryptionRequiredError,
-  LeafTabLegacyWebdavCompat,
-  LeafTabSyncLocalStorageBaselineStore,
-  LeafTabSyncWebdavStore,
-  createLeafTabSyncDeviceId,
   type LeafTabSyncAnalysis,
   type LeafTabSyncEngineAnalyzeOptions,
   type LeafTabSyncEngineProgress,
@@ -66,14 +59,23 @@ type LeafTabSyncAnalysisCachePayload = {
 export const LEAFTAB_SYNC_ANALYSIS_CACHE_MAX_AGE_MS = 60 * 1000;
 
 const getOrCreateLeafTabSyncDeviceId = (storageKey = 'leaftab_sync_v1_device_id') => {
+  const createDeviceId = () => {
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch {}
+    return `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  };
+
   try {
     const existing = localStorage.getItem(storageKey);
     if (existing) return existing;
-    const created = createLeafTabSyncDeviceId();
+    const created = createDeviceId();
     localStorage.setItem(storageKey, created);
     return created;
   } catch {
-    return createLeafTabSyncDeviceId();
+    return createDeviceId();
   }
 };
 
@@ -142,15 +144,26 @@ export const writeCachedLeafTabSyncAnalysis = (
 };
 
 const isRetryableLeafTabSyncConflictError = (error: unknown) => {
-  if (!(error instanceof LeafTabSyncCloudRemoteStoreError) || error.status !== 409) {
+  if (
+    !error
+    || typeof error !== 'object'
+    || typeof (error as { status?: unknown }).status !== 'number'
+    || (error as { status: number }).status !== 409
+    || (
+      (error as { name?: unknown }).name !== 'LeafTabSyncCloudRemoteStoreError'
+      && typeof (error as { operation?: unknown }).operation !== 'string'
+    )
+  ) {
     return false;
   }
 
-  return !/lock is held by another device/i.test(error.message || '');
+  return !/lock is held by another device/i.test(String((error as { message?: unknown }).message || ''));
 };
 
 export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   const enabled = options.enabled !== false;
+  const needsRuntime = enabled && Boolean(options.remoteStore || options.webdav?.url);
+  const runtime = useLeafTabSyncRuntime(needsRuntime);
   const deviceId = useMemo(
     () => options.deviceId || getOrCreateLeafTabSyncDeviceId(),
     [options.deviceId],
@@ -165,14 +178,14 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     [baselineStorageKey],
   );
 
-  const baselineStore = useMemo(
-    () => new LeafTabSyncLocalStorageBaselineStore(baselineStorageKey),
-    [baselineStorageKey],
-  );
+  const baselineStore = useMemo(() => {
+    if (!runtime) return null;
+    return new runtime.LeafTabSyncLocalStorageBaselineStore(baselineStorageKey);
+  }, [baselineStorageKey, runtime]);
 
   const webdavStore = useMemo(() => {
-    if (!options.webdav?.url) return null;
-    return new LeafTabSyncWebdavStore({
+    if (!runtime || !options.webdav?.url) return null;
+    return new runtime.LeafTabSyncWebdavStore({
       url: options.webdav.url,
       username: options.webdav.username,
       password: options.webdav.password,
@@ -185,6 +198,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     options.webdav?.rootPath,
     options.webdav?.url,
     options.webdav?.username,
+    runtime,
   ]);
 
   const remoteStore = useMemo(
@@ -193,8 +207,8 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   );
 
   const engine = useMemo(() => {
-    if (!remoteStore) return null;
-    return new LeafTabSyncEngine({
+    if (!runtime || !baselineStore || !remoteStore) return null;
+    return new runtime.LeafTabSyncEngine({
       deviceId,
       remoteStore,
       baselineStore,
@@ -211,14 +225,15 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     options.createEmptySnapshot,
     remoteStore,
     options.webdav?.rootPath,
+    runtime,
   ]);
 
   const legacyCompat = useMemo(() => {
-    if (!remoteStore || !options.legacyCompat) return null;
+    if (!runtime || !baselineStore || !remoteStore || !options.legacyCompat) return null;
 
     if (options.legacyCompat.type === 'webdav') {
       if (!webdavStore || !options.legacyCompat.filePath) return null;
-      return new LeafTabLegacyWebdavCompat({
+      return new runtime.LeafTabLegacyWebdavCompat({
         deviceId,
         storageScopeKey: `${options.webdav?.url || ''}|${options.webdav?.rootPath || ''}|${options.legacyCompat.filePath || ''}`,
         rootPath: options.webdav?.rootPath,
@@ -233,7 +248,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
       });
     }
 
-    return new LeafTabLegacyCloudCompat({
+    return new runtime.LeafTabLegacyCloudCompat({
       deviceId,
       apiUrl: options.legacyCompat.apiUrl,
       token: options.legacyCompat.token,
@@ -256,6 +271,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     options.webdav?.rootPath,
     options.webdav?.url,
     remoteStore,
+    runtime,
     webdavStore,
   ]);
 
@@ -273,7 +289,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   ));
   const [lastResult, setLastResult] = useState<LeafTabSyncEngineResult | null>(null);
   const [isReady, setIsReady] = useState(() => (
-    !enabled || Boolean(readCachedLeafTabSyncAnalysisPayload(analysisStorageKey))
+    !needsRuntime || Boolean(readCachedLeafTabSyncAnalysisPayload(analysisStorageKey))
   ));
   const syncInFlightRef = useRef<Promise<LeafTabSyncEngineResult | null> | null>(null);
   const analysisInFlightRef = useRef<Promise<LeafTabSyncAnalysis | null> | null>(null);
@@ -287,7 +303,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   ) => {
     if (!enabled || !engine) {
       setAnalysis(null);
-      setIsReady(true);
+      setIsReady(!enabled);
       return null;
     }
 
@@ -314,7 +330,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
         setIsReady(true);
         return next;
       } catch (error) {
-        if (error instanceof LeafTabSyncEncryptionRequiredError) {
+        if (runtime && error instanceof runtime.LeafTabSyncEncryptionRequiredError) {
           setIsReady(true);
           return null;
         }
@@ -329,7 +345,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
 
     analysisInFlightRef.current = analysisPromise;
     return analysisPromise;
-  }, [analysisStorageKey, enabled, engine]);
+  }, [analysisStorageKey, enabled, engine, runtime]);
 
   const runSync = useCallback(async (
     choice: LeafTabSyncInitialChoice | 'auto' = 'auto',
@@ -426,6 +442,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   ]);
 
   const resetBaseline = useCallback(async () => {
+    if (!baselineStore) return;
     await baselineStore.clear();
     setLastResult(null);
     markSyncIdle();
@@ -441,7 +458,16 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   }, [markSyncIdle]);
 
   useEffect(() => {
-    if (!enabled || !engine) {
+    if (!enabled) {
+      setAnalysis(null);
+      setIsReady(true);
+      return;
+    }
+    if (!runtime) {
+      setIsReady(false);
+      return;
+    }
+    if (!engine) {
       setAnalysis(null);
       setIsReady(true);
       return;
@@ -449,7 +475,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     const cachedPayload = readCachedLeafTabSyncAnalysisPayload(analysisStorageKey);
     setAnalysis(cachedPayload?.analysis || null);
     setIsReady(Boolean(cachedPayload));
-  }, [analysisStorageKey, enabled, engine]);
+  }, [analysisStorageKey, enabled, engine, runtime]);
 
   useEffect(() => {
     if (!enabled || !engine) return;
@@ -467,6 +493,6 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     runSync,
     resetBaseline,
     clearSyncError,
-    hasConfig: Boolean(enabled && engine),
+    hasConfig: Boolean(enabled && (options.remoteStore || options.webdav?.url)),
   };
 }

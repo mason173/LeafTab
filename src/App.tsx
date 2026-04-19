@@ -4,6 +4,7 @@ import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, us
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
+import { useLeafTabSyncRuntime } from '@/lazy/sync';
 import i18n from './i18n';
 import {
   RiCloseFill,
@@ -78,16 +79,16 @@ import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
-import { ShortcutFolderCompactOverlay } from '@/components/ShortcutFolderCompactOverlay';
 import { FOLDER_CLOSE_DURATION_MS } from '@/components/shortcutFolderCompactAnimation';
-import { ShortcutFolderDialog } from '@/components/ShortcutFolderDialog';
-import { ShortcutFolderNameDialog } from '@/components/ShortcutFolderNameDialog';
 import type { RootShortcutExternalDragSession as ExternalShortcutDragSession } from '@/features/shortcuts/components/RootShortcutGrid';
 import {
   LazyAppDialogs,
   LazyLeafTabSyncDialog,
   LazyLeafTabSyncEncryptionDialog,
   LazyRoleSelector,
+  LazyShortcutFolderCompactOverlay,
+  LazyShortcutFolderDialog,
+  LazyShortcutFolderNameDialog,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
   preloadHomeDialogs,
@@ -100,20 +101,12 @@ import {
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
 import {
-  LeafTabDestructiveBookmarkChangeError,
-  LeafTabBookmarkPermissionDeniedError,
-  LeafTabSyncBookmarksDisabledRemoteStore,
-  LeafTabSyncCloudEncryptedTransport,
-  LeafTabSyncCloudRemoteStoreError,
-  LeafTabSyncEncryptedRemoteStore,
-  LeafTabSyncWebdavEncryptedTransport,
-  LeafTabSyncWebdavStore,
   type LeafTabSyncEngineResult,
   type LeafTabSyncInitialChoice,
   type LeafTabSyncSnapshot,
-  normalizeLeafTabSyncSnapshot,
-  readLeafTabBookmarkSyncScope,
 } from '@/sync/leaftab';
+import { normalizeLeafTabSyncSnapshot } from '@/sync/leaftab/schema';
+import { readLeafTabBookmarkSyncScope } from '@/sync/leaftab/bookmarkScope';
 import type { WebdavConfig } from '@/types/webdav';
 import {
   createLeafTabCloudEncryptionScopeKey,
@@ -177,6 +170,24 @@ function createFolderShortcutId() {
 
 const COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS = FOLDER_CLOSE_DURATION_MS;
 
+const isNamedError = (error: unknown, name: string) => {
+  return Boolean(error && typeof error === 'object' && (error as { name?: unknown }).name === name);
+};
+
+const isCloudRemoteStoreError = (
+  error: unknown,
+): error is Error & { status: number; operation?: unknown } => {
+  return Boolean(
+    error
+      && typeof error === 'object'
+      && typeof (error as { status?: unknown }).status === 'number'
+      && (
+        (error as { name?: unknown }).name === 'LeafTabSyncCloudRemoteStoreError'
+        || typeof (error as { operation?: unknown }).operation === 'string'
+      ),
+  );
+};
+
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
 type DangerousSyncDialogState = {
@@ -194,12 +205,17 @@ type PendingRootFolderMerge = {
   targetShortcutId: string;
 };
 
+type DangerousSyncError = Error & {
+  fromCount: number;
+  toCount: number;
+};
+
 const formatLeafTabSyncErrorMessage = (error: unknown) => {
-  if (error instanceof LeafTabDestructiveBookmarkChangeError) {
-    return error.message;
+  if (isNamedError(error, 'LeafTabDestructiveBookmarkChangeError')) {
+    return (error as Error).message;
   }
-  if (error instanceof LeafTabBookmarkPermissionDeniedError) {
-    return error.message;
+  if (isNamedError(error, 'LeafTabBookmarkPermissionDeniedError')) {
+    return (error as Error).message;
   }
   if (error && typeof error === 'object') {
     const status = Number((error as { status?: unknown }).status);
@@ -237,7 +253,7 @@ const formatLeafTabSyncErrorMessage = (error: unknown) => {
 const isCloudSyncLockConflictError = (error: unknown) => {
   const operation = String((error as { operation?: unknown })?.operation || '');
   const message = String((error as { message?: unknown })?.message || '');
-  return error instanceof LeafTabSyncCloudRemoteStoreError
+  return isCloudRemoteStoreError(error)
     && error.status === 409
     && (
       /lock is held by another device/i.test(message)
@@ -246,7 +262,7 @@ const isCloudSyncLockConflictError = (error: unknown) => {
 };
 
 const isCloudSyncCommitConflictError = (error: unknown) => {
-  return error instanceof LeafTabSyncCloudRemoteStoreError
+  return isCloudRemoteStoreError(error)
     && error.status === 409
     && (
       /remote commit changed/i.test(error.message || '')
@@ -255,13 +271,13 @@ const isCloudSyncCommitConflictError = (error: unknown) => {
 };
 
 const formatCloudSyncErrorMessage = (error: unknown) => {
-  if (error instanceof LeafTabDestructiveBookmarkChangeError) {
-    return error.message;
+  if (isNamedError(error, 'LeafTabDestructiveBookmarkChangeError')) {
+    return (error as Error).message;
   }
-  if (error instanceof LeafTabBookmarkPermissionDeniedError) {
-    return error.message;
+  if (isNamedError(error, 'LeafTabBookmarkPermissionDeniedError')) {
+    return (error as Error).message;
   }
-  if (error instanceof LeafTabSyncCloudRemoteStoreError) {
+  if (isCloudRemoteStoreError(error)) {
     const operation = String((error as { operation?: unknown }).operation || '');
     const message = String(error.message || '');
     if (error.status === 409) {
@@ -1055,6 +1071,7 @@ export default function App() {
 
   const handleDissolveFolder = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
     if (!isShortcutFolder(shortcut)) return;
+    let changed = false;
     setScenarioShortcuts((prev) => {
       const sourceShortcuts = prev[selectedScenarioId] ?? [];
       const resolvedFolderId = sourceShortcuts[shortcutIndex]?.id === shortcut.id
@@ -1063,11 +1080,13 @@ export default function App() {
       if (!resolvedFolderId) return prev;
       const nextShortcuts = dissolveFolder(sourceShortcuts, resolvedFolderId);
       if (!nextShortcuts) return prev;
+      changed = true;
       return {
         ...prev,
         [selectedScenarioId]: nextShortcuts,
       };
     });
+    if (!changed) return;
     if (!user) localDirtyRef.current = true;
     if (openFolderId === shortcut.id) {
       setOpenFolderId(null);
@@ -1197,6 +1216,7 @@ export default function App() {
     mode: 'small' | 'large',
   ) => {
     if (!isShortcutFolder(shortcut)) return;
+    let changed = false;
     setScenarioShortcuts((prev) => {
       const sourceShortcuts = prev[selectedScenarioId] ?? [];
       const resolvedFolderId = sourceShortcuts[shortcutIndex]?.id === shortcut.id
@@ -1217,30 +1237,15 @@ export default function App() {
       });
 
       if (!changed) return prev;
-      const nextScenarioShortcuts = {
+      return {
         ...prev,
         [selectedScenarioId]: nextShortcuts,
       } satisfies typeof prev;
-      try {
-        persistLocalProfileSnapshot({
-          scenarioModes,
-          selectedScenarioId,
-          scenarioShortcuts: nextScenarioShortcuts,
-        });
-        if (user) {
-          localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify({
-            version: 3,
-            scenarioModes,
-            selectedScenarioId,
-            scenarioShortcuts: nextScenarioShortcuts,
-          }));
-          localStorage.setItem('leaf_tab_sync_pending', 'true');
-        }
-      } catch {}
-      return nextScenarioShortcuts;
     });
-    localDirtyRef.current = true;
-  }, [localDirtyRef, scenarioModes, selectedScenarioId, setScenarioShortcuts, user]);
+    if (changed && !user) {
+      localDirtyRef.current = true;
+    }
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const [accentColorSetting, setAccentColorSetting] = useState<string>(() => readAccentColorSetting());
   const [preventDuplicatePermissionRequestInFlight, setPreventDuplicatePermissionRequestInFlight] = useState(false);
@@ -1797,9 +1802,13 @@ export default function App() {
     () => hasLeafTabSyncEncryptionConfig(leafTabWebdavEncryptionScopeKey),
     [leafTabWebdavEncryptionScopeKey, syncEncryptionVersion],
   );
+  const cloudSyncToken = useMemo(() => (
+    user ? (localStorage.getItem('token') || '') : ''
+  ), [user]);
+  const syncRuntime = useLeafTabSyncRuntime(Boolean(leafTabSyncWebdavConfig?.url || (user && cloudSyncToken)));
   const leafTabWebdavBaseStore = useMemo(() => {
-    if (!leafTabSyncWebdavConfig?.url) return null;
-    return new LeafTabSyncWebdavStore({
+    if (!syncRuntime || !leafTabSyncWebdavConfig?.url) return null;
+    return new syncRuntime.LeafTabSyncWebdavStore({
       url: leafTabSyncWebdavConfig.url,
       username: leafTabSyncWebdavConfig.username,
       password: leafTabSyncWebdavConfig.password,
@@ -1811,10 +1820,11 @@ export default function App() {
     leafTabSyncWebdavConfig?.rootPath,
     leafTabSyncWebdavConfig?.url,
     leafTabSyncWebdavConfig?.username,
+    syncRuntime,
   ]);
   const leafTabWebdavEncryptedTransport = useMemo(() => {
-    if (!leafTabWebdavBaseStore || !leafTabWebdavEncryptionScopeKey) return null;
-    return new LeafTabSyncWebdavEncryptedTransport({
+    if (!syncRuntime || !leafTabWebdavBaseStore || !leafTabWebdavEncryptionScopeKey) return null;
+    return new syncRuntime.LeafTabSyncWebdavEncryptedTransport({
       webdavStore: leafTabWebdavBaseStore,
       rootPath: leafTabSyncWebdavConfig?.rootPath || LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
     });
@@ -1822,10 +1832,11 @@ export default function App() {
     leafTabSyncWebdavConfig?.rootPath,
     leafTabWebdavBaseStore,
     leafTabWebdavEncryptionScopeKey,
+    syncRuntime,
   ]);
   const leafTabSyncRemoteStore = useMemo(() => {
-    if (!leafTabWebdavEncryptedTransport || !leafTabWebdavEncryptionScopeKey) return null;
-    return new LeafTabSyncEncryptedRemoteStore({
+    if (!syncRuntime || !leafTabWebdavEncryptedTransport || !leafTabWebdavEncryptionScopeKey) return null;
+    return new syncRuntime.LeafTabSyncEncryptedRemoteStore({
       transport: leafTabWebdavEncryptedTransport,
       scopeKey: leafTabWebdavEncryptionScopeKey,
       scopeLabel: t('leaftabSync.provider.webdav', { defaultValue: 'WebDAV 同步' }),
@@ -1835,6 +1846,7 @@ export default function App() {
     leafTabSyncWebdavConfig?.rootPath,
     leafTabWebdavEncryptedTransport,
     leafTabWebdavEncryptionScopeKey,
+    syncRuntime,
     t,
   ]);
   const webdavStorageState = useMemo(
@@ -1843,9 +1855,9 @@ export default function App() {
   );
   const webdavSyncBookmarksEnabled = webdavStorageState.syncBookmarksEnabled;
   const leafTabSyncBookmarksDisabledRemoteStore = useMemo(() => {
-    if (!leafTabSyncRemoteStore) return null;
-    return new LeafTabSyncBookmarksDisabledRemoteStore(leafTabSyncRemoteStore);
-  }, [leafTabSyncRemoteStore]);
+    if (!syncRuntime || !leafTabSyncRemoteStore) return null;
+    return new syncRuntime.LeafTabSyncBookmarksDisabledRemoteStore(leafTabSyncRemoteStore);
+  }, [leafTabSyncRemoteStore, syncRuntime]);
   const leafTabSyncEffectiveRemoteStore = useMemo(() => {
     if (!leafTabSyncRemoteStore) return null;
     if (webdavSyncBookmarksEnabled) return leafTabSyncRemoteStore;
@@ -1855,9 +1867,6 @@ export default function App() {
     leafTabSyncRemoteStore,
     webdavSyncBookmarksEnabled,
   ]);
-  const cloudSyncToken = useMemo(() => (
-    user ? (localStorage.getItem('token') || '') : ''
-  ), [user]);
   const cloudSyncConfig = useMemo(
     () => readCloudSyncConfigFromStorage(),
     [cloudSyncConfigVersion, user],
@@ -1904,30 +1913,31 @@ export default function App() {
     [cloudSyncEncryptionScopeKey, syncEncryptionVersion],
   );
   const cloudSyncEncryptedTransport = useMemo(() => {
-    if (!user || !cloudSyncToken) return null;
-    return new LeafTabSyncCloudEncryptedTransport({
+    if (!syncRuntime || !user || !cloudSyncToken) return null;
+    return new syncRuntime.LeafTabSyncCloudEncryptedTransport({
       apiUrl: API_URL,
       token: cloudSyncToken,
     });
-  }, [API_URL, cloudSyncToken, user]);
+  }, [API_URL, cloudSyncToken, syncRuntime, user]);
   const cloudSyncRemoteStore = useMemo(() => {
-    if (!cloudSyncEncryptedTransport || !cloudSyncEncryptionScopeKey) return null;
-    return new LeafTabSyncEncryptedRemoteStore({
+    if (!syncRuntime || !cloudSyncEncryptedTransport || !cloudSyncEncryptionScopeKey) return null;
+    return new syncRuntime.LeafTabSyncEncryptedRemoteStore({
       transport: cloudSyncEncryptedTransport,
       scopeKey: cloudSyncEncryptionScopeKey,
       scopeLabel: t('leaftabSync.provider.cloud', { defaultValue: '云同步' }),
       rootPath: LEAFTAB_SYNC_DEFAULT_ROOT_PATH,
     });
-  }, [cloudSyncEncryptedTransport, cloudSyncEncryptionScopeKey, t]);
+  }, [cloudSyncEncryptedTransport, cloudSyncEncryptionScopeKey, syncRuntime, t]);
   const cloudSyncBookmarksDisabledRemoteStore = useMemo(() => {
-    if (!cloudSyncRemoteStore) return null;
-    return new LeafTabSyncBookmarksDisabledRemoteStore(cloudSyncRemoteStore);
-  }, [cloudSyncRemoteStore]);
+    if (!syncRuntime || !cloudSyncRemoteStore) return null;
+    return new syncRuntime.LeafTabSyncBookmarksDisabledRemoteStore(cloudSyncRemoteStore);
+  }, [cloudSyncRemoteStore, syncRuntime]);
   const cloudSyncEffectiveRemoteStore = useMemo(() => {
     if (!cloudSyncRemoteStore) return null;
     if (cloudSyncBookmarksEnabled) return cloudSyncRemoteStore;
-    return new LeafTabSyncBookmarksDisabledRemoteStore(cloudSyncRemoteStore);
-  }, [cloudSyncBookmarksEnabled, cloudSyncRemoteStore]);
+    if (!syncRuntime) return null;
+    return new syncRuntime.LeafTabSyncBookmarksDisabledRemoteStore(cloudSyncRemoteStore);
+  }, [cloudSyncBookmarksEnabled, cloudSyncRemoteStore, syncRuntime]);
 
   const {
     webdavLegacyCompat,
@@ -2215,7 +2225,7 @@ export default function App() {
   );
   const presentDangerousSyncDialog = useCallback(async (params: {
     provider: 'cloud' | 'webdav';
-    error: LeafTabDestructiveBookmarkChangeError;
+    error: DangerousSyncError;
   }) => {
     const refreshedAnalysis = await (
       params.provider === 'cloud'
@@ -2293,11 +2303,11 @@ export default function App() {
       if (context.shouldManageProgressIndicator && context.progressTaskId) {
         clearLongTaskIndicator(context.progressTaskId);
       }
-      if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+      if (isNamedError(error, 'LeafTabDestructiveBookmarkChangeError')) {
         markWebdavSyncError(error);
         await presentDangerousSyncDialog({
           provider: 'webdav',
-          error,
+          error: error as DangerousSyncError,
         });
         return null;
       }
@@ -2444,11 +2454,11 @@ export default function App() {
         }));
         return null;
       }
-      if (error instanceof LeafTabDestructiveBookmarkChangeError) {
+      if (isNamedError(error, 'LeafTabDestructiveBookmarkChangeError')) {
         markCloudSyncError(error);
         await presentDangerousSyncDialog({
           provider: 'cloud',
-          error,
+          error: error as DangerousSyncError,
         });
         return null;
       }
@@ -3626,29 +3636,41 @@ export default function App() {
         )}
       </ShortcutSelectionShell>
       {useCompactFolderOverlay ? (
-        <ShortcutFolderCompactOverlay
-          {...shortcutEngineHostAdapter.compactFolderOverlayProps}
-          shortcut={compactOverlayShortcut}
-        />
+        compactOverlayShortcut ? (
+          <Suspense fallback={null}>
+            <LazyShortcutFolderCompactOverlay
+              {...shortcutEngineHostAdapter.compactFolderOverlayProps}
+              shortcut={compactOverlayShortcut}
+            />
+          </Suspense>
+        ) : null
       ) : (
-        <ShortcutFolderDialog
-          {...shortcutEngineHostAdapter.folderDialogProps}
-        />
+        shortcutEngineHostAdapter.folderDialogProps.open ? (
+          <Suspense fallback={null}>
+            <LazyShortcutFolderDialog
+              {...shortcutEngineHostAdapter.folderDialogProps}
+            />
+          </Suspense>
+        ) : null
       )}
-      <ShortcutFolderNameDialog
-        open={folderNameDialogOpen}
-        onOpenChange={(open) => {
-          setFolderNameDialogOpen(open);
-          if (!open) {
-            setEditingFolderId(null);
-            setPendingRootFolderMerge(null);
-          }
-        }}
-        title={folderNameDialogTitle}
-        description={folderNameDialogDescription}
-        initialName={folderNameDialogInitialName}
-        onSubmit={handleSaveFolderName}
-      />
+      {folderNameDialogOpen ? (
+        <Suspense fallback={null}>
+          <LazyShortcutFolderNameDialog
+            open={folderNameDialogOpen}
+            onOpenChange={(open) => {
+              setFolderNameDialogOpen(open);
+              if (!open) {
+                setEditingFolderId(null);
+                setPendingRootFolderMerge(null);
+              }
+            }}
+            title={folderNameDialogTitle}
+            description={folderNameDialogDescription}
+            initialName={folderNameDialogInitialName}
+            onSubmit={handleSaveFolderName}
+          />
+        </Suspense>
+      ) : null}
       {shouldMountWallpaperSelector ? (
         <Suspense fallback={null}>
           <LazyWallpaperSelector

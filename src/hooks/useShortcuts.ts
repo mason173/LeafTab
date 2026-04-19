@@ -146,31 +146,6 @@ export function useShortcuts(
     const nextShortcutsMap = { ...currentShortcutsMap, [currentScenarioId]: nextCurrent };
     scenarioShortcutsRef.current = nextShortcutsMap;
 
-    try {
-      const snapshot = {
-        scenarioModes: scenarioModesRef.current,
-        selectedScenarioId: currentScenarioId,
-        scenarioShortcuts: nextShortcutsMap,
-      };
-      persistLocalProfileSnapshot(snapshot);
-      if (userRef.current) {
-        const payload = {
-          version: 3 as const,
-          scenarioModes: snapshot.scenarioModes,
-          selectedScenarioId: snapshot.selectedScenarioId,
-          scenarioShortcuts: snapshot.scenarioShortcuts,
-        };
-        localStorage.setItem('leaf_tab_shortcuts_cache', JSON.stringify(payload));
-        localStorage.setItem('leaf_tab_sync_pending', 'true');
-        clearLocalNeedsCloudReconcile();
-      } else {
-        const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
-        if (!hasStoredCloudSession) {
-          markLocalNeedsCloudReconcile('signed_out_edit');
-        }
-      }
-    } catch {}
-
     if (!userRef.current) localDirtyRef.current = true;
     setScenarioShortcuts(nextShortcutsMap);
   }, []);
@@ -395,35 +370,6 @@ export function useShortcuts(
     setShortcutDeleteOpen,
   });
 
-  const persistShortcutSnapshot = useCallback((snapshot: {
-    scenarioModes: ScenarioMode[];
-    selectedScenarioId: string;
-    scenarioShortcuts: ScenarioShortcuts;
-  }) => {
-    try {
-      persistLocalProfileSnapshot(snapshot);
-      if (userRef.current) {
-        const payload = {
-          version: 3 as const,
-          scenarioModes: snapshot.scenarioModes,
-          selectedScenarioId: snapshot.selectedScenarioId,
-          scenarioShortcuts: snapshot.scenarioShortcuts,
-        };
-        const json = JSON.stringify(payload);
-        clearLocalNeedsCloudReconcile();
-        localStorage.setItem('leaf_tab_shortcuts_cache', json);
-        if (json !== lastSavedShortcutsJson.current) {
-          localStorage.setItem('leaf_tab_sync_pending', 'true');
-        }
-      } else {
-        const hasStoredCloudSession = Boolean(localStorage.getItem('token') && localStorage.getItem('username'));
-        if (!hasStoredCloudSession) {
-          markLocalNeedsCloudReconcile('signed_out_edit');
-        }
-      }
-    } catch {}
-  }, [lastSavedShortcutsJson]);
-
   const setScenarioModesWithRef = useCallback<Dispatch<SetStateAction<ScenarioMode[]>>>((nextValue) => {
     setScenarioModes((prev) => {
       const resolved = typeof nextValue === 'function'
@@ -440,14 +386,9 @@ export function useShortcuts(
         ? (nextValue as (value: string) => string)(prev)
         : nextValue;
       selectedScenarioIdRef.current = resolved;
-      persistShortcutSnapshot({
-        scenarioModes: scenarioModesRef.current,
-        selectedScenarioId: resolved,
-        scenarioShortcuts: scenarioShortcutsRef.current,
-      });
       return resolved;
     });
-  }, [persistShortcutSnapshot]);
+  }, []);
 
   const setScenarioShortcutsWithRef = useCallback<Dispatch<SetStateAction<ScenarioShortcuts>>>((nextValue) => {
     setScenarioShortcuts((prev) => {
@@ -455,14 +396,9 @@ export function useShortcuts(
         ? (nextValue as (value: ScenarioShortcuts) => ScenarioShortcuts)(prev)
         : nextValue;
       scenarioShortcutsRef.current = resolved;
-      persistShortcutSnapshot({
-        scenarioModes: scenarioModesRef.current,
-        selectedScenarioId: selectedScenarioIdRef.current,
-        scenarioShortcuts: resolved,
-      });
       return resolved;
     });
-  }, [persistShortcutSnapshot]);
+  }, []);
 
   return {
     scenarioModes, setScenarioModes: setScenarioModesWithRef,

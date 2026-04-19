@@ -1,5 +1,5 @@
 import { parseLeafTabBackup, type WebdavPayload } from '@/utils/backupData';
-import type { LeafTabBookmarkSyncScope } from './bookmarks';
+import type { LeafTabBookmarkSyncScope } from './bookmarkScope';
 import { createLeafTabSyncSerializedSnapshot, type LeafTabSyncFileMap } from './fileMap';
 import {
   materializeLeafTabSyncSnapshotFromFiles,

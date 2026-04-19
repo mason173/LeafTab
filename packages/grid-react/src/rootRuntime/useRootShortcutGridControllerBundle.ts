@@ -76,6 +76,7 @@ type UseRootShortcutGridControllerBundleParams = {
   confirmedHoverResolutionRef: React.MutableRefObject<HoverResolution>;
   hoverConfirmTimerRef: React.MutableRefObject<number | null>;
   pendingHoverIntentKeyRef: React.MutableRefObject<string | null>;
+  pendingHoverIntentPointRef: React.MutableRefObject<PointerPoint | null>;
   heatZoneInspectorRef: React.MutableRefObject<RootShortcutGridHeatZoneInspector | null>;
   recognitionPointRef: React.MutableRefObject<PointerPoint | null>;
   activeDragIdRef: React.MutableRefObject<string | null>;
@@ -156,6 +157,7 @@ export function useRootShortcutGridControllerBundle({
   confirmedHoverResolutionRef,
   hoverConfirmTimerRef,
   pendingHoverIntentKeyRef,
+  pendingHoverIntentPointRef,
   heatZoneInspectorRef,
   recognitionPointRef,
   activeDragIdRef,
@@ -247,12 +249,11 @@ export function useRootShortcutGridControllerBundle({
 
   const hoverIntentController = useMemo(() => createRootHoverIntentController({
     emptyHoverResolution,
-    items,
-    activeDragIdRef,
     hoverResolutionRef,
     confirmedHoverResolutionRef,
     hoverConfirmTimerRef,
     pendingHoverIntentKeyRef,
+    pendingHoverIntentPointRef,
     reorderDwellMs: ROOT_SHORTCUT_GRID_REORDER_DWELL_MS,
     mergeDwellMs: ROOT_SHORTCUT_GRID_MERGE_DWELL_MS,
     resolveCurrentInteractionProfile: () => {
@@ -273,14 +274,13 @@ export function useRootShortcutGridControllerBundle({
     },
     setHoverResolution,
   }), [
-    activeDragIdRef,
     activeSourceRootShortcutId,
     confirmedHoverResolutionRef,
     dragSessionRef,
     emptyHoverResolution,
     hoverConfirmTimerRef,
     hoverResolutionRef,
-    items,
+    pendingHoverIntentPointRef,
     pendingHoverIntentKeyRef,
     resolveInteractionProfile,
     setHoverResolution,

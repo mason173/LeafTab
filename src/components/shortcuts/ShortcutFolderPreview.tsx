@@ -1,3 +1,4 @@
+import { useFolderPreviewRootRef, useFolderPreviewSlotRef } from '@/components/shortcuts/folderPreviewRegistry';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
@@ -173,6 +174,7 @@ function FolderPreviewTile({
   iconAppearance?: ShortcutIconAppearance;
 }) {
   const previewIconSize = Math.max(16, Math.round(tileSize * FOLDER_PREVIEW_CONTENT_RATIO));
+  const previewSlotRef = useFolderPreviewSlotRef(folderId, child.id, index);
 
   return (
     <div
@@ -180,6 +182,7 @@ function FolderPreviewTile({
       style={{ width: tileSize, height: tileSize }}
     >
       <div
+        ref={previewSlotRef}
         className="flex items-center justify-center"
         style={{ width: previewIconSize, height: previewIconSize }}
         data-folder-preview-child-id={child.id}
@@ -219,6 +222,7 @@ function LargeFolderPreviewTile({
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_PREVIEW_CONTENT_RATIO));
   const interactive = typeof onOpenShortcut === 'function';
   const Element = interactive ? 'button' : 'div';
+  const previewSlotRef = useFolderPreviewSlotRef(folderId, child.id, index);
 
   return (
     <Element
@@ -235,6 +239,7 @@ function LargeFolderPreviewTile({
       } : undefined}
     >
       <div
+        ref={previewSlotRef}
         className="flex items-center justify-center"
         style={{ width: previewIconSize, height: previewIconSize }}
         data-folder-preview-child-id={child.id}
@@ -275,6 +280,7 @@ function LargeFolderOpenTile({
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_TRIGGER_ICON_RATIO));
   const interactive = typeof onOpenFolder === 'function';
+  const previewSlotRef = useFolderPreviewSlotRef(folderId, child.id, index);
 
   return (
     <button
@@ -300,6 +306,7 @@ function LargeFolderOpenTile({
         fadeWhenDropTargetActive={fadeContentWhenDropTargetActive}
       />
       <div
+        ref={previewSlotRef}
         className="relative z-[1] flex items-center justify-center"
         style={{
           width: previewIconSize,
@@ -360,9 +367,11 @@ export function ShortcutFolderPreview({
 }: ShortcutFolderPreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, 4);
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
+  const folderPreviewRootRef = useFolderPreviewRootRef(shortcut.id);
 
   return (
     <div
+      ref={folderPreviewRootRef}
       className={`relative grid grid-cols-2 gap-1 border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         selectionDisabled ? 'cursor-not-allowed' : ''
       } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
@@ -421,9 +430,11 @@ export function ShortcutFolderLargePreview({
     Math.floor((size - LARGE_FOLDER_PREVIEW_PADDING * 2 - LARGE_FOLDER_PREVIEW_GAP * 2) / 3),
   );
   const borderRadius = getLargeFolderBorderRadius(size, iconCornerRadius);
+  const folderPreviewRootRef = useFolderPreviewRootRef(shortcut.id);
 
   return (
     <div
+      ref={folderPreviewRootRef}
       className={`relative isolate overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         interactive ? '' : 'cursor-not-allowed'
       } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}

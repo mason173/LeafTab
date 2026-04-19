@@ -126,6 +126,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   const confirmedHoverResolutionRef = useRef<HoverResolution>(EMPTY_HOVER_RESOLUTION);
   const hoverConfirmTimerRef = useRef<number | null>(null);
   const pendingHoverIntentKeyRef = useRef<string | null>(null);
+  const pendingHoverIntentPointRef = useRef<PointerPoint | null>(null);
   const heatZoneInspectorRef = useRef<RootShortcutGridHeatZoneInspector | null>(null);
   const recognitionPointRef = useRef<PointerPoint | null>(null);
   const activeDragIdRef = useRef<string | null>(null);
@@ -251,6 +252,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     confirmedHoverResolutionRef,
     hoverConfirmTimerRef,
     pendingHoverIntentKeyRef,
+    pendingHoverIntentPointRef,
     heatZoneInspectorRef,
     recognitionPointRef,
     activeDragIdRef,

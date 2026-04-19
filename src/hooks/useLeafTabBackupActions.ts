@@ -2,20 +2,15 @@ import { useCallback, useState, type MutableRefObject } from 'react';
 import { toast } from '@/components/ui/sonner';
 import type { ScenarioMode, ScenarioShortcuts } from '@/types';
 import { defaultScenarioModes } from '@/scenario/scenario';
+import { importLeafTabLocalBackupRuntime } from '@/lazy/sync';
+import type { LeafTabBookmarkSyncScope } from '@/sync/leaftab/bookmarkScope';
+import { readLeafTabBookmarkSyncScope } from '@/sync/leaftab/bookmarkScope';
+import { normalizeLeafTabSyncSnapshot } from '@/sync/leaftab/schema';
 import {
-  createLeafTabLocalBackupBundle,
-  filterLeafTabLocalBackupSnapshot,
-  getLeafTabLocalBackupAvailableScope,
-  mergeLeafTabLocalBackupSnapshotWithBase,
-  projectLeafTabSyncSnapshotToAppState,
-  readLeafTabBookmarkSyncScope,
-  restrictLeafTabLocalBackupImportScope,
-  type LeafTabBookmarkSyncScope,
   type LeafTabLocalBackupExportScope,
   type LeafTabLocalBackupImportData,
 } from '@/sync/leaftab';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
-import { normalizeLeafTabSyncSnapshot } from '@/sync/leaftab';
 import {
   resolveLocalBackupExportBookmarksMode,
   resolveLocalBackupImportBookmarksMode,
@@ -92,6 +87,7 @@ export function useLeafTabBackupActions({
 
   const downloadCloudBackupEnvelope = useCallback(async () => {
     try {
+      const localBackupRuntime = await importLeafTabLocalBackupRuntime();
       const token = localStorage.getItem('token');
       if (!token) return;
       const bookmarkSyncScope = readLeafTabBookmarkSyncScope();
@@ -105,11 +101,11 @@ export function useLeafTabBackupActions({
         const data = await response.json();
         const remoteSnapshot = normalizeLeafTabSyncSnapshot(data?.snapshot || null);
         if (remoteSnapshot) {
-          const projected = projectLeafTabSyncSnapshotToAppState(remoteSnapshot);
+          const projected = localBackupRuntime.projectLeafTabSyncSnapshotToAppState(remoteSnapshot);
           const projectedScenarioModes = projected.scenarioModes.length > 0
             ? projected.scenarioModes
             : defaultScenarioModes;
-          const backupBundle = createLeafTabLocalBackupBundle({
+          const backupBundle = localBackupRuntime.createLeafTabLocalBackupBundle({
             snapshot: remoteSnapshot,
             selectedScenarioId: projectedScenarioModes.some((mode) => mode.id === selectedScenarioId)
               ? selectedScenarioId
@@ -297,6 +293,7 @@ export function useLeafTabBackupActions({
         progress?: number;
       }) => void,
     ) => {
+      const localBackupRuntime = await importLeafTabLocalBackupRuntime();
       reportProgress?.({
         title: t('settings.backup.progress.importReadingLocalTitle', { defaultValue: '正在读取当前本地数据' }),
         detail: t('settings.backup.progress.importReadingLocalDetail', { defaultValue: '正在准备合并导入内容' }),
@@ -312,12 +309,12 @@ export function useLeafTabBackupActions({
         detail: t('settings.backup.progress.importMergingDetail', { defaultValue: '正在对齐快捷方式与书签的最新状态' }),
         progress: 40,
       });
-      const mergedSnapshot = mergeLeafTabLocalBackupSnapshotWithBase({
+      const mergedSnapshot = localBackupRuntime.mergeLeafTabLocalBackupSnapshotWithBase({
         baseSnapshot,
         importedSnapshot: data.snapshot,
         exportScope: data.exportScope,
       });
-      const mergedProjected = projectLeafTabSyncSnapshotToAppState(mergedSnapshot);
+      const mergedProjected = localBackupRuntime.projectLeafTabSyncSnapshotToAppState(mergedSnapshot);
       const nextScenarioModes = mergedProjected.scenarioModes.length > 0
         ? mergedProjected.scenarioModes
         : defaultScenarioModes;
@@ -395,13 +392,14 @@ export function useLeafTabBackupActions({
         requestBookmarkPermission: bookmarkExportMode.requestBookmarkPermission,
         includeBookmarks: bookmarkExportMode.includeBookmarks,
       });
+      const localBackupRuntime = await importLeafTabLocalBackupRuntime();
       update({
         title: t('settings.backup.progress.exportAssemblingTitle', { defaultValue: '正在整理导出内容' }),
         detail: t('settings.backup.progress.exportAssemblingDetail', { defaultValue: '正在组装 LeafTab 备份文件' }),
         progress: 58,
       });
-      const bundle = createLeafTabLocalBackupBundle({
-        snapshot: filterLeafTabLocalBackupSnapshot(snapshot, exportScope),
+      const bundle = localBackupRuntime.createLeafTabLocalBackupBundle({
+        snapshot: localBackupRuntime.filterLeafTabLocalBackupSnapshot(snapshot, exportScope),
         selectedScenarioId: exportScope?.shortcuts === false ? '' : selectedScenarioId,
         bookmarkScope: leafTabBookmarkSyncScope,
         exportScope,
@@ -450,7 +448,8 @@ export function useLeafTabBackupActions({
   }, [applyImportedLeafTabBackup, user]);
 
   const handleImportData = useCallback(async (data: LeafTabLocalBackupImportData) => {
-    const availableScope = getLeafTabLocalBackupAvailableScope(data);
+    const localBackupRuntime = await importLeafTabLocalBackupRuntime();
+    const availableScope = localBackupRuntime.getLeafTabLocalBackupAvailableScope(data);
     const hasBothSections = availableScope.shortcuts && availableScope.bookmarks;
     if (hasBothSections) {
       setSettingsOpen(false);
@@ -497,7 +496,8 @@ export function useLeafTabBackupActions({
 
   const handleImportBackupScopeConfirm = useCallback(async (scope: LeafTabLocalBackupExportScope) => {
     if (!importBackupScopePayload) return;
-    const narrowedImport = restrictLeafTabLocalBackupImportScope(importBackupScopePayload, scope);
+    const localBackupRuntime = await importLeafTabLocalBackupRuntime();
+    const narrowedImport = localBackupRuntime.restrictLeafTabLocalBackupImportScope(importBackupScopePayload, scope);
     setImportBackupScopePayload(null);
     await proceedImportData(narrowedImport);
   }, [importBackupScopePayload, proceedImportData]);

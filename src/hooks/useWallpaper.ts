@@ -521,7 +521,7 @@ export function useWallpaper() {
     const meta = readBingCacheMeta();
     const hasCurrentSource = Boolean(hasBingWallpaperRef.current && bingWallpaper);
     const isAlreadyLatest = !force && meta?.slot === currentSlot && hasCurrentSource;
-    if (isAlreadyLatest || (meta?.slot === currentSlot && hasCurrentSource)) {
+    if (isAlreadyLatest) {
       return 'already-latest';
     }
 

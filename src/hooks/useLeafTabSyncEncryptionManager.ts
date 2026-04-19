@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import i18n from '@/i18n';
+import { importLeafTabSyncEncryptionRuntime } from '@/lazy/sync';
 import {
   clearLeafTabSyncEncryptionConfig,
   emitLeafTabSyncEncryptionChanged,
@@ -8,13 +9,6 @@ import {
   type LeafTabSyncEncryptionMetadata,
   writeLeafTabSyncEncryptionConfig,
 } from '@/utils/leafTabSyncEncryption';
-import {
-  createLeafTabSyncEncryptionMetadata,
-  deriveLeafTabSyncKey,
-  parseLeafTabSyncKeyBytes,
-  serializeLeafTabSyncKeyBytes,
-  verifyLeafTabSyncKey,
-} from '@/sync/leaftab';
 
 export type LeafTabSyncEncryptionDialogState = {
   open: boolean;
@@ -102,19 +96,20 @@ export function useLeafTabSyncEncryptionManager({
     if (!request) return;
     setSyncEncryptionDialogBusy(true);
     try {
+      const encryptionRuntime = await importLeafTabSyncEncryptionRuntime();
       let metadata = request.metadata;
       let keyBytes: Uint8Array;
 
       if (request.mode === 'setup') {
-        const created = await createLeafTabSyncEncryptionMetadata(payload.passphrase);
+        const created = await encryptionRuntime.createLeafTabSyncEncryptionMetadata(payload.passphrase);
         metadata = created.metadata;
         keyBytes = created.keyBytes;
       } else {
         if (!metadata) {
           throw new Error(i18n.t('leaftabSyncEncryption.errors.missingMetadata', { defaultValue: '缺少同步加密元数据' }));
         }
-        keyBytes = await deriveLeafTabSyncKey(payload.passphrase, metadata);
-        const valid = await verifyLeafTabSyncKey(keyBytes, metadata);
+        keyBytes = await encryptionRuntime.deriveLeafTabSyncKey(payload.passphrase, metadata);
+        const valid = await encryptionRuntime.verifyLeafTabSyncKey(keyBytes, metadata);
         if (!valid) {
           throw new Error(i18n.t('leaftabSyncEncryption.errors.incorrectPassphrase', { defaultValue: '同步口令不正确' }));
         }
@@ -127,7 +122,7 @@ export function useLeafTabSyncEncryptionManager({
       writeLeafTabSyncEncryptionConfig(
         request.scopeKey,
         metadata,
-        serializeLeafTabSyncKeyBytes(keyBytes),
+        encryptionRuntime.serializeLeafTabSyncKeyBytes(keyBytes),
       );
       emitLeafTabSyncEncryptionChanged();
       toast.success(request.mode === 'setup'
@@ -149,8 +144,9 @@ export function useLeafTabSyncEncryptionManager({
     if (!params.scopeKey) return false;
     const localConfig = readLeafTabSyncEncryptionConfig(params.scopeKey);
     if (localConfig?.cachedKey && localConfig?.metadata) {
-      const keyBytes = parseLeafTabSyncKeyBytes(localConfig.cachedKey);
-      const valid = await verifyLeafTabSyncKey(keyBytes, localConfig.metadata).catch(() => false);
+      const encryptionRuntime = await importLeafTabSyncEncryptionRuntime();
+      const keyBytes = encryptionRuntime.parseLeafTabSyncKeyBytes(localConfig.cachedKey);
+      const valid = await encryptionRuntime.verifyLeafTabSyncKey(keyBytes, localConfig.metadata).catch(() => false);
       if (valid) return true;
       clearLeafTabSyncEncryptionConfig(params.scopeKey);
       emitLeafTabSyncEncryptionChanged();

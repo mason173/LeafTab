@@ -20,6 +20,11 @@ import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
+import {
+  getFolderPreviewRoot,
+  getFolderPreviewSlotElements,
+  getFolderPreviewSlotEntries,
+} from '@/components/shortcuts/folderPreviewRegistry';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
@@ -167,15 +172,14 @@ function findTargetChildNode(container: ParentNode | null | undefined, childId: 
 function measureSourcePreviewMetrics(params: {
   folderId: string;
   fallbackTargetRect: OverlayRect;
-  shortcuts: Shortcut[];
 }): {
   sourceRect: OverlayRect;
   sourceChildRects: Map<string, OverlayRect>;
   sourceChildSlotRects: OverlayRect[];
 } {
-  const { folderId, fallbackTargetRect, shortcuts } = params;
-  const escapedFolderId = escapeSelectorValue(folderId);
-  const sourcePreview = document.querySelector<HTMLElement>(`[data-folder-preview-id="${escapedFolderId}"]`);
+  const { folderId, fallbackTargetRect } = params;
+  const sourcePreview = getFolderPreviewRoot(folderId);
+  const previewSlots = getFolderPreviewSlotEntries(folderId);
   const sourceChildRects = new Map<string, OverlayRect>();
   const sourceChildSlotRects: OverlayRect[] = [];
   let sourceRect = copyRect(sourcePreview?.getBoundingClientRect()) ?? getFallbackSourceRect(fallbackTargetRect);
@@ -192,31 +196,14 @@ function measureSourcePreviewMetrics(params: {
     try {
       sourceRect = copyRect(sourcePreview.getBoundingClientRect()) ?? getFallbackSourceRect(fallbackTargetRect);
 
-      Array.from(
-        document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapedFolderId}"][data-folder-preview-index]`),
-      )
-        .sort((left, right) => {
-          const leftIndex = Number(left.dataset.folderPreviewIndex ?? '0');
-          const rightIndex = Number(right.dataset.folderPreviewIndex ?? '0');
-          return leftIndex - rightIndex;
-        })
-        .forEach((slotNode) => {
-          const slotIndex = Number(slotNode.dataset.folderPreviewIndex ?? '-1');
-          const slotRect = copyRect(slotNode.getBoundingClientRect());
-          if (slotIndex >= 0 && slotRect) {
-            sourceChildSlotRects[slotIndex] = slotRect;
-          }
-        });
-
-      shortcuts.forEach((child) => {
-        const escapedChildId = escapeSelectorValue(child.id);
-        const childNode = document.querySelector<HTMLElement>(
-          `[data-folder-preview-parent-id="${escapedFolderId}"][data-folder-preview-child-id="${escapedChildId}"]`,
-        );
-        const childRect = copyRect(childNode?.getBoundingClientRect());
-        if (childRect) {
-          sourceChildRects.set(child.id, childRect);
+      previewSlots.forEach((slot) => {
+        const slotRect = copyRect(slot.element.getBoundingClientRect());
+        if (!slotRect) {
+          return;
         }
+
+        sourceChildSlotRects[slot.index] = slotRect;
+        sourceChildRects.set(slot.childId, slotRect);
       });
     } finally {
       sourcePreview.style.transform = sourcePreviewTransform;
@@ -371,9 +358,7 @@ export function ShortcutFolderCompactOverlay({
     }
 
     const currentPreviewChildren = hiddenFolderId
-      ? Array.from(
-          document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapeSelectorValue(hiddenFolderId)}"]`),
-        )
+      ? getFolderPreviewSlotElements(hiddenFolderId)
       : [];
     const nodesToRestore = new Set<HTMLElement>([
       ...hiddenSourcePreviewChildrenRef.current,
@@ -532,7 +517,6 @@ export function ShortcutFolderCompactOverlay({
     const nextSourceMetrics = measureSourcePreviewMetrics({
       folderId: mountedShortcut.id,
       fallbackTargetRect: targetRect,
-      shortcuts: children,
     });
     const nextMetrics = {
       ...metrics,
@@ -612,7 +596,6 @@ export function ShortcutFolderCompactOverlay({
     const { sourceRect, sourceChildRects, sourceChildSlotRects } = measureSourcePreviewMetrics({
       folderId: mountedShortcut.id,
       fallbackTargetRect: surfaceRect,
-      shortcuts: children,
     });
 
     setMetrics({
@@ -696,12 +679,9 @@ export function ShortcutFolderCompactOverlay({
       restoreHiddenSourcePreview();
     }
 
-    const escapedFolderId = escapeSelectorValue(mountedShortcut.id);
-    const sourcePreview = document.querySelector<HTMLElement>(`[data-folder-preview-id="${escapedFolderId}"]`);
+    const sourcePreview = getFolderPreviewRoot(mountedShortcut.id);
     if (!sourcePreview) return;
-    const sourcePreviewChildren = Array.from(
-      document.querySelectorAll<HTMLElement>(`[data-folder-preview-parent-id="${escapedFolderId}"]`),
-    );
+    const sourcePreviewChildren = getFolderPreviewSlotElements(mountedShortcut.id);
 
     if (hiddenSourcePreviewRef.current !== sourcePreview) {
       hiddenSourcePreviewRef.current = sourcePreview;

@@ -31,10 +31,26 @@ export function resolveBackendReleaseUpdateUrl(apiBase: string): string {
 }
 
 function toVersionParts(raw: string): number[] {
-  const core = normalizeReleaseVersion(raw).split('-')[0];
+  const core = normalizeReleaseVersion(raw).split('+')[0].split('-')[0];
   return core.split('.').map((part) => {
     const parsed = Number.parseInt(part, 10);
     return Number.isFinite(parsed) ? parsed : 0;
+  });
+}
+
+function toPrereleaseParts(raw: string): Array<number | string> | null {
+  const normalized = normalizeReleaseVersion(raw).split('+')[0];
+  const prereleaseIndex = normalized.indexOf('-');
+  if (prereleaseIndex === -1) return null;
+
+  const prerelease = normalized.slice(prereleaseIndex + 1).trim();
+  if (!prerelease) return null;
+
+  return prerelease.split('.').map((part) => {
+    const parsed = Number.parseInt(part, 10);
+    return /^\d+$/.test(part) && Number.isFinite(parsed)
+      ? parsed
+      : part.toLowerCase();
   });
 }
 
@@ -48,6 +64,30 @@ export function compareReleaseVersions(a: string, b: string): number {
     if (av > bv) return 1;
     if (av < bv) return -1;
   }
+
+  const preA = toPrereleaseParts(a);
+  const preB = toPrereleaseParts(b);
+  if (!preA && !preB) return 0;
+  if (!preA) return 1;
+  if (!preB) return -1;
+
+  const prereleaseMaxLen = Math.max(preA.length, preB.length);
+  for (let i = 0; i < prereleaseMaxLen; i += 1) {
+    const av = preA[i];
+    const bv = preB[i];
+    if (av === undefined) return -1;
+    if (bv === undefined) return 1;
+    if (typeof av === 'number' && typeof bv === 'number') {
+      if (av > bv) return 1;
+      if (av < bv) return -1;
+      continue;
+    }
+    if (typeof av === 'number') return -1;
+    if (typeof bv === 'number') return 1;
+    const compared = av.localeCompare(bv);
+    if (compared !== 0) return compared > 0 ? 1 : -1;
+  }
+
   return 0;
 }
 

@@ -69,7 +69,12 @@ export function syncRootHoverRuntime(params: {
   placementsBySortId: Map<string, RootCompactRegionPlacement>;
   computeProjectionOffsetsForIntent: (intent: import('@leaftab/workspace-core').RootShortcutDropIntent | null) => Map<string, ProjectionOffset>;
   commitHeatZoneInspector: (inspector: RootShortcutGridHeatZoneInspector | null) => void;
-  commitResolvedHoverResolution: (resolution: RootHoverResolution) => void;
+  commitResolvedHoverResolution: (
+    resolution: RootHoverResolution,
+    options?: {
+      dwellPoint?: PointerPoint | null;
+    },
+  ) => void;
   gridColumns: number;
   gridColumnWidth: number | null;
   columnGap: number;
@@ -174,7 +179,9 @@ export function syncRootHoverRuntime(params: {
     coreInset,
     largeFolderCoreInset,
   }));
-  commitResolvedHoverResolution(nextResolution);
+  commitResolvedHoverResolution(nextResolution, {
+    dwellPoint: recognitionPointRef.current,
+  });
 }
 
 export function syncRootHoverFromPointer(params: {
@@ -217,7 +224,12 @@ export function syncRootHoverFromPointer(params: {
   placementsBySortId: Map<string, RootCompactRegionPlacement>;
   computeProjectionOffsetsForIntent: (intent: import('@leaftab/workspace-core').RootShortcutDropIntent | null) => Map<string, ProjectionOffset>;
   commitHeatZoneInspector: (inspector: RootShortcutGridHeatZoneInspector | null) => void;
-  commitResolvedHoverResolution: (resolution: RootHoverResolution) => void;
+  commitResolvedHoverResolution: (
+    resolution: RootHoverResolution,
+    options?: {
+      dwellPoint?: PointerPoint | null;
+    },
+  ) => void;
   gridColumns: number;
   gridColumnWidth: number | null;
   columnGap: number;
@@ -408,7 +420,12 @@ export function createRootHoverRuntimeController<
   placementsBySortId: Map<string, RootCompactRegionPlacement>;
   computeProjectionOffsetsForIntent: (intent: import('@leaftab/workspace-core').RootShortcutDropIntent | null) => Map<string, ProjectionOffset>;
   commitHeatZoneInspector: (inspector: RootShortcutGridHeatZoneInspector | null) => void;
-  commitResolvedHoverResolution: (resolution: RootHoverResolution) => void;
+  commitResolvedHoverResolution: (
+    resolution: RootHoverResolution,
+    options?: {
+      dwellPoint?: PointerPoint | null;
+    },
+  ) => void;
   gridColumns: number;
   gridColumnWidth: number | null;
   columnGap: number;

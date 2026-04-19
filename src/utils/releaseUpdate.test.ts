@@ -16,7 +16,9 @@ describe('releaseUpdate helpers', () => {
 
   it('compares semantic versions using numeric parts', () => {
     expect(compareReleaseVersions('1.4.9', '1.4.8')).toBeGreaterThan(0);
-    expect(compareReleaseVersions('1.4.8', '1.4.8-beta.1')).toBe(0);
+    expect(compareReleaseVersions('1.4.8', '1.4.8-beta.1')).toBeGreaterThan(0);
+    expect(compareReleaseVersions('1.4.8-alpha.3', '1.4.8')).toBeLessThan(0);
+    expect(compareReleaseVersions('1.4.8-beta.2', '1.4.8-beta.1')).toBeGreaterThan(0);
     expect(compareReleaseVersions('1.4.7', '1.4.8')).toBeLessThan(0);
   });
 

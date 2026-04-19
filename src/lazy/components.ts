@@ -6,6 +6,9 @@ const importLeafTabSyncDialog = () => import('../components/sync/LeafTabSyncDial
 const importLeafTabSyncEncryptionDialog = () => import('../components/sync/LeafTabSyncEncryptionDialog');
 const importUpdateAvailableDialog = () => import('../components/UpdateAvailableDialog');
 const importRoleSelector = () => import('../components/RoleSelector');
+const importShortcutFolderCompactOverlay = () => import('../components/ShortcutFolderCompactOverlay');
+const importShortcutFolderDialog = () => import('../components/ShortcutFolderDialog');
+const importShortcutFolderNameDialog = () => import('../components/ShortcutFolderNameDialog');
 
 export const LazyWallpaperSelector = lazyWithPageReload(
   'wallpaper-selector',
@@ -40,9 +43,30 @@ export const LazyRoleSelector = lazyWithPageReload(
   (module) => module.RoleSelector,
 );
 
+export const LazyShortcutFolderCompactOverlay = lazyWithPageReload(
+  'shortcut-folder-compact-overlay',
+  importShortcutFolderCompactOverlay,
+  (module) => module.ShortcutFolderCompactOverlay,
+);
+
+export const LazyShortcutFolderDialog = lazyWithPageReload(
+  'shortcut-folder-dialog',
+  importShortcutFolderDialog,
+  (module) => module.ShortcutFolderDialog,
+);
+
+export const LazyShortcutFolderNameDialog = lazyWithPageReload(
+  'shortcut-folder-name-dialog',
+  importShortcutFolderNameDialog,
+  (module) => module.ShortcutFolderNameDialog,
+);
+
 export async function preloadHomeDialogs() {
   await Promise.allSettled([
     importAppDialogs(),
     importLeafTabSyncDialog(),
+    importShortcutFolderCompactOverlay(),
+    importShortcutFolderDialog(),
+    importShortcutFolderNameDialog(),
   ]);
 }

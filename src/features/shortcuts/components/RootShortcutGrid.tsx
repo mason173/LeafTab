@@ -23,6 +23,7 @@ import {
 
 const HEAT_ZONE_CORE_INSET = 24;
 const HEAT_ZONE_LARGE_FOLDER_CORE_INSET = 12;
+const SHOW_HEAT_ZONE_INSPECTOR = true;
 
 function HeatZoneInspectorPanel({
   inspector,
@@ -335,7 +336,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           interactionProfile={resolvedInteractionProfile}
-          onHeatZoneInspectorChange={setHeatZoneInspector}
+          onHeatZoneInspectorChange={SHOW_HEAT_ZONE_INSPECTOR ? setHeatZoneInspector : undefined}
           extractBoundaryRef={extractBoundaryRef}
           onExtractDragStart={onExtractDragStart}
           onBoundaryHoverChange={onBoundaryHoverChange}
@@ -404,7 +405,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
             largeFolderPreviewSize,
           })}
         />
-        <HeatZoneInspectorPanel inspector={heatZoneInspector} />
+        {SHOW_HEAT_ZONE_INSPECTOR ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}
       </div>
     </ShortcutIconRenderContext.Provider>
   );

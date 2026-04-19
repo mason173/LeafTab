@@ -352,7 +352,7 @@ export function RootShortcutGridSurface({
           style={{
             zIndex: overlayZIndex,
             transform: `translate(${dragSettlePreview.settling ? dragSettlePreview.toLeft : dragSettlePreview.fromLeft}px, ${dragSettlePreview.settling ? dragSettlePreview.toTop : dragSettlePreview.fromTop}px)`,
-            transition: 'transform 220ms ease-out',
+            transition: 'transform 220ms ease-in-out',
           }}
         >
           {renderDragPreview({

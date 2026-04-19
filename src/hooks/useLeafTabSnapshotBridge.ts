@@ -2,17 +2,10 @@ import { useCallback, useRef, type Dispatch, type MutableRefObject, type SetStat
 import { flushSync } from 'react-dom';
 import type { ScenarioMode, ScenarioShortcuts, SyncablePreferences } from '@/types';
 import { defaultScenarioModes } from '@/scenario/scenario';
-import {
-  buildLeafTabSyncSnapshot,
-  captureLeafTabBookmarkTreeDraft,
-  createLeafTabSyncBuildState,
-  LEAFTAB_SYNC_SCHEMA_VERSION,
-  LeafTabBookmarkPermissionDeniedError,
-  projectLeafTabSyncSnapshotToAppState,
-  replaceLeafTabBookmarkTree,
-  type LeafTabBookmarkSyncScope,
-  type LeafTabSyncSnapshot,
-} from '@/sync/leaftab';
+import { importLeafTabSyncSnapshotRuntime } from '@/lazy/sync';
+import type { LeafTabBookmarkTreeDraft } from '@/sync/leaftab/bookmarks';
+import type { LeafTabBookmarkSyncScope } from '@/sync/leaftab/bookmarkScope';
+import { LEAFTAB_SYNC_SCHEMA_VERSION, type LeafTabSyncSnapshot } from '@/sync/leaftab/schema';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import { flushQueuedLocalStorageWrites } from '@/utils/storageWriteQueue';
@@ -48,7 +41,7 @@ export const createSnapshotBuildSignature = (params: {
   preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
-  bookmarkTree: Awaited<ReturnType<typeof captureLeafTabBookmarkTreeDraft>> | null | undefined;
+  bookmarkTree: LeafTabBookmarkTreeDraft | null | undefined;
 }) => {
   return JSON.stringify({
     baseline: createComparableSnapshotSignature(params.baselineSnapshot),
@@ -96,17 +89,23 @@ export const createEmptyLeafTabSyncSnapshot = (deviceId: string): LeafTabSyncSna
 });
 
 type DeriveLeafTabSyncApplyStateParams = {
-  snapshot: LeafTabSyncSnapshot;
+  projected: {
+    preferences: SyncablePreferences | null;
+    scenarioModes: ScenarioMode[];
+    scenarioShortcuts: ScenarioShortcuts;
+    bookmarkFolders: Record<string, { id: string; title: string; parentId: string | null }>;
+    bookmarkItems: Record<string, { id: string; title: string; parentId: string | null; url: string }>;
+    bookmarkOrders: Record<string, { ids: string[] }>;
+  };
   selectedScenarioId: string;
   preferredSelectedScenarioId?: string | null;
 };
 
 export const deriveLeafTabSyncApplyState = ({
-  snapshot,
+  projected,
   selectedScenarioId,
   preferredSelectedScenarioId,
 }: DeriveLeafTabSyncApplyStateParams) => {
-  const projected = projectLeafTabSyncSnapshotToAppState(snapshot);
   const nextScenarioModes = projected.scenarioModes.length > 0
     ? projected.scenarioModes
     : defaultScenarioModes;
@@ -179,6 +178,7 @@ export function useLeafTabSnapshotBridge({
     includeBookmarks?: boolean;
     preferencesTransform?: (preferences: SyncablePreferences) => SyncablePreferences;
   }) => {
+    const snapshotRuntime = await importLeafTabSyncSnapshotRuntime();
     flushQueuedLocalStorageWrites();
     const baselineStorageKey = options?.baselineStorageKey || leafTabSyncBaselineStorageKey;
     const baselineSnapshot = readBaselineSnapshot(
@@ -186,14 +186,11 @@ export function useLeafTabSnapshotBridge({
     );
     const bookmarkTree = options?.includeBookmarks === false
       ? null
-      : await captureLeafTabBookmarkTreeDraft({
+      : await snapshotRuntime.captureLeafTabBookmarkTreeDraft({
           scope: leafTabBookmarkSyncScope,
           requestPermission: options?.requestBookmarkPermission === true,
           throwOnPermissionDenied: true,
         });
-    if (options?.includeBookmarks !== false && !bookmarkTree) {
-      throw new LeafTabBookmarkPermissionDeniedError();
-    }
     const basePreferences = buildPreferencesSnapshot();
     const preferences = normalizeSyncablePreferences(
       options?.preferencesTransform
@@ -213,7 +210,7 @@ export function useLeafTabSnapshotBridge({
     }
 
     const generatedAt = new Date().toISOString();
-    const state = createLeafTabSyncBuildState({
+    const state = snapshotRuntime.createLeafTabSyncBuildState({
       previousSnapshot: baselineSnapshot,
       preferences,
       scenarioModes,
@@ -222,7 +219,7 @@ export function useLeafTabSnapshotBridge({
       deviceId: leafTabSyncDeviceId,
       generatedAt,
     });
-    const nextSnapshot = buildLeafTabSyncSnapshot({
+    const nextSnapshot = snapshotRuntime.buildLeafTabSyncSnapshot({
       preferences,
       scenarioModes,
       scenarioShortcuts,
@@ -265,15 +262,16 @@ export function useLeafTabSnapshotBridge({
       skipBookmarkApply?: boolean;
     },
   ) => {
+    const snapshotRuntime = await importLeafTabSyncSnapshotRuntime();
+    const projected = snapshotRuntime.projectLeafTabSyncSnapshotToAppState(snapshot);
     const {
-      projected,
       nextPreferences,
       nextScenarioModes,
       nextScenarioShortcuts,
       nextProfileSnapshot,
       nextSelectedScenarioId,
     } = deriveLeafTabSyncApplyState({
-      snapshot,
+      projected,
       selectedScenarioId,
       preferredSelectedScenarioId: options?.preferredSelectedScenarioId,
     });
@@ -285,7 +283,7 @@ export function useLeafTabSnapshotBridge({
     });
 
     if (!options?.skipBookmarkApply) {
-      const bookmarksApplied = await replaceLeafTabBookmarkTree({
+      const bookmarksApplied = await snapshotRuntime.replaceLeafTabBookmarkTree({
         scope: leafTabBookmarkSyncScope,
         folderLookup: Object.fromEntries(
           Object.values(projected.bookmarkFolders).map((folder) => [
@@ -312,7 +310,7 @@ export function useLeafTabSnapshotBridge({
         requestPermission: false,
       });
       if (!bookmarksApplied) {
-        throw new LeafTabBookmarkPermissionDeniedError();
+        throw new snapshotRuntime.LeafTabBookmarkPermissionDeniedError();
       }
     }
 

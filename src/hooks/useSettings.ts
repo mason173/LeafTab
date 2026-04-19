@@ -243,7 +243,7 @@ export function useSettings() {
     } catch {}
     
     const storedOpenInNewTab = localStorage.getItem('openInNewTab');
-    if (storedOpenInNewTab !== null) setOpenInNewTab(JSON.parse(storedOpenInNewTab));
+    if (storedOpenInNewTab !== null) setOpenInNewTab(readStoredBoolean('openInNewTab', true));
     setTabSwitchSearchEngine(readStoredBoolean(SEARCH_TAB_SWITCH_ENGINE_KEY, true));
     setSearchPrefixEnabled(readStoredBoolean(SEARCH_PREFIX_ENABLED_KEY, true));
     setSearchSiteDirectEnabled(readStoredBoolean(SEARCH_SITE_DIRECT_ENABLED_KEY, true));
@@ -258,10 +258,10 @@ export function useSettings() {
     setTimeAnimationMode(readTimeAnimationMode());
     
     const storedIs24Hour = localStorage.getItem('is24Hour');
-    if (storedIs24Hour !== null) setIs24Hour(JSON.parse(storedIs24Hour));
-    
+    if (storedIs24Hour !== null) setIs24Hour(readStoredBoolean('is24Hour', true));
+
     const storedShowTime = localStorage.getItem('showTime');
-    if (storedShowTime !== null) setShowTime(JSON.parse(storedShowTime));
+    if (storedShowTime !== null) setShowTime(readStoredBoolean('showTime', true));
     setVisualEffectsLevel(readVisualEffectsLevel());
     const storedShortcutCompactShowTitle = localStorage.getItem('shortcutCompactShowTitle');
     if (storedShortcutCompactShowTitle !== null) {
