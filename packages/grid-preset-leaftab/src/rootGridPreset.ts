@@ -24,7 +24,6 @@ type LeaftabRootGridPresetBindings = {
 
 export type CreateLeaftabRootGridPresetOptions = LeaftabRootDropResolverConfig & {
   compactIconSize?: number;
-  titleBlockHeight?: number;
   iconCornerRadius?: number;
   compactFallbackLargeFolderPreviewSize?: number;
   dropPreviewBorderRadius?: string;
@@ -40,7 +39,6 @@ export function createLeaftabRootGridPreset(
 ): LeaftabRootGridPreset {
   const {
     compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
-    titleBlockHeight = LEAFTAB_COMPACT_GRID_METRICS.titleBlockHeight,
     columnGap = LEAFTAB_COMPACT_GRID_METRICS.columnGap,
     iconCornerRadius = LEAFTAB_COMPACT_GRID_METRICS.iconCornerRadius,
     largeFolderPreviewSize,
@@ -63,7 +61,6 @@ export function createLeaftabRootGridPreset(
     resolveItemLayout: (shortcut) => resolveLeaftabRootItemLayout({
       shortcut,
       compactIconSize,
-      titleBlockHeight,
       columnGap,
       iconCornerRadius,
       largeFolderPreviewSize,

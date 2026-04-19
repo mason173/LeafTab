@@ -1,6 +1,6 @@
 {
       "name": "leaftab",
-      "version": "1.4.8-alpha.2",
+      "version": "1.4.8-alpha.3",
       "private": true,
       "workspaces": [
             "packages/*"
@@ -76,12 +76,17 @@
             "@types/react-dom": "^19.2.3",
             "@vitejs/plugin-react-swc": "^3.10.2",
             "jsdom": "^27.0.1",
+            "typescript": "^5.9.3",
             "vite": "6.3.5",
             "vitest": "^3.2.4"
       },
       "scripts": {
             "dev": "npm run grid:verify:host && npm run icons:sync && vite --host",
             "build": "npm run build:community",
+            "typecheck": "tsc --noEmit -p tsconfig.json",
+            "test": "vitest run",
+            "test:watch": "vitest",
+            "check": "npm run typecheck && npm run test && npm run build",
             "grid:build:local": "npm run build --workspace @leaftab/workspace-core && npm run build --workspace @leaftab/workspace-react && npm run build --workspace @leaftab/workspace-preset-leaftab",
             "grid:prepare": "node scripts/prepare-grid-deps.mjs",
             "grid:check:local": "node scripts/prepare-grid-deps.mjs --local-only",

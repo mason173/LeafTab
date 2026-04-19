@@ -62,6 +62,23 @@ export type RootReorderSlotCandidate = {
 
 export type RootReorderSlotIntentMode = 'containing-probe' | 'closest-center';
 
+export type RootReorderSlotState<TShortcut extends Shortcut = Shortcut> = {
+  gridColumnWidth: number | null;
+  shouldUseProjectedRootReorderSlots: boolean;
+  activeDragItem: RootShortcutGridItem<TShortcut> | null;
+  frozenSortIds: ReadonlySet<string> | null;
+  reorderSlotCandidates: RootReorderSlotCandidate[];
+  extractedReorderSlotCandidates: RootReorderSlotCandidate[];
+};
+
+export type RootPackedLayoutState<TShortcut extends Shortcut = Shortcut> = {
+  packedLayout: ReturnType<typeof packItemsIntoSerpentineGrid<RootShortcutGridItem<TShortcut>>>;
+  placedGridItemsBySortId: Map<string, SerpentinePackedGridItem<RootShortcutGridItem<TShortcut>>>;
+  displayRows: number;
+  gridMinHeight: number;
+  usesSpanAwareReorder: boolean;
+};
+
 export function normalizeRootShortcutGridItemLayout(
   layout: RootShortcutGridItemLayout,
 ): NormalizedRootShortcutGridItemLayout {
@@ -116,6 +133,38 @@ export function buildRootShortcutGridItems<TShortcut extends Shortcut>(params: {
       layout: normalizeRootShortcutGridItemLayout(resolveItemLayout(shortcut)),
     };
   });
+}
+
+export function resolveRootPackedLayoutState<TShortcut extends Shortcut>(params: {
+  items: RootShortcutGridItem<TShortcut>[];
+  gridColumns: number;
+  minRows: number;
+  rowHeight: number;
+  rowGap: number;
+}): RootPackedLayoutState<TShortcut> {
+  const { items, gridColumns, minRows, rowHeight, rowGap } = params;
+  const packedLayout = packItemsIntoSerpentineGrid({
+    items,
+    gridColumns,
+    getSpan: (item) => ({
+      columnSpan: item.layout.columnSpan,
+      rowSpan: item.layout.rowSpan,
+    }),
+  });
+  const placedGridItemsBySortId = new Map(
+    packedLayout.placedItems.map((item) => [item.sortId, item]),
+  );
+  const displayRows = Math.max(packedLayout.rowCount, minRows);
+
+  return {
+    packedLayout,
+    placedGridItemsBySortId,
+    displayRows,
+    gridMinHeight: displayRows * rowHeight + Math.max(0, displayRows - 1) * rowGap,
+    usesSpanAwareReorder: packedLayout.placedItems.some(
+      (item) => item.columnSpan > 1 || item.rowSpan > 1,
+    ),
+  };
 }
 
 export function buildProjectedGridItemsPreservingFrozenSlotsByOrdinal<TShortcut extends Shortcut>(params: {
@@ -360,6 +409,90 @@ export function buildRootReorderSlotCandidates<TShortcut extends Shortcut>(param
       placedActiveItem,
     });
   }).filter((candidate): candidate is RootReorderSlotCandidate => Boolean(candidate));
+}
+
+export function resolveRootReorderSlotState<TShortcut extends Shortcut>(params: {
+  items: RootShortcutGridItem<TShortcut>[];
+  activeDragId: string | null;
+  activeSourceRootShortcutId: string | null;
+  usesSpanAwareReorder: boolean;
+  gridColumns: number;
+  gridWidthPx: number | null;
+  columnGap: number;
+  rowHeight: number;
+  rowGap: number;
+}): RootReorderSlotState<TShortcut> {
+  const {
+    items,
+    activeDragId,
+    activeSourceRootShortcutId,
+    usesSpanAwareReorder,
+    gridColumns,
+    gridWidthPx,
+    columnGap,
+    rowHeight,
+    rowGap,
+  } = params;
+
+  const gridColumnWidth = !gridWidthPx || gridColumns <= 0
+    ? null
+    : (gridWidthPx - columnGap * Math.max(0, gridColumns - 1)) / Math.max(gridColumns, 1);
+  const shouldUseProjectedRootReorderSlots = Boolean(gridColumnWidth) && usesSpanAwareReorder;
+  const activeDragItem = items.find((item) => item.sortId === activeDragId) ?? null;
+
+  const frozenSortIds = (
+    !usesSpanAwareReorder
+    || !activeDragItem
+    || activeDragItem.layout.columnSpan > 1
+    || activeDragItem.layout.rowSpan > 1
+  )
+    ? null
+    : (() => {
+        const frozenIds = new Set(
+          items
+            .filter((item) => item.sortId !== activeDragItem.sortId && (item.layout.columnSpan > 1 || item.layout.rowSpan > 1))
+            .map((item) => item.sortId),
+        );
+        return frozenIds.size > 0 ? frozenIds : null;
+      })();
+
+  const reorderSlotCandidates = !shouldUseProjectedRootReorderSlots || !activeDragId || !gridColumnWidth
+    ? []
+    : buildRootReorderSlotCandidates({
+        items,
+        activeSortId: activeDragId,
+        gridColumns,
+        gridColumnWidth,
+        columnGap,
+        rowHeight,
+        rowGap,
+        frozenSortIds,
+        rectMode: 'preview',
+        hitRectMode: usesSpanAwareReorder ? 'span-aware' : 'preview',
+      });
+  const extractedReorderSlotCandidates = !activeSourceRootShortcutId || !activeDragId || !gridColumnWidth
+    ? []
+    : buildRootReorderSlotCandidates({
+        items,
+        activeSortId: activeDragId,
+        gridColumns,
+        gridColumnWidth,
+        columnGap,
+        rowHeight,
+        rowGap,
+        frozenSortIds,
+        rectMode: 'item',
+        hitRectMode: 'item',
+      });
+
+  return {
+    gridColumnWidth,
+    shouldUseProjectedRootReorderSlots,
+    activeDragItem,
+    frozenSortIds,
+    reorderSlotCandidates,
+    extractedReorderSlotCandidates,
+  };
 }
 
 function pointInRootReorderSlot(

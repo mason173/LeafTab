@@ -11,9 +11,12 @@ This project already has most of the logic needed to split the shortcut grid int
 - `src/components/ShortcutGrid.tsx`
   Root-grid DOM measurement, pointer lifecycle, auto-scroll, visual projection, and animation orchestration.
 - `src/features/shortcuts/components/FolderShortcutSurface.tsx`
-  Folder-internal pointer lifecycle and extract handoff into the root grid.
+  Host composition wrapper for folder-opened presentation and app-only bindings.
 - `src/App.tsx`
   Product-level policy and UI effects such as merge dialogs, toasts, and scenario state writes.
+
+At the package layer, folder-opened drag is no longer implemented as a second dedicated engine.
+`packages/grid-react/src/FolderShortcutSurface.tsx` is now a thin adapter over `RootShortcutGrid` plus a folder interaction profile.
 
 ## Target split
 
@@ -109,5 +112,5 @@ That would make the package depend on Leaftab-specific state and dialog behavior
 ## Recommended next steps
 
 1. Add package-style public entrypoints before moving files across repositories.
-2. Decide whether to keep `ShortcutGrid.tsx` and `FolderShortcutSurface.tsx` as app-local adapters or publish thin React adapters with the package.
+2. Keep `ShortcutGrid.tsx` and `FolderShortcutSurface.tsx` thin as app-local adapters, or publish only equally thin React adapters with the package.
 3. If nested folders are ever needed, treat that as a new feature line rather than extending the current open-source contract implicitly.

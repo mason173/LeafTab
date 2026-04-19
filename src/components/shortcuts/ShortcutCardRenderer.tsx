@@ -12,7 +12,8 @@ interface ShortcutCardRendererProps {
   forceTextWhite?: boolean;
   enableLargeFolder?: boolean;
   largeFolderPreviewSize?: number;
-  folderDropTargetActive?: boolean;
+  floatTitle?: boolean;
+  dropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
   onOpen: () => void;
@@ -29,7 +30,8 @@ export function ShortcutCardRenderer({
   forceTextWhite = false,
   enableLargeFolder = false,
   largeFolderPreviewSize,
-  folderDropTargetActive = false,
+  floatTitle = false,
+  dropTargetActive = false,
   onPreviewShortcutOpen,
   selectionDisabled = false,
   onOpen,
@@ -46,7 +48,8 @@ export function ShortcutCardRenderer({
       forceTextWhite={forceTextWhite}
       enableLargeFolder={enableLargeFolder}
       largeFolderPreviewSize={largeFolderPreviewSize}
-      folderDropTargetActive={folderDropTargetActive}
+      floatTitle={floatTitle}
+      dropTargetActive={dropTargetActive}
       onPreviewShortcutOpen={onPreviewShortcutOpen}
       selectionDisabled={selectionDisabled}
       onOpen={onOpen}

@@ -65,12 +65,14 @@ async function main() {
     "from '@leaftab/workspace-react'",
     'FolderShortcutSurface host adapter must import the shared package component.',
   );
-  assertIncludes(
-    folderSurfaceSource,
-    folderSurfaceFile,
-    'PackageFolderShortcutSurface',
-    'FolderShortcutSurface host adapter should stay a thin wrapper around the package component.',
-  );
+  if (
+    !folderSurfaceSource.includes('PackageFolderShortcutSurface')
+    && !folderSurfaceSource.includes("from './RootShortcutGrid'")
+  ) {
+    throw new Error(
+      `[grid-boundary] FolderShortcutSurface host adapter should stay thin and only compose shared grid wrappers (${folderSurfaceFile}).`,
+    );
+  }
 
   assertIncludes(
     shortcutGridShimSource,
@@ -132,7 +134,7 @@ async function main() {
   }
 
   console.log(
-    '[grid-boundary] Host adapters still point at the local @leaftab/workspace-react package, remain thin, and do not own workspace engine behavior.',
+    '[grid-boundary] Host adapters still point at shared grid wrappers, remain thin, and do not own workspace engine behavior.',
   );
 }
 

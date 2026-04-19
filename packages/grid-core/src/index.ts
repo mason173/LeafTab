@@ -14,6 +14,7 @@ export * from './model/paths';
 export * from './model/selectors';
 export * from './model/types';
 export * from './domain/dropIntents';
+export * from './domain/interactionProfile';
 export * from './drag/dragMotion';
 export * from './drag/dropEdge';
 export * from './drag/gridDragEngine';
