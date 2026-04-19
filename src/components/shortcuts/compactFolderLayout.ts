@@ -41,14 +41,16 @@ export function getCompactShortcutCardMetrics(params: {
   allowLargeFolder?: boolean;
   columnGap?: number;
   largeFolderPreviewSize?: number;
+  ignoreTitleHeight?: boolean;
 }) {
   const previewSize = getCompactShortcutPreviewSize(params);
   const largeFolder = params.allowLargeFolder && isShortcutLargeFolder(params.shortcut);
+  const ignoreTitleHeight = Boolean(params.ignoreTitleHeight);
 
   return {
     previewSize,
     width: previewSize,
-    height: previewSize + COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX,
+    height: ignoreTitleHeight ? previewSize : previewSize + COMPACT_SHORTCUT_TITLE_BLOCK_HEIGHT_PX,
     columnSpan: largeFolder ? LARGE_FOLDER_GRID_SPAN : 1,
     rowSpan: largeFolder ? LARGE_FOLDER_GRID_SPAN : 1,
     largeFolder,

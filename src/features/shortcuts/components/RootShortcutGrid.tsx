@@ -1,5 +1,7 @@
 import {
   RootShortcutGrid as PackageRootShortcutGrid,
+  type GridInteractionProfileLike,
+  type RootShortcutGridHeatZoneInspector,
   type RootShortcutDropIntent,
   type ShortcutExternalDragSessionSeed,
 } from '@leaftab/workspace-react';
@@ -14,13 +16,93 @@ import { type ShortcutLayoutDensity } from '@/components/shortcuts/shortcutCardV
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import {
   computeLargeFolderPreviewSize,
-  renderLeaftabDropPreview,
   renderRootShortcutGridCard,
   renderRootShortcutGridDragPreview,
   renderRootShortcutGridSelectionIndicator,
-  renderRootGridCenterPreview,
-  resolveLeaftabShadowPreviewGeometry,
 } from './leaftabGridVisuals';
+
+const HEAT_ZONE_CORE_INSET = 24;
+const HEAT_ZONE_LARGE_FOLDER_CORE_INSET = 12;
+
+function HeatZoneInspectorPanel({
+  inspector,
+}: {
+  inspector: RootShortcutGridHeatZoneInspector | null;
+}) {
+  const zone = inspector?.zone ?? null;
+  const aimX = inspector?.aimX ?? 50;
+  const aimY = inspector?.aimY ?? 50;
+  const largeTarget = inspector?.largeTarget ?? false;
+  const coreInset = largeTarget ? HEAT_ZONE_LARGE_FOLDER_CORE_INSET : HEAT_ZONE_CORE_INSET;
+  const targetLabel = inspector?.targetKind === 'empty'
+    ? '空位'
+    : inspector?.targetTitle ?? '未命中';
+  const targetKindLabel = inspector?.targetKind === 'folder'
+    ? '文件夹'
+    : inspector?.targetKind === 'shortcut'
+      ? '图标'
+      : '网格';
+
+  return (
+    <div className="pointer-events-none absolute right-3 top-3 z-30">
+      <div className="w-[112px] rounded-[18px] border border-black/10 bg-[rgba(248,250,252,0.92)] p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-md">
+        <div className="mb-2">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+            {targetKindLabel}
+          </div>
+          <div className="truncate text-[11px] font-semibold text-slate-800">
+            {targetLabel}
+          </div>
+        </div>
+        <div
+          className={[
+            'relative h-[84px] w-[84px] overflow-hidden rounded-[18px] border border-black/10 bg-[rgba(248,250,252,0.9)] shadow-[0_8px_20px_rgba(15,23,42,0.08)]',
+            largeTarget ? 'ring-1 ring-emerald-400/20' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          <div className="absolute inset-0 bg-[rgba(239,68,68,0.08)]" />
+          <div
+            className="absolute border border-emerald-500/45 bg-emerald-400/12"
+            style={{
+              left: `${coreInset}%`,
+              top: `${coreInset}%`,
+              right: `${coreInset}%`,
+              bottom: `${coreInset}%`,
+              borderRadius: largeTarget ? '16px' : '14px',
+            }}
+          />
+          {[
+            { key: 'T', className: 'left-1/2 top-2 -translate-x-1/2', active: zone === 'T' },
+            { key: 'L', className: 'left-2 top-1/2 -translate-y-1/2', active: zone === 'L' },
+            { key: 'R', className: 'right-2 top-1/2 -translate-y-1/2', active: zone === 'R' },
+            { key: 'B', className: 'bottom-2 left-1/2 -translate-x-1/2', active: zone === 'B' },
+          ].map((label) => (
+            <span
+              key={label.key}
+              className={[
+                'absolute text-[11px] font-semibold tracking-[0.08em] text-slate-500 transition-colors',
+                label.className,
+                label.active ? 'text-rose-500' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {label.key}
+            </span>
+          ))}
+          <div
+            className={[
+              'absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/80 bg-slate-900 shadow-[0_0_0_4px_rgba(255,255,255,0.32)]',
+              zone === 'core' ? 'bg-emerald-500' : '',
+            ].filter(Boolean).join(' ')}
+            style={{
+              left: `${aimX}%`,
+              top: `${aimY}%`,
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export type RootShortcutGridCardRenderParams = {
   shortcut: Shortcut;
@@ -32,7 +114,7 @@ export type RootShortcutGridCardRenderParams = {
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
-  folderDropTargetActive?: boolean;
+  dropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
   onOpen: () => void;
@@ -84,6 +166,11 @@ export interface RootShortcutGridProps {
   monochromeTileBackdropBlur?: boolean;
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  interactionProfile?: GridInteractionProfileLike;
+  forceReorderOnly?: boolean;
+  extractBoundaryRef?: React.RefObject<HTMLElement | null>;
+  onExtractDragStart?: (payload: ShortcutExternalDragSessionSeed) => void;
+  onBoundaryHoverChange?: (hovered: boolean) => void;
   disableReorderAnimation?: boolean;
   selectionMode?: boolean;
   selectedShortcutIndexes?: ReadonlySet<number>;
@@ -118,6 +205,11 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   monochromeTileBackdropBlur = false,
   onDragStart,
   onDragEnd,
+  interactionProfile,
+  forceReorderOnly = false,
+  extractBoundaryRef,
+  onExtractDragStart,
+  onBoundaryHoverChange,
   disableReorderAnimation = false,
   selectionMode = false,
   selectedShortcutIndexes,
@@ -131,6 +223,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   const firefox = isFirefoxBuildTarget();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gridWidthPx, setGridWidthPx] = useState<number | null>(null);
+  const [heatZoneInspector, setHeatZoneInspector] = useState<RootShortcutGridHeatZoneInspector | null>(null);
 
   const shortcutIconRenderContextValue = useMemo(() => ({
     monochromeTone,
@@ -153,10 +246,6 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   const resolvedTitleBlockHeight = useMemo(
     () => Math.max(12, Math.round(rowHeight * 0.2)),
     [rowHeight],
-  );
-  const resolvedInteractionPreviewSize = useMemo(
-    () => Math.max(24, Math.round(rowHeight - resolvedTitleBlockHeight)),
-    [resolvedTitleBlockHeight, rowHeight],
   );
   const resolvedVisualTitleFontSize = useMemo(
     () => Math.max(10, Math.min(compactTitleFontSize, Math.round(resolvedTitleBlockHeight * 0.58))),
@@ -187,13 +276,13 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   }, []);
 
   const largeFolderPreviewSize = useMemo(() => computeLargeFolderPreviewSize({
-    compactIconSize: resolvedInteractionPreviewSize,
+    compactIconSize,
     columnGap,
     rowGap,
     gridColumns,
     gridWidthPx,
     largeFolderEnabled,
-  }), [columnGap, resolvedInteractionPreviewSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
+  }), [columnGap, compactIconSize, gridColumns, gridWidthPx, largeFolderEnabled, rowGap]);
 
   const rootGridPreset = useMemo(() => createLeaftabRootGridPreset({
     getRootRect: () => wrapperRef.current?.getBoundingClientRect() ?? null,
@@ -202,27 +291,32 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     rowHeight,
     rowGap,
     columnGap,
-    compactIconSize: resolvedInteractionPreviewSize,
-    titleBlockHeight: resolvedTitleBlockHeight,
+    compactIconSize,
     iconCornerRadius,
     largeFolderPreviewSize,
     largeFolderEnabled,
   }), [
     columnGap,
+    compactIconSize,
     gridColumns,
     gridWidthPx,
     largeFolderEnabled,
     largeFolderPreviewSize,
-    resolvedInteractionPreviewSize,
-    resolvedTitleBlockHeight,
     rowGap,
     rowHeight,
     iconCornerRadius,
   ]);
+  const resolvedInteractionProfile = useMemo<GridInteractionProfileLike | undefined>(() => {
+    if (interactionProfile) {
+      return interactionProfile;
+    }
+
+    return forceReorderOnly ? 'folder-internal' : undefined;
+  }, [forceReorderOnly, interactionProfile]);
 
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
-      <div ref={wrapperRef} className="w-full">
+      <div ref={wrapperRef} className="relative w-full">
         <PackageRootShortcutGrid
           containerHeight={containerHeight}
           bottomInset={bottomInset}
@@ -240,6 +334,11 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           onGridContextMenu={onGridContextMenu}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
+          interactionProfile={resolvedInteractionProfile}
+          onHeatZoneInspectorChange={setHeatZoneInspector}
+          extractBoundaryRef={extractBoundaryRef}
+          onExtractDragStart={onExtractDragStart}
+          onBoundaryHoverChange={onBoundaryHoverChange}
           disableReorderAnimation={disableReorderAnimation}
           selectionMode={selectionMode}
           selectedShortcutIndexes={selectedShortcutIndexes}
@@ -269,7 +368,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                   forceTextWhite,
                   enableLargeFolder: largeFolderEnabled,
                   largeFolderPreviewSize,
-                  folderDropTargetActive: params.centerPreviewActive && params.shortcut.kind === 'folder',
+                  dropTargetActive: params.centerPreviewActive,
                   onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
                   selectionDisabled: params.selectionDisabled,
                   onOpen: params.onOpen,
@@ -290,34 +389,8 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               </div>
             );
           }}
-          renderCenterPreview={(params) => {
-            if (params.shortcut.kind === 'folder') return null;
-
-            return renderRootGridCenterPreview({
-              shortcut: params.shortcut,
-              compactIconSize,
-              iconCornerRadius,
-              largeFolderEnabled,
-              largeFolderPreviewSize,
-            });
-          }}
-          renderDropPreview={(params) => {
-            const shadowGeometry = resolveLeaftabShadowPreviewGeometry({
-              shortcut: params.shortcut,
-              iconSize: compactIconSize,
-              iconCornerRadius,
-              allowLargeFolder: largeFolderEnabled,
-              largeFolderPreviewSize,
-            });
-
-            return renderLeaftabDropPreview({
-              ...params,
-              ...shadowGeometry,
-              shadowOffsetX: (params.width - shadowGeometry.shadowWidth) / 2,
-              shadowOffsetY: (params.height - shadowGeometry.shadowHeight) / 2,
-              testId: 'shortcut-drop-preview',
-            });
-          }}
+          renderCenterPreview={() => null}
+          renderDropPreview={() => null}
           renderDragPreview={(params) => renderDragPreview({
             shortcut: params.shortcut,
             firefox,
@@ -331,6 +404,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
             largeFolderPreviewSize,
           })}
         />
+        <HeatZoneInspectorPanel inspector={heatZoneInspector} />
       </div>
     </ShortcutIconRenderContext.Provider>
   );

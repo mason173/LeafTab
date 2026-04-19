@@ -23,6 +23,8 @@ const MAX_LEAFTAB_ICON_CORNER_RADIUS = 50;
 const SMALL_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 40;
 const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const FOLDER_SHARED_ICON_BASE_SIZE = 72;
+const COMPACT_TARGET_CORE_INSET = 0.24;
+const LARGE_FOLDER_TARGET_CORE_INSET = 0.12;
 
 export function clampLeaftabIconCornerRadius(value: unknown): number {
   const numeric = Number(value);
@@ -127,6 +129,28 @@ export function inflateLeaftabRect(rect: RectLike, amount: number): RectLike {
   };
 }
 
+function buildLeaftabCompactTargetCoreRect(params: {
+  cellRect: RectLike;
+  insetRatio: number;
+}): RectLike {
+  const { cellRect, insetRatio } = params;
+  const insetX = cellRect.width * insetRatio;
+  const insetY = cellRect.height * insetRatio;
+  const left = cellRect.left + insetX;
+  const top = cellRect.top + insetY;
+  const right = cellRect.right - insetX;
+  const bottom = cellRect.bottom - insetY;
+
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
+}
+
 export function computeLeaftabLargeFolderPreviewSize(params: {
   gridWidthPx: number | null;
   gridColumns: number;
@@ -140,31 +164,36 @@ export function computeLeaftabLargeFolderPreviewSize(params: {
     gridColumns,
     compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
     columnGap = LEAFTAB_COMPACT_GRID_METRICS.columnGap,
-    rowGap = LEAFTAB_COMPACT_GRID_METRICS.rowGap,
+    rowGap: _rowGap = LEAFTAB_COMPACT_GRID_METRICS.rowGap,
     largeFolderEnabled = gridColumns >= LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan,
   } = params;
   if (!largeFolderEnabled) return undefined;
 
   const minimumPreviewSize = compactIconSize * LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan + columnGap;
-  const maxPreviewHeight = minimumPreviewSize + rowGap + LEAFTAB_COMPACT_GRID_METRICS.titleBlockHeight - columnGap;
 
   if (!gridWidthPx || gridColumns <= 0) {
-    return maxPreviewHeight;
+    return minimumPreviewSize;
   }
 
   const gridColumnWidth = (gridWidthPx - columnGap * Math.max(0, gridColumns - 1)) / Math.max(gridColumns, 1);
-  const maxPreviewWidth = gridColumnWidth * LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan + columnGap;
+  // Match the prototype's visual-balance rule:
+  // a large folder still occupies a fixed 2x2 footprint, but its visible box
+  // should align to the outer edges of neighboring 1x1 icon previews.
+  const alignedPreviewSize = (
+    compactIconSize
+    + gridColumnWidth * Math.max(0, LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan - 1)
+    + columnGap * Math.max(0, LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan - 1)
+  );
 
   return Math.max(
     minimumPreviewSize,
-    Math.floor(Math.min(maxPreviewWidth, maxPreviewHeight)),
+    Math.floor(alignedPreviewSize),
   );
 }
 
 export function resolveLeaftabRootItemLayout(params: {
   shortcut: Shortcut;
   compactIconSize?: number;
-  titleBlockHeight?: number;
   columnGap?: number;
   iconCornerRadius?: number;
   largeFolderPreviewSize?: number;
@@ -174,7 +203,6 @@ export function resolveLeaftabRootItemLayout(params: {
   const {
     shortcut,
     compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
-    titleBlockHeight = LEAFTAB_COMPACT_GRID_METRICS.titleBlockHeight,
     columnGap = LEAFTAB_COMPACT_GRID_METRICS.columnGap,
     iconCornerRadius = LEAFTAB_COMPACT_GRID_METRICS.iconCornerRadius,
     largeFolderPreviewSize,
@@ -191,7 +219,9 @@ export function resolveLeaftabRootItemLayout(params: {
     const resolvedLargeFolderBorderRadius = getLeaftabLargeFolderBorderRadius(previewSize, iconCornerRadius);
     return {
       width: previewSize,
-      height: previewSize + titleBlockHeight,
+      // Keep the 2x2 folder body's measured box aligned to the icon system;
+      // the title is treated as a visual attachment rather than part of the body.
+      height: previewSize,
       previewRect: {
         left: 0,
         top: 0,
@@ -211,7 +241,7 @@ export function resolveLeaftabRootItemLayout(params: {
 
   return {
     width: compactIconSize,
-    height: compactIconSize + titleBlockHeight,
+    height: compactIconSize,
     previewRect: {
       left: 0,
       top: 0,
@@ -226,13 +256,11 @@ export function resolveLeaftabRootItemLayout(params: {
 export function resolveLeaftabFolderItemLayout(params: {
   shortcut: Shortcut;
   compactIconSize?: number;
-  titleBlockHeight?: number;
   iconCornerRadius?: number;
 }): FolderShortcutSurfaceItemLayout {
   const {
     shortcut,
     compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
-    titleBlockHeight = LEAFTAB_COMPACT_GRID_METRICS.titleBlockHeight,
     iconCornerRadius = LEAFTAB_COMPACT_GRID_METRICS.iconCornerRadius,
   } = params;
   const resolvedPreviewBorderRadius = isShortcutFolder(shortcut)
@@ -243,7 +271,7 @@ export function resolveLeaftabFolderItemLayout(params: {
 
   return {
     width: compactIconSize,
-    height: compactIconSize + titleBlockHeight,
+    height: compactIconSize,
     previewRect: {
       left: 0,
       top: 0,
@@ -279,8 +307,6 @@ export function resolveLeaftabCompactTargetRegions(
     rowHeight,
     rowGap,
     columnGap = LEAFTAB_COMPACT_GRID_METRICS.columnGap,
-    compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
-    largeFolderPreviewSize,
     largeFolderEnabled = gridColumns >= LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan,
     largeFolderHitSlop = LEAFTAB_COMPACT_GRID_METRICS.largeFolderHitSlop,
   } = config;
@@ -311,27 +337,18 @@ export function resolveLeaftabCompactTargetRegions(
     && isShortcutFolder(params.shortcut)
     && params.shortcut.folderDisplayMode === 'large'
   );
-  const previewSize = isLargeFolder
-    ? (largeFolderPreviewSize ?? compactIconSize * LEAFTAB_COMPACT_GRID_METRICS.largeFolderGridSpan + columnGap)
-    : compactIconSize;
-  const left = targetCellRegion.left + Math.max(0, (targetCellRegion.width - previewSize) / 2);
-  const top = targetCellRegion.top;
-  const targetIconRegion: RectLike = {
-    left,
-    top,
-    width: previewSize,
-    height: previewSize,
-    right: left + previewSize,
-    bottom: top + previewSize,
-  };
+  const targetCoreRegion = buildLeaftabCompactTargetCoreRect({
+    cellRect: targetCellRegion,
+    insetRatio: isLargeFolder ? LARGE_FOLDER_TARGET_CORE_INSET : COMPACT_TARGET_CORE_INSET,
+  });
 
   return {
     targetCellRegion,
-    targetIconRegion,
+    targetIconRegion: targetCoreRegion,
     targetIconHitRegion: isLargeFolder
-      ? inflateLeaftabRect(targetIconRegion, largeFolderHitSlop)
-      : targetIconRegion,
-    bigFolderMergeHitArea: isLargeFolder ? targetIconRegion : undefined,
+      ? inflateLeaftabRect(targetCoreRegion, largeFolderHitSlop)
+      : targetCoreRegion,
+    bigFolderMergeHitArea: isLargeFolder ? targetCoreRegion : undefined,
   };
 }
 

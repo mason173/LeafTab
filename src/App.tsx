@@ -149,6 +149,7 @@ import {
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
+import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEngine/leaftabGridEngineHostAdapter';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -1083,6 +1084,28 @@ export default function App() {
     if (outcome.kind !== 'start-root-drag-session') return;
     commitShortcutInteractionOutcome(outcome);
   }, [commitShortcutInteractionOutcome, shortcuts]);
+
+  const handleFolderEngineChildrenCommit = useCallback((folderId: string, children: Shortcut[]) => {
+    if (!folderId) return;
+    setScenarioShortcuts((prev) => {
+      const sourceShortcuts = prev[selectedScenarioId] ?? [];
+      let changed = false;
+      const nextShortcuts = sourceShortcuts.map((shortcut) => {
+        if (shortcut.id !== folderId || !isShortcutFolder(shortcut)) return shortcut;
+        changed = true;
+        return {
+          ...shortcut,
+          children,
+        };
+      });
+      if (!changed) return prev;
+      return {
+        ...prev,
+        [selectedScenarioId]: nextShortcuts,
+      };
+    });
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
   const handleSaveFolderName = useCallback((name: string) => {
     const nextName = name.trim();
@@ -3393,10 +3416,11 @@ export default function App() {
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);
-  const shortcutGridBaseProps = useMemo(() => ({
+  const shortcutEngineHostAdapter = useMemo(() => createLeaftabGridEngineHostAdapter({
+    scenarioId: selectedScenarioId,
+    shortcuts,
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
-    shortcuts,
     gridColumns: normalizedGridColumns,
     minRows: minShortcutRows,
     layoutDensity: responsiveLayout.density,
@@ -3406,7 +3430,8 @@ export default function App() {
     iconCornerRadius: shortcutIconCornerRadius,
     iconAppearance: shortcutIconAppearance,
     disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion || Boolean(openFolderShortcut),
-    onShortcutOpen: handleShortcutActivate,
+    onRootShortcutOpen: handleShortcutActivate,
+    onFolderShortcutOpen: handleShortcutOpen,
     onShortcutContextMenu: handleShortcutContextMenu,
     onShortcutReorder: handleShortcutReorder,
     onShortcutDropIntent: handleRootShortcutDropIntent,
@@ -3415,24 +3440,40 @@ export default function App() {
     onExternalDragSessionConsumed: (token: number) => {
       setExternalShortcutDragSession((current) => (current?.token === token ? null : current));
     },
+    openFolderShortcut,
+    onFolderOpenChange: (open) => {
+      if (!open) setOpenFolderId(null);
+    },
+    onRenameFolder: handleRenameFolderInline,
+    onFolderShortcutContextMenu: handleFolderChildShortcutContextMenu,
+    onFolderShortcutDropIntent: handleFolderShortcutDropIntent,
+    onFolderExtractDragStart: handleFolderExtractDragStart,
+    onFolderChildrenCommit: handleFolderEngineChildrenCommit,
   }), [
-    externalShortcutDragSession,
-    handleGridContextMenu,
-    handleShortcutContextMenu,
-    handleRootShortcutDropIntent,
-    handleShortcutActivate,
-    handleShortcutReorder,
+    selectedScenarioId,
+    shortcuts,
+    shortcutsAreaHeight,
     normalizedGridColumns,
     minShortcutRows,
-    openFolderShortcut,
-    scaledCompactShortcutSize,
-    responsiveLayout.compactShortcutTitleSize,
     responsiveLayout.density,
-    shortcutIconAppearance,
-    shortcutIconCornerRadius,
+    responsiveLayout.compactShortcutTitleSize,
+    scaledCompactShortcutSize,
     shortcutCompactShowTitle,
-    shortcutsAreaHeight,
+    shortcutIconCornerRadius,
+    shortcutIconAppearance,
     visualEffectsPolicy.disableShortcutReorderMotion,
+    openFolderShortcut,
+    handleShortcutActivate,
+    handleShortcutContextMenu,
+    handleShortcutReorder,
+    handleRootShortcutDropIntent,
+    handleGridContextMenu,
+    externalShortcutDragSession,
+    handleRenameFolderInline,
+    handleFolderChildShortcutContextMenu,
+    handleFolderShortcutDropIntent,
+    handleFolderExtractDragStart,
+    handleFolderEngineChildrenCommit,
   ]);
   const homeMainContentBaseProps = useMemo(() => ({
     user,
@@ -3570,7 +3611,7 @@ export default function App() {
             topNavModeProps={topNavModeProps}
             homeMainContentBaseProps={homeMainContentBaseProps}
             shortcutGridProps={{
-              ...shortcutGridBaseProps,
+              ...shortcutEngineHostAdapter.rootGridProps,
               selectionMode,
               selectedShortcutIndexes,
               onToggleShortcutSelection,
@@ -3586,33 +3627,12 @@ export default function App() {
       </ShortcutSelectionShell>
       {useCompactFolderOverlay ? (
         <ShortcutFolderCompactOverlay
-          open={Boolean(openFolderShortcut)}
-          onOpenChange={(open) => {
-            if (!open) setOpenFolderId(null);
-          }}
+          {...shortcutEngineHostAdapter.compactFolderOverlayProps}
           shortcut={compactOverlayShortcut}
-          compactIconSize={scaledCompactShortcutSize}
-          iconCornerRadius={shortcutIconCornerRadius}
-          iconAppearance={shortcutIconAppearance}
-          onRenameFolder={handleRenameFolderInline}
-          onShortcutOpen={handleShortcutOpen}
-          onShortcutContextMenu={handleFolderChildShortcutContextMenu}
-          onShortcutDropIntent={handleFolderShortcutDropIntent}
-          onExtractDragStart={handleFolderExtractDragStart}
         />
       ) : (
         <ShortcutFolderDialog
-          open={Boolean(openFolderShortcut)}
-          onOpenChange={(open) => {
-            if (!open) setOpenFolderId(null);
-          }}
-          shortcut={openFolderShortcut}
-          compactIconSize={scaledCompactShortcutSize}
-          iconCornerRadius={shortcutIconCornerRadius}
-          iconAppearance={shortcutIconAppearance}
-          onShortcutOpen={handleShortcutOpen}
-          onShortcutDropIntent={handleFolderShortcutDropIntent}
-          onExtractDragStart={handleFolderExtractDragStart}
+          {...shortcutEngineHostAdapter.folderDialogProps}
         />
       )}
       <ShortcutFolderNameDialog

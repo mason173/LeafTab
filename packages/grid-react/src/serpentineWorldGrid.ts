@@ -1,5 +1,3 @@
-import { getSerpentineCoordFromSequence } from '@leaftab/workspace-core';
-
 export type SerpentineGridSpan = {
   columnSpan: number;
   rowSpan: number;
@@ -12,6 +10,16 @@ export type SerpentinePackedGridItem<TItem> = TItem & {
   rowSpan: number;
   firstSequence: number;
 };
+
+function getFlowCoordFromSequence(sequence: number, columns: number) {
+  const safeColumns = Math.max(1, Math.floor(columns));
+  const safeSequence = Math.max(0, Math.floor(sequence));
+
+  return {
+    row: Math.floor(safeSequence / safeColumns),
+    column: safeSequence % safeColumns,
+  };
+}
 
 function canPlaceSerpentineGridItem(params: {
   occupied: boolean[][];
@@ -81,7 +89,7 @@ export function packItemsIntoSerpentineGrid<TItem>(params: {
     let placed = false;
 
     while (!placed) {
-      const candidateCoord = getSerpentineCoordFromSequence(candidateSequence, safeGridColumns);
+      const candidateCoord = getFlowCoordFromSequence(candidateSequence, safeGridColumns);
 
       if (!canPlaceSerpentineGridItem({
         occupied,

@@ -4,6 +4,9 @@ export {
 export type {
   FolderExtractDragStartPayload,
   FolderShortcutDropIntent,
+  GridInteractionProfile,
+  GridInteractionProfileKind,
+  GridInteractionProfileLike,
   RootShortcutDropIntent,
   ShortcutExternalDragSessionSeed,
 } from '@leaftab/workspace-core';
@@ -16,6 +19,8 @@ export type {
 } from './previewGeometry';
 export type {
   FolderShortcutSurfaceItemLayout,
+  FolderShortcutSurfaceHeatZone,
+  FolderShortcutSurfaceHeatZoneInspector,
   FolderShortcutSurfaceProps,
   FolderShortcutSurfaceRenderDragPreviewParams,
   FolderShortcutSurfaceRenderDropPreviewParams,
@@ -41,6 +46,8 @@ export type {
 export type {
   RootShortcutExternalDragSession,
   RootShortcutGridDropTargetRects,
+  RootShortcutGridHeatZone,
+  RootShortcutGridHeatZoneInspector,
   RootShortcutGridItemLayout,
   RootShortcutGridProps,
   RootShortcutGridResolveCompactTargetRegionsParams,

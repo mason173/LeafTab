@@ -17,8 +17,12 @@ const SMALL_TARGET_DROP_CENTER_THRESHOLD = {
   thresholdYMaxPx: 30,
 };
 
+function isAnyFolderShortcut(shortcut: RootShortcutDragItem['shortcut']): boolean {
+  return Boolean(isShortcutFolder(shortcut));
+}
+
 function isLargeFolderShortcut(shortcut: RootShortcutDragItem['shortcut']): boolean {
-  return Boolean(isShortcutFolder(shortcut) && shortcut.folderDisplayMode === 'large');
+  return Boolean(isAnyFolderShortcut(shortcut) && shortcut.folderDisplayMode === 'large');
 }
 
 function pointInRect(point: Point, rect: DragRect): boolean {
@@ -57,7 +61,7 @@ export function resolveRootDragInteractionMode(params: {
   if (sourceRootShortcutId) {
     return 'external-insert';
   }
-  if (isLargeFolderShortcut(activeShortcut)) {
+  if (isAnyFolderShortcut(activeShortcut)) {
     return 'reorder-only';
   }
   return 'normal';

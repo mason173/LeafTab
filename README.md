@@ -124,6 +124,14 @@ npm i
 npm run dev
 ```
 
+基础校验 / Baseline checks:
+
+```bash
+npm run typecheck
+npm run test
+npm run check
+```
+
 `public/leaftab-icons/shapes/` 是主仓库内维护的新版图标源目录，会随主仓库一起管理。图标文件名必须使用 `domain_HEX.svg` 格式，例如 `www.wps.cn_FE3E53.svg`。`npm run dev`、`npm run build` 和 `npm run icons:sync` 都会自动根据这些文件重建 `public/leaftab-icons/icon-library.json`。
 `public/leaftab-icons/shapes/` is the canonical icon source directory maintained inside this repository and versioned together with the main project. Icon file names must follow the `domain_HEX.svg` format, for example `www.wps.cn_FE3E53.svg`. `npm run dev`, `npm run build`, and `npm run icons:sync` all rebuild `public/leaftab-icons/icon-library.json` from those files automatically.
 

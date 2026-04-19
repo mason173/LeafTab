@@ -16,7 +16,6 @@ type LeaftabFolderSurfacePresetBindings = {
 
 export type CreateLeaftabFolderSurfacePresetOptions = {
   compactIconSize?: number;
-  titleBlockHeight?: number;
   iconCornerRadius?: number;
   largeFolderPreviewSize?: number;
   dropPreviewBorderRadius?: string;
@@ -29,7 +28,6 @@ export function createLeaftabFolderSurfacePreset(
 ): LeaftabFolderSurfacePreset {
   const {
     compactIconSize = LEAFTAB_COMPACT_GRID_METRICS.iconSize,
-    titleBlockHeight = LEAFTAB_COMPACT_GRID_METRICS.titleBlockHeight,
     iconCornerRadius = LEAFTAB_COMPACT_GRID_METRICS.iconCornerRadius,
     largeFolderPreviewSize,
     dropPreviewBorderRadius,
@@ -39,7 +37,6 @@ export function createLeaftabFolderSurfacePreset(
     resolveItemLayout: (shortcut) => resolveLeaftabFolderItemLayout({
       shortcut,
       compactIconSize,
-      titleBlockHeight,
       iconCornerRadius,
     }),
     renderItem: (params) => renderLeaftabFolderSurfaceItem(params, {
