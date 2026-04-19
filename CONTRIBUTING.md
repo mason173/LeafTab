@@ -22,5 +22,4 @@ Thanks for your interest in contributing to LeafTab.
   - `packages/grid-core`
   - `packages/grid-react`
   - `packages/grid-preset-leaftab`
-- Read `docs/compact-grid-rules.md` before changing compact drag semantics.
 - Run `npm run grid:verify:host` before merging grid-related changes.

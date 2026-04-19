@@ -181,7 +181,6 @@ JWT_SECRET=change-me SESSION_SECRET=change-me ADMIN_API_KEY=change-me node index
 部署参考 / Deployment references:
 
 - 示例文件：`deployment/`（Caddy/systemd/env）
-- HTTPS 指南：`docs/HTTPS_GUIDE.md`
 - 一键部署脚本：`scripts/deploy.sh`（交互输入服务器地址；密码由 SSH/SCP 原生提示）
 
 部署脚本示例 / Deploy script examples:
