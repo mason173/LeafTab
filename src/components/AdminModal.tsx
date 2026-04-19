@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RiExternalLinkFill } from "@/icons/ri-compat";
+import {
+  RiCloudFill,
+  RiExternalLinkFill,
+  RiRainyFill,
+  RiSnowyFill,
+  RiSunFill,
+  RiThunderstormsFill,
+} from "@/icons/ri-compat";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -15,8 +22,11 @@ export function AdminModal({
   open,
   onOpenChange,
   onExportDomains,
+  gridHitDebugEnabled,
+  onGridHitDebugEnabledChange,
   weatherDebugEnabled,
   onWeatherDebugEnabledChange,
+  onWeatherDebugApply,
   customApiUrl,
   onCustomApiUrlChange,
   customApiName,
@@ -27,8 +37,11 @@ export function AdminModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExportDomains: () => void;
+  gridHitDebugEnabled: boolean;
+  onGridHitDebugEnabledChange: (enabled: boolean) => void;
   weatherDebugEnabled: boolean;
   onWeatherDebugEnabledChange: (enabled: boolean) => void;
+  onWeatherDebugApply: (code: number) => void;
   customApiUrl: string;
   onCustomApiUrlChange: (url: string) => void;
   customApiName: string;
@@ -189,6 +202,23 @@ export function AdminModal({
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between space-x-2">
                   <div className="flex flex-col space-y-1 items-start">
+                    <span className="text-sm font-medium leading-none">
+                      {t("settings.adminPanel.gridHitDebugLabel", { defaultValue: "网格命中调试" })}
+                    </span>
+                    <span className="font-normal text-xs text-muted-foreground">
+                      {t("settings.adminPanel.gridHitDebugDesc", { defaultValue: "显示主页网格命中调试悬浮窗（仅当前会话）" })}
+                    </span>
+                  </div>
+                  <Switch
+                    id="grid-hit-debug"
+                    checked={gridHitDebugEnabled}
+                    onCheckedChange={(checked: boolean) => onGridHitDebugEnabledChange(checked)}
+                    className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-2">
+                  <div className="flex flex-col space-y-1 items-start">
                     <span className="text-sm font-medium leading-none">{t("settings.adminPanel.weatherDebugLabel")}</span>
                     <span className="font-normal text-xs text-muted-foreground">{t("settings.adminPanel.weatherDebugDesc")}</span>
                   </div>
@@ -199,6 +229,57 @@ export function AdminModal({
                     className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input [&_span[data-slot=switch-thumb]]:transition-colors [&_span[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_span[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
                   />
                 </div>
+                {weatherDebugEnabled ? (
+                  <div className="rounded-2xl border border-border/70 bg-secondary/30 p-2">
+                    <div className="grid grid-cols-5 gap-2">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => onWeatherDebugApply(0)}
+                        title="Sunny"
+                      >
+                        <RiSunFill className="size-4" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => onWeatherDebugApply(2)}
+                        title="Cloudy"
+                      >
+                        <RiCloudFill className="size-4" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => onWeatherDebugApply(61)}
+                        title="Rain"
+                      >
+                        <RiRainyFill className="size-4" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => onWeatherDebugApply(71)}
+                        title="Snow"
+                      >
+                        <RiSnowyFill className="size-4" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={() => onWeatherDebugApply(95)}
+                        title="Thunderstorm"
+                      >
+                        <RiThunderstormsFill className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-between space-x-2">
                   <div className="flex flex-col space-y-1 items-start">

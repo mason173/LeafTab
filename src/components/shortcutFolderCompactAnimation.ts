@@ -5,21 +5,10 @@ export type OverlayAnimationRect = {
   height: number;
 };
 
-export const FOLDER_OPEN_DURATION_MS = 350;
-export const FOLDER_CLOSE_DURATION_MS = 250;
-export const FOLDER_OPENING_GHOST_STAGGER_STEP_MS = 14;
-export const FOLDER_OPENING_GHOST_STAGGER_MAX_MS = 72;
-export const FOLDER_OPEN_TOTAL_DURATION_MS = FOLDER_OPEN_DURATION_MS + FOLDER_OPENING_GHOST_STAGGER_MAX_MS;
-export const FOLDER_LABEL_REVEAL_OPEN_DELAY_MS = 300;
-export const FOLDER_LABEL_REVEAL_START_PROGRESS = (
-  FOLDER_OPEN_TOTAL_DURATION_MS > 0
-    ? FOLDER_LABEL_REVEAL_OPEN_DELAY_MS / FOLDER_OPEN_TOTAL_DURATION_MS
-    : 0
-);
-export const FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE = 0.9;
-
-const SOURCE_PREVIEW_HIDE_COMPLETE_PROGRESS = 0.34;
-const SOURCE_PREVIEW_CLOSE_REVEAL_PROGRESS = 0.12;
+export const FOLDER_OPEN_DURATION_MS = 320;
+export const FOLDER_CLOSE_DURATION_MS = 320;
+export const FOLDER_OPEN_TOTAL_DURATION_MS = FOLDER_OPEN_DURATION_MS;
+export const FOLDER_LABEL_REVEAL_START_PROGRESS = 0.58;
 
 export function clamp01(value: number): number {
   if (Number.isNaN(value)) return 0;
@@ -58,21 +47,12 @@ export function resolveInterruptibleAnimationDuration(startProgress: number, tar
   const normalizedTarget = clamp01(targetProgress);
   const distance = Math.abs(normalizedTarget - normalizedStart);
   if (distance <= 0.0001) return 0;
-  const baseDurationMs = normalizedTarget > normalizedStart
-    ? FOLDER_OPEN_TOTAL_DURATION_MS
-    : FOLDER_CLOSE_DURATION_MS;
-  return Math.max(1, Math.round(baseDurationMs * distance));
+  return Math.max(1, Math.round(FOLDER_OPEN_TOTAL_DURATION_MS * distance));
 }
 
 export function resolveChildAnimationProgress(progress: number, index: number): number {
-  const normalizedProgress = clamp01(progress);
-  const openingDelayMs = Math.min(
-    FOLDER_OPENING_GHOST_STAGGER_MAX_MS,
-    Math.max(0, index) * FOLDER_OPENING_GHOST_STAGGER_STEP_MS,
-  );
-  const delayProgress = openingDelayMs / Math.max(FOLDER_OPEN_TOTAL_DURATION_MS, 1);
-  if (delayProgress >= 1) return 0;
-  return clamp01((normalizedProgress - delayProgress) / (1 - delayProgress));
+  void index;
+  return clamp01(progress);
 }
 
 export function resolveChromeAnimationProgress(progress: number): number {
@@ -85,14 +65,18 @@ export function resolveBackdropAnimationProgress(progress: number): number {
   return clamp01(progress);
 }
 
-export function resolveSourcePreviewHiddenProgress(progress: number): number {
-  return clamp01(clamp01(progress) / SOURCE_PREVIEW_HIDE_COMPLETE_PROGRESS);
-}
-
-export function resolveSourcePreviewCloseRevealProgress(progress: number): number {
+export function interpolateRect(
+  fromRect: OverlayAnimationRect,
+  toRect: OverlayAnimationRect,
+  progress: number,
+): OverlayAnimationRect {
   const normalizedProgress = clamp01(progress);
-  if (normalizedProgress >= SOURCE_PREVIEW_CLOSE_REVEAL_PROGRESS) return 0;
-  return clamp01(1 - (normalizedProgress / Math.max(SOURCE_PREVIEW_CLOSE_REVEAL_PROGRESS, 0.0001)));
+  return {
+    left: mix(fromRect.left, toRect.left, normalizedProgress),
+    top: mix(fromRect.top, toRect.top, normalizedProgress),
+    width: mix(fromRect.width, toRect.width, normalizedProgress),
+    height: mix(fromRect.height, toRect.height, normalizedProgress),
+  };
 }
 
 export function buildInterpolatedRectTransform(

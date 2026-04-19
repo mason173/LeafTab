@@ -22,8 +22,8 @@ const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
 const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 16;
 export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/6 bg-[rgba(205,212,220,0.4)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]';
-const FOLDER_DROP_TARGET_TRANSITION = 'border-color 150ms ease, box-shadow 150ms ease';
-const FOLDER_DROP_TARGET_FADE_TRANSITION = 'opacity 150ms ease';
+const FOLDER_DROP_TARGET_TRANSITION = 'none';
+const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
 const ACTIVE_FOLDER_BORDER_SHADOW = 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(255,255,255,0.08)';
 
@@ -208,7 +208,6 @@ function LargeFolderPreviewTile({
   iconCornerRadius,
   iconAppearance,
   onOpenShortcut,
-  suppressHoverScale = false,
 }: {
   child: Shortcut;
   folderId: string;
@@ -217,7 +216,6 @@ function LargeFolderPreviewTile({
   iconCornerRadius: number;
   iconAppearance?: ShortcutIconAppearance;
   onOpenShortcut?: (shortcut: Shortcut) => void;
-  suppressHoverScale?: boolean;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_PREVIEW_CONTENT_RATIO));
   const interactive = typeof onOpenShortcut === 'function';
@@ -227,12 +225,10 @@ function LargeFolderPreviewTile({
   return (
     <Element
       type={interactive ? 'button' : undefined}
-      className={`relative flex items-center justify-center rounded-[14px] ${
-        interactive && !suppressHoverScale ? 'transition-transform duration-150 ease-out hover:scale-[1.04]' : ''
-      }`}
+      className="relative flex items-center justify-center rounded-[14px]"
       style={{ width: tileSize, height: tileSize }}
       data-folder-preview-large-tile="true"
-      data-folder-preview-hover-scale-enabled={interactive && !suppressHoverScale ? 'true' : 'false'}
+      data-folder-preview-hover-scale-enabled="false"
       onClick={interactive ? (event) => {
         event.stopPropagation();
         onOpenShortcut?.(child);
@@ -265,7 +261,6 @@ function LargeFolderOpenTile({
   iconCornerRadius,
   iconAppearance,
   onOpenFolder,
-  suppressHoverScale = false,
   fadeContentWhenDropTargetActive = false,
 }: {
   child: Shortcut;
@@ -275,7 +270,6 @@ function LargeFolderOpenTile({
   iconCornerRadius: number;
   iconAppearance?: ShortcutIconAppearance;
   onOpenFolder?: () => void;
-  suppressHoverScale?: boolean;
   fadeContentWhenDropTargetActive?: boolean;
 }) {
   const previewIconSize = Math.max(18, Math.round(tileSize * LARGE_FOLDER_TRIGGER_ICON_RATIO));
@@ -287,12 +281,12 @@ function LargeFolderOpenTile({
       type="button"
       className={`relative isolate flex items-center justify-center rounded-[14px] ${
         interactive
-          ? (suppressHoverScale ? '' : 'transition-transform duration-150 ease-out hover:scale-[1.03]')
+          ? ''
           : 'cursor-not-allowed'
       }`}
       style={{ width: tileSize, height: tileSize }}
       data-folder-preview-open-tile="true"
-      data-folder-preview-hover-scale-enabled={interactive && !suppressHoverScale ? 'true' : 'false'}
+      data-folder-preview-hover-scale-enabled="false"
       onClick={interactive ? (event) => {
         event.stopPropagation();
         onOpenFolder?.();
@@ -480,7 +474,6 @@ export function ShortcutFolderLargePreview({
                   tileSize={tileSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
-                  suppressHoverScale={highlightBorder}
                   fadeContentWhenDropTargetActive={highlightBorder}
                   onOpenFolder={interactive ? onOpenFolder : undefined}
                 />
@@ -501,7 +494,6 @@ export function ShortcutFolderLargePreview({
                 tileSize={tileSize}
                 iconCornerRadius={iconCornerRadius}
                 iconAppearance={iconAppearance}
-                suppressHoverScale={highlightBorder}
                 onOpenShortcut={onOpenShortcut}
               />
             );

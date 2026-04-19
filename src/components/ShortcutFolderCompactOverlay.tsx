@@ -2,36 +2,38 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { FolderShortcutDropIntent } from '@leaftab/workspace-core';
+import ShortcutIcon from '@/components/ShortcutIcon';
 import {
   FOLDER_LABEL_REVEAL_START_PROGRESS,
-  FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE,
-  buildInterpolatedRectTransform,
   clamp01,
-  easeOutCubic,
+  interpolateRect,
   mix,
   resolveBackdropAnimationProgress,
   resolveChildAnimationProgress,
   resolveChromeAnimationProgress,
-  resolveInterruptibleAnimationDuration,
-  resolveSourcePreviewCloseRevealProgress,
-  resolveSourcePreviewHiddenProgress,
 } from '@/components/shortcutFolderCompactAnimation';
+import type {
+  FolderTransitionPhase,
+  ShortcutFolderOpeningSourceSnapshot,
+  ShortcutFolderOverlayRect,
+} from '@/components/folderTransition/useFolderTransitionController';
 import {
   FolderShortcutSurface,
   type FolderExtractDragStartPayload,
 } from '@/features/shortcuts/components/FolderShortcutSurface';
-import {
-  getFolderPreviewRoot,
-  getFolderPreviewSlotElements,
-  getFolderPreviewSlotEntries,
-} from '@/components/shortcuts/folderPreviewRegistry';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
 type ShortcutFolderCompactOverlayProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
   shortcut: Shortcut | null;
+  transitionPhase: FolderTransitionPhase;
+  transitionProgress: number;
+  onOpenChange: (open: boolean) => void;
+  openingSourceSnapshot?: ShortcutFolderOpeningSourceSnapshot | null;
+  onOpeningLayoutReady?: () => void;
+  onClosingLayoutReady?: () => void;
+  rootGridColumns?: number;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
@@ -42,38 +44,11 @@ type ShortcutFolderCompactOverlayProps = {
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
 };
 
-type OverlayRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
+type OverlayRect = ShortcutFolderOverlayRect;
 
 type OverlayMetrics = {
-  sourceRect: OverlayRect;
   targetRect: OverlayRect;
-  sourceChildRects: Map<string, OverlayRect>;
-  sourceChildSlotRects: OverlayRect[];
   targetChildRects: Map<string, OverlayRect>;
-};
-
-type AnimatedNodeStyleSnapshot = {
-  position: string;
-  left: string;
-  top: string;
-  right: string;
-  bottom: string;
-  width: string;
-  height: string;
-  margin: string;
-  transform: string;
-  transformOrigin: string;
-  transition: string;
-  transitionDelay: string;
-  opacity: string;
-  willChange: string;
-  zIndex: string;
-  pointerEvents: string;
 };
 
 const OVERLAY_Z_INDEX = 16000;
@@ -81,8 +56,12 @@ const FOLDER_PANEL_RADIUS_PX = 32;
 const FOLDER_PANEL_MAX_VIEWPORT_RATIO = 0.78;
 const FOLDER_PANEL_MAX_HEIGHT_PX = 680;
 const FOLDER_PANEL_MAX_VISIBLE_ROWS = 5;
-const HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY = 0.34;
+const HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY = 0.32;
 const COLLAPSED_CHILD_CONTENT_RATIO = 0.94;
+const GHOST_ICON_BASE_SIZE = 72;
+const PANEL_WIDTH_CLASSNAME = 'w-[min(720px,calc(100vw-24px))] max-w-[720px]';
+const PANEL_HORIZONTAL_MARGIN_PX = 24;
+const PANEL_MAX_WIDTH_PX = 720;
 
 function copyRect(rect: DOMRect | OverlayRect | null | undefined): OverlayRect | null {
   if (!rect) return null;
@@ -94,6 +73,37 @@ function copyRect(rect: DOMRect | OverlayRect | null | undefined): OverlayRect |
   };
 }
 
+function rectEquals(left: OverlayRect | null | undefined, right: OverlayRect | null | undefined) {
+  if (!left || !right) return left === right;
+  return (
+    Math.abs(left.left - right.left) <= 0.5
+    && Math.abs(left.top - right.top) <= 0.5
+    && Math.abs(left.width - right.width) <= 0.5
+    && Math.abs(left.height - right.height) <= 0.5
+  );
+}
+
+function mapsEqual(left: Map<string, OverlayRect>, right: Map<string, OverlayRect>) {
+  if (left.size !== right.size) return false;
+  for (const [key, value] of left.entries()) {
+    const other = right.get(key);
+    if (!rectEquals(value, other)) return false;
+  }
+  return true;
+}
+
+function escapeSelectorValue(value: string) {
+  if (typeof window !== 'undefined' && window.CSS?.escape) {
+    return window.CSS.escape(value);
+  }
+  return value.replace(/["\\]/g, '\\$&');
+}
+
+function resolvePredictedPanelWidthPx() {
+  if (typeof window === 'undefined') return PANEL_MAX_WIDTH_PX;
+  return Math.max(320, Math.min(PANEL_MAX_WIDTH_PX, window.innerWidth - PANEL_HORIZONTAL_MARGIN_PX));
+}
+
 function getFallbackSourceRect(targetRect: OverlayRect): OverlayRect {
   const collapsedSize = Math.max(64, Math.min(92, targetRect.width * 0.18));
   return {
@@ -102,19 +112,6 @@ function getFallbackSourceRect(targetRect: OverlayRect): OverlayRect {
     width: collapsedSize,
     height: collapsedSize,
   };
-}
-
-function escapeSelectorValue(value: string): string {
-  if (typeof window !== 'undefined' && window.CSS?.escape) {
-    return window.CSS.escape(value);
-  }
-  return value.replace(/["\\]/g, '\\$&');
-}
-
-function rectIntersectsVertically(rect: OverlayRect, viewportRect: OverlayRect, margin = 0): boolean {
-  const rectBottom = rect.top + rect.height;
-  const viewportBottom = viewportRect.top + viewportRect.height;
-  return rectBottom > viewportRect.top - margin && rect.top < viewportBottom + margin;
 }
 
 function getVirtualCollapsedChildRect(params: {
@@ -134,7 +131,8 @@ function getVirtualCollapsedChildRect(params: {
   const tileSize = Math.max(4, Math.min(tileWidth, tileHeight));
   const row = Math.floor(index / columns);
   const column = index % columns;
-  const rowWidth = Math.min(columns, total - row * columns) * tileSize + Math.max(0, Math.min(columns, total - row * columns) - 1) * gap;
+  const tilesInRow = Math.min(columns, total - row * columns);
+  const rowWidth = tilesInRow * tileSize + Math.max(0, tilesInRow - 1) * gap;
   const startX = sourceRect.left + inset + (innerWidth - rowWidth) / 2;
   const totalGridHeight = rows * tileSize + Math.max(0, rows - 1) * gap;
   const startY = sourceRect.top + inset + (innerHeight - totalGridHeight) / 2;
@@ -149,7 +147,7 @@ function getVirtualCollapsedChildRect(params: {
   };
 }
 
-function measureTargetChildRects(container: ParentNode | null | undefined, shortcuts: Shortcut[]): Map<string, OverlayRect> {
+function measureTargetChildRects(container: ParentNode | null | undefined, shortcuts: Shortcut[]) {
   const childRects = new Map<string, OverlayRect>();
 
   shortcuts.forEach((child) => {
@@ -164,74 +162,126 @@ function measureTargetChildRects(container: ParentNode | null | undefined, short
   return childRects;
 }
 
-function findTargetChildNode(container: ParentNode | null | undefined, childId: string): HTMLElement | null {
-  const escapedChildId = escapeSelectorValue(childId);
-  return container?.querySelector<HTMLElement>(`[data-folder-overlay-child-id="${escapedChildId}"]`) ?? null;
+function GhostShortcutIcon({
+  shortcut,
+  width,
+  height,
+  iconCornerRadius,
+  iconAppearance,
+}: {
+  shortcut: Shortcut;
+  width: number;
+  height: number;
+  iconCornerRadius?: number;
+  iconAppearance?: ShortcutIconAppearance;
+}) {
+  const contentScale = Math.min(width, height) / GHOST_ICON_BASE_SIZE;
+
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <div
+        className="flex items-center justify-center"
+        style={{
+          width: GHOST_ICON_BASE_SIZE,
+          height: GHOST_ICON_BASE_SIZE,
+          transform: `scale(${contentScale})`,
+          transformOrigin: 'center center',
+        }}
+      >
+        <ShortcutIcon
+          icon={shortcut.icon}
+          url={shortcut.url}
+          shortcutId={shortcut.id}
+          size={GHOST_ICON_BASE_SIZE}
+          exact
+          frame="never"
+          fallbackStyle="emptyicon"
+          fallbackLabel={shortcut.title}
+          useOfficialIcon={shortcut.useOfficialIcon}
+          autoUseOfficialIcon={shortcut.autoUseOfficialIcon}
+          officialIconAvailableAtSave={shortcut.officialIconAvailableAtSave}
+          officialIconColorOverride={shortcut.officialIconColorOverride}
+          iconRendering={shortcut.iconRendering}
+          iconColor={shortcut.iconColor}
+          iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
+          remoteIconScale={1}
+        />
+      </div>
+    </div>
+  );
 }
 
-function measureSourcePreviewMetrics(params: {
-  folderId: string;
-  fallbackTargetRect: OverlayRect;
-}): {
-  sourceRect: OverlayRect;
-  sourceChildRects: Map<string, OverlayRect>;
-  sourceChildSlotRects: OverlayRect[];
-} {
-  const { folderId, fallbackTargetRect } = params;
-  const sourcePreview = getFolderPreviewRoot(folderId);
-  const previewSlots = getFolderPreviewSlotEntries(folderId);
-  const sourceChildRects = new Map<string, OverlayRect>();
-  const sourceChildSlotRects: OverlayRect[] = [];
-  let sourceRect = copyRect(sourcePreview?.getBoundingClientRect()) ?? getFallbackSourceRect(fallbackTargetRect);
-
-  if (sourcePreview) {
-    const sourcePreviewTransform = sourcePreview.style.transform;
-    const sourcePreviewTransition = sourcePreview.style.transition;
-    const sourcePreviewWillChange = sourcePreview.style.willChange;
-
-    sourcePreview.style.transform = 'none';
-    sourcePreview.style.transition = 'none';
-    sourcePreview.style.willChange = 'auto';
-
-    try {
-      sourceRect = copyRect(sourcePreview.getBoundingClientRect()) ?? getFallbackSourceRect(fallbackTargetRect);
-
-      previewSlots.forEach((slot) => {
-        const slotRect = copyRect(slot.element.getBoundingClientRect());
-        if (!slotRect) {
-          return;
-        }
-
-        sourceChildSlotRects[slot.index] = slotRect;
-        sourceChildRects.set(slot.childId, slotRect);
-      });
-    } finally {
-      sourcePreview.style.transform = sourcePreviewTransform;
-      sourcePreview.style.transition = sourcePreviewTransition;
-      sourcePreview.style.willChange = sourcePreviewWillChange;
-    }
-  }
-
-  return {
-    sourceRect,
-    sourceChildRects,
-    sourceChildSlotRects,
-  };
-}
-
-function resolveSourcePreviewSlotRect(metrics: OverlayMetrics, slotIndex: number): OverlayRect {
-  return metrics.sourceChildSlotRects[slotIndex]
-    ?? getVirtualCollapsedChildRect({
-      sourceRect: metrics.sourceRect,
-      index: slotIndex,
-      total: 4,
-    });
+function FolderPanelTitle({
+  title,
+  bindLayoutRef,
+  allowEditing,
+  draftTitle,
+  titleInputRef,
+  onDraftTitleChange,
+  onStartEditing,
+  onCommit,
+  onCancel,
+}: {
+  title: string;
+  bindLayoutRef?: React.RefObject<HTMLDivElement | null>;
+  allowEditing: boolean;
+  draftTitle: string;
+  titleInputRef: React.RefObject<HTMLInputElement | null>;
+  onDraftTitleChange: (value: string) => void;
+  onStartEditing: () => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      ref={bindLayoutRef}
+      className="px-6 pb-4 pt-6"
+    >
+      <div className="text-center">
+        {allowEditing ? (
+          <input
+            ref={titleInputRef}
+            value={draftTitle}
+            maxLength={24}
+            onChange={(event) => onDraftTitleChange(event.target.value)}
+            onBlur={onCommit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onCommit();
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onCancel();
+              }
+            }}
+            className="mx-auto block w-full max-w-[320px] border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white outline-none placeholder:text-white/45"
+            placeholder={title}
+          />
+        ) : (
+          <button
+            type="button"
+            className="mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)] outline-none"
+            onClick={onStartEditing}
+          >
+            {title}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function ShortcutFolderCompactOverlay({
-  open,
-  onOpenChange,
   shortcut,
+  transitionPhase,
+  transitionProgress,
+  onOpenChange,
+  openingSourceSnapshot,
+  onOpeningLayoutReady,
+  onClosingLayoutReady,
+  rootGridColumns,
   compactIconSize = 72,
   iconCornerRadius = 22,
   iconAppearance,
@@ -242,85 +292,76 @@ export function ShortcutFolderCompactOverlay({
   onExtractDragStart,
 }: ShortcutFolderCompactOverlayProps) {
   const { t } = useTranslation();
-  const shortcutId = shortcut?.id ?? null;
-  const [mountedShortcut, setMountedShortcut] = useState<Shortcut | null>(open ? shortcut : null);
   const [metrics, setMetrics] = useState<OverlayMetrics | null>(null);
-  const [transitionState, setTransitionState] = useState<'opening' | 'closing' | null>(null);
-  const [animationProgress, setAnimationProgress] = useState(0);
   const [folderDragActive, setFolderDragActive] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [panelHeightPx, setPanelHeightPx] = useState<number | null>(null);
-  const titleSectionRef = useRef<HTMLDivElement | null>(null);
-  const scrollRegionRef = useRef<HTMLDivElement | null>(null);
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const animationRunIdRef = useRef(0);
-  const animationProgressRef = useRef(0);
-  const animationTargetProgressRef = useRef(0);
-  const openRef = useRef(open);
-  const pendingUnmountRestoreRef = useRef(false);
-  const hiddenSourcePreviewRef = useRef<HTMLElement | null>(null);
-  const hiddenSourcePreviewChildrenRef = useRef<HTMLElement[]>([]);
-  const sourcePreviewSnapshotRef = useRef<{
-    opacity: string;
-    transition: string;
-    transform: string;
-    transformOrigin: string;
-    willChange: string;
-  } | null>(null);
-  const sourcePreviewChildSnapshotsRef = useRef<Map<HTMLElement, { opacity: string; transition: string }> | null>(null);
-  const animatedTargetSnapshotsRef = useRef<Map<HTMLElement, AnimatedNodeStyleSnapshot>>(new Map());
-  const closingVisiblePreviewChildIdsRef = useRef<string[]>([]);
-  const closingFromScrolledViewportRef = useRef(false);
-  const hiddenSourcePreviewFolderIdRef = useRef<string | null>(null);
+  const measureSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const measureTitleRef = useRef<HTMLDivElement | null>(null);
+  const measureScrollRef = useRef<HTMLDivElement | null>(null);
+  const openSurfaceRef = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const openingReadyReportedRef = useRef(false);
+  const closingReadyReportedRef = useRef(false);
 
   const children = useMemo(
-    () => (mountedShortcut && isShortcutFolder(mountedShortcut) ? getShortcutChildren(mountedShortcut) : []),
-    [mountedShortcut],
+    () => (shortcut && isShortcutFolder(shortcut) ? getShortcutChildren(shortcut) : []),
+    [shortcut],
   );
   const roundedCorner = `${FOLDER_PANEL_RADIUS_PX}px`;
   const maxPanelHeightPx = useMemo(() => {
     if (typeof window === 'undefined') return FOLDER_PANEL_MAX_HEIGHT_PX;
     return Math.min(FOLDER_PANEL_MAX_HEIGHT_PX, Math.floor(window.innerHeight * FOLDER_PANEL_MAX_VIEWPORT_RATIO));
-  }, [mountedShortcut?.id]);
+  }, [shortcut?.id]);
+  const predictedPanelWidthPx = useMemo(
+    () => resolvePredictedPanelWidthPx(),
+    [shortcut?.id],
+  );
 
-  const restoreAnimatedTargetNodes = useCallback(() => {
-    animatedTargetSnapshotsRef.current.forEach((snapshot, node) => {
-      if (!node.isConnected) return;
-      node.style.position = snapshot.position;
-      node.style.left = snapshot.left;
-      node.style.top = snapshot.top;
-      node.style.right = snapshot.right;
-      node.style.bottom = snapshot.bottom;
-      node.style.width = snapshot.width;
-      node.style.height = snapshot.height;
-      node.style.margin = snapshot.margin;
-      node.style.transform = snapshot.transform;
-      node.style.transformOrigin = snapshot.transformOrigin;
-      node.style.transition = snapshot.transition;
-      node.style.transitionDelay = snapshot.transitionDelay;
-      node.style.opacity = snapshot.opacity;
-      node.style.willChange = snapshot.willChange;
-      node.style.zIndex = snapshot.zIndex;
-      node.style.pointerEvents = snapshot.pointerEvents;
-    });
-    animatedTargetSnapshotsRef.current.clear();
-  }, []);
+  const sourceChildRects = useMemo(() => new Map(
+    (openingSourceSnapshot?.sourceChildRects ?? []).map((entry) => [entry.childId, entry.rect] as const),
+  ), [openingSourceSnapshot?.sourceChildRects]);
+  const sourceChildSlotRects = openingSourceSnapshot?.sourceChildSlotRects ?? [];
+
+  useLayoutEffect(() => {
+    setMetrics(null);
+    setFolderDragActive(false);
+    setEditingTitle(false);
+    setPanelHeightPx(null);
+    openingReadyReportedRef.current = false;
+    closingReadyReportedRef.current = false;
+  }, [shortcut?.id]);
+
+  useLayoutEffect(() => {
+    if (!shortcut) return;
+    setDraftTitle(shortcut.title || '');
+  }, [shortcut]);
+
+  useEffect(() => {
+    if (transitionPhase !== 'open' && transitionPhase !== 'closing-measure' && folderDragActive) {
+      setFolderDragActive(false);
+    }
+  }, [folderDragActive, transitionPhase]);
 
   const updatePanelHeight = useCallback(() => {
     if (typeof window === 'undefined') return;
-    const scrollRegion = scrollRegionRef.current;
-    const titleHeight = titleSectionRef.current?.offsetHeight ?? 0;
+    const scrollRegion = measureScrollRef.current;
+    const titleHeight = measureTitleRef.current?.offsetHeight ?? 0;
     const scrollHeight = scrollRegion?.scrollHeight ?? 0;
     if (titleHeight <= 0 && scrollHeight <= 0) return;
+
     const scrollRegionStyles = scrollRegion ? window.getComputedStyle(scrollRegion) : null;
     const paddingTop = scrollRegionStyles ? parseFloat(scrollRegionStyles.paddingTop || '0') : 0;
     const paddingBottom = scrollRegionStyles ? parseFloat(scrollRegionStyles.paddingBottom || '0') : 0;
-    const gridNode = scrollRegion?.querySelector<HTMLElement>('[data-folder-shortcut-grid="true"]');
+    const fallbackGridItem = scrollRegion?.querySelector<HTMLElement>('[data-shortcut-drag-item="true"]');
+    const gridNode = scrollRegion?.querySelector<HTMLElement>('[data-folder-shortcut-grid="true"]')
+      ?? fallbackGridItem?.closest<HTMLElement>('.grid')
+      ?? null;
     const gridStyles = gridNode ? window.getComputedStyle(gridNode) : null;
-    const gridItem = gridNode?.querySelector<HTMLElement>('[data-folder-shortcut-grid-item="true"]');
+    const gridItem = gridNode?.querySelector<HTMLElement>('[data-folder-shortcut-grid-item="true"]')
+      ?? fallbackGridItem
+      ?? null;
     const rowGap = gridStyles ? parseFloat(gridStyles.rowGap || gridStyles.gap || '0') : 0;
     const columnCount = gridStyles?.gridTemplateColumns
       ? gridStyles.gridTemplateColumns.split(' ').filter(Boolean).length
@@ -341,308 +382,97 @@ export function ShortcutFolderCompactOverlay({
       Math.ceil(titleHeight + Math.min(scrollHeight, visibleScrollHeight)),
     );
     setPanelHeightPx((current) => (current === nextHeight ? current : nextHeight));
-  }, [children.length, compactIconSize, maxPanelHeightPx]);
+  }, [children.length, maxPanelHeightPx]);
 
-  const restoreHiddenSourcePreview = useCallback(() => {
-    if (typeof document === 'undefined') return;
-    const sourcePreview = hiddenSourcePreviewRef.current;
-    const snapshot = sourcePreviewSnapshotRef.current;
-    const hiddenFolderId = hiddenSourcePreviewFolderIdRef.current;
-
-    if (sourcePreview && snapshot && sourcePreview.isConnected) {
-      sourcePreview.style.opacity = snapshot.opacity;
-      sourcePreview.style.transition = snapshot.transition;
-      sourcePreview.style.transform = snapshot.transform;
-      sourcePreview.style.transformOrigin = snapshot.transformOrigin;
-      sourcePreview.style.willChange = snapshot.willChange;
-    }
-
-    const currentPreviewChildren = hiddenFolderId
-      ? getFolderPreviewSlotElements(hiddenFolderId)
-      : [];
-    const nodesToRestore = new Set<HTMLElement>([
-      ...hiddenSourcePreviewChildrenRef.current,
-      ...currentPreviewChildren,
-    ]);
-    nodesToRestore.forEach((node) => {
-      const snapshotEntry = sourcePreviewChildSnapshotsRef.current?.get(node);
-      node.style.opacity = snapshotEntry?.opacity || '';
-      node.style.transition = snapshotEntry?.transition || '';
-    });
-
-    hiddenSourcePreviewRef.current = null;
-    hiddenSourcePreviewChildrenRef.current = [];
-    hiddenSourcePreviewFolderIdRef.current = null;
-    sourcePreviewSnapshotRef.current = null;
-    sourcePreviewChildSnapshotsRef.current = null;
-  }, []);
-
-  const cancelProgressAnimation = useCallback(() => {
-    animationRunIdRef.current += 1;
-    if (typeof window !== 'undefined' && rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-    }
-    rafRef.current = null;
-  }, []);
-
-  const finalizeClosedOverlay = useCallback(() => {
-    cancelProgressAnimation();
-    animationProgressRef.current = 0;
-    animationTargetProgressRef.current = 0;
-    closingVisiblePreviewChildIdsRef.current = [];
-    closingFromScrolledViewportRef.current = false;
-    pendingUnmountRestoreRef.current = true;
-    setAnimationProgress(0);
-    setTransitionState(null);
-    setMetrics(null);
-    setFolderDragActive(false);
-    setEditingTitle(false);
-    setMountedShortcut(null);
-  }, [cancelProgressAnimation]);
-
-  const startProgressAnimation = useCallback((targetProgress: number) => {
-    if (typeof window === 'undefined') return;
-
-    const nextTargetProgress = clamp01(targetProgress);
-    const currentProgress = animationProgressRef.current;
-    animationTargetProgressRef.current = nextTargetProgress;
-
-    if (Math.abs(currentProgress - nextTargetProgress) <= 0.0005) {
-      cancelProgressAnimation();
-      animationProgressRef.current = nextTargetProgress;
-      setAnimationProgress(nextTargetProgress);
-      setTransitionState(null);
-      if (nextTargetProgress <= 0.0005 && !openRef.current) {
-        finalizeClosedOverlay();
-      }
-      return;
-    }
-
-    cancelProgressAnimation();
-    const animationDirection = nextTargetProgress > currentProgress ? 'opening' : 'closing';
-    const durationMs = resolveInterruptibleAnimationDuration(currentProgress, nextTargetProgress);
-    const runId = animationRunIdRef.current;
-    const startTime = window.performance.now();
-
-    setTransitionState(animationDirection);
-
-    const tick = (frameTime: number) => {
-      if (animationRunIdRef.current !== runId) return;
-      const elapsedMs = frameTime - startTime;
-      const linearProgress = durationMs <= 0 ? 1 : clamp01(elapsedMs / durationMs);
-      const easedTimeProgress = easeOutCubic(linearProgress);
-      const nextProgress = mix(currentProgress, nextTargetProgress, easedTimeProgress);
-      animationProgressRef.current = nextProgress;
-      setAnimationProgress(nextProgress);
-
-      if (linearProgress >= 1) {
-        rafRef.current = null;
-        animationProgressRef.current = nextTargetProgress;
-        setAnimationProgress(nextTargetProgress);
-        setTransitionState(null);
-        if (nextTargetProgress <= 0.0005 && !openRef.current) {
-          finalizeClosedOverlay();
-        }
-        return;
-      }
-
-      rafRef.current = window.requestAnimationFrame(tick);
-    };
-
-    if (durationMs <= 1) {
-      animationProgressRef.current = nextTargetProgress;
-      setAnimationProgress(nextTargetProgress);
-      setTransitionState(null);
-      if (nextTargetProgress <= 0.0005 && !openRef.current) {
-        finalizeClosedOverlay();
-      }
-      return;
-    }
-
-    rafRef.current = window.requestAnimationFrame(tick);
-  }, [cancelProgressAnimation, finalizeClosedOverlay]);
-
-  const refreshTargetMetrics = useCallback(() => {
-    const surfaceNode = surfaceRef.current;
-    if (!surfaceNode || !metrics) return null;
-
+  const measureOverlayLayout = useCallback(() => {
+    const surfaceNode = measureSurfaceRef.current;
+    if (!surfaceNode) return null;
     const targetRect = copyRect(surfaceNode.getBoundingClientRect());
     if (!targetRect) return null;
-
     const targetChildRects = measureTargetChildRects(surfaceNode, children);
-    const nextMetrics = {
-      ...metrics,
-      targetRect,
-      targetChildRects,
-    };
-    setMetrics(nextMetrics);
+    const nextMetrics = { targetRect, targetChildRects };
+
+    setMetrics((current) => {
+      if (
+        current
+        && rectEquals(current.targetRect, nextMetrics.targetRect)
+        && mapsEqual(current.targetChildRects, nextMetrics.targetChildRects)
+      ) {
+        return current;
+      }
+      return nextMetrics;
+    });
+
     return nextMetrics;
-  }, [children, metrics]);
+  }, [children]);
 
-  const refreshSourceMetrics = useCallback(() => {
-    if (!mountedShortcut || !metrics || typeof document === 'undefined') return null;
-    const targetRect = copyRect(surfaceRef.current?.getBoundingClientRect()) ?? metrics.targetRect;
-    if (!targetRect) return null;
-    const nextTargetChildRects = measureTargetChildRects(surfaceRef.current, children);
-    const visibleScrollViewportRect = copyRect(scrollRegionRef.current?.getBoundingClientRect());
-    const scrollTop = scrollRegionRef.current?.scrollTop ?? 0;
-    const closingFromScrolledViewport = scrollTop > 12;
-    const closingVisiblePreviewChildIds = closingFromScrolledViewport && visibleScrollViewportRect
-      ? children
-          .map((child, index) => ({
-            id: child.id,
-            index,
-            rect: nextTargetChildRects.get(child.id) ?? null,
-          }))
-          .filter((item): item is { id: string; index: number; rect: OverlayRect } => (
-            item.rect !== null
-            && rectIntersectsVertically(item.rect, visibleScrollViewportRect, 12)
-          ))
-          .sort((left, right) => {
-            if (Math.abs(left.rect.top - right.rect.top) > 1) {
-              return left.rect.top - right.rect.top;
-            }
-            if (Math.abs(left.rect.left - right.rect.left) > 1) {
-              return left.rect.left - right.rect.left;
-            }
-            return left.index - right.index;
-          })
-          .slice(0, 4)
-          .map((item) => item.id)
-      : [];
-
-    closingVisiblePreviewChildIdsRef.current = closingVisiblePreviewChildIds;
-    closingFromScrolledViewportRef.current = closingFromScrolledViewport;
-
-    const nextSourceMetrics = measureSourcePreviewMetrics({
-      folderId: mountedShortcut.id,
-      fallbackTargetRect: targetRect,
-    });
-    const nextMetrics = {
-      ...metrics,
-      sourceRect: nextSourceMetrics.sourceRect,
-      sourceChildRects: nextSourceMetrics.sourceChildRects,
-      sourceChildSlotRects: nextSourceMetrics.sourceChildSlotRects,
-      targetRect,
-      targetChildRects: nextTargetChildRects,
-    };
-    setMetrics(nextMetrics);
-    return nextMetrics;
-  }, [children, metrics, mountedShortcut]);
-
-  useEffect(() => {
-    openRef.current = open;
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !shortcut) return;
-    if (mountedShortcut?.id === shortcut.id) return;
-
-    cancelProgressAnimation();
-    restoreAnimatedTargetNodes();
-    restoreHiddenSourcePreview();
-    pendingUnmountRestoreRef.current = false;
-    closingVisiblePreviewChildIdsRef.current = [];
-    closingFromScrolledViewportRef.current = false;
-    animationProgressRef.current = 0;
-    animationTargetProgressRef.current = 0;
-
-    setAnimationProgress(0);
-    setTransitionState(null);
-    setMountedShortcut(shortcut);
-    setMetrics(null);
-    setFolderDragActive(false);
-    setEditingTitle(false);
-    setDraftTitle(shortcut.title || '');
-    setPanelHeightPx(null);
-  }, [
-    cancelProgressAnimation,
-    mountedShortcut?.id,
-    open,
-    restoreAnimatedTargetNodes,
-    restoreHiddenSourcePreview,
-    shortcut,
-  ]);
-
-  useEffect(() => {
-    if (open || !mountedShortcut) return;
-    setFolderDragActive(false);
-    setEditingTitle(false);
-    if (!metrics) {
-      finalizeClosedOverlay();
-    }
-  }, [finalizeClosedOverlay, metrics, mountedShortcut, open]);
+  const layoutPhaseActive = transitionPhase !== 'idle';
 
   useLayoutEffect(() => {
-    if (!shortcut || mountedShortcut?.id !== shortcut.id) return;
-    setMountedShortcut(shortcut);
-    setDraftTitle(shortcut.title || '');
-  }, [mountedShortcut?.id, shortcut, shortcutId]);
-
-  useEffect(() => {
-    if (!editingTitle) return;
-    titleInputRef.current?.focus();
-    titleInputRef.current?.select();
-  }, [editingTitle]);
-
-  useLayoutEffect(() => {
-    if (!mountedShortcut || metrics || !surfaceRef.current || typeof document === 'undefined') {
-      return;
-    }
-
-    const surfaceRect = copyRect(surfaceRef.current.getBoundingClientRect());
-    if (!surfaceRect) return;
-
-    const { sourceRect, sourceChildRects, sourceChildSlotRects } = measureSourcePreviewMetrics({
-      folderId: mountedShortcut.id,
-      fallbackTargetRect: surfaceRect,
-    });
-
-    setMetrics({
-      sourceRect,
-      targetRect: surfaceRect,
-      sourceChildRects,
-      sourceChildSlotRects,
-      targetChildRects: measureTargetChildRects(surfaceRef.current, children),
-    });
-  }, [children, metrics, mountedShortcut]);
-
-  useLayoutEffect(() => {
-    if (!mountedShortcut) return;
+    if (!shortcut || !layoutPhaseActive) return;
     updatePanelHeight();
-  }, [children.length, compactIconSize, mountedShortcut, updatePanelHeight]);
+    measureOverlayLayout();
+  }, [layoutPhaseActive, measureOverlayLayout, panelHeightPx, shortcut, updatePanelHeight]);
 
   useEffect(() => {
-    if (!mountedShortcut || !metrics || typeof window === 'undefined' || !surfaceRef.current) return;
+    if (!shortcut || typeof window === 'undefined' || !layoutPhaseActive) return undefined;
 
     const handleRefresh = () => {
       updatePanelHeight();
-      refreshTargetMetrics();
+      measureOverlayLayout();
     };
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' && measureSurfaceRef.current
+      ? new ResizeObserver(() => {
+          handleRefresh();
+        })
+      : null;
+
+    if (measureSurfaceRef.current && resizeObserver) {
+      resizeObserver.observe(measureSurfaceRef.current);
+    }
 
     window.addEventListener('resize', handleRefresh, { passive: true });
     window.addEventListener('scroll', handleRefresh, { passive: true, capture: true });
-    scrollRegionRef.current?.addEventListener('scroll', handleRefresh, { passive: true });
+    measureScrollRef.current?.addEventListener('scroll', handleRefresh, { passive: true });
 
     return () => {
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', handleRefresh);
       window.removeEventListener('scroll', handleRefresh, true);
-      scrollRegionRef.current?.removeEventListener('scroll', handleRefresh);
+      measureScrollRef.current?.removeEventListener('scroll', handleRefresh);
     };
-  }, [compactIconSize, metrics, mountedShortcut, refreshTargetMetrics, updatePanelHeight]);
-
-  useLayoutEffect(() => {
-    if (!mountedShortcut || !metrics) return;
-    const targetProgress = open && shortcut?.id === mountedShortcut.id ? 1 : 0;
-    if (Math.abs(animationTargetProgressRef.current - targetProgress) <= 0.0005) return;
-    if (targetProgress <= 0) {
-      refreshSourceMetrics();
-    }
-    startProgressAnimation(targetProgress);
-  }, [metrics, mountedShortcut, open, refreshSourceMetrics, shortcut?.id, startProgressAnimation]);
+  }, [layoutPhaseActive, measureOverlayLayout, shortcut, updatePanelHeight]);
 
   useEffect(() => {
-    if (!mountedShortcut) return;
+    if (transitionPhase !== 'opening-measure') {
+      openingReadyReportedRef.current = false;
+    }
+    if (transitionPhase !== 'closing-measure') {
+      closingReadyReportedRef.current = false;
+    }
+  }, [transitionPhase]);
+
+  useLayoutEffect(() => {
+    if (!shortcut || !metrics) return;
+    if (transitionPhase === 'opening-measure' && !openingReadyReportedRef.current) {
+      openingReadyReportedRef.current = true;
+      onOpeningLayoutReady?.();
+    }
+    if (transitionPhase === 'closing-measure' && !closingReadyReportedRef.current) {
+      closingReadyReportedRef.current = true;
+      onClosingLayoutReady?.();
+    }
+  }, [metrics, onClosingLayoutReady, onOpeningLayoutReady, shortcut, transitionPhase]);
+
+  useEffect(() => {
+    if (!shortcut || !editingTitle || transitionPhase !== 'open') return;
+    titleInputRef.current?.focus();
+    titleInputRef.current?.select();
+  }, [editingTitle, shortcut, transitionPhase]);
+
+  useEffect(() => {
+    if (!shortcut) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -654,215 +484,66 @@ export function ShortcutFolderCompactOverlay({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [mountedShortcut, onOpenChange]);
+  }, [onOpenChange, shortcut]);
 
-  useEffect(() => () => {
-    cancelProgressAnimation();
-    restoreAnimatedTargetNodes();
-    restoreHiddenSourcePreview();
-  }, [cancelProgressAnimation, restoreAnimatedTargetNodes, restoreHiddenSourcePreview]);
-
-  useLayoutEffect(() => {
-    if (mountedShortcut) return;
-    if (!pendingUnmountRestoreRef.current) return;
-    pendingUnmountRestoreRef.current = false;
-    restoreAnimatedTargetNodes();
-    restoreHiddenSourcePreview();
-  }, [mountedShortcut, restoreAnimatedTargetNodes, restoreHiddenSourcePreview]);
-
-  useLayoutEffect(() => {
-    if (!mountedShortcut || typeof document === 'undefined') return;
-    if (
-      hiddenSourcePreviewFolderIdRef.current
-      && hiddenSourcePreviewFolderIdRef.current !== mountedShortcut.id
-    ) {
-      restoreHiddenSourcePreview();
+  const commitTitle = useCallback(() => {
+    if (!shortcut) return;
+    const nextName = draftTitle.trim();
+    setEditingTitle(false);
+    if (!nextName || nextName === shortcut.title) {
+      setDraftTitle(shortcut.title || '');
+      return;
     }
+    onRenameFolder(shortcut.id, nextName);
+  }, [draftTitle, onRenameFolder, shortcut]);
 
-    const sourcePreview = getFolderPreviewRoot(mountedShortcut.id);
-    if (!sourcePreview) return;
-    const sourcePreviewChildren = getFolderPreviewSlotElements(mountedShortcut.id);
+  const cancelTitleEdit = useCallback(() => {
+    setDraftTitle(shortcut?.title || '');
+    setEditingTitle(false);
+  }, [shortcut?.title]);
 
-    if (hiddenSourcePreviewRef.current !== sourcePreview) {
-      hiddenSourcePreviewRef.current = sourcePreview;
-      hiddenSourcePreviewFolderIdRef.current = mountedShortcut.id;
-      sourcePreviewSnapshotRef.current = {
-        opacity: sourcePreview.style.opacity,
-        transition: sourcePreview.style.transition,
-        transform: sourcePreview.style.transform,
-        transformOrigin: sourcePreview.style.transformOrigin,
-        willChange: sourcePreview.style.willChange,
-      };
-    }
-    const previewChildSnapshots = sourcePreviewChildSnapshotsRef.current ?? new Map<
-      HTMLElement,
-      { opacity: string; transition: string }
-    >();
-    hiddenSourcePreviewChildrenRef.current = sourcePreviewChildren;
-    sourcePreviewChildren.forEach((node) => {
-      if (previewChildSnapshots.has(node)) return;
-      previewChildSnapshots.set(node, {
-        opacity: node.style.opacity,
-        transition: node.style.transition,
-      });
-    });
-    if (!sourcePreviewChildSnapshotsRef.current) {
-      sourcePreviewChildSnapshotsRef.current = previewChildSnapshots;
-    }
-
-    const closing = transitionState === 'closing' || (!openRef.current && animationProgress < 1);
-    const previewRevealProgress = closing
-      ? resolveSourcePreviewCloseRevealProgress(animationProgress)
-      : 1 - resolveSourcePreviewHiddenProgress(animationProgress);
-    const previewOpacity = `${previewRevealProgress}`;
-    const previewScale = mix(FOLDER_SOURCE_PREVIEW_HIDDEN_SCALE, 1, previewRevealProgress);
-    sourcePreview.style.transformOrigin = 'center center';
-    sourcePreview.style.willChange = previewRevealProgress > 0.001 && previewRevealProgress < 0.999
-      ? 'opacity, transform'
-      : (sourcePreviewSnapshotRef.current?.willChange || '');
-    sourcePreview.style.transition = 'none';
-    sourcePreview.style.opacity = previewOpacity;
-    sourcePreview.style.transform = `scale(${previewScale})`;
-    sourcePreviewChildren.forEach((node) => {
-      node.style.transition = 'none';
-      node.style.opacity = previewOpacity;
-    });
-  }, [animationProgress, mountedShortcut, restoreHiddenSourcePreview]);
-
-  useLayoutEffect(() => {
-    if (!surfaceRef.current || !metrics || !transitionState) return;
-
-    const visibleScrollViewportRect = copyRect(scrollRegionRef.current?.getBoundingClientRect());
-    const visibleViewportMargin = 24;
-    const closingVisiblePreviewChildIds = closingVisiblePreviewChildIdsRef.current;
-    const closingFromScrolledViewport = transitionState === 'closing' && closingFromScrolledViewportRef.current;
-
-    children.forEach((child, index) => {
-      const node = findTargetChildNode(surfaceRef.current, child.id);
-      const targetRect = metrics.targetChildRects.get(child.id) ?? copyRect(node?.getBoundingClientRect());
-      if (!node || !targetRect) return;
-
-      if (!animatedTargetSnapshotsRef.current.has(node)) {
-        animatedTargetSnapshotsRef.current.set(node, {
-          position: node.style.position,
-          left: node.style.left,
-          top: node.style.top,
-          right: node.style.right,
-          bottom: node.style.bottom,
-          width: node.style.width,
-          height: node.style.height,
-          margin: node.style.margin,
-          transform: node.style.transform,
-          transformOrigin: node.style.transformOrigin,
-          transition: node.style.transition,
-          transitionDelay: node.style.transitionDelay,
-          opacity: node.style.opacity,
-          willChange: node.style.willChange,
-          zIndex: node.style.zIndex,
-          pointerEvents: node.style.pointerEvents,
-        });
-      }
-
-      const mappedPreviewSlotIndex = closingFromScrolledViewport
-        ? closingVisiblePreviewChildIds.indexOf(child.id)
-        : -1;
-      const sourceRect = mappedPreviewSlotIndex >= 0
-        ? resolveSourcePreviewSlotRect(metrics, mappedPreviewSlotIndex)
-        : metrics.sourceChildRects.get(child.id)
-        ?? getVirtualCollapsedChildRect({
-          sourceRect: metrics.sourceRect,
-          index,
-          total: children.length,
-        });
-      const collapsedOpacity = mappedPreviewSlotIndex >= 0 || metrics.sourceChildRects.has(child.id)
-        ? 1
-        : HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY;
-      const childAnimationProgress = transitionState === 'closing'
-        ? resolveBackdropAnimationProgress(animationProgress)
-        : resolveChildAnimationProgress(animationProgress, index);
-      const visibleInScrollViewport = !visibleScrollViewportRect
-        || rectIntersectsVertically(targetRect, visibleScrollViewportRect, visibleViewportMargin);
-      const transform = buildInterpolatedRectTransform(sourceRect, targetRect, childAnimationProgress);
-      const opacity = `${mix(collapsedOpacity, 1, childAnimationProgress)}`;
-
-      node.style.position = 'fixed';
-      node.style.left = `${targetRect.left}px`;
-      node.style.top = `${targetRect.top}px`;
-      node.style.right = 'auto';
-      node.style.bottom = 'auto';
-      node.style.width = `${targetRect.width}px`;
-      node.style.height = `${targetRect.height}px`;
-      node.style.margin = '0';
-      node.style.transformOrigin = 'center center';
-      node.style.willChange = 'transform, opacity';
-      node.style.zIndex = String(OVERLAY_Z_INDEX + 4);
-      node.style.pointerEvents = 'none';
-      node.style.transition = 'none';
-      node.style.transitionDelay = '0ms';
-
-      if (!visibleInScrollViewport) {
-        node.style.transform = transform;
-        node.style.opacity = '0';
-        return;
-      }
-
-      node.style.transform = transform;
-      node.style.opacity = opacity;
-    });
-  }, [animationProgress, children, metrics, transitionState]);
-
-  useEffect(() => {
-    if (transitionState) return;
-    if (!mountedShortcut) return;
-    if (!openRef.current) return;
-    restoreAnimatedTargetNodes();
-  }, [mountedShortcut, restoreAnimatedTargetNodes, transitionState]);
-
-  useEffect(() => () => {
-    restoreAnimatedTargetNodes();
-  }, [restoreAnimatedTargetNodes]);
-
-  if (!mountedShortcut || typeof document === 'undefined') {
+  if (!shortcut || typeof document === 'undefined') {
     return null;
   }
 
-  const commitTitle = () => {
-    const nextName = draftTitle.trim();
-    setEditingTitle(false);
-    if (!nextName || nextName === mountedShortcut.title) {
-      setDraftTitle(mountedShortcut.title || '');
-      return;
-    }
-    onRenameFolder(mountedShortcut.id, nextName);
-  };
-
-  const cancelTitleEdit = () => {
-    setDraftTitle(mountedShortcut.title || '');
-    setEditingTitle(false);
-  };
-
-  const shellReady = Boolean(metrics);
-  const openProgress = clamp01(animationProgress);
+  const openProgress = clamp01(transitionProgress);
   const backdropProgress = resolveBackdropAnimationProgress(openProgress);
+  const backdropBlurPx = mix(0, 24, backdropProgress);
   const chromeProgress = resolveChromeAnimationProgress(openProgress);
-  const chromeTranslateY = mix(8, 0, chromeProgress);
-  const shortcutTitlesVisible = openProgress >= FOLDER_LABEL_REVEAL_START_PROGRESS;
-  const surfaceFrameStyle = metrics
+  const chromeTranslateY = mix(10, 0, chromeProgress);
+  const sourceRect = openingSourceSnapshot?.sourceRect
+    ?? (metrics ? getFallbackSourceRect(metrics.targetRect) : null);
+  const sourceBorderRadius = Math.max(
+    0,
+    openingSourceSnapshot?.sourceBorderRadius
+      ?? (sourceRect ? Math.min(sourceRect.width, sourceRect.height) * 0.28 : FOLDER_PANEL_RADIUS_PX),
+  );
+  const shellReady = Boolean(metrics && sourceRect);
+  const showAnimationLayer = Boolean(metrics && sourceRect && (
+    transitionPhase === 'opening-animate' || transitionPhase === 'closing-animate'
+  ));
+  const showSettledLayer = Boolean(metrics && (
+    transitionPhase === 'open' || transitionPhase === 'closing-measure'
+  ));
+  const targetFrameStyle = metrics
     ? {
         left: metrics.targetRect.left,
         top: metrics.targetRect.top,
         width: metrics.targetRect.width,
         height: metrics.targetRect.height,
-        zIndex: OVERLAY_Z_INDEX + 3,
       }
-    : {
-        left: '50%',
-        top: '50%',
-        width: 'min(720px, calc(100vw - 24px))',
-        transform: 'translate3d(-50%, -50%, 0)',
-        visibility: 'hidden' as const,
-        zIndex: OVERLAY_Z_INDEX + 3,
-      };
+    : null;
+  const animatedPanelRect = showAnimationLayer && metrics && sourceRect
+    ? interpolateRect(sourceRect, metrics.targetRect, openProgress)
+    : null;
+  const animatedPanelBorderRadius = mix(sourceBorderRadius, FOLDER_PANEL_RADIUS_PX, openProgress);
+  const animationShortcutTitlesVisible = openProgress >= FOLDER_LABEL_REVEAL_START_PROGRESS;
+  const shellShadowAlpha = mix(0.08, 0.16, openProgress);
+  const shellBorderAlpha = mix(0.16, 0.12, openProgress);
+  const shellFillTopAlpha = mix(0.22, 0.12, openProgress);
+  const shellFillBottomAlpha = mix(0.12, 0.05, openProgress);
+
+  const folderTitle = shortcut.title || t('context.folder', { defaultValue: '文件夹' });
 
   return createPortal(
     <div className="fixed inset-0" style={{ zIndex: OVERLAY_Z_INDEX }}>
@@ -871,126 +552,254 @@ export function ShortcutFolderCompactOverlay({
         className="absolute inset-0"
         style={{
           opacity: backdropProgress,
-          backgroundColor: 'rgba(8, 10, 16, 0.7)',
-          transition: 'none',
-          willChange: 'opacity',
+          backgroundColor: 'transparent',
+          backdropFilter: `blur(${backdropBlurPx}px)`,
+          WebkitBackdropFilter: `blur(${backdropBlurPx}px)`,
           pointerEvents: 'none',
         }}
       />
+
       <button
         type="button"
         aria-label={t('common.close', { defaultValue: '关闭' })}
         className="absolute inset-0 appearance-none rounded-none border-0 bg-transparent p-0"
         style={{
-          pointerEvents: shellReady && openProgress > 0.04 ? 'auto' : 'none',
+          pointerEvents: shellReady && (transitionPhase !== 'opening-measure' || openProgress > 0.02) ? 'auto' : 'none',
           WebkitAppearance: 'none',
           appearance: 'none',
         }}
         onClick={() => onOpenChange(false)}
       />
 
-      <div className="pointer-events-none fixed inset-0">
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div
-          className="absolute"
-          style={surfaceFrameStyle}
+          ref={measureSurfaceRef}
+          className={`relative overflow-visible ${PANEL_WIDTH_CLASSNAME}`}
+          style={{
+            borderRadius: roundedCorner,
+            height: panelHeightPx ? `${panelHeightPx}px` : undefined,
+            maxHeight: `${maxPanelHeightPx}px`,
+            visibility: 'hidden',
+          }}
         >
           <div
-            ref={surfaceRef}
-            className="pointer-events-auto relative w-[min(720px,calc(100vw-24px))] max-w-[720px] overflow-visible"
+            aria-hidden="true"
+            className="absolute inset-0"
             style={{
               borderRadius: roundedCorner,
-              height: panelHeightPx ? `${panelHeightPx}px` : undefined,
-              maxHeight: `${maxPanelHeightPx}px`,
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
             }}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          >
+          />
+          <div className="relative flex h-full flex-col">
             <div
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{
-                borderRadius: roundedCorner,
-                backgroundColor: 'rgba(15, 18, 24, 0)',
-                border: folderDragActive ? '2.5px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0)',
-                boxShadow: folderDragActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : undefined,
-                opacity: folderDragActive ? 1 : 0,
-                transition: `opacity 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out`,
-                pointerEvents: 'none',
-              }}
-            />
-            <div
-              className="relative flex h-full flex-col"
+              ref={measureTitleRef}
+              className="px-6 pb-4 pt-6"
             >
-              <div
-                ref={titleSectionRef}
-                className="px-6 pb-4 pt-6"
-                style={{
-                  opacity: chromeProgress,
-                  transform: `translate3d(0, ${chromeTranslateY}px, 0)`,
-                  transition: 'none',
-                  willChange: 'opacity, transform',
-                }}
-              >
-                <div className="text-center">
-                  {editingTitle ? (
-                    <input
-                      ref={titleInputRef}
-                      value={draftTitle}
-                      maxLength={24}
-                      onChange={(event) => setDraftTitle(event.target.value)}
-                      onBlur={commitTitle}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          commitTitle();
-                        }
-                        if (event.key === 'Escape') {
-                          event.preventDefault();
-                          cancelTitleEdit();
-                        }
-                      }}
-                      className="mx-auto block w-full max-w-[320px] border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white outline-none placeholder:text-white/45"
-                      placeholder={t('context.folder', { defaultValue: '文件夹' })}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)] outline-none"
-                      onClick={() => setEditingTitle(true)}
-                    >
-                      {mountedShortcut.title || t('context.folder', { defaultValue: '文件夹' })}
-                    </button>
-                  )}
-                </div>
+              <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white">
+                {folderTitle}
               </div>
-              <div
-                ref={scrollRegionRef}
-                data-folder-overlay-scroll-region="true"
-                className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              >
-                <FolderShortcutSurface
-                  folderId={mountedShortcut.id}
-                  shortcuts={children}
-                  emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
-                  compactIconSize={compactIconSize}
-                  iconCornerRadius={iconCornerRadius}
-                  iconAppearance={iconAppearance}
-                  forceTextWhite
-                  showShortcutTitles={shortcutTitlesVisible}
-                  maskBoundaryRef={surfaceRef}
-                  onShortcutOpen={onShortcutOpen}
-                  onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, mountedShortcut.id, childShortcut)}
-                  onShortcutDropIntent={onShortcutDropIntent}
-                  onExtractDragStart={onExtractDragStart}
-                  onDragActiveChange={setFolderDragActive}
-                />
-              </div>
+            </div>
+            <div
+              ref={measureScrollRef}
+              data-folder-overlay-scroll-region="true"
+              className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <FolderShortcutSurface
+                folderId={shortcut.id}
+                shortcuts={children}
+                emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
+                initialWidthPx={predictedPanelWidthPx}
+                rootGridColumns={rootGridColumns}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
+                forceTextWhite
+                showShortcutTitles
+                maskBoundaryRef={measureSurfaceRef}
+                onShortcutOpen={onShortcutOpen}
+                onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}
+                onShortcutDropIntent={onShortcutDropIntent}
+              />
             </div>
           </div>
         </div>
       </div>
 
+      {showAnimationLayer && animatedPanelRect ? (
+        <div className="pointer-events-none fixed inset-0">
+          <div
+            className="absolute overflow-hidden"
+            style={{
+              left: animatedPanelRect.left,
+              top: animatedPanelRect.top,
+              width: animatedPanelRect.width,
+              height: animatedPanelRect.height,
+              borderRadius: `${animatedPanelBorderRadius}px`,
+              background: `linear-gradient(180deg, rgba(255,255,255,${shellFillTopAlpha}), rgba(255,255,255,${shellFillBottomAlpha}))`,
+              border: `1px solid rgba(255,255,255,${shellBorderAlpha})`,
+              boxShadow: `0 24px 64px rgba(0,0,0,${shellShadowAlpha})`,
+              zIndex: OVERLAY_Z_INDEX + 3,
+              willChange: 'left, top, width, height, border-radius',
+            }}
+          >
+            {chromeProgress > 0.001 ? (
+              <div
+                className="absolute inset-x-0 top-0 px-6 pb-4 pt-6 text-center"
+                style={{
+                  opacity: chromeProgress,
+                  transform: `translate3d(0, ${chromeTranslateY}px, 0)`,
+                  willChange: 'opacity, transform',
+                }}
+              >
+                <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]">
+                  {folderTitle}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {metrics ? children.map((child, index) => {
+            const targetRect = metrics.targetChildRects.get(child.id);
+            if (!targetRect || !sourceRect) return null;
+
+            const sourceChildRect = sourceChildRects.get(child.id)
+              ?? sourceChildSlotRects[index]
+              ?? getVirtualCollapsedChildRect({
+                sourceRect,
+                index,
+                total: children.length,
+              });
+            const childProgress = resolveChildAnimationProgress(openProgress, index);
+            const animatedChildRect = interpolateRect(sourceChildRect, targetRect, childProgress);
+            const opacity = mix(
+              sourceChildRects.has(child.id) || index < sourceChildSlotRects.length
+                ? 1
+                : HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY,
+              1,
+              childProgress,
+            );
+
+            return (
+              <div
+                key={child.id}
+                className="fixed pointer-events-none"
+                style={{
+                  left: animatedChildRect.left,
+                  top: animatedChildRect.top,
+                  width: animatedChildRect.width,
+                  height: animatedChildRect.height,
+                  zIndex: OVERLAY_Z_INDEX + 6,
+                  opacity,
+                  willChange: 'left, top, width, height, opacity',
+                }}
+              >
+                <GhostShortcutIcon
+                  shortcut={child}
+                  width={animatedChildRect.width}
+                  height={animatedChildRect.height}
+                  iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
+                />
+              </div>
+            );
+          }) : null}
+        </div>
+      ) : null}
+
+      {showSettledLayer && targetFrameStyle ? (
+        <div className="pointer-events-none fixed inset-0">
+          <div className="absolute" style={{ ...targetFrameStyle, zIndex: OVERLAY_Z_INDEX + 4 }}>
+            <div
+              ref={openSurfaceRef}
+              className="pointer-events-auto relative h-full w-full overflow-visible"
+              style={{ borderRadius: roundedCorner }}
+              onClick={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <div
+                aria-hidden="true"
+                className="absolute inset-0"
+                style={{
+                  borderRadius: roundedCorner,
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
+                }}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0"
+                style={{
+                  borderRadius: roundedCorner,
+                  backgroundColor: 'rgba(15, 18, 24, 0)',
+                  border: folderDragActive ? '2.5px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0)',
+                  boxShadow: folderDragActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : undefined,
+                  opacity: folderDragActive ? 1 : 0,
+                  transition: 'opacity 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div className="relative flex h-full flex-col">
+                {transitionPhase === 'open' && editingTitle ? (
+                  <FolderPanelTitle
+                    title={folderTitle}
+                    allowEditing
+                    draftTitle={draftTitle}
+                    titleInputRef={titleInputRef}
+                    onDraftTitleChange={setDraftTitle}
+                    onStartEditing={() => {}}
+                    onCommit={commitTitle}
+                    onCancel={cancelTitleEdit}
+                  />
+                ) : (
+                  <div className="px-6 pb-4 pt-6">
+                    <div className="text-center">
+                      {transitionPhase === 'open' ? (
+                        <button
+                          type="button"
+                          className="mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)] outline-none"
+                          onClick={() => setEditingTitle(true)}
+                        >
+                          {folderTitle}
+                        </button>
+                      ) : (
+                        <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]">
+                          {folderTitle}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div
+                  className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  <FolderShortcutSurface
+                    folderId={shortcut.id}
+                    shortcuts={children}
+                    emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
+                    initialWidthPx={predictedPanelWidthPx}
+                    rootGridColumns={rootGridColumns}
+                    compactIconSize={compactIconSize}
+                    iconCornerRadius={iconCornerRadius}
+                    iconAppearance={iconAppearance}
+                    forceTextWhite
+                    showShortcutTitles={transitionPhase === 'open' || animationShortcutTitlesVisible}
+                    maskBoundaryRef={openSurfaceRef}
+                    onShortcutOpen={onShortcutOpen}
+                    onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}
+                    onShortcutDropIntent={onShortcutDropIntent}
+                    onExtractDragStart={transitionPhase === 'open' ? onExtractDragStart : undefined}
+                    onDragActiveChange={transitionPhase === 'open' ? setFolderDragActive : undefined}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>,
     document.body,
   );

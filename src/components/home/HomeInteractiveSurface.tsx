@@ -10,6 +10,7 @@ import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { SearchExperience, type SearchInteractionState } from '@/components/search/SearchExperience';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { WallpaperMode } from '@/wallpaper/types';
+import { clamp01, mix } from '@/components/shortcutFolderCompactAnimation';
 
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
@@ -63,6 +64,7 @@ type HomeInteractiveSurfaceProps = {
   >;
   baseTimeAnimationEnabled: boolean;
   freezeDynamicWallpaperBase: boolean;
+  folderImmersiveProgress: number;
 };
 
 export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
@@ -86,6 +88,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   searchExperienceBaseProps,
   baseTimeAnimationEnabled,
   freezeDynamicWallpaperBase,
+  folderImmersiveProgress,
 }: HomeInteractiveSurfaceProps) {
   const { t } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -348,21 +351,36 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     modeLayersVisible,
   ]);
 
+  const immersiveUiShellStyle = useMemo<CSSProperties | undefined>(() => {
+    const immersiveProgress = clamp01(folderImmersiveProgress);
+    if (immersiveProgress <= 0.0001) return undefined;
+
+    return {
+      opacity: 1 - immersiveProgress,
+      transform: `scale(${mix(1, 0.9, immersiveProgress)})`,
+      transformOrigin: 'center center',
+      willChange: 'opacity, transform',
+      pointerEvents: 'none',
+    };
+  }, [folderImmersiveProgress]);
+
   return (
     <>
       {overlayWallpaperLayer}
-      {fixedTopNavLayer}
-      <HomeMainContent
-        {...homeMainContentBaseProps}
-        initialRevealReady={initialRevealReady}
-        visible={visible}
-        modeFlags={modeFlags}
-        wallpaperClockProps={wallpaperClockProps}
-        searchExperienceProps={searchExperienceProps}
-        searchInteractionLocked={searchInteractionLocked}
-        onDrawerExpandedChange={setDrawerExpanded}
-        shortcutGridProps={shortcutGridProps}
-      />
+      <div style={immersiveUiShellStyle}>
+        {fixedTopNavLayer}
+        <HomeMainContent
+          {...homeMainContentBaseProps}
+          initialRevealReady={initialRevealReady}
+          visible={visible}
+          modeFlags={modeFlags}
+          wallpaperClockProps={wallpaperClockProps}
+          searchExperienceProps={searchExperienceProps}
+          searchInteractionLocked={searchInteractionLocked}
+          onDrawerExpandedChange={setDrawerExpanded}
+          shortcutGridProps={shortcutGridProps}
+        />
+      </div>
     </>
   );
 });

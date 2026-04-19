@@ -67,7 +67,7 @@ export function ShortcutCardCompact({
     ignoreTitleHeight: floatTitle,
   });
   const floatingTitle = showTitle && floatTitle;
-  const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folderSelectionDisabled
+  const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folder || folderSelectionDisabled
     ? ''
     : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]';
 

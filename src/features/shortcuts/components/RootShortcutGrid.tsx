@@ -6,7 +6,7 @@ import {
   type ShortcutExternalDragSessionSeed,
 } from '@leaftab/workspace-react';
 import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
@@ -23,8 +23,6 @@ import {
 
 const HEAT_ZONE_CORE_INSET = 24;
 const HEAT_ZONE_LARGE_FOLDER_CORE_INSET = 12;
-const SHOW_HEAT_ZONE_INSPECTOR = true;
-
 function HeatZoneInspectorPanel({
   inspector,
 }: {
@@ -149,8 +147,12 @@ export interface RootShortcutGridProps {
   containerHeight: number;
   bottomInset?: number;
   shortcuts: Shortcut[];
+  hiddenShortcutId?: string | null;
   gridColumns: number;
   minRows: number;
+  rowHeightOverride?: number;
+  rowGapPx?: number;
+  columnGapPx?: number;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, shortcutIndex: number, shortcut: Shortcut) => void;
   onShortcutReorder: (nextShortcuts: Shortcut[]) => void;
@@ -181,6 +183,8 @@ export interface RootShortcutGridProps {
   renderShortcutCard?: (params: RootShortcutGridCardRenderParams) => React.ReactNode;
   renderDragPreview?: (params: RootShortcutGridDragPreviewRenderParams) => React.ReactNode;
   renderSelectionIndicator?: (params: RootShortcutGridSelectionIndicatorRenderParams) => React.ReactNode;
+  heatZoneInspectorEnabled?: boolean;
+  allowLargeFolder?: boolean;
 }
 
 
@@ -188,8 +192,12 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   containerHeight,
   bottomInset = 0,
   shortcuts,
+  hiddenShortcutId = null,
   gridColumns,
   minRows,
+  rowHeightOverride,
+  rowGapPx = 0,
+  columnGapPx = 0,
   onShortcutOpen,
   onShortcutContextMenu,
   onShortcutReorder,
@@ -220,11 +228,19 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   renderShortcutCard = renderRootShortcutGridCard,
   renderDragPreview = renderRootShortcutGridDragPreview,
   renderSelectionIndicator = renderRootShortcutGridSelectionIndicator,
+  heatZoneInspectorEnabled = false,
+  allowLargeFolder = true,
 }: RootShortcutGridProps) {
   const firefox = isFirefoxBuildTarget();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gridWidthPx, setGridWidthPx] = useState<number | null>(null);
   const [heatZoneInspector, setHeatZoneInspector] = useState<RootShortcutGridHeatZoneInspector | null>(null);
+
+  useEffect(() => {
+    if (!heatZoneInspectorEnabled) {
+      setHeatZoneInspector(null);
+    }
+  }, [heatZoneInspectorEnabled]);
 
   const shortcutIconRenderContextValue = useMemo(() => ({
     monochromeTone,
@@ -236,14 +252,17 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     [compactIconSize],
   );
   const rowHeight = useMemo(() => {
+    if (Number.isFinite(rowHeightOverride) && Number(rowHeightOverride) > 0) {
+      return Math.max(1, Math.round(Number(rowHeightOverride)));
+    }
     if (!gridWidthPx || gridColumns <= 0) {
       return fallbackCellSize;
     }
 
     return gridWidthPx / Math.max(gridColumns, 1);
-  }, [fallbackCellSize, gridColumns, gridWidthPx]);
-  const columnGap = 0;
-  const rowGap = 0;
+  }, [fallbackCellSize, gridColumns, gridWidthPx, rowHeightOverride]);
+  const columnGap = Math.max(0, Math.round(columnGapPx));
+  const rowGap = Math.max(0, Math.round(rowGapPx));
   const resolvedTitleBlockHeight = useMemo(
     () => Math.max(12, Math.round(rowHeight * 0.2)),
     [rowHeight],
@@ -252,7 +271,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     () => Math.max(10, Math.min(compactTitleFontSize, Math.round(resolvedTitleBlockHeight * 0.58))),
     [compactTitleFontSize, resolvedTitleBlockHeight],
   );
-  const largeFolderEnabled = gridColumns >= 2;
+  const largeFolderEnabled = allowLargeFolder && gridColumns >= 2;
 
   useLayoutEffect(() => {
     const node = wrapperRef.current;
@@ -336,7 +355,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
           interactionProfile={resolvedInteractionProfile}
-          onHeatZoneInspectorChange={SHOW_HEAT_ZONE_INSPECTOR ? setHeatZoneInspector : undefined}
+          onHeatZoneInspectorChange={heatZoneInspectorEnabled ? setHeatZoneInspector : undefined}
           extractBoundaryRef={extractBoundaryRef}
           onExtractDragStart={onExtractDragStart}
           onBoundaryHoverChange={onBoundaryHoverChange}
@@ -356,6 +375,17 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               allowLargeFolder: largeFolderEnabled,
               largeFolderPreviewSize,
             });
+            const hiddenFromBackgroundLayer = hiddenShortcutId === params.shortcut.id;
+
+            if (hiddenFromBackgroundLayer) {
+              return (
+                <div
+                  className="relative z-10"
+                  style={{ width: compactMetrics.width, height: compactMetrics.height }}
+                  aria-hidden="true"
+                />
+              );
+            }
 
             return (
               <div className="relative z-10">
@@ -405,7 +435,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
             largeFolderPreviewSize,
           })}
         />
-        {SHOW_HEAT_ZONE_INSPECTOR ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}
+        {heatZoneInspectorEnabled ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}
       </div>
     </ShortcutIconRenderContext.Provider>
   );

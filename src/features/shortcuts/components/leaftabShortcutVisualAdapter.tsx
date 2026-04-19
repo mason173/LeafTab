@@ -331,6 +331,9 @@ export function renderLeaftabFolderItem(params: {
       showTitle={params.showShortcutTitles}
       iconSize={params.compactIconSize}
       floatTitle={params.showShortcutTitles}
+      rootProps={{
+        'data-folder-shortcut-grid-item': 'true',
+      }}
       iconCornerRadius={params.iconCornerRadius}
       iconAppearance={params.iconAppearance}
       titleFontSize={12}

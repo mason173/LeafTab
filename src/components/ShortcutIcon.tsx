@@ -235,6 +235,8 @@ const SHORTCUT_ICON_FILTER_HOST_ID = 'leaftab-shortcut-icon-filter-defs';
 const SHORTCUT_ICON_MONO_FILTER_ID = 'leaftab-shortcut-icon-filter-monochrome';
 const SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID = 'leaftab-shortcut-icon-filter-monochrome-fixed-white';
 const SHORTCUT_ICON_ACCENT_FILTER_ID = 'leaftab-shortcut-icon-filter-accent';
+const SHORTCUT_ICON_MONO_PHOTO_FILTER_ID = 'leaftab-shortcut-icon-filter-monochrome-photo';
+const SHORTCUT_ICON_ACCENT_PHOTO_FILTER_ID = 'leaftab-shortcut-icon-filter-accent-photo';
 const FIXED_WHITE_MONOCHROME_COLOR = '#FFFFFF';
 const UNIFIED_ICON_GLYPH_CONTENT_RATIO = 0.56;
 const COLORFUL_TILE_TEXTURE_GRADIENT = 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.025) 72%, rgba(0,0,0,0.06) 100%)';
@@ -388,6 +390,18 @@ function ensureShortcutIconFilterDefs() {
           <feComposite in="solidColor" in2="whiteIcon" operator="in" result="coloredIcon"></feComposite>
           <feComposite in="coloredIcon" in2="SourceAlpha" operator="in"></feComposite>
         </filter>
+        <filter id="${SHORTCUT_ICON_MONO_PHOTO_FILTER_ID}" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="grayIcon"></feColorMatrix>
+          <feFlood data-role="flood" flood-color="rgb(0, 0, 0)" result="solidColor"></feFlood>
+          <feBlend in="solidColor" in2="grayIcon" mode="screen" result="tintedIcon"></feBlend>
+          <feComposite in="tintedIcon" in2="SourceAlpha" operator="in"></feComposite>
+        </filter>
+        <filter id="${SHORTCUT_ICON_ACCENT_PHOTO_FILTER_ID}" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" type="saturate" values="0" result="grayIcon"></feColorMatrix>
+          <feFlood data-role="flood" flood-color="rgb(0, 0, 0)" result="solidColor"></feFlood>
+          <feBlend in="solidColor" in2="grayIcon" mode="screen" result="tintedIcon"></feBlend>
+          <feComposite in="tintedIcon" in2="SourceAlpha" operator="in"></feComposite>
+        </filter>
       </defs>
     `;
     document.body.prepend(host);
@@ -406,8 +420,12 @@ function syncShortcutIconFilterDefs() {
 
   const monoFlood = host.querySelector(`#${SHORTCUT_ICON_MONO_FILTER_ID} feFlood[data-role="flood"]`);
   const accentFlood = host.querySelector(`#${SHORTCUT_ICON_ACCENT_FILTER_ID} feFlood[data-role="flood"]`);
+  const monoPhotoFlood = host.querySelector(`#${SHORTCUT_ICON_MONO_PHOTO_FILTER_ID} feFlood[data-role="flood"]`);
+  const accentPhotoFlood = host.querySelector(`#${SHORTCUT_ICON_ACCENT_PHOTO_FILTER_ID} feFlood[data-role="flood"]`);
   monoFlood?.setAttribute('flood-color', monochromeColor);
   accentFlood?.setAttribute('flood-color', accentColor);
+  monoPhotoFlood?.setAttribute('flood-color', monochromeColor);
+  accentPhotoFlood?.setAttribute('flood-color', accentColor);
 }
 
 function queueShortcutIconFilterDefsSync() {
@@ -463,6 +481,7 @@ function installShortcutIconFilterDefsAutoSync() {
 function AppearanceAwareImage({
   src,
   appearance,
+  tintTarget = 'glyph',
   className,
   style,
   onLoad,
@@ -470,17 +489,24 @@ function AppearanceAwareImage({
 }: {
   src: string;
   appearance: ShortcutIconAppearance;
+  tintTarget?: 'glyph' | 'photo';
   className?: string;
   style?: CSSProperties;
   onLoad?: () => void;
   onError?: () => void;
 }) {
   const { monochromeTone } = useShortcutIconRenderContext();
-  const resolvedFilter = appearance === 'monochrome'
-    ? `url(#${monochromeTone === 'fixed-white' ? SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID : SHORTCUT_ICON_MONO_FILTER_ID})`
-    : appearance === 'accent'
-      ? `url(#${SHORTCUT_ICON_ACCENT_FILTER_ID})`
-      : undefined;
+  const resolvedFilter = (() => {
+    if (appearance === 'colorful') return undefined;
+    if (tintTarget === 'photo') {
+      return appearance === 'monochrome'
+        ? `url(#${SHORTCUT_ICON_MONO_PHOTO_FILTER_ID})`
+        : `url(#${SHORTCUT_ICON_ACCENT_PHOTO_FILTER_ID})`;
+    }
+    return appearance === 'monochrome'
+      ? `url(#${monochromeTone === 'fixed-white' ? SHORTCUT_ICON_MONO_FIXED_WHITE_FILTER_ID : SHORTCUT_ICON_MONO_FILTER_ID})`
+      : `url(#${SHORTCUT_ICON_ACCENT_FILTER_ID})`;
+  })();
 
   return (
     <img
@@ -912,9 +938,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const roundedBorderRadius = getShortcutIconBorderRadius(resolvedCornerRadius);
   const normalizedRemoteIconScale = Math.min(1, Math.max(0.55, remoteIconScale));
   const centeredOverlayImageSize = Math.max(12, Math.round(Math.min(size, overlaySize) * normalizedRemoteIconScale));
-  const requestedIconAppearance: ShortcutIconAppearance = activeCandidate?.kind === 'local-custom'
-    ? 'colorful'
-    : iconAppearance;
+  const requestedIconAppearance: ShortcutIconAppearance = iconAppearance;
   const isOfficialSvg = activeCandidate?.kind === 'official' && isSvgImageSource(src);
   const shouldResolveOfficialSvgTintMode = (
     activeCandidate?.kind === 'official'
@@ -1137,11 +1161,11 @@ const ShortcutIcon = memo(function ShortcutIcon({
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
           style={{ width: scaledSize, height: scaledSize, borderRadius: roundedBorderRadius }}
         >
-          <img
-            alt=""
-            className="absolute inset-0 max-w-none object-cover pointer-events-none"
-            draggable={false}
+          <AppearanceAwareImage
             src={src}
+            appearance={requestedIconAppearance}
+            tintTarget="photo"
+            className="absolute inset-0 max-w-none object-cover pointer-events-none"
             style={{ width: scaledSize, height: scaledSize }}
           />
         </div>

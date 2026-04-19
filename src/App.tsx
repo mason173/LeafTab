@@ -6,14 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
 import { useLeafTabSyncRuntime } from '@/lazy/sync';
 import i18n from './i18n';
-import {
-  RiCloseFill,
-  RiCloudFill,
-  RiRainyFill,
-  RiSnowyFill,
-  RiSunFill,
-  RiThunderstormsFill,
-} from '@/icons/ri-compat';
 import imgImage from "./assets/Default_wallpaper.webp?url";
 import { saveWallpaper } from './db';
 
@@ -46,7 +38,6 @@ import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy
 // Components
 import ScenarioModeMenu from './components/ScenarioModeMenu';
 import { Toaster, toast } from './components/ui/sonner';
-import { Button } from "@/components/ui/button";
 import type { Shortcut, ShortcutFolderDisplayMode, SyncablePreferences } from './types';
 import { normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
@@ -79,7 +70,12 @@ import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
-import { FOLDER_CLOSE_DURATION_MS } from '@/components/shortcutFolderCompactAnimation';
+import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
+import { useFolderTransitionController } from '@/components/folderTransition/useFolderTransitionController';
+import {
+  getFolderPreviewRoot,
+  getFolderPreviewSlotEntries,
+} from '@/components/shortcuts/folderPreviewRegistry';
 import type { RootShortcutExternalDragSession as ExternalShortcutDragSession } from '@/features/shortcuts/components/RootShortcutGrid';
 import {
   LazyAppDialogs,
@@ -87,7 +83,6 @@ import {
   LazyLeafTabSyncEncryptionDialog,
   LazyRoleSelector,
   LazyShortcutFolderCompactOverlay,
-  LazyShortcutFolderDialog,
   LazyShortcutFolderNameDialog,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
@@ -159,6 +154,30 @@ type CloudLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   _retriedAfterConflictRefresh?: boolean;
 };
 
+type FolderOverlaySnapshotRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+function copyFolderOverlaySnapshotRect(rect: DOMRect | FolderOverlaySnapshotRect | null | undefined) {
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function readElementBorderRadiusPx(element: HTMLElement | null | undefined) {
+  if (!element || typeof window === 'undefined') return null;
+  const computedStyle = window.getComputedStyle(element);
+  const resolvedRadius = Number.parseFloat(computedStyle.borderTopLeftRadius || '0');
+  return Number.isFinite(resolvedRadius) ? resolvedRadius : null;
+}
+
 function createFolderShortcutId() {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -167,8 +186,6 @@ function createFolderShortcutId() {
   } catch {}
   return `fld_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-
-const COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS = FOLDER_CLOSE_DURATION_MS;
 
 const isNamedError = (error: unknown, name: string) => {
   return Boolean(error && typeof error === 'object' && (error as { name?: unknown }).name === name);
@@ -462,6 +479,20 @@ export default function App() {
   const [shortcutIconSettingsOpen, setShortcutIconSettingsOpen] = useState(false);
   const [aboutModalDefaultTab, setAboutModalDefaultTab] = useState<AboutLeafTabModalTab>('about');
   const [wallpaperSettingsOpen, setWallpaperSettingsOpen] = useState(false);
+  const [adminModeEnabled, setAdminModeEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('leaftab_admin_mode_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [gridHitDebugVisible, setGridHitDebugVisible] = useState(() => {
+    try {
+      return sessionStorage.getItem('leaftab_grid_hit_debug_visible') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [weatherDebugVisible, setWeatherDebugVisible] = useState(() => {
     try {
       return sessionStorage.getItem('leaftab_weather_debug_visible') === 'true';
@@ -469,8 +500,6 @@ export default function App() {
       return false;
     }
   });
-  const weatherDebugTapCountRef = useRef(0);
-  const weatherDebugTapTimerRef = useRef<number | null>(null);
   const legacyCloudMigrationResolverRef = useRef<((value: boolean) => void) | null>(null);
   const openLeafTabSyncConfig = useCallback(() => {
     setSyncConfigBackTarget('settings');
@@ -478,8 +507,24 @@ export default function App() {
     setWebdavShowConnectionFields(false);
     setWebdavDialogOpen(true);
   }, []);
-  useEffect(() => () => {
-    if (weatherDebugTapTimerRef.current) window.clearTimeout(weatherDebugTapTimerRef.current);
+  useEffect(() => {
+    const syncAdminModeEnabled = () => {
+      let enabled = false;
+      try {
+        enabled = localStorage.getItem('leaftab_admin_mode_enabled') === 'true';
+      } catch {}
+      setAdminModeEnabled(enabled);
+      if (!enabled) {
+        setGridHitDebugVisible(false);
+        try { sessionStorage.setItem('leaftab_grid_hit_debug_visible', 'false'); } catch {}
+      }
+    };
+
+    syncAdminModeEnabled();
+    window.addEventListener('leaftab-admin-mode-changed', syncAdminModeEnabled);
+    return () => {
+      window.removeEventListener('leaftab-admin-mode-changed', syncAdminModeEnabled);
+    };
   }, []);
   useEffect(() => {
     const handleCloudConfigChanged = () => {
@@ -755,23 +800,22 @@ export default function App() {
     handleLogout,
   );
 
-  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [pendingRootFolderMerge, setPendingRootFolderMerge] = useState<PendingRootFolderMerge | null>(null);
   const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
   const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
-  const folderOverlayActionTimerRef = useRef<number | null>(null);
-  const lastCompactOverlayFolderIdRef = useRef<string | null>(null);
+  const folderTransitionController = useFolderTransitionController();
+  const openFolderId = folderTransitionController.activeFolderId;
+  const runAfterFolderOverlayClose = folderTransitionController.runAfterClose;
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
     [openFolderId, shortcuts],
   );
   const compactOverlayShortcut = useMemo(() => {
-    const overlayFolderId = openFolderId ?? lastCompactOverlayFolderIdRef.current;
+    const overlayFolderId = folderTransitionController.overlayFolderId;
     return overlayFolderId ? findShortcutById(shortcuts, overlayFolderId) : null;
-  }, [openFolderId, shortcuts]);
-  const useCompactFolderOverlay = true;
+  }, [folderTransitionController.overlayFolderId, shortcuts]);
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
@@ -787,16 +831,10 @@ export default function App() {
     : undefined;
 
   useEffect(() => {
-    if (openFolderId) {
-      lastCompactOverlayFolderIdRef.current = openFolderId;
-    }
-  }, [openFolderId]);
-
-  useEffect(() => {
     if (openFolderId && !openFolderShortcut) {
-      setOpenFolderId(null);
+      folderTransitionController.clearImmediately();
     }
-  }, [openFolderId, openFolderShortcut]);
+  }, [folderTransitionController, openFolderId, openFolderShortcut]);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -807,37 +845,43 @@ export default function App() {
     }
   }, [editingFolderId, editingFolderShortcut, pendingRootFolderMerge]);
 
-  useEffect(() => () => {
-    if (folderOverlayActionTimerRef.current !== null) {
-      window.clearTimeout(folderOverlayActionTimerRef.current);
-    }
+  const captureFolderOpeningSourceSnapshot = useCallback((folderId: string) => {
+    const sourcePreview = getFolderPreviewRoot(folderId);
+    const sourceRect = copyFolderOverlaySnapshotRect(sourcePreview?.getBoundingClientRect());
+    if (!sourceRect) return null;
+    const sourceBorderRadius = readElementBorderRadiusPx(sourcePreview);
+
+    const previewSlots = getFolderPreviewSlotEntries(folderId);
+    const sourceChildSlotRects: FolderOverlaySnapshotRect[] = [];
+    const sourceChildRects: ShortcutFolderOpeningSourceSnapshot['sourceChildRects'] = [];
+
+    previewSlots.forEach((slot) => {
+      const rect = copyFolderOverlaySnapshotRect(slot.element.getBoundingClientRect());
+      if (!rect) return;
+      sourceChildSlotRects[slot.index] = rect;
+      sourceChildRects.push({
+        childId: slot.childId,
+        rect,
+      });
+    });
+
+    return {
+      folderId,
+      sourceRect,
+      sourceBorderRadius,
+      sourceChildRects,
+      sourceChildSlotRects: sourceChildSlotRects.filter(Boolean),
+    };
   }, []);
-
-  const runAfterFolderOverlayClose = useCallback((folderId: string, action: () => void) => {
-    if (folderOverlayActionTimerRef.current !== null) {
-      window.clearTimeout(folderOverlayActionTimerRef.current);
-      folderOverlayActionTimerRef.current = null;
-    }
-
-    if (!useCompactFolderOverlay || openFolderId !== folderId) {
-      action();
-      return;
-    }
-
-    setOpenFolderId(null);
-    folderOverlayActionTimerRef.current = window.setTimeout(() => {
-      folderOverlayActionTimerRef.current = null;
-      action();
-    }, COMPACT_FOLDER_OVERLAY_CLOSE_DELAY_MS);
-  }, [openFolderId, useCompactFolderOverlay]);
 
   const handleShortcutActivate = useCallback((shortcut: Shortcut) => {
     if (isShortcutFolder(shortcut)) {
-      setOpenFolderId(shortcut.id);
+      const sourceSnapshot = captureFolderOpeningSourceSnapshot(shortcut.id);
+      folderTransitionController.openFolder(shortcut.id, sourceSnapshot);
       return;
     }
     handleShortcutOpen(shortcut);
-  }, [handleShortcutOpen]);
+  }, [captureFolderOpeningSourceSnapshot, folderTransitionController, handleShortcutOpen]);
 
   const handleOpenShortcutEditor = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
     if (isShortcutFolder(shortcut)) {
@@ -1024,7 +1068,9 @@ export default function App() {
           ...prev,
           [selectedScenarioId]: outcome.shortcuts,
         }));
-        setOpenFolderId((current) => (current === outcome.closeFolderId ? null : current));
+        if (openFolderId === outcome.closeFolderId) {
+          folderTransitionController.clearImmediately();
+        }
         setExternalShortcutDragSession({
           token: Date.now(),
           ...outcome.session,
@@ -1032,7 +1078,7 @@ export default function App() {
       });
       markShortcutStateDirty();
     }
-  }, [markShortcutStateDirty, selectedScenarioId, setScenarioShortcuts]);
+  }, [folderTransitionController, markShortcutStateDirty, openFolderId, selectedScenarioId, setScenarioShortcuts]);
 
   const handleShortcutDropIntent = useCallback((intent: ShortcutDropIntent) => {
     const outcome = applyShortcutDropIntent(shortcuts, intent);
@@ -1089,10 +1135,10 @@ export default function App() {
     if (!changed) return;
     if (!user) localDirtyRef.current = true;
     if (openFolderId === shortcut.id) {
-      setOpenFolderId(null);
+      folderTransitionController.clearImmediately();
     }
     toast.success(t('context.folderDissolved', { defaultValue: '文件夹已解散' }));
-  }, [localDirtyRef, openFolderId, selectedScenarioId, setScenarioShortcuts, t, user]);
+  }, [folderTransitionController, localDirtyRef, openFolderId, selectedScenarioId, setScenarioShortcuts, t, user]);
 
   const handleFolderShortcutDropIntent = useCallback((intent: FolderShortcutDropIntent) => {
     handleShortcutDropIntent(intent);
@@ -3097,26 +3143,6 @@ export default function App() {
     setSettingsOpen(false);
     setConfirmLogoutOpen(true);
   }, []);
-  const handleVersionTap = useCallback(() => {
-    weatherDebugTapCountRef.current += 1;
-    if (weatherDebugTapTimerRef.current) {
-      window.clearTimeout(weatherDebugTapTimerRef.current);
-    }
-    weatherDebugTapTimerRef.current = window.setTimeout(() => {
-      weatherDebugTapCountRef.current = 0;
-      weatherDebugTapTimerRef.current = null;
-    }, 1800);
-    if (weatherDebugTapCountRef.current >= 6) {
-      weatherDebugTapCountRef.current = 0;
-      if (weatherDebugTapTimerRef.current) {
-        window.clearTimeout(weatherDebugTapTimerRef.current);
-        weatherDebugTapTimerRef.current = null;
-      }
-      setWeatherDebugVisible(true);
-      try { sessionStorage.setItem('leaftab_weather_debug_visible', 'true'); } catch {}
-    }
-  }, []);
-
   const handleExportDomains = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -3190,10 +3216,18 @@ export default function App() {
     setSettingsOpen(true);
   }, [setSettingsOpen, syncConfigBackTarget]);
 
+  const handleGridHitDebugEnabledChange = useCallback((enabled: boolean) => {
+    setGridHitDebugVisible(enabled);
+    try { sessionStorage.setItem('leaftab_grid_hit_debug_visible', enabled ? 'true' : 'false'); } catch {}
+  }, []);
   const handleWeatherDebugEnabledChange = useCallback((enabled: boolean) => {
     setWeatherDebugVisible(enabled);
     try { sessionStorage.setItem('leaftab_weather_debug_visible', enabled ? 'true' : 'false'); } catch {}
   }, []);
+  const handleWeatherDebugApply = useCallback((code: number) => {
+    setWallpaperMode('weather');
+    setWeatherCode(code);
+  }, [setWallpaperMode, setWeatherCode]);
 
   const displayRows = Math.max(
     Math.ceil(shortcuts.length / Math.max(normalizedGridColumns, 1)),
@@ -3214,6 +3248,7 @@ export default function App() {
   }, [contextMenu, contextMenuRef, setContextMenu]);
 
   const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
+  const gridHitInspectorVisible = adminModeEnabled && gridHitDebugVisible;
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
@@ -3452,7 +3487,7 @@ export default function App() {
     },
     openFolderShortcut,
     onFolderOpenChange: (open) => {
-      if (!open) setOpenFolderId(null);
+      if (!open) folderTransitionController.requestClose();
     },
     onRenameFolder: handleRenameFolderInline,
     onFolderShortcutContextMenu: handleFolderChildShortcutContextMenu,
@@ -3479,6 +3514,7 @@ export default function App() {
     handleRootShortcutDropIntent,
     handleGridContextMenu,
     externalShortcutDragSession,
+    folderTransitionController,
     handleRenameFolderInline,
     handleFolderChildShortcutContextMenu,
     handleFolderShortcutDropIntent,
@@ -3622,6 +3658,8 @@ export default function App() {
             homeMainContentBaseProps={homeMainContentBaseProps}
             shortcutGridProps={{
               ...shortcutEngineHostAdapter.rootGridProps,
+              heatZoneInspectorEnabled: gridHitInspectorVisible,
+              hiddenShortcutId: folderTransitionController.overlayFolderId,
               selectionMode,
               selectedShortcutIndexes,
               onToggleShortcutSelection,
@@ -3632,27 +3670,27 @@ export default function App() {
             freezeDynamicWallpaperBase={
               visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
             }
+            folderImmersiveProgress={folderTransitionController.backgroundProgress}
           />
         )}
       </ShortcutSelectionShell>
-      {useCompactFolderOverlay ? (
-        compactOverlayShortcut ? (
-          <Suspense fallback={null}>
-            <LazyShortcutFolderCompactOverlay
-              {...shortcutEngineHostAdapter.compactFolderOverlayProps}
-              shortcut={compactOverlayShortcut}
-            />
-          </Suspense>
-        ) : null
-      ) : (
-        shortcutEngineHostAdapter.folderDialogProps.open ? (
-          <Suspense fallback={null}>
-            <LazyShortcutFolderDialog
-              {...shortcutEngineHostAdapter.folderDialogProps}
-            />
-          </Suspense>
-        ) : null
-      )}
+      {compactOverlayShortcut ? (
+        <Suspense fallback={null}>
+          <LazyShortcutFolderCompactOverlay
+            {...shortcutEngineHostAdapter.compactFolderOverlayProps}
+            transitionPhase={folderTransitionController.transition.phase}
+            transitionProgress={folderTransitionController.transition.progress}
+            openingSourceSnapshot={
+              folderTransitionController.transition.sourceSnapshot?.folderId === compactOverlayShortcut.id
+                ? folderTransitionController.transition.sourceSnapshot
+                : null
+            }
+            onOpeningLayoutReady={() => folderTransitionController.notifyOpeningReady(compactOverlayShortcut.id)}
+            onClosingLayoutReady={() => folderTransitionController.notifyClosingReady(compactOverlayShortcut.id)}
+            shortcut={compactOverlayShortcut}
+          />
+        </Suspense>
+      ) : null}
       {folderNameDialogOpen ? (
         <Suspense fallback={null}>
           <LazyShortcutFolderNameDialog
@@ -3799,7 +3837,7 @@ export default function App() {
               mode: authModalMode,
               linkedUsername: user,
             }}
-            settingsModalProps={{
+	            settingsModalProps={{
               isOpen: settingsOpen,
               onOpenChange: setSettingsOpen,
               username: user,
@@ -3849,7 +3887,6 @@ export default function App() {
 	              onWebdavSync: resolveWebdavConflict,
 	              onWebdavEnable: handleEnableWebdavSync,
 	              onWebdavDisable: handleDisableWebdavSync,
-	              onVersionClick: handleVersionTap,
 	              onOpenShortcutGuide: () => setShortcutGuideOpen(true),
 	            }}
 	            searchSettingsModalProps={{
@@ -3900,8 +3937,11 @@ export default function App() {
               onOpenChange: setAdminModalOpen,
               onBackToSettings: handleBackToMainSettings,
               onExportDomains: handleExportDomains,
+              gridHitDebugEnabled: gridHitDebugVisible,
+              onGridHitDebugEnabledChange: handleGridHitDebugEnabledChange,
               weatherDebugEnabled: weatherDebugVisible,
               onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
+              onWeatherDebugApply: handleWeatherDebugApply,
               customApiUrl,
               onCustomApiUrlChange: setCustomApiUrl,
               customApiName,
@@ -4181,74 +4221,6 @@ export default function App() {
         isOpen={showPrivacyModal} 
         onConsent={handlePrivacyConsent} 
       />
-      {weatherDebugVisible && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-[15030] pointer-events-auto flex flex-col gap-2">
-          <div className="bg-popover border border-border rounded-xl p-2 shadow-lg flex flex-col gap-2">
-            <div className="flex items-center justify-between px-1">
-              <div className="text-xs text-muted-foreground">Weather Debug</div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  setWeatherDebugVisible(false);
-                  try { sessionStorage.setItem('leaftab_weather_debug_visible', 'false'); } catch {}
-                }}
-                title="Close"
-              >
-                <RiCloseFill className="size-3.5" />
-              </Button>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => { setWallpaperMode('weather'); setWeatherCode(0); }}
-                title="Sunny"
-              >
-                <RiSunFill className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => { setWallpaperMode('weather'); setWeatherCode(2); }}
-                title="Cloudy"
-              >
-                <RiCloudFill className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => { setWallpaperMode('weather'); setWeatherCode(61); }}
-                title="Rain"
-              >
-                <RiRainyFill className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => { setWallpaperMode('weather'); setWeatherCode(71); }}
-                title="Snow"
-              >
-                <RiSnowyFill className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => { setWallpaperMode('weather'); setWeatherCode(95); }}
-                title="Thunderstorm"
-              >
-                <RiThunderstormsFill className="size-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

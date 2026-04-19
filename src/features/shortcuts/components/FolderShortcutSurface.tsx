@@ -10,7 +10,11 @@ import { createPortal } from 'react-dom';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import { RootShortcutGrid } from './RootShortcutGrid';
-import { renderLeaftabFolderEmptyState } from './leaftabGridVisuals';
+import {
+  renderLeaftabFolderDragPreview,
+  renderLeaftabFolderEmptyState,
+  renderLeaftabFolderItem,
+} from './leaftabGridVisuals';
 
 export type { FolderExtractDragStartPayload } from '@leaftab/workspace-react';
 
@@ -95,6 +99,8 @@ type FolderShortcutSurfaceProps = {
   folderId: string;
   shortcuts: Shortcut[];
   emptyText: string;
+  initialWidthPx?: number;
+  rootGridColumns?: number;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
@@ -109,10 +115,78 @@ type FolderShortcutSurfaceProps = {
   onDragActiveChange?: (active: boolean) => void;
 };
 
+const FOLDER_GRID_COLUMN_GAP_PX = 18;
+const FOLDER_GRID_ROW_GAP_PX = 16;
+const FOLDER_GRID_MAX_COLUMNS = 4;
+const FOLDER_GRID_PREFERRED_COLUMNS = 4;
+
+function resolveFolderRootColumnCap(rootGridColumns?: number) {
+  const resolvedColumns = Number(rootGridColumns);
+  if (!Number.isFinite(resolvedColumns)) return FOLDER_GRID_MAX_COLUMNS;
+  if (resolvedColumns <= 6) return 4;
+  if (resolvedColumns <= 8) return 5;
+  return FOLDER_GRID_MAX_COLUMNS;
+}
+
+function resolveFolderGridColumns(params: {
+  widthPx: number;
+  shortcutCount: number;
+  compactIconSize: number;
+  rootGridColumns?: number;
+}) {
+  const { widthPx, shortcutCount, compactIconSize, rootGridColumns } = params;
+  if (shortcutCount <= 0) return 1;
+  const rootCap = resolveFolderRootColumnCap(rootGridColumns);
+
+  // During first paint (before container measurement), keep a stable non-1-column
+  // baseline to avoid "vertical first, horizontal later" animation jumps.
+  if (widthPx <= 0) {
+    return Math.max(
+      1,
+      Math.min(
+        shortcutCount,
+        rootCap,
+        FOLDER_GRID_MAX_COLUMNS,
+        FOLDER_GRID_PREFERRED_COLUMNS,
+      ),
+    );
+  }
+
+  const minCellWidth = Math.max(92, Math.round(compactIconSize + 22));
+  const widthDrivenColumns = Math.max(
+    1,
+    Math.floor((Math.max(0, widthPx) + FOLDER_GRID_COLUMN_GAP_PX) / (minCellWidth + FOLDER_GRID_COLUMN_GAP_PX)),
+  );
+
+  const maxColumns = Math.max(1, Math.min(widthDrivenColumns, rootCap, FOLDER_GRID_MAX_COLUMNS, shortcutCount));
+  const preferredColumns = Math.min(FOLDER_GRID_PREFERRED_COLUMNS, maxColumns, shortcutCount);
+
+  let bestColumns = 1;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (let columns = 1; columns <= maxColumns; columns += 1) {
+    const rows = Math.max(1, Math.ceil(shortcutCount / columns));
+    const remainder = shortcutCount % columns;
+    const emptySlotsInLastRow = remainder === 0 ? 0 : columns - remainder;
+    const preferredDistance = Math.abs(columns - preferredColumns);
+    // Keep a stable 4-column visual rhythm when possible, while penalizing ragged last rows.
+    const score = preferredDistance * 2 + rows * 0.2 + (emptySlotsInLastRow / columns) * 1.8;
+
+    if (score < bestScore) {
+      bestScore = score;
+      bestColumns = columns;
+    }
+  }
+
+  return Math.max(1, Math.min(bestColumns, shortcutCount));
+}
+
 export function FolderShortcutSurface({
   folderId,
   shortcuts,
   emptyText,
+  initialWidthPx,
+  rootGridColumns,
   compactIconSize = 72,
   iconCornerRadius,
   iconAppearance,
@@ -127,13 +201,24 @@ export function FolderShortcutSurface({
   onDragActiveChange,
 }: FolderShortcutSurfaceProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [columns, setColumns] = useState(4);
+  const [columns, setColumns] = useState(() => resolveFolderGridColumns({
+    widthPx: Number.isFinite(initialWidthPx) ? Math.max(0, Number(initialWidthPx)) : 0,
+    shortcutCount: shortcuts.length,
+    compactIconSize,
+    rootGridColumns,
+  }));
   const [folderDragActive, setFolderDragActive] = useState(false);
   const [hoveredMask, setHoveredMask] = useState(false);
   const shortcutIconRenderContextValue = useMemo(() => ({
     monochromeTone: 'theme-adaptive' as ShortcutMonochromeTone,
     monochromeTileBackdropBlur: false,
   }), []);
+  const rowHeight = useMemo(() => {
+    const titleAllowance = showShortcutTitles
+      ? Math.max(22, Math.round(compactIconSize * 0.32))
+      : 0;
+    return Math.max(compactIconSize + titleAllowance, compactIconSize + 24);
+  }, [compactIconSize, showShortcutTitles]);
 
   useLayoutEffect(() => {
     const node = wrapperRef.current;
@@ -142,7 +227,12 @@ export function FolderShortcutSurface({
     }
 
     const updateColumns = () => {
-      const nextColumns = node.clientWidth >= 640 ? 4 : 3;
+      const nextColumns = resolveFolderGridColumns({
+        widthPx: node.clientWidth,
+        shortcutCount: shortcuts.length,
+        compactIconSize,
+        rootGridColumns,
+      });
       setColumns((current) => (current === nextColumns ? current : nextColumns));
     };
 
@@ -157,7 +247,7 @@ export function FolderShortcutSurface({
       observer.disconnect();
       window.removeEventListener('resize', updateColumns);
     };
-  }, []);
+  }, [compactIconSize, rootGridColumns, shortcuts.length]);
 
   const handleRootDropIntent = useCallback((intent: RootShortcutDropIntent) => {
     if (intent.type !== 'reorder-root') {
@@ -230,6 +320,10 @@ export function FolderShortcutSurface({
           shortcuts={shortcuts}
           gridColumns={columns}
           minRows={1}
+          rowHeightOverride={rowHeight}
+          rowGapPx={FOLDER_GRID_ROW_GAP_PX}
+          columnGapPx={FOLDER_GRID_COLUMN_GAP_PX}
+          allowLargeFolder={false}
           onShortcutOpen={onShortcutOpen}
           onShortcutContextMenu={(event, _shortcutIndex, shortcut) => {
             onShortcutContextMenu?.(event, shortcut);
@@ -248,6 +342,24 @@ export function FolderShortcutSurface({
           extractBoundaryRef={maskBoundaryRef}
           onExtractDragStart={handleExtractDragStart}
           onBoundaryHoverChange={handleBoundaryHoverChange}
+          disableReorderAnimation
+          renderShortcutCard={(params) => renderLeaftabFolderItem({
+            shortcut: params.shortcut,
+            compactIconSize: params.compactIconSize,
+            iconCornerRadius: params.iconCornerRadius,
+            iconAppearance: params.iconAppearance,
+            forceTextWhite: params.forceTextWhite,
+            showShortcutTitles: params.compactShowTitle,
+            onOpen: params.onOpen,
+            onContextMenu: params.onContextMenu,
+          })}
+          renderDragPreview={(params) => renderLeaftabFolderDragPreview({
+            shortcut: params.shortcut,
+            compactIconSize: params.compactIconSize,
+            iconCornerRadius: params.iconCornerRadius,
+            iconAppearance: params.iconAppearance,
+            forceTextWhite: params.forceTextWhite,
+          })}
         />
       </div>
     </ShortcutIconRenderContext.Provider>

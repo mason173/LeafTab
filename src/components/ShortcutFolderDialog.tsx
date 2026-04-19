@@ -13,6 +13,7 @@ type ShortcutFolderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   shortcut: Shortcut | null;
+  rootGridColumns?: number;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
@@ -25,6 +26,7 @@ export function ShortcutFolderDialog({
   open,
   onOpenChange,
   shortcut,
+  rootGridColumns,
   compactIconSize = 72,
   iconCornerRadius,
   iconAppearance,
@@ -57,6 +59,7 @@ export function ShortcutFolderDialog({
               folderId={shortcut?.id || ''}
               shortcuts={children}
               emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
+              rootGridColumns={rootGridColumns}
               compactIconSize={compactIconSize}
               iconCornerRadius={iconCornerRadius}
               iconAppearance={iconAppearance}

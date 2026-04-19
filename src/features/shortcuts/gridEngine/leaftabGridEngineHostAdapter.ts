@@ -39,6 +39,7 @@ export type LeaftabGridEngineRootSurfaceProps = Pick<
 export type LeaftabGridEngineFolderSurfaceProps = {
   open: boolean;
   shortcut: Shortcut | null;
+  rootGridColumns?: number;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
@@ -156,6 +157,7 @@ export function createLeaftabGridEngineHostAdapter(
     folderDialogProps: {
       open: Boolean(params.openFolderShortcut),
       shortcut: params.openFolderShortcut,
+      rootGridColumns: params.gridColumns,
       compactIconSize: params.compactIconSize,
       iconCornerRadius: params.iconCornerRadius,
       iconAppearance: params.iconAppearance,
@@ -167,6 +169,7 @@ export function createLeaftabGridEngineHostAdapter(
     compactFolderOverlayProps: {
       open: Boolean(params.openFolderShortcut),
       shortcut: params.openFolderShortcut,
+      rootGridColumns: params.gridColumns,
       compactIconSize: params.compactIconSize,
       iconCornerRadius: params.iconCornerRadius,
       iconAppearance: params.iconAppearance,
