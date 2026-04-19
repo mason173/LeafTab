@@ -19,6 +19,17 @@ export interface ChangelogSection {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
   {
+    version: "1.4.8-alpha.3",
+    date: "2026-04-19",
+    channel: "preview",
+    tag: "alpha",
+    notes: [
+      t("changelog.items.release148Alpha3GridBaseline", { defaultValue: "将当前网格拖拽引擎重构阶段的主仓库代码整理为新的 Alpha 基线版本，便于后续继续推进较大改动" }),
+      t("changelog.items.release148Alpha3Tooling", { defaultValue: "补齐基础 typecheck、test 与 release 校验链路，发布前验证流程更完整" }),
+      t("changelog.items.release148Alpha3VersionAlign", { defaultValue: "统一 GitHub 预发布版本号、扩展清单版本名与应用内更新记录，减少版本识别混乱" }),
+    ],
+  },
+  {
     version: "1.4.8-alpha.2",
     date: "2026-04-17",
     channel: "preview",
