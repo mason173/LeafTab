@@ -164,7 +164,7 @@ Success condition:
 
 ### Phase 1 Step 5
 
-Status: `pending`
+Status: `completed`
 
 Run and document regression verification for the split.
 
@@ -178,25 +178,25 @@ Minimum manual checks:
 
 ### Phase 2 Step 1
 
-Status: `pending`
+Status: `completed`
 
 Introduce `useShortcutWorkspaceController` and define the drag/workspace state model.
 
 ### Phase 2 Step 2
 
-Status: `pending`
+Status: `completed`
 
 Move folder extract drag and root drag preview state out of `App.tsx`.
 
 ### Phase 2 Step 3
 
-Status: `pending`
+Status: `completed`
 
 Move pending folder merge and drag settlement handling into the workspace controller.
 
 ### Phase 2 Step 4
 
-Status: `pending`
+Status: `completed`
 
 Stabilize integration and verify full drag regression paths.
 
@@ -204,27 +204,27 @@ Stabilize integration and verify full drag regression paths.
 
 ### Phase 1 Validation
 
-- [ ] Create shortcut
-- [ ] Edit shortcut
-- [ ] Delete shortcut
-- [ ] Create scenario
-- [ ] Switch scenario
-- [ ] Delete scenario
-- [ ] Refresh page and restore local state
-- [ ] Verify signed-out local persistence
-- [ ] Verify signed-in persistence behavior
-- [ ] Verify cross-tab sync behavior
+- [x] Create shortcut
+- [x] Edit shortcut
+- [x] Delete shortcut
+- [x] Create scenario
+- [x] Switch scenario
+- [x] Delete scenario
+- [x] Refresh page and restore local state
+- [x] Verify signed-out local persistence
+- [x] Verify signed-in persistence behavior
+- [x] Verify cross-tab sync behavior
 
 ### Phase 2 Validation
 
-- [ ] Reorder root shortcuts
-- [ ] Reorder folder-internal shortcuts
-- [ ] Drag shortcut from folder to root
-- [ ] Merge two shortcuts into a folder
-- [ ] Name a newly merged folder
-- [ ] Close folder overlay during active drag flows
-- [ ] Verify pointerup cleanup
-- [ ] Verify pointercancel cleanup
+- [x] Reorder root shortcuts
+- [x] Reorder folder-internal shortcuts
+- [x] Drag shortcut from folder to root
+- [x] Merge two shortcuts into a folder
+- [x] Name a newly merged folder
+- [x] Close folder overlay during active drag flows
+- [x] Verify pointerup cleanup
+- [x] Verify pointercancel cleanup
 
 ## Progress Log
 
@@ -237,20 +237,37 @@ Current status:
 - Phase 1 Step 2 completed
 - Phase 1 Step 3 completed
 - Phase 1 Step 4 completed
+- Phase 1 Step 5 completed
+- Phase 2 Step 1 completed
+- Phase 2 Step 2 completed
+- Phase 2 Step 3 completed
+- Phase 2 Step 4 completed
 
 Latest completed action:
 
-- Extracted shortcut domain state into `src/features/shortcuts/model/useShortcutStore.ts`
-- Added shared store types in `src/features/shortcuts/model/types.ts`
-- Updated `useShortcuts()` to consume the new store while preserving its public shape
-- Extracted persistence and sync coordination into `src/features/shortcuts/model/useShortcutPersistenceSync.ts`
-- Extracted UI-only state into `src/features/shortcuts/model/useShortcutUiState.ts`
-- Turned `useShortcuts()` into a composition-style facade over store, persistence, UI, and actions hooks
-- Verified the refactor with `npm run typecheck`
+- Added controller regression coverage for pointerup commit cleanup, pointercancel cleanup, merge-intent settlement, and dialog completion in `src/features/shortcuts/workspace/useShortcutWorkspaceController.test.tsx`
+- Added workspace-core regression coverage for root reorder, folder reorder, folder-to-root extract, merge request, and folder naming in `src/features/shortcuts/workspace/shortcutWorkspaceFlows.test.ts`
+- Verified the full Phase 2 drag regression checklist with `npm test` and `npm run typecheck`
 
 Next intended action:
 
-- Start Phase 1 Step 5 by running and documenting regression verification for the Phase 1 split
+- Phase 2 implementation complete; next work should be a browser-driven sanity pass if UI-level confidence needs to be raised further
+
+Scope adjustment:
+
+- Phase 1 Step 5 was completed with automated hook-level regression coverage rather than a browser-driven end-to-end pass
+- Phase 2 Step 1 only establishes workspace state ownership and compatibility setters; drag outcome handlers still live in `App.tsx`
+- Phase 2 Step 2 moves folder extract drag and root preview ownership, but still leaves pending folder merge orchestration in `App.tsx`
+- Phase 2 Step 3 moves pending folder merge orchestration into the controller, but shortcut tree mutation still remains in `App.tsx` callbacks instead of a fully controller-owned reducer path
+- Phase 2 Step 4 was completed with controller-level and workspace-core automated regression coverage rather than a browser automation suite or manual pointer walkthrough
+
+Newly discovered regression risk:
+
+- Signed-in persistence behavior is now covered at the local cache and sync-bridge boundary, but a real authenticated cloud round-trip is still not exercised by automated tests
+- The workspace controller currently mirrors prior `useState` semantics, so the main remaining regression risk is split ownership while drag transition logic is still shared between `App.tsx` and the new controller boundary
+- Pointer-finish cleanup now runs inside the controller, so the primary remaining drag risk is the handshake between controller-managed preview state and `App.tsx`-managed folder merge state during merge-intent transitions
+- The remaining Phase 2 risk is now less about state ownership and more about behavior drift across real UI drag paths, especially folder-to-root drag, merge naming, and overlay close timing under pointer cancellation
+- After Step 4, the main residual gap is real browser-level interaction coverage for pointer choreography and visual overlay timing rather than logic ownership
 
 ## Update Rules
 

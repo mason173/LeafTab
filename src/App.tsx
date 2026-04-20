@@ -76,7 +76,6 @@ import {
   getFolderPreviewSlotEntries,
   getFolderPreviewTitle,
 } from '@/components/shortcuts/folderPreviewRegistry';
-import type { RootShortcutExternalDragSession as ExternalShortcutDragSession } from '@/features/shortcuts/components/RootShortcutGrid';
 import {
   LazyAppDialogs,
   LazyHomeInteractiveSurface,
@@ -122,7 +121,6 @@ import {
 } from '@/utils/cloudSyncBookmarksPolicy';
 import { resolveDeferredBookmarkSyncExecution } from '@/utils/deferredBookmarkSync';
 import {
-  applyFolderExtractDragStart,
   applyShortcutDropIntent,
   dissolveFolder,
   mergeShortcutsIntoNewFolder,
@@ -139,6 +137,7 @@ import {
   isShortcutLink,
 } from '@/utils/shortcutFolders';
 import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEngine/leaftabGridEngineHostAdapter';
+import { useShortcutWorkspaceController } from '@/features/shortcuts/workspace/useShortcutWorkspaceController';
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -217,20 +216,6 @@ type DangerousSyncDialogState = {
   remoteBookmarkCount: number | null;
   detectedFromCount: number;
   detectedToCount: number;
-};
-
-type PendingRootFolderMerge = {
-  scenarioId: string;
-  activeShortcutId: string;
-  targetShortcutId: string;
-};
-
-type PendingFolderExtractDrag = {
-  scenarioId: string;
-  extractedShortcutId: string;
-  pointerId: number;
-  previewShortcuts: Shortcut[];
-  committed: boolean;
 };
 
 type DangerousSyncError = Error & {
@@ -783,13 +768,39 @@ export default function App() {
     handleLogout,
   );
 
-  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
-  const [pendingRootFolderMerge, setPendingRootFolderMerge] = useState<PendingRootFolderMerge | null>(null);
-  const [folderNameDialogOpen, setFolderNameDialogOpen] = useState(false);
-  const [externalShortcutDragSession, setExternalShortcutDragSession] = useState<ExternalShortcutDragSession | null>(null);
-  const [pendingExtractHiddenShortcutId, setPendingExtractHiddenShortcutId] = useState<string | null>(null);
-  const [pendingFolderExtractDrag, setPendingFolderExtractDrag] = useState<PendingFolderExtractDrag | null>(null);
-  const pendingExtractRootDragStartedRef = useRef(false);
+  const markShortcutStateDirty = useCallback(() => {
+    if (!user) localDirtyRef.current = true;
+  }, [localDirtyRef, user]);
+
+  const {
+    editingFolderId,
+    setEditingFolderId,
+    pendingRootFolderMerge,
+    folderNameDialogOpen,
+    setFolderNameDialogOpen,
+    externalShortcutDragSession,
+    pendingExtractHiddenShortcutId,
+    activePendingExtractDrag,
+    rootDisplayShortcuts,
+    startFolderExtractDrag,
+    markRootShortcutDragStart,
+    markRootShortcutDragEnd,
+    commitPendingFolderExtractPreview,
+    consumeExternalDragSession,
+    requestRootFolderMerge,
+    closeFolderNameDialog,
+    completeFolderNameFlow,
+  } = useShortcutWorkspaceController({
+    selectedScenarioId,
+    shortcuts,
+    onCommitPendingExtractPreview: ({ scenarioId, previewShortcuts }) => {
+      setScenarioShortcuts((prev) => ({
+        ...prev,
+        [scenarioId]: previewShortcuts,
+      }));
+      markShortcutStateDirty();
+    },
+  });
   const folderOverlayWarmupPromiseRef = useRef<Promise<unknown> | null>(null);
   const folderOpenRequestIdRef = useRef(0);
   const folderTransitionController = useFolderTransitionController();
@@ -804,11 +815,6 @@ export default function App() {
     const overlayFolderId = folderTransitionController.overlayFolderId;
     return overlayFolderId ? findShortcutById(shortcuts, overlayFolderId) : null;
   }, [folderTransitionController.overlayFolderId, shortcuts]);
-  const rootDisplayShortcuts = useMemo(() => {
-    if (!pendingFolderExtractDrag) return shortcuts;
-    if (pendingFolderExtractDrag.scenarioId !== selectedScenarioId) return shortcuts;
-    return pendingFolderExtractDrag.previewShortcuts;
-  }, [pendingFolderExtractDrag, selectedScenarioId, shortcuts]);
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
@@ -1121,34 +1127,15 @@ export default function App() {
     if (!user) localDirtyRef.current = true;
   }, [localDirtyRef, selectedScenarioId, setScenarioShortcuts, user]);
 
-  const markShortcutStateDirty = useCallback(() => {
-    if (!user) localDirtyRef.current = true;
-  }, [localDirtyRef, user]);
-
   const handleShortcutDropIntent = useCallback((intent: ShortcutDropIntent) => {
-    const activePendingExtractDrag = pendingFolderExtractDrag?.scenarioId === selectedScenarioId
-      ? pendingFolderExtractDrag
-      : null;
     const sourceShortcuts = activePendingExtractDrag?.previewShortcuts ?? shortcuts;
     const outcome = applyShortcutDropIntent(sourceShortcuts, intent);
     if (outcome.kind === 'request-folder-merge') {
-      if (activePendingExtractDrag) {
-        setScenarioShortcuts((prev) => ({
-          ...prev,
-          [selectedScenarioId]: activePendingExtractDrag.previewShortcuts,
-        }));
-        setPendingFolderExtractDrag({
-          ...activePendingExtractDrag,
-          committed: true,
-        });
-      }
-      setEditingFolderId(null);
-      setPendingRootFolderMerge({
+      requestRootFolderMerge({
         scenarioId: selectedScenarioId,
         activeShortcutId: outcome.activeShortcutId,
         targetShortcutId: outcome.targetShortcutId,
       });
-      setFolderNameDialogOpen(true);
       return;
     }
     if (outcome.kind === 'noop' || outcome.kind === 'unsupported-tree') return;
@@ -1159,14 +1146,17 @@ export default function App() {
       [selectedScenarioId]: outcome.shortcuts,
     }));
     if (activePendingExtractDrag) {
-      setPendingFolderExtractDrag({
-        ...activePendingExtractDrag,
-        previewShortcuts: outcome.shortcuts,
-        committed: true,
-      });
+      commitPendingFolderExtractPreview(outcome.shortcuts);
     }
     markShortcutStateDirty();
-  }, [markShortcutStateDirty, pendingFolderExtractDrag, selectedScenarioId, setScenarioShortcuts, shortcuts]);
+  }, [
+    commitPendingFolderExtractPreview,
+    markShortcutStateDirty,
+    requestRootFolderMerge,
+    selectedScenarioId,
+    setScenarioShortcuts,
+    shortcuts,
+  ]);
 
   const handleRootShortcutDropIntent = useCallback((intent: RootShortcutDropIntent) => {
     handleShortcutDropIntent(intent);
@@ -1202,87 +1192,22 @@ export default function App() {
   }, [handleShortcutDropIntent]);
 
   const handleFolderExtractDragStart = useCallback((payload: FolderExtractDragStartPayload) => {
-    const outcome = applyFolderExtractDragStart(shortcuts, payload);
-    if (outcome.kind !== 'start-root-drag-session') return;
-
-    const dragToken = Date.now();
-    pendingExtractRootDragStartedRef.current = false;
-
     flushSync(() => {
-      setPendingFolderExtractDrag({
-        scenarioId: selectedScenarioId,
-        extractedShortcutId: payload.shortcutId,
-        pointerId: payload.pointerId,
-        previewShortcuts: outcome.shortcuts,
-        committed: false,
-      });
-      setPendingExtractHiddenShortcutId(payload.shortcutId);
-      if (outcome.closeFolderId) {
-        folderTransitionController.clearImmediately();
-      }
-      setExternalShortcutDragSession({
-        token: dragToken,
-        ...outcome.session,
+      startFolderExtractDrag(payload, {
+        onCloseFolderOverlay: () => {
+          folderTransitionController.clearImmediately();
+        },
       });
     });
-  }, [folderTransitionController, selectedScenarioId, shortcuts]);
+  }, [folderTransitionController, startFolderExtractDrag]);
 
   const handleRootShortcutDragStart = useCallback(() => {
-    if (!pendingFolderExtractDrag) return;
-    pendingExtractRootDragStartedRef.current = true;
-  }, [pendingFolderExtractDrag]);
+    markRootShortcutDragStart();
+  }, [markRootShortcutDragStart]);
 
   const handleRootShortcutDragEnd = useCallback(() => {
-    const pendingExtractDrag = pendingFolderExtractDrag;
-    if (!pendingExtractDrag) {
-      return;
-    }
-    if (!pendingExtractRootDragStartedRef.current) {
-      return;
-    }
-
-    pendingExtractRootDragStartedRef.current = false;
-  }, [pendingFolderExtractDrag]);
-
-  const finalizePendingFolderExtractDrag = useCallback((options?: {
-    commitPendingPreview?: boolean;
-  }) => {
-    const pendingExtractDrag = pendingFolderExtractDrag;
-    if (!pendingExtractDrag) return;
-
-    pendingExtractRootDragStartedRef.current = false;
-
-    if (options?.commitPendingPreview && !pendingExtractDrag.committed) {
-      setScenarioShortcuts((prev) => ({
-        ...prev,
-        [pendingExtractDrag.scenarioId]: pendingExtractDrag.previewShortcuts,
-      }));
-      markShortcutStateDirty();
-    }
-
-    setPendingFolderExtractDrag(null);
-    setPendingExtractHiddenShortcutId(null);
-    setExternalShortcutDragSession(null);
-  }, [markShortcutStateDirty, pendingFolderExtractDrag, setScenarioShortcuts]);
-
-  useEffect(() => {
-    if (!pendingFolderExtractDrag) return;
-
-    const handleWindowPointerFinish = (event: PointerEvent) => {
-      if (event.pointerId !== pendingFolderExtractDrag.pointerId) return;
-      finalizePendingFolderExtractDrag({
-        commitPendingPreview: event.type === 'pointerup',
-      });
-    };
-
-    window.addEventListener('pointerup', handleWindowPointerFinish, true);
-    window.addEventListener('pointercancel', handleWindowPointerFinish, true);
-
-    return () => {
-      window.removeEventListener('pointerup', handleWindowPointerFinish, true);
-      window.removeEventListener('pointercancel', handleWindowPointerFinish, true);
-    };
-  }, [finalizePendingFolderExtractDrag, pendingFolderExtractDrag]);
+    markRootShortcutDragEnd();
+  }, [markRootShortcutDragEnd]);
 
   const handleFolderEngineChildrenCommit = useCallback((folderId: string, children: Shortcut[]) => {
     if (!folderId) return;
@@ -1338,9 +1263,7 @@ export default function App() {
       });
       if (!changed) return;
       if (!user) localDirtyRef.current = true;
-      setPendingRootFolderMerge(null);
-      setFolderNameDialogOpen(false);
-      setEditingFolderId(null);
+      completeFolderNameFlow();
       return;
     }
 
@@ -1363,9 +1286,16 @@ export default function App() {
       };
     });
     if (!user) localDirtyRef.current = true;
-    setFolderNameDialogOpen(false);
-    setEditingFolderId(null);
-  }, [editingFolderId, localDirtyRef, pendingRootFolderMerge, selectedScenarioId, setScenarioShortcuts, user]);
+    completeFolderNameFlow();
+  }, [
+    completeFolderNameFlow,
+    editingFolderId,
+    localDirtyRef,
+    pendingRootFolderMerge,
+    selectedScenarioId,
+    setScenarioShortcuts,
+    user,
+  ]);
 
   const handleRenameFolderInline = useCallback((folderId: string, name: string) => {
     const nextName = name.trim();
@@ -3666,7 +3596,7 @@ export default function App() {
     onGridContextMenu: handleGridContextMenu,
     externalDragSession: externalShortcutDragSession,
     onExternalDragSessionConsumed: (token: number) => {
-      setExternalShortcutDragSession((current) => (current?.token === token ? null : current));
+      consumeExternalDragSession(token);
     },
     openFolderShortcut,
     onFolderOpenChange: (open) => {
@@ -3883,11 +3813,11 @@ export default function App() {
           <LazyShortcutFolderNameDialog
             open={folderNameDialogOpen}
             onOpenChange={(open) => {
-              setFolderNameDialogOpen(open);
-              if (!open) {
-                setEditingFolderId(null);
-                setPendingRootFolderMerge(null);
+              if (open) {
+                setFolderNameDialogOpen(true);
+                return;
               }
+              closeFolderNameDialog();
             }}
             title={folderNameDialogTitle}
             description={folderNameDialogDescription}
