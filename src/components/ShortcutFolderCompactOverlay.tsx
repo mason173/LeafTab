@@ -362,6 +362,7 @@ function FolderPanelTitle({
         {allowEditing ? (
           <input
             ref={titleInputRef}
+            data-testid="shortcut-folder-overlay-title-input"
             value={draftTitle}
             maxLength={24}
             onChange={(event) => onDraftTitleChange(event.target.value)}
@@ -382,6 +383,7 @@ function FolderPanelTitle({
         ) : (
           <button
             type="button"
+            data-testid="shortcut-folder-overlay-title-button"
             className={`mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
             onClick={onStartEditing}
           >
@@ -961,6 +963,8 @@ export function ShortcutFolderCompactOverlay({
           <div className="absolute" style={{ ...targetFrameStyle, zIndex: OVERLAY_Z_INDEX + 4 }}>
             <div
               ref={openSurfaceRef}
+              data-testid="shortcut-folder-overlay"
+              data-folder-id={shortcut.id}
               className="pointer-events-auto relative h-full w-full overflow-hidden"
               style={{ borderRadius: roundedCorner }}
               onClick={(event) => {

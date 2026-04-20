@@ -167,6 +167,17 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
       onPreviewShortcutOpen={params.onPreviewShortcutOpen}
       selectionDisabled={params.selectionDisabled}
       folderPortalBackdrop
+      rootProps={{
+        'data-testid': `root-shortcut-card-${params.shortcut.id}`,
+        'data-shortcut-id': params.shortcut.id,
+        'data-shortcut-kind': params.shortcut.kind || 'link',
+      }}
+      iconContentProps={{
+        'data-root-shortcut-icon-id': params.shortcut.id,
+      }}
+      titleProps={{
+        'data-root-shortcut-title-id': params.shortcut.id,
+      }}
       shortcut={params.shortcut}
       onOpen={params.onOpen}
       onContextMenu={params.onContextMenu}

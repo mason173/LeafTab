@@ -269,6 +269,33 @@ Newly discovered regression risk:
 - The remaining Phase 2 risk is now less about state ownership and more about behavior drift across real UI drag paths, especially folder-to-root drag, merge naming, and overlay close timing under pointer cancellation
 - After Step 4, the main residual gap is real browser-level interaction coverage for pointer choreography and visual overlay timing rather than logic ownership
 
+### 2026-04-21
+
+Current status:
+
+- Phase 1 and Phase 2 remain completed
+- Post-plan browser sanity scaffolding added for shortcut workspace interactions
+
+Latest completed action:
+
+- Added Playwright configuration in `playwright.config.js`
+- Added browser sanity scaffolding tests in `tests/e2e/shortcut-workspace.spec.js`
+- Added stable shortcut/folder overlay test selectors in shortcut workspace UI components
+- Verified Playwright test discovery with `npm run test:e2e:list`
+- Re-ran `npm test` and `npm run typecheck` after the selector additions
+
+Next intended action:
+
+- Run `npm run test:e2e:build` in an environment that can launch a browser process and open either `file://` or hosted build assets
+
+Scope adjustment:
+
+- The browser sanity follow-up is currently scaffolded but not executed end-to-end in this environment because the sandbox does not allow binding a local dev server port or launching the Playwright browser process
+
+Newly discovered regression risk:
+
+- Browser-level interaction timing is still unverified in this environment, so the remaining uncertainty is in real pointer choreography and overlay animation timing rather than application logic or type safety
+
 ## Update Rules
 
 After every completed implementation step, update this file with:

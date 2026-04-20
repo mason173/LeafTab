@@ -311,7 +311,12 @@ export function FolderShortcutSurface({
 
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
-      <div ref={wrapperRef} className="relative">
+      <div
+        ref={wrapperRef}
+        className="relative"
+        data-testid="folder-shortcut-surface"
+        data-folder-id={folderId}
+      >
         <FolderMaskDropZones
           active={folderDragActive}
           hovered={hoveredMask}
