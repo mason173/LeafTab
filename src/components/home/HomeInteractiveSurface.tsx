@@ -15,6 +15,8 @@ import { clamp01 } from '@/components/shortcutFolderCompactAnimation';
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
+const FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX = 18;
+const FOLDER_IMMERSIVE_BACKGROUND_SCALE = 1.05;
 
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
   if (target instanceof Element) return target;
@@ -280,6 +282,26 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
+  const immersiveProgress = clamp01(folderImmersiveProgress);
+
+  const immersiveBackdropLayerStyle = useMemo<CSSProperties | undefined>(() => {
+    if (immersiveProgress <= 0.0001) return undefined;
+
+    return {
+      opacity: immersiveProgress,
+      backdropFilter: `blur(${(FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX * immersiveProgress).toFixed(2)}px)`,
+      WebkitBackdropFilter: `blur(${(FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX * immersiveProgress).toFixed(2)}px)`,
+      willChange: 'opacity, backdrop-filter',
+      pointerEvents: 'none',
+    };
+  }, [immersiveProgress]);
+
+  const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
+    transform: `scale(${(1 + ((FOLDER_IMMERSIVE_BACKGROUND_SCALE - 1) * immersiveProgress)).toFixed(4)})`,
+    transformOrigin: 'center center',
+    willChange: immersiveProgress > 0.0001 ? 'transform' : undefined,
+    pointerEvents: 'none',
+  }), [immersiveProgress]);
 
   const overlayWallpaperLayer = useMemo(() => {
     if (!showOverlayWallpaperLayer) return null;
@@ -296,21 +318,23 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           backfaceVisibility: 'hidden',
         }}
       >
-        <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
-          {effectiveWallpaperMode === 'weather' && freshWeatherVideo ? (
-            <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
-          ) : effectiveWallpaperMode === 'color' ? (
-            <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
-          ) : effectiveOverlayWallpaperSrc ? (
-            <img
-              src={effectiveOverlayWallpaperSrc}
-              alt={overlayBackgroundAlt}
-              className="absolute w-full h-full object-cover"
-              onLoad={onOverlayImageReady}
-              onError={onOverlayImageReady}
-            />
-          ) : null}
-          <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
+        <div className="absolute inset-0" style={immersiveWallpaperLayerStyle}>
+          <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
+            {effectiveWallpaperMode === 'weather' && freshWeatherVideo ? (
+              <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
+            ) : effectiveWallpaperMode === 'color' ? (
+              <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
+            ) : effectiveOverlayWallpaperSrc ? (
+              <img
+                src={effectiveOverlayWallpaperSrc}
+                alt={overlayBackgroundAlt}
+                className="absolute w-full h-full object-cover"
+                onLoad={onOverlayImageReady}
+                onError={onOverlayImageReady}
+              />
+            ) : null}
+            <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
+          </div>
         </div>
       </div>
     );
@@ -320,11 +344,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     effectiveWallpaperMaskOpacity,
     effectiveWallpaperMode,
     freshWeatherVideo,
+    immersiveWallpaperLayerStyle,
     onOverlayImageReady,
     overlayBackgroundAlt,
     shouldFreezeDynamicWallpaper,
     showOverlayWallpaperLayer,
-    visualBootSettled,
     wallpaperAnimatedLayerStyle,
   ]);
 
@@ -352,7 +376,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   ]);
 
   const immersiveUiShellStyle = useMemo<CSSProperties | undefined>(() => {
-    const immersiveProgress = clamp01(folderImmersiveProgress);
     if (immersiveProgress <= 0.0001) return undefined;
 
     return {
@@ -360,11 +383,18 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       willChange: 'opacity',
       pointerEvents: 'none',
     };
-  }, [folderImmersiveProgress]);
+  }, [immersiveProgress]);
 
   return (
     <>
       {overlayWallpaperLayer}
+      {immersiveBackdropLayerStyle ? (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[15000]"
+          style={immersiveBackdropLayerStyle}
+        />
+      ) : null}
       <div style={immersiveUiShellStyle}>
         {fixedTopNavLayer}
       </div>

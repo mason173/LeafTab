@@ -147,7 +147,7 @@
   --destructive-foreground: #ffffff;
   --border: color-mix(in srgb, rgba(255, 255, 255, 0.11) 93%, rgb(var(--tint-rgb)) 7%);
   --input: color-mix(in srgb, #2b2b30 94%, rgb(var(--tint-rgb)) 6%);
-  --shortcut-monochrome-surface-theme-adaptive: color-mix(in srgb, var(--foreground) 7%, var(--background) 93%);
+  --shortcut-monochrome-surface-theme-adaptive: var(--background);
   --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);

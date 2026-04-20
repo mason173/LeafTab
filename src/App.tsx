@@ -852,6 +852,27 @@ export default function App() {
   }, [folderTransitionController, openFolderId, openFolderShortcut]);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const { body } = document;
+    const overlayFolderId = folderTransitionController.overlayFolderId;
+    const transitionPhase = folderTransitionController.transition.phase;
+
+    if (overlayFolderId && transitionPhase !== 'idle') {
+      body.dataset.activeFolderTransitionId = overlayFolderId;
+      body.dataset.activeFolderTransitionPhase = transitionPhase;
+    } else {
+      delete body.dataset.activeFolderTransitionId;
+      delete body.dataset.activeFolderTransitionPhase;
+    }
+
+    return () => {
+      delete body.dataset.activeFolderTransitionId;
+      delete body.dataset.activeFolderTransitionPhase;
+    };
+  }, [folderTransitionController.overlayFolderId, folderTransitionController.transition.phase]);
+
+  useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
       setEditingFolderId(null);
       if (!pendingRootFolderMerge) {

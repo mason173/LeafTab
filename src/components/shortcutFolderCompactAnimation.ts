@@ -7,10 +7,14 @@ export type OverlayAnimationRect = {
 
 export type FolderMotionPhase = 'opening' | 'closing';
 
-export const FOLDER_OPEN_DURATION_MS = 420;
-export const FOLDER_CLOSE_DURATION_MS = 340;
+export const FOLDER_OPEN_DURATION_MS = 850;
+export const FOLDER_CLOSE_DURATION_MS = 550;
 export const FOLDER_OPEN_TOTAL_DURATION_MS = FOLDER_OPEN_DURATION_MS;
-export const FOLDER_LABEL_REVEAL_START_PROGRESS = 0.44;
+export const FOLDER_LABEL_REVEAL_START_PROGRESS = 0.05;
+const FOLDER_OPEN_CHILD_STAGGER_STEP = 0.028;
+const FOLDER_OPEN_CHILD_BASE_DELAY = 0.045;
+const FOLDER_CLOSE_CHILD_STAGGER_STEP = 0.018;
+const FOLDER_CLOSE_CHILD_BASE_LEAD = 0.02;
 
 export function clamp01(value: number): number {
   if (Number.isNaN(value)) return 0;
@@ -73,7 +77,7 @@ function evaluateCubicBezier(progress: number, x1: number, y1: number, x2: numbe
 }
 
 export function easeIosOpen(progress: number): number {
-  return evaluateCubicBezier(progress, 0.22, 1, 0.36, 1);
+  return evaluateCubicBezier(progress, 0.215, 0.61, 0.355, 1);
 }
 
 export function easeIosClose(progress: number): number {
@@ -98,9 +102,14 @@ export function resolveInterruptibleAnimationDuration(startProgress: number, tar
 }
 
 export function resolveChildAnimationProgress(progress: number, index: number, phase: FolderMotionPhase = 'opening'): number {
-  void index;
-  void phase;
-  return clamp01(progress);
+  const normalizedProgress = clamp01(progress);
+  if (phase === 'closing') {
+    const lead = FOLDER_CLOSE_CHILD_BASE_LEAD + (index * FOLDER_CLOSE_CHILD_STAGGER_STEP);
+    return easeIosClose(clamp01((normalizedProgress - lead) / Math.max(0.18, 1 - lead)));
+  }
+
+  const delay = FOLDER_OPEN_CHILD_BASE_DELAY + (index * FOLDER_OPEN_CHILD_STAGGER_STEP);
+  return easeIosOpen(clamp01((normalizedProgress - delay) / Math.max(0.18, 1 - delay)));
 }
 
 export function resolveChromeAnimationProgress(progress: number, phase: FolderMotionPhase = 'opening'): number {
@@ -117,11 +126,14 @@ export function resolveBackdropAnimationProgress(progress: number, phase: Folder
   const shiftedProgress = phase === 'opening'
     ? clamp01((normalizedProgress - 0.02) / 0.98)
     : clamp01(normalizedProgress / 0.96);
+  if (phase === 'opening') {
+    return easeIosOpen(shiftedProgress);
+  }
   return evaluateCubicBezier(
     shiftedProgress,
-    phase === 'opening' ? 0.2 : 0.32,
-    phase === 'opening' ? 0.88 : 0.72,
-    phase === 'opening' ? 0.32 : 0,
+    0.32,
+    0.72,
+    0,
     1,
   );
 }

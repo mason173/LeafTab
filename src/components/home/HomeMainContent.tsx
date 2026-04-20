@@ -12,7 +12,7 @@ import {
   resolveInitialRevealOpacity,
   resolveInitialRevealTransform,
 } from '@/config/animationTokens';
-import { clamp01, mix } from '@/components/shortcutFolderCompactAnimation';
+import { clamp01 } from '@/components/shortcutFolderCompactAnimation';
 import { QuickAccessDrawer } from './QuickAccessDrawer';
 import { InlineTime } from './InlineTime';
 import { useQuickAccessDrawer } from './useQuickAccessDrawer';
@@ -127,9 +127,7 @@ export const HomeMainContent = memo(function HomeMainContent({
     ? undefined
     : ({
         opacity: 1 - immersiveProgress,
-        transform: `scale(${mix(1, 0.9, immersiveProgress)})`,
-        transformOrigin: 'center center',
-        willChange: 'opacity, transform',
+        willChange: 'opacity',
         pointerEvents: 'none',
       } as CSSProperties);
 

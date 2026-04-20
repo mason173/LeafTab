@@ -79,7 +79,7 @@ export function GridDragItemFrame({
       <div
         ref={registerElement}
         {...frameProps}
-        className={`relative isolate ${dimmed ? 'opacity-75' : ''} ${dragDisabled ? '' : 'cursor-grab active:cursor-grabbing'} ${className}`.trim()}
+        className={`relative ${dimmed ? 'opacity-75' : ''} ${dragDisabled ? '' : 'cursor-grab active:cursor-grabbing'} ${className}`.trim()}
         style={style}
         onPointerDown={dragDisabled ? undefined : onPointerDown}
         onDragStart={(event) => {

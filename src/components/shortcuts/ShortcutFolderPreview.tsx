@@ -1,3 +1,5 @@
+import { useCallback, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFolderPreviewRootRef, useFolderPreviewSlotRef } from '@/components/shortcuts/folderPreviewRegistry';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
@@ -20,8 +22,9 @@ const LARGE_FOLDER_TRIGGER_ICON_RATIO = 0.76;
 const SMALL_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 40;
 const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
-const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 18;
-export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/8 bg-[rgba(122,132,145,0.16)] shadow-[0_10px_24px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.18)]';
+const FOLDER_PREVIEW_BACKDROP_BLUR_PX = 52;
+const STATIC_FOLDER_PREVIEW_PORTAL_Z_INDEX = 14009;
+export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/8';
 const FOLDER_DROP_TARGET_TRANSITION = 'none';
 const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
@@ -37,15 +40,206 @@ function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
 
 function buildFolderPreviewGlassStyle() {
   return {
-    backgroundColor: 'rgba(108, 118, 132, 0.18)',
-    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(126,136,149,0.16) 100%)',
-    backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.18)`,
-    WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.18)`,
+    backgroundColor: 'rgba(255, 255, 255, 0.018)',
+    backgroundImage: 'none',
+    backdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.9) brightness(1.12)`,
+    WebkitBackdropFilter: `blur(${FOLDER_PREVIEW_BACKDROP_BLUR_PX}px) saturate(1.9) brightness(1.12)`,
     transform: 'translateZ(0)',
     WebkitTransform: 'translateZ(0)',
     willChange: 'backdrop-filter',
     backfaceVisibility: 'hidden',
   } as const;
+}
+
+function FolderPreviewGlassLayer() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0"
+      style={buildFolderPreviewGlassStyle()}
+    />
+  );
+}
+
+function resolveElementEffectiveOpacity(element: HTMLElement) {
+  let opacity = 1;
+  let current: HTMLElement | null = element;
+
+  while (current) {
+    const style = window.getComputedStyle(current);
+    if (style.visibility === 'hidden' || style.display === 'none') {
+      return 0;
+    }
+
+    const currentOpacity = Number.parseFloat(style.opacity || '1');
+    if (Number.isFinite(currentOpacity)) {
+      opacity *= currentOpacity;
+    }
+
+    current = current.parentElement;
+  }
+
+  return opacity;
+}
+
+function resolveActiveFolderTransitionSnapshot(folderId: string) {
+  if (typeof document === 'undefined') {
+    return {
+      active: false,
+      phase: '',
+    };
+  }
+
+  const activeFolderId = document.body.dataset.activeFolderTransitionId || '';
+  const phase = document.body.dataset.activeFolderTransitionPhase || '';
+
+  return {
+    active: activeFolderId === folderId,
+    phase,
+  };
+}
+
+function useFolderPreviewRootNode(folderId: string) {
+  const registryRef = useFolderPreviewRootRef(folderId);
+  const [rootNode, setRootNode] = useState<HTMLElement | null>(null);
+
+  const rootRef = useCallback((node: HTMLElement | null) => {
+    setRootNode(node);
+    registryRef(node);
+  }, [registryRef]);
+
+  return {
+    rootNode,
+    rootRef,
+  };
+}
+
+function useFolderPreviewPortalRect(
+  folderId: string,
+  rootNode: HTMLElement | null,
+  borderRadius: string,
+  enabled: boolean,
+) {
+  const [rect, setRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    borderRadius: string;
+    opacity: number;
+    borderWidth: string;
+    borderStyle: string;
+    borderColor: string;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!enabled || !rootNode || typeof window === 'undefined') {
+      setRect(null);
+      return;
+    }
+
+    let rafId = 0;
+
+    const syncRect = () => {
+      if (!rootNode.isConnected) {
+        setRect(null);
+        return;
+      }
+
+      const nextRect = rootNode.getBoundingClientRect();
+      const computedStyle = window.getComputedStyle(rootNode);
+      const effectiveOpacity = resolveElementEffectiveOpacity(rootNode);
+      const activeTransition = resolveActiveFolderTransitionSnapshot(folderId);
+      const resolvedOpacity = activeTransition.active ? 1 : effectiveOpacity;
+      const shouldHide = resolvedOpacity <= 0.001 || nextRect.width <= 0.5 || nextRect.height <= 0.5;
+
+      setRect((previousRect) => {
+        if (shouldHide) {
+          return previousRect === null ? previousRect : null;
+        }
+
+        const resolvedRect = {
+          left: nextRect.left,
+          top: nextRect.top,
+          width: nextRect.width,
+          height: nextRect.height,
+          borderRadius,
+          opacity: resolvedOpacity,
+          borderWidth: computedStyle.borderTopWidth || '0px',
+          borderStyle: computedStyle.borderTopStyle || 'solid',
+          borderColor: computedStyle.borderTopColor || 'transparent',
+        };
+
+        if (
+          previousRect
+          && Math.abs(previousRect.left - resolvedRect.left) < 0.25
+          && Math.abs(previousRect.top - resolvedRect.top) < 0.25
+          && Math.abs(previousRect.width - resolvedRect.width) < 0.25
+          && Math.abs(previousRect.height - resolvedRect.height) < 0.25
+          && previousRect.borderRadius === resolvedRect.borderRadius
+          && Math.abs(previousRect.opacity - resolvedRect.opacity) < 0.01
+          && previousRect.borderWidth === resolvedRect.borderWidth
+          && previousRect.borderStyle === resolvedRect.borderStyle
+          && previousRect.borderColor === resolvedRect.borderColor
+        ) {
+          return previousRect;
+        }
+
+        return resolvedRect;
+      });
+
+      rafId = window.requestAnimationFrame(syncRect);
+    };
+
+    syncRect();
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [borderRadius, enabled, folderId, rootNode]);
+
+  return rect;
+}
+
+function FolderPreviewBackdropPortal({
+  folderId,
+  rootNode,
+  borderRadius,
+  enabled,
+}: {
+  folderId: string;
+  rootNode: HTMLElement | null;
+  borderRadius: string;
+  enabled: boolean;
+}) {
+  const rect = useFolderPreviewPortalRect(folderId, rootNode, borderRadius, enabled);
+
+  if (!enabled || !rect || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed"
+      style={{
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        boxSizing: 'border-box',
+        borderWidth: rect.borderWidth,
+        borderStyle: rect.borderStyle,
+        borderColor: rect.borderColor,
+        borderRadius: rect.borderRadius,
+        zIndex: STATIC_FOLDER_PREVIEW_PORTAL_Z_INDEX,
+        opacity: rect.opacity,
+        ...buildFolderPreviewGlassStyle(),
+      }}
+    />,
+    document.body,
+  );
 }
 
 function LargeFolderOpenTileGhostStack({
@@ -191,7 +385,7 @@ function FolderPreviewTile({
 
   return (
     <div
-      className="flex items-center justify-center"
+      className="relative z-[1] flex items-center justify-center"
       style={{ width: tileSize, height: tileSize }}
     >
       <div
@@ -344,6 +538,7 @@ type ShortcutFolderPreviewProps = {
   iconAppearance?: ShortcutIconAppearance;
   highlightBorder?: boolean;
   selectionDisabled?: boolean;
+  portalBackdrop?: boolean;
 };
 
 type ShortcutFolderLargePreviewProps = {
@@ -354,6 +549,7 @@ type ShortcutFolderLargePreviewProps = {
   highlightBorder?: boolean;
   onOpenFolder?: () => void;
   onOpenShortcut?: (shortcut: Shortcut) => void;
+  portalBackdrop?: boolean;
 };
 
 type ShortcutFolderInlinePreviewProps = {
@@ -371,44 +567,55 @@ export function ShortcutFolderPreview({
   iconAppearance,
   highlightBorder = false,
   selectionDisabled = false,
+  portalBackdrop = false,
 }: ShortcutFolderPreviewProps) {
   const children = getShortcutChildren(shortcut).slice(0, 4);
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
-  const folderPreviewRootRef = useFolderPreviewRootRef(shortcut.id);
+  const borderRadius = getSmallFolderBorderRadius(size, iconCornerRadius);
+  const { rootNode, rootRef } = useFolderPreviewRootNode(shortcut.id);
 
   return (
-    <div
-      ref={folderPreviewRootRef}
-      className={`relative grid grid-cols-2 gap-1 overflow-hidden border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
-        selectionDisabled ? 'cursor-not-allowed' : ''
-      } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: getSmallFolderBorderRadius(size, iconCornerRadius),
-        ...buildFolderPreviewGlassStyle(),
-        ...buildFolderSurfaceInteractionStyle(highlightBorder),
-      }}
-      data-folder-preview="true"
-      data-folder-preview-id={shortcut.id}
-      data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
-    >
-      {children.length > 0 ? children.map((child, index) => (
-        <FolderPreviewTile
-          key={child.id}
-          child={child}
-          folderId={shortcut.id}
-          index={index}
-          tileSize={tileSize}
-          iconCornerRadius={iconCornerRadius}
-          iconAppearance={iconAppearance}
-        />
-      )) : (
-        <div className="col-span-2 flex items-center justify-center text-muted-foreground" style={{ fontSize: Math.max(18, Math.round(size * 0.34)) }}>
-          <RiFolderChartFill aria-hidden="true" />
-        </div>
-      )}
-    </div>
+    <>
+      <FolderPreviewBackdropPortal
+        folderId={shortcut.id}
+        rootNode={rootNode}
+        borderRadius={borderRadius}
+        enabled={portalBackdrop}
+      />
+      <div
+        ref={rootRef}
+        className={`relative grid grid-cols-2 gap-1 overflow-hidden border p-2 ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+          selectionDisabled ? 'cursor-not-allowed' : ''
+        } dark:border-white/10`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          ...(portalBackdrop && !highlightBorder ? { borderColor: 'transparent' } : {}),
+          ...buildFolderSurfaceInteractionStyle(highlightBorder),
+        }}
+        data-folder-preview="true"
+        data-folder-preview-id={shortcut.id}
+        data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
+      >
+        {portalBackdrop ? null : <FolderPreviewGlassLayer />}
+        {children.length > 0 ? children.map((child, index) => (
+          <FolderPreviewTile
+            key={child.id}
+            child={child}
+            folderId={shortcut.id}
+            index={index}
+            tileSize={tileSize}
+            iconCornerRadius={iconCornerRadius}
+            iconAppearance={iconAppearance}
+          />
+        )) : (
+          <div className="relative z-[1] col-span-2 flex items-center justify-center text-muted-foreground" style={{ fontSize: Math.max(18, Math.round(size * 0.34)) }}>
+            <RiFolderChartFill aria-hidden="true" />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -420,6 +627,7 @@ export function ShortcutFolderLargePreview({
   highlightBorder = false,
   onOpenFolder,
   onOpenShortcut,
+  portalBackdrop = false,
 }: ShortcutFolderLargePreviewProps) {
   const interactive = typeof onOpenFolder === 'function';
   const children = getShortcutChildren(shortcut);
@@ -436,89 +644,98 @@ export function ShortcutFolderLargePreview({
     Math.floor((size - LARGE_FOLDER_PREVIEW_PADDING * 2 - LARGE_FOLDER_PREVIEW_GAP * 2) / 3),
   );
   const borderRadius = getLargeFolderBorderRadius(size, iconCornerRadius);
-  const folderPreviewRootRef = useFolderPreviewRootRef(shortcut.id);
+  const { rootNode, rootRef } = useFolderPreviewRootNode(shortcut.id);
 
   return (
-    <div
-      ref={folderPreviewRootRef}
-      className={`relative overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
-        interactive ? '' : 'cursor-not-allowed'
-      } dark:border-white/10 dark:bg-black/26 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]`}
-      style={{
-        width: size,
-        height: size,
-        borderRadius,
-        ...buildFolderPreviewGlassStyle(),
-        ...buildFolderSurfaceInteractionStyle(highlightBorder),
-      }}
-      data-folder-preview="true"
-      data-folder-preview-id={shortcut.id}
-      data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
-      onClick={interactive ? onOpenFolder : undefined}
-    >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 42%)',
-          pointerEvents: 'none',
-        }}
+    <>
+      <FolderPreviewBackdropPortal
+        folderId={shortcut.id}
+        rootNode={rootNode}
+        borderRadius={borderRadius}
+        enabled={portalBackdrop}
       />
-        {children.length > 0 ? (
+      <div
+        ref={rootRef}
+        className={`relative overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+          interactive ? '' : 'cursor-not-allowed'
+        } dark:border-white/10`}
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          ...(portalBackdrop && !highlightBorder ? { borderColor: 'transparent' } : {}),
+          ...buildFolderSurfaceInteractionStyle(highlightBorder),
+        }}
+        data-folder-preview="true"
+        data-folder-preview-id={shortcut.id}
+        data-folder-drop-target-active={highlightBorder ? 'true' : 'false'}
+        onClick={interactive ? onOpenFolder : undefined}
+      >
+        {portalBackdrop ? null : <FolderPreviewGlassLayer />}
         <div
-          className="absolute left-1/2 top-1/2 z-[1] grid -translate-x-1/2 -translate-y-1/2 grid-cols-3"
+          aria-hidden="true"
+          className="absolute inset-0"
           style={{
-            width: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,
-            height: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,
-            columnGap: LARGE_FOLDER_PREVIEW_GAP,
-            rowGap: LARGE_FOLDER_PREVIEW_GAP,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 42%)',
+            pointerEvents: 'none',
           }}
-        >
-          {Array.from({ length: LARGE_FOLDER_PREVIEW_VISIBLE_COUNT }).map((_, index) => {
-            if (folderOpenShortcut && index === LARGE_FOLDER_PREVIEW_VISIBLE_COUNT - 1) {
+        />
+        {children.length > 0 ? (
+          <div
+            className="absolute left-1/2 top-1/2 z-[1] grid -translate-x-1/2 -translate-y-1/2 grid-cols-3"
+            style={{
+              width: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,
+              height: tileSize * 3 + LARGE_FOLDER_PREVIEW_GAP * 2,
+              columnGap: LARGE_FOLDER_PREVIEW_GAP,
+              rowGap: LARGE_FOLDER_PREVIEW_GAP,
+            }}
+          >
+            {Array.from({ length: LARGE_FOLDER_PREVIEW_VISIBLE_COUNT }).map((_, index) => {
+              if (folderOpenShortcut && index === LARGE_FOLDER_PREVIEW_VISIBLE_COUNT - 1) {
+                return (
+                  <LargeFolderOpenTile
+                    key={`open-${folderOpenShortcut.id}`}
+                    child={folderOpenShortcut}
+                    folderId={shortcut.id}
+                    index={index}
+                    tileSize={tileSize}
+                    iconCornerRadius={iconCornerRadius}
+                    iconAppearance={iconAppearance}
+                    fadeContentWhenDropTargetActive={highlightBorder}
+                    onOpenFolder={interactive ? onOpenFolder : undefined}
+                  />
+                );
+              }
+
+              const child = directOpenChildren[index];
+              if (!child) {
+                return <div key={`empty-${shortcut.id}-${index}`} aria-hidden="true" />;
+              }
+
               return (
-                <LargeFolderOpenTile
-                  key={`open-${folderOpenShortcut.id}`}
-                  child={folderOpenShortcut}
+                <LargeFolderPreviewTile
+                  key={child.id}
+                  child={child}
                   folderId={shortcut.id}
                   index={index}
                   tileSize={tileSize}
                   iconCornerRadius={iconCornerRadius}
                   iconAppearance={iconAppearance}
-                  fadeContentWhenDropTargetActive={highlightBorder}
-                  onOpenFolder={interactive ? onOpenFolder : undefined}
+                  onOpenShortcut={onOpenShortcut}
                 />
               );
-            }
-
-            const child = directOpenChildren[index];
-            if (!child) {
-              return <div key={`empty-${shortcut.id}-${index}`} aria-hidden="true" />;
-            }
-
-            return (
-              <LargeFolderPreviewTile
-                key={child.id}
-                child={child}
-                folderId={shortcut.id}
-                index={index}
-                tileSize={tileSize}
-                iconCornerRadius={iconCornerRadius}
-                iconAppearance={iconAppearance}
-                onOpenShortcut={onOpenShortcut}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <div
-          className="absolute inset-0 flex items-center justify-center text-white/80"
-          style={{ fontSize: Math.max(22, Math.round(size * 0.28)) }}
-        >
-          <RiFolderChartFill aria-hidden="true" />
-        </div>
-      )}
-    </div>
+            })}
+          </div>
+        ) : (
+          <div
+            className="absolute inset-0 flex items-center justify-center text-white/80"
+            style={{ fontSize: Math.max(22, Math.round(size * 0.28)) }}
+          >
+            <RiFolderChartFill aria-hidden="true" />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

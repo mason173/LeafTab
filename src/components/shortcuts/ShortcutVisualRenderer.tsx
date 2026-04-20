@@ -17,6 +17,7 @@ export interface ShortcutVisualRendererProps {
   onOpenFolder?: () => void;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
+  folderPortalBackdrop?: boolean;
 }
 
 export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer({
@@ -31,6 +32,7 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
   onOpenFolder,
   onPreviewShortcutOpen,
   selectionDisabled = false,
+  folderPortalBackdrop = false,
 }: ShortcutVisualRendererProps) {
   if (isShortcutFolder(shortcut)) {
     if (largeFolder) {
@@ -39,13 +41,14 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
           shortcut={shortcut}
           size={previewSize}
           iconCornerRadius={iconCornerRadius}
-          iconAppearance={iconAppearance}
-          highlightBorder={dropTargetActive}
-          onOpenFolder={selectionDisabled ? undefined : onOpenFolder}
-          onOpenShortcut={selectionDisabled ? undefined : onPreviewShortcutOpen}
-        />
-      );
-    }
+        iconAppearance={iconAppearance}
+        highlightBorder={dropTargetActive}
+        onOpenFolder={selectionDisabled ? undefined : onOpenFolder}
+        onOpenShortcut={selectionDisabled ? undefined : onPreviewShortcutOpen}
+        portalBackdrop={folderPortalBackdrop}
+      />
+    );
+  }
 
     return (
       <ShortcutFolderPreview
@@ -55,6 +58,7 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
         iconAppearance={iconAppearance}
         highlightBorder={dropTargetActive}
         selectionDisabled={selectionDisabled}
+        portalBackdrop={folderPortalBackdrop}
       />
     );
   }

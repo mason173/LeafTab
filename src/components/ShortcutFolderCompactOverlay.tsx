@@ -63,6 +63,7 @@ const FOLDER_PANEL_MAX_VISIBLE_ROWS = 5;
 const HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY = 0.32;
 const COLLAPSED_CHILD_CONTENT_RATIO = 0.94;
 const GHOST_ICON_BASE_SIZE = 72;
+const HIDDEN_CHILD_CLOSING_FADE_END_PROGRESS = 0.58;
 const PANEL_WIDTH_CLASSNAME = 'w-[min(720px,calc(100vw-24px))] max-w-[720px]';
 const PANEL_HORIZONTAL_MARGIN_PX = 24;
 const PANEL_MAX_WIDTH_PX = 720;
@@ -118,6 +119,24 @@ function escapeSelectorValue(value: string) {
   return value.replace(/["\\]/g, '\\$&');
 }
 
+function shouldCloseFolderFromOverlaySurfaceClick(target: EventTarget | null) {
+  if (!(target instanceof Element)) {
+    return true;
+  }
+
+  return !target.closest([
+    '[data-folder-shortcut-grid-item="true"]',
+    '[data-shortcut-drag-item="true"]',
+    'button',
+    'input',
+    'textarea',
+    'select',
+    '[contenteditable=""]',
+    '[contenteditable="true"]',
+    '[contenteditable="plaintext-only"]',
+  ].join(','));
+}
+
 function resolvePredictedPanelWidthPx() {
   if (typeof window === 'undefined') return PANEL_MAX_WIDTH_PX;
   return Math.max(320, Math.min(PANEL_MAX_WIDTH_PX, window.innerWidth - PANEL_HORIZONTAL_MARGIN_PX));
@@ -171,6 +190,23 @@ function getVirtualCollapsedChildRect(params: {
     width: contentSize,
     height: contentSize,
   };
+}
+
+function resolveAnimatedChildOpacity(params: {
+  childProgress: number;
+  motionPhase: 'opening' | 'closing';
+  collapsedPreviewVisible: boolean;
+}) {
+  const { childProgress, motionPhase, collapsedPreviewVisible } = params;
+  if (collapsedPreviewVisible) {
+    return 1;
+  }
+
+  if (motionPhase === 'closing') {
+    return clamp01((childProgress - HIDDEN_CHILD_CLOSING_FADE_END_PROGRESS) / (1 - HIDDEN_CHILD_CLOSING_FADE_END_PROGRESS));
+  }
+
+  return mix(HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY, 1, childProgress);
 }
 
 function measureTargetChildRects(container: ParentNode | null | undefined, shortcuts: Shortcut[]) {
@@ -743,6 +779,7 @@ export function ShortcutFolderCompactOverlay({
             const targetRect = resolvedMetrics.targetChildRects.get(child.id);
             if (!targetRect || !sourceRect) return null;
 
+            const collapsedPreviewVisible = sourceChildRects.has(child.id) || index < sourceChildSlotRects.length;
             const sourceChildRect = sourceChildRects.get(child.id)
               ?? sourceChildSlotRects[index]
               ?? getVirtualCollapsedChildRect({
@@ -752,13 +789,11 @@ export function ShortcutFolderCompactOverlay({
               });
             const childProgress = resolveChildAnimationProgress(openProgress, index, motionPhase);
             const animatedChildRect = interpolateRect(sourceChildRect, targetRect, childProgress);
-            const opacity = mix(
-              sourceChildRects.has(child.id) || index < sourceChildSlotRects.length
-                ? 1
-                : HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY,
-              1,
+            const opacity = resolveAnimatedChildOpacity({
               childProgress,
-            );
+              motionPhase,
+              collapsedPreviewVisible,
+            });
 
             return (
               <div
@@ -795,7 +830,13 @@ export function ShortcutFolderCompactOverlay({
               className="pointer-events-auto relative h-full w-full overflow-hidden"
               style={{ borderRadius: roundedCorner }}
               onClick={(event) => {
+                if (folderDragActive || !shouldCloseFolderFromOverlaySurfaceClick(event.target)) {
+                  event.stopPropagation();
+                  return;
+                }
+
                 event.stopPropagation();
+                onOpenChange(false);
               }}
             >
               <div

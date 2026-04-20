@@ -16,6 +16,7 @@ interface ShortcutCardRendererProps {
   dropTargetActive?: boolean;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
+  folderPortalBackdrop?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -34,6 +35,7 @@ export function ShortcutCardRenderer({
   dropTargetActive = false,
   onPreviewShortcutOpen,
   selectionDisabled = false,
+  folderPortalBackdrop = false,
   onOpen,
   onContextMenu,
 }: ShortcutCardRendererProps) {
@@ -52,6 +54,7 @@ export function ShortcutCardRenderer({
       dropTargetActive={dropTargetActive}
       onPreviewShortcutOpen={onPreviewShortcutOpen}
       selectionDisabled={selectionDisabled}
+      folderPortalBackdrop={folderPortalBackdrop}
       onOpen={onOpen}
       onContextMenu={onContextMenu}
     />

@@ -160,6 +160,7 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
       dropTargetActive={params.dropTargetActive}
       onPreviewShortcutOpen={params.onPreviewShortcutOpen}
       selectionDisabled={params.selectionDisabled}
+      folderPortalBackdrop
       shortcut={params.shortcut}
       onOpen={params.onOpen}
       onContextMenu={params.onContextMenu}
@@ -184,6 +185,7 @@ export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPr
       enableLargeFolder={params.enableLargeFolder}
       largeFolderPreviewSize={params.largeFolderPreviewSize}
       disableIconWrapperEffects
+      folderPortalBackdrop={false}
       onOpen={() => {}}
       onContextMenu={() => {}}
     />
@@ -330,6 +332,7 @@ export function renderLeaftabFolderItem(params: {
       shortcut={params.shortcut}
       showTitle={params.showShortcutTitles}
       animateTitleOnMount
+      titleFadeDurationMs={140}
       iconSize={params.compactIconSize}
       floatTitle
       rootProps={{

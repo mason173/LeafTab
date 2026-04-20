@@ -54,7 +54,7 @@ export function resolveSearchBarTheme(args: {
   };
   const darkTheme: SearchBarTheme = {
     ...defaultTheme,
-    surfaceClassName: 'bg-[rgb(26,28,30)] text-foreground',
+    surfaceClassName: 'bg-background border border-white/20 text-foreground',
     engineDropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
   };
 

@@ -22,6 +22,8 @@ interface ShortcutCardCompactProps {
   selectionDisabled?: boolean;
   disableIconWrapperEffects?: boolean;
   animateTitleOnMount?: boolean;
+  titleFadeDurationMs?: number;
+  folderPortalBackdrop?: boolean;
   rootProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'onClick' | 'onContextMenu'> & {
     [key: `data-${string}`]: string | number | boolean | undefined;
   };
@@ -52,6 +54,8 @@ export function ShortcutCardCompact({
   selectionDisabled = false,
   disableIconWrapperEffects = false,
   animateTitleOnMount = false,
+  titleFadeDurationMs = 300,
+  folderPortalBackdrop = false,
   rootProps,
   iconWrapperProps,
   iconContentProps,
@@ -130,6 +134,7 @@ export function ShortcutCardCompact({
                 onOpenFolder={onOpen}
                 onPreviewShortcutOpen={onPreviewShortcutOpen}
                 selectionDisabled={folderSelectionDisabled}
+                folderPortalBackdrop={folderPortalBackdrop}
               />
             ) : (
               <ShortcutVisualRenderer
@@ -153,6 +158,7 @@ export function ShortcutCardCompact({
               fontSize: titleFontSize,
               opacity: resolvedTitleOpacity,
               transform: 'translateX(-50%)',
+              transitionDuration: `${titleFadeDurationMs}ms`,
             }}
             aria-hidden={!showTitle}
           >
@@ -161,7 +167,12 @@ export function ShortcutCardCompact({
         ) : (
           <p
             className={`truncate text-center leading-4 transition-opacity duration-300 ease-out ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
-            style={{ width: metrics.width, fontSize: titleFontSize, opacity: resolvedTitleOpacity }}
+            style={{
+              width: metrics.width,
+              fontSize: titleFontSize,
+              opacity: resolvedTitleOpacity,
+              transitionDuration: `${titleFadeDurationMs}ms`,
+            }}
             aria-hidden={!showTitle}
           >
             {shortcut.title}

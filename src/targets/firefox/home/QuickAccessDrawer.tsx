@@ -53,7 +53,14 @@ export function QuickAccessDrawer({
   const initialRevealTransition = INITIAL_REVEAL_TIMING;
   const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
-  const drawerSurfaceLayerOpacity = Math.max(0, Math.min(1, drawerSurfaceOpacity * DRAWER_CONTENT_BG_MAX_OPACITY));
+  const drawerSurfaceLayerOpacity = Math.max(
+    0,
+    Math.min(
+      1,
+      drawerSurfaceOpacity
+      * DRAWER_CONTENT_BG_MAX_OPACITY,
+    ),
+  );
   const normalizedFolderImmersiveOpacity = Math.max(0, Math.min(1, 1 - folderImmersiveProgress));
   const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(modeFlags.showShortcuts);
