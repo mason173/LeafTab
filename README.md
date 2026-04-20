@@ -85,16 +85,13 @@ LeafTab is a minimalist but capable new-tab extension. Instead of turning the br
 ## 预览 / Preview
 
 <div align="center">
-  <img alt="LeafTab preview 1" src="./Preview%201.png" style="width: 100%; max-width: 1100px;" />
+  <img alt="LeafTab preview 1" src="./.github/assets/githubPreview1.png" style="width: 100%; max-width: 1100px;" />
   <br />
   <br />
-  <img alt="LeafTab preview 2" src="./Preview%202.png" style="width: 100%; max-width: 1100px;" />
+  <img alt="LeafTab preview 2" src="./.github/assets/githubPreview2.png" style="width: 100%; max-width: 1100px;" />
   <br />
   <br />
-  <img alt="LeafTab preview 3" src="./Preview%203.png" style="width: 100%; max-width: 1100px;" />
-  <br />
-  <br />
-  <img alt="LeafTab preview 4" src="./Preview%204.png" style="width: 100%; max-width: 1100px;" />
+  <img alt="LeafTab preview 3" src="./.github/assets/githubPreview3.png" style="width: 100%; max-width: 1100px;" />
 </div>
 
 ## 安装 / Installation
