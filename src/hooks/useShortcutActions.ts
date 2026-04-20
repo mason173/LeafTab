@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction 
 import { toast } from '../components/ui/sonner';
 import type { ContextMenuState, ScenarioMode, ScenarioShortcuts, Shortcut, ShortcutDraft } from '../types';
 import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
+import type { SelectedShortcutState } from '@/features/shortcuts/model/types';
 import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
 import {
@@ -11,7 +12,6 @@ import {
 } from '@/utils/shortcutCustomIcons';
 import { collectShortcutIds, getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
-type SelectedShortcut = { index: number; shortcut: Shortcut; parentFolderId?: string | null } | null;
 type TranslateFn = (key: string, options?: any) => string;
 
 type UseShortcutActionsParams = {
@@ -22,7 +22,7 @@ type UseShortcutActionsParams = {
   shortcutModalMode: 'add' | 'edit';
   currentInsertIndex: number | null;
   currentEditScenarioId: string;
-  selectedShortcut: SelectedShortcut;
+  selectedShortcut: SelectedShortcutState;
   updateScenarioShortcuts: (updater: (prev: Shortcut[]) => Shortcut[]) => void;
   localDirtyRef: MutableRefObject<boolean>;
   setScenarioModes: Dispatch<SetStateAction<ScenarioMode[]>>;
@@ -32,7 +32,7 @@ type UseShortcutActionsParams = {
   setCurrentEditScenarioId: Dispatch<SetStateAction<string>>;
   setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
   setShortcutEditOpen: Dispatch<SetStateAction<boolean>>;
-  setSelectedShortcut: Dispatch<SetStateAction<SelectedShortcut>>;
+  setSelectedShortcut: Dispatch<SetStateAction<SelectedShortcutState>>;
   setCurrentInsertIndex: Dispatch<SetStateAction<number | null>>;
   setShortcutDeleteOpen: Dispatch<SetStateAction<boolean>>;
 };
