@@ -1,4 +1,12 @@
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+import {
+  ADAPTIVE_NEUTRAL_ACCENT,
+  DEFAULT_ACCENT_COLOR,
+  getWallpaperAccentSlotIndex,
+  isHexAccentColor,
+  resolveAdaptiveNeutralAccent,
+  resolveLegacyNamedAccentColor,
+} from '@/utils/accentColor';
 import type { WallpaperMode } from '@/wallpaper/types';
 
 type DynamicAccentInput = {
@@ -13,7 +21,11 @@ type ResolveDynamicAccentOptions = {
   forceImageResample?: boolean;
 };
 
-const imageAccentCache = new Map<string, string>();
+type ResolveAccentColorOptions = ResolveDynamicAccentOptions & {
+  isDarkTheme: boolean;
+};
+
+const imageAccentPaletteCache = new Map<string, string[]>();
 
 type WeatherTheme = 'sunny' | 'cloudy' | 'foggy' | 'rainy' | 'snowy' | 'thunderstorm';
 
@@ -28,6 +40,10 @@ const WEATHER_THEME_ACCENT: Record<WeatherTheme, string> = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const round = (value: number, decimals = 4) => {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
 
 const rgbToHsl = (r: number, g: number, b: number) => {
   const rn = r / 255;
@@ -132,6 +148,7 @@ const resolveColorAccent = (colorWallpaperId?: string) => {
 };
 
 const FALLBACK_IMAGE_ACCENT = '#3b82f6';
+export const DEFAULT_WALLPAPER_ACCENT_PALETTE = ['#3b82f6', '#22c55e', '#f59e0b', '#7c3aed', '#ec4899', '#0ea5e9'];
 const REMOTE_URL_PATTERN = /^https?:\/\//i;
 
 const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
@@ -147,6 +164,14 @@ type AccentBucket = {
   satWeightedSum: number;
   lightWeightedSum: number;
   weight: number;
+};
+
+type AccentCandidate = {
+  h: number;
+  s: number;
+  l: number;
+  weight: number;
+  score: number;
 };
 
 const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerPolicy?: ReferrerPolicy }) => {
@@ -167,12 +192,12 @@ const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerP
   });
 };
 
-export const sampleAccentFromImageData = (
+const buildAccentCandidatesFromImageData = (
   data: Uint8ClampedArray,
   width: number,
   height: number,
-): string => {
-  if (!data.length || width <= 0 || height <= 0) return FALLBACK_IMAGE_ACCENT;
+): AccentCandidate[] => {
+  if (!data.length || width <= 0 || height <= 0) return [];
 
   const buckets = new Map<number, AccentBucket>();
   let totalWeight = 0;
@@ -214,12 +239,9 @@ export const sampleAccentFromImageData = (
     }
   }
 
-  if (!buckets.size || totalWeight <= 0) return FALLBACK_IMAGE_ACCENT;
+  if (!buckets.size || totalWeight <= 0) return [];
 
-  let bestHue = 0.58;
-  let bestSat = 0.68;
-  let bestLight = 0.54;
-  let bestScore = -1;
+  const candidates: AccentCandidate[] = [];
 
   for (const bucket of buckets.values()) {
     const avgSat = bucket.satWeightedSum / bucket.weight;
@@ -228,21 +250,148 @@ export const sampleAccentFromImageData = (
     const vividness = clamp((avgSat - 0.12) / 0.6, 0, 1);
     const lightBalance = clamp(1 - Math.abs(avgLight - 0.56) / 0.24, 0, 1);
     const score = prominence * 0.68 + vividness * 0.2 + lightBalance * 0.12;
+    candidates.push({
+      h: normalizeHue(Math.atan2(bucket.hueVectorY, bucket.hueVectorX) / (Math.PI * 2)),
+      s: avgSat,
+      l: avgLight,
+      weight: prominence,
+      score,
+    });
+  }
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestHue = normalizeHue(Math.atan2(bucket.hueVectorY, bucket.hueVectorX) / (Math.PI * 2));
-      bestSat = avgSat;
-      bestLight = avgLight;
+  return candidates.sort((left, right) => right.score - left.score);
+};
+
+const buildAccentCandidateFromHex = (hex: string, weight: number): AccentCandidate => {
+  const { r, g, b } = hexToRgb(hex);
+  const { h, s, l } = rgbToHsl(r, g, b);
+  const prominence = clamp(weight, 0.15, 1);
+  const vividness = clamp((s - 0.12) / 0.6, 0, 1);
+  const lightBalance = clamp(1 - Math.abs(l - 0.56) / 0.24, 0, 1);
+  return {
+    h,
+    s,
+    l,
+    weight: prominence,
+    score: prominence * 0.68 + vividness * 0.2 + lightBalance * 0.12,
+  };
+};
+
+const getHueDistance = (left: number, right: number) => {
+  const delta = Math.abs(left - right) % 1;
+  return delta > 0.5 ? 1 - delta : delta;
+};
+
+const tuneCandidateToHex = (
+  candidate: AccentCandidate,
+  variant: { hueShift: number; saturationDelta: number; lightnessDelta: number },
+) => {
+  const saturationFloor = variant.lightnessDelta > 0 ? 0.34 : 0.42;
+  const lightnessFloor = variant.lightnessDelta < 0 ? 0.34 : 0.42;
+  const lightnessCeiling = variant.lightnessDelta > 0 ? 0.72 : 0.64;
+  const tunedHue = normalizeHue(candidate.h + variant.hueShift);
+  const tunedSaturation = clamp(
+    candidate.s < 0.46
+      ? candidate.s + variant.saturationDelta + 0.12
+      : candidate.s + variant.saturationDelta + 0.04,
+    saturationFloor,
+    0.82,
+  );
+  const tunedLightness = clamp(
+    candidate.l < 0.5
+      ? candidate.l + variant.lightnessDelta + 0.06
+      : candidate.l + variant.lightnessDelta - 0.02,
+    lightnessFloor,
+    lightnessCeiling,
+  );
+  return hslToHex(tunedHue, tunedSaturation, tunedLightness);
+};
+
+const buildRecommendedAccentPaletteFromCandidates = (
+  candidates: AccentCandidate[],
+  count = DEFAULT_WALLPAPER_ACCENT_PALETTE.length,
+): string[] => {
+  if (!candidates.length) return DEFAULT_WALLPAPER_ACCENT_PALETTE.slice(0, count);
+
+  const distinctSeeds: AccentCandidate[] = [];
+  for (const candidate of candidates) {
+    const alreadyCovered = distinctSeeds.some((seed) => getHueDistance(seed.h, candidate.h) < 0.08);
+    if (alreadyCovered) continue;
+    distinctSeeds.push(candidate);
+    if (distinctSeeds.length >= 3) break;
+  }
+
+  const strongest = candidates[0];
+  const seeds = distinctSeeds.length ? distinctSeeds : [strongest];
+  const palette: string[] = [];
+  const variantRounds = [
+    [
+      { hueShift: 0, saturationDelta: 0.06, lightnessDelta: 0 },
+      { hueShift: 0, saturationDelta: 0.03, lightnessDelta: 0 },
+      { hueShift: 0, saturationDelta: 0.04, lightnessDelta: 0 },
+    ],
+    [
+      { hueShift: 0.008, saturationDelta: -0.02, lightnessDelta: 0.1 },
+      { hueShift: -0.01, saturationDelta: -0.04, lightnessDelta: 0.09 },
+      { hueShift: 0.012, saturationDelta: -0.03, lightnessDelta: 0.08 },
+    ],
+    [
+      { hueShift: -0.012, saturationDelta: 0.02, lightnessDelta: -0.08 },
+      { hueShift: 0.014, saturationDelta: 0.03, lightnessDelta: -0.07 },
+      { hueShift: -0.016, saturationDelta: 0.01, lightnessDelta: -0.09 },
+    ],
+  ];
+
+  for (let roundIndex = 0; roundIndex < variantRounds.length && palette.length < count; roundIndex += 1) {
+    for (let seedIndex = 0; seedIndex < seeds.length && palette.length < count; seedIndex += 1) {
+      const seed = seeds[seedIndex] || strongest;
+      const roundVariants = variantRounds[roundIndex];
+      const variant = roundVariants[Math.min(seedIndex, roundVariants.length - 1)];
+      const hex = tuneCandidateToHex(seed, variant);
+      if (!palette.includes(hex)) palette.push(hex);
     }
   }
 
-  const tunedSaturation = clamp(bestSat < 0.46 ? bestSat + 0.16 : bestSat + 0.08, 0.46, 0.76);
-  const tunedLightness = clamp(bestLight < 0.5 ? bestLight + 0.05 : bestLight - 0.03, 0.44, 0.6);
-  return hslToHex(bestHue, tunedSaturation, tunedLightness);
+  let fallbackShift = 0;
+  while (palette.length < count) {
+    const hex = tuneCandidateToHex(strongest, {
+      hueShift: round(fallbackShift % 2 === 0 ? fallbackShift * 0.018 : -fallbackShift * 0.018),
+      saturationDelta: fallbackShift % 3 === 0 ? 0.04 : -0.01,
+      lightnessDelta: fallbackShift % 2 === 0 ? 0.07 : -0.06,
+    });
+    if (!palette.includes(hex)) palette.push(hex);
+    fallbackShift += 1;
+  }
+
+  return palette.slice(0, count);
 };
 
-const sampleAccentFromImage = (img: HTMLImageElement): string => {
+export const buildRecommendedAccentPaletteFromHexes = (
+  hexes: string[],
+  count = DEFAULT_WALLPAPER_ACCENT_PALETTE.length,
+): string[] => {
+  const candidates = hexes
+    .map((hex, index) => buildAccentCandidateFromHex(hex, Math.max(0.24, 1 - index * 0.16)))
+    .sort((left, right) => right.score - left.score);
+  return buildRecommendedAccentPaletteFromCandidates(candidates, count);
+};
+
+export const sampleAccentPaletteFromImageData = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string[] => {
+  const candidates = buildAccentCandidatesFromImageData(data, width, height);
+  return buildRecommendedAccentPaletteFromCandidates(candidates);
+};
+
+export const sampleAccentFromImageData = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): string => sampleAccentPaletteFromImageData(data, width, height)[0] || FALLBACK_IMAGE_ACCENT;
+
+const sampleAccentPaletteFromImage = (img: HTMLImageElement): string[] => {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('canvas-context-unavailable');
@@ -252,16 +401,16 @@ const sampleAccentFromImage = (img: HTMLImageElement): string => {
   canvas.height = sampleHeight;
   ctx.drawImage(img, 0, 0, sampleWidth, sampleHeight);
   const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
-  return sampleAccentFromImageData(imageData.data, sampleWidth, sampleHeight);
+  return sampleAccentPaletteFromImageData(imageData.data, sampleWidth, sampleHeight);
 };
 
-const resolveImageAccent = async (
+const resolveImageAccentPalette = async (
   imageUrl: string,
   options?: ResolveDynamicAccentOptions,
-): Promise<string> => {
-  if (!imageUrl) return FALLBACK_IMAGE_ACCENT;
-  if (!options?.forceImageResample && imageAccentCache.has(imageUrl)) {
-    return imageAccentCache.get(imageUrl)!;
+): Promise<string[]> => {
+  if (!imageUrl) return DEFAULT_WALLPAPER_ACCENT_PALETTE;
+  if (!options?.forceImageResample && imageAccentPaletteCache.has(imageUrl)) {
+    return imageAccentPaletteCache.get(imageUrl)!;
   }
 
   const trySample = async (src: string, fromRemote: boolean) => {
@@ -269,14 +418,14 @@ const resolveImageAccent = async (
       src,
       fromRemote ? { crossOrigin: 'anonymous', referrerPolicy: 'no-referrer' } : undefined,
     );
-    return sampleAccentFromImage(image);
+    return sampleAccentPaletteFromImage(image);
   };
 
   try {
     const isRemote = REMOTE_URL_PATTERN.test(imageUrl);
-    const accent = await trySample(imageUrl, isRemote);
-    imageAccentCache.set(imageUrl, accent);
-    return accent;
+    const palette = await trySample(imageUrl, isRemote);
+    imageAccentPaletteCache.set(imageUrl, palette);
+    return palette;
   } catch {
     try {
       // Fallback path for cross-origin image sampling failures:
@@ -287,9 +436,9 @@ const resolveImageAccent = async (
           const blob = await response.blob();
           if (blob instanceof Blob && blob.size > 0) {
             const dataUrl = await blobToDataUrl(blob);
-            const accent = await trySample(dataUrl, false);
-            imageAccentCache.set(imageUrl, accent);
-            return accent;
+            const palette = await trySample(dataUrl, false);
+            imageAccentPaletteCache.set(imageUrl, palette);
+            return palette;
           }
         }
       }
@@ -298,18 +447,58 @@ const resolveImageAccent = async (
     }
   }
 
-  imageAccentCache.set(imageUrl, FALLBACK_IMAGE_ACCENT);
-  return FALLBACK_IMAGE_ACCENT;
+  imageAccentPaletteCache.set(imageUrl, DEFAULT_WALLPAPER_ACCENT_PALETTE);
+  return DEFAULT_WALLPAPER_ACCENT_PALETTE;
 };
 
 export const resolveDynamicAccentColor = async (
   input: DynamicAccentInput,
   options?: ResolveDynamicAccentOptions,
 ) => {
-  if (input.wallpaperMode === 'weather') return resolveWeatherAccent(input.weatherCode);
-  if (input.wallpaperMode === 'color') return resolveColorAccent(input.colorWallpaperId);
+  return resolveAccentColorSelection('dynamic', input, {
+    ...options,
+    isDarkTheme: false,
+  });
+};
+
+export const resolveWallpaperAccentPalette = async (
+  input: DynamicAccentInput,
+  options?: ResolveDynamicAccentOptions,
+) => {
+  if (input.wallpaperMode === 'weather') {
+    return buildRecommendedAccentPaletteFromHexes([resolveWeatherAccent(input.weatherCode)]);
+  }
+  if (input.wallpaperMode === 'color') {
+    const gradient = getColorWallpaperGradient(input.colorWallpaperId || DEFAULT_COLOR_WALLPAPER_ID);
+    const matches = gradient.match(/#[0-9a-fA-F]{6}/g) || [resolveColorAccent(input.colorWallpaperId)];
+    return buildRecommendedAccentPaletteFromHexes(matches);
+  }
   const source = resolveSourceImage(input);
-  return resolveImageAccent(source, options);
+  return resolveImageAccentPalette(source, options);
+};
+
+export const resolveAccentColorSelection = async (
+  selection: string,
+  input: DynamicAccentInput,
+  options: ResolveAccentColorOptions,
+) => {
+  const normalizedSelection = selection.trim() || DEFAULT_ACCENT_COLOR;
+  const wallpaperSlotIndex = getWallpaperAccentSlotIndex(normalizedSelection);
+  if (wallpaperSlotIndex !== null || normalizedSelection === 'dynamic' || normalizedSelection === DEFAULT_ACCENT_COLOR) {
+    const palette = await resolveWallpaperAccentPalette(input, options);
+    const slotIndex = wallpaperSlotIndex ?? 0;
+    return palette[slotIndex] || palette[0] || DEFAULT_WALLPAPER_ACCENT_PALETTE[0];
+  }
+  if (normalizedSelection === ADAPTIVE_NEUTRAL_ACCENT) {
+    return resolveAdaptiveNeutralAccent(options.isDarkTheme);
+  }
+  if (isHexAccentColor(normalizedSelection)) {
+    return normalizedSelection;
+  }
+  const legacyColor = resolveLegacyNamedAccentColor(normalizedSelection, options.isDarkTheme);
+  if (legacyColor) return legacyColor;
+  const palette = await resolveWallpaperAccentPalette(input, options);
+  return palette[0] || DEFAULT_WALLPAPER_ACCENT_PALETTE[0];
 };
 
 export const applyDynamicAccentColor = (hex: string) => {

@@ -8,18 +8,15 @@ import { SearchExperience } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import {
-  INITIAL_REVEAL_TIMING,
-  resolveInitialRevealOpacity,
-  resolveInitialRevealTransform,
+  resolveInitialRevealStyle,
 } from '@/config/animationTokens';
-import { clamp01 } from '@/components/shortcutFolderCompactAnimation';
 import { QuickAccessDrawer } from './QuickAccessDrawer';
 import { InlineTime } from './InlineTime';
 import { useQuickAccessDrawer } from './useQuickAccessDrawer';
 
 type HomeContentFlags = Pick<
   DisplayModeLayoutFlags,
-  'showHeroWallpaperClock' | 'showShortcuts' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
+  'showHeroWallpaperClock' | 'showShortcuts' | 'revealShortcutsOnDrawerExpand' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
 >;
 
 interface HomeMainContentProps {
@@ -55,7 +52,6 @@ interface HomeMainContentProps {
   searchInteractionLocked: boolean;
   shortcutGridProps: ComponentProps<typeof RootShortcutGrid>;
   onDrawerExpandedChange?: (expanded: boolean) => void;
-  folderImmersiveProgress: number;
 }
 
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
@@ -96,7 +92,6 @@ export const HomeMainContent = memo(function HomeMainContent({
   searchInteractionLocked,
   shortcutGridProps,
   onDrawerExpandedChange,
-  folderImmersiveProgress,
 }: HomeMainContentProps) {
   const firefox = isFirefoxBuildTarget();
   const { resolvedTheme } = useTheme();
@@ -112,6 +107,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   const drawer = useQuickAccessDrawer({
     viewportHeight: layout.viewportHeight,
     showShortcuts: modeFlags.showShortcuts,
+    allowWheelExpandWhenHidden: modeFlags.revealShortcutsOnDrawerExpand,
     disableScrollInteraction: searchInteractionLocked,
     topContentBottomPx: homeWallpaperBottomPx,
     topContentSafeGapPx: HOME_DRAWER_WALLPAPER_SAFE_GAP_PX,
@@ -120,16 +116,13 @@ export const HomeMainContent = memo(function HomeMainContent({
   const drawerShortcutBottomInset = 16;
 
   const homeWallpaperBlockTranslateYPx = -HOME_WALLPAPER_BLOCK_LIFT_PX * drawer.drawerLayoutProgress;
-  const homeInitialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
-  const homeInitialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
-  const immersiveProgress = clamp01(folderImmersiveProgress);
-  const immersiveTopContentStyle = immersiveProgress <= 0.0001
-    ? undefined
-    : ({
-        opacity: 1 - immersiveProgress,
-        willChange: 'opacity',
-        pointerEvents: 'none',
-      } as CSSProperties);
+  const homeInitialRevealStyle = resolveInitialRevealStyle(initialRevealReady, {
+    disablePointerEventsUntilReady: true,
+  });
+  const immersiveTopContentStyle: CSSProperties = {
+    opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
+    willChange: 'opacity',
+  };
 
   const isLightTheme = resolvedTheme !== 'dark';
   const useExpandedLightSearchSurface = isLightTheme && drawer.isDrawerExpanded;
@@ -168,9 +161,7 @@ export const HomeMainContent = memo(function HomeMainContent({
           className={`flex flex-col items-center flex-1 w-full ${firefox ? '' : 'transform-gpu will-change-transform'}`}
           style={{
             marginTop: `${homeTopOffsetPercent}vh`,
-            opacity: homeInitialRevealOpacity,
-            transform: homeInitialRevealTransform,
-            transition: `opacity ${INITIAL_REVEAL_TIMING}, transform ${INITIAL_REVEAL_TIMING}`,
+            ...homeInitialRevealStyle,
           }}
         >
           <div
@@ -246,7 +237,6 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
         searchExperienceProps={searchExperienceProps}
-        folderImmersiveProgress={folderImmersiveProgress}
         shortcutGridProps={{
           ...shortcutGridProps,
           onDragStart: handleShortcutGridDragStart,

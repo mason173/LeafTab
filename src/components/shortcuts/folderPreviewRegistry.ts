@@ -8,6 +8,7 @@ type FolderPreviewSlotEntry = {
 
 const folderPreviewRoots = new Map<string, HTMLElement>();
 const folderPreviewSlots = new Map<string, Map<string, FolderPreviewSlotEntry>>();
+const folderPreviewTitles = new Map<string, HTMLElement>();
 
 function buildSlotKey(childId: string, index: number) {
   return `${index}:${childId}`;
@@ -39,6 +40,24 @@ export function useFolderPreviewRootRef(folderId: string) {
     currentNodeRef.current = node;
     if (node) {
       folderPreviewRoots.set(folderId, node);
+    }
+  }, [folderId]);
+}
+
+export function useFolderPreviewTitleRef(folderId: string | null) {
+  const currentNodeRef = useRef<HTMLElement | null>(null);
+
+  return useCallback((node: HTMLElement | null) => {
+    const resolvedFolderId = folderId || null;
+    const currentNode = currentNodeRef.current;
+
+    if (resolvedFolderId && currentNode && folderPreviewTitles.get(resolvedFolderId) === currentNode) {
+      folderPreviewTitles.delete(resolvedFolderId);
+    }
+
+    currentNodeRef.current = node;
+    if (resolvedFolderId && node) {
+      folderPreviewTitles.set(resolvedFolderId, node);
     }
   }, [folderId]);
 }
@@ -78,6 +97,10 @@ export function useFolderPreviewSlotRef(
 
 export function getFolderPreviewRoot(folderId: string): HTMLElement | null {
   return folderPreviewRoots.get(folderId) ?? null;
+}
+
+export function getFolderPreviewTitle(folderId: string): HTMLElement | null {
+  return folderPreviewTitles.get(folderId) ?? null;
 }
 
 export function getFolderPreviewSlotEntries(folderId: string): FolderPreviewSlotEntry[] {

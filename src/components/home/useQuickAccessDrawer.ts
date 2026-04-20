@@ -46,6 +46,7 @@ function resolveDrawerSnapPoint(value: number | string | null, fallbackValue: nu
 interface UseQuickAccessDrawerOptions {
   viewportHeight: number;
   showShortcuts: boolean;
+  allowWheelExpandWhenHidden?: boolean;
   disableScrollInteraction?: boolean;
   topContentBottomPx?: number;
   topContentSafeGapPx?: number;
@@ -77,6 +78,7 @@ interface UseQuickAccessDrawerResult {
 export function useQuickAccessDrawer({
   viewportHeight,
   showShortcuts,
+  allowWheelExpandWhenHidden = false,
   disableScrollInteraction = false,
   topContentBottomPx,
   topContentSafeGapPx,
@@ -301,7 +303,8 @@ export function useQuickAccessDrawer({
       event.preventDefault();
       return;
     }
-    if (!showShortcuts) return;
+    const canRevealShortcutsViaDrawer = showShortcuts || allowWheelExpandWhenHidden;
+    if (!canRevealShortcutsViaDrawer) return;
     if (snapTransitionLockedRef.current) {
       event.preventDefault();
       return;
@@ -393,6 +396,7 @@ export function useQuickAccessDrawer({
     disableScrollInteraction,
     bottomBounceOffsetRef,
     isDrawerExpanded,
+    allowWheelExpandWhenHidden,
     setBottomBounceOffsetImmediate,
     setDrawerLayoutProgressImmediate,
     setDrawerSurfaceOpacityImmediate,

@@ -31,6 +31,7 @@ export type DisplayModeLayoutFlags = {
   showFloatingScenarioMenu: boolean;
   showFloatingWallpaperSelector: boolean;
   showShortcuts: boolean;
+  revealShortcutsOnDrawerExpand: boolean;
   forceWhiteSearchTheme: boolean;
   searchUsesBlankStyle: boolean;
 };
@@ -46,6 +47,7 @@ export const getDisplayModeLayoutFlags = (mode: DisplayMode): DisplayModeLayoutF
     showFloatingScenarioMenu: isRhythm,
     showFloatingWallpaperSelector: !isPanoramic,
     showShortcuts: !isBlank,
+    revealShortcutsOnDrawerExpand: isBlank,
     forceWhiteSearchTheme: !isPanoramic,
     searchUsesBlankStyle: isBlank,
   };

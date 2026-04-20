@@ -6,12 +6,11 @@ import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 
 type QuickAccessModeFlags = Pick<
   DisplayModeLayoutFlags,
-  'showShortcuts' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
+  'showShortcuts' | 'revealShortcutsOnDrawerExpand' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
 >;
 
 export interface QuickAccessDrawerProps {
   initialRevealReady: boolean;
-  folderImmersiveProgress: number;
   modeFlags: QuickAccessModeFlags;
   contentWidth: number;
   quickAccessOpen: boolean;

@@ -5,18 +5,18 @@ import { HomeMainContent } from '@/components/home/HomeMainContent';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { toast } from '@/components/ui/sonner';
-import { INITIAL_REVEAL_TIMING, resolveInitialRevealOpacity, resolveInitialRevealTransform } from '@/config/animationTokens';
+import { resolveInitialRevealStyle } from '@/config/animationTokens';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { SearchExperience, type SearchInteractionState } from '@/components/search/SearchExperience';
 import { WallpaperClock } from '@/components/WallpaperClock';
 import type { WallpaperMode } from '@/wallpaper/types';
-import { clamp01 } from '@/components/shortcutFolderCompactAnimation';
 
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
-const FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX = 18;
-const FOLDER_IMMERSIVE_BACKGROUND_SCALE = 1.05;
+const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 0)';
+const FOLDER_IMMERSIVE_BLUR_VAR = 'var(--leaftab-folder-immersive-blur, 0px)';
+const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
   if (target instanceof Element) return target;
@@ -53,9 +53,17 @@ type HomeInteractiveSurfaceProps = {
   topNavModeProps: ComponentProps<typeof TopNavBar>;
   homeMainContentBaseProps: Omit<
     ComponentProps<typeof HomeMainContent>,
-    'initialRevealReady' | 'visible' | 'modeFlags' | 'wallpaperClockProps' | 'searchExperienceProps' | 'searchInteractionLocked' | 'onDrawerExpandedChange' | 'shortcutGridProps' | 'folderImmersiveProgress'
+    'initialRevealReady' | 'visible' | 'modeFlags' | 'wallpaperClockProps' | 'searchExperienceProps' | 'searchInteractionLocked' | 'onDrawerExpandedChange' | 'shortcutGridProps'
   >;
-  shortcutGridProps: ComponentProps<typeof HomeMainContent>['shortcutGridProps'];
+  shortcutGridBaseProps: Omit<
+    ComponentProps<typeof HomeMainContent>['shortcutGridProps'],
+    'heatZoneInspectorEnabled' | 'hiddenShortcutId' | 'selectionMode' | 'selectedShortcutIndexes' | 'onToggleShortcutSelection'
+  >;
+  shortcutGridHeatZoneInspectorEnabled: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['heatZoneInspectorEnabled'];
+  shortcutGridHiddenShortcutId: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['hiddenShortcutId'];
+  shortcutGridSelectionMode: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['selectionMode'];
+  shortcutGridSelectedShortcutIndexes: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['selectedShortcutIndexes'];
+  onToggleShortcutSelection: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['onToggleShortcutSelection'];
   wallpaperClockBaseProps: Omit<
     ComponentProps<typeof WallpaperClock>,
     'timeAnimationEnabled' | 'pauseDynamicWallpaper'
@@ -66,7 +74,6 @@ type HomeInteractiveSurfaceProps = {
   >;
   baseTimeAnimationEnabled: boolean;
   freezeDynamicWallpaperBase: boolean;
-  folderImmersiveProgress: number;
 };
 
 export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
@@ -85,12 +92,16 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   effectiveWallpaperMaskOpacity,
   topNavModeProps,
   homeMainContentBaseProps,
-  shortcutGridProps,
+  shortcutGridBaseProps,
+  shortcutGridHeatZoneInspectorEnabled,
+  shortcutGridHiddenShortcutId,
+  shortcutGridSelectionMode,
+  shortcutGridSelectedShortcutIndexes,
+  onToggleShortcutSelection,
   wallpaperClockBaseProps,
   searchExperienceBaseProps,
   baseTimeAnimationEnabled,
   freezeDynamicWallpaperBase,
-  folderImmersiveProgress,
 }: HomeInteractiveSurfaceProps) {
   const { t } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -279,29 +290,42 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     }),
     [handleSearchInteractionStateChange, searchExperienceBaseProps],
   );
+  const shortcutGridProps = useMemo(
+    () => ({
+      ...shortcutGridBaseProps,
+      heatZoneInspectorEnabled: shortcutGridHeatZoneInspectorEnabled,
+      hiddenShortcutId: shortcutGridHiddenShortcutId,
+      selectionMode: shortcutGridSelectionMode,
+      selectedShortcutIndexes: shortcutGridSelectedShortcutIndexes,
+      onToggleShortcutSelection,
+    }),
+    [
+      onToggleShortcutSelection,
+      shortcutGridBaseProps,
+      shortcutGridHeatZoneInspectorEnabled,
+      shortcutGridHiddenShortcutId,
+      shortcutGridSelectedShortcutIndexes,
+      shortcutGridSelectionMode,
+    ],
+  );
 
-  const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
-  const initialRevealOpacity = resolveInitialRevealOpacity(initialRevealReady);
-  const immersiveProgress = clamp01(folderImmersiveProgress);
-
-  const immersiveBackdropLayerStyle = useMemo<CSSProperties | undefined>(() => {
-    if (immersiveProgress <= 0.0001) return undefined;
-
-    return {
-      opacity: immersiveProgress,
-      backdropFilter: `blur(${(FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX * immersiveProgress).toFixed(2)}px)`,
-      WebkitBackdropFilter: `blur(${(FOLDER_IMMERSIVE_BACKGROUND_BLUR_PX * immersiveProgress).toFixed(2)}px)`,
-      willChange: 'opacity, backdrop-filter',
-      pointerEvents: 'none',
-    };
-  }, [immersiveProgress]);
+  const fixedTopNavRevealStyle = useMemo(() => resolveInitialRevealStyle(initialRevealReady, {
+    disablePointerEventsUntilReady: true,
+  }), [initialRevealReady]);
+  const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
+    opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
+    backdropFilter: `blur(${FOLDER_IMMERSIVE_BLUR_VAR})`,
+    WebkitBackdropFilter: `blur(${FOLDER_IMMERSIVE_BLUR_VAR})`,
+    willChange: 'opacity, backdrop-filter',
+    pointerEvents: 'none',
+  }), []);
 
   const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
-    transform: `scale(${(1 + ((FOLDER_IMMERSIVE_BACKGROUND_SCALE - 1) * immersiveProgress)).toFixed(4)})`,
+    transform: `scale(${FOLDER_IMMERSIVE_SCALE_VAR})`,
     transformOrigin: 'center center',
-    willChange: immersiveProgress > 0.0001 ? 'transform' : undefined,
+    willChange: 'transform',
     pointerEvents: 'none',
-  }), [immersiveProgress]);
+  }), []);
 
   const overlayWallpaperLayer = useMemo(() => {
     if (!showOverlayWallpaperLayer) return null;
@@ -359,9 +383,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       <div
         className="fixed inset-6 z-[14020] pointer-events-none"
         style={{
-          opacity: initialRevealOpacity,
-          transform: initialRevealTransform,
-          transition: `opacity ${INITIAL_REVEAL_TIMING}, transform ${INITIAL_REVEAL_TIMING}`,
+          ...fixedTopNavRevealStyle,
         }}
       >
         <TopNavBar {...effectiveTopNavModeProps} />
@@ -369,32 +391,24 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     );
   }, [
     effectiveTopNavModeProps,
-    initialRevealOpacity,
-    initialRevealTransform,
     modeFlags.showInlineTopNav,
     modeLayersVisible,
+    fixedTopNavRevealStyle,
   ]);
 
-  const immersiveUiShellStyle = useMemo<CSSProperties | undefined>(() => {
-    if (immersiveProgress <= 0.0001) return undefined;
-
-    return {
-      opacity: 1 - immersiveProgress,
-      willChange: 'opacity',
-      pointerEvents: 'none',
-    };
-  }, [immersiveProgress]);
+  const immersiveUiShellStyle = useMemo<CSSProperties>(() => ({
+    opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
+    willChange: 'opacity',
+  }), []);
 
   return (
     <>
       {overlayWallpaperLayer}
-      {immersiveBackdropLayerStyle ? (
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 z-[15000]"
-          style={immersiveBackdropLayerStyle}
-        />
-      ) : null}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-[15000]"
+        style={immersiveBackdropLayerStyle}
+      />
       <div style={immersiveUiShellStyle}>
         {fixedTopNavLayer}
       </div>
@@ -408,7 +422,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
         searchInteractionLocked={searchInteractionLocked}
         onDrawerExpandedChange={setDrawerExpanded}
         shortcutGridProps={shortcutGridProps}
-        folderImmersiveProgress={folderImmersiveProgress}
       />
     </>
   );

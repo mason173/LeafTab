@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState, useRef, useMemo } from "react";
 import {
+  RiCheckFill,
   RiCheckboxBlankFill,
   RiDashboardFill,
   RiDownload2Fill,
@@ -31,6 +32,17 @@ import type { VisualEffectsLevel } from "@/hooks/useVisualEffectsPolicy";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 import aboutIcon from "@/assets/abouticon.svg";
 import { DIST_CHANNEL } from "@/config/distribution";
+import {
+  ADAPTIVE_NEUTRAL_ACCENT,
+  DEFAULT_ACCENT_COLOR,
+  getWallpaperAccentSlotKey,
+  resolveAccentDetailColor,
+  resolveAdaptiveNeutralAccent,
+} from "@/utils/accentColor";
+import {
+  DEFAULT_WALLPAPER_ACCENT_PALETTE,
+  resolveWallpaperAccentPalette,
+} from "@/utils/dynamicAccentColor";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -135,18 +147,13 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const { t, i18n } = useTranslation();
   const firefox = isFirefoxBuildTarget();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   void shortcutCompactShowTitle;
   void onShortcutCompactShowTitleChange;
   void shortcutGridColumns;
   void onShortcutGridColumnsChange;
-  void wallpaperMode;
   void onWallpaperModeChange;
-  void bingWallpaper;
-  void customWallpaper;
   void onCustomWallpaperChange;
-  void weatherCode;
-  void colorWallpaperId;
   void onColorWallpaperIdChange;
   void wallpaperMaskOpacity;
   void onWallpaperMaskOpacityChange;
@@ -161,7 +168,8 @@ export default function SettingsModal({
   void onWebdavDisable;
   void onCloudSyncNow;
   const [mounted, setMounted] = useState(false);
-  const [accentColor, setAccentColor] = useState<string>('green');
+  const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
+  const [recommendedAccentPalette, setRecommendedAccentPalette] = useState<string[]>(DEFAULT_WALLPAPER_ACCENT_PALETTE);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [appVersion, setAppVersion] = useState<string>('—');
   const adminModeTapCountRef = useRef(0);
@@ -183,16 +191,29 @@ export default function SettingsModal({
     return () => window.removeEventListener('leaftab-admin-mode-changed', onAdminModeChanged);
   }, []);
 
-  const colorOptions = [
-    { name: 'dynamic', value: 'linear-gradient(135deg, #22c55e 0%, #3b82f6 45%, #a855f7 100%)', label: t('settings.accent.dynamic') },
-    { name: 'mono', value: 'linear-gradient(135deg, #0f0f10 0%, #ffffff 100%)', label: t('settings.accent.mono') },
-    { name: 'green', value: '#22c55e', label: t('settings.accent.green') },
-    { name: 'blue', value: '#3b82f6', label: t('settings.accent.blue') },
-    { name: 'purple', value: '#a855f7', label: t('settings.accent.purple') },
-    { name: 'orange', value: '#f97316', label: t('settings.accent.orange') },
-    { name: 'pink', value: '#ec4899', label: t('settings.accent.pink') },
-    { name: 'red', value: '#ef4444', label: t('settings.accent.red') },
-  ];
+  const isDarkTheme = resolvedTheme === 'dark';
+  const colorOptions = useMemo(() => {
+    const recommendedOptions = Array.from({ length: 6 }, (_, index) => ({
+      name: getWallpaperAccentSlotKey(index),
+      value: recommendedAccentPalette[index] || DEFAULT_WALLPAPER_ACCENT_PALETTE[index],
+      accentDetailColor: resolveAccentDetailColor(recommendedAccentPalette[index] || DEFAULT_WALLPAPER_ACCENT_PALETTE[index]),
+      label: t('settings.accent.recommended', {
+        index: index + 1,
+        defaultValue: `Recommended ${index + 1}`,
+      }),
+    }));
+    return [
+      ...recommendedOptions,
+      {
+        name: ADAPTIVE_NEUTRAL_ACCENT,
+        value: resolveAdaptiveNeutralAccent(isDarkTheme),
+        accentDetailColor: resolveAccentDetailColor(resolveAdaptiveNeutralAccent(isDarkTheme)),
+        label: t('settings.accent.adaptiveNeutral', {
+          defaultValue: 'Adaptive neutral',
+        }),
+      },
+    ];
+  }, [isDarkTheme, recommendedAccentPalette, t]);
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
     if (mode === 'panoramic') return <RiDashboardFill className={className} />;
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
@@ -229,13 +250,38 @@ export default function SettingsModal({
   useEffect(() => {
     setMounted(true);
     const syncAccent = () => {
-      const savedColor = localStorage.getItem('accentColor') || 'green';
+      const savedColor = localStorage.getItem('accentColor') || DEFAULT_ACCENT_COLOR;
       setAccentColor(savedColor);
     };
     syncAccent();
     window.addEventListener('leaftab-accent-color-changed', syncAccent);
     return () => window.removeEventListener('leaftab-accent-color-changed', syncAccent);
   }, []);
+  useEffect(() => {
+    let canceled = false;
+    resolveWallpaperAccentPalette({
+      wallpaperMode,
+      bingWallpaper,
+      customWallpaper,
+      weatherCode,
+      colorWallpaperId,
+    })
+      .then((palette) => {
+        if (canceled) return;
+        setRecommendedAccentPalette(
+          palette.length >= 6
+            ? palette.slice(0, 6)
+            : [...palette, ...DEFAULT_WALLPAPER_ACCENT_PALETTE].slice(0, 6),
+        );
+      })
+      .catch(() => {
+        if (canceled) return;
+        setRecommendedAccentPalette(DEFAULT_WALLPAPER_ACCENT_PALETTE);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [bingWallpaper, colorWallpaperId, customWallpaper, wallpaperMode, weatherCode]);
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
@@ -300,10 +346,7 @@ export default function SettingsModal({
     };
     reader.readAsText(file);
   };
-  const shortcutStyleDisabled = displayMode === 'minimalist';
-
   const handleOpenShortcutIconSettings = () => {
-    if (shortcutStyleDisabled) return;
     onOpenChange(false);
     onOpenShortcutIconSettings?.();
   };
@@ -386,19 +429,22 @@ export default function SettingsModal({
               </div>
             </div>
             <div className="flex flex-col gap-3">
-            <div className="flex justify-between w-full px-[12px]">
+            <div className="flex w-full flex-wrap items-center justify-center gap-3 px-2">
               {colorOptions.map((option) => (
                 <button
                   key={option.name}
                   onClick={() => handleColorChange(option.name)}
-                  className={`w-8 h-8 rounded-full overflow-hidden transition-all ${accentColor === option.name ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-105'}`}
-                  style={option.name === 'dynamic'
-                    ? { backgroundImage: option.value }
-                    : option.name === 'mono'
-                    ? { backgroundImage: 'linear-gradient(90deg, #111111 0 50%, #ffffff 50% 100%)', boxShadow: 'inset 0 0 0 1px rgba(148, 163, 184, 0.45)' }
-                    : { backgroundColor: option.value }}
-                  aria-label={`Select ${option.label} color`}
-                />
+                  className={`relative flex size-10 items-center justify-center rounded-full overflow-hidden border transition-transform ${accentColor === option.name ? 'scale-105' : 'hover:scale-[1.04]'}`}
+                  style={{ backgroundColor: option.value, borderColor: option.accentDetailColor }}
+                  aria-label={option.label}
+                >
+                  {accentColor === option.name ? (
+                    <RiCheckFill
+                      className="size-5 stroke-[3]"
+                      style={{ color: option.accentDetailColor }}
+                    />
+                  ) : null}
+                </button>
               ))}
               </div>
             </div>
@@ -447,7 +493,7 @@ export default function SettingsModal({
                   {t('settings.shortcutsLayout.set')}
                 </Button>
               </div>
-              <div className={`flex items-center justify-between gap-3 ${shortcutStyleDisabled ? 'opacity-55' : ''}`}>
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col space-y-1 items-start">
                   <span className="text-sm font-medium leading-none">{t('settings.shortcutIconSettings.label', { defaultValue: '图标设置' })}</span>
                   <span className="font-normal text-xs text-muted-foreground">{t('settings.shortcutIconSettings.entryDescription', { defaultValue: '调整快捷方式图标的颜色模式与圆角' })}</span>
@@ -455,8 +501,7 @@ export default function SettingsModal({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className={`!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 ${shortcutStyleDisabled ? 'bg-secondary/35 text-muted-foreground cursor-not-allowed hover:bg-secondary/35' : 'bg-secondary/50 hover:bg-secondary'}`}
-                  disabled={shortcutStyleDisabled}
+                  className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 bg-secondary/50 hover:bg-secondary"
                   onClick={handleOpenShortcutIconSettings}
                 >
                   {t('settings.shortcutIconSettings.open', { defaultValue: '打开' })}

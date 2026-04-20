@@ -106,6 +106,7 @@ type FolderShortcutSurfaceProps = {
   iconAppearance?: ShortcutIconAppearance;
   forceTextWhite?: boolean;
   showShortcutTitles?: boolean;
+  animateShortcutTitlesOnMount?: boolean;
   maskBoundaryRef: React.RefObject<HTMLElement | null>;
   onShortcutOpen: (shortcut: Shortcut) => void;
   onShortcutContextMenu?: (event: React.MouseEvent<HTMLDivElement>, shortcut: Shortcut) => void;
@@ -193,6 +194,7 @@ export function FolderShortcutSurface({
   iconAppearance,
   forceTextWhite = false,
   showShortcutTitles = true,
+  animateShortcutTitlesOnMount = true,
   maskBoundaryRef,
   onShortcutOpen,
   onShortcutContextMenu,
@@ -350,6 +352,7 @@ export function FolderShortcutSurface({
             iconAppearance: params.iconAppearance,
             forceTextWhite: params.forceTextWhite,
             showShortcutTitles: params.compactShowTitle,
+            animateShortcutTitlesOnMount,
             onOpen: params.onOpen,
             onContextMenu: params.onContextMenu,
           })}

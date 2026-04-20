@@ -18,6 +18,7 @@ export type ShortcutFolderOpeningSourceSnapshot = {
   folderId: string;
   sourceRect: ShortcutFolderOverlayRect;
   sourceBorderRadius?: number | null;
+  sourceTitleRect?: ShortcutFolderOverlayRect | null;
   sourceChildRects: Array<{
     childId: string;
     rect: ShortcutFolderOverlayRect;

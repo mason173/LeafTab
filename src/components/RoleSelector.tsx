@@ -27,27 +27,52 @@ import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AnimatePresence, motion } from "framer-motion";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
-import { applyDynamicAccentColor, clearDynamicAccentColor } from "@/utils/dynamicAccentColor";
+import {
+  DEFAULT_WALLPAPER_ACCENT_PALETTE,
+  resolveWallpaperAccentPalette,
+} from "@/utils/dynamicAccentColor";
 import { DISPLAY_MODE_OPTIONS, type DisplayMode } from "@/displayMode/config";
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getExtensionPermissionSupport } from '@/platform/permissions';
+import type { WallpaperMode } from '@/wallpaper/types';
+import {
+  ADAPTIVE_NEUTRAL_ACCENT,
+  DEFAULT_ACCENT_COLOR,
+  getWallpaperAccentSlotKey,
+  resolveAccentDetailColor,
+  resolveAdaptiveNeutralAccent,
+} from '@/utils/accentColor';
 
 interface RoleSelectorProps {
   open: boolean;
   onSelect: (roleId: string, displayMode?: DisplayMode) => void;
+  wallpaperMode: WallpaperMode;
+  bingWallpaper: string;
+  customWallpaper: string | null;
+  weatherCode: number;
+  colorWallpaperId: string;
 }
 
 const STEP_ORDER = ['appearance', 'role', 'layout', 'permissions'] as const;
 type StepType = (typeof STEP_ORDER)[number];
 type OnboardingPermission = 'history' | 'bookmarks' | 'tabs';
 
-export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
+export function RoleSelector({
+  open,
+  onSelect,
+  wallpaperMode,
+  bingWallpaper,
+  customWallpaper,
+  weatherCode,
+  colorWallpaperId,
+}: RoleSelectorProps) {
   const firefox = isFirefoxBuildTarget();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedLayout, setSelectedLayout] = useState<DisplayMode>('fresh');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [accentColor, setAccentColor] = useState<string>('green');
+  const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
+  const [recommendedAccentPalette, setRecommendedAccentPalette] = useState<string[]>(DEFAULT_WALLPAPER_ACCENT_PALETTE);
   const [step, setStep] = useState<StepType>('appearance');
   const [direction, setDirection] = useState(1);
   const [appearanceRevealReady, setAppearanceRevealReady] = useState(false);
@@ -60,7 +85,7 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
   const previousStepRef = useRef<StepType | null>(null);
   const stepRevealTimerRef = useRef<number | null>(null);
   const { i18n, t } = useTranslation();
-  const { setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const stagedRevealHidden = useMemo(
     () => (firefox ? { opacity: 0, y: 16 } : { opacity: 0, y: 20, filter: "blur(12px)" }),
     [firefox],
@@ -162,42 +187,69 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
     setTheme(theme);
   };
 
-  const colorOptions = [
-    { name: 'dynamic', value: 'linear-gradient(135deg, #22c55e 0%, #3b82f6 45%, #a855f7 100%)', label: t('settings.accent.dynamic') },
-    { name: 'mono', value: 'linear-gradient(90deg, #111111 0 50%, #ffffff 50% 100%)', label: t('settings.accent.mono') },
-    { name: 'green', value: '#22c55e', label: t('settings.accent.green') },
-    { name: 'blue', value: '#3b82f6', label: t('settings.accent.blue') },
-    { name: 'purple', value: '#a855f7', label: t('settings.accent.purple') },
-    { name: 'orange', value: '#f97316', label: t('settings.accent.orange') },
-    { name: 'pink', value: '#ec4899', label: t('settings.accent.pink') },
-    { name: 'red', value: '#ef4444', label: t('settings.accent.red') },
-  ];
-
-  const applyAccentFromStorage = async (colorName: string) => {
-    if (colorName !== 'dynamic') {
-      clearDynamicAccentColor();
-      document.documentElement.setAttribute('data-accent-color', colorName);
-      return;
-    }
-    document.documentElement.setAttribute('data-accent-color', 'dynamic');
-    applyDynamicAccentColor('#3b82f6');
-  };
+  const isDarkTheme = resolvedTheme === 'dark';
+  const colorOptions = useMemo(() => {
+    const recommendedOptions = Array.from({ length: 6 }, (_, index) => ({
+      name: getWallpaperAccentSlotKey(index),
+      value: recommendedAccentPalette[index] || DEFAULT_WALLPAPER_ACCENT_PALETTE[index],
+      accentDetailColor: resolveAccentDetailColor(recommendedAccentPalette[index] || DEFAULT_WALLPAPER_ACCENT_PALETTE[index]),
+      label: t('settings.accent.recommended', {
+        index: index + 1,
+        defaultValue: `Recommended ${index + 1}`,
+      }),
+    }));
+    return [
+      ...recommendedOptions,
+      {
+        name: ADAPTIVE_NEUTRAL_ACCENT,
+        value: resolveAdaptiveNeutralAccent(isDarkTheme),
+        accentDetailColor: resolveAccentDetailColor(resolveAdaptiveNeutralAccent(isDarkTheme)),
+        label: t('settings.accent.adaptiveNeutral', {
+          defaultValue: 'Adaptive neutral',
+        }),
+      },
+    ];
+  }, [isDarkTheme, recommendedAccentPalette, t]);
 
   useEffect(() => {
     const stored = localStorage.getItem('accentColor');
-    const savedColor = stored || 'green';
+    const savedColor = stored || DEFAULT_ACCENT_COLOR;
     setAccentColor(savedColor);
     if (!stored) {
       localStorage.setItem('accentColor', savedColor);
       window.dispatchEvent(new Event('leaftab-accent-color-changed'));
     }
-    applyAccentFromStorage(savedColor);
   }, []);
+
+  useEffect(() => {
+    let canceled = false;
+    resolveWallpaperAccentPalette({
+      wallpaperMode,
+      bingWallpaper,
+      customWallpaper,
+      weatherCode,
+      colorWallpaperId,
+    })
+      .then((palette) => {
+        if (canceled) return;
+        setRecommendedAccentPalette(
+          palette.length >= 6
+            ? palette.slice(0, 6)
+            : [...palette, ...DEFAULT_WALLPAPER_ACCENT_PALETTE].slice(0, 6),
+        );
+      })
+      .catch(() => {
+        if (canceled) return;
+        setRecommendedAccentPalette(DEFAULT_WALLPAPER_ACCENT_PALETTE);
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [bingWallpaper, colorWallpaperId, customWallpaper, wallpaperMode, weatherCode]);
 
   const handleColorChange = (colorName: string) => {
     setAccentColor(colorName);
     localStorage.setItem('accentColor', colorName);
-    applyAccentFromStorage(colorName);
     window.dispatchEvent(new Event('leaftab-accent-color-changed'));
   };
 
@@ -434,14 +486,17 @@ export function RoleSelector({ open, onSelect }: RoleSelectorProps) {
                     <button
                       key={option.name}
                       onClick={() => handleColorChange(option.name)}
-                      className={`size-8 rounded-full overflow-hidden transition-all ${accentColor === option.name ? 'ring-2 ring-offset-2 ring-primary scale-105' : 'hover:scale-105'}`}
-                      style={option.name === 'dynamic'
-                        ? { backgroundImage: option.value }
-                        : option.name === 'mono'
-                        ? { backgroundImage: option.value, boxShadow: 'inset 0 0 0 1px rgba(148, 163, 184, 0.45)' }
-                        : { backgroundColor: option.value }}
-                      aria-label={`Select ${option.label} color`}
-                    />
+                      className={`relative flex size-10 items-center justify-center rounded-full overflow-hidden border transition-transform ${accentColor === option.name ? 'scale-105' : 'hover:scale-[1.04]'}`}
+                      style={{ backgroundColor: option.value, borderColor: option.accentDetailColor }}
+                      aria-label={option.label}
+                    >
+                      {accentColor === option.name ? (
+                        <RiCheckFill
+                          className="size-5 stroke-[3]"
+                          style={{ color: option.accentDetailColor }}
+                        />
+                      ) : null}
+                    </button>
                   ))}
                 </div>
               </motion.div>

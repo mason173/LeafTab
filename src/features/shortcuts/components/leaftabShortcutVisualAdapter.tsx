@@ -324,6 +324,7 @@ export function renderLeaftabFolderItem(params: {
   iconAppearance?: ShortcutIconAppearance;
   forceTextWhite: boolean;
   showShortcutTitles: boolean;
+  animateShortcutTitlesOnMount?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }) {
@@ -331,7 +332,7 @@ export function renderLeaftabFolderItem(params: {
     <ShortcutCardCompact
       shortcut={params.shortcut}
       showTitle={params.showShortcutTitles}
-      animateTitleOnMount
+      animateTitleOnMount={params.animateShortcutTitlesOnMount}
       titleFadeDurationMs={140}
       iconSize={params.compactIconSize}
       floatTitle
@@ -345,6 +346,9 @@ export function renderLeaftabFolderItem(params: {
       disableIconWrapperEffects
       iconContentProps={{
         'data-folder-overlay-child-id': params.shortcut.id,
+      }}
+      titleProps={{
+        'data-folder-overlay-child-label-id': params.shortcut.id,
       }}
       onOpen={params.onOpen}
       onContextMenu={params.onContextMenu}

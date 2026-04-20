@@ -6,6 +6,7 @@ import { getDefaultSearchEngineForPlatform, normalizeSearchEngineForPlatform } f
 import type { SearchEngine, SyncablePreferences, SyncableWallpaperMode, WeatherManualLocation } from '@/types';
 import { DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
+import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
 import {
   clampShortcutIconCornerRadius,
   DEFAULT_SHORTCUT_ICON_APPEARANCE,
@@ -185,7 +186,7 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   privacyConsent: null,
   theme: 'system',
   language: 'zh',
-  accentColor: 'green',
+  accentColor: DEFAULT_ACCENT_COLOR,
   wallpaperMode: null,
   wallpaperMaskOpacity: 10,
   darkModeAutoDimWallpaperEnabled: true,
@@ -320,7 +321,7 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     privacyConsent,
     theme: ((localStorage.getItem(THEME_KEY) || 'system').trim() as SyncablePreferences['theme']),
     language: (localStorage.getItem(LANGUAGE_KEY) || 'zh').trim() || 'zh',
-    accentColor: (localStorage.getItem(ACCENT_COLOR_KEY) || 'green').trim() || 'green',
+    accentColor: (localStorage.getItem(ACCENT_COLOR_KEY) || DEFAULT_ACCENT_COLOR).trim() || DEFAULT_ACCENT_COLOR,
     wallpaperMode: normalizeWallpaperMode(localStorage.getItem(WALLPAPER_MODE_KEY)),
     wallpaperMaskOpacity: Number(localStorage.getItem(WALLPAPER_MASK_OPACITY_KEY) || '10'),
     darkModeAutoDimWallpaperEnabled: readStoredBoolean(WALLPAPER_AUTO_DIM_KEY, true),

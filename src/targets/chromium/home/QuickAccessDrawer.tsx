@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { SearchExperience } from '@/components/search/SearchExperience';
 import {
-  INITIAL_REVEAL_TIMING,
-  resolveInitialRevealTransform,
+  resolveInitialRevealOpacityTransition,
+  resolveInitialRevealStyle,
 } from '@/config/animationTokens';
 import {
   DRAWER_CONTENT_BG_MAX_OPACITY,
@@ -17,7 +17,6 @@ import {
 
 export function QuickAccessDrawer({
   initialRevealReady,
-  folderImmersiveProgress,
   modeFlags,
   contentWidth,
   quickAccessOpen,
@@ -51,8 +50,10 @@ export function QuickAccessDrawer({
   const drawerTopCornerRadius = 32;
   const drawerLinkedTransition = `${DRAWER_LAYOUT_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const drawerBackgroundFadeTransition = `${DRAWER_SURFACE_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-  const initialRevealTransition = INITIAL_REVEAL_TIMING;
-  const initialRevealTransform = resolveInitialRevealTransform(initialRevealReady);
+  const initialRevealStyle = resolveInitialRevealStyle(initialRevealReady, {
+    disablePointerEventsUntilReady: true,
+  });
+  const initialRevealOpacityTransition = resolveInitialRevealOpacityTransition();
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
   const drawerSurfaceLayerOpacity = Math.max(
     0,
@@ -62,9 +63,9 @@ export function QuickAccessDrawer({
       * DRAWER_CONTENT_BG_MAX_OPACITY,
     ),
   );
-  const normalizedFolderImmersiveOpacity = Math.max(0, Math.min(1, 1 - folderImmersiveProgress));
-  const [renderShortcuts, setRenderShortcuts] = useState(modeFlags.showShortcuts);
-  const [shortcutsVisible, setShortcutsVisible] = useState(modeFlags.showShortcuts);
+  const shouldShowDrawerShortcuts = modeFlags.showShortcuts || (modeFlags.revealShortcutsOnDrawerExpand && isDrawerExpanded);
+  const [renderShortcuts, setRenderShortcuts] = useState(shouldShowDrawerShortcuts);
+  const [shortcutsVisible, setShortcutsVisible] = useState(shouldShowDrawerShortcuts);
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
   const shortcutsVisibilityInitializedRef = useRef(false);
   const shortcutsPaintVisible = shortcutsVisible;
@@ -76,8 +77,8 @@ export function QuickAccessDrawer({
   useEffect(() => {
     if (!shortcutsVisibilityInitializedRef.current) {
       shortcutsVisibilityInitializedRef.current = true;
-      setRenderShortcuts(modeFlags.showShortcuts);
-      setShortcutsVisible(modeFlags.showShortcuts);
+      setRenderShortcuts(shouldShowDrawerShortcuts);
+      setShortcutsVisible(shouldShowDrawerShortcuts);
       return;
     }
 
@@ -85,7 +86,7 @@ export function QuickAccessDrawer({
     let secondFrameId = 0;
     let timerId = 0;
 
-    if (modeFlags.showShortcuts) {
+    if (shouldShowDrawerShortcuts) {
       setShortcutsVisible(false);
       setRenderShortcuts(true);
       firstFrameId = window.requestAnimationFrame(() => {
@@ -107,7 +108,7 @@ export function QuickAccessDrawer({
     return () => {
       if (timerId) window.clearTimeout(timerId);
     };
-  }, [modeFlags.showShortcuts]);
+  }, [shouldShowDrawerShortcuts]);
 
   return (
     <>
@@ -118,7 +119,7 @@ export function QuickAccessDrawer({
           opacity: normalizedOverlayOpacity,
           transition: interactiveTransitionsEnabled
             ? `opacity ${drawerBackgroundFadeTransition}`
-            : `opacity ${initialRevealTransition}`,
+            : initialRevealOpacityTransition,
           willChange: 'opacity',
           backfaceVisibility: 'hidden',
           pointerEvents: isDrawerExpanded ? 'auto' : 'none',
@@ -145,14 +146,13 @@ export function QuickAccessDrawer({
         <div
           className="mx-auto max-w-full"
           style={{
-            transform: initialRevealTransform,
-            transition: `transform ${initialRevealTransition}`,
+            ...initialRevealStyle,
           }}
         >
           <section
             className="relative mx-auto flex min-h-0 w-full max-w-full flex-col overflow-hidden border-transparent bg-transparent shadow-none pointer-events-auto"
             style={{
-              opacity: normalizedFolderImmersiveOpacity,
+              opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
               backdropFilter: !reduceMotionVisuals && drawerContentBackdropBlurPx > 0 ? `blur(${drawerContentBackdropBlurPx.toFixed(1)}px)` : undefined,
               WebkitBackdropFilter: !reduceMotionVisuals && drawerContentBackdropBlurPx > 0 ? `blur(${drawerContentBackdropBlurPx.toFixed(1)}px)` : undefined,
               height: `${drawerPanelHeightVh}vh`,

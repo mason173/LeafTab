@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'next-themes';
 import type { FolderShortcutDropIntent } from '@leaftab/workspace-core';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
-  FOLDER_LABEL_REVEAL_START_PROGRESS,
   clamp01,
   interpolateRect,
   mix,
@@ -24,7 +24,9 @@ import {
 import {
   getFolderPreviewRoot,
   getFolderPreviewSlotEntries,
+  getFolderPreviewTitle,
 } from '@/components/shortcuts/folderPreviewRegistry';
+import type { DisplayMode } from '@/displayMode/config';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
@@ -46,13 +48,16 @@ type ShortcutFolderCompactOverlayProps = {
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, folderId: string, shortcut: Shortcut) => void;
   onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
+  displayMode: DisplayMode;
 };
 
 type OverlayRect = ShortcutFolderOverlayRect;
 
 type OverlayMetrics = {
   targetRect: OverlayRect;
+  targetTitleRect: OverlayRect | null;
   targetChildRects: Map<string, OverlayRect>;
+  targetChildLabelRects: Map<string, OverlayRect>;
 };
 
 const OVERLAY_Z_INDEX = 16000;
@@ -63,13 +68,15 @@ const FOLDER_PANEL_MAX_VISIBLE_ROWS = 5;
 const HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY = 0.32;
 const COLLAPSED_CHILD_CONTENT_RATIO = 0.94;
 const GHOST_ICON_BASE_SIZE = 72;
+const FOLDER_PREVIEW_TITLE_FONT_SIZE_PX = 12;
+const FOLDER_PANEL_TITLE_FONT_SIZE_PX = 22;
+const FOLDER_CHILD_LABEL_FONT_SIZE_PX = 12;
 const HIDDEN_CHILD_CLOSING_FADE_END_PROGRESS = 0.58;
 const PANEL_WIDTH_CLASSNAME = 'w-[min(720px,calc(100vw-24px))] max-w-[720px]';
 const PANEL_HORIZONTAL_MARGIN_PX = 24;
 const PANEL_MAX_WIDTH_PX = 720;
 const FOLDER_TITLE_PADDING_CLASSNAME = 'px-6 pb-5 pt-7';
 const FOLDER_SCROLL_REGION_CLASSNAME = 'min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden';
-const FOLDER_ANIMATED_TITLE_CLASSNAME = `absolute inset-x-0 top-0 ${FOLDER_TITLE_PADDING_CLASSNAME} text-center`;
 function buildFolderPanelSurfaceStyle(borderRadius: string, opacity = 1): React.CSSProperties {
   return {
     borderRadius,
@@ -159,6 +166,23 @@ function getFallbackSourceRect(targetRect: OverlayRect): OverlayRect {
   };
 }
 
+function getFallbackSourceTitleRect(params: {
+  sourceRect: OverlayRect;
+  title: string;
+}): OverlayRect {
+  const { sourceRect, title } = params;
+  const estimatedWidth = Math.max(
+    56,
+    Math.min(sourceRect.width, Math.round(title.length * FOLDER_PREVIEW_TITLE_FONT_SIZE_PX * 1.7)),
+  );
+  return {
+    left: sourceRect.left + (sourceRect.width - estimatedWidth) / 2,
+    top: sourceRect.top + sourceRect.height + 4,
+    width: estimatedWidth,
+    height: 16,
+  };
+}
+
 function getVirtualCollapsedChildRect(params: {
   sourceRect: OverlayRect;
   index: number;
@@ -211,6 +235,7 @@ function resolveAnimatedChildOpacity(params: {
 
 function measureTargetChildRects(container: ParentNode | null | undefined, shortcuts: Shortcut[]) {
   const childRects = new Map<string, OverlayRect>();
+  const childLabelRects = new Map<string, OverlayRect>();
 
   shortcuts.forEach((child) => {
     const escapedChildId = escapeSelectorValue(child.id);
@@ -219,9 +244,40 @@ function measureTargetChildRects(container: ParentNode | null | undefined, short
     if (childRect) {
       childRects.set(child.id, childRect);
     }
+
+    const childLabelNode = container?.querySelector<HTMLElement>(`[data-folder-overlay-child-label-id="${escapedChildId}"]`);
+    const childLabelRect = copyRect(childLabelNode?.getBoundingClientRect());
+    if (childLabelRect) {
+      childLabelRects.set(child.id, childLabelRect);
+    }
   });
 
-  return childRects;
+  return {
+    childRects,
+    childLabelRects,
+  };
+}
+
+function getVirtualChildLabelStartRect(params: {
+  sourceChildRect: OverlayRect;
+  targetChildRect: OverlayRect;
+  targetLabelRect: OverlayRect;
+}) {
+  const { sourceChildRect, targetChildRect, targetLabelRect } = params;
+  const midpointRect = interpolateRect(sourceChildRect, targetChildRect, 0.48);
+  return {
+    left: midpointRect.left + (midpointRect.width - targetLabelRect.width) / 2,
+    top: midpointRect.top + midpointRect.height + 10,
+    width: targetLabelRect.width,
+    height: targetLabelRect.height,
+  };
+}
+
+function resolveAnimatedChildLabelOpacity(progress: number, motionPhase: 'opening' | 'closing') {
+  if (motionPhase === 'closing') {
+    return clamp01((progress - 0.18) / 0.82);
+  }
+  return clamp01((progress - 0.1) / 0.9);
 }
 
 function GhostShortcutIcon({
@@ -280,6 +336,7 @@ function FolderPanelTitle({
   allowEditing,
   draftTitle,
   titleInputRef,
+  useReadableDarkText,
   onDraftTitleChange,
   onStartEditing,
   onCommit,
@@ -290,6 +347,7 @@ function FolderPanelTitle({
   allowEditing: boolean;
   draftTitle: string;
   titleInputRef: React.RefObject<HTMLInputElement | null>;
+  useReadableDarkText: boolean;
   onDraftTitleChange: (value: string) => void;
   onStartEditing: () => void;
   onCommit: () => void;
@@ -318,13 +376,13 @@ function FolderPanelTitle({
                 onCancel();
               }
             }}
-            className="mx-auto block w-full max-w-[320px] border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white outline-none placeholder:text-white/45"
+            className={`mx-auto block w-full max-w-[320px] border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground placeholder:text-foreground/45' : 'text-white placeholder:text-white/45'}`}
             placeholder={title}
           />
         ) : (
           <button
             type="button"
-            className="mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)] outline-none"
+            className={`mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
             onClick={onStartEditing}
           >
             {title}
@@ -352,8 +410,10 @@ export function ShortcutFolderCompactOverlay({
   onShortcutContextMenu,
   onShortcutDropIntent,
   onExtractDragStart,
+  displayMode,
 }: ShortcutFolderCompactOverlayProps) {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const [metrics, setMetrics] = useState<OverlayMetrics | null>(null);
   const [committedMetrics, setCommittedMetrics] = useState<OverlayMetrics | null>(null);
   const [closingSourceSnapshot, setClosingSourceSnapshot] = useState<ShortcutFolderOpeningSourceSnapshot | null>(null);
@@ -363,6 +423,7 @@ export function ShortcutFolderCompactOverlay({
   const [panelHeightPx, setPanelHeightPx] = useState<number | null>(null);
   const measureSurfaceRef = useRef<HTMLDivElement | null>(null);
   const measureTitleRef = useRef<HTMLDivElement | null>(null);
+  const measureTitleTextRef = useRef<HTMLDivElement | null>(null);
   const measureScrollRef = useRef<HTMLDivElement | null>(null);
   const openSurfaceRef = useRef<HTMLDivElement | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -373,6 +434,7 @@ export function ShortcutFolderCompactOverlay({
     () => (shortcut && isShortcutFolder(shortcut) ? getShortcutChildren(shortcut) : []),
     [shortcut],
   );
+  const useReadableDarkText = displayMode === 'panoramic' && resolvedTheme !== 'dark';
   const roundedCorner = `${FOLDER_PANEL_RADIUS_PX}px`;
   const maxPanelHeightPx = useMemo(() => {
     if (typeof window === 'undefined') return FOLDER_PANEL_MAX_HEIGHT_PX;
@@ -470,14 +532,22 @@ export function ShortcutFolderCompactOverlay({
     if (!surfaceNode) return null;
     const targetRect = copyRect(surfaceNode.getBoundingClientRect());
     if (!targetRect) return null;
-    const targetChildRects = measureTargetChildRects(surfaceNode, children);
-    const nextMetrics = { targetRect, targetChildRects };
+    const targetTitleRect = copyRect(measureTitleTextRef.current?.getBoundingClientRect());
+    const { childRects: targetChildRects, childLabelRects: targetChildLabelRects } = measureTargetChildRects(surfaceNode, children);
+    const nextMetrics = {
+      targetRect,
+      targetTitleRect,
+      targetChildRects,
+      targetChildLabelRects,
+    };
 
     setMetrics((current) => {
       if (
         current
         && rectEquals(current.targetRect, nextMetrics.targetRect)
+        && rectEquals(current.targetTitleRect, nextMetrics.targetTitleRect)
         && mapsEqual(current.targetChildRects, nextMetrics.targetChildRects)
+        && mapsEqual(current.targetChildLabelRects, nextMetrics.targetChildLabelRects)
       ) {
         return current;
       }
@@ -512,6 +582,7 @@ export function ShortcutFolderCompactOverlay({
       folderId: shortcut.id,
       sourceRect,
       sourceBorderRadius: readElementBorderRadiusPx(sourcePreview),
+      sourceTitleRect: copyRect(getFolderPreviewTitle(shortcut.id)?.getBoundingClientRect()),
       sourceChildRects: nextSourceChildRects,
       sourceChildSlotRects: nextSourceChildSlotRects.filter(Boolean),
     };
@@ -660,10 +731,16 @@ export function ShortcutFolderCompactOverlay({
     ? interpolateRect(sourceRect, resolvedMetrics.targetRect, openProgress)
     : null;
   const animatedPanelBorderRadius = mix(sourceBorderRadius, FOLDER_PANEL_RADIUS_PX, openProgress);
-  const animationShortcutTitlesVisible = openProgress >= FOLDER_LABEL_REVEAL_START_PROGRESS;
   const shellVisibility = resolveFolderShellVisibility(openProgress);
 
   const folderTitle = shortcut.title || t('context.folder', { defaultValue: '文件夹' });
+  const sourceTitleRect = activeSourceSnapshot?.sourceTitleRect
+    ?? (sourceRect ? getFallbackSourceTitleRect({ sourceRect, title: folderTitle }) : null);
+  const targetTitleRect = resolvedMetrics?.targetTitleRect ?? null;
+  const titleProgress = chromeProgress;
+  const animatedTitleRect = showAnimationLayer && sourceTitleRect && targetTitleRect
+    ? interpolateRect(sourceTitleRect, targetTitleRect, titleProgress)
+    : null;
 
   return createPortal(
     <div className="fixed inset-0" style={{ zIndex: OVERLAY_Z_INDEX }}>
@@ -712,7 +789,10 @@ export function ShortcutFolderCompactOverlay({
               ref={measureTitleRef}
               className={FOLDER_TITLE_PADDING_CLASSNAME}
             >
-              <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white">
+              <div
+                ref={measureTitleTextRef}
+                className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white'}`}
+              >
                 {folderTitle}
               </div>
             </div>
@@ -730,8 +810,9 @@ export function ShortcutFolderCompactOverlay({
                 compactIconSize={compactIconSize}
                 iconCornerRadius={iconCornerRadius}
                 iconAppearance={iconAppearance}
-                forceTextWhite
+                forceTextWhite={!useReadableDarkText}
                 showShortcutTitles
+                animateShortcutTitlesOnMount={false}
                 maskBoundaryRef={measureSurfaceRef}
                 onShortcutOpen={onShortcutOpen}
                 onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}
@@ -758,26 +839,39 @@ export function ShortcutFolderCompactOverlay({
               zIndex: OVERLAY_Z_INDEX + 3,
               willChange: 'left, top, width, height, border-radius',
             }}
-          >
-            {chromeProgress > 0.001 ? (
+          />
+
+          {animatedTitleRect && titleProgress > 0.001 ? (
+            <div
+              className="fixed pointer-events-none flex items-center justify-center"
+              style={{
+                left: animatedTitleRect.left,
+                top: animatedTitleRect.top,
+                width: animatedTitleRect.width,
+                height: animatedTitleRect.height,
+                zIndex: OVERLAY_Z_INDEX + 7,
+                opacity: titleProgress,
+                willChange: 'left, top, width, height, opacity',
+              }}
+            >
               <div
-                className={FOLDER_ANIMATED_TITLE_CLASSNAME}
+                className={`truncate text-center font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
                 style={{
-                  opacity: chromeProgress,
+                  width: '100%',
+                  fontSize: `${mix(FOLDER_PREVIEW_TITLE_FONT_SIZE_PX, FOLDER_PANEL_TITLE_FONT_SIZE_PX, titleProgress)}px`,
+                  lineHeight: 1.15,
                   transform: `translate3d(0, ${chromeTranslateY}px, 0)`,
-                  willChange: 'opacity, transform',
                 }}
               >
-                <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]">
-                  {folderTitle}
-                </div>
+                {folderTitle}
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {resolvedMetrics ? children.map((child, index) => {
             const targetRect = resolvedMetrics.targetChildRects.get(child.id);
             if (!targetRect || !sourceRect) return null;
+            const targetLabelRect = resolvedMetrics.targetChildLabelRects.get(child.id) ?? null;
 
             const collapsedPreviewVisible = sourceChildRects.has(child.id) || index < sourceChildSlotRects.length;
             const sourceChildRect = sourceChildRects.get(child.id)
@@ -794,28 +888,68 @@ export function ShortcutFolderCompactOverlay({
               motionPhase,
               collapsedPreviewVisible,
             });
+            const labelProgress = motionPhase === 'opening'
+              ? clamp01((childProgress - 0.12) / 0.88)
+              : clamp01((childProgress - 0.06) / 0.94);
+            const animatedLabelRect = targetLabelRect
+              ? interpolateRect(
+                  getVirtualChildLabelStartRect({
+                    sourceChildRect,
+                    targetChildRect: targetRect,
+                    targetLabelRect,
+                  }),
+                  targetLabelRect,
+                  labelProgress,
+                )
+              : null;
+            const labelOpacity = resolveAnimatedChildLabelOpacity(labelProgress, motionPhase);
 
             return (
-              <div
-                key={child.id}
-                className="fixed pointer-events-none"
-                style={{
-                  left: animatedChildRect.left,
-                  top: animatedChildRect.top,
-                  width: animatedChildRect.width,
-                  height: animatedChildRect.height,
-                  zIndex: OVERLAY_Z_INDEX + 6,
-                  opacity,
-                  willChange: 'left, top, width, height, opacity',
-                }}
-              >
-                <GhostShortcutIcon
-                  shortcut={child}
-                  width={animatedChildRect.width}
-                  height={animatedChildRect.height}
-                  iconCornerRadius={iconCornerRadius}
-                  iconAppearance={iconAppearance}
-                />
+              <div key={child.id}>
+                <div
+                  className="fixed pointer-events-none"
+                  style={{
+                    left: animatedChildRect.left,
+                    top: animatedChildRect.top,
+                    width: animatedChildRect.width,
+                    height: animatedChildRect.height,
+                    zIndex: OVERLAY_Z_INDEX + 6,
+                    opacity,
+                    willChange: 'left, top, width, height, opacity',
+                  }}
+                >
+                  <GhostShortcutIcon
+                    shortcut={child}
+                    width={animatedChildRect.width}
+                    height={animatedChildRect.height}
+                    iconCornerRadius={iconCornerRadius}
+                    iconAppearance={iconAppearance}
+                  />
+                </div>
+                {animatedLabelRect && labelOpacity > 0.001 ? (
+                  <div
+                    className="fixed pointer-events-none flex items-center justify-center"
+                    style={{
+                      left: animatedLabelRect.left,
+                      top: animatedLabelRect.top,
+                      width: animatedLabelRect.width,
+                      height: animatedLabelRect.height,
+                      zIndex: OVERLAY_Z_INDEX + 7,
+                      opacity: labelOpacity,
+                      willChange: 'left, top, width, height, opacity',
+                    }}
+                  >
+                    <div
+                      className={`truncate text-center leading-4 ${useReadableDarkText ? 'text-foreground' : 'text-white'}`}
+                      style={{
+                        width: '100%',
+                        fontSize: `${FOLDER_CHILD_LABEL_FONT_SIZE_PX}px`,
+                      }}
+                    >
+                      {child.title}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           }) : null}
@@ -864,6 +998,7 @@ export function ShortcutFolderCompactOverlay({
                     allowEditing
                     draftTitle={draftTitle}
                     titleInputRef={titleInputRef}
+                    useReadableDarkText={useReadableDarkText}
                     onDraftTitleChange={setDraftTitle}
                     onStartEditing={() => {}}
                     onCommit={commitTitle}
@@ -875,13 +1010,13 @@ export function ShortcutFolderCompactOverlay({
                       {transitionPhase === 'open' ? (
                         <button
                           type="button"
-                          className="mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)] outline-none"
+                          className={`mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
                           onClick={() => setEditingTitle(true)}
                         >
                           {folderTitle}
                         </button>
                       ) : (
-                        <div className="mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]">
+                        <div className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}>
                           {folderTitle}
                         </div>
                       )}
@@ -900,8 +1035,9 @@ export function ShortcutFolderCompactOverlay({
                     compactIconSize={compactIconSize}
                     iconCornerRadius={iconCornerRadius}
                     iconAppearance={iconAppearance}
-                    forceTextWhite
-                    showShortcutTitles={transitionPhase === 'open' || animationShortcutTitlesVisible}
+                    forceTextWhite={!useReadableDarkText}
+                    showShortcutTitles={transitionPhase === 'open' || transitionPhase === 'closing-measure'}
+                    animateShortcutTitlesOnMount={false}
                     maskBoundaryRef={openSurfaceRef}
                     onShortcutOpen={onShortcutOpen}
                     onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}

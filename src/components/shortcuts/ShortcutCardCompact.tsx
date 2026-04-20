@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
+import { useFolderPreviewTitleRef } from '@/components/shortcuts/folderPreviewRegistry';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 import { ShortcutVisualRenderer } from './ShortcutVisualRenderer';
 
@@ -33,6 +34,9 @@ interface ShortcutCardCompactProps {
   iconContentProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> & {
     [key: `data-${string}`]: string | number | boolean | undefined;
   };
+  titleProps?: Omit<React.HTMLAttributes<HTMLParagraphElement>, 'children'> & {
+    [key: `data-${string}`]: string | number | boolean | undefined;
+  };
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 }
@@ -59,6 +63,7 @@ export function ShortcutCardCompact({
   rootProps,
   iconWrapperProps,
   iconContentProps,
+  titleProps,
   onOpen,
   onContextMenu,
 }: ShortcutCardCompactProps) {
@@ -73,6 +78,7 @@ export function ShortcutCardCompact({
     ignoreTitleHeight: floatTitle,
   });
   const floatingTitle = floatTitle;
+  const folderTitleRef = useFolderPreviewTitleRef(folder && folderPortalBackdrop ? shortcut.id : null);
   const [titleFadeReady, setTitleFadeReady] = useState(() => !animateTitleOnMount || !showTitle);
   const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folder || folderSelectionDisabled
     ? ''
@@ -151,6 +157,8 @@ export function ShortcutCardCompact({
         </div>
         {floatingTitle ? (
           <p
+            {...titleProps}
+            ref={folderTitleRef}
             className={`pointer-events-none absolute left-1/2 truncate text-center leading-4 transition-opacity duration-300 ease-out ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
             style={{
               top: metrics.previewSize + 4,
@@ -159,6 +167,7 @@ export function ShortcutCardCompact({
               opacity: resolvedTitleOpacity,
               transform: 'translateX(-50%)',
               transitionDuration: `${titleFadeDurationMs}ms`,
+              ...titleProps?.style,
             }}
             aria-hidden={!showTitle}
           >
@@ -166,12 +175,15 @@ export function ShortcutCardCompact({
           </p>
         ) : (
           <p
+            {...titleProps}
+            ref={folderTitleRef}
             className={`truncate text-center leading-4 transition-opacity duration-300 ease-out ${forceTextWhite ? 'text-white' : 'text-foreground'}`}
             style={{
               width: metrics.width,
               fontSize: titleFontSize,
               opacity: resolvedTitleOpacity,
               transitionDuration: `${titleFadeDurationMs}ms`,
+              ...titleProps?.style,
             }}
             aria-hidden={!showTitle}
           >

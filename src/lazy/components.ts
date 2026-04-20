@@ -49,6 +49,10 @@ export const LazyShortcutFolderCompactOverlay = lazyWithPageReload(
   (module) => module.ShortcutFolderCompactOverlay,
 );
 
+export function preloadShortcutFolderCompactOverlay() {
+  return importShortcutFolderCompactOverlay();
+}
+
 export const LazyShortcutFolderDialog = lazyWithPageReload(
   'shortcut-folder-dialog',
   importShortcutFolderDialog,

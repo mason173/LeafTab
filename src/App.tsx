@@ -75,6 +75,7 @@ import { useFolderTransitionController } from '@/components/folderTransition/use
 import {
   getFolderPreviewRoot,
   getFolderPreviewSlotEntries,
+  getFolderPreviewTitle,
 } from '@/components/shortcuts/folderPreviewRegistry';
 import type { RootShortcutExternalDragSession as ExternalShortcutDragSession } from '@/features/shortcuts/components/RootShortcutGrid';
 import {
@@ -86,9 +87,11 @@ import {
   LazyShortcutFolderNameDialog,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
+  preloadShortcutFolderCompactOverlay,
   preloadHomeDialogs,
 } from '@/lazy/components';
-import { applyDynamicAccentColor, clearDynamicAccentColor, resolveDynamicAccentColor } from '@/utils/dynamicAccentColor';
+import { applyDynamicAccentColor, resolveAccentColorSelection } from '@/utils/dynamicAccentColor';
+import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import {
   PANORAMIC_SURFACE_REVEAL_TIMING,
@@ -439,9 +442,9 @@ const resolveWallpaperMaskOpacityWithDarkModeAutoDim = (args: {
 function readAccentColorSetting(): string {
   try {
     const stored = (localStorage.getItem('accentColor') || '').trim();
-    return stored || 'green';
+    return stored || DEFAULT_ACCENT_COLOR;
   } catch {
-    return 'green';
+    return DEFAULT_ACCENT_COLOR;
   }
 }
 
@@ -814,6 +817,8 @@ export default function App() {
   const [pendingExtractHiddenShortcutId, setPendingExtractHiddenShortcutId] = useState<string | null>(null);
   const [pendingFolderExtractDrag, setPendingFolderExtractDrag] = useState<PendingFolderExtractDrag | null>(null);
   const pendingExtractRootDragStartedRef = useRef(false);
+  const folderOverlayWarmupPromiseRef = useRef<Promise<unknown> | null>(null);
+  const folderOpenRequestIdRef = useRef(0);
   const folderTransitionController = useFolderTransitionController();
   const openFolderId = folderTransitionController.activeFolderId;
   const runAfterFolderOverlayClose = folderTransitionController.runAfterClose;
@@ -851,6 +856,17 @@ export default function App() {
     }
   }, [folderTransitionController, openFolderId, openFolderShortcut]);
 
+  const ensureFolderOverlayReady = useCallback(() => {
+    if (!folderOverlayWarmupPromiseRef.current) {
+      folderOverlayWarmupPromiseRef.current = preloadShortcutFolderCompactOverlay();
+    }
+    return folderOverlayWarmupPromiseRef.current;
+  }, []);
+
+  useEffect(() => {
+    void ensureFolderOverlayReady();
+  }, [ensureFolderOverlayReady]);
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
@@ -871,6 +887,30 @@ export default function App() {
       delete body.dataset.activeFolderTransitionPhase;
     };
   }, [folderTransitionController.overlayFolderId, folderTransitionController.transition.phase]);
+
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    const progress = Math.max(0, Math.min(1, folderTransitionController.backgroundProgress));
+    const inverseOpacity = 1 - progress;
+    const blurPx = 18 * progress;
+    const scale = 1 + (0.05 * progress);
+
+    root.style.setProperty('--leaftab-folder-immersive-progress', progress.toFixed(4));
+    root.style.setProperty('--leaftab-folder-immersive-inverse-opacity', inverseOpacity.toFixed(4));
+    root.style.setProperty('--leaftab-folder-immersive-blur', `${blurPx.toFixed(2)}px`);
+    root.style.setProperty('--leaftab-folder-immersive-scale', scale.toFixed(4));
+  }, [folderTransitionController.backgroundProgress]);
+
+  useEffect(() => () => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.style.removeProperty('--leaftab-folder-immersive-progress');
+    root.style.removeProperty('--leaftab-folder-immersive-inverse-opacity');
+    root.style.removeProperty('--leaftab-folder-immersive-blur');
+    root.style.removeProperty('--leaftab-folder-immersive-scale');
+  }, []);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -905,6 +945,7 @@ export default function App() {
       folderId,
       sourceRect,
       sourceBorderRadius,
+      sourceTitleRect: copyFolderOverlaySnapshotRect(getFolderPreviewTitle(folderId)?.getBoundingClientRect()),
       sourceChildRects,
       sourceChildSlotRects: sourceChildSlotRects.filter(Boolean),
     };
@@ -912,12 +953,26 @@ export default function App() {
 
   const handleShortcutActivate = useCallback((shortcut: Shortcut) => {
     if (isShortcutFolder(shortcut)) {
-      const sourceSnapshot = captureFolderOpeningSourceSnapshot(shortcut.id);
-      folderTransitionController.openFolder(shortcut.id, sourceSnapshot);
+      const openRequestId = folderOpenRequestIdRef.current + 1;
+      folderOpenRequestIdRef.current = openRequestId;
+
+      void ensureFolderOverlayReady()
+        .catch(() => null)
+        .then(() => {
+          if (folderOpenRequestIdRef.current !== openRequestId) return;
+          const sourceSnapshot = captureFolderOpeningSourceSnapshot(shortcut.id);
+          folderTransitionController.openFolder(shortcut.id, sourceSnapshot);
+        });
       return;
     }
+    folderOpenRequestIdRef.current += 1;
     handleShortcutOpen(shortcut);
-  }, [captureFolderOpeningSourceSnapshot, folderTransitionController, handleShortcutOpen]);
+  }, [
+    captureFolderOpeningSourceSnapshot,
+    ensureFolderOverlayReady,
+    folderTransitionController,
+    handleShortcutOpen,
+  ]);
 
   const handleOpenShortcutEditor = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
     if (isShortcutFolder(shortcut)) {
@@ -1535,15 +1590,9 @@ export default function App() {
   }, []);
 
   useLayoutEffect(() => {
-    if (accentColorSetting !== 'dynamic') {
-      document.documentElement.setAttribute('data-accent-color', accentColorSetting);
-      clearDynamicAccentColor();
-      return;
-    }
-
     let canceled = false;
-    document.documentElement.setAttribute('data-accent-color', 'dynamic');
-    resolveDynamicAccentColor({
+    document.documentElement.setAttribute('data-accent-color', accentColorSetting);
+    resolveAccentColorSelection(accentColorSetting, {
       wallpaperMode: effectiveWallpaperMode,
       bingWallpaper,
       customWallpaper,
@@ -1553,6 +1602,7 @@ export default function App() {
       // Re-sample once the rendered wallpaper image finishes loading to avoid
       // caching a fallback color from an early decode/load race.
       forceImageResample: wallpaperImageReadyTick > 0,
+      isDarkTheme,
     })
       .then((hex) => {
         if (canceled) return;
@@ -1568,6 +1618,7 @@ export default function App() {
     };
   }, [
     accentColorSetting,
+    isDarkTheme,
     effectiveWallpaperMode,
     bingWallpaper,
     customWallpaper,
@@ -3766,21 +3817,18 @@ export default function App() {
             effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
             topNavModeProps={topNavModeProps}
             homeMainContentBaseProps={homeMainContentBaseProps}
-            shortcutGridProps={{
-              ...shortcutEngineHostAdapter.rootGridProps,
-              heatZoneInspectorEnabled: gridHitInspectorVisible,
-              hiddenShortcutId: pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId,
-              selectionMode,
-              selectedShortcutIndexes,
-              onToggleShortcutSelection,
-            }}
+            shortcutGridBaseProps={shortcutEngineHostAdapter.rootGridProps}
+            shortcutGridHeatZoneInspectorEnabled={gridHitInspectorVisible}
+            shortcutGridHiddenShortcutId={pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId}
+            shortcutGridSelectionMode={selectionMode}
+            shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
+            onToggleShortcutSelection={onToggleShortcutSelection}
             wallpaperClockBaseProps={wallpaperClockBaseProps}
             searchExperienceBaseProps={searchExperienceBaseProps}
             baseTimeAnimationEnabled={effectiveTimeAnimationEnabled}
             freezeDynamicWallpaperBase={
               visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
             }
-            folderImmersiveProgress={folderTransitionController.backgroundProgress}
           />
         )}
       </ShortcutSelectionShell>
@@ -3788,6 +3836,7 @@ export default function App() {
         <Suspense fallback={null}>
           <LazyShortcutFolderCompactOverlay
             {...shortcutEngineHostAdapter.compactFolderOverlayProps}
+            displayMode={displayMode}
             transitionPhase={folderTransitionController.transition.phase}
             transitionProgress={folderTransitionController.transition.progress}
             openingSourceSnapshot={
@@ -3824,7 +3873,7 @@ export default function App() {
           <LazyWallpaperSelector
             {...wallpaperSelectorLayerProps}
             mode={effectiveWallpaperMode}
-            hideWeather={displayMode === 'minimalist' || firefox}
+            hideWeather={firefox}
             open={wallpaperSettingsOpen}
             onOpenChange={setWallpaperSettingsOpen}
             onBackToSettings={handleBackToMainSettings}
@@ -4318,6 +4367,11 @@ export default function App() {
         <Suspense fallback={null}>
           <LazyRoleSelector
             open={roleSelectorOpen}
+            wallpaperMode={effectiveWallpaperMode}
+            bingWallpaper={bingWallpaper}
+            customWallpaper={customWallpaper}
+            weatherCode={weatherCode}
+            colorWallpaperId={colorWallpaperId}
             onSelect={(id, layout) => {
               handleRoleSelect(id);
               if (layout) {
