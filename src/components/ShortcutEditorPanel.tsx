@@ -18,7 +18,7 @@ import {
 } from '@/utils/shortcutIconPreferences';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import { RiCheckFill, RiPencilFill } from '@/icons/ri-compat';
-import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
+import { getShortcutIconSmoothClipPathStyles } from '@/utils/shortcutIconSettings';
 import {
   hexToShortcutIconHsl,
   normalizeShortcutIconHsl,
@@ -510,7 +510,7 @@ export function ShortcutEditorPanel({
   );
 
   const shouldShowCustomPreviewAction = selectedSource === 'custom' && hasCustomIcon;
-  const previewBorderRadius = getShortcutIconBorderRadius(iconCornerRadius);
+  const previewShapeStyle = getShortcutIconSmoothClipPathStyles(iconCornerRadius);
   const hueTrackBackground = 'linear-gradient(90deg, #FF5F5F 0%, #FFB45E 16%, #F7F36A 32%, #63E281 48%, #5AD5FF 65%, #6F74FF 82%, #FF6AAE 100%)';
   const saturationTrackBackground = `linear-gradient(90deg, hsl(${displayedColorHsl.hue}, 0%, 50%), hsl(${displayedColorHsl.hue}, 100%, 50%))`;
   const lightnessTrackBackground = 'linear-gradient(90deg, #09090B 0%, #FFFFFF 100%)';
@@ -524,12 +524,12 @@ export function ShortcutEditorPanel({
       data-testid="shortcut-custom-preview-trigger"
       aria-label={t('shortcutModal.icon.modeCustomReplaceShort', { defaultValue: '更改' })}
       className="group relative inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      style={{ borderRadius: previewBorderRadius }}
+      style={previewShapeStyle}
     >
       {previewNode}
       <span
         className="pointer-events-none absolute inset-0 flex items-end justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/28 group-hover:opacity-100 group-focus-visible:bg-black/28 group-focus-visible:opacity-100"
-        style={{ borderRadius: previewBorderRadius }}
+        style={previewShapeStyle}
       >
         <span className="mb-1.5 flex size-8 items-center justify-center rounded-full bg-black/45 text-white shadow-sm">
           <RiPencilFill className="size-4" />

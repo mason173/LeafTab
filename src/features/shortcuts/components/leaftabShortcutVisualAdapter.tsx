@@ -7,7 +7,7 @@ import {
 import { ShortcutCardCompact } from '@/components/shortcuts/ShortcutCardCompact';
 import { ShortcutCardRenderer } from '@/components/shortcuts/ShortcutCardRenderer';
 import { getLargeFolderBorderRadius, getSmallFolderBorderRadius } from '@/components/shortcuts/ShortcutFolderPreview';
-import { getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
+import { getShortcutIconBorderRadius, getShortcutIconSmoothClipPathStyles } from '@/utils/shortcutIconSettings';
 
 const SELECTION_INDICATOR_SIZE_PX = 16;
 const SELECTION_INDICATOR_OFFSET_PX = -4;
@@ -60,7 +60,7 @@ function DragPreviewIcon({
   const iconSrc = (shortcut.icon || '').trim();
   const label = (shortcut.title || shortcut.url || '?').trim();
   const fallbackText = (label.charAt(0) || '?').toUpperCase();
-  const borderRadius = getShortcutIconBorderRadius(cornerRadius);
+  const smoothShapeStyle = getShortcutIconSmoothClipPathStyles(cornerRadius);
 
   if (iconSrc) {
     return (
@@ -69,7 +69,7 @@ function DragPreviewIcon({
         alt=""
         draggable={false}
         className="shrink-0 object-cover"
-        style={{ width: size, height: size, borderRadius }}
+        style={{ width: size, height: size, ...smoothShapeStyle }}
       />
     );
   }
@@ -78,7 +78,13 @@ function DragPreviewIcon({
     <span
       aria-hidden="true"
       className="flex shrink-0 items-center justify-center bg-primary/12 text-primary"
-      style={{ width: size, height: size, fontSize: Math.max(14, Math.round(size * 0.38)), fontWeight: 600, borderRadius }}
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.max(14, Math.round(size * 0.38)),
+        fontWeight: 600,
+        ...smoothShapeStyle,
+      }}
     >
       {fallbackText}
     </span>

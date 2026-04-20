@@ -238,7 +238,7 @@ export function ShortcutIconSettingsDialog({
               decimals={0}
               showLabel
               showValue
-              valueText={`${draftCornerRadius}%`}
+              valueText={String(draftCornerRadius)}
               trackHeight={40}
             />
           </div>

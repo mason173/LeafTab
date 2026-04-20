@@ -22,7 +22,7 @@ import {
   clampShortcutIconCornerRadius,
   DEFAULT_SHORTCUT_ICON_APPEARANCE,
   DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
-  getShortcutIconBorderRadius,
+  getShortcutIconSmoothClipPathStyles,
 } from '@/utils/shortcutIconSettings';
 import { getAdaptiveShortcutForegroundColor } from '@/utils/shortcutColorHsl';
 import { useShortcutIconRenderContext } from './ShortcutIconRenderContext';
@@ -935,10 +935,10 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const useEmptyFallback = fallbackStyle === 'emptyicon' && !isCustomActive;
   const overlaySize = Math.max(12, Math.round(size * UNIFIED_ICON_GLYPH_CONTENT_RATIO));
   const resolvedCornerRadius = clampShortcutIconCornerRadius(iconCornerRadius);
-  const roundedBorderRadius = getShortcutIconBorderRadius(resolvedCornerRadius);
   const normalizedRemoteIconScale = Math.min(1, Math.max(0.55, remoteIconScale));
   const centeredOverlayImageSize = Math.max(12, Math.round(Math.min(size, overlaySize) * normalizedRemoteIconScale));
   const requestedIconAppearance: ShortcutIconAppearance = iconAppearance;
+  const roundedShapeStyle = getShortcutIconSmoothClipPathStyles(resolvedCornerRadius);
   const isOfficialSvg = activeCandidate?.kind === 'official' && isSvgImageSource(src);
   const shouldResolveOfficialSvgTintMode = (
     activeCandidate?.kind === 'official'
@@ -993,7 +993,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
       }
     : undefined;
   const iconLightBorderStyle: CSSProperties = {
-    borderRadius: roundedBorderRadius,
+    ...roundedShapeStyle,
     border: `1px solid ${ICON_SURFACE_BORDER_COLOR}`,
   };
 
@@ -1062,7 +1062,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           className="absolute inset-0 overflow-hidden"
           data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
           style={{
-            borderRadius: roundedBorderRadius,
+            ...roundedShapeStyle,
             backgroundColor: emptyFallbackBackgroundColor,
             ...colorfulTileSurfaceStyle,
             ...monochromeTileSurfaceStyle,
@@ -1108,7 +1108,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           <div
             className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
             style={{
-              borderRadius: roundedBorderRadius,
+              ...roundedShapeStyle,
               backgroundColor: appearanceTileBackgroundColor || undefined,
               ...monochromeTileSurfaceStyle,
             }}
@@ -1140,7 +1140,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           style={{
             width: innerSize,
             height: innerSize,
-            borderRadius: roundedBorderRadius,
+            ...roundedShapeStyle,
             backgroundColor: appearanceTileBackgroundColor || 'var(--secondary)',
             color: appearanceTileForegroundColor,
             ...monochromeTileSurfaceStyle,
@@ -1159,7 +1159,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
       <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
         <div
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden"
-          style={{ width: scaledSize, height: scaledSize, borderRadius: roundedBorderRadius }}
+          style={{ width: scaledSize, height: scaledSize, ...roundedShapeStyle }}
         >
           <AppearanceAwareImage
             src={src}
@@ -1186,7 +1186,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
           className="absolute inset-0 overflow-hidden"
           data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
           style={{
-            borderRadius: roundedBorderRadius,
+            ...roundedShapeStyle,
             backgroundColor: officialTileBackgroundColor,
             ...colorfulTileSurfaceStyle,
             ...monochromeTileSurfaceStyle,
@@ -1253,7 +1253,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
         <div
           className="bg-secondary content-stretch flex items-center justify-center p-[6px] relative shrink-0 size-full"
           style={{
-            borderRadius: roundedBorderRadius,
+            ...roundedShapeStyle,
             backgroundColor: requestedIconAppearance === 'colorful' ? undefined : appearanceTileBackgroundColor || undefined,
             ...monochromeTileSurfaceStyle,
           }}
@@ -1264,7 +1264,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
             className="absolute inset-0 pointer-events-none"
             style={iconLightBorderStyle}
           />
-          <div className="relative select-none overflow-hidden" style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}>
+          <div className="relative select-none overflow-hidden" style={{ width: innerSize, height: innerSize, ...roundedShapeStyle }}>
             {image}
           </div>
         </div>
@@ -1275,7 +1275,7 @@ const ShortcutIcon = memo(function ShortcutIcon({
     <div className="relative shrink-0 select-none" style={{ width: size, height: size }}>
       <div
         className="-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 select-none overflow-hidden"
-        style={{ width: innerSize, height: innerSize, borderRadius: roundedBorderRadius }}
+        style={{ width: innerSize, height: innerSize, ...roundedShapeStyle }}
       >
         {image}
       </div>

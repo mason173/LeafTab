@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>平滑圆角对比页</title>
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --panel: rgba(255, 255, 255, 0.82);
+      --border: rgba(15, 23, 42, 0.08);
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #eef2f7 100%);
+      padding: 32px;
+    }
+
+    .shell {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    .hero {
+      padding: 28px 30px 24px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .controls {
+      display: grid;
+      gap: 18px;
+      padding: 24px 30px 28px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      font-size: 14px;
+    }
+
+    .control-row strong {
+      font-size: 16px;
+    }
+
+    .value-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .stage {
+      display: grid;
+      gap: 18px;
+      justify-items: center;
+    }
+
+    .shape {
+      position: relative;
+      width: 184px;
+      height: 184px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.76), transparent 22%),
+        linear-gradient(145deg, #2dd4bf 0%, #2563eb 48%, #4f46e5 100%);
+      box-shadow:
+        0 22px 36px rgba(37, 99, 235, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .shape::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 42%),
+        radial-gradient(circle at 72% 72%, rgba(255, 255, 255, 0.22), transparent 26%);
+      pointer-events: none;
+    }
+
+    .shape::after {
+      content: "L";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 82px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      text-shadow: 0 8px 18px rgba(15, 23, 42, 0.24);
+    }
+
+    .outline {
+      width: 184px;
+      height: 184px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background:
+        repeating-linear-gradient(
+          45deg,
+          rgba(148, 163, 184, 0.14) 0,
+          rgba(148, 163, 184, 0.14) 12px,
+          rgba(255, 255, 255, 0.72) 12px,
+          rgba(255, 255, 255, 0.72) 24px
+        );
+    }
+
+    .meta {
+      width: 100%;
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(248, 250, 252, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .meta-row strong {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .notes {
+      padding: 20px 24px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .notes strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 1100px) {
+      .compare-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel hero">
+      <h1>图标平滑圆角对比测试</h1>
+      <p>
+        这个页面把三种效果放到一起对比：
+        <strong>参考 demor.html</strong>、
+        <strong>当前项目算法</strong>、
+        <strong>普通 border-radius</strong>。
+        同一个滑块联动，方便直接确认“是不是平滑曲率映射错了”。
+      </p>
+    </section>
+
+    <section class="panel controls">
+      <div class="control-row">
+        <strong>当前滑块值</strong>
+        <span class="value-pill">
+          <span id="slider-value">33</span>
+          <span>/ 50</span>
+        </span>
+      </div>
+      <input id="radius-slider" type="range" min="0" max="50" step="1" value="33" />
+    </section>
+
+    <section class="compare-grid">
+      <article class="panel card">
+        <div>
+          <h2>参考算法</h2>
+          <p>完全按 `demor.html` 的思路，纯 `clip-path`，指数映射使用三次曲线。</p>
+        </div>
+        <div class="stage">
+          <div id="shape-demo" class="shape"></div>
+          <div id="outline-demo" class="outline"></div>
+        </div>
+        <div class="meta">
+          <div class="meta-row"><span>映射指数 n</span><strong id="demo-n">-</strong></div>
+          <div class="meta-row"><span>曲率进度 ratio</span><strong id="demo-ratio">-</strong></div>
+          <div class="meta-row"><span>采样点数</span><strong>360</strong></div>
+        </div>
+      </article>
+
+      <article class="panel card">
+        <div>
+          <h2>当前项目算法</h2>
+          <p>按项目里现在实际使用的算法生成纯 `clip-path polygon(...)`，并按对角线切角量做均匀映射。</p>
+        </div>
+        <div class="stage">
+          <div id="shape-app" class="shape"></div>
+          <div id="outline-app" class="outline"></div>
+        </div>
+        <div class="meta">
+          <div class="meta-row"><span>映射指数 n</span><strong id="app-n">-</strong></div>
+          <div class="meta-row"><span>曲率进度 ratio</span><strong id="app-ratio">-</strong></div>
+          <div class="meta-row"><span>采样点数</span><strong>120</strong></div>
+        </div>
+      </article>
+
+      <article class="panel card">
+        <div>
+          <h2>普通圆角</h2>
+          <p>只用 `border-radius` 的基准对照组，方便看区别到底大不大。</p>
+        </div>
+        <div class="stage">
+          <div id="shape-border" class="shape"></div>
+          <div id="outline-border" class="outline"></div>
+        </div>
+        <div class="meta">
+          <div class="meta-row"><span>border-radius</span><strong id="border-radius-label">-</strong></div>
+          <div class="meta-row"><span>曲率进度 ratio</span><strong id="border-ratio">-</strong></div>
+          <div class="meta-row"><span>采样点数</span><strong>无</strong></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel notes">
+      <strong>怎么用：</strong>
+      先看前两列。如果参考算法和当前项目算法在同一个滑块值下形状明显不同，那就说明不是“素材原因”，而是曲率映射真的不一致。
+      如果前两列接近、但和第三列差别很小，那说明你拿来观察的那类图标本身没有铺满四角，视觉差异会被弱化。
+    </section>
+  </div>
+
+  <script>
+    const slider = document.getElementById("radius-slider");
+    const sliderValue = document.getElementById("slider-value");
+
+    const shapeDemo = document.getElementById("shape-demo");
+    const shapeApp = document.getElementById("shape-app");
+    const outlineDemo = document.getElementById("outline-demo");
+    const outlineApp = document.getElementById("outline-app");
+    const shapeBorder = document.getElementById("shape-border");
+    const outlineBorder = document.getElementById("outline-border");
+
+    const demoNLabel = document.getElementById("demo-n");
+    const appNLabel = document.getElementById("app-n");
+    const demoRatioLabel = document.getElementById("demo-ratio");
+    const appRatioLabel = document.getElementById("app-ratio");
+    const borderRadiusLabel = document.getElementById("border-radius-label");
+    const borderRatioLabel = document.getElementById("border-ratio");
+
+    function generatePolygonPath(n, steps) {
+      const points = [];
+      for (let i = 0; i < steps; i += 1) {
+        const angle = (i / steps) * Math.PI * 2;
+        const cosAngle = Math.cos(angle);
+        const sinAngle = Math.sin(angle);
+        const x = Math.sign(cosAngle) * Math.pow(Math.abs(cosAngle), 2 / n) * 50 + 50;
+        const y = Math.sign(sinAngle) * Math.pow(Math.abs(sinAngle), 2 / n) * 50 + 50;
+        points.push(`${x.toFixed(3)}% ${y.toFixed(3)}%`);
+      }
+      return `polygon(${points.join(", ")})`;
+    }
+
+    function getDemoExponent(sliderNumber) {
+      const ratio = sliderNumber / 50;
+      return 2 + Math.pow(1 - ratio, 3) * 98;
+    }
+
+    function getCurrentAppExponent(sliderNumber) {
+      const targetRatio = sliderNumber / 50;
+      const diagonalCosine = Math.SQRT1_2;
+      const maxDiagonalInset = 1 - diagonalCosine;
+
+      function getDiagonalInsetRatio(exponent) {
+        return (1 - Math.pow(diagonalCosine, 2 / exponent)) / maxDiagonalInset;
+      }
+
+      if (targetRatio <= 0) return 100;
+      if (targetRatio >= 1) return 2;
+
+      let low = 2;
+      let high = 100;
+      for (let iteration = 0; iteration < 40; iteration += 1) {
+        const mid = (low + high) / 2;
+        const insetRatio = getDiagonalInsetRatio(mid);
+        if (insetRatio < targetRatio) {
+          high = mid;
+        } else {
+          low = mid;
+        }
+      }
+      return (low + high) / 2;
+    }
+
+    function applyShape(el, clipPath, radiusPercent) {
+      el.style.borderRadius = "0";
+      el.style.clipPath = clipPath;
+      el.style.webkitClipPath = clipPath;
+    }
+
+    function applyBorderOnly(el, radiusPercent) {
+      el.style.borderRadius = `${radiusPercent}%`;
+      el.style.clipPath = "none";
+      el.style.webkitClipPath = "none";
+    }
+
+    function update() {
+      const sliderNumber = Number(slider.value);
+      const ratio = sliderNumber / 50;
+      const borderRadiusPercent = sliderNumber;
+      const demoExponent = getDemoExponent(sliderNumber);
+      const appExponent = getCurrentAppExponent(sliderNumber);
+      const demoClipPath = generatePolygonPath(demoExponent, 360);
+      const appClipPath = generatePolygonPath(appExponent, 120);
+
+      sliderValue.textContent = String(sliderNumber);
+      demoNLabel.textContent = demoExponent.toFixed(4);
+      appNLabel.textContent = appExponent.toFixed(4);
+      demoRatioLabel.textContent = ratio.toFixed(4);
+      appRatioLabel.textContent = ratio.toFixed(4);
+      borderRadiusLabel.textContent = `${borderRadiusPercent}%`;
+      borderRatioLabel.textContent = ratio.toFixed(4);
+
+      applyShape(shapeDemo, demoClipPath, borderRadiusPercent);
+      applyShape(outlineDemo, demoClipPath, borderRadiusPercent);
+      applyShape(shapeApp, appClipPath, borderRadiusPercent);
+      applyShape(outlineApp, appClipPath, borderRadiusPercent);
+      applyBorderOnly(shapeBorder, borderRadiusPercent);
+      applyBorderOnly(outlineBorder, borderRadiusPercent);
+    }
+
+    slider.addEventListener("input", update);
+    update();
+  </script>
+</body>
+</html>
