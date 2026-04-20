@@ -8,7 +8,6 @@ import {
   clamp01,
   interpolateRect,
   mix,
-  resolveBackdropAnimationProgress,
   resolveChildAnimationProgress,
   resolveChromeAnimationProgress,
   resolveFolderShellVisibility,
@@ -597,8 +596,6 @@ export function ShortcutFolderCompactOverlay({
   const motionPhase = transitionPhase === 'closing-measure' || transitionPhase === 'closing-animate'
     ? 'closing'
     : 'opening';
-  const backdropProgress = resolveBackdropAnimationProgress(openProgress, motionPhase);
-  const backdropBlurPx = mix(0, 24, backdropProgress);
   const chromeProgress = resolveChromeAnimationProgress(openProgress, motionPhase);
   const chromeTranslateY = mix(10, 0, chromeProgress);
   const sourceRect = activeSourceSnapshot?.sourceRect
@@ -638,10 +635,10 @@ export function ShortcutFolderCompactOverlay({
         aria-hidden="true"
         className="absolute inset-0"
         style={{
-          opacity: backdropProgress,
+          opacity: 0,
           backgroundColor: 'transparent',
-          backdropFilter: `blur(${backdropBlurPx}px)`,
-          WebkitBackdropFilter: `blur(${backdropBlurPx}px)`,
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
           pointerEvents: 'none',
         }}
       />

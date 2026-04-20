@@ -31,6 +31,8 @@ export type LeaftabGridEngineRootSurfaceProps = Pick<
   | 'onShortcutContextMenu'
   | 'onShortcutReorder'
   | 'onShortcutDropIntent'
+  | 'onDragStart'
+  | 'onDragEnd'
   | 'onGridContextMenu'
   | 'externalDragSession'
   | 'onExternalDragSessionConsumed'
@@ -96,6 +98,8 @@ type CreateLeaftabGridEngineHostAdapterParams = {
   ) => void;
   onShortcutReorder: (nextShortcuts: Shortcut[]) => void;
   onShortcutDropIntent: NonNullable<RootShortcutGridProps['onShortcutDropIntent']>;
+  onRootDragStart?: RootShortcutGridProps['onDragStart'];
+  onRootDragEnd?: RootShortcutGridProps['onDragEnd'];
   onGridContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => void;
   externalDragSession: RootShortcutExternalDragSession | null;
   onExternalDragSessionConsumed: (token: number) => void;
@@ -150,6 +154,8 @@ export function createLeaftabGridEngineHostAdapter(
       onShortcutContextMenu: params.onShortcutContextMenu,
       onShortcutReorder: params.onShortcutReorder,
       onShortcutDropIntent: params.onShortcutDropIntent,
+      onDragStart: params.onRootDragStart,
+      onDragEnd: params.onRootDragEnd,
       onGridContextMenu: params.onGridContextMenu,
       externalDragSession: params.externalDragSession,
       onExternalDragSessionConsumed: params.onExternalDragSessionConsumed,

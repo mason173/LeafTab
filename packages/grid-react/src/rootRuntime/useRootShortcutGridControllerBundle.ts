@@ -550,9 +550,15 @@ export function useRootShortcutGridControllerBundle({
     onDragEnd,
   }), [dragging, ignoreClickRef, onDragEnd, onDragStart]);
 
-  useEffect(() => () => {
-    cleanupOnUnmount();
+  const cleanupOnUnmountRef = React.useRef(cleanupOnUnmount);
+
+  useEffect(() => {
+    cleanupOnUnmountRef.current = cleanupOnUnmount;
   }, [cleanupOnUnmount]);
+
+  useEffect(() => () => {
+    cleanupOnUnmountRef.current();
+  }, []);
 
   const pointerReleaseController = useMemo(() => createRootPointerReleaseController({
     confirmedHoverResolutionRef,
