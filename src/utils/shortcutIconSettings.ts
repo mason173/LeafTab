@@ -17,6 +17,7 @@ const SHORTCUT_ICON_SMOOTH_MAX_EXPONENT = 100;
 const SHORTCUT_ICON_SMOOTH_DIAGONAL_COSINE = Math.SQRT1_2;
 const SHORTCUT_ICON_SMOOTH_MAX_DIAGONAL_INSET = 1 - SHORTCUT_ICON_SMOOTH_DIAGONAL_COSINE;
 const shortcutIconSmoothClipPathCache = new Map<number, string>();
+const shortcutIconSmoothSvgPathDataCache = new Map<number, string>();
 const shortcutIconSmoothExponentCache = new Map<number, number>();
 let shortcutIconSmoothClipPathSupport: boolean | null = null;
 
@@ -94,6 +95,29 @@ export const getShortcutIconSmoothClipPath = (cornerRadius: unknown) => {
   const clipPath = `polygon(${points.join(', ')})`;
   shortcutIconSmoothClipPathCache.set(normalizedCornerRadius, clipPath);
   return clipPath;
+};
+
+export const getShortcutIconSmoothSvgPathData = (cornerRadius: unknown) => {
+  const normalizedCornerRadius = clampShortcutIconCornerRadius(cornerRadius);
+  const cached = shortcutIconSmoothSvgPathDataCache.get(normalizedCornerRadius);
+  if (cached) return cached;
+
+  const exponent = getShortcutIconSmoothExponent(normalizedCornerRadius);
+  const points: string[] = [];
+
+  for (let step = 0; step < SHORTCUT_ICON_SMOOTH_CLIP_PATH_STEPS; step += 1) {
+    const angle = (step / SHORTCUT_ICON_SMOOTH_CLIP_PATH_STEPS) * Math.PI * 2;
+    const cosAngle = Math.cos(angle);
+    const sinAngle = Math.sin(angle);
+    const x = Math.sign(cosAngle) * Math.pow(Math.abs(cosAngle), 2 / exponent) * 50 + 50;
+    const y = Math.sign(sinAngle) * Math.pow(Math.abs(sinAngle), 2 / exponent) * 50 + 50;
+    points.push(`${x.toFixed(3)} ${y.toFixed(3)}`);
+  }
+
+  const [firstPoint, ...restPoints] = points;
+  const pathData = `M ${firstPoint} L ${restPoints.join(' L ')} Z`;
+  shortcutIconSmoothSvgPathDataCache.set(normalizedCornerRadius, pathData);
+  return pathData;
 };
 
 export const getShortcutIconSmoothClipPathStyles = (cornerRadius: unknown) => {

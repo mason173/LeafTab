@@ -15,6 +15,7 @@ import {
 
 export type LeaftabGridEngineRootSurfaceProps = Pick<
   RootShortcutGridProps,
+  | 'surfaceInstanceKey'
   | 'containerHeight'
   | 'bottomInset'
   | 'shortcuts'
@@ -138,6 +139,7 @@ export function createLeaftabGridEngineHostAdapter(
       );
     },
     rootGridProps: {
+      surfaceInstanceKey: params.scenarioId,
       containerHeight: params.containerHeight,
       bottomInset: params.bottomInset,
       shortcuts: params.shortcuts,

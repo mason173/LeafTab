@@ -144,6 +144,7 @@ export type RootShortcutExternalDragSession = ShortcutExternalDragSessionSeed & 
 };
 
 export interface RootShortcutGridProps {
+  surfaceInstanceKey?: string;
   containerHeight: number;
   bottomInset?: number;
   shortcuts: Shortcut[];
@@ -190,6 +191,7 @@ export interface RootShortcutGridProps {
 
 
 export const RootShortcutGrid = React.memo(function RootShortcutGrid({
+  surfaceInstanceKey: _surfaceInstanceKey,
   containerHeight,
   bottomInset = 0,
   shortcuts,

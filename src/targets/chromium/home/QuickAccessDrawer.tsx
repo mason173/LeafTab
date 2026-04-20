@@ -278,6 +278,7 @@ export function QuickAccessDrawer({
                             }}
                           >
                             <RootShortcutGrid
+                              key={shortcutGridProps.surfaceInstanceKey ?? 'root-shortcut-grid'}
                               {...shortcutGridProps}
                               bottomInset={drawerShortcutBottomInset}
                               forceTextWhite={drawerShortcutForceWhiteText}
