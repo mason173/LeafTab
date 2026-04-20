@@ -481,6 +481,11 @@ export default {
         previewDescription: "Alpha / Beta 测试版本，功能和细节仍可能继续调整",
       },
       items: {
+        release200IconColorAndRadius: "快捷方式图标现支持任意自定义颜色与圆角大小，并新增彩色、单色、强调色三种图标色彩模式",
+        release200FolderStyles: "文件夹图标现支持小文件夹与大文件夹两种样式，展示更灵活",
+        release200QuickAddFromAction: "支持点击浏览器右上角的 LeafTab 插件图标，快速将当前网站添加为快捷方式",
+        release200AutoColorAlgorithm: "优化自动取色算法，自动取色结果更准确、更稳定",
+        release200GridSimplify: "移除“丰富网格”样式，统一保留当前简洁的网格布局",
         release145OnboardingAndThemeDefaults: "新手引导默认选中“节奏”模式，并调整默认主题为绿色",
         release145TopNavAndShortcutGuide: "主页/全景模式顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化",
         release145SyncI18nPolish: "同步中心与相关弹窗补齐中英文多语言（含书签同步提示与范围文案）",

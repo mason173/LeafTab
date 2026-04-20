@@ -357,6 +357,11 @@ export const fetchWeatherCitySuggestions = async (
   return searchWeatherCitiesLocal(query, Math.max(1, count));
 };
 
+export const preloadWeatherCitySuggestions = async (): Promise<void> => {
+  const { preloadWeatherCityIndex } = await loadWeatherCityIndex();
+  await preloadWeatherCityIndex();
+};
+
 export function useWeatherLocation({ onWeatherUpdate }: UseWeatherLocationOptions = {}) {
   const { t, i18n } = useTranslation();
   const isDocumentVisible = useDocumentVisibility();

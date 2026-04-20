@@ -32,6 +32,7 @@ export interface QuickAccessDrawerProps {
   drawerShortcutMonochromeTileBackdropBlur: boolean;
   drawerScrollLocked: boolean;
   reduceMotionVisuals?: boolean;
+  drawerExpandHintVisible?: boolean;
   drawerSearchSurfaceStyle?: CSSProperties;
   subtleDarkTone?: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;

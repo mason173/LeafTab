@@ -37,6 +37,7 @@ export function QuickAccessDrawer({
   drawerShortcutMonochromeTone,
   drawerShortcutMonochromeTileBackdropBlur,
   drawerScrollLocked,
+  drawerExpandHintVisible = false,
   drawerSearchSurfaceStyle,
   subtleDarkTone,
   drawerWheelAreaRef,
@@ -46,6 +47,30 @@ export function QuickAccessDrawer({
   onDrawerOpenChange: _onDrawerOpenChange,
   onActiveSnapPointChange: _onActiveSnapPointChange,
 }: QuickAccessDrawerProps) {
+  const drawerExpandHint = drawerExpandHintVisible ? (
+    <div
+      className="pointer-events-none mt-3 flex items-center justify-center"
+      aria-hidden="true"
+    >
+      <div className="flex min-w-[188px] flex-col items-center gap-2 rounded-2xl border border-border bg-popover px-4 py-3 text-center text-popover-foreground shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
+        <div className="relative flex h-9 w-7 items-start justify-center rounded-full border border-foreground/20">
+          <div className="mt-1.5 h-2 w-1 rounded-full bg-foreground/65 motion-safe:animate-bounce" />
+        </div>
+        <div className="relative flex h-7 items-end justify-center">
+          <span className="absolute text-lg leading-none text-foreground/70 motion-safe:animate-bounce" style={{ animationDelay: '0ms' }}>
+            ↑
+          </span>
+          <span className="absolute -translate-y-2 text-sm leading-none text-foreground/45 motion-safe:animate-bounce" style={{ animationDelay: '140ms' }}>
+            ↑
+          </span>
+        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          向上滚动滚轮，展开快捷面板
+        </p>
+      </div>
+    </div>
+  ) : null;
+
   const drawerTopCornerRadius = 32;
   const drawerLinkedTransition = `${DRAWER_LAYOUT_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const drawerBackgroundFadeTransition = `${DRAWER_SURFACE_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
@@ -214,6 +239,7 @@ export function QuickAccessDrawer({
                         searchSurfaceStyle={drawerSearchSurfaceStyle}
                       />
                     </div>
+                    {drawerExpandHint}
                     {renderShortcuts && (
                       <div
                         className="relative mt-4 min-h-0 flex-1 w-full transition-[opacity,transform] ease-out"

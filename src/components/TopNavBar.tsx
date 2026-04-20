@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { RiCloudFill, RiErrorWarningFill, RiRefreshFill, RiSettings4Fill } from '@/icons/ri-compat';
 import { WeatherCard } from '@/components/WeatherCard';
+import { Button } from '@/components/ui/button';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { useTranslation } from 'react-i18next';
 
@@ -47,6 +48,59 @@ interface TopNavBarProps {
   className?: string;
   leftSlot?: React.ReactNode;
   reduceVisualEffects?: boolean;
+  introGuide?: {
+    step: TopNavIntroStep;
+    onAcknowledge: () => void;
+  } | null;
+}
+
+export type TopNavIntroStep = 'scenario' | 'sync' | 'settings';
+
+function TopNavIntroBubble({
+  title,
+  description,
+  align = 'start',
+  actionLabel,
+  onAcknowledge,
+}: {
+  title: string;
+  description: string;
+  align?: 'start' | 'end';
+  actionLabel: string;
+  onAcknowledge: () => void;
+}) {
+  const arrowPositionClass = align === 'end'
+    ? 'right-4'
+    : 'left-4';
+
+  return (
+    <div
+      className={`absolute top-[calc(100%+12px)] z-20 w-[248px] rounded-2xl border border-border bg-popover p-3 text-left text-popover-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)] ${align === 'end' ? 'right-0' : 'left-0'} pointer-events-auto`}
+      role="dialog"
+      aria-live="polite"
+    >
+      <div
+        aria-hidden="true"
+        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-popover ${arrowPositionClass}`}
+      />
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold leading-none">{title}</p>
+          <p className="text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-full"
+            onClick={onAcknowledge}
+          >
+            {actionLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export const TopNavBar = memo(function TopNavBar({ 
@@ -63,6 +117,7 @@ export const TopNavBar = memo(function TopNavBar({
   variant = 'inverted',
   leftSlot,
   reduceVisualEffects = false,
+  introGuide = null,
 }: TopNavBarProps) {
   const { t } = useTranslation();
   const firefox = isFirefoxBuildTarget();
@@ -115,6 +170,22 @@ export const TopNavBar = memo(function TopNavBar({
     : 'opacity-100 pointer-events-auto';
   const fadeClass = fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : '';
   const actionFadeClass = fadeOnIdle ? 'opacity-50 hover:opacity-100 transition-opacity' : '';
+  const introGuideContent = introGuide
+    ? {
+        scenario: {
+          title: t('topNavIntro.scenario.title', { defaultValue: '情景模式' }),
+          description: t('topNavIntro.scenario.description', { defaultValue: '这里可以快速切换当前情景模式，也能新建、编辑不同的工作或生活场景。' }),
+        },
+        sync: {
+          title: t('topNavIntro.sync.title', { defaultValue: '同步中心' }),
+          description: t('topNavIntro.sync.description', { defaultValue: '这里可以查看同步状态，并进入同步中心处理手动同步、书签同步和异常提醒。' }),
+        },
+        settings: {
+          title: t('topNavIntro.settings.title', { defaultValue: '设置' }),
+          description: t('topNavIntro.settings.description', { defaultValue: '这里可以打开设置面板，调整布局、壁纸、搜索和更多个性化选项。' }),
+        },
+      }[introGuide.step]
+    : null;
 
   return (
     <div className={`relative w-full h-full ${className}`} data-name="TopNavBar">
@@ -127,10 +198,20 @@ export const TopNavBar = memo(function TopNavBar({
       )}
 
       {leftSlot ? (
-        <div className={`absolute left-0 top-0 ${fadeClass}`}>
-          <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${leftRevealClass}`}>
-            {leftSlot}
+        <div className="absolute left-0 top-0">
+          <div className={`${fadeClass}`}>
+            <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${leftRevealClass}`}>
+              {leftSlot}
+            </div>
           </div>
+          {introGuide?.step === 'scenario' && introGuideContent ? (
+            <TopNavIntroBubble
+              title={introGuideContent.title}
+              description={introGuideContent.description}
+              actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
+              onAcknowledge={introGuide.onAcknowledge}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -139,8 +220,38 @@ export const TopNavBar = memo(function TopNavBar({
           <div
             className={`flex items-center gap-6 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}
           >
-            {syncButton ? <div className={actionFadeClass}>{syncButton}</div> : null}
-            {settingsNode ? <div className={actionFadeClass}>{settingsNode}</div> : null}
+            {syncButton ? (
+              <div className="relative">
+                <div className={actionFadeClass}>
+                  {syncButton}
+                </div>
+                {introGuide?.step === 'sync' && introGuideContent ? (
+                  <TopNavIntroBubble
+                    title={introGuideContent.title}
+                    description={introGuideContent.description}
+                    align="end"
+                    actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
+                    onAcknowledge={introGuide.onAcknowledge}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+            {settingsNode ? (
+              <div className="relative">
+                <div className={actionFadeClass}>
+                  {settingsNode}
+                </div>
+                {introGuide?.step === 'settings' && introGuideContent ? (
+                  <TopNavIntroBubble
+                    title={introGuideContent.title}
+                    description={introGuideContent.description}
+                    align="end"
+                    actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
+                    onAcknowledge={introGuide.onAcknowledge}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

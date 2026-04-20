@@ -32,11 +32,11 @@ import { useLeafTabSyncEncryptionManager } from './hooks/useLeafTabSyncEncryptio
 import { useLeafTabBackupActions } from './hooks/useLeafTabBackupActions';
 import { useSyncCenterActions } from './hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
-import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 
 // Components
 import ScenarioModeMenu from './components/ScenarioModeMenu';
+import type { TopNavIntroStep } from './components/TopNavBar';
 import { Toaster, toast } from './components/ui/sonner';
 import type { Shortcut, ShortcutFolderDisplayMode, SyncablePreferences } from './types';
 import { normalizeApiBase } from "./utils";
@@ -68,7 +68,6 @@ import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
-import { HomeInteractiveSurface } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
 import { useFolderTransitionController } from '@/components/folderTransition/useFolderTransitionController';
@@ -80,6 +79,7 @@ import {
 import type { RootShortcutExternalDragSession as ExternalShortcutDragSession } from '@/features/shortcuts/components/RootShortcutGrid';
 import {
   LazyAppDialogs,
+  LazyHomeInteractiveSurface,
   LazyLeafTabSyncDialog,
   LazyLeafTabSyncEncryptionDialog,
   LazyRoleSelector,
@@ -88,7 +88,6 @@ import {
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
   preloadShortcutFolderCompactOverlay,
-  preloadHomeDialogs,
 } from '@/lazy/components';
 import { applyDynamicAccentColor, resolveAccentColorSelection } from '@/utils/dynamicAccentColor';
 import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
@@ -162,6 +161,8 @@ type FolderOverlaySnapshotRect = {
   width: number;
   height: number;
 };
+
+const TOP_NAV_LAYOUT_INTRO_SEEN_KEY = 'leaftab_top_nav_layout_intro_seen_v1';
 
 function copyFolderOverlaySnapshotRect(rect: DOMRect | FolderOverlaySnapshotRect | null | undefined) {
   if (!rect) return null;
@@ -723,34 +724,6 @@ export default function App() {
       window.removeEventListener('wheel', markActive);
       window.removeEventListener('touchstart', markActive);
       window.removeEventListener('keydown', markActive, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    let canceled = false;
-
-    const warmDialogs = () => {
-      if (canceled) return;
-      void preloadHomeDialogs();
-    };
-
-    const cancelWarmup = scheduleAfterInteractivePaint(warmDialogs, {
-      delayMs: 240,
-      idleTimeoutMs: 900,
-    });
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        warmDialogs();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      canceled = true;
-      cancelWarmup();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -3507,6 +3480,43 @@ export default function App() {
     }
     return 'idle' as const;
   }, [cloudLeafTabSyncState.status, leafTabSyncState.status]);
+  const [topNavIntroStep, setTopNavIntroStep] = useState<TopNavIntroStep | null>(null);
+  const [topNavIntroCompleted, setTopNavIntroCompleted] = useState(() => {
+    try {
+      return localStorage.getItem(TOP_NAV_LAYOUT_INTRO_SEEN_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const handleAdvanceTopNavIntro = useCallback(() => {
+    setTopNavIntroStep((currentStep) => {
+      if (currentStep === 'scenario') return 'sync';
+      if (currentStep === 'sync') return 'settings';
+      try {
+        localStorage.setItem(TOP_NAV_LAYOUT_INTRO_SEEN_KEY, 'true');
+      } catch {}
+      setTopNavIntroCompleted(true);
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (roleSelectorOpen || !initialRevealReady) return;
+    if (displayMode !== 'fresh' && displayMode !== 'minimalist') return;
+    if (topNavIntroStep !== null) return;
+
+    try {
+      if (localStorage.getItem(TOP_NAV_LAYOUT_INTRO_SEEN_KEY) === 'true') return;
+    } catch {}
+
+    const timer = window.setTimeout(() => {
+      setTopNavIntroStep((currentStep) => currentStep ?? 'scenario');
+    }, 260);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [displayMode, initialRevealReady, roleSelectorOpen, topNavIntroStep]);
   const topNavModeProps = useMemo(() => ({
     fadeOnIdle: true,
     hideWeather: true,
@@ -3516,7 +3526,21 @@ export default function App() {
     onWeatherUpdate: setWeatherCode,
     reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur,
     leftSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur} />,
-  }), [handleOpenSettings, scenarioMenuLayerProps, setWeatherCode, topNavSyncStatus, visualEffectsPolicy.disableBackdropBlur]);
+    introGuide: topNavIntroStep
+      ? {
+          step: topNavIntroStep,
+          onAcknowledge: handleAdvanceTopNavIntro,
+        }
+      : null,
+  }), [
+    handleAdvanceTopNavIntro,
+    handleOpenSettings,
+    scenarioMenuLayerProps,
+    setWeatherCode,
+    topNavIntroStep,
+    topNavSyncStatus,
+    visualEffectsPolicy.disableBackdropBlur,
+  ]);
   const wallpaperClockBaseProps = useMemo(() => ({
     is24Hour,
     onIs24HourChange: setIs24Hour,
@@ -3707,6 +3731,7 @@ export default function App() {
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
     reduceMotionVisuals: visualEffectsLevel === 'low',
+    topNavIntroCompleted,
   }), [
     displayMode,
     handleDismissLoginBanner,
@@ -3730,6 +3755,7 @@ export default function App() {
     showWeekday,
     timeAnimationMode,
     timeFont,
+    topNavIntroCompleted,
     user,
     visualEffectsLevel,
   ]);
@@ -3801,35 +3827,37 @@ export default function App() {
         onSetFolderDisplayMode={handleSetFolderDisplayMode}
       >
         {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
-          <HomeInteractiveSurface
-            initialRevealReady={initialRevealReady}
-            visible={!roleSelectorOpen}
-            modeLayersVisible={modeLayersVisible}
-            modeFlags={displayModeFlags}
-            showOverlayWallpaperLayer={showOverlayWallpaperLayer}
-            wallpaperAnimatedLayerStyle={wallpaperAnimatedLayerStyle}
-            effectiveWallpaperMode={effectiveWallpaperMode}
-            freshWeatherVideo={freshWeatherVideo}
-            colorWallpaperGradient={colorWallpaperGradient}
-            effectiveOverlayWallpaperSrc={effectiveOverlayWallpaperSrc}
-            overlayBackgroundAlt={overlayBackgroundAlt}
-            onOverlayImageReady={handleOverlayWallpaperReadyForRevealAndAccent}
-            effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
-            topNavModeProps={topNavModeProps}
-            homeMainContentBaseProps={homeMainContentBaseProps}
-            shortcutGridBaseProps={shortcutEngineHostAdapter.rootGridProps}
-            shortcutGridHeatZoneInspectorEnabled={gridHitInspectorVisible}
-            shortcutGridHiddenShortcutId={pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId}
-            shortcutGridSelectionMode={selectionMode}
-            shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
-            onToggleShortcutSelection={onToggleShortcutSelection}
-            wallpaperClockBaseProps={wallpaperClockBaseProps}
-            searchExperienceBaseProps={searchExperienceBaseProps}
-            baseTimeAnimationEnabled={effectiveTimeAnimationEnabled}
-            freezeDynamicWallpaperBase={
-              visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
-            }
-          />
+          <Suspense fallback={<div className="w-full min-h-[60vh]" aria-hidden="true" />}>
+            <LazyHomeInteractiveSurface
+              initialRevealReady={initialRevealReady}
+              visible={!roleSelectorOpen}
+              modeLayersVisible={modeLayersVisible}
+              modeFlags={displayModeFlags}
+              showOverlayWallpaperLayer={showOverlayWallpaperLayer}
+              wallpaperAnimatedLayerStyle={wallpaperAnimatedLayerStyle}
+              effectiveWallpaperMode={effectiveWallpaperMode}
+              freshWeatherVideo={freshWeatherVideo}
+              colorWallpaperGradient={colorWallpaperGradient}
+              effectiveOverlayWallpaperSrc={effectiveOverlayWallpaperSrc}
+              overlayBackgroundAlt={overlayBackgroundAlt}
+              onOverlayImageReady={handleOverlayWallpaperReadyForRevealAndAccent}
+              effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
+              topNavModeProps={topNavModeProps}
+              homeMainContentBaseProps={homeMainContentBaseProps}
+              shortcutGridBaseProps={shortcutEngineHostAdapter.rootGridProps}
+              shortcutGridHeatZoneInspectorEnabled={gridHitInspectorVisible}
+              shortcutGridHiddenShortcutId={pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId}
+              shortcutGridSelectionMode={selectionMode}
+              shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
+              onToggleShortcutSelection={onToggleShortcutSelection}
+              wallpaperClockBaseProps={wallpaperClockBaseProps}
+              searchExperienceBaseProps={searchExperienceBaseProps}
+              baseTimeAnimationEnabled={effectiveTimeAnimationEnabled}
+              freezeDynamicWallpaperBase={
+                visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
+              }
+            />
+          </Suspense>
         )}
       </ShortcutSelectionShell>
       {compactOverlayShortcut ? (

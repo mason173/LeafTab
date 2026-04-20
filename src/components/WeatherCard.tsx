@@ -7,7 +7,11 @@ import { cn } from "./ui/utils";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { toast } from "./ui/sonner";
 import { useCitySearch } from "@/hooks/useCitySearch";
-import { fetchWeatherCitySuggestions, useWeatherLocation } from "@/hooks/useWeatherLocation";
+import {
+  fetchWeatherCitySuggestions,
+  preloadWeatherCitySuggestions,
+  useWeatherLocation,
+} from "@/hooks/useWeatherLocation";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
 function WeatherCity({ city, variant }: { city: string; variant: "inverted" | "default" }) {
@@ -92,6 +96,7 @@ export function WeatherCard({
 
   const onOpenDialog = useCallback(() => {
     setDialogOpen(true);
+    void preloadWeatherCitySuggestions();
   }, []);
 
   const onSetManualCity = useCallback(async () => {

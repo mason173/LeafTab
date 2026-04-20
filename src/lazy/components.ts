@@ -2,6 +2,7 @@ import { lazyWithPageReload } from './lazyWithPageReload';
 
 const importWallpaperSelector = () => import('../components/WallpaperSelector');
 const importAppDialogs = () => import('../components/AppDialogs');
+const importHomeInteractiveSurface = () => import('../components/home/HomeInteractiveSurface');
 const importLeafTabSyncDialog = () => import('../components/sync/LeafTabSyncDialog');
 const importLeafTabSyncEncryptionDialog = () => import('../components/sync/LeafTabSyncEncryptionDialog');
 const importUpdateAvailableDialog = () => import('../components/UpdateAvailableDialog');
@@ -19,6 +20,11 @@ export const LazyAppDialogs = lazyWithPageReload(
   'app-dialogs',
   importAppDialogs,
   (module) => module.AppDialogs,
+);
+export const LazyHomeInteractiveSurface = lazyWithPageReload(
+  'home-interactive-surface',
+  importHomeInteractiveSurface,
+  (module) => module.HomeInteractiveSurface,
 );
 export const LazyLeafTabSyncDialog = lazyWithPageReload(
   'leaftab-sync-dialog',

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useCallback, useEffect, useState, type CSSProperties, type ComponentProps } from 'react';
 import { useTheme } from 'next-themes';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { WallpaperClock } from '@/components/WallpaperClock';
@@ -52,12 +52,14 @@ interface HomeMainContentProps {
   searchInteractionLocked: boolean;
   shortcutGridProps: ComponentProps<typeof RootShortcutGrid>;
   onDrawerExpandedChange?: (expanded: boolean) => void;
+  topNavIntroCompleted?: boolean;
 }
 
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
 const HOME_WALLPAPER_BLOCK_LIFT_PX = 28;
 const HOME_DRAWER_LINKED_TRANSITION = '320ms cubic-bezier(0.22, 1, 0.36, 1)';
 const HOME_DRAWER_WALLPAPER_SAFE_GAP_PX = 12;
+const BLANK_MODE_DRAWER_HINT_SEEN_KEY = 'leaftab_blank_mode_drawer_hint_seen_v1';
 
 export const HomeMainContent = memo(function HomeMainContent({
   initialRevealReady,
@@ -92,6 +94,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   searchInteractionLocked,
   shortcutGridProps,
   onDrawerExpandedChange,
+  topNavIntroCompleted = false,
 }: HomeMainContentProps) {
   const firefox = isFirefoxBuildTarget();
   const { resolvedTheme } = useTheme();
@@ -129,10 +132,23 @@ export const HomeMainContent = memo(function HomeMainContent({
   const drawerShortcutForceWhiteText = displayMode === 'fresh' && !(isLightTheme && drawer.isDrawerExpanded);
   const drawerShortcutMonochromeTone = 'theme-adaptive';
   const drawerShortcutMonochromeTileBackdropBlur = false;
+  const [blankModeDrawerHintDismissed, setBlankModeDrawerHintDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(BLANK_MODE_DRAWER_HINT_SEEN_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
     ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
     : undefined;
   const isDrawerFullyExpanded = visible && drawer.isDrawerExpanded;
+  const showBlankModeDrawerHint = initialRevealReady
+    && visible
+    && displayMode === 'minimalist'
+    && topNavIntroCompleted
+    && !drawer.isDrawerExpanded
+    && !blankModeDrawerHintDismissed;
 
   const handleShortcutGridDragStart = useCallback(() => {
     shortcutGridProps.onDragStart?.();
@@ -151,6 +167,14 @@ export const HomeMainContent = memo(function HomeMainContent({
   useEffect(() => () => {
     onDrawerExpandedChange?.(false);
   }, [onDrawerExpandedChange]);
+
+  useEffect(() => {
+    if (displayMode !== 'minimalist' || !drawer.isDrawerExpanded || blankModeDrawerHintDismissed) return;
+    setBlankModeDrawerHintDismissed(true);
+    try {
+      localStorage.setItem(BLANK_MODE_DRAWER_HINT_SEEN_KEY, 'true');
+    } catch {}
+  }, [blankModeDrawerHintDismissed, displayMode, drawer.isDrawerExpanded]);
 
   if (!visible) return null;
 
@@ -232,6 +256,7 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerShortcutMonochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
         drawerScrollLocked={drawer.drawerScrollLocked}
         reduceMotionVisuals={reduceMotionVisuals}
+        drawerExpandHintVisible={showBlankModeDrawerHint}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
