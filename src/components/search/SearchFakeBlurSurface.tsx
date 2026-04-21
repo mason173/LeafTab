@@ -110,26 +110,26 @@ export function SearchFakeBlurSurface({
 
   const baseTintStyle: CSSProperties = drawerToneActive
     ? (isDarkTheme
-        ? { background: deepDarkCover ? 'rgba(5,7,10,0.62)' : 'rgba(6,8,12,0.46)' }
-        : { background: 'rgba(255,255,255,0.34)' })
+        ? { background: deepDarkCover ? 'rgba(5,7,10,0.74)' : 'rgba(6,8,12,0.56)' }
+        : { background: 'rgba(255,255,255,0.46)' })
     : (isDarkTheme
-        ? { background: deepDarkCover ? 'rgba(7,9,12,0.54)' : 'rgba(10,14,20,0.28)' }
-        : { background: 'rgba(255,255,255,0.18)' });
+        ? { background: deepDarkCover ? 'rgba(7,9,12,0.64)' : 'rgba(10,14,20,0.38)' }
+        : { background: 'rgba(255,255,255,0.28)' });
   const atmosphereStyle: CSSProperties = flatAtmosphere
     ? (isDarkTheme
         ? {
             background: drawerToneActive
               ? (deepDarkCover
-                  ? 'linear-gradient(180deg, rgba(5,7,10,0.14) 0%, rgba(5,7,10,0.10) 100%)'
-                  : 'linear-gradient(180deg, rgba(6,8,12,0.10) 0%, rgba(6,8,12,0.08) 100%)')
+                  ? 'linear-gradient(180deg, rgba(5,7,10,0.20) 0%, rgba(5,7,10,0.16) 100%)'
+                  : 'linear-gradient(180deg, rgba(6,8,12,0.14) 0%, rgba(6,8,12,0.12) 100%)')
               : (deepDarkCover
-                  ? 'linear-gradient(180deg, rgba(7,9,12,0.12) 0%, rgba(7,9,12,0.08) 100%)'
-                  : 'linear-gradient(180deg, rgba(10,14,20,0.08) 0%, rgba(10,14,20,0.06) 100%)'),
+                  ? 'linear-gradient(180deg, rgba(7,9,12,0.16) 0%, rgba(7,9,12,0.12) 100%)'
+                  : 'linear-gradient(180deg, rgba(10,14,20,0.12) 0%, rgba(10,14,20,0.09) 100%)'),
           }
         : {
             background: drawerToneActive
-              ? 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.20) 100%)'
-              : 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.10) 100%)',
+              ? 'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.30) 100%)'
+              : 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.18) 100%)',
           })
     : (drawerToneActive
         ? (isDarkTheme
@@ -210,8 +210,8 @@ export function SearchFakeBlurSurface({
           className="absolute inset-0"
           style={{
             background: isDarkTheme
-              ? 'linear-gradient(180deg, rgba(24,30,38,0.94) 0%, rgba(14,18,24,0.98) 100%)'
-              : 'linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(238,242,247,0.99) 100%)',
+              ? 'linear-gradient(180deg, rgba(20,24,30,0.96) 0%, rgba(10,12,18,0.995) 100%)'
+              : 'linear-gradient(180deg, rgba(252,253,255,0.98) 0%, rgba(244,247,251,0.995) 100%)',
           }}
         />
       )}
