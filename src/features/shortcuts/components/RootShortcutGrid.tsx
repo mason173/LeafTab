@@ -8,6 +8,7 @@ import {
 import { createLeaftabRootGridPreset } from '@leaftab/workspace-preset-leaftab';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
+import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import {
   getCompactShortcutCardMetrics,
@@ -329,61 +330,84 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     iconCornerRadius,
   ]);
   return (
-    <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
-      <div ref={wrapperRef} className="relative w-full">
-        <PackageRootShortcutGrid
-          containerHeight={containerHeight}
-          bottomInset={bottomInset}
-          shortcuts={shortcuts}
-          overlayZIndex={overlayZIndex}
-          gridColumns={gridColumns}
-          minRows={minRows}
-          rowHeight={rowHeight}
-          rowGap={rowGap}
-          columnGap={columnGap}
-          resolveItemLayout={rootGridPreset.resolveItemLayout}
-          onShortcutOpen={onShortcutOpen}
-          onShortcutContextMenu={onShortcutContextMenu}
-          onShortcutReorder={onShortcutReorder}
-          onShortcutDropIntent={onShortcutDropIntent}
-          onGridContextMenu={onGridContextMenu}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          interactionProfile={interactionProfile}
-          onHeatZoneInspectorChange={heatZoneInspectorEnabled ? setHeatZoneInspector : undefined}
-          extractBoundaryRef={extractBoundaryRef}
-          onExtractDragStart={onExtractDragStart}
-          onBoundaryHoverChange={onBoundaryHoverChange}
-          disableReorderAnimation={disableReorderAnimation}
-          selectionMode={selectionMode}
-          selectedShortcutIndexes={selectedShortcutIndexes}
-          onToggleShortcutSelection={onToggleShortcutSelection}
-          externalDragSession={externalDragSession}
-          onExternalDragSessionConsumed={onExternalDragSessionConsumed}
-          isFirefox={firefox}
-          resolveCompactTargetRegions={rootGridPreset.resolveCompactTargetRegions}
-          resolveDropTargetRects={rootGridPreset.resolveDropTargetRects}
-          renderItem={(params) => {
-            const compactMetrics = getCompactShortcutCardMetrics({
-              shortcut: params.shortcut,
-              iconSize: compactIconSize,
-              allowLargeFolder: largeFolderEnabled,
-              largeFolderPreviewSize,
-            });
-            const hiddenFromBackgroundLayer = hiddenShortcutId === params.shortcut.id;
+    <RenderProfileBoundary id="RootShortcutGrid">
+      <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
+        <div ref={wrapperRef} className="relative w-full">
+          <PackageRootShortcutGrid
+            containerHeight={containerHeight}
+            bottomInset={bottomInset}
+            shortcuts={shortcuts}
+            overlayZIndex={overlayZIndex}
+            gridColumns={gridColumns}
+            minRows={minRows}
+            rowHeight={rowHeight}
+            rowGap={rowGap}
+            columnGap={columnGap}
+            resolveItemLayout={rootGridPreset.resolveItemLayout}
+            onShortcutOpen={onShortcutOpen}
+            onShortcutContextMenu={onShortcutContextMenu}
+            onShortcutReorder={onShortcutReorder}
+            onShortcutDropIntent={onShortcutDropIntent}
+            onGridContextMenu={onGridContextMenu}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            interactionProfile={interactionProfile}
+            onHeatZoneInspectorChange={heatZoneInspectorEnabled ? setHeatZoneInspector : undefined}
+            extractBoundaryRef={extractBoundaryRef}
+            onExtractDragStart={onExtractDragStart}
+            onBoundaryHoverChange={onBoundaryHoverChange}
+            disableReorderAnimation={disableReorderAnimation}
+            selectionMode={selectionMode}
+            selectedShortcutIndexes={selectedShortcutIndexes}
+            onToggleShortcutSelection={onToggleShortcutSelection}
+            externalDragSession={externalDragSession}
+            onExternalDragSessionConsumed={onExternalDragSessionConsumed}
+            isFirefox={firefox}
+            resolveCompactTargetRegions={rootGridPreset.resolveCompactTargetRegions}
+            resolveDropTargetRects={rootGridPreset.resolveDropTargetRects}
+            renderItem={(params) => {
+              const compactMetrics = getCompactShortcutCardMetrics({
+                shortcut: params.shortcut,
+                iconSize: compactIconSize,
+                allowLargeFolder: largeFolderEnabled,
+                largeFolderPreviewSize,
+              });
+              const hiddenFromBackgroundLayer = hiddenShortcutId === params.shortcut.id;
 
-            if (hiddenFromBackgroundLayer) {
+              if (hiddenFromBackgroundLayer) {
+                return (
+                  <div
+                    className="relative z-10"
+                    style={{
+                      width: compactMetrics.width,
+                      height: compactMetrics.height,
+                      visibility: 'hidden',
+                      pointerEvents: 'none',
+                    }}
+                    aria-hidden="true"
+                  >
+                    {renderShortcutCard({
+                      shortcut: params.shortcut,
+                      compactShowTitle,
+                      compactIconSize,
+                      iconCornerRadius,
+                      iconAppearance,
+                      compactTitleFontSize: resolvedVisualTitleFontSize,
+                      forceTextWhite,
+                      enableLargeFolder: largeFolderEnabled,
+                      largeFolderPreviewSize,
+                      dropTargetActive: params.centerPreviewActive,
+                      onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
+                      selectionDisabled: params.selectionDisabled,
+                      onOpen: params.onOpen,
+                      onContextMenu: params.onContextMenu,
+                    })}
+                  </div>
+                );
+              }
+
               return (
-                <div
-                  className="relative z-10"
-                  style={{
-                    width: compactMetrics.width,
-                    height: compactMetrics.height,
-                    visibility: 'hidden',
-                    pointerEvents: 'none',
-                  }}
-                  aria-hidden="true"
-                >
+                <div className="relative z-10">
                   {renderShortcutCard({
                     shortcut: params.shortcut,
                     compactShowTitle,
@@ -400,60 +424,39 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                     onOpen: params.onOpen,
                     onContextMenu: params.onContextMenu,
                   })}
+                  {selectionMode && params.shortcut.kind !== 'folder' ? (
+                    <div
+                      className="pointer-events-none absolute inset-0 z-20 rounded-xl"
+                      aria-hidden="true"
+                    >
+                      {renderSelectionIndicator({
+                        sortId: params.shortcut.id,
+                        selected: params.selected,
+                        compactPreviewSize: compactMetrics.previewSize,
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               );
-            }
-
-            return (
-              <div className="relative z-10">
-                {renderShortcutCard({
-                  shortcut: params.shortcut,
-                  compactShowTitle,
-                  compactIconSize,
-                  iconCornerRadius,
-                  iconAppearance,
-                  compactTitleFontSize: resolvedVisualTitleFontSize,
-                  forceTextWhite,
-                  enableLargeFolder: largeFolderEnabled,
-                  largeFolderPreviewSize,
-                  dropTargetActive: params.centerPreviewActive,
-                  onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
-                  selectionDisabled: params.selectionDisabled,
-                  onOpen: params.onOpen,
-                  onContextMenu: params.onContextMenu,
-                })}
-                {selectionMode && params.shortcut.kind !== 'folder' ? (
-                  <div
-                    className="pointer-events-none absolute inset-0 z-20 rounded-xl"
-                    aria-hidden="true"
-                  >
-                    {renderSelectionIndicator({
-                      sortId: params.shortcut.id,
-                      selected: params.selected,
-                      compactPreviewSize: compactMetrics.previewSize,
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            );
-          }}
-          renderCenterPreview={() => null}
-          renderDropPreview={() => null}
-          renderDragPreview={(params) => renderDragPreview({
-            shortcut: params.shortcut,
-            firefox,
-            compactShowTitle,
-            compactIconSize,
-            iconCornerRadius,
-            iconAppearance,
-            compactTitleFontSize: resolvedVisualTitleFontSize,
-            forceTextWhite,
-            enableLargeFolder: largeFolderEnabled,
-            largeFolderPreviewSize,
-          })}
-        />
-        {heatZoneInspectorEnabled ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}
-      </div>
-    </ShortcutIconRenderContext.Provider>
+            }}
+            renderCenterPreview={() => null}
+            renderDropPreview={() => null}
+            renderDragPreview={(params) => renderDragPreview({
+              shortcut: params.shortcut,
+              firefox,
+              compactShowTitle,
+              compactIconSize,
+              iconCornerRadius,
+              iconAppearance,
+              compactTitleFontSize: resolvedVisualTitleFontSize,
+              forceTextWhite,
+              enableLargeFolder: largeFolderEnabled,
+              largeFolderPreviewSize,
+            })}
+          />
+          {heatZoneInspectorEnabled ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}
+        </div>
+      </ShortcutIconRenderContext.Provider>
+    </RenderProfileBoundary>
   );
 });

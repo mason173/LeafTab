@@ -20,9 +20,6 @@ export function QuickAccessDrawer({
   modeFlags,
   contentWidth,
   quickAccessOpen,
-  quickAccessSnapPoint: _quickAccessSnapPoint,
-  quickAccessDefaultSnapPoint: _quickAccessDefaultSnapPoint,
-  quickAccessFullSnapPoint: _quickAccessFullSnapPoint,
   isDrawerExpanded,
   drawerOverlayOpacity,
   drawerSurfaceOpacity,
@@ -45,8 +42,6 @@ export function QuickAccessDrawer({
   drawerShortcutScrollRef,
   searchExperienceProps,
   shortcutGridProps,
-  onDrawerOpenChange: _onDrawerOpenChange,
-  onActiveSnapPointChange: _onActiveSnapPointChange,
 }: QuickAccessDrawerProps) {
   const drawerExpandHint = drawerExpandHintVisible ? (
     <div

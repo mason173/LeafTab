@@ -188,6 +188,7 @@ export function syncRootHoverFromPointer(params: {
   pointer: PointerPoint;
   measuredItemsOverride?: MeasuredRootGridItem[];
   measureItems: () => MeasuredRootGridItem[];
+  measureVisibleItems: () => MeasuredRootGridItem[];
   dragScrollOffset: ScrollOffset;
   activeDragIdRef: React.MutableRefObject<string | null>;
   dragSessionRef: React.MutableRefObject<{ sourceRootShortcutId?: string } | null>;
@@ -242,14 +243,17 @@ export function syncRootHoverFromPointer(params: {
     pointer,
     measuredItemsOverride,
     measureItems,
+    measureVisibleItems,
     dragScrollOffset,
     ...runtimeParams
   } = params;
 
-  const measuredItems = offsetMeasuredRootGridItemsByScrollOffset(
-    measuredItemsOverride ?? measureItems(),
-    dragScrollOffset,
-  ) ?? [];
+  const measuredItems = measuredItemsOverride
+    ? offsetMeasuredRootGridItemsByScrollOffset(
+        measuredItemsOverride,
+        dragScrollOffset,
+      ) ?? []
+    : measureVisibleItems();
 
   syncRootHoverRuntime({
     pointer,
@@ -343,6 +347,8 @@ export function syncRootHoverWithExtractHandoff<
     activeDragIdRef,
     dragSessionRef,
     latestPointerRef,
+    measureItems: params.measureItems,
+    measureVisibleItems,
     commitHeatZoneInspector,
     onExtractBoundaryExit: () => {
       handleRootExtractBoundaryExit({

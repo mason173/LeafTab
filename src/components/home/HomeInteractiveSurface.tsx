@@ -12,6 +12,7 @@ import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { toast } from '@/components/ui/sonner';
 import { resolveInitialRevealStyle } from '@/config/animationTokens';
+import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { type SearchInteractionState } from '@/components/search/SearchExperience';
 import type { WallpaperMode } from '@/wallpaper/types';
@@ -402,26 +403,28 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }), []);
 
   return (
-    <>
-      {overlayWallpaperLayer}
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 z-[15000]"
-        style={immersiveBackdropLayerStyle}
-      />
-      <div style={immersiveUiShellStyle}>
-        {fixedTopNavLayer}
-      </div>
-      <HomeMainContent
-        {...homeMainContentBaseProps}
-        initialRevealReady={initialRevealReady}
-        modeFlags={modeFlags}
-        wallpaperClockProps={wallpaperClockProps}
-        searchExperienceProps={searchExperienceProps}
-        searchInteractionLocked={searchInteractionLocked}
-        onDrawerExpandedChange={setDrawerExpanded}
-        shortcutGridProps={shortcutGridProps}
-      />
-    </>
+    <RenderProfileBoundary id="HomeInteractiveSurface">
+      <>
+        {overlayWallpaperLayer}
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[15000]"
+          style={immersiveBackdropLayerStyle}
+        />
+        <div style={immersiveUiShellStyle}>
+          {fixedTopNavLayer}
+        </div>
+        <HomeMainContent
+          {...homeMainContentBaseProps}
+          initialRevealReady={initialRevealReady}
+          modeFlags={modeFlags}
+          wallpaperClockProps={wallpaperClockProps}
+          searchExperienceProps={searchExperienceProps}
+          searchInteractionLocked={searchInteractionLocked}
+          onDrawerExpandedChange={setDrawerExpanded}
+          shortcutGridProps={shortcutGridProps}
+        />
+      </>
+    </RenderProfileBoundary>
   );
 });

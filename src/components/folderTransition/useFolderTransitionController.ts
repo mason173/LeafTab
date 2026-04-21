@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import {
   FOLDER_CLOSE_DURATION_MS,
   FOLDER_OPEN_DURATION_MS,
@@ -34,12 +34,25 @@ export type FolderTransitionPhase =
   | 'closing-measure'
   | 'closing-animate';
 
-type FolderTransitionState = {
+export type FolderTransitionState = {
   activeFolderId: string | null;
   overlayFolderId: string | null;
   phase: FolderTransitionPhase;
   progress: number;
   sourceSnapshot: ShortcutFolderOpeningSourceSnapshot | null;
+};
+
+export type FolderTransitionController = {
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => FolderTransitionState;
+  getBackgroundProgress: () => number;
+  openFolder: (folderId: string, sourceSnapshot: ShortcutFolderOpeningSourceSnapshot | null) => void;
+  requestClose: (folderId?: string | null) => void;
+  runAfterClose: (folderId: string, action: () => void) => void;
+  notifyOpeningReady: (folderId: string) => void;
+  notifyClosingReady: (folderId: string) => void;
+  clearImmediately: () => void;
+  dispose: () => void;
 };
 
 const IDLE_STATE: FolderTransitionState = {
@@ -63,33 +76,53 @@ function resolveAnimationDurationMs(
   return Math.max(1, Math.round(baseDuration * distance));
 }
 
-export function useFolderTransitionController() {
-  const [state, setState] = useState<FolderTransitionState>(IDLE_STATE);
-  const animationFrameRef = useRef<number | null>(null);
-  const animationRunIdRef = useRef(0);
-  const stateRef = useRef<FolderTransitionState>(IDLE_STATE);
-  const afterCloseQueueRef = useRef<Array<() => void>>([]);
+function resolveBackgroundProgress(state: FolderTransitionState) {
+  if (state.phase === 'idle' || state.phase === 'opening-measure') {
+    return 0;
+  }
+  if (state.phase === 'closing-measure' || state.phase === 'closing-animate') {
+    return resolveBackdropAnimationProgress(state.progress, 'closing');
+  }
+  return resolveBackdropAnimationProgress(state.progress, 'opening');
+}
 
-  const cancelAnimation = useCallback(() => {
-    animationRunIdRef.current += 1;
-    if (animationFrameRef.current !== null) {
-      window.cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+function createFolderTransitionController(): FolderTransitionController {
+  let state = IDLE_STATE;
+  const listeners = new Set<() => void>();
+  let animationFrameId: number | null = null;
+  let animationRunId = 0;
+  let afterCloseQueue: Array<() => void> = [];
+
+  const emit = () => {
+    listeners.forEach((listener) => listener());
+  };
+
+  const commitState = (nextState: FolderTransitionState) => {
+    state = nextState;
+    emit();
+  };
+
+  const cancelAnimation = () => {
+    animationRunId += 1;
+    if (animationFrameId !== null) {
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
     }
-  }, []);
+  };
 
-  const finalizeClosedState = useCallback(() => {
+  const finalizeClosedState = () => {
     cancelAnimation();
-    stateRef.current = IDLE_STATE;
-    setState(IDLE_STATE);
-    const queuedActions = afterCloseQueueRef.current;
-    afterCloseQueueRef.current = [];
+    commitState(IDLE_STATE);
+    const queuedActions = afterCloseQueue;
+    afterCloseQueue = [];
     queuedActions.forEach((action) => action());
-  }, [cancelAnimation]);
+  };
 
-  const animateTo = useCallback((targetProgress: number, activePhase: 'opening-animate' | 'closing-animate') => {
-    const currentState = stateRef.current;
-    const fromProgress = clamp01(currentState.progress);
+  const animateTo = (
+    targetProgress: number,
+    activePhase: 'opening-animate' | 'closing-animate',
+  ) => {
+    const fromProgress = clamp01(state.progress);
     const toProgress = clamp01(targetProgress);
     const durationMs = resolveAnimationDurationMs(fromProgress, toProgress, activePhase);
     const motionPhase = activePhase === 'closing-animate' ? 'closing' : 'opening';
@@ -101,151 +134,174 @@ export function useFolderTransitionController() {
         finalizeClosedState();
         return;
       }
-      const settledState: FolderTransitionState = {
-        ...currentState,
+      commitState({
+        ...state,
         phase: 'open',
         progress: 1,
-      };
-      stateRef.current = settledState;
-      setState(settledState);
+      });
       return;
     }
 
-    const runId = animationRunIdRef.current;
+    const runId = animationRunId;
     const startTime = window.performance.now();
+
+    commitState({
+      ...state,
+      phase: activePhase,
+    });
+
     const tick = (timestamp: number) => {
-      if (animationRunIdRef.current !== runId) return;
+      if (animationRunId !== runId) return;
       const elapsed = timestamp - startTime;
       const timeProgress = clamp01(elapsed / durationMs);
       const easedProgress = resolveFolderMotionProgress(timeProgress, motionPhase);
       const nextProgress = fromProgress + ((toProgress - fromProgress) * easedProgress);
-      const nextState: FolderTransitionState = {
-        ...stateRef.current,
+
+      commitState({
+        ...state,
         phase: activePhase,
         progress: nextProgress,
-      };
-      stateRef.current = nextState;
-      setState(nextState);
+      });
 
       if (timeProgress >= 1) {
-        animationFrameRef.current = null;
+        animationFrameId = null;
         if (toProgress <= 0.0001) {
           finalizeClosedState();
           return;
         }
-        const settledState: FolderTransitionState = {
-          ...stateRef.current,
+        commitState({
+          ...state,
           phase: 'open',
           progress: 1,
-        };
-        stateRef.current = settledState;
-        setState(settledState);
+        });
         return;
       }
 
-      animationFrameRef.current = window.requestAnimationFrame(tick);
+      animationFrameId = window.requestAnimationFrame(tick);
     };
 
-    const nextState: FolderTransitionState = {
-      ...currentState,
-      phase: activePhase,
-    };
-    stateRef.current = nextState;
-    setState(nextState);
-    animationFrameRef.current = window.requestAnimationFrame(tick);
-  }, [cancelAnimation, finalizeClosedState]);
-
-  const openFolder = useCallback((folderId: string, sourceSnapshot: ShortcutFolderOpeningSourceSnapshot | null) => {
-    if (!folderId) return;
-    afterCloseQueueRef.current = [];
-    cancelAnimation();
-    const nextState: FolderTransitionState = {
-      activeFolderId: folderId,
-      overlayFolderId: folderId,
-      phase: 'opening-measure',
-      progress: 0,
-      sourceSnapshot,
-    };
-    stateRef.current = nextState;
-    setState(nextState);
-  }, [cancelAnimation]);
-
-  const requestClose = useCallback((folderId?: string | null) => {
-    const currentState = stateRef.current;
-    if (currentState.phase === 'idle') return;
-    if (folderId && currentState.overlayFolderId !== folderId && currentState.activeFolderId !== folderId) {
-      return;
-    }
-    if (currentState.phase === 'closing-measure' || currentState.phase === 'closing-animate') {
-      return;
-    }
-    cancelAnimation();
-    const nextState: FolderTransitionState = {
-      ...currentState,
-      phase: 'closing-measure',
-      progress: 1,
-    };
-    stateRef.current = nextState;
-    setState(nextState);
-  }, [cancelAnimation]);
-
-  const runAfterClose = useCallback((folderId: string, action: () => void) => {
-    const currentState = stateRef.current;
-    if (currentState.phase === 'idle' || currentState.overlayFolderId !== folderId) {
-      action();
-      return;
-    }
-    afterCloseQueueRef.current.push(action);
-    requestClose(folderId);
-  }, [requestClose]);
-
-  const notifyOpeningReady = useCallback((folderId: string) => {
-    const currentState = stateRef.current;
-    if (currentState.phase !== 'opening-measure' || currentState.overlayFolderId !== folderId) {
-      return;
-    }
-    animateTo(1, 'opening-animate');
-  }, [animateTo]);
-
-  const notifyClosingReady = useCallback((folderId: string) => {
-    const currentState = stateRef.current;
-    if (currentState.phase !== 'closing-measure' || currentState.overlayFolderId !== folderId) {
-      return;
-    }
-    animateTo(0, 'closing-animate');
-  }, [animateTo]);
-
-  const clearImmediately = useCallback(() => {
-    afterCloseQueueRef.current = [];
-    cancelAnimation();
-    stateRef.current = IDLE_STATE;
-    setState(IDLE_STATE);
-  }, [cancelAnimation]);
-
-  useEffect(() => () => {
-    cancelAnimation();
-  }, [cancelAnimation]);
-
-  const backgroundProgress = useMemo(() => {
-    if (state.phase === 'idle' || state.phase === 'opening-measure') {
-      return 0;
-    }
-    if (state.phase === 'closing-measure' || state.phase === 'closing-animate') {
-      return resolveBackdropAnimationProgress(state.progress, 'closing');
-    }
-    return resolveBackdropAnimationProgress(state.progress, 'opening');
-  }, [state.phase, state.progress]);
+    animationFrameId = window.requestAnimationFrame(tick);
+  };
 
   return {
-    transition: state,
-    activeFolderId: state.activeFolderId,
-    overlayFolderId: state.overlayFolderId,
-    backgroundProgress,
-    openFolder,
-    requestClose,
-    runAfterClose,
-    notifyOpeningReady,
-    notifyClosingReady,
-    clearImmediately,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    getSnapshot: () => state,
+    getBackgroundProgress: () => resolveBackgroundProgress(state),
+    openFolder: (folderId, sourceSnapshot) => {
+      if (!folderId) return;
+      afterCloseQueue = [];
+      cancelAnimation();
+      commitState({
+        activeFolderId: folderId,
+        overlayFolderId: folderId,
+        phase: 'opening-measure',
+        progress: 0,
+        sourceSnapshot,
+      });
+    },
+    requestClose: (folderId) => {
+      if (state.phase === 'idle') return;
+      if (folderId && state.overlayFolderId !== folderId && state.activeFolderId !== folderId) {
+        return;
+      }
+      if (state.phase === 'closing-measure' || state.phase === 'closing-animate') {
+        return;
+      }
+      cancelAnimation();
+      commitState({
+        ...state,
+        phase: 'closing-measure',
+        progress: 1,
+      });
+    },
+    runAfterClose: (folderId, action) => {
+      if (state.phase === 'idle' || state.overlayFolderId !== folderId) {
+        action();
+        return;
+      }
+      afterCloseQueue.push(action);
+      if (state.phase !== 'closing-measure' && state.phase !== 'closing-animate') {
+        cancelAnimation();
+        commitState({
+          ...state,
+          phase: 'closing-measure',
+          progress: 1,
+        });
+      }
+    },
+    notifyOpeningReady: (folderId) => {
+      if (state.phase !== 'opening-measure' || state.overlayFolderId !== folderId) {
+        return;
+      }
+      animateTo(1, 'opening-animate');
+    },
+    notifyClosingReady: (folderId) => {
+      if (state.phase !== 'closing-measure' || state.overlayFolderId !== folderId) {
+        return;
+      }
+      animateTo(0, 'closing-animate');
+    },
+    clearImmediately: () => {
+      afterCloseQueue = [];
+      cancelAnimation();
+      commitState(IDLE_STATE);
+    },
+    dispose: () => {
+      afterCloseQueue = [];
+      cancelAnimation();
+      listeners.clear();
+      state = IDLE_STATE;
+    },
   };
+}
+
+export function useFolderTransitionController() {
+  const controllerRef = useRef<FolderTransitionController | null>(null);
+
+  if (!controllerRef.current) {
+    controllerRef.current = createFolderTransitionController();
+  }
+
+  useEffect(() => () => {
+    controllerRef.current?.dispose();
+  }, []);
+
+  return controllerRef.current;
+}
+
+export function useFolderTransitionState(controller: FolderTransitionController) {
+  return useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+}
+
+export function useFolderTransitionActiveFolderId(controller: FolderTransitionController) {
+  return useSyncExternalStore(
+    controller.subscribe,
+    () => controller.getSnapshot().activeFolderId,
+    () => null,
+  );
+}
+
+export function useFolderTransitionOverlayFolderId(controller: FolderTransitionController) {
+  return useSyncExternalStore(
+    controller.subscribe,
+    () => controller.getSnapshot().overlayFolderId,
+    () => null,
+  );
+}
+
+export function useFolderTransitionBackgroundProgress(controller: FolderTransitionController) {
+  return useSyncExternalStore(
+    controller.subscribe,
+    controller.getBackgroundProgress,
+    () => 0,
+  );
 }

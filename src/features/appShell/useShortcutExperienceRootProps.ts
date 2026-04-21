@@ -1,18 +1,7 @@
 import { useMemo } from 'react';
-import type { ShortcutAppContextValue } from '@/features/shortcuts/app/ShortcutAppContext';
 import { type ShortcutExperienceRootProps } from '@/features/shortcuts/app/ShortcutExperienceRoot';
-import { openCreateShortcutEditor } from '@/features/shortcuts/app/shortcutEditorState';
-
-type ShortcutUiActions = ShortcutAppContextValue['actions']['ui'];
 
 export type UseShortcutExperienceRootPropsParams = {
-  setShortcutModalMode: ShortcutUiActions['setShortcutModalMode'];
-  setSelectedShortcut: ShortcutUiActions['setSelectedShortcut'];
-  setEditingTitle: ShortcutUiActions['setEditingTitle'];
-  setEditingUrl: ShortcutUiActions['setEditingUrl'];
-  setCurrentInsertIndex: ShortcutUiActions['setCurrentInsertIndex'];
-  setShortcutEditOpen: ShortcutUiActions['setShortcutEditOpen'];
-  setShortcutDeleteOpen: ShortcutUiActions['setShortcutDeleteOpen'];
   onEditShortcut: ShortcutExperienceRootProps['selectionActions']['onEditShortcut'];
   onEditFolderShortcut: ShortcutExperienceRootProps['selectionActions']['onEditFolderShortcut'];
   onDeleteFolderShortcut: ShortcutExperienceRootProps['selectionActions']['onDeleteFolderShortcut'];
@@ -45,13 +34,8 @@ export type UseShortcutExperienceRootPropsParams = {
   searchExperienceBaseProps: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['searchExperienceBaseProps'];
   baseTimeAnimationEnabled: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['baseTimeAnimationEnabled'];
   freezeDynamicWallpaperBase: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['freezeDynamicWallpaperBase'];
-  compactOverlayShortcut: ShortcutExperienceRootProps['compactOverlayShortcut'];
+  folderTransitionController: ShortcutExperienceRootProps['folderTransitionController'];
   compactFolderOverlayBaseProps: ShortcutExperienceRootProps['compactFolderOverlayProps'];
-  folderTransitionPhase: ShortcutExperienceRootProps['folderTransitionPhase'];
-  folderTransitionProgress: ShortcutExperienceRootProps['folderTransitionProgress'];
-  openingSourceSnapshot: ShortcutExperienceRootProps['openingSourceSnapshot'];
-  onOpeningLayoutReady: ShortcutExperienceRootProps['onOpeningLayoutReady'];
-  onClosingLayoutReady: ShortcutExperienceRootProps['onClosingLayoutReady'];
   folderNameDialogOpen: ShortcutExperienceRootProps['folderNameDialogOpen'];
   setFolderNameDialogOpen: (open: boolean) => void;
   closeFolderNameDialog: () => void;
@@ -64,24 +48,20 @@ export type UseShortcutExperienceRootPropsParams = {
 export function useShortcutExperienceRootProps(
   params: UseShortcutExperienceRootPropsParams,
 ): ShortcutExperienceRootProps {
+  const onFolderNameDialogOpenChange = useMemo<ShortcutExperienceRootProps['onFolderNameDialogOpenChange']>(() => (
+    (open) => {
+      if (open) {
+        params.setFolderNameDialogOpen(true);
+        return;
+      }
+      params.closeFolderNameDialog();
+    }
+  ), [params.closeFolderNameDialog, params.setFolderNameDialogOpen]);
+
   return useMemo(() => ({
     selectionActions: {
-      onCreateShortcut: (insertIndex) => {
-        openCreateShortcutEditor({
-          setShortcutModalMode: params.setShortcutModalMode,
-          setSelectedShortcut: params.setSelectedShortcut,
-          setEditingTitle: params.setEditingTitle,
-          setEditingUrl: params.setEditingUrl,
-          setCurrentInsertIndex: params.setCurrentInsertIndex,
-          setShortcutEditOpen: params.setShortcutEditOpen,
-        }, insertIndex);
-      },
       onEditShortcut: params.onEditShortcut,
       onEditFolderShortcut: params.onEditFolderShortcut,
-      onDeleteShortcut: (shortcutIndex, shortcut) => {
-        params.setSelectedShortcut({ index: shortcutIndex, shortcut });
-        params.setShortcutDeleteOpen(true);
-      },
       onDeleteFolderShortcut: params.onDeleteFolderShortcut,
       onShortcutOpen: params.onShortcutOpen,
       onCreateFolder: params.onCreateFolder,
@@ -115,24 +95,55 @@ export function useShortcutExperienceRootProps(
       baseTimeAnimationEnabled: params.baseTimeAnimationEnabled,
       freezeDynamicWallpaperBase: params.freezeDynamicWallpaperBase,
     },
-    compactOverlayShortcut: params.compactOverlayShortcut,
+    folderTransitionController: params.folderTransitionController,
     compactFolderOverlayProps: params.compactFolderOverlayBaseProps,
-    folderTransitionPhase: params.folderTransitionPhase,
-    folderTransitionProgress: params.folderTransitionProgress,
-    openingSourceSnapshot: params.openingSourceSnapshot,
-    onOpeningLayoutReady: params.onOpeningLayoutReady,
-    onClosingLayoutReady: params.onClosingLayoutReady,
     folderNameDialogOpen: params.folderNameDialogOpen,
-    onFolderNameDialogOpenChange: (open) => {
-      if (open) {
-        params.setFolderNameDialogOpen(true);
-        return;
-      }
-      params.closeFolderNameDialog();
-    },
+    onFolderNameDialogOpenChange,
     folderNameDialogTitle: params.folderNameDialogTitle,
     folderNameDialogDescription: params.folderNameDialogDescription,
     folderNameDialogInitialName: params.folderNameDialogInitialName,
     onFolderNameSubmit: params.onFolderNameSubmit,
-  }), [params]);
+  }), [
+    onFolderNameDialogOpenChange,
+    params.baseTimeAnimationEnabled,
+    params.closeFolderNameDialog,
+    params.colorWallpaperGradient,
+    params.compactFolderOverlayBaseProps,
+    params.effectiveOverlayWallpaperSrc,
+    params.effectiveWallpaperMaskOpacity,
+    params.effectiveWallpaperMode,
+    params.folderNameDialogDescription,
+    params.folderNameDialogInitialName,
+    params.folderNameDialogOpen,
+    params.folderNameDialogTitle,
+    params.folderTransitionController,
+    params.freezeDynamicWallpaperBase,
+    params.freshWeatherVideo,
+    params.homeInteractiveSurfaceVisible,
+    params.homeMainContentBaseProps,
+    params.initialRevealReady,
+    params.modeFlags,
+    params.modeLayersVisible,
+    params.onCreateFolder,
+    params.onDeleteFolderShortcut,
+    params.onDissolveFolder,
+    params.onEditFolderShortcut,
+    params.onEditShortcut,
+    params.onFolderNameSubmit,
+    params.onMoveSelectedShortcutsToFolder,
+    params.onMoveSelectedShortcutsToScenario,
+    params.onOverlayImageReady,
+    params.onPinSelectedShortcuts,
+    params.onSetFolderDisplayMode,
+    params.onShortcutOpen,
+    params.overlayBackgroundAlt,
+    params.searchExperienceBaseProps,
+    params.shortcutGridBaseProps,
+    params.shortcutGridHeatZoneInspectorEnabled,
+    params.shortcutGridHiddenShortcutId,
+    params.showOverlayWallpaperLayer,
+    params.topNavModeProps,
+    params.wallpaperAnimatedLayerStyle,
+    params.wallpaperClockBaseProps,
+  ]);
 }

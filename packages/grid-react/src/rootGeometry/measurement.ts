@@ -8,6 +8,7 @@ import type React from 'react';
 import { type RootShortcutGridItem } from '../rootShortcutGridHelpers';
 
 export type MeasuredRootGridItem = MeasuredDragItem<RootShortcutGridItem>;
+const ROOT_GRID_VISIBLE_MEASUREMENT_OVERSCAN_PX = 180;
 
 export function findScrollableParent(node: HTMLElement | null): HTMLElement | null {
   let current = node?.parentElement ?? null;
@@ -75,13 +76,86 @@ export function createRootGridMeasurementController(params: {
   items: RootShortcutGridItem[];
   itemElements: Map<string, HTMLDivElement>;
   scrollOffset: ScrollOffset;
+  rootRef: React.RefObject<HTMLDivElement | null>;
+  dragging: boolean;
+  dragLayoutSnapshotRef: React.MutableRefObject<MeasuredRootGridItem[] | null>;
+  stickySortIds?: string[];
 }) {
-  const { items, itemElements, scrollOffset } = params;
+  const {
+    items,
+    itemElements,
+    scrollOffset,
+    rootRef,
+    dragging,
+    dragLayoutSnapshotRef,
+    stickySortIds = [],
+  } = params;
 
-  const measureCurrentGridItems = () => measureRootGridItems(items, itemElements);
-  const measureVisibleGridItems = () => (
-    offsetMeasuredRootGridItemsByScrollOffset(measureCurrentGridItems(), scrollOffset) ?? []
-  );
+  const resolveBaseSnapshot = () => {
+    if (dragging && dragLayoutSnapshotRef.current) {
+      return dragLayoutSnapshotRef.current;
+    }
+
+    return measureRootGridItems(items, itemElements);
+  };
+
+  const resolveVisibleViewportRect = (): DOMRect | null => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const rootNode = rootRef.current;
+    if (!rootNode) {
+      return null;
+    }
+
+    const scrollParent = findScrollableParent(rootNode);
+    const viewportRect = scrollParent
+      ? scrollParent.getBoundingClientRect()
+      : new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+
+    return offsetDomRectByScrollOffset(viewportRect, scrollOffset);
+  };
+
+  const filterMeasuredItemsToVisibleViewport = (snapshot: MeasuredRootGridItem[]): MeasuredRootGridItem[] => {
+    const viewportRect = resolveVisibleViewportRect();
+    if (!viewportRect) {
+      return snapshot;
+    }
+
+    const stickySortIdSet = stickySortIds.length > 0
+      ? new Set(stickySortIds.filter(Boolean))
+      : null;
+    const minTop = viewportRect.top - ROOT_GRID_VISIBLE_MEASUREMENT_OVERSCAN_PX;
+    const maxBottom = viewportRect.bottom + ROOT_GRID_VISIBLE_MEASUREMENT_OVERSCAN_PX;
+    const minLeft = viewportRect.left - ROOT_GRID_VISIBLE_MEASUREMENT_OVERSCAN_PX;
+    const maxRight = viewportRect.right + ROOT_GRID_VISIBLE_MEASUREMENT_OVERSCAN_PX;
+
+    const filtered = snapshot.filter((item) => {
+      if (stickySortIdSet?.has(item.sortId)) {
+        return true;
+      }
+
+      return !(
+        item.rect.bottom < minTop
+        || item.rect.top > maxBottom
+        || item.rect.right < minLeft
+        || item.rect.left > maxRight
+      );
+    });
+
+    return filtered.length > 0 ? filtered : snapshot;
+  };
+
+  const measureCurrentGridItems = () => resolveBaseSnapshot() ?? [];
+  const measureVisibleGridItems = () => {
+    const visibleSnapshot = offsetMeasuredRootGridItemsByScrollOffset(
+      resolveBaseSnapshot(),
+      scrollOffset,
+    ) ?? [];
+
+    return filterMeasuredItemsToVisibleViewport(visibleSnapshot);
+  };
 
   return {
     measureCurrentGridItems,

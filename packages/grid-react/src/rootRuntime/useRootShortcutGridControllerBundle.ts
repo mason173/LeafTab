@@ -357,7 +357,19 @@ export function useRootShortcutGridControllerBundle({
     items,
     itemElements: itemElementsRef.current,
     scrollOffset: dragScrollOffset,
-  }), [dragScrollOffset, itemElementsRef, items]);
+    rootRef,
+    dragging,
+    dragLayoutSnapshotRef,
+    stickySortIds: activeDragId ? [activeDragId] : [],
+  }), [
+    activeDragId,
+    dragLayoutSnapshotRef,
+    dragScrollOffset,
+    dragging,
+    itemElementsRef,
+    items,
+    rootRef,
+  ]);
 
   const {
     clearDragRuntimeState,

@@ -437,7 +437,7 @@ export function resolveRootReorderSlotState<TShortcut extends Shortcut>(params: 
   const gridColumnWidth = !gridWidthPx || gridColumns <= 0
     ? null
     : (gridWidthPx - columnGap * Math.max(0, gridColumns - 1)) / Math.max(gridColumns, 1);
-  const shouldUseProjectedRootReorderSlots = Boolean(gridColumnWidth) && usesSpanAwareReorder;
+  const shouldUseProjectedRootReorderSlots = Boolean(activeDragId && gridColumnWidth) && usesSpanAwareReorder;
   const activeDragItem = items.find((item) => item.sortId === activeDragId) ?? null;
 
   const frozenSortIds = (

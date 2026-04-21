@@ -54,9 +54,6 @@ interface UseQuickAccessDrawerOptions {
 
 interface UseQuickAccessDrawerResult {
   quickAccessOpen: boolean;
-  quickAccessSnapPoint: number | string | null;
-  quickAccessDefaultSnapPoint: number;
-  quickAccessFullSnapPoint: number;
   isDrawerExpanded: boolean;
   drawerSurfaceOpacity: number;
   drawerLayoutProgress: number;
@@ -71,8 +68,6 @@ interface UseQuickAccessDrawerResult {
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   handleShortcutDragStart: () => void;
   handleShortcutDragEnd: () => void;
-  handleDrawerOpenChange: () => void;
-  handleActiveSnapPointChange: (next: number | string | null) => void;
 }
 
 export function useQuickAccessDrawer({
@@ -95,7 +90,7 @@ export function useQuickAccessDrawer({
     }),
     [topContentBottomPx, topContentSafeGapPx, viewportHeight],
   );
-  const [quickAccessOpen, setQuickAccessOpen] = useState(true);
+  const [quickAccessOpen] = useState(true);
   const [quickAccessSnapPoint, setQuickAccessSnapPoint] = useState<number | string | null>(quickAccessDefaultSnapPoint);
   const [drawerSurfaceOpacity, setDrawerSurfaceOpacity] = useState(0);
   const [drawerLayoutProgress, setDrawerLayoutProgress] = useState(0);
@@ -546,51 +541,6 @@ export function useQuickAccessDrawer({
     stopDragAutoScroll,
   ]);
 
-  const handleDrawerOpenChange = useCallback(() => {
-    setQuickAccessOpen(true);
-    setQuickAccessSnapPoint(quickAccessDefaultSnapPoint);
-    setDrawerSurfaceOpacityImmediate(0);
-    setDrawerLayoutProgressImmediate(0);
-    setBottomBounceOffsetImmediate(0);
-    dragInteractionActiveRef.current = false;
-    setDragInteractionActive(false);
-    lastDragPointerRef.current = null;
-    stopDragAutoScroll();
-    wheelIntentRef.current = 0;
-    blockedShortcutScrollSessionRef.current = null;
-    lastWheelTimestampRef.current = 0;
-    snapTransitionLockedRef.current = false;
-    if (snapTransitionTimerRef.current !== null) {
-      window.clearTimeout(snapTransitionTimerRef.current);
-      snapTransitionTimerRef.current = null;
-    }
-  }, [
-    quickAccessDefaultSnapPoint,
-    setBottomBounceOffsetImmediate,
-    setDrawerLayoutProgressImmediate,
-    setDrawerSurfaceOpacityImmediate,
-    stopDragAutoScroll,
-  ]);
-
-  const handleActiveSnapPointChange = useCallback((next: number | string | null) => {
-    setQuickAccessSnapPoint(next);
-    const nextSnapPoint = resolveDrawerSnapPoint(next, quickAccessDefaultSnapPoint);
-    const targetProgress = nextSnapPoint >= quickAccessFullSnapPoint - 0.001 ? 1 : 0;
-    animateDrawerSurfaceOpacity(targetProgress);
-    animateDrawerLayoutProgress(targetProgress);
-    wheelIntentRef.current = 0;
-    if (nextSnapPoint < quickAccessFullSnapPoint - 0.001) {
-      setBottomBounceOffsetImmediate(0);
-      blockedShortcutScrollSessionRef.current = null;
-    }
-  }, [
-    animateDrawerLayoutProgress,
-    animateDrawerSurfaceOpacity,
-    quickAccessDefaultSnapPoint,
-    quickAccessFullSnapPoint,
-    setBottomBounceOffsetImmediate,
-  ]);
-
   useEffect(() => {
     if (snapTransitionLockedRef.current) return;
     const targetProgress = isDrawerExpanded ? 1 : 0;
@@ -638,9 +588,6 @@ export function useQuickAccessDrawer({
 
   return {
     quickAccessOpen,
-    quickAccessSnapPoint,
-    quickAccessDefaultSnapPoint,
-    quickAccessFullSnapPoint,
     isDrawerExpanded,
     drawerSurfaceOpacity,
     drawerLayoutProgress,
@@ -655,7 +602,5 @@ export function useQuickAccessDrawer({
     drawerShortcutScrollRef,
     handleShortcutDragStart,
     handleShortcutDragEnd,
-    handleDrawerOpenChange,
-    handleActiveSnapPointChange,
   };
 }

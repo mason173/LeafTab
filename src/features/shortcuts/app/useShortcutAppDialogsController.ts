@@ -1,9 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import type { AppDialogsProps } from '@/components/AppDialogs';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
-import { useShortcutAppContext } from '@/features/shortcuts/app/ShortcutAppContext';
+import {
+  useShortcutDomainContext,
+  useShortcutFeatureActionsContext,
+  useShortcutUiContext,
+} from '@/features/shortcuts/app/ShortcutAppContext';
 import { resetShortcutEditorState } from '@/features/shortcuts/app/shortcutEditorState';
-import { useLeafTabSyncContext } from '@/features/sync/app/LeafTabSyncContext';
+import {
+  useLeafTabSyncActionsContext,
+  useLeafTabSyncConfigContext,
+  useLeafTabSyncDialogContext,
+  useLeafTabSyncMetaContext,
+  useLeafTabSyncStatusContext,
+} from '@/features/sync/app/LeafTabSyncContext';
 import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 import { createLeafTabWebdavEncryptionScopeKey } from '@/utils/leafTabSyncEncryption';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
@@ -43,7 +53,6 @@ export type SettingsDialogsInput = {
   settingsOpen: SettingsModalProps['isOpen'];
   setSettingsOpen: SettingsModalProps['onOpenChange'];
   username: SettingsModalProps['username'];
-  onLogin: SettingsModalProps['onLogin'];
   onLogout: SettingsModalProps['onLogout'];
   shortcutsCount: SettingsModalProps['shortcutsCount'];
   displayMode: SettingsModalProps['displayMode'];
@@ -69,8 +78,6 @@ export type SettingsDialogsInput = {
   disableSyncCardAccentAnimation: SettingsModalProps['disableSyncCardAccentAnimation'];
   showTime: SettingsModalProps['showTime'];
   onShowTimeChange: SettingsModalProps['onShowTimeChange'];
-  onExportData: SettingsModalProps['onExportData'];
-  onImportData: SettingsModalProps['onImportData'];
   wallpaperMode: SettingsModalProps['wallpaperMode'];
   onWallpaperModeChange: SettingsModalProps['onWallpaperModeChange'];
   bingWallpaper: SettingsModalProps['bingWallpaper'];
@@ -171,66 +178,72 @@ export function useShortcutAppDialogsController({
   consentDialogs: ConsentDialogsInput;
 }) {
   const { t } = useTranslation();
-  const shortcutApp = useShortcutAppContext();
-  const sync = useLeafTabSyncContext();
-  const scenarioEditMode = shortcutApp.state.domain.scenarioModes.find(
-    (mode) => mode.id === shortcutApp.state.ui.currentEditScenarioId,
+  const { state: domainState } = useShortcutDomainContext();
+  const { state: uiState, actions: uiActions } = useShortcutUiContext();
+  const shortcutActions = useShortcutFeatureActionsContext();
+  const syncActions = useLeafTabSyncActionsContext();
+  const syncConfigState = useLeafTabSyncConfigContext();
+  const syncDialogState = useLeafTabSyncDialogContext();
+  const syncMeta = useLeafTabSyncMetaContext();
+  const syncStatusState = useLeafTabSyncStatusContext();
+  const scenarioEditMode = domainState.scenarioModes.find(
+    (mode) => mode.id === uiState.currentEditScenarioId,
   ) ?? null;
 
   const shortcutModalProps = {
-    isOpen: shortcutApp.state.ui.shortcutEditOpen,
+    isOpen: uiState.shortcutEditOpen,
     onOpenChange: (open) => {
-      shortcutApp.actions.ui.setShortcutEditOpen(open);
+      uiActions.setShortcutEditOpen(open);
       if (!open) {
         resetShortcutEditorState({
-          setShortcutModalMode: shortcutApp.actions.ui.setShortcutModalMode,
-          setSelectedShortcut: shortcutApp.actions.ui.setSelectedShortcut,
-          setEditingTitle: shortcutApp.actions.ui.setEditingTitle,
-          setEditingUrl: shortcutApp.actions.ui.setEditingUrl,
-          setCurrentInsertIndex: shortcutApp.actions.ui.setCurrentInsertIndex,
+          setShortcutModalMode: uiActions.setShortcutModalMode,
+          setSelectedShortcut: uiActions.setSelectedShortcut,
+          setEditingTitle: uiActions.setEditingTitle,
+          setEditingUrl: uiActions.setEditingUrl,
+          setCurrentInsertIndex: uiActions.setCurrentInsertIndex,
         });
       }
     },
-    mode: shortcutApp.state.ui.shortcutModalMode,
-    initialShortcut: shortcutApp.state.ui.selectedShortcut?.shortcut
+    mode: uiState.shortcutModalMode,
+    initialShortcut: uiState.selectedShortcut?.shortcut
       ? {
-          ...shortcutApp.state.ui.selectedShortcut.shortcut,
-          title: shortcutApp.state.ui.editingTitle,
-          url: shortcutApp.state.ui.editingUrl,
+          ...uiState.selectedShortcut.shortcut,
+          title: uiState.editingTitle,
+          url: uiState.editingUrl,
         }
       : {
-          title: shortcutApp.state.ui.editingTitle,
-          url: shortcutApp.state.ui.editingUrl,
+          title: uiState.editingTitle,
+          url: uiState.editingUrl,
           icon: '',
         },
     iconCornerRadius: shortcutIconCornerRadius,
     iconScale: shortcutIconScale,
     iconAppearance: shortcutIconAppearance,
-    onSave: shortcutApp.actions.shortcuts.handleSaveShortcutEdit,
+    onSave: shortcutActions.handleSaveShortcutEdit,
   } satisfies ShortcutModalProps;
 
   const shortcutDeleteDialogProps = {
-    open: shortcutApp.state.ui.shortcutDeleteOpen,
-    onOpenChange: shortcutApp.actions.ui.setShortcutDeleteOpen,
-    title: isShortcutFolder(shortcutApp.state.ui.selectedShortcut?.shortcut)
+    open: uiState.shortcutDeleteOpen,
+    onOpenChange: uiActions.setShortcutDeleteOpen,
+    title: isShortcutFolder(uiState.selectedShortcut?.shortcut)
       ? t('shortcutDelete.folderTitle', { defaultValue: '删除文件夹' })
       : t('shortcutDelete.title'),
-    description: isShortcutFolder(shortcutApp.state.ui.selectedShortcut?.shortcut)
+    description: isShortcutFolder(uiState.selectedShortcut?.shortcut)
       ? t('shortcutDelete.folderDescription', { defaultValue: '删除后，文件夹里的快捷方式也会一起删除。' })
       : t('shortcutDelete.description'),
-    onConfirm: shortcutApp.actions.shortcuts.handleConfirmDeleteShortcut,
+    onConfirm: shortcutActions.handleConfirmDeleteShortcut,
   } satisfies AppDialogsProps['shortcutDeleteDialogProps'];
 
   const scenarioCreateDialogProps = {
-    open: shortcutApp.state.ui.scenarioCreateOpen,
-    onOpenChange: shortcutApp.actions.ui.setScenarioCreateOpen,
-    onSubmit: shortcutApp.actions.shortcuts.handleCreateScenarioMode,
+    open: uiState.scenarioCreateOpen,
+    onOpenChange: uiActions.setScenarioCreateOpen,
+    onSubmit: shortcutActions.handleCreateScenarioMode,
   } satisfies AppDialogsProps['scenarioCreateDialogProps'];
 
   const scenarioEditDialogProps = {
-    open: shortcutApp.state.ui.scenarioEditOpen,
-    onOpenChange: shortcutApp.actions.ui.setScenarioEditOpen,
-    onSubmit: shortcutApp.actions.shortcuts.handleUpdateScenarioMode,
+    open: uiState.scenarioEditOpen,
+    onOpenChange: uiActions.setScenarioEditOpen,
+    onSubmit: shortcutActions.handleUpdateScenarioMode,
     title: t('scenario.editTitle'),
     submitText: t('common.save'),
     mode: scenarioEditMode as ScenarioEditDialogProps['mode'],
@@ -257,7 +270,7 @@ export function useShortcutAppDialogsController({
     isOpen: settingsDialogs.settingsOpen,
     onOpenChange: settingsDialogs.setSettingsOpen,
     username: settingsDialogs.username,
-    onLogin: settingsDialogs.onLogin,
+    onLogin: syncActions.handleRequestCloudLogin,
     onLogout: settingsDialogs.onLogout,
     shortcutsCount: settingsDialogs.shortcutsCount,
     displayMode: settingsDialogs.displayMode,
@@ -277,8 +290,8 @@ export function useShortcutAppDialogsController({
     disableSyncCardAccentAnimation: settingsDialogs.disableSyncCardAccentAnimation,
     showTime: settingsDialogs.showTime,
     onShowTimeChange: settingsDialogs.onShowTimeChange,
-    onExportData: settingsDialogs.onExportData,
-    onImportData: settingsDialogs.onImportData,
+    onExportData: syncActions.handleExportData,
+    onImportData: syncActions.handleImportData,
     wallpaperMode: settingsDialogs.wallpaperMode,
     onWallpaperModeChange: settingsDialogs.onWallpaperModeChange,
     bingWallpaper: settingsDialogs.bingWallpaper,
@@ -294,15 +307,15 @@ export function useShortcutAppDialogsController({
     onPrivacyConsentChange: settingsDialogs.onPrivacyConsentChange,
     onOpenAdminModal: settingsDialogs.onOpenAdminModal,
     onOpenAboutModal: settingsDialogs.onOpenAboutModal,
-    onCloudSyncNow: sync.actions.handleCloudSyncNowFromCenter,
+    onCloudSyncNow: syncActions.handleCloudSyncNowFromCenter,
     onOpenSyncCenter: () => {
       settingsDialogs.setSettingsOpen(false);
       settingsDialogs.setLeafTabSyncDialogOpen(true);
     },
-    onOpenWebdavConfig: sync.actions.handleOpenWebdavConfig,
-    onWebdavSync: sync.actions.resolveWebdavConflict,
-    onWebdavEnable: sync.actions.handleEnableWebdavSync,
-    onWebdavDisable: sync.actions.handleDisableWebdavSync,
+    onOpenWebdavConfig: syncActions.handleOpenWebdavConfig,
+    onWebdavSync: syncActions.resolveWebdavConflict,
+    onWebdavEnable: syncActions.handleEnableWebdavSync,
+    onWebdavDisable: syncActions.handleDisableWebdavSync,
     onOpenShortcutGuide: () => settingsDialogs.setShortcutGuideOpen(true),
   } satisfies SettingsModalProps;
 
@@ -377,8 +390,8 @@ export function useShortcutAppDialogsController({
   } satisfies AboutModalProps;
 
   const exportBackupDialogProps = {
-    open: sync.state.exportBackupDialogOpen,
-    onOpenChange: sync.actions.setExportBackupDialogOpen,
+    open: syncDialogState.exportBackupDialogOpen,
+    onOpenChange: syncActions.setExportBackupDialogOpen,
     onBackToSettings: utilityDialogs.onBackToSettings,
     mode: 'export',
     availableScope: {
@@ -388,34 +401,34 @@ export function useShortcutAppDialogsController({
     defaultScope: {
       ...getDefaultLocalBackupExportScope(),
     },
-    onConfirm: sync.actions.executeExportData,
+    onConfirm: syncActions.executeExportData,
   } satisfies BackupDialogProps;
 
   const importBackupDialogProps = {
-    open: sync.state.importBackupDialogOpen,
-    onOpenChange: sync.actions.handleImportBackupDialogOpenChange,
+    open: syncDialogState.importBackupDialogOpen,
+    onOpenChange: syncActions.handleImportBackupDialogOpenChange,
     onBackToSettings: utilityDialogs.onBackToSettings,
     mode: 'import',
-    availableScope: sync.state.importBackupScopePayload
+    availableScope: syncDialogState.importBackupScopePayload
       ? {
-          shortcuts: Boolean(sync.state.importBackupScopePayload.exportScope.shortcuts),
-          bookmarks: Boolean(sync.state.importBackupScopePayload.exportScope.bookmarks),
+          shortcuts: Boolean(syncDialogState.importBackupScopePayload.exportScope.shortcuts),
+          bookmarks: Boolean(syncDialogState.importBackupScopePayload.exportScope.bookmarks),
         }
       : {
           shortcuts: true,
           bookmarks: true,
         },
-    defaultScope: sync.state.importBackupScopePayload
+    defaultScope: syncDialogState.importBackupScopePayload
       ? {
           shortcuts: true,
-          bookmarks: sync.state.cloudSyncBookmarksEnabled
-            && Boolean(sync.state.importBackupScopePayload.exportScope.bookmarks),
+          bookmarks: syncConfigState.cloudSyncBookmarksEnabled
+            && Boolean(syncDialogState.importBackupScopePayload.exportScope.bookmarks),
         }
       : {
           shortcuts: true,
-          bookmarks: sync.state.cloudSyncBookmarksEnabled,
+          bookmarks: syncConfigState.cloudSyncBookmarksEnabled,
         },
-    onConfirm: sync.actions.handleImportBackupScopeConfirm,
+    onConfirm: syncActions.handleImportBackupScopeConfirm,
   } satisfies BackupDialogProps;
 
   const webdavConfigDialogProps = {
@@ -435,17 +448,20 @@ export function useShortcutAppDialogsController({
       const nextConfig = readWebdavConfigFromStorage({ allowDisabled: true });
       const nextScopeKey = createLeafTabWebdavEncryptionScopeKey(
         nextConfig?.url || '',
-        sync.meta.resolveLeafTabSyncRootPath(nextConfig),
+        syncMeta.resolveLeafTabSyncRootPath(nextConfig),
       );
       syncProviderDialogs.setWebdavEnableAfterConfigSave(false);
       syncProviderDialogs.setWebdavShowConnectionFields(false);
       syncProviderDialogs.setPendingWebdavEnableScopeKey(nextScopeKey || null);
     },
     onSaveSuccess: async () => {
-      if (!sync.state.leafTabWebdavEnabled || sync.state.leafTabSyncState.status === 'syncing') {
+      if (!syncConfigState.leafTabWebdavEnabled) {
         return;
       }
-      await sync.actions.handleLeafTabAutoSync();
+      if (syncStatusState.leafTabSyncState.status === 'syncing') {
+        return;
+      }
+      await syncActions.handleLeafTabAutoSync();
     },
     onDisableSync: async () => {
       syncProviderDialogs.setConfirmDisableWebdavSyncOpen(true);
@@ -456,7 +472,7 @@ export function useShortcutAppDialogsController({
     open: syncProviderDialogs.cloudSyncConfigOpen,
     onBackToParent: syncProviderDialogs.onBackToParent,
     onOpenChange: syncProviderDialogs.setCloudSyncConfigOpen,
-    onSaveSuccess: sync.actions.handleCloudSyncConfigSaved,
+    onSaveSuccess: syncActions.handleCloudSyncConfigSaved,
     onLinkGoogle: syncProviderDialogs.onLinkGoogle,
     onLogout: syncProviderDialogs.onCloudSyncLogout,
   } satisfies CloudSyncConfigDialogProps;
@@ -484,14 +500,14 @@ export function useShortcutAppDialogsController({
   } satisfies ConfirmSyncDialogProps;
 
   const importConfirmDialog = {
-    open: sync.state.importConfirmOpen,
-    setOpen: sync.actions.setImportConfirmOpen,
-    payload: sync.state.importPendingPayload,
-    setPayload: sync.actions.setImportPendingPayload,
-    busy: sync.state.importConfirmBusy,
-    setBusy: sync.actions.setImportConfirmBusy,
+    open: syncDialogState.importConfirmOpen,
+    setOpen: syncActions.setImportConfirmOpen,
+    payload: syncDialogState.importPendingPayload,
+    setPayload: syncActions.setImportPendingPayload,
+    busy: syncDialogState.importConfirmBusy,
+    setBusy: syncActions.setImportConfirmBusy,
     downloadCloudBackupEnvelope: async () => {},
-    applyUndoPayload: sync.actions.handleImportConfirmApply,
+    applyUndoPayload: syncActions.handleImportConfirmApply,
     onSuccess: () => settingsDialogs.setSettingsOpen(false),
   } satisfies ImportConfirmDialogProps;
 

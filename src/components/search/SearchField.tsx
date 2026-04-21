@@ -93,6 +93,7 @@ function SearchFieldInput({
       <input
         ref={inputRef}
         type="text"
+        data-testid="home-search-input"
         value={value}
         onChange={(e) => {
           onValueChange(e.target.value, e.nativeEvent);

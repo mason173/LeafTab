@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SearchPlaceholderTextProps } from '@/components/search/SearchPlaceholderText.shared';
 
-const PLACEHOLDER_SWAP_TRANSITION_MS = 180;
+const PLACEHOLDER_FADE_TRANSITION_MS = 320;
+const PLACEHOLDER_FADE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const PLACEHOLDER_FADE_BLUR_PX = 2;
 
 export function SearchPlaceholderText({
   text,
@@ -51,7 +53,7 @@ export function SearchPlaceholderText({
       setPreviousText(null);
       setIsAnimating(false);
       cleanupTimerRef.current = null;
-    }, PLACEHOLDER_SWAP_TRANSITION_MS);
+    }, PLACEHOLDER_FADE_TRANSITION_MS);
 
     return () => {
       if (animationFrameRef.current !== null) {
@@ -86,8 +88,9 @@ export function SearchPlaceholderText({
           className="absolute inset-0 block truncate"
           style={{
             opacity: isAnimating ? 0 : 1,
-            transform: `translateY(${isAnimating ? '-0.28em' : '0'})`,
-            transition: `transform ${PLACEHOLDER_SWAP_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${PLACEHOLDER_SWAP_TRANSITION_MS}ms linear`,
+            filter: `blur(${isAnimating ? PLACEHOLDER_FADE_BLUR_PX : 0}px)`,
+            transition: `opacity ${PLACEHOLDER_FADE_TRANSITION_MS}ms ${PLACEHOLDER_FADE_EASING}, filter ${PLACEHOLDER_FADE_TRANSITION_MS}ms ${PLACEHOLDER_FADE_EASING}`,
+            willChange: 'opacity, filter',
           }}
         >
           {previousText}
@@ -97,10 +100,13 @@ export function SearchPlaceholderText({
         className="block truncate"
         style={{
           opacity: previousText === null ? 1 : (isAnimating ? 1 : 0),
-          transform: `translateY(${previousText === null ? '0' : (isAnimating ? '0' : '0.28em')})`,
+          filter: previousText === null
+            ? 'blur(0px)'
+            : `blur(${isAnimating ? 0 : PLACEHOLDER_FADE_BLUR_PX}px)`,
           transition: previousText === null
             ? 'none'
-            : `transform ${PLACEHOLDER_SWAP_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${PLACEHOLDER_SWAP_TRANSITION_MS}ms linear`,
+            : `opacity ${PLACEHOLDER_FADE_TRANSITION_MS}ms ${PLACEHOLDER_FADE_EASING}, filter ${PLACEHOLDER_FADE_TRANSITION_MS}ms ${PLACEHOLDER_FADE_EASING}`,
+          willChange: previousText === null ? undefined : 'opacity, filter',
         }}
       >
         {currentText}

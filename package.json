@@ -87,6 +87,7 @@
             "test": "vitest run",
             "test:e2e:build": "playwright test",
             "test:e2e:list": "playwright test --list",
+            "profile:fluidity": "node scripts/profile-fluidity.mjs",
             "test:watch": "vitest",
             "check": "npm run typecheck && npm run test && npm run build",
             "grid:build:local": "npm run build --workspace @leaftab/workspace-core && npm run build --workspace @leaftab/workspace-react && npm run build --workspace @leaftab/workspace-preset-leaftab",

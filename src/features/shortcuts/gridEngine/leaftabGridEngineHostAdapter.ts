@@ -76,6 +76,32 @@ export type LeaftabGridEngineHostAdapter = {
   compactFolderOverlayProps: LeaftabGridEngineCompactFolderSurfaceProps;
 };
 
+function buildRootShortcutStructureSignature(shortcuts: readonly Shortcut[]) {
+  return shortcuts
+    .map((shortcut) => {
+      const baseId = (
+        shortcut.id?.trim()
+        || `${shortcut.url}::${shortcut.title}`.trim()
+        || 'shortcut'
+      );
+
+      if (shortcut.kind === 'folder') {
+        return `${baseId}::folder::${shortcut.folderDisplayMode === 'large' ? 'large' : 'small'}`;
+      }
+
+      return `${baseId}::link`;
+    })
+    .sort()
+    .join('|');
+}
+
+export function buildLeaftabRootSurfaceInstanceKey(
+  scenarioId: string,
+  shortcuts: readonly Shortcut[],
+) {
+  return `${scenarioId}::${buildRootShortcutStructureSignature(shortcuts)}`;
+}
+
 type CreateLeaftabGridEngineHostAdapterParams = {
   scenarioId: string;
   shortcuts: Shortcut[];
@@ -124,6 +150,10 @@ export function createLeaftabGridEngineHostAdapter(
   params: CreateLeaftabGridEngineHostAdapterParams,
 ): LeaftabGridEngineHostAdapter {
   const rootItems = shortcutsToGridEngineItems(params.shortcuts);
+  const rootSurfaceInstanceKey = buildLeaftabRootSurfaceInstanceKey(
+    params.scenarioId,
+    params.shortcuts,
+  );
 
   return {
     scenarioId: params.scenarioId,
@@ -139,7 +169,7 @@ export function createLeaftabGridEngineHostAdapter(
       );
     },
     rootGridProps: {
-      surfaceInstanceKey: params.scenarioId,
+      surfaceInstanceKey: rootSurfaceInstanceKey,
       containerHeight: params.containerHeight,
       bottomInset: params.bottomInset,
       shortcuts: params.shortcuts,

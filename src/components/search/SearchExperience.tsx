@@ -31,6 +31,7 @@ import { ensureExtensionPermission } from '@/utils/extensionPermissions';
 import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
+import { RenderProfileBoundary } from '@/dev/renderProfiler';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
@@ -904,44 +905,46 @@ export const SearchExperience = memo(function SearchExperience({
   }, [searchSessionModel.mode, t]);
 
   return (
-    <SearchBar
-      value={searchValue}
-      onValueChange={handleSearchInputChange}
-      onSubmit={handleSearchSubmit}
-      searchEngine={searchEngine}
-      dropdownOpen={dropdownOpen}
-      onEngineOpenChange={setDropdownOpen}
-      onEngineSelect={handleEngineSelect}
-      searchActions={searchActions}
-      historyOpen={historyOpen}
-      onHistoryOpen={handleSearchHistoryOpen}
-      onInputFocus={handleSearchInputFocus}
-      onSuggestionSelect={activateSearchAction}
-      onSuggestionHighlight={handleSearchSuggestionHighlight}
-      onHistoryClear={handleSearchHistoryClear}
-      onClear={handleSearchClear}
-      historyRef={searchAreaRef}
-      placeholder={rotatingSearchPlaceholder || t('search.placeholderDynamic')}
-      calculatorInlinePreview={searchInlinePreview}
-      onKeyDown={handleSuggestionKeyDown}
-      historySelectedIndex={historySelectedIndex}
-      inputRef={inputRef}
-      blankMode={blankMode}
-      forceWhiteTheme={forceWhiteTheme}
-      subtleDarkTone={subtleDarkTone}
-      searchSurfaceStyle={searchSurfaceStyle}
-      disablePlaceholderAnimation={disablePlaceholderAnimation}
-      lightweightSearchUi={lightweightSearchUi}
-      searchHeight={searchHeight}
-      searchInputFontSize={searchInputFontSize}
-      searchHorizontalPadding={searchHorizontalPadding}
-      searchActionSize={searchActionSize}
-      showEngineSwitcher={ENABLE_SEARCH_ENGINE_SWITCHER}
-      statusNotice={searchDropdownStatusNotice}
-      emptyStateLabel={searchDropdownEmptyStateLabel}
-      showSuggestionNumberHints={historyOpen && suggestionModifierHeld}
-      currentBrowserTabId={currentBrowserTabId}
-      allowSelectedSuggestionEnter={historyOpen && historySelectedIndex !== -1}
-    />
+    <RenderProfileBoundary id="SearchExperience">
+      <SearchBar
+        value={searchValue}
+        onValueChange={handleSearchInputChange}
+        onSubmit={handleSearchSubmit}
+        searchEngine={searchEngine}
+        dropdownOpen={dropdownOpen}
+        onEngineOpenChange={setDropdownOpen}
+        onEngineSelect={handleEngineSelect}
+        searchActions={searchActions}
+        historyOpen={historyOpen}
+        onHistoryOpen={handleSearchHistoryOpen}
+        onInputFocus={handleSearchInputFocus}
+        onSuggestionSelect={activateSearchAction}
+        onSuggestionHighlight={handleSearchSuggestionHighlight}
+        onHistoryClear={handleSearchHistoryClear}
+        onClear={handleSearchClear}
+        historyRef={searchAreaRef}
+        placeholder={rotatingSearchPlaceholder || t('search.placeholderDynamic')}
+        calculatorInlinePreview={searchInlinePreview}
+        onKeyDown={handleSuggestionKeyDown}
+        historySelectedIndex={historySelectedIndex}
+        inputRef={inputRef}
+        blankMode={blankMode}
+        forceWhiteTheme={forceWhiteTheme}
+        subtleDarkTone={subtleDarkTone}
+        searchSurfaceStyle={searchSurfaceStyle}
+        disablePlaceholderAnimation={disablePlaceholderAnimation}
+        lightweightSearchUi={lightweightSearchUi}
+        searchHeight={searchHeight}
+        searchInputFontSize={searchInputFontSize}
+        searchHorizontalPadding={searchHorizontalPadding}
+        searchActionSize={searchActionSize}
+        showEngineSwitcher={ENABLE_SEARCH_ENGINE_SWITCHER}
+        statusNotice={searchDropdownStatusNotice}
+        emptyStateLabel={searchDropdownEmptyStateLabel}
+        showSuggestionNumberHints={historyOpen && suggestionModifierHeld}
+        currentBrowserTabId={currentBrowserTabId}
+        allowSelectedSuggestionEnter={historyOpen && historySelectedIndex !== -1}
+      />
+    </RenderProfileBoundary>
   );
 });

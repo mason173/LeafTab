@@ -240,9 +240,6 @@ export const HomeMainContent = memo(function HomeMainContent({
         modeFlags={modeFlags}
         contentWidth={layout.contentWidth}
         quickAccessOpen={drawer.quickAccessOpen}
-        quickAccessSnapPoint={drawer.quickAccessSnapPoint}
-        quickAccessDefaultSnapPoint={drawer.quickAccessDefaultSnapPoint}
-        quickAccessFullSnapPoint={drawer.quickAccessFullSnapPoint}
         isDrawerExpanded={drawer.isDrawerExpanded}
         drawerOverlayOpacity={drawer.drawerOverlayOpacity}
         drawerSurfaceOpacity={drawer.drawerSurfaceOpacity}
@@ -269,8 +266,6 @@ export const HomeMainContent = memo(function HomeMainContent({
           onDragStart: handleShortcutGridDragStart,
           onDragEnd: handleShortcutGridDragEnd,
         }}
-        onDrawerOpenChange={drawer.handleDrawerOpenChange}
-        onActiveSnapPointChange={drawer.handleActiveSnapPointChange}
       />
     </>
   );

@@ -395,6 +395,263 @@ function FolderPanelTitle({
   );
 }
 
+type HiddenMeasurementLayerProps = {
+  folderId: string;
+  folderTitle: string;
+  folderChildren: Shortcut[];
+  emptyText: string;
+  predictedPanelWidthPx: number;
+  rootGridColumns?: number;
+  compactIconSize: number;
+  iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
+  useReadableDarkText: boolean;
+  roundedCorner: string;
+  panelHeightPx: number | null;
+  maxPanelHeightPx: number;
+  measureSurfaceRef: React.RefObject<HTMLDivElement | null>;
+  measureTitleRef: React.RefObject<HTMLDivElement | null>;
+  measureTitleTextRef: React.RefObject<HTMLDivElement | null>;
+  measureScrollRef: React.RefObject<HTMLDivElement | null>;
+  onShortcutOpen: (shortcut: Shortcut) => void;
+  onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, childShortcut: Shortcut) => void;
+  onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
+};
+
+const HiddenMeasurementLayer = React.memo(function HiddenMeasurementLayer({
+  folderId,
+  folderTitle,
+  folderChildren,
+  emptyText,
+  predictedPanelWidthPx,
+  rootGridColumns,
+  compactIconSize,
+  iconCornerRadius,
+  iconAppearance,
+  useReadableDarkText,
+  roundedCorner,
+  panelHeightPx,
+  maxPanelHeightPx,
+  measureSurfaceRef,
+  measureTitleRef,
+  measureTitleTextRef,
+  measureScrollRef,
+  onShortcutOpen,
+  onShortcutContextMenu,
+  onShortcutDropIntent,
+}: HiddenMeasurementLayerProps) {
+  return (
+    <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+      <div
+        ref={measureSurfaceRef}
+        className={`relative overflow-hidden ${PANEL_WIDTH_CLASSNAME}`}
+        style={{
+          borderRadius: roundedCorner,
+          height: panelHeightPx ? `${panelHeightPx}px` : undefined,
+          maxHeight: `${maxPanelHeightPx}px`,
+          visibility: 'hidden',
+        }}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={buildFolderPanelSurfaceStyle(roundedCorner)}
+        />
+        <div className="relative flex h-full flex-col">
+          <div
+            ref={measureTitleRef}
+            className={FOLDER_TITLE_PADDING_CLASSNAME}
+          >
+            <div
+              ref={measureTitleTextRef}
+              className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white'}`}
+            >
+              {folderTitle}
+            </div>
+          </div>
+          <div
+            ref={measureScrollRef}
+            data-folder-overlay-scroll-region="true"
+            className={FOLDER_SCROLL_REGION_CLASSNAME}
+          >
+            <FolderShortcutSurface
+              folderId={folderId}
+              shortcuts={folderChildren}
+              emptyText={emptyText}
+              initialWidthPx={predictedPanelWidthPx}
+              rootGridColumns={rootGridColumns}
+              compactIconSize={compactIconSize}
+              iconCornerRadius={iconCornerRadius}
+              iconAppearance={iconAppearance}
+              forceTextWhite={!useReadableDarkText}
+              showShortcutTitles
+              animateShortcutTitlesOnMount={false}
+              maskBoundaryRef={measureSurfaceRef}
+              onShortcutOpen={onShortcutOpen}
+              onShortcutContextMenu={onShortcutContextMenu}
+              onShortcutDropIntent={onShortcutDropIntent}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+type SettledFolderLayerProps = {
+  targetFrameStyle: React.CSSProperties;
+  shortcut: Shortcut;
+  folderChildren: Shortcut[];
+  folderTitle: string;
+  emptyText: string;
+  transitionPhase: FolderTransitionPhase;
+  editingTitle: boolean;
+  draftTitle: string;
+  titleInputRef: React.RefObject<HTMLInputElement | null>;
+  openSurfaceRef: React.RefObject<HTMLDivElement | null>;
+  rootGridColumns?: number;
+  compactIconSize: number;
+  iconCornerRadius: number;
+  iconAppearance?: ShortcutIconAppearance;
+  predictedPanelWidthPx: number;
+  useReadableDarkText: boolean;
+  roundedCorner: string;
+  folderDragActive: boolean;
+  onDraftTitleChange: (value: string) => void;
+  onStartEditingTitle: () => void;
+  onCommitTitle: () => void;
+  onCancelTitleEdit: () => void;
+  onSurfaceClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onShortcutOpen: (shortcut: Shortcut) => void;
+  onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, childShortcut: Shortcut) => void;
+  onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
+  onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
+  onDragActiveChange?: (active: boolean) => void;
+};
+
+const SettledFolderLayer = React.memo(function SettledFolderLayer({
+  targetFrameStyle,
+  shortcut,
+  folderChildren,
+  folderTitle,
+  emptyText,
+  transitionPhase,
+  editingTitle,
+  draftTitle,
+  titleInputRef,
+  openSurfaceRef,
+  rootGridColumns,
+  compactIconSize,
+  iconCornerRadius,
+  iconAppearance,
+  predictedPanelWidthPx,
+  useReadableDarkText,
+  roundedCorner,
+  folderDragActive,
+  onDraftTitleChange,
+  onStartEditingTitle,
+  onCommitTitle,
+  onCancelTitleEdit,
+  onSurfaceClick,
+  onShortcutOpen,
+  onShortcutContextMenu,
+  onShortcutDropIntent,
+  onExtractDragStart,
+  onDragActiveChange,
+}: SettledFolderLayerProps) {
+  const showEditableTitle = transitionPhase === 'open' && editingTitle;
+  const allowTitleEditing = transitionPhase === 'open';
+  const showShortcutTitles = transitionPhase === 'open' || transitionPhase === 'closing-measure';
+
+  return (
+    <div className="pointer-events-none fixed inset-0">
+      <div className="absolute" style={{ ...targetFrameStyle, zIndex: OVERLAY_Z_INDEX + 4 }}>
+        <div
+          ref={openSurfaceRef}
+          data-testid="shortcut-folder-overlay"
+          data-folder-id={shortcut.id}
+          className="pointer-events-auto relative h-full w-full overflow-hidden"
+          style={{ borderRadius: roundedCorner }}
+          onClick={onSurfaceClick}
+        >
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={buildFolderPanelSurfaceStyle(roundedCorner)}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{
+              borderRadius: roundedCorner,
+              backgroundColor: 'rgba(15, 18, 24, 0)',
+              border: folderDragActive ? '2.5px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0)',
+              boxShadow: folderDragActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : undefined,
+              opacity: folderDragActive ? 1 : 0,
+              transition: 'opacity 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
+              pointerEvents: 'none',
+            }}
+          />
+          <div className="relative flex h-full flex-col">
+            {showEditableTitle ? (
+              <FolderPanelTitle
+                title={folderTitle}
+                allowEditing
+                draftTitle={draftTitle}
+                titleInputRef={titleInputRef}
+                useReadableDarkText={useReadableDarkText}
+                onDraftTitleChange={onDraftTitleChange}
+                onStartEditing={onStartEditingTitle}
+                onCommit={onCommitTitle}
+                onCancel={onCancelTitleEdit}
+              />
+            ) : (
+              <div className={FOLDER_TITLE_PADDING_CLASSNAME}>
+                <div className="text-center">
+                  {allowTitleEditing ? (
+                    <button
+                      type="button"
+                      className={`mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
+                      onClick={onStartEditingTitle}
+                    >
+                      {folderTitle}
+                    </button>
+                  ) : (
+                    <div className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}>
+                      {folderTitle}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className={FOLDER_SCROLL_REGION_CLASSNAME}>
+              <FolderShortcutSurface
+                folderId={shortcut.id}
+                shortcuts={folderChildren}
+                emptyText={emptyText}
+                initialWidthPx={predictedPanelWidthPx}
+                rootGridColumns={rootGridColumns}
+                compactIconSize={compactIconSize}
+                iconCornerRadius={iconCornerRadius}
+                iconAppearance={iconAppearance}
+                forceTextWhite={!useReadableDarkText}
+                showShortcutTitles={showShortcutTitles}
+                animateShortcutTitlesOnMount={false}
+                maskBoundaryRef={openSurfaceRef}
+                onShortcutOpen={onShortcutOpen}
+                onShortcutContextMenu={onShortcutContextMenu}
+                onShortcutDropIntent={onShortcutDropIntent}
+                onExtractDragStart={onExtractDragStart}
+                onDragActiveChange={onDragActiveChange}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export function ShortcutFolderCompactOverlay({
   shortcut,
   transitionPhase,
@@ -611,30 +868,32 @@ export function ShortcutFolderCompactOverlay({
   useEffect(() => {
     if (!shortcut || typeof window === 'undefined' || !layoutPhaseActive) return undefined;
 
+    const measureSurfaceNode = measureSurfaceRef.current;
+    const measureScrollNode = measureScrollRef.current;
     const handleRefresh = () => {
       updatePanelHeight();
       measureOverlayLayout();
     };
 
-    const resizeObserver = typeof ResizeObserver !== 'undefined' && measureSurfaceRef.current
+    const resizeObserver = typeof ResizeObserver !== 'undefined' && measureSurfaceNode
       ? new ResizeObserver(() => {
           handleRefresh();
         })
       : null;
 
-    if (measureSurfaceRef.current && resizeObserver) {
-      resizeObserver.observe(measureSurfaceRef.current);
+    if (measureSurfaceNode && resizeObserver) {
+      resizeObserver.observe(measureSurfaceNode);
     }
 
     window.addEventListener('resize', handleRefresh, { passive: true });
     window.addEventListener('scroll', handleRefresh, { passive: true, capture: true });
-    measureScrollRef.current?.addEventListener('scroll', handleRefresh, { passive: true });
+    measureScrollNode?.addEventListener('scroll', handleRefresh, { passive: true });
 
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', handleRefresh);
       window.removeEventListener('scroll', handleRefresh, true);
-      measureScrollRef.current?.removeEventListener('scroll', handleRefresh);
+      measureScrollNode?.removeEventListener('scroll', handleRefresh);
     };
   }, [layoutPhaseActive, measureOverlayLayout, shortcut, updatePanelHeight]);
 
@@ -666,12 +925,23 @@ export function ShortcutFolderCompactOverlay({
     titleInputRef.current?.select();
   }, [editingTitle, shortcut, transitionPhase]);
 
+  const handleCloseOverlay = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+  const handleFolderChildShortcutContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>, childShortcut: Shortcut) => {
+    if (!shortcut) return;
+    onShortcutContextMenu(event, shortcut.id, childShortcut);
+  }, [onShortcutContextMenu, shortcut]);
+  const handleStartEditingTitle = useCallback(() => {
+    setEditingTitle(true);
+  }, []);
+
   useEffect(() => {
     if (!shortcut) return undefined;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onOpenChange(false);
+        handleCloseOverlay();
       }
     };
 
@@ -679,7 +949,7 @@ export function ShortcutFolderCompactOverlay({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onOpenChange, shortcut]);
+  }, [handleCloseOverlay, shortcut]);
 
   const commitTitle = useCallback(() => {
     if (!shortcut) return;
@@ -696,6 +966,15 @@ export function ShortcutFolderCompactOverlay({
     setDraftTitle(shortcut?.title || '');
     setEditingTitle(false);
   }, [shortcut?.title]);
+  const handleSettledSurfaceClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (folderDragActive || !shouldCloseFolderFromOverlaySurfaceClick(event.target)) {
+      event.stopPropagation();
+      return;
+    }
+
+    event.stopPropagation();
+    handleCloseOverlay();
+  }, [folderDragActive, handleCloseOverlay]);
 
   if (!shortcut || typeof document === 'undefined') {
     return null;
@@ -721,6 +1000,7 @@ export function ShortcutFolderCompactOverlay({
   const showSettledLayer = Boolean(resolvedMetrics && (
     transitionPhase === 'open' || transitionPhase === 'closing-measure'
   ));
+  const showMeasurementLayer = layoutPhaseActive;
   const targetFrameStyle = resolvedMetrics
     ? {
         left: resolvedMetrics.targetRect.left,
@@ -736,6 +1016,7 @@ export function ShortcutFolderCompactOverlay({
   const shellVisibility = resolveFolderShellVisibility(openProgress);
 
   const folderTitle = shortcut.title || t('context.folder', { defaultValue: '文件夹' });
+  const folderEmptyText = t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' });
   const sourceTitleRect = activeSourceSnapshot?.sourceTitleRect
     ?? (sourceRect ? getFallbackSourceTitleRect({ sourceRect, title: folderTitle }) : null);
   const targetTitleRect = resolvedMetrics?.targetTitleRect ?? null;
@@ -767,63 +1048,33 @@ export function ShortcutFolderCompactOverlay({
           WebkitAppearance: 'none',
           appearance: 'none',
         }}
-        onClick={() => onOpenChange(false)}
+        onClick={handleCloseOverlay}
       />
 
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <div
-          ref={measureSurfaceRef}
-          className={`relative overflow-hidden ${PANEL_WIDTH_CLASSNAME}`}
-          style={{
-            borderRadius: roundedCorner,
-            height: panelHeightPx ? `${panelHeightPx}px` : undefined,
-            maxHeight: `${maxPanelHeightPx}px`,
-            visibility: 'hidden',
-          }}
-        >
-          <div
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={buildFolderPanelSurfaceStyle(roundedCorner)}
-          />
-          <div className="relative flex h-full flex-col">
-            <div
-              ref={measureTitleRef}
-              className={FOLDER_TITLE_PADDING_CLASSNAME}
-            >
-              <div
-                ref={measureTitleTextRef}
-                className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white'}`}
-              >
-                {folderTitle}
-              </div>
-            </div>
-            <div
-              ref={measureScrollRef}
-              data-folder-overlay-scroll-region="true"
-              className={FOLDER_SCROLL_REGION_CLASSNAME}
-            >
-              <FolderShortcutSurface
-                folderId={shortcut.id}
-                shortcuts={children}
-                emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
-                initialWidthPx={predictedPanelWidthPx}
-                rootGridColumns={rootGridColumns}
-                compactIconSize={compactIconSize}
-                iconCornerRadius={iconCornerRadius}
-                iconAppearance={iconAppearance}
-                forceTextWhite={!useReadableDarkText}
-                showShortcutTitles
-                animateShortcutTitlesOnMount={false}
-                maskBoundaryRef={measureSurfaceRef}
-                onShortcutOpen={onShortcutOpen}
-                onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}
-                onShortcutDropIntent={onShortcutDropIntent}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {showMeasurementLayer ? (
+        <HiddenMeasurementLayer
+          folderId={shortcut.id}
+          folderTitle={folderTitle}
+          folderChildren={children}
+          emptyText={folderEmptyText}
+          predictedPanelWidthPx={predictedPanelWidthPx}
+          rootGridColumns={rootGridColumns}
+          compactIconSize={compactIconSize}
+          iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
+          useReadableDarkText={useReadableDarkText}
+          roundedCorner={roundedCorner}
+          panelHeightPx={panelHeightPx}
+          maxPanelHeightPx={maxPanelHeightPx}
+          measureSurfaceRef={measureSurfaceRef}
+          measureTitleRef={measureTitleRef}
+          measureTitleTextRef={measureTitleTextRef}
+          measureScrollRef={measureScrollRef}
+          onShortcutOpen={onShortcutOpen}
+          onShortcutContextMenu={handleFolderChildShortcutContextMenu}
+          onShortcutDropIntent={onShortcutDropIntent}
+        />
+      ) : null}
 
       {showAnimationLayer && animatedPanelRect ? (
         <div className="pointer-events-none fixed inset-0">
@@ -959,101 +1210,36 @@ export function ShortcutFolderCompactOverlay({
       ) : null}
 
       {showSettledLayer && targetFrameStyle ? (
-        <div className="pointer-events-none fixed inset-0">
-          <div className="absolute" style={{ ...targetFrameStyle, zIndex: OVERLAY_Z_INDEX + 4 }}>
-            <div
-              ref={openSurfaceRef}
-              data-testid="shortcut-folder-overlay"
-              data-folder-id={shortcut.id}
-              className="pointer-events-auto relative h-full w-full overflow-hidden"
-              style={{ borderRadius: roundedCorner }}
-              onClick={(event) => {
-                if (folderDragActive || !shouldCloseFolderFromOverlaySurfaceClick(event.target)) {
-                  event.stopPropagation();
-                  return;
-                }
-
-                event.stopPropagation();
-                onOpenChange(false);
-              }}
-            >
-              <div
-                aria-hidden="true"
-                className="absolute inset-0"
-                style={buildFolderPanelSurfaceStyle(roundedCorner)}
-              />
-              <div
-                aria-hidden="true"
-                className="absolute inset-0"
-                style={{
-                  borderRadius: roundedCorner,
-                  backgroundColor: 'rgba(15, 18, 24, 0)',
-                  border: folderDragActive ? '2.5px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0)',
-                  boxShadow: folderDragActive ? 'inset 0 0 0 1px rgba(255,255,255,0.05)' : undefined,
-                  opacity: folderDragActive ? 1 : 0,
-                  transition: 'opacity 120ms ease-out, border-color 120ms ease-out, box-shadow 120ms ease-out',
-                  pointerEvents: 'none',
-                }}
-              />
-              <div className="relative flex h-full flex-col">
-                {transitionPhase === 'open' && editingTitle ? (
-                  <FolderPanelTitle
-                    title={folderTitle}
-                    allowEditing
-                    draftTitle={draftTitle}
-                    titleInputRef={titleInputRef}
-                    useReadableDarkText={useReadableDarkText}
-                    onDraftTitleChange={setDraftTitle}
-                    onStartEditing={() => {}}
-                    onCommit={commitTitle}
-                    onCancel={cancelTitleEdit}
-                  />
-                ) : (
-                  <div className={FOLDER_TITLE_PADDING_CLASSNAME}>
-                    <div className="text-center">
-                      {transitionPhase === 'open' ? (
-                        <button
-                          type="button"
-                          className={`mx-auto block max-w-[320px] truncate border-0 bg-transparent px-0 text-center text-[22px] font-semibold tracking-[-0.02em] outline-none ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}
-                          onClick={() => setEditingTitle(true)}
-                        >
-                          {folderTitle}
-                        </button>
-                      ) : (
-                        <div className={`mx-auto block max-w-[320px] truncate text-center text-[22px] font-semibold tracking-[-0.02em] ${useReadableDarkText ? 'text-foreground' : 'text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.28)]'}`}>
-                          {folderTitle}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div
-                  className={FOLDER_SCROLL_REGION_CLASSNAME}
-                >
-                  <FolderShortcutSurface
-                    folderId={shortcut.id}
-                    shortcuts={children}
-                    emptyText={t('context.folderEmpty', { defaultValue: '这个文件夹里还没有快捷方式' })}
-                    initialWidthPx={predictedPanelWidthPx}
-                    rootGridColumns={rootGridColumns}
-                    compactIconSize={compactIconSize}
-                    iconCornerRadius={iconCornerRadius}
-                    iconAppearance={iconAppearance}
-                    forceTextWhite={!useReadableDarkText}
-                    showShortcutTitles={transitionPhase === 'open' || transitionPhase === 'closing-measure'}
-                    animateShortcutTitlesOnMount={false}
-                    maskBoundaryRef={openSurfaceRef}
-                    onShortcutOpen={onShortcutOpen}
-                    onShortcutContextMenu={(event, childShortcut) => onShortcutContextMenu(event, shortcut.id, childShortcut)}
-                    onShortcutDropIntent={onShortcutDropIntent}
-                    onExtractDragStart={transitionPhase === 'open' ? onExtractDragStart : undefined}
-                    onDragActiveChange={transitionPhase === 'open' ? setFolderDragActive : undefined}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SettledFolderLayer
+          targetFrameStyle={targetFrameStyle}
+          shortcut={shortcut}
+          folderChildren={children}
+          folderTitle={folderTitle}
+          emptyText={folderEmptyText}
+          transitionPhase={transitionPhase}
+          editingTitle={editingTitle}
+          draftTitle={draftTitle}
+          titleInputRef={titleInputRef}
+          openSurfaceRef={openSurfaceRef}
+          rootGridColumns={rootGridColumns}
+          compactIconSize={compactIconSize}
+          iconCornerRadius={iconCornerRadius}
+          iconAppearance={iconAppearance}
+          predictedPanelWidthPx={predictedPanelWidthPx}
+          useReadableDarkText={useReadableDarkText}
+          roundedCorner={roundedCorner}
+          folderDragActive={folderDragActive}
+          onDraftTitleChange={setDraftTitle}
+          onStartEditingTitle={handleStartEditingTitle}
+          onCommitTitle={commitTitle}
+          onCancelTitleEdit={cancelTitleEdit}
+          onSurfaceClick={handleSettledSurfaceClick}
+          onShortcutOpen={onShortcutOpen}
+          onShortcutContextMenu={handleFolderChildShortcutContextMenu}
+          onShortcutDropIntent={onShortcutDropIntent}
+          onExtractDragStart={transitionPhase === 'open' ? onExtractDragStart : undefined}
+          onDragActiveChange={transitionPhase === 'open' ? setFolderDragActive : undefined}
+        />
       ) : null}
     </div>,
     document.body,

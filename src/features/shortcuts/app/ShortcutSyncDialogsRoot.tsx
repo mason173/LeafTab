@@ -1,15 +1,30 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LeafTabDangerousSyncDialog } from '@/components/sync/LeafTabDangerousSyncDialog';
 import {
   LazyLeafTabSyncDialog,
   LazyLeafTabSyncEncryptionDialog,
 } from '@/lazy/components';
-import { useLeafTabSyncContext } from '@/features/sync/app/LeafTabSyncContext';
+import {
+  useLeafTabSyncActionsContext,
+  useLeafTabSyncConfigContext,
+  useLeafTabSyncDialogContext,
+  useLeafTabSyncStatusContext,
+} from '@/features/sync/app/LeafTabSyncContext';
+
+function useKeepMountedAfterFirstOpen(open: boolean) {
+  const [hasOpened, setHasOpened] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setHasOpened(true);
+    }
+  }, [open]);
+
+  return hasOpened || open;
+}
 
 export type ShortcutSyncDialogsRootProps = {
-  shouldMountLeafTabSyncDialog: boolean;
-  shouldMountLeafTabSyncEncryptionDialog: boolean;
   leafTabSyncDialogOpen: boolean;
   setLeafTabSyncDialogOpen: (open: boolean) => void;
   setSyncConfigBackTarget: (target: 'settings' | 'sync-center') => void;
@@ -17,114 +32,119 @@ export type ShortcutSyncDialogsRootProps = {
 };
 
 export function ShortcutSyncDialogsRoot({
-  shouldMountLeafTabSyncDialog,
-  shouldMountLeafTabSyncEncryptionDialog,
   leafTabSyncDialogOpen,
   setLeafTabSyncDialogOpen,
   setSyncConfigBackTarget,
   user,
 }: ShortcutSyncDialogsRootProps) {
   const { t } = useTranslation();
-  const sync = useLeafTabSyncContext();
+  const syncStatusState = useLeafTabSyncStatusContext();
+  const syncDialogState = useLeafTabSyncDialogContext();
+  const syncConfigState = useLeafTabSyncConfigContext();
+  const syncActions = useLeafTabSyncActionsContext();
+  const shouldMountLeafTabSyncDialog = useKeepMountedAfterFirstOpen(leafTabSyncDialogOpen);
+  const shouldMountLeafTabSyncEncryptionDialog = useKeepMountedAfterFirstOpen(
+    Boolean(syncDialogState.syncEncryptionDialogState?.open),
+  );
 
   const leafTabSyncDialogProps = {
     open: leafTabSyncDialogOpen,
-    onOpenChange: sync.actions.handleLeafTabSyncDialogOpenChange,
-    cloudAnalysis: sync.state.cloudLeafTabSyncAnalysis,
-    webdavAnalysis: sync.state.leafTabSyncAnalysis,
-    syncState: sync.state.leafTabSyncState,
-    cloudSyncState: sync.state.cloudLeafTabSyncState,
-    ready: sync.state.leafTabSyncReady,
-    hasConfig: sync.state.leafTabSyncHasConfig,
-    busy: sync.state.leafTabSyncState.status === 'syncing' || sync.state.cloudLeafTabSyncState.status === 'syncing',
-    bookmarkScopeLabel: sync.state.leafTabBookmarkSyncScopeLabel,
-    summaryText: sync.state.cloudLeafTabSyncLastResult?.summaryText || sync.state.leafTabSyncLastResult?.summaryText || '',
+    onOpenChange: syncActions.handleLeafTabSyncDialogOpenChange,
+    cloudAnalysis: syncConfigState.cloudLeafTabSyncAnalysis,
+    webdavAnalysis: syncConfigState.leafTabSyncAnalysis,
+    syncState: syncStatusState.leafTabSyncState,
+    cloudSyncState: syncStatusState.cloudLeafTabSyncState,
+    ready: syncConfigState.leafTabSyncReady,
+    hasConfig: syncConfigState.leafTabSyncHasConfig,
+    busy: syncStatusState.leafTabSyncState.status === 'syncing' || syncStatusState.cloudLeafTabSyncState.status === 'syncing',
+    bookmarkScopeLabel: syncConfigState.leafTabBookmarkSyncScopeLabel,
+    summaryText: syncConfigState.cloudLeafTabSyncLastResult?.summaryText || syncConfigState.leafTabSyncLastResult?.summaryText || '',
     cloudSignedIn: Boolean(user),
-    cloudEnabled: sync.state.cloudSyncEnabled,
-    cloudSyncBookmarksEnabled: sync.state.cloudSyncBookmarksEnabled,
+    cloudEnabled: syncConfigState.cloudSyncEnabled,
+    cloudSyncBookmarksEnabled: syncConfigState.cloudSyncBookmarksEnabled,
     cloudUsername: user || '',
-    cloudLastSyncLabel: sync.state.cloudLastSyncLabel,
-    cloudNextSyncLabel: sync.state.cloudNextSyncLabel,
-    cloudEncryptionReady: sync.state.cloudSyncEncryptionReady,
-    webdavConfigured: sync.state.leafTabWebdavConfigured,
-    webdavEnabled: sync.state.leafTabWebdavEnabled,
-    webdavSyncBookmarksEnabled: sync.state.webdavSyncBookmarksEnabled,
-    webdavProfileLabel: sync.state.leafTabWebdavProfileLabel,
-    webdavUrlLabel: sync.state.leafTabSyncWebdavConfig?.url || '',
-    webdavLastSyncLabel: sync.state.leafTabWebdavLastSyncLabel,
-    webdavNextSyncLabel: sync.state.leafTabWebdavNextSyncLabel,
-    webdavEncryptionReady: sync.state.leafTabWebdavEncryptionReady,
+    cloudLastSyncLabel: syncConfigState.cloudLastSyncLabel,
+    cloudNextSyncLabel: syncConfigState.cloudNextSyncLabel,
+    cloudEncryptionReady: syncConfigState.cloudSyncEncryptionReady,
+    webdavConfigured: syncConfigState.leafTabWebdavConfigured,
+    webdavEnabled: syncConfigState.leafTabWebdavEnabled,
+    webdavSyncBookmarksEnabled: syncConfigState.webdavSyncBookmarksEnabled,
+    webdavProfileLabel: syncConfigState.leafTabWebdavProfileLabel,
+    webdavUrlLabel: syncConfigState.leafTabSyncWebdavConfig?.url || '',
+    webdavLastSyncLabel: syncConfigState.leafTabWebdavLastSyncLabel,
+    webdavNextSyncLabel: syncConfigState.leafTabWebdavNextSyncLabel,
+    webdavEncryptionReady: syncConfigState.leafTabWebdavEncryptionReady,
     onCloudSyncNow: () => {
       setLeafTabSyncDialogOpen(false);
-      void sync.actions.handleCloudSyncNowFromCenter();
+      void syncActions.handleCloudSyncNowFromCenter();
     },
-    onOpenCloudConfig: sync.actions.handleOpenCloudSyncConfigFromSyncCenter,
+    onOpenCloudConfig: syncActions.handleOpenCloudSyncConfigFromSyncCenter,
     onCloudLogin: () => {
-      const shouldOpenLogin = sync.actions.handleRequestCloudLogin();
+      const shouldOpenLogin = syncActions.handleRequestCloudLogin();
       if (shouldOpenLogin) {
         setLeafTabSyncDialogOpen(false);
       }
     },
     onCloudRepairPull: () => {
-      void sync.actions.handleCloudRepairFromCenter('pull-remote');
+      void syncActions.handleCloudRepairFromCenter('pull-remote');
     },
     onCloudRepairPush: () => {
-      void sync.actions.handleCloudRepairFromCenter('push-local');
+      void syncActions.handleCloudRepairFromCenter('push-local');
     },
     onSyncNow: () => {
       setSyncConfigBackTarget('sync-center');
       setLeafTabSyncDialogOpen(false);
-      void sync.actions.handleWebdavSyncNowFromCenter();
+      void syncActions.handleWebdavSyncNowFromCenter();
     },
     onOpenConfig: () => {
-      sync.actions.handleOpenWebdavConfigFromSyncCenter();
+      syncActions.handleOpenWebdavConfigFromSyncCenter();
     },
     onOpenSetupConfig: () => {
-      sync.actions.handleOpenWebdavConfigFromSyncCenter({
+      syncActions.handleOpenWebdavConfigFromSyncCenter({
         showConnectionFields: true,
         enableAfterSave: true,
       });
     },
     onWebdavRepairPull: () => {
-      void sync.actions.handleWebdavRepairFromCenter('pull-remote');
+      void syncActions.handleWebdavRepairFromCenter('pull-remote');
     },
     onWebdavRepairPush: () => {
-      void sync.actions.handleWebdavRepairFromCenter('push-local');
+      void syncActions.handleWebdavRepairFromCenter('push-local');
     },
   };
 
   const leafTabSyncEncryptionDialogProps = {
-    open: Boolean(sync.state.syncEncryptionDialogState?.open),
-    mode: sync.state.syncEncryptionDialogState?.mode || 'setup',
-    providerLabel: sync.state.syncEncryptionDialogState?.providerLabel || t('leaftabSync.provider.generic', { defaultValue: '同步' }),
-    busy: sync.state.syncEncryptionDialogBusy,
-    onOpenChange: sync.actions.handleSyncEncryptionDialogOpenChange,
-    onSubmit: sync.actions.handleSubmitSyncEncryptionDialog,
+    open: Boolean(syncDialogState.syncEncryptionDialogState?.open),
+    mode: syncDialogState.syncEncryptionDialogState?.mode || 'setup',
+    providerLabel: syncDialogState.syncEncryptionDialogState?.providerLabel || t('leaftabSync.provider.generic', { defaultValue: '同步' }),
+    busy: syncDialogState.syncEncryptionDialogBusy,
+    onOpenChange: syncActions.handleSyncEncryptionDialogOpenChange,
+    onSubmit: syncActions.handleSubmitSyncEncryptionDialog,
   };
 
-  const dangerousSyncDialogProps = sync.state.dangerousSyncDialogState?.open
+  const dangerousSyncDialogProps = syncDialogState.dangerousSyncDialogState?.open
     ? {
-        open: sync.state.dangerousSyncDialogState.open,
+        open: syncDialogState.dangerousSyncDialogState.open,
         onOpenChange: (open: boolean) => {
           if (!open) {
-            sync.actions.closeDangerousSyncDialog();
+            syncActions.closeDangerousSyncDialog();
           }
         },
-        provider: sync.state.dangerousSyncDialogState.provider,
-        localBookmarkCount: sync.state.dangerousSyncDialogState.localBookmarkCount,
-        remoteBookmarkCount: sync.state.dangerousSyncDialogState.remoteBookmarkCount,
-        detectedFromCount: sync.state.dangerousSyncDialogState.detectedFromCount,
-        detectedToCount: sync.state.dangerousSyncDialogState.detectedToCount,
-        busyAction: sync.state.dangerousSyncDialogBusyAction,
+        provider: syncDialogState.dangerousSyncDialogState.provider,
+        localBookmarkCount: syncDialogState.dangerousSyncDialogState.localBookmarkCount,
+        remoteBookmarkCount: syncDialogState.dangerousSyncDialogState.remoteBookmarkCount,
+        detectedFromCount: syncDialogState.dangerousSyncDialogState.detectedFromCount,
+        detectedToCount: syncDialogState.dangerousSyncDialogState.detectedToCount,
+        busyAction: syncDialogState.dangerousSyncDialogBusyAction,
         onContinueWithoutBookmarks: () => {
-          void sync.actions.handleDangerousSyncDialogContinueWithoutBookmarks();
+          void syncActions.handleDangerousSyncDialogContinueWithoutBookmarks();
         },
-        onDefer: sync.actions.handleDangerousSyncDialogDefer,
+        onDefer: syncActions.handleDangerousSyncDialogDefer,
         onUseRemote: () => {
-          void sync.actions.handleDangerousSyncDialogUseRemote();
+          void syncActions.handleDangerousSyncDialogUseRemote();
         },
         onUseLocal: () => {
-          void sync.actions.handleDangerousSyncDialogUseLocal();
+          void syncActions.handleDangerousSyncDialogUseLocal();
         },
       }
     : null;

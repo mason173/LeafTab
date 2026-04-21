@@ -10,11 +10,13 @@ function ActionButton({
   icon,
   label,
   variant = 'inverted',
+  testId,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label?: string;
   variant?: 'inverted' | 'default';
+  testId?: string;
 }) {
   const invertedClass = 'text-white/85 hover:text-white';
   return (
@@ -28,6 +30,7 @@ function ActionButton({
       onClick={onClick}
       title={label}
       aria-label={label}
+      data-testid={testId}
     >
       {icon}
     </button>
@@ -146,6 +149,7 @@ export const TopNavBar = memo(function TopNavBar({
         icon={syncIcon}
         label={syncLabel}
         variant={variant}
+        testId="top-nav-sync-button"
       />
     )
     : null;
@@ -156,6 +160,7 @@ export const TopNavBar = memo(function TopNavBar({
         icon={<RiSettings4Fill className="size-4.5" />}
         label={t('common.settings', { defaultValue: '设置' })}
         variant={variant}
+        testId="top-nav-settings-button"
       />
     )
     : null;

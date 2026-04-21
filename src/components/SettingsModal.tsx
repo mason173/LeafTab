@@ -369,7 +369,10 @@ export default function SettingsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible">
+      <DialogContent
+        data-testid="settings-modal"
+        className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible"
+      >
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>

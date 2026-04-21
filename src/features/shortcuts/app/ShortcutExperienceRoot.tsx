@@ -1,27 +1,35 @@
-import { Suspense } from 'react';
+import { memo, Suspense, useCallback, useEffect, useMemo } from 'react';
 import {
   LazyHomeInteractiveSurface,
   LazyShortcutFolderCompactOverlay,
   LazyShortcutFolderNameDialog,
 } from '@/lazy/components';
 import { ShortcutSelectionShell, type ShortcutSelectionShellProps } from '@/components/home/ShortcutSelectionShell';
-import { useShortcutAppContext } from '@/features/shortcuts/app/ShortcutAppContext';
+import {
+  useShortcutDomainContext,
+  useShortcutFeatureActionsContext,
+  useShortcutMetaContext,
+  useShortcutUiContext,
+} from '@/features/shortcuts/app/ShortcutAppContext';
+import { openCreateShortcutEditor } from '@/features/shortcuts/app/shortcutEditorState';
 import { useShortcutSelection } from '@/features/shortcuts/selection/ShortcutSelectionContext';
+import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { HomeInteractiveSurfaceProps } from '@/components/home/HomeInteractiveSurface';
 import type { ShortcutFolderCompactOverlayProps } from '@/components/ShortcutFolderCompactOverlay';
 import type { Shortcut } from '@/types';
 import type {
-  FolderTransitionPhase,
-  ShortcutFolderOpeningSourceSnapshot,
+  FolderTransitionController,
 } from '@/components/folderTransition/useFolderTransitionController';
+import {
+  useFolderTransitionState,
+} from '@/components/folderTransition/useFolderTransitionController';
+import { findShortcutById } from '@/utils/shortcutFolders';
 
 export type ShortcutExperienceRootProps = {
   selectionActions: Pick<
     ShortcutSelectionShellProps,
-    | 'onCreateShortcut'
     | 'onEditShortcut'
     | 'onEditFolderShortcut'
-    | 'onDeleteShortcut'
     | 'onDeleteFolderShortcut'
     | 'onShortcutOpen'
     | 'onCreateFolder'
@@ -36,16 +44,11 @@ export type ShortcutExperienceRootProps = {
     HomeInteractiveSurfaceProps,
     'shortcutGridSelectionMode' | 'shortcutGridSelectedShortcutIndexes' | 'onToggleShortcutSelection'
   >;
-  compactOverlayShortcut: Shortcut | null;
+  folderTransitionController: FolderTransitionController;
   compactFolderOverlayProps: Omit<
     ShortcutFolderCompactOverlayProps,
     'shortcut' | 'transitionPhase' | 'transitionProgress' | 'openingSourceSnapshot' | 'onOpeningLayoutReady' | 'onClosingLayoutReady'
   >;
-  folderTransitionPhase: FolderTransitionPhase;
-  folderTransitionProgress: number;
-  openingSourceSnapshot: ShortcutFolderOpeningSourceSnapshot | null;
-  onOpeningLayoutReady: (folderId: string) => void;
-  onClosingLayoutReady: (folderId: string) => void;
   folderNameDialogOpen: boolean;
   onFolderNameDialogOpenChange: (open: boolean) => void;
   folderNameDialogTitle?: string;
@@ -54,7 +57,7 @@ export type ShortcutExperienceRootProps = {
   onFolderNameSubmit: (name: string) => void;
 };
 
-function ShortcutExperienceSurface({
+const ShortcutExperienceSurface = memo(function ShortcutExperienceSurface({
   homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
 }: Pick<ShortcutExperienceRootProps, 'homeInteractiveSurfaceVisible' | 'homeInteractiveSurfaceBaseProps'>) {
@@ -78,46 +81,46 @@ function ShortcutExperienceSurface({
       />
     </Suspense>
   );
-}
+});
 
-function ShortcutExperienceCompactOverlay({
-  compactOverlayShortcut,
+const ShortcutExperienceCompactOverlay = memo(function ShortcutExperienceCompactOverlay({
+  folderTransitionController,
   compactFolderOverlayProps,
-  folderTransitionPhase,
-  folderTransitionProgress,
-  openingSourceSnapshot,
-  onOpeningLayoutReady,
-  onClosingLayoutReady,
 }: Pick<
   ShortcutExperienceRootProps,
-  | 'compactOverlayShortcut'
+  | 'folderTransitionController'
   | 'compactFolderOverlayProps'
-  | 'folderTransitionPhase'
-  | 'folderTransitionProgress'
-  | 'openingSourceSnapshot'
-  | 'onOpeningLayoutReady'
-  | 'onClosingLayoutReady'
 >) {
+  const { state: domainState } = useShortcutDomainContext();
+  const transition = useFolderTransitionState(folderTransitionController);
+  const compactOverlayShortcut = useMemo(() => (
+    transition.overlayFolderId ? findShortcutById(domainState.shortcuts, transition.overlayFolderId) : null
+  ), [domainState.shortcuts, transition.overlayFolderId]);
+
   if (!compactOverlayShortcut) {
     return null;
   }
+
+  const openingSourceSnapshot = transition.sourceSnapshot?.folderId === compactOverlayShortcut.id
+    ? transition.sourceSnapshot
+    : null;
 
   return (
     <Suspense fallback={null}>
       <LazyShortcutFolderCompactOverlay
         {...compactFolderOverlayProps}
-        transitionPhase={folderTransitionPhase}
-        transitionProgress={folderTransitionProgress}
+        transitionPhase={transition.phase}
+        transitionProgress={transition.progress}
         openingSourceSnapshot={openingSourceSnapshot}
-        onOpeningLayoutReady={() => onOpeningLayoutReady(compactOverlayShortcut.id)}
-        onClosingLayoutReady={() => onClosingLayoutReady(compactOverlayShortcut.id)}
+        onOpeningLayoutReady={() => folderTransitionController.notifyOpeningReady(compactOverlayShortcut.id)}
+        onClosingLayoutReady={() => folderTransitionController.notifyClosingReady(compactOverlayShortcut.id)}
         shortcut={compactOverlayShortcut}
       />
     </Suspense>
   );
-}
+});
 
-function ShortcutExperienceFolderNameDialog({
+const ShortcutExperienceFolderNameDialog = memo(function ShortcutExperienceFolderNameDialog({
   folderNameDialogOpen,
   onFolderNameDialogOpenChange,
   folderNameDialogTitle,
@@ -149,19 +152,14 @@ function ShortcutExperienceFolderNameDialog({
       />
     </Suspense>
   );
-}
+});
 
-export function ShortcutExperienceRoot({
+export const ShortcutExperienceRoot = memo(function ShortcutExperienceRoot({
   selectionActions,
   homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
-  compactOverlayShortcut,
+  folderTransitionController,
   compactFolderOverlayProps,
-  folderTransitionPhase,
-  folderTransitionProgress,
-  openingSourceSnapshot,
-  onOpeningLayoutReady,
-  onClosingLayoutReady,
   folderNameDialogOpen,
   onFolderNameDialogOpenChange,
   folderNameDialogTitle,
@@ -169,42 +167,89 @@ export function ShortcutExperienceRoot({
   folderNameDialogInitialName,
   onFolderNameSubmit,
 }: ShortcutExperienceRootProps) {
-  const shortcutApp = useShortcutAppContext();
+  const { state: domainState } = useShortcutDomainContext();
+  const { state: uiState, actions: uiActions } = useShortcutUiContext();
+  const shortcutActions = useShortcutFeatureActionsContext();
+  const { contextMenuRef } = useShortcutMetaContext();
+
+  useEffect(() => {
+    if (!uiState.contextMenu || !contextMenuRef.current) return;
+    const pad = 8;
+    const rect = contextMenuRef.current.getBoundingClientRect();
+    let newX = uiState.contextMenu.x;
+    let newY = uiState.contextMenu.y;
+    if (rect.right > window.innerWidth - pad) newX = Math.max(pad, window.innerWidth - pad - rect.width);
+    if (rect.bottom > window.innerHeight - pad) newY = Math.max(pad, window.innerHeight - pad - rect.height);
+    if (newX !== uiState.contextMenu.x || newY !== uiState.contextMenu.y) {
+      uiActions.setContextMenu({ ...uiState.contextMenu, x: newX, y: newY });
+    }
+  }, [contextMenuRef, uiActions, uiState.contextMenu]);
+
+  useEffect(() => {
+    if (!uiState.contextMenu) return;
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        uiActions.setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contextMenuRef, uiActions, uiState.contextMenu]);
+
+  const handleCreateShortcut = useCallback((insertIndex: number) => {
+    openCreateShortcutEditor({
+      setShortcutModalMode: uiActions.setShortcutModalMode,
+      setSelectedShortcut: uiActions.setSelectedShortcut,
+      setEditingTitle: uiActions.setEditingTitle,
+      setEditingUrl: uiActions.setEditingUrl,
+      setCurrentInsertIndex: uiActions.setCurrentInsertIndex,
+      setShortcutEditOpen: uiActions.setShortcutEditOpen,
+    }, insertIndex);
+  }, [uiActions]);
+
+  const handleDeleteShortcut = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
+    uiActions.setSelectedShortcut({ index: shortcutIndex, shortcut });
+    uiActions.setShortcutDeleteOpen(true);
+  }, [uiActions]);
 
   return (
-    <>
-      <ShortcutSelectionShell
-        contextMenu={shortcutApp.state.ui.contextMenu}
-        setContextMenu={shortcutApp.actions.ui.setContextMenu}
-        contextMenuRef={shortcutApp.meta.contextMenuRef}
-        shortcuts={shortcutApp.state.domain.shortcuts}
-        scenarioModes={shortcutApp.state.domain.scenarioModes}
-        selectedScenarioId={shortcutApp.state.domain.selectedScenarioId}
-        onDeleteSelectedShortcuts={shortcutApp.actions.shortcuts.handleConfirmDeleteShortcuts}
-        {...selectionActions}
-      >
-        <ShortcutExperienceSurface
-          homeInteractiveSurfaceVisible={homeInteractiveSurfaceVisible}
-          homeInteractiveSurfaceBaseProps={homeInteractiveSurfaceBaseProps}
+    <RenderProfileBoundary id="ShortcutExperienceRoot">
+      <>
+        <ShortcutSelectionShell
+          contextMenu={uiState.contextMenu}
+          setContextMenu={uiActions.setContextMenu}
+          contextMenuRef={contextMenuRef}
+          shortcuts={domainState.shortcuts}
+          scenarioModes={domainState.scenarioModes}
+          selectedScenarioId={domainState.selectedScenarioId}
+          onCreateShortcut={handleCreateShortcut}
+          onDeleteShortcut={handleDeleteShortcut}
+          onDeleteSelectedShortcuts={shortcutActions.handleConfirmDeleteShortcuts}
+          {...selectionActions}
+        >
+          <ShortcutExperienceSurface
+            homeInteractiveSurfaceVisible={homeInteractiveSurfaceVisible}
+            homeInteractiveSurfaceBaseProps={homeInteractiveSurfaceBaseProps}
+          />
+        </ShortcutSelectionShell>
+        <ShortcutExperienceCompactOverlay
+          folderTransitionController={folderTransitionController}
+          compactFolderOverlayProps={compactFolderOverlayProps}
         />
-      </ShortcutSelectionShell>
-      <ShortcutExperienceCompactOverlay
-        compactOverlayShortcut={compactOverlayShortcut}
-        compactFolderOverlayProps={compactFolderOverlayProps}
-        folderTransitionPhase={folderTransitionPhase}
-        folderTransitionProgress={folderTransitionProgress}
-        openingSourceSnapshot={openingSourceSnapshot}
-        onOpeningLayoutReady={onOpeningLayoutReady}
-        onClosingLayoutReady={onClosingLayoutReady}
-      />
-      <ShortcutExperienceFolderNameDialog
-        folderNameDialogOpen={folderNameDialogOpen}
-        onFolderNameDialogOpenChange={onFolderNameDialogOpenChange}
-        folderNameDialogTitle={folderNameDialogTitle}
-        folderNameDialogDescription={folderNameDialogDescription}
-        folderNameDialogInitialName={folderNameDialogInitialName}
-        onFolderNameSubmit={onFolderNameSubmit}
-      />
-    </>
+        <ShortcutExperienceFolderNameDialog
+          folderNameDialogOpen={folderNameDialogOpen}
+          onFolderNameDialogOpenChange={onFolderNameDialogOpenChange}
+          folderNameDialogTitle={folderNameDialogTitle}
+          folderNameDialogDescription={folderNameDialogDescription}
+          folderNameDialogInitialName={folderNameDialogInitialName}
+          onFolderNameSubmit={onFolderNameSubmit}
+        />
+      </>
+    </RenderProfileBoundary>
   );
-}
+});
+
+ShortcutExperienceSurface.displayName = 'ShortcutExperienceSurface';
+ShortcutExperienceCompactOverlay.displayName = 'ShortcutExperienceCompactOverlay';
+ShortcutExperienceFolderNameDialog.displayName = 'ShortcutExperienceFolderNameDialog';
+ShortcutExperienceRoot.displayName = 'ShortcutExperienceRoot';

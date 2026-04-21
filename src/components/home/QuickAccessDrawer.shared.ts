@@ -14,9 +14,6 @@ export interface QuickAccessDrawerProps {
   modeFlags: QuickAccessModeFlags;
   contentWidth: number;
   quickAccessOpen: boolean;
-  quickAccessSnapPoint: number | string | null;
-  quickAccessDefaultSnapPoint: number;
-  quickAccessFullSnapPoint: number;
   isDrawerExpanded: boolean;
   drawerOverlayOpacity: number;
   drawerSurfaceOpacity: number;
@@ -39,8 +36,6 @@ export interface QuickAccessDrawerProps {
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   searchExperienceProps: SearchExperienceProps;
   shortcutGridProps: RootShortcutGridProps;
-  onDrawerOpenChange: () => void;
-  onActiveSnapPointChange: (next: number | string | null) => void;
 }
 
 export const SHORTCUTS_FADE_DURATION_MS = 220;

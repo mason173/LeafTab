@@ -38,7 +38,12 @@ import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/compone
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
-import { useFolderTransitionController } from '@/components/folderTransition/useFolderTransitionController';
+import {
+  useFolderTransitionActiveFolderId,
+  useFolderTransitionController,
+  useFolderTransitionOverlayFolderId,
+} from '@/components/folderTransition/useFolderTransitionController';
+import { FolderTransitionDocumentEffects } from '@/components/folderTransition/FolderTransitionDocumentEffects';
 import {
   getFolderPreviewRoot,
   getFolderPreviewSlotEntries,
@@ -80,9 +85,7 @@ import {
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
-import { useShortcutAppDialogsRootProps } from '@/features/appShell/useShortcutAppDialogsRootProps';
 import { useShortcutExperienceRootProps } from '@/features/appShell/useShortcutExperienceRootProps';
-import { useShortcutSyncDialogsRootProps } from '@/features/appShell/useShortcutSyncDialogsRootProps';
 import { ShortcutAppProvider } from '@/features/shortcuts/app/ShortcutAppContext';
 import { ShortcutAppDialogsRoot } from '@/features/shortcuts/app/ShortcutAppDialogsRoot';
 import { ShortcutExperienceRoot } from '@/features/shortcuts/app/ShortcutExperienceRoot';
@@ -454,22 +457,11 @@ export default function App() {
     scenarioShortcuts,
     shortcuts,
     totalShortcuts,
-  } = shortcutApp.state.domain;
-  const {
     setScenarioModes,
     setSelectedScenarioId,
     setScenarioShortcuts,
-  } = shortcutApp.actions.domain;
-  const {
-    contextMenu,
-    shortcutEditOpen,
-    shortcutDeleteOpen,
     isDragging,
     scenarioModeOpen,
-    scenarioCreateOpen,
-    scenarioEditOpen,
-  } = shortcutApp.state.ui;
-  const {
     setContextMenu,
     setShortcutEditOpen,
     setShortcutModalMode,
@@ -477,23 +469,18 @@ export default function App() {
     setSelectedShortcut,
     setEditingTitle,
     setEditingUrl,
-    setCurrentInsertIndex,
     setScenarioModeOpen,
     setScenarioCreateOpen,
-  } = shortcutApp.actions.ui;
-  const {
     handleOpenEditScenarioMode,
     handleDeleteScenarioMode,
     handleShortcutOpen,
     handleShortcutContextMenu,
     handleGridContextMenu,
     handleShortcutReorder,
-  } = shortcutApp.actions.shortcuts;
-  const {
     setUserRole,
     resetLocalShortcutsByRole,
-  } = shortcutApp.actions.persistence;
-  const { contextMenuRef, localDirtyRef } = shortcutApp.meta;
+    localDirtyRef,
+  } = shortcutApp;
 
   const markShortcutStateDirty = useCallback(() => {
     if (!user) localDirtyRef.current = true;
@@ -531,17 +518,14 @@ export default function App() {
   const folderOverlayWarmupPromiseRef = useRef<Promise<unknown> | null>(null);
   const folderOpenRequestIdRef = useRef(0);
   const folderTransitionController = useFolderTransitionController();
-  const openFolderId = folderTransitionController.activeFolderId;
+  const openFolderId = useFolderTransitionActiveFolderId(folderTransitionController);
+  const overlayFolderId = useFolderTransitionOverlayFolderId(folderTransitionController);
   const runAfterFolderOverlayClose = folderTransitionController.runAfterClose;
 
   const openFolderShortcut = useMemo(
     () => (openFolderId ? findShortcutById(shortcuts, openFolderId) : null),
     [openFolderId, shortcuts],
   );
-  const compactOverlayShortcut = useMemo(() => {
-    const overlayFolderId = folderTransitionController.overlayFolderId;
-    return overlayFolderId ? findShortcutById(shortcuts, overlayFolderId) : null;
-  }, [folderTransitionController.overlayFolderId, shortcuts]);
   const editingFolderShortcut = useMemo(
     () => (editingFolderId ? findShortcutById(shortcuts, editingFolderId) : null),
     [editingFolderId, shortcuts],
@@ -572,51 +556,6 @@ export default function App() {
   useEffect(() => {
     void ensureFolderOverlayReady();
   }, [ensureFolderOverlayReady]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const { body } = document;
-    const overlayFolderId = folderTransitionController.overlayFolderId;
-    const transitionPhase = folderTransitionController.transition.phase;
-
-    if (overlayFolderId && transitionPhase !== 'idle') {
-      body.dataset.activeFolderTransitionId = overlayFolderId;
-      body.dataset.activeFolderTransitionPhase = transitionPhase;
-    } else {
-      delete body.dataset.activeFolderTransitionId;
-      delete body.dataset.activeFolderTransitionPhase;
-    }
-
-    return () => {
-      delete body.dataset.activeFolderTransitionId;
-      delete body.dataset.activeFolderTransitionPhase;
-    };
-  }, [folderTransitionController.overlayFolderId, folderTransitionController.transition.phase]);
-
-  useLayoutEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const root = document.documentElement;
-    const progress = Math.max(0, Math.min(1, folderTransitionController.backgroundProgress));
-    const inverseOpacity = 1 - progress;
-    const blurPx = 18 * progress;
-    const scale = 1 + (0.05 * progress);
-
-    root.style.setProperty('--leaftab-folder-immersive-progress', progress.toFixed(4));
-    root.style.setProperty('--leaftab-folder-immersive-inverse-opacity', inverseOpacity.toFixed(4));
-    root.style.setProperty('--leaftab-folder-immersive-blur', `${blurPx.toFixed(2)}px`);
-    root.style.setProperty('--leaftab-folder-immersive-scale', scale.toFixed(4));
-  }, [folderTransitionController.backgroundProgress]);
-
-  useEffect(() => () => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    root.style.removeProperty('--leaftab-folder-immersive-progress');
-    root.style.removeProperty('--leaftab-folder-immersive-inverse-opacity');
-    root.style.removeProperty('--leaftab-folder-immersive-blur');
-    root.style.removeProperty('--leaftab-folder-immersive-scale');
-  }, []);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -1154,19 +1093,6 @@ export default function App() {
   }, [preventDuplicateNewTab, setPreventDuplicateNewTab]);
 
   useNewtabBootstrapFocus(pageFocusRef);
-
-  useEffect(() => {
-    if (!contextMenu || !contextMenuRef.current) return;
-    const pad = 8;
-    const rect = contextMenuRef.current.getBoundingClientRect();
-    let newX = contextMenu.x;
-    let newY = contextMenu.y;
-    if (rect.right > window.innerWidth - pad) newX = Math.max(pad, window.innerWidth - pad - rect.width);
-    if (rect.bottom > window.innerHeight - pad) newY = Math.max(pad, window.innerHeight - pad - rect.height);
-    if (newX !== contextMenu.x || newY !== contextMenu.y) {
-      setContextMenu({ ...contextMenu, x: newX, y: newY });
-    }
-  }, [contextMenu, setContextMenu, contextMenuRef]);
 
   const {
     bingWallpaper,
@@ -1719,15 +1645,6 @@ export default function App() {
   const shortcutRowGap = responsiveLayout.compactRowGap;
   const shortcutsAreaHeight = displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
 
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handleClickOutside = (event: globalThis.MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) setContextMenu(null);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [contextMenu, contextMenuRef, setContextMenu]);
-
   const gridHitInspectorVisible = adminModeEnabled && gridHitDebugVisible;
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
@@ -2085,41 +2002,17 @@ export default function App() {
     topNavIntroCompleted,
     visualEffectsLevel,
   ]);
+  const compactFolderOverlayProps = useMemo(() => ({
+    ...shortcutEngineHostAdapter.compactFolderOverlayProps,
+    displayMode,
+  }), [displayMode, shortcutEngineHostAdapter.compactFolderOverlayProps]);
   const panoramicSurfaceRevealStyle: CSSProperties = {
     backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)',
     transition: `background-color ${PANORAMIC_SURFACE_REVEAL_TIMING}`,
   };
-  const shouldMountAppDialogs = useKeepMountedAfterFirstOpen(
-    shortcutEditOpen
-      || shortcutDeleteOpen
-      || scenarioCreateOpen
-      || scenarioEditOpen
-      || isAuthModalOpen
-      || settingsOpen
-      || searchSettingsOpen
-      || shortcutGuideOpen
-      || shortcutIconSettingsOpen
-      || adminModalOpen
-      || aboutModalOpen
-      || syncState.exportBackupDialogOpen
-      || syncState.importBackupDialogOpen
-      || webdavDialogOpen
-      || cloudSyncConfigOpen
-      || syncState.importConfirmOpen
-      || confirmDisableConsentOpen,
-  );
   const shouldMountWallpaperSelector = useKeepMountedAfterFirstOpen(wallpaperSettingsOpen);
-  const shouldMountLeafTabSyncDialog = useKeepMountedAfterFirstOpen(leafTabSyncDialogOpen);
-  const shouldMountLeafTabSyncEncryptionDialog = useKeepMountedAfterFirstOpen(Boolean(syncState.syncEncryptionDialogState?.open));
   const shouldMountUpdateDialog = !IS_STORE_BUILD && useKeepMountedAfterFirstOpen(updateDialogOpen);
   const shortcutExperienceRootProps = useShortcutExperienceRootProps({
-    setShortcutModalMode,
-    setSelectedShortcut,
-    setEditingTitle,
-    setEditingUrl,
-    setCurrentInsertIndex,
-    setShortcutEditOpen,
-    setShortcutDeleteOpen,
     onEditShortcut: handleOpenShortcutEditor,
     onEditFolderShortcut: handleOpenFolderChildShortcutEditor,
     onDeleteFolderShortcut: handleDeleteFolderChildShortcut,
@@ -2147,25 +2040,13 @@ export default function App() {
     homeMainContentBaseProps,
     shortcutGridBaseProps: shortcutEngineHostAdapter.rootGridProps,
     shortcutGridHeatZoneInspectorEnabled: gridHitInspectorVisible,
-    shortcutGridHiddenShortcutId: pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId,
+    shortcutGridHiddenShortcutId: pendingExtractHiddenShortcutId ?? overlayFolderId,
     wallpaperClockBaseProps,
     searchExperienceBaseProps,
     baseTimeAnimationEnabled: effectiveTimeAnimationEnabled,
     freezeDynamicWallpaperBase: visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen,
-    compactOverlayShortcut,
-    compactFolderOverlayBaseProps: {
-      ...shortcutEngineHostAdapter.compactFolderOverlayProps,
-      displayMode,
-    },
-    folderTransitionPhase: folderTransitionController.transition.phase,
-    folderTransitionProgress: folderTransitionController.transition.progress,
-    openingSourceSnapshot: (
-      folderTransitionController.transition.sourceSnapshot?.folderId === compactOverlayShortcut?.id
-        ? folderTransitionController.transition.sourceSnapshot
-        : null
-    ),
-    onOpeningLayoutReady: (folderId) => folderTransitionController.notifyOpeningReady(folderId),
-    onClosingLayoutReady: (folderId) => folderTransitionController.notifyClosingReady(folderId),
+    folderTransitionController,
+    compactFolderOverlayBaseProps: compactFolderOverlayProps,
     folderNameDialogOpen,
     setFolderNameDialogOpen,
     closeFolderNameDialog,
@@ -2174,8 +2055,18 @@ export default function App() {
     folderNameDialogInitialName,
     onFolderNameSubmit: handleSaveFolderName,
   });
-  const shortcutAppDialogsRootProps = useShortcutAppDialogsRootProps({
-    shouldMountAppDialogs,
+  const shortcutAppDialogsRootProps = {
+    nonSyncExternalDialogActivity:
+      isAuthModalOpen
+      || settingsOpen
+      || searchSettingsOpen
+      || shortcutGuideOpen
+      || shortcutIconSettingsOpen
+      || adminModalOpen
+      || aboutModalOpen
+      || webdavDialogOpen
+      || cloudSyncConfigOpen
+      || confirmDisableConsentOpen,
     authDialog: {
       isAuthModalOpen,
       onOpenChange: handleAuthModalOpenChange,
@@ -2193,7 +2084,6 @@ export default function App() {
       settingsOpen,
       setSettingsOpen,
       username: user,
-      onLogin: syncActions.handleRequestCloudLogin,
       onLogout: requestLogoutConfirmation,
       shortcutsCount: totalShortcuts,
       displayMode,
@@ -2219,8 +2109,6 @@ export default function App() {
       disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
       showTime,
       onShowTimeChange: setShowTime,
-      onExportData: syncActions.handleExportData,
-      onImportData: syncActions.handleImportData,
       wallpaperMode: effectiveWallpaperMode,
       onWallpaperModeChange: setWallpaperMode,
       bingWallpaper,
@@ -2297,15 +2185,13 @@ export default function App() {
       setConfirmDisableConsentOpen,
       onPrivacyConsent: handlePrivacyConsent,
     },
-  });
-  const shortcutSyncDialogsRootProps = useShortcutSyncDialogsRootProps({
-    shouldMountLeafTabSyncDialog,
-    shouldMountLeafTabSyncEncryptionDialog,
+  };
+  const shortcutSyncDialogsRootProps = {
     leafTabSyncDialogOpen,
     setLeafTabSyncDialogOpen,
     setSyncConfigBackTarget,
     user,
-  });
+  };
 
   return (
     <ShortcutAppProvider value={shortcutApp}>
@@ -2383,6 +2269,7 @@ export default function App() {
           />
           <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
           <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
+          <FolderTransitionDocumentEffects controller={folderTransitionController} />
           {shouldMountUpdateDialog ? (
             <Suspense fallback={null}>
               <LazyUpdateAvailableDialog

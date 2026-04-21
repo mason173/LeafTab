@@ -7,9 +7,14 @@ import {
 } from '@leaftab/workspace-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { ShortcutIconRenderContext, type ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import { RootShortcutGrid } from './RootShortcutGrid';
+import {
+  RootShortcutGrid,
+  type RootShortcutGridCardRenderParams,
+  type RootShortcutGridDragPreviewRenderParams,
+} from './RootShortcutGrid';
 import {
   renderLeaftabFolderDragPreview,
   renderLeaftabFolderEmptyState,
@@ -183,7 +188,7 @@ function resolveFolderGridColumns(params: {
   return Math.max(1, Math.min(bestColumns, shortcutCount));
 }
 
-export function FolderShortcutSurface({
+export const FolderShortcutSurface = React.memo(function FolderShortcutSurface({
   folderId,
   shortcuts,
   emptyText,
@@ -298,6 +303,31 @@ export function FolderShortcutSurface({
   const handleShortcutReorder = useCallback((_nextShortcuts: Shortcut[]) => {
     // Reorders are submitted via onShortcutDropIntent so folder state stays in the host model.
   }, []);
+  const handleShortcutContextMenu = useCallback((event: React.MouseEvent<HTMLDivElement>, _shortcutIndex: number, shortcut: Shortcut) => {
+    onShortcutContextMenu?.(event, shortcut);
+  }, [onShortcutContextMenu]);
+  const renderFolderShortcutCard = useCallback((params: RootShortcutGridCardRenderParams) => (
+    renderLeaftabFolderItem({
+      shortcut: params.shortcut,
+      compactIconSize: params.compactIconSize,
+      iconCornerRadius: params.iconCornerRadius,
+      iconAppearance: params.iconAppearance,
+      forceTextWhite: params.forceTextWhite,
+      showShortcutTitles: params.compactShowTitle,
+      animateShortcutTitlesOnMount,
+      onOpen: params.onOpen,
+      onContextMenu: params.onContextMenu,
+    })
+  ), [animateShortcutTitlesOnMount]);
+  const renderFolderDragPreview = useCallback((params: RootShortcutGridDragPreviewRenderParams) => (
+    renderLeaftabFolderDragPreview({
+      shortcut: params.shortcut,
+      compactIconSize: params.compactIconSize,
+      iconCornerRadius: params.iconCornerRadius,
+      iconAppearance: params.iconAppearance,
+      forceTextWhite: params.forceTextWhite,
+    })
+  ), []);
 
   if (shortcuts.length === 0) {
     return (
@@ -322,54 +352,38 @@ export function FolderShortcutSurface({
           hovered={hoveredMask}
           boundaryRef={maskBoundaryRef}
         />
-        <RootShortcutGrid
-          containerHeight={0}
-          shortcuts={shortcuts}
-          overlayZIndex={FOLDER_OPEN_OVERLAY_DRAG_Z_INDEX}
-          gridColumns={columns}
-          minRows={1}
-          rowHeightOverride={rowHeight}
-          rowGapPx={FOLDER_GRID_ROW_GAP_PX}
-          columnGapPx={FOLDER_GRID_COLUMN_GAP_PX}
-          allowLargeFolder={false}
-          onShortcutOpen={onShortcutOpen}
-          onShortcutContextMenu={(event, _shortcutIndex, shortcut) => {
-            onShortcutContextMenu?.(event, shortcut);
-          }}
-          onShortcutReorder={handleShortcutReorder}
-          onShortcutDropIntent={handleRootDropIntent}
-          onGridContextMenu={handleGridContextMenu}
-          compactShowTitle={showShortcutTitles}
-          compactIconSize={compactIconSize}
-          iconCornerRadius={iconCornerRadius}
-          iconAppearance={iconAppearance}
-          forceTextWhite={forceTextWhite}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          interactionProfile={interactionProfile}
-          extractBoundaryRef={maskBoundaryRef}
-          onExtractDragStart={handleExtractDragStart}
-          onBoundaryHoverChange={handleBoundaryHoverChange}
-          renderShortcutCard={(params) => renderLeaftabFolderItem({
-            shortcut: params.shortcut,
-            compactIconSize: params.compactIconSize,
-            iconCornerRadius: params.iconCornerRadius,
-            iconAppearance: params.iconAppearance,
-            forceTextWhite: params.forceTextWhite,
-            showShortcutTitles: params.compactShowTitle,
-            animateShortcutTitlesOnMount,
-            onOpen: params.onOpen,
-            onContextMenu: params.onContextMenu,
-          })}
-          renderDragPreview={(params) => renderLeaftabFolderDragPreview({
-            shortcut: params.shortcut,
-            compactIconSize: params.compactIconSize,
-            iconCornerRadius: params.iconCornerRadius,
-            iconAppearance: params.iconAppearance,
-            forceTextWhite: params.forceTextWhite,
-          })}
-        />
+        <RenderProfileBoundary id="FolderShortcutSurface">
+          <RootShortcutGrid
+            containerHeight={0}
+            shortcuts={shortcuts}
+            overlayZIndex={FOLDER_OPEN_OVERLAY_DRAG_Z_INDEX}
+            gridColumns={columns}
+            minRows={1}
+            rowHeightOverride={rowHeight}
+            rowGapPx={FOLDER_GRID_ROW_GAP_PX}
+            columnGapPx={FOLDER_GRID_COLUMN_GAP_PX}
+            allowLargeFolder={false}
+            onShortcutOpen={onShortcutOpen}
+            onShortcutContextMenu={handleShortcutContextMenu}
+            onShortcutReorder={handleShortcutReorder}
+            onShortcutDropIntent={handleRootDropIntent}
+            onGridContextMenu={handleGridContextMenu}
+            compactShowTitle={showShortcutTitles}
+            compactIconSize={compactIconSize}
+            iconCornerRadius={iconCornerRadius}
+            iconAppearance={iconAppearance}
+            forceTextWhite={forceTextWhite}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            interactionProfile={interactionProfile}
+            extractBoundaryRef={maskBoundaryRef}
+            onExtractDragStart={handleExtractDragStart}
+            onBoundaryHoverChange={handleBoundaryHoverChange}
+            renderShortcutCard={renderFolderShortcutCard}
+            renderDragPreview={renderFolderDragPreview}
+          />
+        </RenderProfileBoundary>
       </div>
     </ShortcutIconRenderContext.Provider>
   );
-}
+});

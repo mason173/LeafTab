@@ -51,6 +51,8 @@ export type RootProjectionController = RootProjectionState & {
   ) => Map<string, ProjectionOffset>;
 };
 
+const EMPTY_ROOT_PROJECTION_OFFSETS = new Map<string, ProjectionOffset>();
+
 export function pickOverItemCandidate(params: {
   activeSortId: string;
   measuredItems: MeasuredRootGridItem[];
@@ -398,38 +400,52 @@ export function resolveRootProjectionState(params: {
     rowGap,
   } = params;
 
+  if (!activeDragId && !dragSettlePreviewItemId) {
+    return {
+      projectionLayoutSnapshot: null,
+      projectionOffsets: EMPTY_ROOT_PROJECTION_OFFSETS,
+      hiddenSortId: null,
+      projectedDropPreview: null,
+      effectiveProjectedDropPreview: null,
+    };
+  }
+
   const projectionLayoutSnapshot = offsetMeasuredRootGridItemsByScrollOffset(
     dragLayoutSnapshot,
     dragScrollOffset,
   );
-  const projectionOffsets = computeRootProjectionOffsetsForIntent({
-    projectionIntent: visualProjectionIntent,
-    usesSpanAwareReorder,
-    projectionLayoutSnapshot,
-    activeDragId,
-    gridColumnWidth,
-    rootRef,
-    items,
-    frozenSortIds,
-    gridColumns,
-    columnGap,
-    rowHeight,
-    rowGap,
-  });
-  const projectedDropPreview = buildProjectedDropPreview({
-    items,
-    layoutSnapshot: projectionLayoutSnapshot,
-    activeSortId: activeDragId,
-    hoverIntent: visualProjectionIntent,
-    rootElement: rootRef.current,
-    usesSpanAwareReorder,
-    frozenSortIds,
-    gridColumns,
-    gridColumnWidth,
-    columnGap,
-    rowHeight,
-    rowGap,
-  });
+  const projectionOffsets = activeDragId && visualProjectionIntent
+    ? computeRootProjectionOffsetsForIntent({
+        projectionIntent: visualProjectionIntent,
+        usesSpanAwareReorder,
+        projectionLayoutSnapshot,
+        activeDragId,
+        gridColumnWidth,
+        rootRef,
+        items,
+        frozenSortIds,
+        gridColumns,
+        columnGap,
+        rowHeight,
+        rowGap,
+      })
+    : EMPTY_ROOT_PROJECTION_OFFSETS;
+  const projectedDropPreview = activeDragId
+    ? buildProjectedDropPreview({
+        items,
+        layoutSnapshot: projectionLayoutSnapshot,
+        activeSortId: activeDragId,
+        hoverIntent: visualProjectionIntent,
+        rootElement: rootRef.current,
+        usesSpanAwareReorder,
+        frozenSortIds,
+        gridColumns,
+        gridColumnWidth,
+        columnGap,
+        rowHeight,
+        rowGap,
+      })
+    : null;
 
   return {
     projectionLayoutSnapshot,
@@ -464,20 +480,26 @@ export function createRootProjectionController(params: {
 
   const computeProjectionOffsetsForIntent = (
     projectionIntent: RootShortcutDropIntent | null,
-  ) => computeRootProjectionOffsetsForIntent({
-    projectionIntent,
-    usesSpanAwareReorder: params.usesSpanAwareReorder,
-    projectionLayoutSnapshot: projectionState.projectionLayoutSnapshot,
-    activeDragId: params.activeDragId,
-    gridColumnWidth: params.gridColumnWidth,
-    rootRef: params.rootRef,
-    items: params.items,
-    frozenSortIds: params.frozenSortIds,
-    gridColumns: params.gridColumns,
-    columnGap: params.columnGap,
-    rowHeight: params.rowHeight,
-    rowGap: params.rowGap,
-  });
+  ) => {
+    if (!params.activeDragId || !projectionIntent || !projectionState.projectionLayoutSnapshot) {
+      return EMPTY_ROOT_PROJECTION_OFFSETS;
+    }
+
+    return computeRootProjectionOffsetsForIntent({
+      projectionIntent,
+      usesSpanAwareReorder: params.usesSpanAwareReorder,
+      projectionLayoutSnapshot: projectionState.projectionLayoutSnapshot,
+      activeDragId: params.activeDragId,
+      gridColumnWidth: params.gridColumnWidth,
+      rootRef: params.rootRef,
+      items: params.items,
+      frozenSortIds: params.frozenSortIds,
+      gridColumns: params.gridColumns,
+      columnGap: params.columnGap,
+      rowHeight: params.rowHeight,
+      rowGap: params.rowGap,
+    });
+  };
 
   return {
     ...projectionState,

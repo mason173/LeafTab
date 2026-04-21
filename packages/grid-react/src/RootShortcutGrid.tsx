@@ -206,6 +206,10 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
+    if (dragging && !hasPendingLayoutShiftSourceRects()) {
+      disableReorderAnimationRef.current = disableReorderAnimation;
+      return;
+    }
 
     commitRootMeasuredRectsForLayoutShift({
       disableReorderAnimationRef,
