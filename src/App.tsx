@@ -3893,8 +3893,11 @@ export default function App() {
           displayMode,
           onDisplayModeChange: setDisplayMode,
           shortcutIconCornerRadius,
+          onShortcutIconCornerRadiusChange: setShortcutIconCornerRadius,
           shortcutIconScale,
+          onShortcutIconScaleChange: setShortcutIconScale,
           shortcutIconAppearance,
+          onShortcutIconAppearanceChange: setShortcutIconAppearance,
           shortcutCompactShowTitle,
           onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
           shortcutGridColumns: normalizedGridColumns,
@@ -3957,20 +3960,6 @@ export default function App() {
           setShortcutGuideOpen,
           shortcutIconSettingsOpen,
           setShortcutIconSettingsOpen,
-          compactShowTitle: shortcutCompactShowTitle,
-          columns: normalizedGridColumns,
-          onShortcutIconStyleSave: ({ compactShowTitle, columns }) => {
-            setShortcutCompactShowTitle(compactShowTitle);
-            handleShortcutGridColumnsChange(columns);
-          },
-          appearance: shortcutIconAppearance,
-          cornerRadius: shortcutIconCornerRadius,
-          scale: shortcutIconScale,
-          onShortcutIconSave: ({ appearance, cornerRadius, scale }) => {
-            setShortcutIconAppearance(appearance);
-            setShortcutIconCornerRadius(cornerRadius);
-            setShortcutIconScale(scale);
-          },
           adminModalOpen,
           setAdminModalOpen,
           onExportDomains: handleExportDomains,

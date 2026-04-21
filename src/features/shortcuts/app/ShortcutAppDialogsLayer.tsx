@@ -55,9 +55,12 @@ type SettingsDialogsInput = {
   shortcutsCount: SettingsModalProps['shortcutsCount'];
   displayMode: SettingsModalProps['displayMode'];
   onDisplayModeChange: SettingsModalProps['onDisplayModeChange'];
-  shortcutIconCornerRadius: ShortcutModalProps['iconCornerRadius'];
-  shortcutIconScale: ShortcutModalProps['iconScale'];
-  shortcutIconAppearance: ShortcutModalProps['iconAppearance'];
+  shortcutIconCornerRadius: Exclude<ShortcutModalProps['iconCornerRadius'], undefined>;
+  onShortcutIconCornerRadiusChange: (cornerRadius: Exclude<ShortcutModalProps['iconCornerRadius'], undefined>) => void;
+  shortcutIconScale: Exclude<ShortcutModalProps['iconScale'], undefined>;
+  onShortcutIconScaleChange: (scale: Exclude<ShortcutModalProps['iconScale'], undefined>) => void;
+  shortcutIconAppearance: Exclude<ShortcutModalProps['iconAppearance'], undefined>;
+  onShortcutIconAppearanceChange: (appearance: Exclude<ShortcutModalProps['iconAppearance'], undefined>) => void;
   shortcutCompactShowTitle: SettingsModalProps['shortcutCompactShowTitle'];
   onShortcutCompactShowTitleChange: SettingsModalProps['onShortcutCompactShowTitleChange'];
   shortcutGridColumns: SettingsModalProps['shortcutGridColumns'];
@@ -121,13 +124,6 @@ type UtilityDialogsInput = {
   setShortcutGuideOpen: ShortcutGuideDialogProps['onOpenChange'];
   shortcutIconSettingsOpen: ShortcutIconSettingsDialogProps['open'];
   setShortcutIconSettingsOpen: ShortcutIconSettingsDialogProps['onOpenChange'];
-  compactShowTitle: ShortcutIconSettingsDialogProps['compactShowTitle'];
-  columns: ShortcutIconSettingsDialogProps['columns'];
-  onShortcutIconStyleSave: ShortcutIconSettingsDialogProps['onSaveStyle'];
-  appearance: ShortcutIconSettingsDialogProps['appearance'];
-  cornerRadius: ShortcutIconSettingsDialogProps['cornerRadius'];
-  scale: ShortcutIconSettingsDialogProps['scale'];
-  onShortcutIconSave: ShortcutIconSettingsDialogProps['onSave'];
   adminModalOpen: AdminModalProps['open'];
   setAdminModalOpen: AdminModalProps['onOpenChange'];
   onExportDomains: AdminModalProps['onExportDomains'];
@@ -211,10 +207,68 @@ export function ShortcutAppDialogsLayer({
   consentDialogs,
 }: ShortcutAppDialogsLayerProps) {
   const { t } = useTranslation();
-  const { shortcutDialogs, scenarioDialogs } = useShortcutAppDialogsController({
+  const {
+    shortcutDialogs,
+    scenarioDialogs,
+    utilityDialogs: controlledUtilityDialogs,
+    consentDialogs: controlledConsentDialogs,
+  } = useShortcutAppDialogsController({
     shortcutIconCornerRadius: settingsDialogs.shortcutIconCornerRadius,
     shortcutIconScale: settingsDialogs.shortcutIconScale,
     shortcutIconAppearance: settingsDialogs.shortcutIconAppearance,
+    utilityDialogs: {
+      searchSettingsOpen: utilityDialogs.searchSettingsOpen,
+      setSearchSettingsOpen: utilityDialogs.setSearchSettingsOpen,
+      onBackToSettings: utilityDialogs.onBackToSettings,
+      tabSwitchSearchEngine: utilityDialogs.tabSwitchSearchEngine,
+      onTabSwitchSearchEngineChange: utilityDialogs.onTabSwitchSearchEngineChange,
+      searchPrefixEnabled: utilityDialogs.searchPrefixEnabled,
+      onSearchPrefixEnabledChange: utilityDialogs.onSearchPrefixEnabledChange,
+      searchSiteDirectEnabled: utilityDialogs.searchSiteDirectEnabled,
+      onSearchSiteDirectEnabledChange: utilityDialogs.onSearchSiteDirectEnabledChange,
+      searchSiteShortcutEnabled: utilityDialogs.searchSiteShortcutEnabled,
+      onSearchSiteShortcutEnabledChange: utilityDialogs.onSearchSiteShortcutEnabledChange,
+      searchAnyKeyCaptureEnabled: utilityDialogs.searchAnyKeyCaptureEnabled,
+      onSearchAnyKeyCaptureEnabledChange: utilityDialogs.onSearchAnyKeyCaptureEnabledChange,
+      searchCalculatorEnabled: utilityDialogs.searchCalculatorEnabled,
+      onSearchCalculatorEnabledChange: utilityDialogs.onSearchCalculatorEnabledChange,
+      searchRotatingPlaceholderEnabled: utilityDialogs.searchRotatingPlaceholderEnabled,
+      onSearchRotatingPlaceholderEnabledChange: utilityDialogs.onSearchRotatingPlaceholderEnabledChange,
+      shortcutGuideOpen: utilityDialogs.shortcutGuideOpen,
+      setShortcutGuideOpen: utilityDialogs.setShortcutGuideOpen,
+      shortcutIconSettingsOpen: utilityDialogs.shortcutIconSettingsOpen,
+      setShortcutIconSettingsOpen: utilityDialogs.setShortcutIconSettingsOpen,
+      compactShowTitle: settingsDialogs.shortcutCompactShowTitle,
+      onCompactShowTitleChange: settingsDialogs.onShortcutCompactShowTitleChange,
+      columns: settingsDialogs.shortcutGridColumns,
+      onColumnsChange: settingsDialogs.onShortcutGridColumnsChange,
+      appearance: settingsDialogs.shortcutIconAppearance,
+      onAppearanceChange: settingsDialogs.onShortcutIconAppearanceChange,
+      cornerRadius: settingsDialogs.shortcutIconCornerRadius,
+      onCornerRadiusChange: settingsDialogs.onShortcutIconCornerRadiusChange,
+      scale: settingsDialogs.shortcutIconScale,
+      onScaleChange: settingsDialogs.onShortcutIconScaleChange,
+      adminModalOpen: utilityDialogs.adminModalOpen,
+      setAdminModalOpen: utilityDialogs.setAdminModalOpen,
+      onExportDomains: utilityDialogs.onExportDomains,
+      gridHitDebugEnabled: utilityDialogs.gridHitDebugEnabled,
+      onGridHitDebugEnabledChange: utilityDialogs.onGridHitDebugEnabledChange,
+      weatherDebugEnabled: utilityDialogs.weatherDebugEnabled,
+      onWeatherDebugEnabledChange: utilityDialogs.onWeatherDebugEnabledChange,
+      onWeatherDebugApply: utilityDialogs.onWeatherDebugApply,
+      customApiUrl: utilityDialogs.customApiUrl,
+      onCustomApiUrlChange: utilityDialogs.onCustomApiUrlChange,
+      customApiName: utilityDialogs.customApiName,
+      onCustomApiNameChange: utilityDialogs.onCustomApiNameChange,
+      aboutModalOpen: utilityDialogs.aboutModalOpen,
+      setAboutModalOpen: utilityDialogs.setAboutModalOpen,
+      defaultAboutTab: utilityDialogs.defaultAboutTab,
+    },
+    consentDialogs: {
+      confirmDisableConsentOpen: consentDialogs.confirmDisableConsentOpen,
+      setConfirmDisableConsentOpen: consentDialogs.setConfirmDisableConsentOpen,
+      onPrivacyConsent: consentDialogs.onPrivacyConsent,
+    },
   });
 
   if (!shouldMountAppDialogs) {
@@ -347,64 +401,14 @@ export function ShortcutAppDialogsLayer({
           onWebdavDisable: settingsDialogs.onWebdavDisable,
           onOpenShortcutGuide: () => settingsDialogs.setShortcutGuideOpen(true),
         }}
-        searchSettingsModalProps={{
-          isOpen: utilityDialogs.searchSettingsOpen,
-          onOpenChange: utilityDialogs.setSearchSettingsOpen,
-          onBackToSettings: utilityDialogs.onBackToSettings,
-          tabSwitchSearchEngine: utilityDialogs.tabSwitchSearchEngine,
-          onTabSwitchSearchEngineChange: utilityDialogs.onTabSwitchSearchEngineChange,
-          searchPrefixEnabled: utilityDialogs.searchPrefixEnabled,
-          onSearchPrefixEnabledChange: utilityDialogs.onSearchPrefixEnabledChange,
-          searchSiteDirectEnabled: utilityDialogs.searchSiteDirectEnabled,
-          onSearchSiteDirectEnabledChange: utilityDialogs.onSearchSiteDirectEnabledChange,
-          searchSiteShortcutEnabled: utilityDialogs.searchSiteShortcutEnabled,
-          onSearchSiteShortcutEnabledChange: utilityDialogs.onSearchSiteShortcutEnabledChange,
-          searchAnyKeyCaptureEnabled: utilityDialogs.searchAnyKeyCaptureEnabled,
-          onSearchAnyKeyCaptureEnabledChange: utilityDialogs.onSearchAnyKeyCaptureEnabledChange,
-          searchCalculatorEnabled: utilityDialogs.searchCalculatorEnabled,
-          onSearchCalculatorEnabledChange: utilityDialogs.onSearchCalculatorEnabledChange,
-          searchRotatingPlaceholderEnabled: utilityDialogs.searchRotatingPlaceholderEnabled,
-          onSearchRotatingPlaceholderEnabledChange: utilityDialogs.onSearchRotatingPlaceholderEnabledChange,
-        }}
-        shortcutGuideDialogProps={{
-          open: utilityDialogs.shortcutGuideOpen,
-          onOpenChange: utilityDialogs.setShortcutGuideOpen,
-          onBackToSettings: utilityDialogs.onBackToSettings,
-        }}
-        shortcutIconSettingsDialogProps={{
-          open: utilityDialogs.shortcutIconSettingsOpen,
-          onOpenChange: utilityDialogs.setShortcutIconSettingsOpen,
-          onBackToSettings: utilityDialogs.onBackToSettings,
-          compactShowTitle: utilityDialogs.compactShowTitle,
-          columns: utilityDialogs.columns,
-          onSaveStyle: utilityDialogs.onShortcutIconStyleSave,
-          appearance: utilityDialogs.appearance,
-          cornerRadius: utilityDialogs.cornerRadius,
-          scale: utilityDialogs.scale,
-          onSave: utilityDialogs.onShortcutIconSave,
-        }}
+        searchSettingsModalProps={controlledUtilityDialogs.searchSettingsModalProps}
+        shortcutGuideDialogProps={controlledUtilityDialogs.shortcutGuideDialogProps}
+        shortcutIconSettingsDialogProps={controlledUtilityDialogs.shortcutIconSettingsDialogProps}
         adminModalProps={{
-          open: utilityDialogs.adminModalOpen,
-          onOpenChange: utilityDialogs.setAdminModalOpen,
-          onBackToSettings: utilityDialogs.onBackToSettings,
-          onExportDomains: utilityDialogs.onExportDomains,
-          gridHitDebugEnabled: utilityDialogs.gridHitDebugEnabled,
-          onGridHitDebugEnabledChange: utilityDialogs.onGridHitDebugEnabledChange,
-          weatherDebugEnabled: utilityDialogs.weatherDebugEnabled,
-          onWeatherDebugEnabledChange: utilityDialogs.onWeatherDebugEnabledChange,
-          onWeatherDebugApply: utilityDialogs.onWeatherDebugApply,
-          customApiUrl: utilityDialogs.customApiUrl,
-          onCustomApiUrlChange: utilityDialogs.onCustomApiUrlChange,
-          customApiName: utilityDialogs.customApiName,
-          onCustomApiNameChange: utilityDialogs.onCustomApiNameChange,
+          ...controlledUtilityDialogs.adminModalProps,
           allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
         }}
-        aboutModalProps={{
-          open: utilityDialogs.aboutModalOpen,
-          onOpenChange: utilityDialogs.setAboutModalOpen,
-          onBackToSettings: utilityDialogs.onBackToSettings,
-          defaultTab: utilityDialogs.defaultAboutTab,
-        }}
+        aboutModalProps={controlledUtilityDialogs.aboutModalProps}
         exportBackupDialogProps={{
           open: backupDialogs.exportBackupDialogOpen,
           onOpenChange: backupDialogs.setExportBackupDialogOpen,
@@ -518,18 +522,7 @@ export function ShortcutAppDialogsLayer({
           applyUndoPayload: backupDialogs.onApplyImportUndoPayload,
           onSuccess: () => backupDialogs.setSettingsOpen(false),
         }}
-        disableConsentDialog={{
-          open: consentDialogs.confirmDisableConsentOpen,
-          onOpenChange: consentDialogs.setConfirmDisableConsentOpen,
-          onAgree: () => {
-            consentDialogs.setConfirmDisableConsentOpen(false);
-            consentDialogs.onPrivacyConsent(true);
-          },
-          onDisagree: () => {
-            consentDialogs.setConfirmDisableConsentOpen(false);
-            consentDialogs.onPrivacyConsent(false);
-          },
-        }}
+        disableConsentDialog={controlledConsentDialogs.disableConsentDialogProps}
       />
     </Suspense>
   );

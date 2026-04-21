@@ -44,6 +44,7 @@
 - Step 1.2：`App.tsx` 改为使用 context value，并把 `ShortcutAppDialogsLayer` 的 shortcut dialog 状态改为从 context 消费，减少一块真实的 prop drilling。
 - Step 1.3：把 selection state 从 `ShortcutExperienceLayer` 的 render prop 迁到 `ShortcutSelectionProvider` + context 消费。
 - Step 1.4：提取 `useShortcutSelectionController`，把 `ShortcutSelectionShell` 内部的选择态流程从渲染层中抽离。
+- Step 2.3：继续把 utility / consent / shortcut icon settings 相关 dialog 入口从 `ShortcutAppDialogsLayer` 的内联组装迁到 dialog controller。
 
 ## 当前问题与目标映射
 
@@ -854,3 +855,18 @@ src/features/shortcuts/
   - Vitest 现有 9 个测试文件、33 个测试全部通过。
 - 下一步建议：
   - 继续用同样方式收口 `authDialog` 或 `settingsDialogs` 之外更小的一组，例如 utility / consent / shortcut icon settings 相关入口；优先挑已经有明确 context 所有权或关闭 reset 规则比较集中的那一组。
+
+- 完成 Step 2.3。
+- `useShortcutAppDialogsController` 现在会统一派生 `search settings`、`shortcut guide`、`shortcut icon settings`、`admin`、`about` 以及 `disable consent` 这几组 dialog props。
+- `ShortcutAppDialogsLayer` 内部已不再手工拼装上述 utility / consent dialog 的大部分业务参数，而是转为消费 controller 产出的显式 props。
+- `App.tsx` 这一步同步收口了 `shortcut icon settings` 相关的细粒度保存逻辑，不再把这组保存回调和展示参数整包往 utility dialog 层透传。
+- 这一步的结果是：
+  - utility / consent 相关 dialog 的关闭、保存和回写规则进一步集中到 controller 边界。
+  - `ShortcutAppDialogsLayer` 继续变薄，更接近真正的 dialog root，而不是继续堆积业务装配细节。
+  - Phase 2 的“controller 化”已经从 scenario dialogs 扩展到了第二组真实 dialog 入口。
+- 运行验证：
+  - `npm run typecheck`
+  - `npm test`
+- 验证结果：
+  - TypeScript 类型检查通过。
+  - Vitest 现有 9 个测试文件、33 个测试全部通过。
