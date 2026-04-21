@@ -21,7 +21,6 @@ const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
 const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
 const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 0)';
-const FOLDER_IMMERSIVE_BLUR_VAR = 'var(--leaftab-folder-immersive-blur, 0px)';
 const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
@@ -315,10 +314,25 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }), [initialRevealReady]);
   const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
-    backdropFilter: `blur(${FOLDER_IMMERSIVE_BLUR_VAR})`,
-    WebkitBackdropFilter: `blur(${FOLDER_IMMERSIVE_BLUR_VAR})`,
-    willChange: 'opacity, backdrop-filter',
+    willChange: 'opacity',
     pointerEvents: 'none',
+  }), []);
+
+  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
+    background:
+      'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 28%, rgba(10,14,20,0.16) 100%)',
+  }), []);
+
+  const immersiveBackdropHighlightStyle = useMemo<CSSProperties>(() => ({
+    background:
+      'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 24%, rgba(255,255,255,0) 62%)',
+  }), []);
+
+  const immersiveBackdropNoiseStyle = useMemo<CSSProperties>(() => ({
+    background:
+      'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0.04) 68%, rgba(255,255,255,0.08) 100%)',
+    mixBlendMode: 'screen',
+    opacity: 0.55,
   }), []);
 
   const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
@@ -410,7 +424,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           aria-hidden="true"
           className="fixed inset-0 z-[15000]"
           style={immersiveBackdropLayerStyle}
-        />
+        >
+          <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
+          <div className="absolute inset-0" style={immersiveBackdropHighlightStyle} />
+          <div className="absolute inset-0" style={immersiveBackdropNoiseStyle} />
+        </div>
         <div style={immersiveUiShellStyle}>
           {fixedTopNavLayer}
         </div>
