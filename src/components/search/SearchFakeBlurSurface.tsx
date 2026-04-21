@@ -120,16 +120,16 @@ export function SearchFakeBlurSurface({
         ? {
             background: drawerToneActive
               ? (deepDarkCover
-                  ? 'linear-gradient(180deg, rgba(5,7,10,0.20) 0%, rgba(5,7,10,0.16) 100%)'
-                  : 'linear-gradient(180deg, rgba(6,8,12,0.14) 0%, rgba(6,8,12,0.12) 100%)')
+                  ? 'rgba(5,7,10,0.18)'
+                  : 'rgba(6,8,12,0.12)')
               : (deepDarkCover
-                  ? 'linear-gradient(180deg, rgba(7,9,12,0.16) 0%, rgba(7,9,12,0.12) 100%)'
-                  : 'linear-gradient(180deg, rgba(10,14,20,0.12) 0%, rgba(10,14,20,0.09) 100%)'),
+                  ? 'rgba(7,9,12,0.14)'
+                  : 'rgba(10,14,20,0.10)'),
           }
         : {
             background: drawerToneActive
-              ? 'linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.30) 100%)'
-              : 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.18) 100%)',
+              ? 'rgba(255,255,255,0.28)'
+              : 'rgba(255,255,255,0.16)',
           })
     : (drawerToneActive
         ? (isDarkTheme
