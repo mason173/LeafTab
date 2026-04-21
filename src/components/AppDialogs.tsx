@@ -19,12 +19,12 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 
 type ShortcutModalProps = ComponentProps<typeof ShortcutModal>;
 type ConfirmDialogProps = ComponentProps<typeof ConfirmDialog>;
@@ -189,7 +189,7 @@ export function AppDialogs({
           }
         }}
       >
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
+        <SettingsDialogContent className="sm:max-w-[425px] rounded-[32px]">
           <DialogHeader>
             <DialogTitle>{t('settings.backup.importConfirmTitle')}</DialogTitle>
             <DialogDescription>{t('settings.backup.importConfirmDesc')}</DialogDescription>
@@ -234,11 +234,11 @@ export function AppDialogs({
               {t('settings.backup.importConfirmAction')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </SettingsDialogContent>
       </Dialog>
 
       <Dialog open={disableConsentDialog.open} onOpenChange={disableConsentDialog.onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground [&>button]:hidden">
+        <SettingsDialogContent className="sm:max-w-[425px] [&>button]:hidden">
           <DialogHeader>
             <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4">
               <RiShieldCrossFill className="w-10 h-10 text-destructive" />
@@ -261,7 +261,7 @@ export function AppDialogs({
               {t('settings.iconAssistant.disagree')}
             </span>
           </div>
-        </DialogContent>
+        </SettingsDialogContent>
       </Dialog>
     </>
   );

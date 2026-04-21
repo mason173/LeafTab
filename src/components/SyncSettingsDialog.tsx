@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -9,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
+import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 
 type SyncSettingsDialogProps = {
   open: boolean;
@@ -37,7 +37,7 @@ export function SyncSettingsDialog({
 }: SyncSettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-[560px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px] ${contentClassName || ''}`}>
+      <SettingsDialogContent className={`sm:max-w-[560px] max-h-[85vh] overflow-visible rounded-[32px] ${contentClassName || ''}`}>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToParent} label={backButtonLabel} />
@@ -52,7 +52,7 @@ export function SyncSettingsDialog({
           {children}
         </ScrollArea>
         {footer ? <DialogFooter className="flex w-full gap-4 sm:gap-4">{footer}</DialogFooter> : null}
-      </DialogContent>
+      </SettingsDialogContent>
     </Dialog>
   );
 }

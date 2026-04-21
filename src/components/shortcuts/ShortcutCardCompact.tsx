@@ -19,6 +19,8 @@ interface ShortcutCardCompactProps {
   largeFolderPreviewSize?: number;
   floatTitle?: boolean;
   dropTargetActive?: boolean;
+  hideFolderPreviewContents?: boolean;
+  folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
   disableIconWrapperEffects?: boolean;
@@ -54,6 +56,8 @@ export function ShortcutCardCompact({
   largeFolderPreviewSize,
   floatTitle = false,
   dropTargetActive = false,
+  hideFolderPreviewContents = false,
+  folderPreviewTone = 'default',
   onPreviewShortcutOpen,
   selectionDisabled = false,
   disableIconWrapperEffects = false,
@@ -137,6 +141,8 @@ export function ShortcutCardCompact({
                 iconAppearance={iconAppearance}
                 remoteIconScale={remoteIconScale}
                 dropTargetActive={dropTargetActive}
+                hideFolderPreviewContents={hideFolderPreviewContents}
+                folderPreviewTone={folderPreviewTone}
                 onOpenFolder={onOpen}
                 onPreviewShortcutOpen={onPreviewShortcutOpen}
                 selectionDisabled={folderSelectionDisabled}

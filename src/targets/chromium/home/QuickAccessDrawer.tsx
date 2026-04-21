@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
+import { FakeBlurDrawerSurface } from '@/components/home/FakeBlurDrawerSurface';
 import { SearchExperience } from '@/components/search/SearchExperience';
 import {
   resolveInitialRevealOpacityTransition,
@@ -194,14 +195,11 @@ export function QuickAccessDrawer({
             }}
             aria-label="Quick Access Drawer"
           >
-            <div
-              className="pointer-events-none absolute inset-0 z-0"
-              style={{
-                backgroundColor: 'var(--background)',
-                opacity: drawerSurfaceLayerOpacity,
-                transition: interactiveTransitionsEnabled ? `opacity ${drawerBackgroundFadeTransition}` : 'none',
-              }}
-              aria-hidden="true"
+            <FakeBlurDrawerSurface
+              opacity={drawerSurfaceLayerOpacity}
+              transition={interactiveTransitionsEnabled ? `opacity ${drawerBackgroundFadeTransition}` : 'none'}
+              panelHeightVh={drawerPanelHeightVh}
+              panelTranslateYPx={drawerPanelTranslateYPx}
             />
 
             <div className="relative z-10 flex min-h-0 flex-1 flex-col">
@@ -243,6 +241,7 @@ export function QuickAccessDrawer({
                         blankMode={modeFlags.searchUsesBlankStyle}
                         forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
                         subtleDarkTone={subtleDarkTone}
+                        searchSurfaceTone={isDrawerExpanded ? 'drawer' : 'default'}
                         searchSurfaceStyle={drawerSearchSurfaceStyle}
                       />
                     </div>
@@ -275,6 +274,7 @@ export function QuickAccessDrawer({
                             <RootShortcutGrid
                               key={shortcutGridProps.surfaceInstanceKey ?? 'root-shortcut-grid'}
                               {...shortcutGridProps}
+                              folderPreviewTone={isDrawerExpanded ? 'drawer' : 'default'}
                               bottomInset={drawerShortcutBottomInset}
                               forceTextWhite={drawerShortcutForceWhiteText}
                               monochromeTone={drawerShortcutMonochromeTone}

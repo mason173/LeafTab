@@ -40,8 +40,11 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  surfaceBackdrop,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+  surfaceBackdrop?: React.ReactNode;
+}) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -49,10 +52,16 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         className={cn(
           "bg-background fixed top-[50%] left-[50%] z-[18001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[32px] border p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
+          surfaceBackdrop
+            ? "[&>*:not([data-settings-surface-backdrop='true'])]:relative [&>*:not([data-settings-surface-backdrop='true'])]:z-10"
+            : "",
           className,
         )}
         {...props}
-      />
+      >
+        {surfaceBackdrop}
+        {props.children}
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }

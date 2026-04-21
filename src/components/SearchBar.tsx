@@ -39,6 +39,7 @@ interface SearchBarProps {
   searchHorizontalPadding?: number;
   searchActionSize?: number;
   searchSurfaceStyle?: React.CSSProperties;
+  searchSurfaceTone?: 'default' | 'drawer';
   subtleDarkTone?: boolean;
   showEngineSwitcher?: boolean;
   statusNotice?: {
@@ -84,6 +85,7 @@ export function SearchBar({
   searchHorizontalPadding = 24,
   searchActionSize = 42,
   searchSurfaceStyle,
+  searchSurfaceTone = 'default',
   subtleDarkTone,
   showEngineSwitcher = true,
   statusNotice,
@@ -137,6 +139,7 @@ export function SearchBar({
             horizontalPadding={searchHorizontalPadding}
             searchActionSize={searchActionSize}
             surfaceStyle={searchSurfaceStyle}
+            surfaceTone={searchSurfaceTone}
             searchEngine={searchEngine}
             onEngineSelect={onEngineSelect}
             dropdownOpen={dropdownOpen}

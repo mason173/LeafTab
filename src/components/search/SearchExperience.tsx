@@ -71,6 +71,7 @@ export interface SearchExperienceProps {
   forceWhiteTheme?: boolean;
   subtleDarkTone?: boolean;
   searchSurfaceStyle?: CSSProperties;
+  searchSurfaceTone?: 'default' | 'drawer';
   onInteractionStateChange?: (state: SearchInteractionState) => void;
 }
 
@@ -153,6 +154,7 @@ export const SearchExperience = memo(function SearchExperience({
   forceWhiteTheme,
   subtleDarkTone,
   searchSurfaceStyle,
+  searchSurfaceTone = 'default',
   onInteractionStateChange,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
@@ -932,6 +934,7 @@ export const SearchExperience = memo(function SearchExperience({
         forceWhiteTheme={forceWhiteTheme}
         subtleDarkTone={subtleDarkTone}
         searchSurfaceStyle={searchSurfaceStyle}
+        searchSurfaceTone={searchSurfaceTone}
         disablePlaceholderAnimation={disablePlaceholderAnimation}
         lightweightSearchUi={lightweightSearchUi}
         searchHeight={searchHeight}

@@ -24,6 +24,9 @@ import {
 
 const HEAT_ZONE_CORE_INSET = 24;
 const HEAT_ZONE_LARGE_FOLDER_CORE_INSET = 12;
+const HIDDEN_SHORTCUT_REVEAL_DURATION_MS = 140;
+const HIDDEN_SHORTCUT_REVEAL_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
 function HeatZoneInspectorPanel({
   inspector,
 }: {
@@ -115,6 +118,8 @@ export type RootShortcutGridCardRenderParams = {
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
   dropTargetActive?: boolean;
+  hideFolderPreviewContents?: boolean;
+  folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
   onOpen: () => void;
@@ -132,6 +137,7 @@ export type RootShortcutGridDragPreviewRenderParams = {
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
+  folderPreviewTone?: 'default' | 'drawer';
 };
 
 export type RootShortcutGridSelectionIndicatorRenderParams = {
@@ -144,12 +150,104 @@ export type RootShortcutExternalDragSession = ShortcutExternalDragSessionSeed & 
   token: number;
 };
 
+function RootShortcutGridVisibilityShell({
+  hidden,
+  width,
+  height,
+  children,
+}: {
+  hidden: boolean;
+  width: number;
+  height: number;
+  children: React.ReactNode;
+}) {
+  const wasHiddenRef = useRef(hidden);
+  const revealFrameRef = useRef<number | null>(null);
+  const revealTimerRef = useRef<number | null>(null);
+  const [revealActive, setRevealActive] = useState(false);
+  const [revealVisible, setRevealVisible] = useState(!hidden);
+
+  useEffect(() => {
+    const cancelReveal = () => {
+      if (revealFrameRef.current !== null) {
+        window.cancelAnimationFrame(revealFrameRef.current);
+        revealFrameRef.current = null;
+      }
+      if (revealTimerRef.current !== null) {
+        window.clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+    };
+
+    const previouslyHidden = wasHiddenRef.current;
+    wasHiddenRef.current = hidden;
+
+    if (hidden) {
+      cancelReveal();
+      setRevealActive(false);
+      setRevealVisible(false);
+      return;
+    }
+
+    if (!previouslyHidden) {
+      cancelReveal();
+      setRevealActive(false);
+      setRevealVisible(true);
+      return;
+    }
+
+    cancelReveal();
+    setRevealActive(true);
+    setRevealVisible(false);
+    revealFrameRef.current = window.requestAnimationFrame(() => {
+      revealFrameRef.current = null;
+      setRevealVisible(true);
+    });
+    revealTimerRef.current = window.setTimeout(() => {
+      revealTimerRef.current = null;
+      setRevealActive(false);
+    }, HIDDEN_SHORTCUT_REVEAL_DURATION_MS);
+
+    return cancelReveal;
+  }, [hidden]);
+
+  useEffect(() => () => {
+    if (revealFrameRef.current !== null) {
+      window.cancelAnimationFrame(revealFrameRef.current);
+    }
+    if (revealTimerRef.current !== null) {
+      window.clearTimeout(revealTimerRef.current);
+    }
+  }, []);
+
+  return (
+    <div
+      className="relative z-10"
+      style={{
+        width,
+        height,
+        visibility: hidden ? 'hidden' : undefined,
+        opacity: hidden ? undefined : (revealVisible ? 1 : 0),
+        transition: revealActive
+          ? `opacity ${HIDDEN_SHORTCUT_REVEAL_DURATION_MS}ms ${HIDDEN_SHORTCUT_REVEAL_EASING}`
+          : undefined,
+        pointerEvents: hidden ? 'none' : undefined,
+      }}
+      aria-hidden={hidden || undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
 export interface RootShortcutGridProps {
   surfaceInstanceKey?: string;
   containerHeight: number;
   bottomInset?: number;
   shortcuts: Shortcut[];
   hiddenShortcutId?: string | null;
+  openFolderPreviewId?: string | null;
+  folderPreviewTone?: 'default' | 'drawer';
   overlayZIndex?: number;
   gridColumns: number;
   minRows: number;
@@ -196,6 +294,8 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   bottomInset = 0,
   shortcuts,
   hiddenShortcutId = null,
+  openFolderPreviewId = null,
+  folderPreviewTone = 'default',
   overlayZIndex,
   gridColumns,
   minRows,
@@ -373,57 +473,33 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                 largeFolderPreviewSize,
               });
               const hiddenFromBackgroundLayer = hiddenShortcutId === params.shortcut.id;
-
-              if (hiddenFromBackgroundLayer) {
-                return (
-                  <div
-                    className="relative z-10"
-                    style={{
-                      width: compactMetrics.width,
-                      height: compactMetrics.height,
-                      visibility: 'hidden',
-                      pointerEvents: 'none',
-                    }}
-                    aria-hidden="true"
-                  >
-                    {renderShortcutCard({
-                      shortcut: params.shortcut,
-                      compactShowTitle,
-                      compactIconSize,
-                      iconCornerRadius,
-                      iconAppearance,
-                      compactTitleFontSize: resolvedVisualTitleFontSize,
-                      forceTextWhite,
-                      enableLargeFolder: largeFolderEnabled,
-                      largeFolderPreviewSize,
-                      dropTargetActive: params.centerPreviewActive,
-                      onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
-                      selectionDisabled: params.selectionDisabled,
-                      onOpen: params.onOpen,
-                      onContextMenu: params.onContextMenu,
-                    })}
-                  </div>
-                );
-              }
+              const hideFolderPreviewContents = openFolderPreviewId === params.shortcut.id;
+              const card = renderShortcutCard({
+                shortcut: params.shortcut,
+                compactShowTitle,
+                compactIconSize,
+                iconCornerRadius,
+                iconAppearance,
+                compactTitleFontSize: resolvedVisualTitleFontSize,
+                forceTextWhite,
+                enableLargeFolder: largeFolderEnabled,
+                largeFolderPreviewSize,
+                dropTargetActive: params.centerPreviewActive,
+                hideFolderPreviewContents,
+                folderPreviewTone,
+                onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
+                selectionDisabled: params.selectionDisabled,
+                onOpen: params.onOpen,
+                onContextMenu: params.onContextMenu,
+              });
 
               return (
-                <div className="relative z-10">
-                  {renderShortcutCard({
-                    shortcut: params.shortcut,
-                    compactShowTitle,
-                    compactIconSize,
-                    iconCornerRadius,
-                    iconAppearance,
-                    compactTitleFontSize: resolvedVisualTitleFontSize,
-                    forceTextWhite,
-                    enableLargeFolder: largeFolderEnabled,
-                    largeFolderPreviewSize,
-                    dropTargetActive: params.centerPreviewActive,
-                    onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
-                    selectionDisabled: params.selectionDisabled,
-                    onOpen: params.onOpen,
-                    onContextMenu: params.onContextMenu,
-                  })}
+                <RootShortcutGridVisibilityShell
+                  hidden={hiddenFromBackgroundLayer}
+                  width={compactMetrics.width}
+                  height={compactMetrics.height}
+                >
+                  {card}
                   {selectionMode && params.shortcut.kind !== 'folder' ? (
                     <div
                       className="pointer-events-none absolute inset-0 z-20 rounded-xl"
@@ -436,7 +512,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                       })}
                     </div>
                   ) : null}
-                </div>
+                </RootShortcutGridVisibilityShell>
               );
             }}
             renderCenterPreview={() => null}
@@ -452,6 +528,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               forceTextWhite,
               enableLargeFolder: largeFolderEnabled,
               largeFolderPreviewSize,
+              folderPreviewTone,
             })}
           />
           {heatZoneInspectorEnabled ? <HeatZoneInspectorPanel inspector={heatZoneInspector} /> : null}

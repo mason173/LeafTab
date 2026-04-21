@@ -72,6 +72,10 @@ const FOLDER_PREVIEW_TITLE_FONT_SIZE_PX = 12;
 const FOLDER_PANEL_TITLE_FONT_SIZE_PX = 22;
 const FOLDER_CHILD_LABEL_FONT_SIZE_PX = 12;
 const HIDDEN_CHILD_CLOSING_FADE_END_PROGRESS = 0.58;
+const HIDDEN_CHILD_OPENING_REVEAL_START_PROGRESS = 0.34;
+const HIDDEN_CHILD_OPENING_REVEAL_END_PROGRESS = 0.84;
+const HIDDEN_CHILD_OPENING_LABEL_START_PROGRESS = 0.52;
+const HIDDEN_CHILD_OPENING_LABEL_END_PROGRESS = 0.94;
 const PANEL_WIDTH_CLASSNAME = 'w-[min(720px,calc(100vw-24px))] max-w-[720px]';
 const PANEL_HORIZONTAL_MARGIN_PX = 24;
 const PANEL_MAX_WIDTH_PX = 720;
@@ -231,6 +235,20 @@ function resolveAnimatedChildOpacity(params: {
   }
 
   return mix(HIDDEN_CHILD_OPENING_COLLAPSED_OPACITY, 1, childProgress);
+}
+
+function resolveHiddenChildOpeningRevealProgress(progress: number) {
+  return clamp01(
+    (progress - HIDDEN_CHILD_OPENING_REVEAL_START_PROGRESS)
+    / (HIDDEN_CHILD_OPENING_REVEAL_END_PROGRESS - HIDDEN_CHILD_OPENING_REVEAL_START_PROGRESS),
+  );
+}
+
+function resolveAnimatedHiddenChildLabelProgress(progress: number) {
+  return clamp01(
+    (progress - HIDDEN_CHILD_OPENING_LABEL_START_PROGRESS)
+    / (HIDDEN_CHILD_OPENING_LABEL_END_PROGRESS - HIDDEN_CHILD_OPENING_LABEL_START_PROGRESS),
+  );
 }
 
 function measureTargetChildRects(container: ParentNode | null | undefined, shortcuts: Shortcut[]) {
@@ -1135,14 +1153,19 @@ export function ShortcutFolderCompactOverlay({
                 total: children.length,
               });
             const childProgress = resolveChildAnimationProgress(openProgress, index, motionPhase);
+            const hiddenChildRevealProgress = !collapsedPreviewVisible && motionPhase === 'opening'
+              ? resolveHiddenChildOpeningRevealProgress(childProgress)
+              : childProgress;
             const animatedChildRect = interpolateRect(sourceChildRect, targetRect, childProgress);
             const opacity = resolveAnimatedChildOpacity({
-              childProgress,
+              childProgress: hiddenChildRevealProgress,
               motionPhase,
               collapsedPreviewVisible,
             });
             const labelProgress = motionPhase === 'opening'
-              ? clamp01((childProgress - 0.12) / 0.88)
+              ? (!collapsedPreviewVisible
+                  ? resolveAnimatedHiddenChildLabelProgress(childProgress)
+                  : clamp01((childProgress - 0.12) / 0.88))
               : clamp01((childProgress - 0.06) / 0.94);
             const animatedLabelRect = targetLabelRect
               ? interpolateRect(

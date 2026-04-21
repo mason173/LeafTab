@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 import { getScenarioIconByKey, scenarioColorOptions, scenarioIconOptions, type ScenarioIconKey, type ScenarioMode } from "@/scenario/scenario";
 
 function ScenarioModeCreateDialog({
@@ -52,7 +52,7 @@ function ScenarioModeCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px] p-0 max-h-[80vh] overflow-visible">
+      <SettingsDialogContent className="sm:max-w-[420px] rounded-[32px] p-0 max-h-[80vh] overflow-visible">
         <ScrollArea
           className="max-h-[80vh]"
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
@@ -158,7 +158,7 @@ function ScenarioModeCreateDialog({
             </Button>
           </DialogFooter>
         </ScrollArea>
-      </DialogContent>
+      </SettingsDialogContent>
     </Dialog>
   );
 }

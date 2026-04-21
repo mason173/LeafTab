@@ -5,13 +5,13 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { SyncSettingsDialog } from './SyncSettingsDialog';
+import { SettingsAlertDialogContent } from '@/components/settings/SettingsDialogSurface';
 import {
   SyncIntervalSliderField,
   SyncSettingsActionButtons,
@@ -212,7 +212,7 @@ export function CloudSyncConfigDialog({
       </SyncSettingsDialog>
 
       <AlertDialog open={bookmarkSyncSafetyDialogOpen} onOpenChange={setBookmarkSyncSafetyDialogOpen}>
-        <AlertDialogContent className="sm:max-w-[480px] rounded-[28px] border-0 shadow-xl">
+        <SettingsAlertDialogContent className="sm:max-w-[480px] rounded-[28px] border-0 shadow-xl" surfaceRadiusClassName="rounded-[28px]">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t('settings.backup.cloud.bookmarkSyncSafetyReminderTitle', { defaultValue: '开启前提醒' })}
@@ -250,7 +250,7 @@ export function CloudSyncConfigDialog({
               {t('settings.backup.cloud.bookmarkSyncSafetyReminderConfirm', { defaultValue: '继续开启' })}
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
+        </SettingsAlertDialogContent>
       </AlertDialog>
     </>
   );

@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   RiCheckboxCircleFill,
@@ -24,6 +23,8 @@ import type { LeafTabSyncAnalysis } from '@/sync/leaftab';
 import type { SyncState } from '@/sync/stateMachine';
 import { cn } from '@/components/ui/utils';
 import { SyncEncryptionStatusCard } from './SyncEncryptionStatusCard';
+import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
+import { SettingsPopoverContent } from '@/components/settings/SettingsFloatingSurface';
 
 export interface LeafTabSyncDialogProps {
   open: boolean;
@@ -204,7 +205,7 @@ function RepairPopover({
           <RiToolsFill className="size-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] rounded-[20px] p-2 !bg-popover !backdrop-blur-none">
+      <SettingsPopoverContent align="end" className="w-[220px] rounded-[20px] p-2" surfaceRadiusClassName="rounded-[20px]">
         <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
           {label}
         </div>
@@ -226,7 +227,7 @@ function RepairPopover({
             {overwriteRemoteLabel}
           </Button>
         </div>
-      </PopoverContent>
+      </SettingsPopoverContent>
     </Popover>
   );
 }
@@ -652,7 +653,7 @@ export function LeafTabSyncDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-visible rounded-[32px] border-border bg-background text-foreground sm:max-w-[560px]">
+      <SettingsDialogContent className="overflow-visible rounded-[32px] sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{t('leaftabSyncCenter.title', { defaultValue: '同步中心' })}</DialogTitle>
           <DialogDescription>
@@ -676,7 +677,7 @@ export function LeafTabSyncDialog({
 
           <ProviderCard model={activeModel} securityCard={securityCard} actionArea={actionArea} />
         </div>
-      </DialogContent>
+      </SettingsDialogContent>
     </Dialog>
   );
 }

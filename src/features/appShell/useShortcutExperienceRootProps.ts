@@ -21,6 +21,8 @@ export type UseShortcutExperienceRootPropsParams = {
   effectiveWallpaperMode: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['effectiveWallpaperMode'];
   freshWeatherVideo: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['freshWeatherVideo'];
   colorWallpaperGradient: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['colorWallpaperGradient'];
+  blurredWallpaperSrc: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['blurredWallpaperSrc'];
+  blurredWallpaperReady: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['blurredWallpaperReady'];
   effectiveOverlayWallpaperSrc: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['effectiveOverlayWallpaperSrc'];
   overlayBackgroundAlt: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['overlayBackgroundAlt'];
   onOverlayImageReady: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['onOverlayImageReady'];
@@ -30,6 +32,7 @@ export type UseShortcutExperienceRootPropsParams = {
   shortcutGridBaseProps: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['shortcutGridBaseProps'];
   shortcutGridHeatZoneInspectorEnabled: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['shortcutGridHeatZoneInspectorEnabled'];
   shortcutGridHiddenShortcutId: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['shortcutGridHiddenShortcutId'];
+  shortcutGridOpenFolderPreviewId: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['shortcutGridOpenFolderPreviewId'];
   wallpaperClockBaseProps: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['wallpaperClockBaseProps'];
   searchExperienceBaseProps: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['searchExperienceBaseProps'];
   baseTimeAnimationEnabled: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['baseTimeAnimationEnabled'];
@@ -81,6 +84,8 @@ export function useShortcutExperienceRootProps(
       effectiveWallpaperMode: params.effectiveWallpaperMode,
       freshWeatherVideo: params.freshWeatherVideo,
       colorWallpaperGradient: params.colorWallpaperGradient,
+      blurredWallpaperSrc: params.blurredWallpaperSrc,
+      blurredWallpaperReady: params.blurredWallpaperReady,
       effectiveOverlayWallpaperSrc: params.effectiveOverlayWallpaperSrc,
       overlayBackgroundAlt: params.overlayBackgroundAlt,
       onOverlayImageReady: params.onOverlayImageReady,
@@ -90,6 +95,7 @@ export function useShortcutExperienceRootProps(
       shortcutGridBaseProps: params.shortcutGridBaseProps,
       shortcutGridHeatZoneInspectorEnabled: params.shortcutGridHeatZoneInspectorEnabled,
       shortcutGridHiddenShortcutId: params.shortcutGridHiddenShortcutId,
+      shortcutGridOpenFolderPreviewId: params.shortcutGridOpenFolderPreviewId,
       wallpaperClockBaseProps: params.wallpaperClockBaseProps,
       searchExperienceBaseProps: params.searchExperienceBaseProps,
       baseTimeAnimationEnabled: params.baseTimeAnimationEnabled,
@@ -108,6 +114,8 @@ export function useShortcutExperienceRootProps(
     params.baseTimeAnimationEnabled,
     params.closeFolderNameDialog,
     params.colorWallpaperGradient,
+    params.blurredWallpaperReady,
+    params.blurredWallpaperSrc,
     params.compactFolderOverlayBaseProps,
     params.effectiveOverlayWallpaperSrc,
     params.effectiveWallpaperMaskOpacity,
@@ -141,6 +149,7 @@ export function useShortcutExperienceRootProps(
     params.shortcutGridBaseProps,
     params.shortcutGridHeatZoneInspectorEnabled,
     params.shortcutGridHiddenShortcutId,
+    params.shortcutGridOpenFolderPreviewId,
     params.showOverlayWallpaperLayer,
     params.topNavModeProps,
     params.wallpaperAnimatedLayerStyle,

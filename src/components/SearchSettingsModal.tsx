@@ -1,4 +1,5 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -129,7 +130,7 @@ export function SearchSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
+      <SettingsDialogContent className="sm:max-w-[560px] rounded-[32px] overflow-visible">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToSettings} />
@@ -210,7 +211,7 @@ export function SearchSettingsModal({
             />
           </div>
         </ScrollArea>
-      </DialogContent>
+      </SettingsDialogContent>
     </Dialog>
   );
 }

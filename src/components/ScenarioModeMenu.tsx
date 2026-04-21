@@ -2,10 +2,11 @@ import { forwardRef, useState, type ButtonHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
 import { RiDeleteBin6Fill, RiPencilFill } from "@/icons/ri-compat";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { getScenarioIconByKey, type ScenarioMode } from "@/scenario/scenario";
+import { SettingsPopoverContent } from "@/components/settings/SettingsFloatingSurface";
 
 function ScenarioModeChevronDown({ open }: { open: boolean }) {
   return (
@@ -87,7 +88,7 @@ function ScenarioModeMenu({
       <PopoverTrigger asChild>
         <ScenarioModeButton mode={selectedMode} open={open} reduceVisualEffects={reduceVisualEffects} />
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" sideOffset={8} className="w-[320px] p-[8px] bg-popover border-border text-foreground rounded-[24px] shadow-[0px_8px_24px_rgba(0,0,0,0.2)]">
+      <SettingsPopoverContent side="top" align="start" sideOffset={8} className="w-[320px] p-[8px] border-border text-foreground rounded-[24px] shadow-[0px_8px_24px_rgba(0,0,0,0.2)]" surfaceRadiusClassName="rounded-[24px]">
         <div className="flex flex-col gap-[6px]">
           <div className="px-[10px] pt-[8px] pb-[6px]">
             <p className="text-[12px] text-muted-foreground leading-none">{t('scenario.title')}</p>
@@ -204,7 +205,7 @@ function ScenarioModeMenu({
             setDeleteOpen(false);
           }}
         />
-      </PopoverContent>
+      </SettingsPopoverContent>
     </Popover>
   );
 }

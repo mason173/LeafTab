@@ -2,12 +2,12 @@ import { Button } from '@/components/ui/button';
 import { RiRefreshFill } from '@/icons/ri-compat';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 import { SyncStatusBadge } from '@/components/SyncStatusBadge';
 import type {
   LeafTabSyncAnalysis,
@@ -69,7 +69,7 @@ export function LeafTabFirstSyncDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] rounded-[32px] border-border bg-background text-foreground">
+      <SettingsDialogContent className="sm:max-w-[720px] rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t('leaftabFirstSync.title', { defaultValue: '初始化同步' })}</DialogTitle>
           <DialogDescription>
@@ -174,7 +174,7 @@ export function LeafTabFirstSyncDialog({
             {t('common.cancel')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </SettingsDialogContent>
     </Dialog>
   );
 }

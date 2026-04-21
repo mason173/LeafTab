@@ -23,6 +23,8 @@ type RootShortcutGridCardRenderParamsShape = {
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
   dropTargetActive?: boolean;
+  hideFolderPreviewContents?: boolean;
+  folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
   onOpen: () => void;
@@ -40,6 +42,7 @@ type RootShortcutGridDragPreviewRenderParamsShape = {
   forceTextWhite: boolean;
   enableLargeFolder: boolean;
   largeFolderPreviewSize?: number;
+  folderPreviewTone?: 'default' | 'drawer';
 };
 
 type RootShortcutGridSelectionIndicatorRenderParamsShape = {
@@ -164,6 +167,8 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
       largeFolderPreviewSize={params.largeFolderPreviewSize}
       floatTitle
       dropTargetActive={params.dropTargetActive}
+      hideFolderPreviewContents={params.hideFolderPreviewContents}
+      folderPreviewTone={params.folderPreviewTone}
       onPreviewShortcutOpen={params.onPreviewShortcutOpen}
       selectionDisabled={params.selectionDisabled}
       folderPortalBackdrop
@@ -201,8 +206,9 @@ export function renderRootShortcutGridDragPreview(params: RootShortcutGridDragPr
       forceTextWhite={params.forceTextWhite}
       enableLargeFolder={params.enableLargeFolder}
       largeFolderPreviewSize={params.largeFolderPreviewSize}
+      folderPreviewTone={params.folderPreviewTone}
       disableIconWrapperEffects
-      folderPortalBackdrop={false}
+      folderPortalBackdrop
       onOpen={() => {}}
       onContextMenu={() => {}}
     />

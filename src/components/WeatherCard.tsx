@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
 import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { cn } from "./ui/utils";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { toast } from "./ui/sonner";
@@ -13,6 +13,7 @@ import {
   useWeatherLocation,
 } from "@/hooks/useWeatherLocation";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
+import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 
 function WeatherCity({ city, variant }: { city: string; variant: "inverted" | "default" }) {
   return (
@@ -185,7 +186,7 @@ export function WeatherCard({
       </button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-[520px] bg-background border-border text-foreground rounded-[32px] backdrop-blur-none">
+        <SettingsDialogContent className="max-w-[520px] rounded-[32px]">
           <DialogHeader>
             <DialogTitle>
               {t("weather.locationSettingsTitle", {
@@ -298,7 +299,7 @@ export function WeatherCard({
               {t("common.save", { defaultValue: "Save" })}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </SettingsDialogContent>
       </Dialog>
     </>
   );

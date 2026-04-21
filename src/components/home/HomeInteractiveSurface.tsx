@@ -50,6 +50,8 @@ export type HomeInteractiveSurfaceProps = {
   effectiveWallpaperMode: WallpaperMode;
   freshWeatherVideo: string;
   colorWallpaperGradient: string;
+  blurredWallpaperSrc: string;
+  blurredWallpaperReady: boolean;
   effectiveOverlayWallpaperSrc: string;
   overlayBackgroundAlt: string;
   onOverlayImageReady: () => void;
@@ -62,6 +64,7 @@ export type HomeInteractiveSurfaceProps = {
   >;
   shortcutGridHeatZoneInspectorEnabled: HomeMainContentShortcutGridProps['heatZoneInspectorEnabled'];
   shortcutGridHiddenShortcutId: HomeMainContentShortcutGridProps['hiddenShortcutId'];
+  shortcutGridOpenFolderPreviewId: HomeMainContentShortcutGridProps['openFolderPreviewId'];
   shortcutGridSelectionMode: HomeMainContentShortcutGridProps['selectionMode'];
   shortcutGridSelectedShortcutIndexes: HomeMainContentShortcutGridProps['selectedShortcutIndexes'];
   onToggleShortcutSelection: HomeMainContentShortcutGridProps['onToggleShortcutSelection'];
@@ -86,6 +89,8 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   effectiveWallpaperMode,
   freshWeatherVideo,
   colorWallpaperGradient,
+  blurredWallpaperSrc,
+  blurredWallpaperReady,
   effectiveOverlayWallpaperSrc,
   overlayBackgroundAlt,
   onOverlayImageReady,
@@ -95,6 +100,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   shortcutGridBaseProps,
   shortcutGridHeatZoneInspectorEnabled,
   shortcutGridHiddenShortcutId,
+  shortcutGridOpenFolderPreviewId,
   shortcutGridSelectionMode,
   shortcutGridSelectedShortcutIndexes,
   onToggleShortcutSelection,
@@ -295,6 +301,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       ...shortcutGridBaseProps,
       heatZoneInspectorEnabled: shortcutGridHeatZoneInspectorEnabled,
       hiddenShortcutId: shortcutGridHiddenShortcutId,
+      openFolderPreviewId: shortcutGridOpenFolderPreviewId,
       selectionMode: shortcutGridSelectionMode,
       selectedShortcutIndexes: shortcutGridSelectedShortcutIndexes,
       onToggleShortcutSelection,
@@ -304,6 +311,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       shortcutGridBaseProps,
       shortcutGridHeatZoneInspectorEnabled,
       shortcutGridHiddenShortcutId,
+      shortcutGridOpenFolderPreviewId,
       shortcutGridSelectedShortcutIndexes,
       shortcutGridSelectionMode,
     ],
@@ -334,6 +342,20 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     mixBlendMode: 'screen',
     opacity: 0.55,
   }), []);
+  const immersiveWallpaperBlurLayerStyle = useMemo<CSSProperties>(() => ({
+    opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
+    willChange: 'opacity',
+    pointerEvents: 'none',
+  }), []);
+  const immersiveWallpaperBlurFallbackStyle = useMemo<CSSProperties>(() => ({
+    opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
+    willChange: 'opacity',
+    pointerEvents: 'none',
+    background:
+      effectiveWallpaperMode === 'color'
+        ? `${colorWallpaperGradient}, linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(18,22,30,0.24) 100%)`
+        : 'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(26,32,44,0.32) 100%)',
+  }), [colorWallpaperGradient, effectiveWallpaperMode]);
 
   const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
     transform: `scale(${FOLDER_IMMERSIVE_SCALE_VAR})`,
@@ -374,6 +396,27 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             ) : null}
             <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
           </div>
+          {blurredWallpaperReady && blurredWallpaperSrc ? (
+            <div className="absolute inset-0" style={immersiveWallpaperBlurLayerStyle}>
+              <img
+                src={blurredWallpaperSrc}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover"
+                draggable={false}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0"
+                style={{
+                  backgroundColor: 'rgba(244, 246, 248, 0.10)',
+                }}
+              />
+              <WallpaperMaskOverlay opacity={Math.min(100, effectiveWallpaperMaskOpacity + 8)} />
+            </div>
+          ) : effectiveWallpaperMode === 'color' || effectiveWallpaperMode === 'weather' ? (
+            <div className="absolute inset-0" style={immersiveWallpaperBlurFallbackStyle} />
+          ) : null}
         </div>
       </div>
     );
@@ -383,7 +426,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     effectiveWallpaperMaskOpacity,
     effectiveWallpaperMode,
     freshWeatherVideo,
+    blurredWallpaperReady,
+    blurredWallpaperSrc,
     immersiveWallpaperLayerStyle,
+    immersiveWallpaperBlurFallbackStyle,
+    immersiveWallpaperBlurLayerStyle,
     onOverlayImageReady,
     overlayBackgroundAlt,
     shouldFreezeDynamicWallpaper,

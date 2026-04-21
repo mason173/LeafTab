@@ -14,6 +14,8 @@ interface ShortcutCardRendererProps {
   largeFolderPreviewSize?: number;
   floatTitle?: boolean;
   dropTargetActive?: boolean;
+  hideFolderPreviewContents?: boolean;
+  folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
   folderPortalBackdrop?: boolean;
@@ -36,6 +38,8 @@ export function ShortcutCardRenderer({
   largeFolderPreviewSize,
   floatTitle = false,
   dropTargetActive = false,
+  hideFolderPreviewContents = false,
+  folderPreviewTone = 'default',
   onPreviewShortcutOpen,
   selectionDisabled = false,
   folderPortalBackdrop = false,
@@ -58,6 +62,8 @@ export function ShortcutCardRenderer({
       largeFolderPreviewSize={largeFolderPreviewSize}
       floatTitle={floatTitle}
       dropTargetActive={dropTargetActive}
+      hideFolderPreviewContents={hideFolderPreviewContents}
+      folderPreviewTone={folderPreviewTone}
       onPreviewShortcutOpen={onPreviewShortcutOpen}
       selectionDisabled={selectionDisabled}
       folderPortalBackdrop={folderPortalBackdrop}

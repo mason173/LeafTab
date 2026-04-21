@@ -16,6 +16,7 @@ import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useLongTaskIndicator } from './hooks/useLongTaskIndicator';
 import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
+import { useBlurredWallpaperAsset } from './hooks/useBlurredWallpaperAsset';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
 import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
 
@@ -35,13 +36,13 @@ import { DEFAULT_SHORTCUT_CARD_VARIANT, clampShortcutGridColumns } from '@/compo
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+import { WallpaperBackdropProvider } from '@/components/wallpaper/WallpaperBackdropContext';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
 import {
   useFolderTransitionActiveFolderId,
   useFolderTransitionController,
-  useFolderTransitionOverlayFolderId,
 } from '@/components/folderTransition/useFolderTransitionController';
 import { FolderTransitionDocumentEffects } from '@/components/folderTransition/FolderTransitionDocumentEffects';
 import {
@@ -519,7 +520,6 @@ export default function App() {
   const folderOpenRequestIdRef = useRef(0);
   const folderTransitionController = useFolderTransitionController();
   const openFolderId = useFolderTransitionActiveFolderId(folderTransitionController);
-  const overlayFolderId = useFolderTransitionOverlayFolderId(folderTransitionController);
   const runAfterFolderOverlayClose = folderTransitionController.runAfterClose;
 
   const openFolderShortcut = useMemo(
@@ -1861,6 +1861,41 @@ export default function App() {
     effectiveWallpaperMode,
     weatherCode,
   ]);
+  const wallpaperBackdropVisualVisible = showOverlayWallpaperLayer || displayModeFlags.showHeroWallpaperClock;
+  const wallpaperBlurSourceUrl = useMemo(() => {
+    if (effectiveWallpaperMode === 'weather') {
+      return freshWeatherVideo;
+    }
+    if (effectiveWallpaperMode === 'color') {
+      return '';
+    }
+
+    if (displayModeFlags.showHeroWallpaperClock) {
+      if (effectiveWallpaperMode === 'custom') {
+        return customWallpaper || (customWallpaperLoaded ? imgImage : '') || effectiveOverlayWallpaperSrc;
+      }
+      if (effectiveWallpaperMode === 'bing') {
+        return bingWallpaper || imgImage;
+      }
+    }
+
+    return effectiveOverlayWallpaperSrc;
+  }, [
+    bingWallpaper,
+    customWallpaper,
+    customWallpaperLoaded,
+    displayModeFlags.showHeroWallpaperClock,
+    effectiveOverlayWallpaperSrc,
+    effectiveWallpaperMode,
+    freshWeatherVideo,
+  ]);
+  const {
+    blurredWallpaperSrc,
+    blurredWallpaperReady,
+  } = useBlurredWallpaperAsset({
+    sourceUrl: wallpaperBlurSourceUrl,
+    enabled: wallpaperBackdropVisualVisible && effectiveWallpaperMode !== 'color' && Boolean(wallpaperBlurSourceUrl),
+  });
   const searchExperienceBaseProps = useMemo(() => ({
     openInNewTab,
     shortcuts,
@@ -2032,6 +2067,8 @@ export default function App() {
     effectiveWallpaperMode,
     freshWeatherVideo,
     colorWallpaperGradient,
+    blurredWallpaperSrc,
+    blurredWallpaperReady,
     effectiveOverlayWallpaperSrc,
     overlayBackgroundAlt,
     onOverlayImageReady: handleOverlayWallpaperReadyForRevealAndAccent,
@@ -2040,7 +2077,8 @@ export default function App() {
     homeMainContentBaseProps,
     shortcutGridBaseProps: shortcutEngineHostAdapter.rootGridProps,
     shortcutGridHeatZoneInspectorEnabled: gridHitInspectorVisible,
-    shortcutGridHiddenShortcutId: pendingExtractHiddenShortcutId ?? overlayFolderId,
+    shortcutGridHiddenShortcutId: pendingExtractHiddenShortcutId,
+    shortcutGridOpenFolderPreviewId: openFolderId,
     wallpaperClockBaseProps,
     searchExperienceBaseProps,
     baseTimeAnimationEnabled: effectiveTimeAnimationEnabled,
@@ -2196,12 +2234,19 @@ export default function App() {
   return (
     <ShortcutAppProvider value={shortcutApp}>
       <LeafTabSyncProvider value={syncController}>
-        <div
-          ref={pageFocusRef}
-          tabIndex={-1}
-          className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
-          style={panoramicSurfaceRevealStyle}
+        <WallpaperBackdropProvider
+          value={{
+            wallpaperMode: effectiveWallpaperMode,
+            colorWallpaperGradient,
+            blurredWallpaperSrc,
+          }}
         >
+          <div
+            ref={pageFocusRef}
+            tabIndex={-1}
+            className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
+            style={panoramicSurfaceRevealStyle}
+          >
           <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
           {shouldMountWallpaperSelector ? (
             <Suspense fallback={null}>
@@ -2306,7 +2351,8 @@ export default function App() {
             isOpen={showPrivacyModal}
             onConsent={handlePrivacyConsent}
           />
-        </div>
+          </div>
+        </WallpaperBackdropProvider>
       </LeafTabSyncProvider>
     </ShortcutAppProvider>
   );

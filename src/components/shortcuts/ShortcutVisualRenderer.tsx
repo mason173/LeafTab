@@ -14,6 +14,8 @@ export interface ShortcutVisualRendererProps {
   iconAppearance?: ShortcutIconAppearance;
   remoteIconScale?: number;
   dropTargetActive?: boolean;
+  hideFolderPreviewContents?: boolean;
+  folderPreviewTone?: 'default' | 'drawer';
   onOpenFolder?: () => void;
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
@@ -29,6 +31,8 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
   iconAppearance,
   remoteIconScale = 1,
   dropTargetActive = false,
+  hideFolderPreviewContents = false,
+  folderPreviewTone = 'default',
   onOpenFolder,
   onPreviewShortcutOpen,
   selectionDisabled = false,
@@ -43,6 +47,8 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
           iconCornerRadius={iconCornerRadius}
         iconAppearance={iconAppearance}
         highlightBorder={dropTargetActive}
+        hidePreviewContents={hideFolderPreviewContents}
+        previewTone={folderPreviewTone}
         onOpenFolder={selectionDisabled ? undefined : onOpenFolder}
         onOpenShortcut={selectionDisabled ? undefined : onPreviewShortcutOpen}
         portalBackdrop={folderPortalBackdrop}
@@ -57,6 +63,8 @@ export const ShortcutVisualRenderer = React.memo(function ShortcutVisualRenderer
         iconCornerRadius={iconCornerRadius}
         iconAppearance={iconAppearance}
         highlightBorder={dropTargetActive}
+        hidePreviewContents={hideFolderPreviewContents}
+        previewTone={folderPreviewTone}
         selectionDisabled={selectionDisabled}
         portalBackdrop={folderPortalBackdrop}
       />

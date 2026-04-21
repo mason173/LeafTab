@@ -30,7 +30,7 @@ export function resolveSearchBarTheme(args: {
 }): SearchBarTheme {
   const { blankMode, forceWhiteTheme, subtleDarkTone, resolvedTheme } = args;
   const defaultTheme: SearchBarTheme = {
-    surfaceClassName: 'bg-secondary text-foreground',
+    surfaceClassName: 'text-foreground',
     triggerToneClassName: 'text-foreground/70',
     clearButtonClassName: 'text-muted-foreground hover:text-foreground',
     inputClassName: 'bg-transparent dark:bg-transparent text-foreground placeholder:text-muted-foreground',
@@ -40,7 +40,7 @@ export function resolveSearchBarTheme(args: {
     dropdownRowClassName: 'text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground',
     dropdownRowSelectedClassName: 'bg-accent text-foreground',
     dropdownSecondaryTextClassName: 'text-muted-foreground',
-    engineDropdownSurfaceClassName: 'bg-secondary text-foreground border-border shadow-lg',
+    engineDropdownSurfaceClassName: 'border-border bg-transparent text-foreground shadow-lg backdrop-blur-none',
     engineDropdownItemClassName: 'text-foreground hover:bg-accent hover:text-foreground',
     engineDropdownItemSelectedClassName: 'bg-accent text-foreground',
     dropdownStatusLoadingContainerClassName: 'bg-primary/10',
@@ -54,8 +54,8 @@ export function resolveSearchBarTheme(args: {
   };
   const darkTheme: SearchBarTheme = {
     ...defaultTheme,
-    surfaceClassName: 'bg-background border border-white/20 text-foreground',
-    engineDropdownSurfaceClassName: 'bg-popover text-popover-foreground border-border shadow-lg',
+    surfaceClassName: 'text-foreground',
+    engineDropdownSurfaceClassName: 'border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none',
   };
 
   if (resolvedTheme === 'dark') {
@@ -64,7 +64,7 @@ export function resolveSearchBarTheme(args: {
 
   if (forceWhiteTheme) {
     return {
-      surfaceClassName: 'bg-white text-black/85',
+      surfaceClassName: 'text-black/85',
       triggerToneClassName: subtleDarkTone ? 'text-black/35' : 'text-black/55',
       clearButtonClassName: 'text-black/45 hover:text-black/80',
       inputClassName: subtleDarkTone
@@ -76,7 +76,7 @@ export function resolveSearchBarTheme(args: {
       dropdownRowClassName: 'text-black/85 hover:bg-black/5 hover:text-black focus:bg-black/5 focus:text-black',
       dropdownRowSelectedClassName: 'bg-black/8 text-black',
       dropdownSecondaryTextClassName: 'text-black/40',
-      engineDropdownSurfaceClassName: 'bg-white text-black/85 border-black/10 shadow-lg',
+      engineDropdownSurfaceClassName: 'border-black/10 bg-transparent text-black/85 shadow-lg backdrop-blur-none',
       engineDropdownItemClassName: 'text-black/85 hover:bg-black/5 hover:text-black',
       engineDropdownItemSelectedClassName: 'bg-black/8 text-black',
       dropdownStatusLoadingContainerClassName: 'bg-black/6',
@@ -92,7 +92,7 @@ export function resolveSearchBarTheme(args: {
 
   if (blankMode) {
     return {
-      surfaceClassName: 'bg-black/20 backdrop-blur-md text-white/56',
+      surfaceClassName: 'text-white/56',
       triggerToneClassName: 'text-white/60',
       clearButtonClassName: 'text-white/40 hover:text-white/80',
       inputClassName: 'bg-transparent dark:bg-transparent text-white/80 placeholder:text-white/40',
@@ -102,7 +102,7 @@ export function resolveSearchBarTheme(args: {
       dropdownRowClassName: 'text-white/80 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white',
       dropdownRowSelectedClassName: 'bg-white/10 text-white',
       dropdownSecondaryTextClassName: 'text-white/50',
-      engineDropdownSurfaceClassName: 'bg-black/20 backdrop-blur-md text-white/80 border-white/10 shadow-lg',
+      engineDropdownSurfaceClassName: 'border-white/10 bg-transparent text-white/80 shadow-lg backdrop-blur-none',
       engineDropdownItemClassName: 'text-white/80 hover:bg-white/10 hover:text-white',
       engineDropdownItemSelectedClassName: 'bg-white/10 text-white',
       dropdownStatusLoadingContainerClassName: 'bg-white/12',
