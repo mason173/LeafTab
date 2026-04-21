@@ -126,10 +126,12 @@ import {
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
-import { useShortcutAppFacade } from '@/features/shortcuts/app/useShortcutAppFacade';
+import { ShortcutAppProvider } from '@/features/shortcuts/app/ShortcutAppContext';
 import { ShortcutAppDialogsLayer } from '@/features/shortcuts/app/ShortcutAppDialogsLayer';
-import { ShortcutExperienceLayer } from '@/features/shortcuts/app/ShortcutExperienceLayer';
+import { ShortcutExperienceRoot } from '@/features/shortcuts/app/ShortcutExperienceRoot';
 import { ShortcutSyncDialogsLayer } from '@/features/shortcuts/app/ShortcutSyncDialogsLayer';
+import { openCreateShortcutEditor } from '@/features/shortcuts/app/shortcutEditorState';
+import { useShortcutAppContextValue } from '@/features/shortcuts/app/useShortcutAppContextValue';
 import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEngine/leaftabGridEngineHostAdapter';
 import { useShortcutWorkspaceController } from '@/features/shortcuts/workspace/useShortcutWorkspaceController';
 
@@ -726,7 +728,7 @@ export default function App() {
   const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, DEFAULT_SHORTCUT_CARD_VARIANT, responsiveLayout.density);
   const minShortcutRows = responsiveLayout.baseRows;
 
-  const shortcutApp = useShortcutAppFacade(
+  const shortcutApp = useShortcutAppContextValue(
     user,
     openInNewTab,
     API_URL,
@@ -734,58 +736,50 @@ export default function App() {
   );
   const {
     scenarioModes,
-    setScenarioModes,
     selectedScenarioId,
-    setSelectedScenarioId,
     scenarioShortcuts,
-    setScenarioShortcuts,
     shortcuts,
     totalShortcuts,
-  } = shortcutApp.shortcutDomain;
+  } = shortcutApp.state.domain;
+  const {
+    setScenarioModes,
+    setSelectedScenarioId,
+    setScenarioShortcuts,
+  } = shortcutApp.actions.domain;
   const {
     contextMenu,
-    setContextMenu,
-    contextMenuRef,
     shortcutEditOpen,
-    setShortcutEditOpen,
-    shortcutModalMode,
-    setShortcutModalMode,
     shortcutDeleteOpen,
-    setShortcutDeleteOpen,
-    selectedShortcut,
-    setSelectedShortcut,
-    editingTitle,
-    setEditingTitle,
-    editingUrl,
-    setEditingUrl,
     isDragging,
-    currentEditScenarioId,
-    setCurrentInsertIndex,
     scenarioModeOpen,
-    setScenarioModeOpen,
     scenarioCreateOpen,
-    setScenarioCreateOpen,
     scenarioEditOpen,
-    setScenarioEditOpen,
-  } = shortcutApp.shortcutUi;
+  } = shortcutApp.state.ui;
   const {
-    handleCreateScenarioMode,
+    setContextMenu,
+    setShortcutEditOpen,
+    setShortcutModalMode,
+    setShortcutDeleteOpen,
+    setSelectedShortcut,
+    setEditingTitle,
+    setEditingUrl,
+    setCurrentInsertIndex,
+    setScenarioModeOpen,
+    setScenarioCreateOpen,
+  } = shortcutApp.actions.ui;
+  const {
     handleOpenEditScenarioMode,
-    handleUpdateScenarioMode,
     handleDeleteScenarioMode,
     handleShortcutOpen,
     handleShortcutContextMenu,
     handleGridContextMenu,
-    handleSaveShortcutEdit,
-    handleConfirmDeleteShortcut,
-    handleConfirmDeleteShortcuts,
     handleShortcutReorder,
-  } = shortcutApp.shortcutActions;
+  } = shortcutApp.actions.shortcuts;
   const {
     setUserRole,
-    localDirtyRef,
     resetLocalShortcutsByRole,
-  } = shortcutApp.shortcutPersistence;
+  } = shortcutApp.actions.persistence;
+  const { contextMenuRef, localDirtyRef } = shortcutApp.meta;
 
   const markShortcutStateDirty = useCallback(() => {
     if (!user) localDirtyRef.current = true;
@@ -3326,7 +3320,6 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [contextMenu, contextMenuRef, setContextMenu]);
 
-  const scenarioEditMode = scenarioModes.find((m: any) => m.id === currentEditScenarioId) ?? null;
   const gridHitInspectorVisible = adminModeEnabled && gridHitDebugVisible;
   const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
@@ -3725,27 +3718,24 @@ export default function App() {
   const shouldMountUpdateDialog = !IS_STORE_BUILD && useKeepMountedAfterFirstOpen(updateDialogOpen);
 
   return (
-    <div
-      ref={pageFocusRef}
-      tabIndex={-1}
-      className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
-      style={panoramicSurfaceRevealStyle}
-    >
-      <ShortcutExperienceLayer
-        selectionShellProps={{
-          contextMenu,
-          setContextMenu,
-          contextMenuRef,
-          shortcuts,
-          scenarioModes,
-          selectedScenarioId,
+    <ShortcutAppProvider value={shortcutApp}>
+      <div
+        ref={pageFocusRef}
+        tabIndex={-1}
+        className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
+        style={panoramicSurfaceRevealStyle}
+      >
+      <ShortcutExperienceRoot
+        selectionActions={{
           onCreateShortcut: (insertIndex) => {
-            setShortcutModalMode('add');
-            setSelectedShortcut(null);
-            setEditingTitle('');
-            setEditingUrl('');
-            setCurrentInsertIndex(insertIndex);
-            setShortcutEditOpen(true);
+            openCreateShortcutEditor({
+              setShortcutModalMode,
+              setSelectedShortcut,
+              setEditingTitle,
+              setEditingUrl,
+              setCurrentInsertIndex,
+              setShortcutEditOpen,
+            }, insertIndex);
           },
           onEditShortcut: handleOpenShortcutEditor,
           onEditFolderShortcut: handleOpenFolderChildShortcutEditor,
@@ -3755,13 +3745,11 @@ export default function App() {
           },
           onDeleteFolderShortcut: handleDeleteFolderChildShortcut,
           onShortcutOpen: handleShortcutActivate,
-          onDeleteSelectedShortcuts: handleConfirmDeleteShortcuts,
           onCreateFolder: handleCreateFolderFromSelection,
           onPinSelectedShortcuts: handlePinSelectedShortcuts,
           onMoveSelectedShortcutsToScenario: handleMoveSelectedShortcutsToScenario,
           onMoveSelectedShortcutsToFolder: handleMoveSelectedShortcutsToFolder,
           onDissolveFolder: handleDissolveFolder,
-          showLargeFolderToggle: true,
           onSetFolderDisplayMode: handleSetFolderDisplayMode,
         }}
         homeInteractiveSurfaceBaseProps={{
@@ -3882,34 +3870,6 @@ export default function App() {
       />
       <ShortcutAppDialogsLayer
         shouldMountAppDialogs={shouldMountAppDialogs}
-        shortcutDialogs={{
-          shortcutEditOpen,
-          setShortcutEditOpen,
-          shortcutModalMode,
-          setShortcutModalMode,
-          selectedShortcut,
-          setSelectedShortcut,
-          editingTitle,
-          setEditingTitle,
-          editingUrl,
-          setEditingUrl,
-          shortcutIconCornerRadius,
-          shortcutIconScale,
-          shortcutIconAppearance,
-          onSaveShortcutEdit: handleSaveShortcutEdit,
-          shortcutDeleteOpen,
-          setShortcutDeleteOpen,
-          onConfirmDeleteShortcut: handleConfirmDeleteShortcut,
-        }}
-        scenarioDialogs={{
-          scenarioCreateOpen,
-          setScenarioCreateOpen,
-          onCreateScenarioMode: handleCreateScenarioMode,
-          scenarioEditOpen,
-          setScenarioEditOpen,
-          onUpdateScenarioMode: handleUpdateScenarioMode,
-          scenarioEditMode,
-        }}
         authDialog={{
           isAuthModalOpen,
           onOpenChange: handleAuthModalOpenChange,
@@ -3932,6 +3892,9 @@ export default function App() {
           shortcutsCount: totalShortcuts,
           displayMode,
           onDisplayModeChange: setDisplayMode,
+          shortcutIconCornerRadius,
+          shortcutIconScale,
+          shortcutIconAppearance,
           shortcutCompactShowTitle,
           onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
           shortcutGridColumns: normalizedGridColumns,
@@ -4205,6 +4168,7 @@ export default function App() {
         isOpen={showPrivacyModal} 
         onConsent={handlePrivacyConsent} 
       />
-    </div>
+      </div>
+    </ShortcutAppProvider>
   );
 }

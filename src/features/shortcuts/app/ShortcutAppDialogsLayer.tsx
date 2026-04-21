@@ -3,17 +3,15 @@ import { useTranslation } from 'react-i18next';
 import type { AppDialogsProps } from '@/components/AppDialogs';
 import { ENABLE_CUSTOM_API_SERVER } from '@/config/distribution';
 import { LazyAppDialogs } from '@/lazy/components';
-import type { SelectedShortcutState } from '@/features/shortcuts/model/types';
 import type { WebdavConfig } from '@/types/webdav';
 import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 import { createLeafTabWebdavEncryptionScopeKey } from '@/utils/leafTabSyncEncryption';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 import { readWebdavConfigFromStorage } from '@/utils/webdavConfig';
+import { resetShortcutEditorState } from '@/features/shortcuts/app/shortcutEditorState';
+import { useShortcutAppDialogsController } from '@/features/shortcuts/app/useShortcutAppDialogsController';
 
 type ShortcutModalProps = AppDialogsProps['shortcutModalProps'];
-type ConfirmDialogProps = AppDialogsProps['shortcutDeleteDialogProps'];
-type ScenarioCreateDialogProps = AppDialogsProps['scenarioCreateDialogProps'];
-type ScenarioEditDialogProps = AppDialogsProps['scenarioEditDialogProps'];
 type AuthModalProps = AppDialogsProps['authModalProps'];
 type SettingsModalProps = AppDialogsProps['settingsModalProps'];
 type SearchSettingsModalProps = AppDialogsProps['searchSettingsModalProps'];
@@ -33,36 +31,6 @@ type BackupScopePayload = {
     bookmarks?: boolean;
   };
 } | null;
-
-type ShortcutDialogsInput = {
-  shortcutEditOpen: ShortcutModalProps['isOpen'];
-  setShortcutEditOpen: ShortcutModalProps['onOpenChange'];
-  shortcutModalMode: ShortcutModalProps['mode'];
-  setShortcutModalMode: (mode: ShortcutModalProps['mode']) => void;
-  selectedShortcut: SelectedShortcutState;
-  setSelectedShortcut: (value: SelectedShortcutState) => void;
-  editingTitle: string;
-  setEditingTitle: (value: string) => void;
-  editingUrl: string;
-  setEditingUrl: (value: string) => void;
-  shortcutIconCornerRadius: ShortcutModalProps['iconCornerRadius'];
-  shortcutIconScale: ShortcutModalProps['iconScale'];
-  shortcutIconAppearance: ShortcutModalProps['iconAppearance'];
-  onSaveShortcutEdit: ShortcutModalProps['onSave'];
-  shortcutDeleteOpen: ConfirmDialogProps['open'];
-  setShortcutDeleteOpen: ConfirmDialogProps['onOpenChange'];
-  onConfirmDeleteShortcut: ConfirmDialogProps['onConfirm'];
-};
-
-type ScenarioDialogsInput = {
-  scenarioCreateOpen: ScenarioCreateDialogProps['open'];
-  setScenarioCreateOpen: ScenarioCreateDialogProps['onOpenChange'];
-  onCreateScenarioMode: ScenarioCreateDialogProps['onSubmit'];
-  scenarioEditOpen: ScenarioEditDialogProps['open'];
-  setScenarioEditOpen: ScenarioEditDialogProps['onOpenChange'];
-  onUpdateScenarioMode: ScenarioEditDialogProps['onSubmit'];
-  scenarioEditMode: ScenarioEditDialogProps['mode'];
-};
 
 type AuthDialogInput = {
   isAuthModalOpen: AuthModalProps['isOpen'];
@@ -87,6 +55,9 @@ type SettingsDialogsInput = {
   shortcutsCount: SettingsModalProps['shortcutsCount'];
   displayMode: SettingsModalProps['displayMode'];
   onDisplayModeChange: SettingsModalProps['onDisplayModeChange'];
+  shortcutIconCornerRadius: ShortcutModalProps['iconCornerRadius'];
+  shortcutIconScale: ShortcutModalProps['iconScale'];
+  shortcutIconAppearance: ShortcutModalProps['iconAppearance'];
   shortcutCompactShowTitle: SettingsModalProps['shortcutCompactShowTitle'];
   onShortcutCompactShowTitleChange: SettingsModalProps['onShortcutCompactShowTitleChange'];
   shortcutGridColumns: SettingsModalProps['shortcutGridColumns'];
@@ -222,8 +193,6 @@ type ConsentDialogsInput = {
 
 export type ShortcutAppDialogsLayerProps = {
   shouldMountAppDialogs: boolean;
-  shortcutDialogs: ShortcutDialogsInput;
-  scenarioDialogs: ScenarioDialogsInput;
   authDialog: AuthDialogInput;
   settingsDialogs: SettingsDialogsInput;
   utilityDialogs: UtilityDialogsInput;
@@ -234,8 +203,6 @@ export type ShortcutAppDialogsLayerProps = {
 
 export function ShortcutAppDialogsLayer({
   shouldMountAppDialogs,
-  shortcutDialogs,
-  scenarioDialogs,
   authDialog,
   settingsDialogs,
   utilityDialogs,
@@ -244,6 +211,11 @@ export function ShortcutAppDialogsLayer({
   consentDialogs,
 }: ShortcutAppDialogsLayerProps) {
   const { t } = useTranslation();
+  const { shortcutDialogs, scenarioDialogs } = useShortcutAppDialogsController({
+    shortcutIconCornerRadius: settingsDialogs.shortcutIconCornerRadius,
+    shortcutIconScale: settingsDialogs.shortcutIconScale,
+    shortcutIconAppearance: settingsDialogs.shortcutIconAppearance,
+  });
 
   if (!shouldMountAppDialogs) {
     return null;
@@ -257,10 +229,13 @@ export function ShortcutAppDialogsLayer({
           onOpenChange: (open) => {
             shortcutDialogs.setShortcutEditOpen(open);
             if (!open) {
-              shortcutDialogs.setShortcutModalMode('add');
-              shortcutDialogs.setSelectedShortcut(null);
-              shortcutDialogs.setEditingTitle('');
-              shortcutDialogs.setEditingUrl('');
+              resetShortcutEditorState({
+                setShortcutModalMode: shortcutDialogs.setShortcutModalMode,
+                setSelectedShortcut: shortcutDialogs.setSelectedShortcut,
+                setEditingTitle: shortcutDialogs.setEditingTitle,
+                setEditingUrl: shortcutDialogs.setEditingUrl,
+                setCurrentInsertIndex: shortcutDialogs.setCurrentInsertIndex,
+              });
             }
           },
           mode: shortcutDialogs.shortcutModalMode,
