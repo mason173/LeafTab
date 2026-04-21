@@ -172,7 +172,6 @@ export interface RootShortcutGridProps {
   onDragStart?: () => void;
   onDragEnd?: () => void;
   interactionProfile?: GridInteractionProfileLike;
-  forceReorderOnly?: boolean;
   extractBoundaryRef?: React.RefObject<HTMLElement | null>;
   onExtractDragStart?: (payload: ShortcutExternalDragSessionSeed) => void;
   onBoundaryHoverChange?: (hovered: boolean) => void;
@@ -219,7 +218,6 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   onDragStart,
   onDragEnd,
   interactionProfile,
-  forceReorderOnly = false,
   extractBoundaryRef,
   onExtractDragStart,
   onBoundaryHoverChange,
@@ -330,14 +328,6 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     rowHeight,
     iconCornerRadius,
   ]);
-  const resolvedInteractionProfile = useMemo<GridInteractionProfileLike | undefined>(() => {
-    if (interactionProfile) {
-      return interactionProfile;
-    }
-
-    return forceReorderOnly ? 'folder-internal' : undefined;
-  }, [forceReorderOnly, interactionProfile]);
-
   return (
     <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
       <div ref={wrapperRef} className="relative w-full">
@@ -359,7 +349,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
           onGridContextMenu={onGridContextMenu}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
-          interactionProfile={resolvedInteractionProfile}
+          interactionProfile={interactionProfile}
           onHeatZoneInspectorChange={heatZoneInspectorEnabled ? setHeatZoneInspector : undefined}
           extractBoundaryRef={extractBoundaryRef}
           onExtractDragStart={onExtractDragStart}

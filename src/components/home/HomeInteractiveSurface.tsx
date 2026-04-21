@@ -43,7 +43,6 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
 
 export type HomeInteractiveSurfaceProps = {
   initialRevealReady: boolean;
-  visible: boolean;
   modeLayersVisible: boolean;
   modeFlags: DisplayModeLayoutFlags;
   showOverlayWallpaperLayer: boolean;
@@ -80,7 +79,6 @@ export type HomeInteractiveSurfaceProps = {
 
 export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   initialRevealReady,
-  visible,
   modeLayersVisible,
   modeFlags,
   showOverlayWallpaperLayer,
@@ -417,7 +415,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       <HomeMainContent
         {...homeMainContentBaseProps}
         initialRevealReady={initialRevealReady}
-        visible={visible}
         modeFlags={modeFlags}
         wallpaperClockProps={wallpaperClockProps}
         searchExperienceProps={searchExperienceProps}

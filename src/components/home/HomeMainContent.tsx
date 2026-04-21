@@ -25,7 +25,6 @@ export type HomeMainContentShortcutGridProps = RootShortcutGridProps;
 
 export interface HomeMainContentProps {
   initialRevealReady: boolean;
-  visible: boolean;
   modeFlags: HomeContentFlags;
   showTime: boolean;
   displayMode: DisplayMode;
@@ -58,7 +57,6 @@ export interface HomeMainContentProps {
 export type HomeMainContentBaseProps = Omit<
   HomeMainContentProps,
   'initialRevealReady'
-  | 'visible'
   | 'modeFlags'
   | 'wallpaperClockProps'
   | 'searchExperienceProps'
@@ -75,7 +73,6 @@ const BLANK_MODE_DRAWER_HINT_SEEN_KEY = 'leaftab_blank_mode_drawer_hint_seen_v1'
 
 export const HomeMainContent = memo(function HomeMainContent({
   initialRevealReady,
-  visible,
   modeFlags,
   showTime,
   displayMode,
@@ -150,9 +147,8 @@ export const HomeMainContent = memo(function HomeMainContent({
   const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
     ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
     : undefined;
-  const isDrawerFullyExpanded = visible && drawer.isDrawerExpanded;
+  const isDrawerFullyExpanded = drawer.isDrawerExpanded;
   const showBlankModeDrawerHint = initialRevealReady
-    && visible
     && displayMode === 'minimalist'
     && topNavIntroCompleted
     && !drawer.isDrawerExpanded
@@ -183,8 +179,6 @@ export const HomeMainContent = memo(function HomeMainContent({
       localStorage.setItem(BLANK_MODE_DRAWER_HINT_SEEN_KEY, 'true');
     } catch {}
   }, [blankModeDrawerHintDismissed, displayMode, drawer.isDrawerExpanded]);
-
-  if (!visible) return null;
 
   return (
     <>

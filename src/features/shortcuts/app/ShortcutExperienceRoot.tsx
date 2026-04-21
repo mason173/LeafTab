@@ -31,6 +31,7 @@ export type ShortcutExperienceRootProps = {
     | 'onDissolveFolder'
     | 'onSetFolderDisplayMode'
   >;
+  homeInteractiveSurfaceVisible: boolean;
   homeInteractiveSurfaceBaseProps: Omit<
     HomeInteractiveSurfaceProps,
     'shortcutGridSelectionMode' | 'shortcutGridSelectedShortcutIndexes' | 'onToggleShortcutSelection'
@@ -54,13 +55,18 @@ export type ShortcutExperienceRootProps = {
 };
 
 function ShortcutExperienceSurface({
+  homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
-}: Pick<ShortcutExperienceRootProps, 'homeInteractiveSurfaceBaseProps'>) {
+}: Pick<ShortcutExperienceRootProps, 'homeInteractiveSurfaceVisible' | 'homeInteractiveSurfaceBaseProps'>) {
   const {
     selectionMode,
     selectedShortcutIndexes,
     onToggleShortcutSelection,
   } = useShortcutSelection();
+
+  if (!homeInteractiveSurfaceVisible) {
+    return null;
+  }
 
   return (
     <Suspense fallback={<div className="w-full min-h-[60vh]" aria-hidden="true" />}>
@@ -147,6 +153,7 @@ function ShortcutExperienceFolderNameDialog({
 
 export function ShortcutExperienceRoot({
   selectionActions,
+  homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
   compactOverlayShortcut,
   compactFolderOverlayProps,
@@ -177,6 +184,7 @@ export function ShortcutExperienceRoot({
         {...selectionActions}
       >
         <ShortcutExperienceSurface
+          homeInteractiveSurfaceVisible={homeInteractiveSurfaceVisible}
           homeInteractiveSurfaceBaseProps={homeInteractiveSurfaceBaseProps}
         />
       </ShortcutSelectionShell>

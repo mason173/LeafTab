@@ -32,7 +32,7 @@
 
 ## 当前进度
 
-当前正在执行：Phase 2，开始把 `ShortcutAppDialogsLayer` 从“大型 prop bag 聚合层”收口成 `layer + controller` 结构。
+当前状态：Phase 5 已完成，已推进到可关闭状态。当前 shortcut feature 的 provider / controller / root 主结构已稳定，后续如继续，优先级将转为 `App.tsx` 的非阻塞减重与长期整理。
 
 已完成：
 
@@ -870,3 +870,122 @@ src/features/shortcuts/
 - 验证结果：
   - TypeScript 类型检查通过。
   - Vitest 现有 9 个测试文件、33 个测试全部通过。
+
+- 完成 Step 2.4。
+- `useShortcutAppDialogsController` 现在会统一派生 `authModalProps`。
+- `ShortcutAppDialogsLayer` 已不再手工拼装 auth modal 的业务参数，而是转为消费 controller 产出的显式 props。
+- 这一步被收进 controller 的 auth 规则包括：
+  - `onGoogleLinkSuccess` 之后把 modal mode 复位为 `login`
+  - API server / custom API 配置透传
+  - 登录成功回调与 `linkedUsername` 透传
+- 这一步的结果是：
+  - auth dialog 的装配逻辑开始从 `ShortcutAppDialogsLayer` 中抽离。
+  - dialogs layer 继续朝“结构 root”靠拢，而不是继续堆积业务拼装细节。
+  - Phase 2 已经覆盖到第三组真实 dialog 入口。
+
+- 完成 Step 2.5。
+- 运行验证：
+  - `npm run typecheck`
+  - `npm test`
+- 验证结果：
+  - TypeScript 类型检查通过。
+  - Vitest 现有 9 个测试文件、33 个测试全部通过。
+- 下一步建议：
+  - 继续优先收口 `backupDialogs`，因为它比 `settingsDialogs` 更集中、比 `syncProviderDialogs` 更少副作用，适合作为 Phase 2 的下一块真实 prop bag 减法。
+
+- 完成 Step 2.6。
+- `useShortcutAppDialogsController` 已进一步收口 `settings / backup / sync provider / consent` 相关 dialog props 的业务装配。
+- `ShortcutAppDialogsLayer` 现在只保留两类职责：
+  - 根据 `shouldMountAppDialogs` 控制是否挂载
+  - 渲染 `LazyAppDialogs`
+- 以下 dialog props 已统一由 controller 派生：
+  - `shortcutModalProps`
+  - `shortcutDeleteDialogProps`
+  - `scenarioCreateDialogProps`
+  - `scenarioEditDialogProps`
+  - `authModalProps`
+  - `settingsModalProps`
+  - `searchSettingsModalProps`
+  - `shortcutGuideDialogProps`
+  - `shortcutIconSettingsDialogProps`
+  - `adminModalProps`
+  - `aboutModalProps`
+  - `exportBackupDialogProps`
+  - `importBackupDialogProps`
+  - `webdavConfigDialogProps`
+  - `cloudSyncConfigDialogProps`
+  - `confirmSyncDialog`
+  - `importConfirmDialog`
+  - `disableConsentDialog`
+- 这一步的结果是：
+  - `ShortcutAppDialogsLayer` 已不再承担大部分业务装配细节。
+  - dialog 的关闭、保存、默认值、回写与二次动作规则已经集中到一个 controller 边界。
+  - 从“layer + 大量业务拼装”到“薄 root + controller”的目标已经落地，Phase 2 可视为完成。
+
+- 完成 Step 2.7。
+- 运行验证：
+  - `npm run typecheck`
+  - `npm test`
+- 验证结果：
+  - TypeScript 类型检查通过。
+  - Vitest 现有 9 个测试文件、33 个测试全部通过。
+- Phase 2 完成判断：
+  - `ShortcutAppDialogsLayer` 已成为薄 root。
+  - dialog 装配规则已集中在 `useShortcutAppDialogsController`。
+  - shortcut/scenario/auth/utility/backup/sync provider/consent 相关 dialog 都已进入统一 controller 路径。
+- 下一步建议：
+  - 回到 `App.tsx` 的主文件减重目标，优先推进 `settings` / `sync` / `app shell` 的整块 extraction，而不是继续在 dialog layer 内部做细粒度微调。
+
+- 完成 Step 5.1。
+- `HomeInteractiveSurface` 不再接收 `visible` 布尔模式 prop。
+- `HomeMainContent` 也不再接收 `visible` 布尔模式 prop。
+- `ShortcutExperienceRoot` 现在改为通过 `homeInteractiveSurfaceVisible` 显式决定是否挂载 `ShortcutExperienceSurface`，而不是把“是否显示”继续作为 surface / content 组件内部的模式开关。
+- 这一步的结果是：
+  - `HomeInteractiveSurface` 与 `HomeMainContent` 的组件语义更接近显式变体，而不是“永远挂载 + 传 boolean 决定自己要不要显示”。
+  - `patterns-explicit-variants` 和 `architecture-avoid-boolean-props` 在 experience surface 这一层有了新的真实落地。
+  - `ShortcutExperienceRoot` 更像真正的 compound composition root，而不是继续把显示模式透传给子组件自己判断。
+
+- 完成 Step 5.2。
+- 运行验证：
+  - `npm run typecheck`
+  - `npm test`
+- 验证结果：
+  - TypeScript 类型检查通过。
+  - Vitest 现有 9 个测试文件、33 个测试全部通过。
+- 下一步建议：
+  - 继续按照 Phase 5 的“API 清理”方向，优先复审 `HomeInteractiveSurface`、`HomeMainContent`、`RootShortcutGrid` 里剩余是否仍有“用 boolean 决定组件模式”的接口；如果没有明显低风险项，再回到 `App.tsx` 做下一块按 root/controller 边界抽取。
+
+- 完成 Step 5.3。
+- 删除 `RootShortcutGrid` 中已经没有调用方的 `forceReorderOnly` 布尔模式 prop，组件只保留显式的 `interactionProfile` 作为交互模式入口。
+- 这一步的结果是：
+  - `RootShortcutGrid` 不再保留“boolean 决定交互模式”的过渡 API。
+  - root grid 的公开接口更贴近 `patterns-explicit-variants`，也减少了未来继续误用旧模式开关的可能。
+
+- 完成 Step 5.4。
+- 删除 `src/features/shortcuts/app/useShortcutAppFacade.ts`。
+- 这一步的结果是：
+  - 旧 facade 镜像层已正式退出代码路径，不再留下“已经 provider 化，但仓库里还保留一份旧入口”的双轨状态。
+  - `ShortcutAppProvider` + `useShortcutAppContextValue` 成为 shortcut app 的唯一主边界，实现上更符合 `state-decouple-implementation`。
+
+- 完成 Step 5.5。
+- 将薄组合层正式更名为 root：
+  - `ShortcutAppDialogsLayer` -> `ShortcutAppDialogsRoot`
+  - `ShortcutSyncDialogsLayer` -> `ShortcutSyncDialogsRoot`
+- `App.tsx` 已改为挂载新的 root 组件命名。
+- 这一步的结果是：
+  - 组合层名称和职责重新对齐，不再出现“实际上已经是 root，但文件和组件仍叫 layer”的过渡状态。
+  - Phase 2 留下的薄 root 结构在命名层面也完成收口。
+
+- 完成 Step 5.6。
+- 运行验证：
+  - `npm run typecheck`
+  - `npm test`
+- 验证结果：
+  - TypeScript 类型检查通过。
+  - Vitest 现有 9 个测试文件、33 个测试全部通过。
+- Phase 5 完成判断：
+  - `useShortcutAppFacade` 已删除。
+  - dialog layer 已收口为 `ShortcutAppDialogsRoot` / `ShortcutSyncDialogsRoot`。
+  - `ShortcutExperienceLayer` 已删除，experience 结构由 `ShortcutExperienceRoot` 承担。
+  - `RootShortcutGrid` 已继续清理一处实际无调用方的布尔模式 API。
+  - 当前 shortcut feature 已推进到可关闭状态。
