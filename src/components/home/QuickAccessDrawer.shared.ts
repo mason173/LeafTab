@@ -1,7 +1,7 @@
-import type { ComponentProps, CSSProperties, RefObject } from 'react';
-import type { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
+import type { CSSProperties, RefObject } from 'react';
+import type { RootShortcutGridProps } from '@/features/shortcuts/components/RootShortcutGrid';
 import type { ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import type { SearchExperience } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps } from '@/components/search/SearchExperience';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 
 type QuickAccessModeFlags = Pick<
@@ -37,8 +37,8 @@ export interface QuickAccessDrawerProps {
   subtleDarkTone?: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
-  searchExperienceProps: ComponentProps<typeof SearchExperience>;
-  shortcutGridProps: ComponentProps<typeof RootShortcutGrid>;
+  searchExperienceProps: SearchExperienceProps;
+  shortcutGridProps: RootShortcutGridProps;
   onDrawerOpenChange: () => void;
   onActiveSnapPointChange: (next: number | string | null) => void;
 }

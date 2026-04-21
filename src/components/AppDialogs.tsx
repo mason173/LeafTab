@@ -83,7 +83,7 @@ type DisableConsentDialogProps = {
   onDisagree: () => void;
 };
 
-interface AppDialogsProps {
+export interface AppDialogsProps {
   shortcutModalProps: ShortcutModalProps;
   shortcutDeleteDialogProps: ConfirmDialogProps;
   scenarioCreateDialogProps: ScenarioModeCreateDialogProps;

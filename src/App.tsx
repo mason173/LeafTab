@@ -11,7 +11,6 @@ import { saveWallpaper } from './db';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
-import { useShortcuts } from './hooks/useShortcuts';
 import { useSettings } from './hooks/useSettings';
 import { useWallpaper } from './hooks/useWallpaper';
 import { useRole } from './hooks/useRole';
@@ -32,7 +31,6 @@ import { useLeafTabSyncEncryptionManager } from './hooks/useLeafTabSyncEncryptio
 import { useLeafTabBackupActions } from './hooks/useLeafTabBackupActions';
 import { useSyncCenterActions } from './hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from './hooks/useLeafTabLegacyCompat';
-import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 
 // Components
 import ScenarioModeMenu from './components/ScenarioModeMenu';
@@ -43,7 +41,6 @@ import { normalizeApiBase } from "./utils";
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfilePreferences, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import { LongTaskIndicator } from './components/LongTaskIndicator';
-import { LeafTabDangerousSyncDialog } from '@/components/sync/LeafTabDangerousSyncDialog';
 import {
   applyWebdavDangerousBookmarkChoiceToStorage,
   hasWebdavUrlConfiguredFromStorage,
@@ -68,7 +65,6 @@ import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
-import { ShortcutSelectionShell } from '@/components/home/ShortcutSelectionShell';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
 import { useFolderTransitionController } from '@/components/folderTransition/useFolderTransitionController';
 import {
@@ -77,13 +73,7 @@ import {
   getFolderPreviewTitle,
 } from '@/components/shortcuts/folderPreviewRegistry';
 import {
-  LazyAppDialogs,
-  LazyHomeInteractiveSurface,
-  LazyLeafTabSyncDialog,
-  LazyLeafTabSyncEncryptionDialog,
   LazyRoleSelector,
-  LazyShortcutFolderCompactOverlay,
-  LazyShortcutFolderNameDialog,
   LazyUpdateAvailableDialog,
   LazyWallpaperSelector,
   preloadShortcutFolderCompactOverlay,
@@ -136,6 +126,10 @@ import {
   isShortcutFolder,
   isShortcutLink,
 } from '@/utils/shortcutFolders';
+import { useShortcutAppFacade } from '@/features/shortcuts/app/useShortcutAppFacade';
+import { ShortcutAppDialogsLayer } from '@/features/shortcuts/app/ShortcutAppDialogsLayer';
+import { ShortcutExperienceLayer } from '@/features/shortcuts/app/ShortcutExperienceLayer';
+import { ShortcutSyncDialogsLayer } from '@/features/shortcuts/app/ShortcutSyncDialogsLayer';
 import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEngine/leaftabGridEngineHostAdapter';
 import { useShortcutWorkspaceController } from '@/features/shortcuts/workspace/useShortcutWorkspaceController';
 
@@ -550,8 +544,6 @@ export default function App() {
     user, 
     isAuthModalOpen,
     setIsAuthModalOpen,
-    loginBannerVisible, 
-    setLoginBannerVisible, 
     handleLoginSuccess, 
     handleLogout 
   } = useAuth();
@@ -734,39 +726,66 @@ export default function App() {
   const normalizedGridColumns = clampShortcutGridColumns(shortcutGridColumns, DEFAULT_SHORTCUT_CARD_VARIANT, responsiveLayout.density);
   const minShortcutRows = responsiveLayout.baseRows;
 
-  const {
-    scenarioModes, setScenarioModes,
-    selectedScenarioId, setSelectedScenarioId,
-    scenarioShortcuts, setScenarioShortcuts,
-    setUserRole,
-    totalShortcuts,
-    contextMenu, setContextMenu,
-    shortcutEditOpen, setShortcutEditOpen,
-    shortcutModalMode, setShortcutModalMode,
-    shortcutDeleteOpen, setShortcutDeleteOpen,
-    selectedShortcut, setSelectedShortcut,
-    editingTitle, setEditingTitle,
-    editingUrl, setEditingUrl,
-    isDragging,
-    currentEditScenarioId,
-    setCurrentInsertIndex,
-    shortcuts,
-    localDirtyRef,
-    handleCreateScenarioMode, handleOpenEditScenarioMode, handleUpdateScenarioMode, handleDeleteScenarioMode,
-    handleShortcutOpen, handleShortcutContextMenu, handleGridContextMenu,
-    handleSaveShortcutEdit, handleConfirmDeleteShortcut, handleConfirmDeleteShortcuts,
-    contextMenuRef,
-    scenarioModeOpen, setScenarioModeOpen,
-    scenarioCreateOpen, setScenarioCreateOpen,
-    scenarioEditOpen, setScenarioEditOpen,
-    handleShortcutReorder,
-    resetLocalShortcutsByRole
-  } = useShortcuts(
+  const shortcutApp = useShortcutAppFacade(
     user,
     openInNewTab,
     API_URL,
     handleLogout,
   );
+  const {
+    scenarioModes,
+    setScenarioModes,
+    selectedScenarioId,
+    setSelectedScenarioId,
+    scenarioShortcuts,
+    setScenarioShortcuts,
+    shortcuts,
+    totalShortcuts,
+  } = shortcutApp.shortcutDomain;
+  const {
+    contextMenu,
+    setContextMenu,
+    contextMenuRef,
+    shortcutEditOpen,
+    setShortcutEditOpen,
+    shortcutModalMode,
+    setShortcutModalMode,
+    shortcutDeleteOpen,
+    setShortcutDeleteOpen,
+    selectedShortcut,
+    setSelectedShortcut,
+    editingTitle,
+    setEditingTitle,
+    editingUrl,
+    setEditingUrl,
+    isDragging,
+    currentEditScenarioId,
+    setCurrentInsertIndex,
+    scenarioModeOpen,
+    setScenarioModeOpen,
+    scenarioCreateOpen,
+    setScenarioCreateOpen,
+    scenarioEditOpen,
+    setScenarioEditOpen,
+  } = shortcutApp.shortcutUi;
+  const {
+    handleCreateScenarioMode,
+    handleOpenEditScenarioMode,
+    handleUpdateScenarioMode,
+    handleDeleteScenarioMode,
+    handleShortcutOpen,
+    handleShortcutContextMenu,
+    handleGridContextMenu,
+    handleSaveShortcutEdit,
+    handleConfirmDeleteShortcut,
+    handleConfirmDeleteShortcuts,
+    handleShortcutReorder,
+  } = shortcutApp.shortcutActions;
+  const {
+    setUserRole,
+    localDirtyRef,
+    resetLocalShortcutsByRole,
+  } = shortcutApp.shortcutPersistence;
 
   const markShortcutStateDirty = useCallback(() => {
     if (!user) localDirtyRef.current = true;
@@ -3342,10 +3361,6 @@ export default function App() {
   const handleScenarioModeCreate = useCallback(() => {
     setScenarioCreateOpen(true);
   }, [setScenarioCreateOpen]);
-  const handleDismissLoginBanner = useCallback(() => {
-    setLoginBannerVisible(false);
-    sessionStorage.setItem('loginBannerDismissed', 'true');
-  }, [setLoginBannerVisible]);
   const scenarioMenuLayerProps = useMemo(() => ({
     scenarioModes,
     selectedScenarioId,
@@ -3637,10 +3652,6 @@ export default function App() {
     handleFolderEngineChildrenCommit,
   ]);
   const homeMainContentBaseProps = useMemo(() => ({
-    user,
-    loginBannerVisible,
-    onLoginRequest: handleRequestCloudLogin,
-    onDismissLoginBanner: handleDismissLoginBanner,
     showTime,
     displayMode,
     is24Hour,
@@ -3664,10 +3675,7 @@ export default function App() {
     topNavIntroCompleted,
   }), [
     displayMode,
-    handleDismissLoginBanner,
-    handleRequestCloudLogin,
     is24Hour,
-    loginBannerVisible,
     responsiveLayout,
     setIs24Hour,
     setShowDate,
@@ -3686,7 +3694,6 @@ export default function App() {
     timeAnimationMode,
     timeFont,
     topNavIntroCompleted,
-    user,
     visualEffectsLevel,
   ]);
   const panoramicSurfaceRevealStyle: CSSProperties = {
@@ -3724,108 +3731,90 @@ export default function App() {
       className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
       style={panoramicSurfaceRevealStyle}
     >
-      <ShortcutSelectionShell
-        contextMenu={contextMenu}
-        setContextMenu={setContextMenu}
-        contextMenuRef={contextMenuRef}
-        shortcuts={shortcuts}
-        scenarioModes={scenarioModes}
-        selectedScenarioId={selectedScenarioId}
-        onCreateShortcut={(insertIndex) => {
-          setShortcutModalMode('add');
-          setSelectedShortcut(null);
-          setEditingTitle('');
-          setEditingUrl('');
-          setCurrentInsertIndex(insertIndex);
-          setShortcutEditOpen(true);
+      <ShortcutExperienceLayer
+        selectionShellProps={{
+          contextMenu,
+          setContextMenu,
+          contextMenuRef,
+          shortcuts,
+          scenarioModes,
+          selectedScenarioId,
+          onCreateShortcut: (insertIndex) => {
+            setShortcutModalMode('add');
+            setSelectedShortcut(null);
+            setEditingTitle('');
+            setEditingUrl('');
+            setCurrentInsertIndex(insertIndex);
+            setShortcutEditOpen(true);
+          },
+          onEditShortcut: handleOpenShortcutEditor,
+          onEditFolderShortcut: handleOpenFolderChildShortcutEditor,
+          onDeleteShortcut: (shortcutIndex, shortcut) => {
+            setSelectedShortcut({ index: shortcutIndex, shortcut });
+            setShortcutDeleteOpen(true);
+          },
+          onDeleteFolderShortcut: handleDeleteFolderChildShortcut,
+          onShortcutOpen: handleShortcutActivate,
+          onDeleteSelectedShortcuts: handleConfirmDeleteShortcuts,
+          onCreateFolder: handleCreateFolderFromSelection,
+          onPinSelectedShortcuts: handlePinSelectedShortcuts,
+          onMoveSelectedShortcutsToScenario: handleMoveSelectedShortcutsToScenario,
+          onMoveSelectedShortcutsToFolder: handleMoveSelectedShortcutsToFolder,
+          onDissolveFolder: handleDissolveFolder,
+          showLargeFolderToggle: true,
+          onSetFolderDisplayMode: handleSetFolderDisplayMode,
         }}
-        onEditShortcut={handleOpenShortcutEditor}
-        onEditFolderShortcut={handleOpenFolderChildShortcutEditor}
-        onDeleteShortcut={(shortcutIndex, shortcut) => {
-          setSelectedShortcut({ index: shortcutIndex, shortcut });
-          setShortcutDeleteOpen(true);
+        homeInteractiveSurfaceBaseProps={{
+          initialRevealReady,
+          visible: !roleSelectorOpen,
+          modeLayersVisible,
+          modeFlags: displayModeFlags,
+          showOverlayWallpaperLayer,
+          wallpaperAnimatedLayerStyle,
+          effectiveWallpaperMode,
+          freshWeatherVideo,
+          colorWallpaperGradient,
+          effectiveOverlayWallpaperSrc,
+          overlayBackgroundAlt,
+          onOverlayImageReady: handleOverlayWallpaperReadyForRevealAndAccent,
+          effectiveWallpaperMaskOpacity,
+          topNavModeProps,
+          homeMainContentBaseProps,
+          shortcutGridBaseProps: shortcutEngineHostAdapter.rootGridProps,
+          shortcutGridHeatZoneInspectorEnabled: gridHitInspectorVisible,
+          shortcutGridHiddenShortcutId: pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId,
+          wallpaperClockBaseProps,
+          searchExperienceBaseProps,
+          baseTimeAnimationEnabled: effectiveTimeAnimationEnabled,
+          freezeDynamicWallpaperBase: visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen,
         }}
-        onDeleteFolderShortcut={handleDeleteFolderChildShortcut}
-        onShortcutOpen={handleShortcutActivate}
-        onDeleteSelectedShortcuts={handleConfirmDeleteShortcuts}
-        onCreateFolder={handleCreateFolderFromSelection}
-        onPinSelectedShortcuts={handlePinSelectedShortcuts}
-        onMoveSelectedShortcutsToScenario={handleMoveSelectedShortcutsToScenario}
-        onMoveSelectedShortcutsToFolder={handleMoveSelectedShortcutsToFolder}
-        onDissolveFolder={handleDissolveFolder}
-        showLargeFolderToggle
-        onSetFolderDisplayMode={handleSetFolderDisplayMode}
-      >
-        {({ selectionMode, selectedShortcutIndexes, onToggleShortcutSelection }) => (
-          <Suspense fallback={<div className="w-full min-h-[60vh]" aria-hidden="true" />}>
-            <LazyHomeInteractiveSurface
-              initialRevealReady={initialRevealReady}
-              visible={!roleSelectorOpen}
-              modeLayersVisible={modeLayersVisible}
-              modeFlags={displayModeFlags}
-              showOverlayWallpaperLayer={showOverlayWallpaperLayer}
-              wallpaperAnimatedLayerStyle={wallpaperAnimatedLayerStyle}
-              effectiveWallpaperMode={effectiveWallpaperMode}
-              freshWeatherVideo={freshWeatherVideo}
-              colorWallpaperGradient={colorWallpaperGradient}
-              effectiveOverlayWallpaperSrc={effectiveOverlayWallpaperSrc}
-              overlayBackgroundAlt={overlayBackgroundAlt}
-              onOverlayImageReady={handleOverlayWallpaperReadyForRevealAndAccent}
-              effectiveWallpaperMaskOpacity={effectiveWallpaperMaskOpacity}
-              topNavModeProps={topNavModeProps}
-              homeMainContentBaseProps={homeMainContentBaseProps}
-              shortcutGridBaseProps={shortcutEngineHostAdapter.rootGridProps}
-              shortcutGridHeatZoneInspectorEnabled={gridHitInspectorVisible}
-              shortcutGridHiddenShortcutId={pendingExtractHiddenShortcutId ?? folderTransitionController.overlayFolderId}
-              shortcutGridSelectionMode={selectionMode}
-              shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
-              onToggleShortcutSelection={onToggleShortcutSelection}
-              wallpaperClockBaseProps={wallpaperClockBaseProps}
-              searchExperienceBaseProps={searchExperienceBaseProps}
-              baseTimeAnimationEnabled={effectiveTimeAnimationEnabled}
-              freezeDynamicWallpaperBase={
-                visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen
-              }
-            />
-          </Suspense>
-        )}
-      </ShortcutSelectionShell>
-      {compactOverlayShortcut ? (
-        <Suspense fallback={null}>
-          <LazyShortcutFolderCompactOverlay
-            {...shortcutEngineHostAdapter.compactFolderOverlayProps}
-            displayMode={displayMode}
-            transitionPhase={folderTransitionController.transition.phase}
-            transitionProgress={folderTransitionController.transition.progress}
-            openingSourceSnapshot={
-              folderTransitionController.transition.sourceSnapshot?.folderId === compactOverlayShortcut.id
-                ? folderTransitionController.transition.sourceSnapshot
-                : null
-            }
-            onOpeningLayoutReady={() => folderTransitionController.notifyOpeningReady(compactOverlayShortcut.id)}
-            onClosingLayoutReady={() => folderTransitionController.notifyClosingReady(compactOverlayShortcut.id)}
-            shortcut={compactOverlayShortcut}
-          />
-        </Suspense>
-      ) : null}
-      {folderNameDialogOpen ? (
-        <Suspense fallback={null}>
-          <LazyShortcutFolderNameDialog
-            open={folderNameDialogOpen}
-            onOpenChange={(open) => {
-              if (open) {
-                setFolderNameDialogOpen(true);
-                return;
-              }
-              closeFolderNameDialog();
-            }}
-            title={folderNameDialogTitle}
-            description={folderNameDialogDescription}
-            initialName={folderNameDialogInitialName}
-            onSubmit={handleSaveFolderName}
-          />
-        </Suspense>
-      ) : null}
+        compactOverlayShortcut={compactOverlayShortcut}
+        compactFolderOverlayProps={{
+          ...shortcutEngineHostAdapter.compactFolderOverlayProps,
+          displayMode,
+        }}
+        folderTransitionPhase={folderTransitionController.transition.phase}
+        folderTransitionProgress={folderTransitionController.transition.progress}
+        openingSourceSnapshot={
+          folderTransitionController.transition.sourceSnapshot?.folderId === compactOverlayShortcut?.id
+            ? folderTransitionController.transition.sourceSnapshot
+            : null
+        }
+        onOpeningLayoutReady={(folderId) => folderTransitionController.notifyOpeningReady(folderId)}
+        onClosingLayoutReady={(folderId) => folderTransitionController.notifyClosingReady(folderId)}
+        folderNameDialogOpen={folderNameDialogOpen}
+        onFolderNameDialogOpenChange={(open) => {
+          if (open) {
+            setFolderNameDialogOpen(true);
+            return;
+          }
+          closeFolderNameDialog();
+        }}
+        folderNameDialogTitle={folderNameDialogTitle}
+        folderNameDialogDescription={folderNameDialogDescription}
+        folderNameDialogInitialName={folderNameDialogInitialName}
+        onFolderNameSubmit={handleSaveFolderName}
+      />
       {shouldMountWallpaperSelector ? (
         <Suspense fallback={null}>
           <LazyWallpaperSelector
@@ -3891,422 +3880,295 @@ export default function App() {
           resolveLegacyCloudMigrationPrompt(true);
         }}
       />
-      {shouldMountAppDialogs ? (
-        <Suspense fallback={null}>
-          <LazyAppDialogs
-            shortcutModalProps={{
-              isOpen: shortcutEditOpen,
-              onOpenChange: (open) => {
-                setShortcutEditOpen(open);
-                if (!open) {
-                  setShortcutModalMode('add');
-                  setSelectedShortcut(null);
-                  setEditingTitle('');
-                  setEditingUrl('');
-                }
-              },
-              mode: shortcutModalMode,
-              initialShortcut: selectedShortcut?.shortcut
-                ? { ...selectedShortcut.shortcut, title: editingTitle, url: editingUrl }
-                : { title: editingTitle, url: editingUrl, icon: '' },
-              iconCornerRadius: shortcutIconCornerRadius,
-              iconScale: shortcutIconScale,
-              iconAppearance: shortcutIconAppearance,
-              onSave: handleSaveShortcutEdit,
-            }}
-            shortcutDeleteDialogProps={{
-              open: shortcutDeleteOpen,
-              onOpenChange: setShortcutDeleteOpen,
-              title: isShortcutFolder(selectedShortcut?.shortcut)
-                ? t('shortcutDelete.folderTitle', { defaultValue: '删除文件夹' })
-                : t('shortcutDelete.title'),
-              description: isShortcutFolder(selectedShortcut?.shortcut)
-                ? t('shortcutDelete.folderDescription', { defaultValue: '删除后，文件夹里的快捷方式也会一起删除。' })
-                : t('shortcutDelete.description'),
-              onConfirm: handleConfirmDeleteShortcut,
-            }}
-            scenarioCreateDialogProps={{
-              open: scenarioCreateOpen,
-              onOpenChange: setScenarioCreateOpen,
-              onSubmit: handleCreateScenarioMode,
-            }}
-            scenarioEditDialogProps={{
-              open: scenarioEditOpen,
-              onOpenChange: setScenarioEditOpen,
-              onSubmit: handleUpdateScenarioMode,
-              title: t('scenario.editTitle'),
-              submitText: t('common.save'),
-              mode: scenarioEditMode,
-            }}
-            authModalProps={{
-              isOpen: isAuthModalOpen,
-              onOpenChange: handleAuthModalOpenChange,
-              onLoginSuccess: onLoginSuccess,
-              onGoogleLinkSuccess: () => {
-                setAuthModalMode('login');
-              },
-              apiServer,
-              onApiServerChange: setApiServer,
-              customApiUrl,
-              customApiName,
-              defaultApiBase,
-              allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
-              mode: authModalMode,
-              linkedUsername: user,
-            }}
-	            settingsModalProps={{
-              isOpen: settingsOpen,
-              onOpenChange: setSettingsOpen,
-              username: user,
-              onLogin: handleRequestCloudLogin,
-              onLogout: requestLogoutConfirmation,
-              shortcutsCount: totalShortcuts,
-              displayMode,
-              onDisplayModeChange: setDisplayMode,
-              shortcutCompactShowTitle,
-              onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
-              shortcutGridColumns: normalizedGridColumns,
-              onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
-              onOpenShortcutIconSettings: handleOpenShortcutIconSettings,
-              openInNewTab,
-              onOpenInNewTabChange: setOpenInNewTab,
-              preventDuplicateNewTab,
-              onPreventDuplicateNewTabChange: handlePreventDuplicateNewTabChange,
-              onOpenSearchSettings: handleOpenSearchSettings,
-              visualEffectsLevel,
-              onVisualEffectsLevelChange: setVisualEffectsLevel,
-              disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
-              showTime,
-              onShowTimeChange: setShowTime,
-              onExportData: handleExportData,
-              onImportData: handleImportData,
-              wallpaperMode: effectiveWallpaperMode,
-              onWallpaperModeChange: setWallpaperMode,
-              bingWallpaper,
-              customWallpaper,
-              onCustomWallpaperChange: setCustomWallpaper,
-              weatherCode,
-              colorWallpaperId,
-              onColorWallpaperIdChange: setColorWallpaperId,
-              wallpaperMaskOpacity,
-              onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
-	              onOpenWallpaperSettings: () => setWallpaperSettingsOpen(true),
-	              privacyConsent,
-	              onPrivacyConsentChange: handlePrivacySwitchChange,
-	              onOpenAdminModal: handleOpenAdminModal,
-	              onOpenAboutModal: handleOpenAboutModal,
-	              onCloudSyncNow: handleCloudSyncNowFromCenter,
-                onOpenSyncCenter: () => {
-                  setSettingsOpen(false);
-                  setLeafTabSyncDialogOpen(true);
-                },
-	              onOpenWebdavConfig: handleOpenWebdavConfig,
-	              onWebdavSync: resolveWebdavConflict,
-	              onWebdavEnable: handleEnableWebdavSync,
-	              onWebdavDisable: handleDisableWebdavSync,
-	              onOpenShortcutGuide: () => setShortcutGuideOpen(true),
-	            }}
-	            searchSettingsModalProps={{
-	              isOpen: searchSettingsOpen,
-	              onOpenChange: setSearchSettingsOpen,
-                onBackToSettings: handleBackToMainSettings,
-	              tabSwitchSearchEngine,
-	              onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
-	              searchPrefixEnabled,
-	              onSearchPrefixEnabledChange: setSearchPrefixEnabled,
-	              searchSiteDirectEnabled,
-	              onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
-	              searchSiteShortcutEnabled,
-	              onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
-	              searchAnyKeyCaptureEnabled,
-	              onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
-	              searchCalculatorEnabled,
-	              onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
-                searchRotatingPlaceholderEnabled,
-                onSearchRotatingPlaceholderEnabledChange: setSearchRotatingPlaceholderEnabled,
-	            }}
-	            shortcutGuideDialogProps={{
-	              open: shortcutGuideOpen,
-	              onOpenChange: setShortcutGuideOpen,
-                onBackToSettings: handleBackToMainSettings,
-	            }}
-            shortcutIconSettingsDialogProps={{
-              open: shortcutIconSettingsOpen,
-              onOpenChange: setShortcutIconSettingsOpen,
-              onBackToSettings: handleBackToMainSettings,
-              compactShowTitle: shortcutCompactShowTitle,
-              columns: normalizedGridColumns,
-              onSaveStyle: ({ compactShowTitle, columns }) => {
-                setShortcutCompactShowTitle(compactShowTitle);
-                handleShortcutGridColumnsChange(columns);
-              },
-              appearance: shortcutIconAppearance,
-              cornerRadius: shortcutIconCornerRadius,
-              scale: shortcutIconScale,
-              onSave: ({ appearance, cornerRadius, scale }) => {
-                setShortcutIconAppearance(appearance);
-                setShortcutIconCornerRadius(cornerRadius);
-                setShortcutIconScale(scale);
-              },
-            }}
-            adminModalProps={{
-              open: adminModalOpen,
-              onOpenChange: setAdminModalOpen,
-              onBackToSettings: handleBackToMainSettings,
-              onExportDomains: handleExportDomains,
-              gridHitDebugEnabled: gridHitDebugVisible,
-              onGridHitDebugEnabledChange: handleGridHitDebugEnabledChange,
-              weatherDebugEnabled: weatherDebugVisible,
-              onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
-              onWeatherDebugApply: handleWeatherDebugApply,
-              customApiUrl,
-              onCustomApiUrlChange: setCustomApiUrl,
-              customApiName,
-              onCustomApiNameChange: setCustomApiName,
-              allowCustomApiServer: ENABLE_CUSTOM_API_SERVER,
-            }}
-            aboutModalProps={{
-              open: aboutModalOpen,
-              onOpenChange: setAboutModalOpen,
-              onBackToSettings: handleBackToMainSettings,
-              defaultTab: aboutModalDefaultTab,
-            }}
-            exportBackupDialogProps={{
-              open: exportBackupDialogOpen,
-              onOpenChange: setExportBackupDialogOpen,
-              onBackToSettings: handleBackToMainSettings,
-              mode: 'export',
-              availableScope: {
-                shortcuts: true,
-                bookmarks: true,
-              },
-              defaultScope: {
-                ...getDefaultLocalBackupExportScope(),
-              },
-              onConfirm: async (scope) => {
-                await executeExportData(scope);
-              },
-            }}
-            importBackupDialogProps={{
-              open: importBackupDialogOpen,
-              onOpenChange: handleImportBackupDialogOpenChange,
-              onBackToSettings: handleBackToMainSettings,
-              mode: 'import',
-              availableScope: importBackupScopePayload
-                ? {
-                    shortcuts: Boolean(importBackupScopePayload.exportScope.shortcuts),
-                    bookmarks: Boolean(importBackupScopePayload.exportScope.bookmarks),
-                  }
-                : {
-                    shortcuts: true,
-                    bookmarks: true,
-                  },
-              defaultScope: importBackupScopePayload
-                ? {
-                    shortcuts: true,
-                    bookmarks: cloudSyncBookmarksEnabled && Boolean(importBackupScopePayload.exportScope.bookmarks),
-                  }
-                : {
-                    shortcuts: true,
-                    bookmarks: cloudSyncBookmarksEnabled,
-                  },
-              onConfirm: handleImportBackupScopeConfirm,
-            }}
-            webdavConfigDialogProps={{
-              open: webdavDialogOpen,
-              onBackToParent: handleBackFromSyncProviderConfig,
-              onOpenChange: (open: boolean) => {
-                setWebdavDialogOpen(open);
-                if (!open) {
-                  setWebdavEnableAfterConfigSave(false);
-                  setWebdavShowConnectionFields(false);
-                  setPendingWebdavEnableScopeKey(null);
-                }
-              },
-              enableAfterSave: webdavEnableAfterConfigSave,
-              showConnectionFields: webdavShowConnectionFields,
-              onEnableAfterSave: async () => {
-                const nextConfig = readWebdavConfigFromStorage({ allowDisabled: true });
-                const nextScopeKey = createLeafTabWebdavEncryptionScopeKey(
-                  nextConfig?.url || '',
-                  resolveLeafTabSyncRootPath(nextConfig),
-                );
-                setWebdavEnableAfterConfigSave(false);
-                setWebdavShowConnectionFields(false);
-                setPendingWebdavEnableScopeKey(nextScopeKey || null);
-              },
-              onSaveSuccess: async () => {
-                if (!leafTabWebdavEnabled || leafTabSyncState.status === 'syncing') {
-                  return;
-                }
-                await handleLeafTabAutoSync();
-              },
-              onDisableSync: async () => {
-                setConfirmDisableWebdavSyncOpen(true);
-              },
-            }}
-            cloudSyncConfigDialogProps={{
-              open: cloudSyncConfigOpen,
-              onBackToParent: handleBackFromSyncProviderConfig,
-              onOpenChange: setCloudSyncConfigOpen,
-              onSaveSuccess: handleCloudSyncConfigSaved,
-              onLinkGoogle: openGoogleLinkAuthModal,
-              onLogout: requestLogoutConfirmation,
-            }}
-            confirmSyncDialog={{
-              open: false,
-              onOpenChange: () => {},
-              confirmChoice: null,
-              onChoiceChange: () => {},
-              enableChoiceSwitch: false,
-              requireDecision: false,
-              title: t('syncConflict.title'),
-              description: t('syncConflict.description'),
-              confirmCloudLabel: t('syncConflict.useCloud'),
-              confirmLocalLabel: t('syncConflict.useLocal'),
-              confirmMergeLabel: t('syncConflict.merge'),
-              cloudCount: 0,
-              cloudTime: '',
-              cloudPayload: null,
-              localCount: 0,
-              localTime: '',
-              localPayload: null,
-              onConfirm: () => {},
-              onCancel: () => {},
-            }}
-            importConfirmDialog={{
-              open: importConfirmOpen,
-              setOpen: setImportConfirmOpen,
-              payload: importPendingPayload,
-              setPayload: setImportPendingPayload,
-              busy: importConfirmBusy,
-              setBusy: setImportConfirmBusy,
-              downloadCloudBackupEnvelope: async () => {},
-              applyUndoPayload: handleImportConfirmApply,
-              onSuccess: () => setSettingsOpen(false),
-            }}
-            disableConsentDialog={{
-              open: confirmDisableConsentOpen,
-              onOpenChange: setConfirmDisableConsentOpen,
-              onAgree: () => {
-                setConfirmDisableConsentOpen(false);
-                handlePrivacyConsent(true);
-              },
-              onDisagree: () => {
-                setConfirmDisableConsentOpen(false);
-                handlePrivacyConsent(false);
-              },
-            }}
-          />
-        </Suspense>
-      ) : null}
-      {shouldMountLeafTabSyncDialog ? (
-        <Suspense fallback={null}>
-          <LazyLeafTabSyncDialog
-            open={leafTabSyncDialogOpen}
-            onOpenChange={handleLeafTabSyncDialogOpenChange}
-            cloudAnalysis={cloudLeafTabSyncAnalysis}
-            webdavAnalysis={leafTabSyncAnalysis}
-            syncState={leafTabSyncState}
-            cloudSyncState={cloudLeafTabSyncState}
-            ready={leafTabSyncReady}
-            hasConfig={leafTabSyncHasConfig}
-            busy={leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing'}
-            bookmarkScopeLabel={leafTabBookmarkSyncScopeLabel}
-            summaryText={cloudLeafTabSyncLastResult?.summaryText || leafTabSyncLastResult?.summaryText || ''}
-            cloudSignedIn={Boolean(user)}
-            cloudEnabled={cloudSyncEnabled}
-            cloudSyncBookmarksEnabled={cloudSyncBookmarksEnabled}
-            cloudUsername={user || ''}
-            cloudLastSyncLabel={cloudLastSyncLabel}
-            cloudNextSyncLabel={cloudNextSyncLabel}
-            cloudEncryptionReady={cloudSyncEncryptionReady}
-            webdavConfigured={leafTabWebdavConfigured}
-            webdavEnabled={leafTabWebdavEnabled}
-            webdavSyncBookmarksEnabled={webdavSyncBookmarksEnabled}
-            webdavProfileLabel={leafTabWebdavProfileLabel}
-            webdavUrlLabel={leafTabSyncWebdavConfig?.url || ''}
-            webdavLastSyncLabel={leafTabWebdavLastSyncLabel}
-            webdavNextSyncLabel={leafTabWebdavNextSyncLabel}
-            webdavEncryptionReady={leafTabWebdavEncryptionReady}
-            onCloudSyncNow={() => {
+      <ShortcutAppDialogsLayer
+        shouldMountAppDialogs={shouldMountAppDialogs}
+        shortcutDialogs={{
+          shortcutEditOpen,
+          setShortcutEditOpen,
+          shortcutModalMode,
+          setShortcutModalMode,
+          selectedShortcut,
+          setSelectedShortcut,
+          editingTitle,
+          setEditingTitle,
+          editingUrl,
+          setEditingUrl,
+          shortcutIconCornerRadius,
+          shortcutIconScale,
+          shortcutIconAppearance,
+          onSaveShortcutEdit: handleSaveShortcutEdit,
+          shortcutDeleteOpen,
+          setShortcutDeleteOpen,
+          onConfirmDeleteShortcut: handleConfirmDeleteShortcut,
+        }}
+        scenarioDialogs={{
+          scenarioCreateOpen,
+          setScenarioCreateOpen,
+          onCreateScenarioMode: handleCreateScenarioMode,
+          scenarioEditOpen,
+          setScenarioEditOpen,
+          onUpdateScenarioMode: handleUpdateScenarioMode,
+          scenarioEditMode,
+        }}
+        authDialog={{
+          isAuthModalOpen,
+          onOpenChange: handleAuthModalOpenChange,
+          onLoginSuccess,
+          setAuthModalMode,
+          apiServer,
+          onApiServerChange: setApiServer,
+          customApiUrl,
+          customApiName,
+          defaultApiBase,
+          authModalMode,
+          linkedUsername: user,
+        }}
+        settingsDialogs={{
+          settingsOpen,
+          setSettingsOpen,
+          username: user,
+          onLogin: handleRequestCloudLogin,
+          onLogout: requestLogoutConfirmation,
+          shortcutsCount: totalShortcuts,
+          displayMode,
+          onDisplayModeChange: setDisplayMode,
+          shortcutCompactShowTitle,
+          onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
+          shortcutGridColumns: normalizedGridColumns,
+          onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
+          onOpenShortcutIconSettings: handleOpenShortcutIconSettings,
+          openInNewTab,
+          onOpenInNewTabChange: setOpenInNewTab,
+          preventDuplicateNewTab,
+          onPreventDuplicateNewTabChange: handlePreventDuplicateNewTabChange,
+          onOpenSearchSettings: handleOpenSearchSettings,
+          visualEffectsLevel,
+          onVisualEffectsLevelChange: setVisualEffectsLevel,
+          disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
+          showTime,
+          onShowTimeChange: setShowTime,
+          onExportData: handleExportData,
+          onImportData: handleImportData,
+          wallpaperMode: effectiveWallpaperMode,
+          onWallpaperModeChange: setWallpaperMode,
+          bingWallpaper,
+          customWallpaper,
+          onCustomWallpaperChange: setCustomWallpaper,
+          weatherCode,
+          colorWallpaperId,
+          onColorWallpaperIdChange: setColorWallpaperId,
+          wallpaperMaskOpacity,
+          onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+          setWallpaperSettingsOpen,
+          privacyConsent,
+          onPrivacyConsentChange: handlePrivacySwitchChange,
+          onOpenAdminModal: handleOpenAdminModal,
+          onOpenAboutModal: handleOpenAboutModal,
+          onCloudSyncNow: handleCloudSyncNowFromCenter,
+          setLeafTabSyncDialogOpen,
+          onOpenWebdavConfig: handleOpenWebdavConfig,
+          onWebdavSync: resolveWebdavConflict,
+          onWebdavEnable: handleEnableWebdavSync,
+          onWebdavDisable: handleDisableWebdavSync,
+          setShortcutGuideOpen,
+        }}
+        utilityDialogs={{
+          searchSettingsOpen,
+          setSearchSettingsOpen,
+          onBackToSettings: handleBackToMainSettings,
+          tabSwitchSearchEngine,
+          onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
+          searchPrefixEnabled,
+          onSearchPrefixEnabledChange: setSearchPrefixEnabled,
+          searchSiteDirectEnabled,
+          onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
+          searchSiteShortcutEnabled,
+          onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
+          searchAnyKeyCaptureEnabled,
+          onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
+          searchCalculatorEnabled,
+          onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
+          searchRotatingPlaceholderEnabled,
+          onSearchRotatingPlaceholderEnabledChange: setSearchRotatingPlaceholderEnabled,
+          shortcutGuideOpen,
+          setShortcutGuideOpen,
+          shortcutIconSettingsOpen,
+          setShortcutIconSettingsOpen,
+          compactShowTitle: shortcutCompactShowTitle,
+          columns: normalizedGridColumns,
+          onShortcutIconStyleSave: ({ compactShowTitle, columns }) => {
+            setShortcutCompactShowTitle(compactShowTitle);
+            handleShortcutGridColumnsChange(columns);
+          },
+          appearance: shortcutIconAppearance,
+          cornerRadius: shortcutIconCornerRadius,
+          scale: shortcutIconScale,
+          onShortcutIconSave: ({ appearance, cornerRadius, scale }) => {
+            setShortcutIconAppearance(appearance);
+            setShortcutIconCornerRadius(cornerRadius);
+            setShortcutIconScale(scale);
+          },
+          adminModalOpen,
+          setAdminModalOpen,
+          onExportDomains: handleExportDomains,
+          gridHitDebugEnabled: gridHitDebugVisible,
+          onGridHitDebugEnabledChange: handleGridHitDebugEnabledChange,
+          weatherDebugEnabled: weatherDebugVisible,
+          onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
+          onWeatherDebugApply: handleWeatherDebugApply,
+          customApiUrl,
+          onCustomApiUrlChange: setCustomApiUrl,
+          customApiName,
+          onCustomApiNameChange: setCustomApiName,
+          aboutModalOpen,
+          setAboutModalOpen,
+          defaultAboutTab: aboutModalDefaultTab,
+        }}
+        backupDialogs={{
+          exportBackupDialogOpen,
+          setExportBackupDialogOpen,
+          onExportBackupConfirm: executeExportData,
+          importBackupDialogOpen,
+          onImportBackupDialogOpenChange: handleImportBackupDialogOpenChange,
+          importBackupScopePayload,
+          cloudSyncBookmarksEnabled,
+          onImportBackupConfirm: handleImportBackupScopeConfirm,
+          importConfirmOpen,
+          setImportConfirmOpen,
+          importPendingPayload,
+          setImportPendingPayload,
+          importConfirmBusy,
+          setImportConfirmBusy,
+          onApplyImportUndoPayload: handleImportConfirmApply,
+          setSettingsOpen,
+        }}
+        syncProviderDialogs={{
+          webdavDialogOpen,
+          onBackToParent: handleBackFromSyncProviderConfig,
+          setWebdavDialogOpen,
+          enableAfterSave: webdavEnableAfterConfigSave,
+          showConnectionFields: webdavShowConnectionFields,
+          setWebdavEnableAfterConfigSave,
+          setWebdavShowConnectionFields,
+          setPendingWebdavEnableScopeKey,
+          resolveLeafTabSyncRootPath,
+          leafTabWebdavEnabled,
+          webdavSyncing: leafTabSyncState.status === 'syncing',
+          onWebdavSaveSuccessAutoSync: handleLeafTabAutoSync,
+          setConfirmDisableWebdavSyncOpen,
+          cloudSyncConfigOpen,
+          setCloudSyncConfigOpen,
+          onCloudSyncConfigSaved: handleCloudSyncConfigSaved,
+          onLinkGoogle: openGoogleLinkAuthModal,
+          onCloudSyncLogout: requestLogoutConfirmation,
+        }}
+        consentDialogs={{
+          confirmDisableConsentOpen,
+          setConfirmDisableConsentOpen,
+          onPrivacyConsent: handlePrivacyConsent,
+        }}
+      />
+      <ShortcutSyncDialogsLayer
+        shouldMountLeafTabSyncDialog={shouldMountLeafTabSyncDialog}
+        leafTabSyncDialogProps={{
+          open: leafTabSyncDialogOpen,
+          onOpenChange: handleLeafTabSyncDialogOpenChange,
+          cloudAnalysis: cloudLeafTabSyncAnalysis,
+          webdavAnalysis: leafTabSyncAnalysis,
+          syncState: leafTabSyncState,
+          cloudSyncState: cloudLeafTabSyncState,
+          ready: leafTabSyncReady,
+          hasConfig: leafTabSyncHasConfig,
+          busy: leafTabSyncState.status === 'syncing' || cloudLeafTabSyncState.status === 'syncing',
+          bookmarkScopeLabel: leafTabBookmarkSyncScopeLabel,
+          summaryText: cloudLeafTabSyncLastResult?.summaryText || leafTabSyncLastResult?.summaryText || '',
+          cloudSignedIn: Boolean(user),
+          cloudEnabled: cloudSyncEnabled,
+          cloudSyncBookmarksEnabled: cloudSyncBookmarksEnabled,
+          cloudUsername: user || '',
+          cloudLastSyncLabel: cloudLastSyncLabel,
+          cloudNextSyncLabel: cloudNextSyncLabel,
+          cloudEncryptionReady: cloudSyncEncryptionReady,
+          webdavConfigured: leafTabWebdavConfigured,
+          webdavEnabled: leafTabWebdavEnabled,
+          webdavSyncBookmarksEnabled: webdavSyncBookmarksEnabled,
+          webdavProfileLabel: leafTabWebdavProfileLabel,
+          webdavUrlLabel: leafTabSyncWebdavConfig?.url || '',
+          webdavLastSyncLabel: leafTabWebdavLastSyncLabel,
+          webdavNextSyncLabel: leafTabWebdavNextSyncLabel,
+          webdavEncryptionReady: leafTabWebdavEncryptionReady,
+          onCloudSyncNow: () => {
+            setLeafTabSyncDialogOpen(false);
+            void handleCloudSyncNowFromCenter();
+          },
+          onOpenCloudConfig: handleOpenCloudSyncConfigFromSyncCenter,
+          onCloudLogin: () => {
+            const shouldOpenLogin = handleRequestCloudLogin();
+            if (shouldOpenLogin) {
               setLeafTabSyncDialogOpen(false);
-              void handleCloudSyncNowFromCenter();
-            }}
-            onOpenCloudConfig={handleOpenCloudSyncConfigFromSyncCenter}
-            onCloudLogin={() => {
-              const shouldOpenLogin = handleRequestCloudLogin();
-              if (shouldOpenLogin) {
-                setLeafTabSyncDialogOpen(false);
-              }
-            }}
-            onCloudRepairPull={() => {
-              void handleCloudRepairFromCenter('pull-remote');
-            }}
-            onCloudRepairPush={() => {
-              void handleCloudRepairFromCenter('push-local');
-            }}
-            onSyncNow={() => {
-              setSyncConfigBackTarget('sync-center');
-              setLeafTabSyncDialogOpen(false);
-              void handleWebdavSyncNowFromCenter();
-            }}
-            onOpenConfig={() => {
-              handleOpenWebdavConfigFromSyncCenter();
-            }}
-            onOpenSetupConfig={() => {
-              handleOpenWebdavConfigFromSyncCenter({
-                showConnectionFields: true,
-                enableAfterSave: true,
-              });
-            }}
-            onWebdavRepairPull={() => {
-              void handleWebdavRepairFromCenter('pull-remote');
-            }}
-            onWebdavRepairPush={() => {
-              void handleWebdavRepairFromCenter('push-local');
-            }}
-          />
-        </Suspense>
-      ) : null}
-      {shouldMountLeafTabSyncEncryptionDialog ? (
-        <Suspense fallback={null}>
-	          <LazyLeafTabSyncEncryptionDialog
-	            open={Boolean(syncEncryptionDialogState?.open)}
-	            mode={syncEncryptionDialogState?.mode || 'setup'}
-	            providerLabel={syncEncryptionDialogState?.providerLabel || t('leaftabSync.provider.generic', { defaultValue: '同步' })}
-	            busy={syncEncryptionDialogBusy}
-	            onOpenChange={handleSyncEncryptionDialogOpenChange}
-	            onSubmit={handleSubmitSyncEncryptionDialog}
-	          />
-        </Suspense>
-      ) : null}
-      {dangerousSyncDialogState?.open ? (
-        <LeafTabDangerousSyncDialog
-          open={dangerousSyncDialogState.open}
-          onOpenChange={(open) => {
+            }
+          },
+          onCloudRepairPull: () => {
+            void handleCloudRepairFromCenter('pull-remote');
+          },
+          onCloudRepairPush: () => {
+            void handleCloudRepairFromCenter('push-local');
+          },
+          onSyncNow: () => {
+            setSyncConfigBackTarget('sync-center');
+            setLeafTabSyncDialogOpen(false);
+            void handleWebdavSyncNowFromCenter();
+          },
+          onOpenConfig: () => {
+            handleOpenWebdavConfigFromSyncCenter();
+          },
+          onOpenSetupConfig: () => {
+            handleOpenWebdavConfigFromSyncCenter({
+              showConnectionFields: true,
+              enableAfterSave: true,
+            });
+          },
+          onWebdavRepairPull: () => {
+            void handleWebdavRepairFromCenter('pull-remote');
+          },
+          onWebdavRepairPush: () => {
+            void handleWebdavRepairFromCenter('push-local');
+          },
+        }}
+        shouldMountLeafTabSyncEncryptionDialog={shouldMountLeafTabSyncEncryptionDialog}
+        leafTabSyncEncryptionDialogProps={{
+          open: Boolean(syncEncryptionDialogState?.open),
+          mode: syncEncryptionDialogState?.mode || 'setup',
+          providerLabel: syncEncryptionDialogState?.providerLabel || t('leaftabSync.provider.generic', { defaultValue: '同步' }),
+          busy: syncEncryptionDialogBusy,
+          onOpenChange: handleSyncEncryptionDialogOpenChange,
+          onSubmit: handleSubmitSyncEncryptionDialog,
+        }}
+        dangerousSyncDialogProps={dangerousSyncDialogState?.open ? {
+          open: dangerousSyncDialogState.open,
+          onOpenChange: (open) => {
             if (!open) {
               closeDangerousSyncDialog();
             }
-          }}
-          provider={dangerousSyncDialogState.provider}
-          localBookmarkCount={dangerousSyncDialogState.localBookmarkCount}
-          remoteBookmarkCount={dangerousSyncDialogState.remoteBookmarkCount}
-          detectedFromCount={dangerousSyncDialogState.detectedFromCount}
-          detectedToCount={dangerousSyncDialogState.detectedToCount}
-          busyAction={dangerousSyncDialogBusyAction}
-          onContinueWithoutBookmarks={() => {
+          },
+          provider: dangerousSyncDialogState.provider,
+          localBookmarkCount: dangerousSyncDialogState.localBookmarkCount,
+          remoteBookmarkCount: dangerousSyncDialogState.remoteBookmarkCount,
+          detectedFromCount: dangerousSyncDialogState.detectedFromCount,
+          detectedToCount: dangerousSyncDialogState.detectedToCount,
+          busyAction: dangerousSyncDialogBusyAction,
+          onContinueWithoutBookmarks: () => {
             void handleDangerousSyncDialogContinueWithoutBookmarks();
-          }}
-          onDefer={handleDangerousSyncDialogDefer}
-          onUseRemote={() => {
+          },
+          onDefer: handleDangerousSyncDialogDefer,
+          onUseRemote: () => {
             void handleDangerousSyncDialogUseRemote();
-          }}
-          onUseLocal={() => {
+          },
+          onUseLocal: () => {
             void handleDangerousSyncDialogUseLocal();
-          }}
-        />
-      ) : null}
+          },
+        } : null}
+      />
       {shouldMountUpdateDialog ? (
         <Suspense fallback={null}>
           <LazyUpdateAvailableDialog

@@ -1,10 +1,10 @@
-import { memo, useCallback, useEffect, useState, type CSSProperties, type ComponentProps } from 'react';
+import { memo, useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { useTheme } from 'next-themes';
-import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
-import { WallpaperClock } from '@/components/WallpaperClock';
+import type { RootShortcutGridProps } from '@/features/shortcuts/components/RootShortcutGrid';
+import { WallpaperClock, type WallpaperClockProps } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
-import { SearchExperience } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import {
@@ -14,18 +14,18 @@ import { QuickAccessDrawer } from './QuickAccessDrawer';
 import { InlineTime } from './InlineTime';
 import { useQuickAccessDrawer } from './useQuickAccessDrawer';
 
-type HomeContentFlags = Pick<
+export type HomeContentFlags = Pick<
   DisplayModeLayoutFlags,
   'showHeroWallpaperClock' | 'showShortcuts' | 'revealShortcutsOnDrawerExpand' | 'forceWhiteSearchTheme' | 'searchUsesBlankStyle'
 >;
 
-interface HomeMainContentProps {
+export type HomeMainContentWallpaperClockProps = WallpaperClockProps;
+export type HomeMainContentSearchExperienceProps = SearchExperienceProps;
+export type HomeMainContentShortcutGridProps = RootShortcutGridProps;
+
+export interface HomeMainContentProps {
   initialRevealReady: boolean;
   visible: boolean;
-  user: string | null;
-  loginBannerVisible: boolean;
-  onLoginRequest: () => void;
-  onDismissLoginBanner: () => void;
   modeFlags: HomeContentFlags;
   showTime: boolean;
   displayMode: DisplayMode;
@@ -47,13 +47,25 @@ interface HomeMainContentProps {
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
   reduceMotionVisuals?: boolean;
-  wallpaperClockProps: ComponentProps<typeof WallpaperClock>;
-  searchExperienceProps: ComponentProps<typeof SearchExperience>;
+  wallpaperClockProps: HomeMainContentWallpaperClockProps;
+  searchExperienceProps: HomeMainContentSearchExperienceProps;
   searchInteractionLocked: boolean;
-  shortcutGridProps: ComponentProps<typeof RootShortcutGrid>;
+  shortcutGridProps: HomeMainContentShortcutGridProps;
   onDrawerExpandedChange?: (expanded: boolean) => void;
   topNavIntroCompleted?: boolean;
 }
+
+export type HomeMainContentBaseProps = Omit<
+  HomeMainContentProps,
+  'initialRevealReady'
+  | 'visible'
+  | 'modeFlags'
+  | 'wallpaperClockProps'
+  | 'searchExperienceProps'
+  | 'searchInteractionLocked'
+  | 'shortcutGridProps'
+  | 'onDrawerExpandedChange'
+>;
 
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
 const HOME_WALLPAPER_BLOCK_LIFT_PX = 28;
@@ -64,10 +76,6 @@ const BLANK_MODE_DRAWER_HINT_SEEN_KEY = 'leaftab_blank_mode_drawer_hint_seen_v1'
 export const HomeMainContent = memo(function HomeMainContent({
   initialRevealReady,
   visible,
-  user: _user,
-  loginBannerVisible: _loginBannerVisible,
-  onLoginRequest: _onLoginRequest,
-  onDismissLoginBanner: _onDismissLoginBanner,
   modeFlags,
   showTime,
   displayMode,

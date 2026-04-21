@@ -18,13 +18,13 @@ import type { ContextMenuState, ScenarioMode, Shortcut } from '@/types';
 import { extractDomainFromUrl } from '@/utils';
 import { isShortcutFolder, isShortcutLink } from '@/utils/shortcutFolders';
 
-type ShortcutSelectionRenderProps = {
+export type ShortcutSelectionRenderProps = {
   selectionMode: boolean;
   selectedShortcutIndexes: Set<number>;
   onToggleShortcutSelection: (shortcutIndex: number) => void;
 };
 
-type ShortcutSelectionShellProps = {
+export type ShortcutSelectionShellProps = {
   contextMenu: ContextMenuState | null;
   setContextMenu: (value: ContextMenuState | null) => void;
   contextMenuRef: RefObject<HTMLDivElement | null>;

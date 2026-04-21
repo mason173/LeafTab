@@ -17,7 +17,7 @@ import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
 import { WeatherCard } from './WeatherCard';
 import { getTimeFontScale, toCssFontFamily } from '@/utils/googleFonts';
 
-interface WallpaperClockProps {
+export interface WallpaperClockProps {
   is24Hour: boolean;
   onIs24HourChange: (checked: boolean) => void;
   showSeconds: boolean;

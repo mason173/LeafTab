@@ -30,7 +30,7 @@ import type { DisplayMode } from '@/displayMode/config';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
-type ShortcutFolderCompactOverlayProps = {
+export type ShortcutFolderCompactOverlayProps = {
   open?: boolean;
   shortcut: Shortcut | null;
   transitionPhase: FolderTransitionPhase;

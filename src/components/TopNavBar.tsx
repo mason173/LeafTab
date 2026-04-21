@@ -34,7 +34,7 @@ function ActionButton({
   );
 }
 
-interface TopNavBarProps {
+export interface TopNavBarProps {
   onSettingsClick?: () => void;
   onSyncClick?: () => void;
   syncStatus?: 'idle' | 'syncing' | 'conflict' | 'error';

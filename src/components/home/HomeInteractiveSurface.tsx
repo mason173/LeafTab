@@ -1,14 +1,19 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TopNavBar } from '@/components/TopNavBar';
-import { HomeMainContent } from '@/components/home/HomeMainContent';
+import { TopNavBar, type TopNavBarProps } from '@/components/TopNavBar';
+import {
+  HomeMainContent,
+  type HomeMainContentBaseProps,
+  type HomeMainContentSearchExperienceProps,
+  type HomeMainContentShortcutGridProps,
+  type HomeMainContentWallpaperClockProps,
+} from '@/components/home/HomeMainContent';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { toast } from '@/components/ui/sonner';
 import { resolveInitialRevealStyle } from '@/config/animationTokens';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
-import { SearchExperience, type SearchInteractionState } from '@/components/search/SearchExperience';
-import { WallpaperClock } from '@/components/WallpaperClock';
+import { type SearchInteractionState } from '@/components/search/SearchExperience';
 import type { WallpaperMode } from '@/wallpaper/types';
 
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
@@ -36,7 +41,7 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
   );
 };
 
-type HomeInteractiveSurfaceProps = {
+export type HomeInteractiveSurfaceProps = {
   initialRevealReady: boolean;
   visible: boolean;
   modeLayersVisible: boolean;
@@ -50,26 +55,23 @@ type HomeInteractiveSurfaceProps = {
   overlayBackgroundAlt: string;
   onOverlayImageReady: () => void;
   effectiveWallpaperMaskOpacity: number;
-  topNavModeProps: ComponentProps<typeof TopNavBar>;
-  homeMainContentBaseProps: Omit<
-    ComponentProps<typeof HomeMainContent>,
-    'initialRevealReady' | 'visible' | 'modeFlags' | 'wallpaperClockProps' | 'searchExperienceProps' | 'searchInteractionLocked' | 'onDrawerExpandedChange' | 'shortcutGridProps'
-  >;
+  topNavModeProps: TopNavBarProps;
+  homeMainContentBaseProps: HomeMainContentBaseProps;
   shortcutGridBaseProps: Omit<
-    ComponentProps<typeof HomeMainContent>['shortcutGridProps'],
+    HomeMainContentShortcutGridProps,
     'heatZoneInspectorEnabled' | 'hiddenShortcutId' | 'selectionMode' | 'selectedShortcutIndexes' | 'onToggleShortcutSelection'
   >;
-  shortcutGridHeatZoneInspectorEnabled: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['heatZoneInspectorEnabled'];
-  shortcutGridHiddenShortcutId: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['hiddenShortcutId'];
-  shortcutGridSelectionMode: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['selectionMode'];
-  shortcutGridSelectedShortcutIndexes: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['selectedShortcutIndexes'];
-  onToggleShortcutSelection: ComponentProps<typeof HomeMainContent>['shortcutGridProps']['onToggleShortcutSelection'];
+  shortcutGridHeatZoneInspectorEnabled: HomeMainContentShortcutGridProps['heatZoneInspectorEnabled'];
+  shortcutGridHiddenShortcutId: HomeMainContentShortcutGridProps['hiddenShortcutId'];
+  shortcutGridSelectionMode: HomeMainContentShortcutGridProps['selectionMode'];
+  shortcutGridSelectedShortcutIndexes: HomeMainContentShortcutGridProps['selectedShortcutIndexes'];
+  onToggleShortcutSelection: HomeMainContentShortcutGridProps['onToggleShortcutSelection'];
   wallpaperClockBaseProps: Omit<
-    ComponentProps<typeof WallpaperClock>,
+    HomeMainContentWallpaperClockProps,
     'timeAnimationEnabled' | 'pauseDynamicWallpaper'
   >;
   searchExperienceBaseProps: Omit<
-    ComponentProps<typeof SearchExperience>,
+    HomeMainContentSearchExperienceProps,
     'inputRef' | 'onInteractionStateChange'
   >;
   baseTimeAnimationEnabled: boolean;
