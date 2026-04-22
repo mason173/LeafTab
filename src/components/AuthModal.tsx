@@ -3,11 +3,11 @@ import { RiEyeFill, RiEyeOffFill } from "@/icons/ri-compat";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -730,7 +730,7 @@ export default function AuthModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[425px] rounded-[32px]">
+      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle className="text-foreground">LeafTab</DialogTitle>
           <DialogDescription className="text-muted-foreground">
@@ -944,7 +944,7 @@ export default function AuthModal({
           </Tabs.Content>
         </Tabs.Root>
         )}
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

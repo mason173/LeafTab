@@ -1,15 +1,18 @@
 import {
   useCallback,
+  useLayoutEffect,
   useState,
+  type CSSProperties,
 } from 'react';
+import { useTheme } from 'next-themes';
 import { useFolderPreviewRootRef, useFolderPreviewSlotRef } from '@/components/shortcuts/folderPreviewRegistry';
+import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
   LARGE_FOLDER_PREVIEW_VISIBLE_COUNT,
 } from '@/components/shortcuts/compactFolderLayout';
 import { RiFolderChartFill } from '@/icons/ri-compat';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren } from '@/utils/shortcutFolders';
 import { clampShortcutIconCornerRadius, getShortcutIconBorderRadius } from '@/utils/shortcutIconSettings';
@@ -29,7 +32,13 @@ export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/8';
 const FOLDER_DROP_TARGET_TRANSITION = 'none';
 const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
-const ACTIVE_FOLDER_BORDER_SHADOW = 'inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 0 1px rgba(255,255,255,0.08)';
+const ACTIVE_FOLDER_BORDER_SHADOW = 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(255,255,255,0.08)';
+type ViewportRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
 
 function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
   return {
@@ -37,6 +46,16 @@ function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
     borderColor: highlightBorder ? ACTIVE_FOLDER_BORDER_COLOR : undefined,
     boxShadow: highlightBorder ? ACTIVE_FOLDER_BORDER_SHADOW : undefined,
   };
+}
+
+function rectEquals(left: ViewportRect | null, right: ViewportRect | null) {
+  if (!left || !right) return left === right;
+  return (
+    Math.abs(left.left - right.left) < 0.25
+    && Math.abs(left.top - right.top) < 0.25
+    && Math.abs(left.width - right.width) < 0.25
+    && Math.abs(left.height - right.height) < 0.25
+  );
 }
 
 function useFolderPreviewRootNode(folderId: string) {
@@ -54,26 +73,144 @@ function useFolderPreviewRootNode(folderId: string) {
   };
 }
 
+function useLiveViewportRect(element: HTMLElement | null, enabled: boolean) {
+  const [rect, setRect] = useState<ViewportRect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!enabled || !element || typeof window === 'undefined') {
+      setRect(null);
+      return;
+    }
+
+    let rafId = 0;
+    const syncRect = () => {
+      if (!element.isConnected) {
+        setRect(null);
+        return;
+      }
+
+      const nextRect = element.getBoundingClientRect();
+      const resolvedRect = {
+        left: nextRect.left,
+        top: nextRect.top,
+        width: nextRect.width,
+        height: nextRect.height,
+      };
+      setRect((current) => (rectEquals(current, resolvedRect) ? current : resolvedRect));
+      rafId = window.requestAnimationFrame(syncRect);
+    };
+
+    syncRect();
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [element, enabled]);
+
+  return rect;
+}
+
+function buildViewportSliceImageStyle(rect: ViewportRect): CSSProperties {
+  return {
+    position: 'absolute',
+    left: `${-rect.left}px`,
+    top: `${-rect.top}px`,
+    width: '100vw',
+    height: '100vh',
+    objectFit: 'cover',
+    maxWidth: 'none',
+    transform: 'translateZ(0)',
+    WebkitTransform: 'translateZ(0)',
+    backfaceVisibility: 'hidden',
+    willChange: 'transform',
+  };
+}
+
+function FolderPreviewWallpaperLayer({
+  rect,
+}: {
+  rect: ViewportRect | null;
+}) {
+  const wallpaperBackdrop = useWallpaperBackdropSnapshot();
+
+  if (wallpaperBackdrop?.blurredWallpaperSrc && rect) {
+    return (
+      <img
+        src={wallpaperBackdrop.blurredWallpaperSrc}
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none"
+        draggable={false}
+        style={buildViewportSliceImageStyle(rect)}
+      />
+    );
+  }
+
+  if (wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient) {
+    return (
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: wallpaperBackdrop.colorWallpaperGradient,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0"
+      style={{
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(30,34,42,0.22) 100%)',
+      }}
+    />
+  );
+}
+
 function FolderPreviewGlassLayer({
   rootNode,
-  radiusClassName,
   previewTone,
 }: {
   rootNode: HTMLElement | null;
-  radiusClassName: string;
   previewTone: 'default' | 'drawer';
 }) {
+  const wallpaperBackdrop = useWallpaperBackdropSnapshot();
+  const { resolvedTheme } = useTheme();
+  const viewportRect = useLiveViewportRect(rootNode, Boolean(wallpaperBackdrop?.blurredWallpaperSrc));
+  const drawerToneActive = previewTone === 'drawer';
+  const isDarkTheme = resolvedTheme === 'dark';
+
+  const baseTintStyle: CSSProperties = drawerToneActive
+    ? (isDarkTheme
+        ? { background: 'rgba(6,8,12,0.42)' }
+        : { background: 'rgba(255,255,255,0.28)' })
+    : { background: 'rgba(255,255,255,0.08)' };
+  const verticalGradientStyle: CSSProperties = drawerToneActive
+    ? (isDarkTheme
+        ? {
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(12,14,18,0.22) 18%, rgba(6,8,12,0.56) 100%)',
+          }
+        : {
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.34) 24%, rgba(255,255,255,0.66) 100%)',
+          })
+    : {
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 26%, rgba(18,22,30,0.18) 100%)',
+      };
   return (
-    <SearchFakeBlurSurface
-      surfaceNode={rootNode}
-      tone={previewTone}
-      radiusClassName={radiusClassName}
-      darkCoverStrength={previewTone === 'drawer' ? 'deep' : 'normal'}
-      sliceOverscanPx={140}
-      sliceScale={1.08}
-      specularHighlight="none"
-      atmosphereMode="flat"
-    />
+    <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <FolderPreviewWallpaperLayer rect={viewportRect} />
+      </div>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={baseTintStyle} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={verticalGradientStyle} />
+    </>
   );
 }
 
@@ -104,14 +241,14 @@ function LargeFolderOpenTileGhostStack({
       {[2, 1].map((layer) => (
         <span
           key={layer}
-          className="absolute border border-border/60 bg-background/40"
+          className="absolute border border-white/20 bg-white/18"
           style={{
             width: stackTileSize,
             height: stackTileSize,
             borderRadius: ghostBorderRadius,
             transform: `translate(${-layer * LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX}px, ${-layer * LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX}px)`,
-            opacity: layer === 1 ? 0.5 : 0.28,
-            boxShadow: 'none',
+            opacity: layer === 1 ? 0.55 : 0.34,
+            boxShadow: '0 8px 16px rgba(255,255,255,0.06)',
           }}
         />
       ))}
@@ -414,7 +551,6 @@ export function ShortcutFolderPreview({
   const tileSize = Math.max(14, Math.floor((size - 18) / 2));
   const borderRadius = getSmallFolderBorderRadius(size, iconCornerRadius);
   const { rootNode, rootRef } = useFolderPreviewRootNode(shortcut.id);
-  const radiusClassName = 'rounded-[inherit]';
 
   return (
     <div
@@ -434,7 +570,7 @@ export function ShortcutFolderPreview({
       data-folder-preview-contents-hidden={hidePreviewContents ? 'true' : 'false'}
       data-folder-portal-backdrop={portalBackdrop ? 'true' : 'false'}
     >
-      <FolderPreviewGlassLayer rootNode={rootNode} radiusClassName={radiusClassName} previewTone={previewTone} />
+      <FolderPreviewGlassLayer rootNode={rootNode} previewTone={previewTone} />
       <FolderPreviewContentLayer hidePreviewContents={hidePreviewContents}>
         <div className="grid h-full w-full grid-cols-2 gap-1 p-2">
           {children.length > 0 ? children.map((child, index) => (
@@ -507,7 +643,6 @@ export function ShortcutFolderLargePreview({
   );
   const borderRadius = getLargeFolderBorderRadius(size, iconCornerRadius);
   const { rootNode, rootRef } = useFolderPreviewRootNode(shortcut.id);
-  const radiusClassName = 'rounded-[inherit]';
 
   return (
     <div
@@ -528,7 +663,15 @@ export function ShortcutFolderLargePreview({
       data-folder-portal-backdrop={portalBackdrop ? 'true' : 'false'}
       onClick={interactive ? onOpenFolder : undefined}
     >
-      <FolderPreviewGlassLayer rootNode={rootNode} radiusClassName={radiusClassName} previewTone={previewTone} />
+      <FolderPreviewGlassLayer rootNode={rootNode} previewTone={previewTone} />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 42%)',
+          pointerEvents: 'none',
+        }}
+      />
       <FolderPreviewContentLayer hidePreviewContents={hidePreviewContents}>
         {children.length > 0 ? (
           <div

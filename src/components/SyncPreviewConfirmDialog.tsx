@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -13,7 +14,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 
 type SyncChoice = 'cloud' | 'local' | 'merge' | null;
@@ -214,8 +214,8 @@ export function SyncPreviewConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent
-        className={`sm:max-w-[520px] w-[520px] max-w-[calc(100vw-2rem)] max-h-[76vh] rounded-[32px] flex flex-col min-h-0 ${requireDecision ? '[&>button]:hidden' : ''}`}
+      <DialogContent
+        className={`sm:max-w-[520px] w-[520px] max-w-[calc(100vw-2rem)] max-h-[76vh] bg-background border-border text-foreground rounded-[32px] flex flex-col min-h-0 ${requireDecision ? '[&>button]:hidden' : ''}`}
         onEscapeKeyDown={(event: { preventDefault: () => void }) => {
           if (requireDecision) event.preventDefault();
         }}
@@ -297,7 +297,7 @@ export function SyncPreviewConfirmDialog({
                 : confirmLocalLabel}
           </Button>
         </DialogFooter>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

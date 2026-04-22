@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiShieldCheckFill, RiShieldCrossFill } from '@/icons/ri-compat';
 import { Button } from './ui/button';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 interface PrivacyConsentModalProps {
   isOpen: boolean;
@@ -16,7 +15,7 @@ export function PrivacyConsentModal({ isOpen, onConsent }: PrivacyConsentModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <SettingsDialogContent className="sm:max-w-[425px] [&>button]:hidden" onPointerDownOutside={(e: any) => e.preventDefault()} onEscapeKeyDown={(e: any) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground [&>button]:hidden" onPointerDownOutside={(e: any) => e.preventDefault()} onEscapeKeyDown={(e: any) => e.preventDefault()}>
         {!confirmMode ? (
           <>
             <DialogHeader>
@@ -74,7 +73,7 @@ export function PrivacyConsentModal({ isOpen, onConsent }: PrivacyConsentModalPr
             </div>
           </>
         )}
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

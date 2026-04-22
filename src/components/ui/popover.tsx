@@ -21,11 +21,8 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
-  surfaceBackdrop,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
-  surfaceBackdrop?: React.ReactNode;
-}) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -35,16 +32,10 @@ function PopoverContent({
         sideOffset={sideOffset}
         className={cn(
           "bg-popover/80 text-popover-foreground z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl border border-border p-4 shadow-md outline-hidden backdrop-blur-md",
-          surfaceBackdrop
-            ? "[&>*:not([data-settings-surface-backdrop='true'])]:relative [&>*:not([data-settings-surface-backdrop='true'])]:z-10"
-            : "",
           className,
         )}
         {...props}
-      >
-        {surfaceBackdrop}
-        {props.children}
-      </PopoverPrimitive.Content>
+      />
     </PopoverPrimitive.Portal>
   );
 }

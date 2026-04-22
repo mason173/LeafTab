@@ -1,5 +1,4 @@
-import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -370,9 +369,9 @@ export default function SettingsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <SettingsDialogContent
+      <DialogContent
         data-testid="settings-modal"
-        className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] rounded-[32px] overflow-visible"
+        className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible"
       >
         <DialogHeader>
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
@@ -754,7 +753,7 @@ export default function SettingsModal({
 
           </div>
         </ScrollArea>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
     </>
   );

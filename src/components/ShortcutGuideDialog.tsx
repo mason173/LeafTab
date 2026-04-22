@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { SHORTCUT_GUIDE_SECTIONS } from '@/config/shortcutGuide';
-import { Dialog, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 
 interface ShortcutGuideDialogProps {
   open: boolean;
@@ -32,7 +31,7 @@ export function ShortcutGuideDialog({ open, onOpenChange, onBackToSettings }: Sh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[740px] max-h-[85vh] overflow-visible rounded-[32px]">
+      <DialogContent className="sm:max-w-[740px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToSettings} />
@@ -107,7 +106,7 @@ export function ShortcutGuideDialog({ open, onOpenChange, onBackToSettings }: Sh
             </p>
           </div>
         </ScrollArea>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

@@ -8,8 +8,7 @@ import {
   RiSunFill,
   RiThunderstormsFill,
 } from "@/icons/ri-compat";
-import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -158,7 +157,7 @@ export function AdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible rounded-[32px]">
+      <DialogContent className="sm:max-w-[560px] max-h-[85%] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToSettings} />
@@ -415,7 +414,7 @@ export function AdminModal({
           onLater={() => setUpdateDebugOpen(false)}
           debugSample
         />
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

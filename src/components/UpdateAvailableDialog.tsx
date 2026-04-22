@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import aboutIcon from '@/assets/abouticon.svg';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 
 type UpdateAvailableDialogProps = {
   open: boolean;
@@ -59,7 +58,7 @@ export function UpdateAvailableDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-hidden rounded-[32px] p-0 flex flex-col">
+      <DialogContent className="w-[500px] max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] p-0 flex flex-col">
         <div className="relative px-3 pt-3 shrink-0">
           <div className="relative flex h-[164px] flex-col items-center justify-center overflow-hidden rounded-[20px] border border-border/60 bg-secondary/20 px-5 text-center">
             {resolvedLatestVersion ? (
@@ -124,7 +123,7 @@ export function UpdateAvailableDialog({
             {t('updateNotice.openRelease', { defaultValue: '前往 GitHub 下载' })}
           </Button>
         </DialogFooter>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

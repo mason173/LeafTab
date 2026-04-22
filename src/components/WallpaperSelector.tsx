@@ -1,4 +1,4 @@
-import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { RiImageFill } from "@/icons/ri-compat";
@@ -12,7 +12,6 @@ import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel"
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
@@ -116,15 +115,14 @@ export default function WallpaperSelector({
       <DialogTrigger asChild>
         {trigger || <WallpaperDialogTrigger />}
       </DialogTrigger>
-      <SettingsDialogContent
+      <DialogContent
         overlayClassName={`transition-opacity duration-220 ease-out ${isMaskSliderIsolation ? "!opacity-0 !bg-black/0" : ""}`}
-        fakeBlurDisabled={isMaskSliderIsolation}
         className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
           isMaskSliderIsolation
             ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none"
             : firefox
-              ? "border-white/10 shadow-lg [&>button]:opacity-70 [&>button:hover]:opacity-100"
-              : "border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"
+              ? "bg-popover/98 border-white/10 shadow-lg [&>button]:opacity-70 [&>button:hover]:opacity-100"
+              : "bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"
         }`}
       >
         <div className="flex flex-col h-full">
@@ -243,7 +241,7 @@ export default function WallpaperSelector({
             </div>
           </Tabs>
         </div>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

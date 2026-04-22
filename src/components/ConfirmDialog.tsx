@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 
 function ConfirmDialog({
@@ -30,7 +29,7 @@ function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[420px] rounded-[32px]">
+      <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle className="text-foreground">{title}</DialogTitle>
           <DialogDescription className="text-muted-foreground">{description}</DialogDescription>
@@ -43,7 +42,7 @@ function ConfirmDialog({
             {resolvedConfirmText}
           </Button>
         </DialogFooter>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

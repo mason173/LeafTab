@@ -6,12 +6,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 import type { LeafTabLocalBackupExportScope } from '@/sync/leaftab';
 
 interface BackupScopeDialogProps {
@@ -79,7 +79,7 @@ export function BackupScopeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[480px] rounded-[32px]">
+      <DialogContent className="sm:max-w-[480px] rounded-[32px] border-border bg-background text-foreground">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToSettings} />
@@ -176,7 +176,7 @@ export function BackupScopeDialog({
               : t('settings.backup.import', { defaultValue: '导入' })}
           </Button>
         </DialogFooter>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

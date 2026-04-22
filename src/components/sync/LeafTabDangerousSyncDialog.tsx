@@ -3,18 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { RiArrowDownLine, RiErrorWarningFill } from '@/icons/ri-compat';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
-import { SettingsDropdownMenuContent } from '@/components/settings/SettingsFloatingSurface';
 
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
@@ -73,7 +73,7 @@ export function LeafTabDangerousSyncDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[560px] rounded-2xl" surfaceRadiusClassName="rounded-2xl">
+      <DialogContent className="sm:max-w-[560px] rounded-2xl border-border bg-background text-foreground">
         <DialogHeader className="gap-2">
           <div className="flex items-center gap-2 text-foreground">
             <RiErrorWarningFill className="size-5 text-muted-foreground" />
@@ -124,14 +124,14 @@ export function LeafTabDangerousSyncDialog({
                   <RiArrowDownLine className="size-4" />
                 </button>
               </DropdownMenuTrigger>
-              <SettingsDropdownMenuContent align="center" sideOffset={6} className="w-[280px]" surfaceRadiusClassName="rounded-[12px]">
+              <DropdownMenuContent align="center" sideOffset={6} className="w-[280px]">
                 <DropdownMenuItem onSelect={onUseRemote} disabled={busy} className="whitespace-normal leading-5">
                   {remoteActionLabel}
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onUseLocal} disabled={busy} className="whitespace-normal leading-5">
                   {localActionLabel}
                 </DropdownMenuItem>
-              </SettingsDropdownMenuContent>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -158,7 +158,7 @@ export function LeafTabDangerousSyncDialog({
           </div>
         </div>
 
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

@@ -1,12 +1,11 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getTimeFontScale, googleFonts, loadGoogleFont, toCssFontFamily } from "@/utils/googleFonts";
 import type { TimeAnimationMode } from "@/hooks/useSettings";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
 
 interface TimeDisplayDialogProps {
   open: boolean;
@@ -105,7 +104,7 @@ export function TimeDisplayDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible rounded-[32px]">
+      <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <DialogTitle>{t("settings.timeDisplay.title")}</DialogTitle>
           <DialogDescription>{t("settings.timeDisplay.description")}</DialogDescription>
@@ -178,7 +177,7 @@ export function TimeDisplayDialog({
             </div>
           </div>
         </ScrollArea>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

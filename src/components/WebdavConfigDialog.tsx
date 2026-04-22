@@ -5,6 +5,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -31,10 +33,6 @@ import {
   type WebdavConflictPolicy,
 } from "@/utils/webdavConfig";
 import { SyncSettingsDialog } from "./SyncSettingsDialog";
-import {
-  SettingsAlertDialogContent,
-  SettingsDialogContent,
-} from '@/components/settings/SettingsDialogSurface';
 import {
   SyncIntervalSliderField,
   SyncSettingsActionButtons,
@@ -268,7 +266,7 @@ export function WebdavConfigDialog({
 
   const dialogBody = showConnectionFields ? (
     <Dialog open={open && !bookmarkSyncSafetyDialogOpen} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[425px] rounded-[32px]">
+      <DialogContent className="sm:max-w-[425px] bg-background border-border text-foreground rounded-[32px]">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToParent} label={t('common.back', { defaultValue: '返回' })} />
@@ -357,7 +355,7 @@ export function WebdavConfigDialog({
                 : t("common.save")}
           </Button>
         </div>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   ) : (
     <SyncSettingsDialog
@@ -433,7 +431,7 @@ export function WebdavConfigDialog({
     <>
       {dialogBody}
       <AlertDialog open={bookmarkSyncSafetyDialogOpen} onOpenChange={setBookmarkSyncSafetyDialogOpen}>
-        <SettingsAlertDialogContent className="sm:max-w-[480px] rounded-[28px] border-0 shadow-xl" surfaceRadiusClassName="rounded-[28px]">
+        <AlertDialogContent className="sm:max-w-[480px] rounded-[28px] border-0 shadow-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t("settings.backup.webdav.bookmarkSyncSafetyReminderTitle", { defaultValue: "开启前提醒" })}
@@ -471,7 +469,7 @@ export function WebdavConfigDialog({
               {t("settings.backup.webdav.bookmarkSyncSafetyReminderConfirm", { defaultValue: "继续开启" })}
             </AlertDialogAction>
           </AlertDialogFooter>
-        </SettingsAlertDialogContent>
+        </AlertDialogContent>
       </AlertDialog>
     </>
   );

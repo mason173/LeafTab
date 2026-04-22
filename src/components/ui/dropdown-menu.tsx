@@ -38,11 +38,8 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
-  surfaceBackdrop,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
-  surfaceBackdrop?: React.ReactNode;
-}) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -50,16 +47,10 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         className={cn(
           "bg-popover/80 text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[12px] border border-border p-1 shadow-lg backdrop-blur-md",
-          surfaceBackdrop
-            ? "[&>*:not([data-settings-surface-backdrop='true'])]:relative [&>*:not([data-settings-surface-backdrop='true'])]:z-10"
-            : "",
           className,
         )}
         {...props}
-      >
-        {surfaceBackdrop}
-        {props.children}
-      </DropdownMenuPrimitive.Content>
+      />
     </DropdownMenuPrimitive.Portal>
   );
 }

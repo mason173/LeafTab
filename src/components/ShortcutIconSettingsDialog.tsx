@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiAddLine, RiCheckFill, RiSubtractLine } from '@/icons/ri-compat';
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Switch, SwitchThumb } from '@/components/animate-ui/primitives/radix/switch';
 import { Separator } from '@/components/ui/separator';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
-import { SettingsDialogContent } from '@/components/settings/SettingsDialogSurface';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import Scrubber from '@/components/ui/smoothui/scrubber';
 import aboutIcon from '@/assets/abouticon.svg';
@@ -164,14 +163,13 @@ export function ShortcutIconSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <SettingsDialogContent
+      <DialogContent
         overlayClassName={`${isolationFadeClass} ${isSliderInteracting ? '!opacity-0 !bg-black/0' : ''}`}
         className={`sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-[32px] flex flex-col transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
           isSliderInteracting
             ? 'bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none'
-            : ''
+            : 'bg-background border-border text-foreground'
         }`}
-        fakeBlurDisabled={isSliderInteracting}
       >
         <DialogHeader className={`${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
           <div className="flex items-center gap-2">
@@ -341,7 +339,7 @@ export function ShortcutIconSettingsDialog({
             {t('common.close')}
           </Button>
         </DialogFooter>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

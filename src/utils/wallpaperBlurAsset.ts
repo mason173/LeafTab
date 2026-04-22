@@ -103,7 +103,7 @@ function createRenderSurface(width: number, height: number): RenderSurface {
 }
 
 function getRenderContext(surface: RenderSurface): RenderContext {
-  const context = surface.getContext('2d', { alpha: false }) as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
+  const context = surface.getContext('2d', { alpha: false });
   if (!context) {
     throw new Error('wallpaper-blur-context-unavailable');
   }

@@ -54,7 +54,6 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   overlayClassName?: string;
   overlayStyle?: React.CSSProperties;
-  surfaceBackdrop?: React.ReactNode;
 };
 
 function DialogContent({
@@ -62,7 +61,6 @@ function DialogContent({
   children,
   overlayClassName,
   overlayStyle,
-  surfaceBackdrop,
   onOpenAutoFocus,
   onCloseAutoFocus,
   onEscapeKeyDown,
@@ -83,16 +81,12 @@ function DialogContent({
         onInteractOutside={onInteractOutside}
         className={cn(
           "bg-background/80 fixed top-[50%] left-[50%] z-[18001] grid w-full min-w-0 max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-[32px] border border-border p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
-          surfaceBackdrop
-            ? "[&>*:not([data-settings-surface-backdrop='true']):not([data-slot='dialog-close'])]:relative [&>*:not([data-settings-surface-backdrop='true']):not([data-slot='dialog-close'])]:z-10 [&>[data-slot='dialog-close']]:z-20"
-            : "",
           className,
         )}
         {...props}
       >
-        {surfaceBackdrop}
         {children}
-        <DialogPrimitive.Close data-slot="dialog-close" className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-colors hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-colors hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
           <XIcon />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

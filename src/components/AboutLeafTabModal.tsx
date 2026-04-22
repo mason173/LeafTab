@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SettingsDialogContent } from "@/components/settings/SettingsDialogSurface";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@/icons/ri-compat";
 import { InfiniteSlider } from "@/components/motion-primitives/infinite-slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -104,7 +103,7 @@ export function AboutLeafTabModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <SettingsDialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[630px] max-h-[84vh] overflow-hidden rounded-[32px] flex flex-col">
+      <DialogContent className="sm:max-w-[520px] w-[calc(100vw-2rem)] h-[630px] max-h-[84vh] overflow-hidden bg-background border-border text-foreground rounded-[32px] flex flex-col">
         <DialogHeader className="pb-1">
           <DialogTitle className="sr-only">{t("settings.about.title")}</DialogTitle>
           <div className="flex items-center gap-2">
@@ -273,7 +272,7 @@ export function AboutLeafTabModal({
             </ScrollArea>
           )}
         </div>
-      </SettingsDialogContent>
+      </DialogContent>
     </Dialog>
   );
 }

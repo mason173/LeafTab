@@ -9,11 +9,13 @@ import {
   type HomeMainContentWallpaperClockProps,
 } from '@/components/home/HomeMainContent';
 import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
+import { WallpaperBackdropProvider } from '@/components/wallpaper/WallpaperBackdropContext';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { toast } from '@/components/ui/sonner';
 import { resolveInitialRevealStyle } from '@/config/animationTokens';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
+import { useBlurredWallpaperAsset } from '@/hooks/useBlurredWallpaperAsset';
 import { type SearchInteractionState } from '@/components/search/SearchExperience';
 import type { WallpaperMode } from '@/wallpaper/types';
 
@@ -50,8 +52,6 @@ export type HomeInteractiveSurfaceProps = {
   effectiveWallpaperMode: WallpaperMode;
   freshWeatherVideo: string;
   colorWallpaperGradient: string;
-  blurredWallpaperSrc: string;
-  blurredWallpaperReady: boolean;
   effectiveOverlayWallpaperSrc: string;
   overlayBackgroundAlt: string;
   onOverlayImageReady: () => void;
@@ -89,8 +89,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   effectiveWallpaperMode,
   freshWeatherVideo,
   colorWallpaperGradient,
-  blurredWallpaperSrc,
-  blurredWallpaperReady,
   effectiveOverlayWallpaperSrc,
   overlayBackgroundAlt,
   onOverlayImageReady,
@@ -261,6 +259,21 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     || !visualBootSettled
     || searchPerformanceModeActive;
   const searchInteractionLocked = searchInteractionState.historyOpen || searchInteractionState.dropdownOpen;
+  const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
+    ? freshWeatherVideo
+    : effectiveWallpaperMode === 'color'
+      ? ''
+      : effectiveOverlayWallpaperSrc;
+  const imageWallpaperBlurEnabled = showOverlayWallpaperLayer
+    && effectiveWallpaperMode !== 'color'
+    && Boolean(wallpaperBlurSourceUrl);
+  const {
+    blurredWallpaperSrc,
+    blurredWallpaperReady,
+  } = useBlurredWallpaperAsset({
+    sourceUrl: wallpaperBlurSourceUrl,
+    enabled: imageWallpaperBlurEnabled,
+  });
 
   const wallpaperClockProps = useMemo(
     () => ({
@@ -465,31 +478,39 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
   return (
     <RenderProfileBoundary id="HomeInteractiveSurface">
-      <>
-        {overlayWallpaperLayer}
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 z-[15000]"
-          style={immersiveBackdropLayerStyle}
-        >
-          <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
-          <div className="absolute inset-0" style={immersiveBackdropHighlightStyle} />
-          <div className="absolute inset-0" style={immersiveBackdropNoiseStyle} />
-        </div>
-        <div style={immersiveUiShellStyle}>
-          {fixedTopNavLayer}
-        </div>
-        <HomeMainContent
-          {...homeMainContentBaseProps}
-          initialRevealReady={initialRevealReady}
-          modeFlags={modeFlags}
-          wallpaperClockProps={wallpaperClockProps}
-          searchExperienceProps={searchExperienceProps}
-          searchInteractionLocked={searchInteractionLocked}
-          onDrawerExpandedChange={setDrawerExpanded}
-          shortcutGridProps={shortcutGridProps}
-        />
-      </>
+      <WallpaperBackdropProvider
+        value={{
+          wallpaperMode: effectiveWallpaperMode,
+          colorWallpaperGradient,
+          blurredWallpaperSrc,
+        }}
+      >
+        <>
+          {overlayWallpaperLayer}
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-[15000]"
+            style={immersiveBackdropLayerStyle}
+          >
+            <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
+            <div className="absolute inset-0" style={immersiveBackdropHighlightStyle} />
+            <div className="absolute inset-0" style={immersiveBackdropNoiseStyle} />
+          </div>
+          <div style={immersiveUiShellStyle}>
+            {fixedTopNavLayer}
+          </div>
+          <HomeMainContent
+            {...homeMainContentBaseProps}
+            initialRevealReady={initialRevealReady}
+            modeFlags={modeFlags}
+            wallpaperClockProps={wallpaperClockProps}
+            searchExperienceProps={searchExperienceProps}
+            searchInteractionLocked={searchInteractionLocked}
+            onDrawerExpandedChange={setDrawerExpanded}
+            shortcutGridProps={shortcutGridProps}
+          />
+        </>
+      </WallpaperBackdropProvider>
     </RenderProfileBoundary>
   );
 });

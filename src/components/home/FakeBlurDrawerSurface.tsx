@@ -51,23 +51,23 @@ export function FakeBlurDrawerSurface({
     isDarkTheme
       ? {
           background:
-            'linear-gradient(180deg, rgba(4,6,9,0.78) 0%, rgba(7,9,12,0.92) 52%, rgba(9,11,15,0.97) 100%)',
+            'linear-gradient(180deg, rgba(4,6,9,0.68) 0%, rgba(7,9,12,0.86) 52%, rgba(9,11,15,0.93) 100%)',
         }
       : {
           background:
-            'linear-gradient(180deg, rgba(255,255,255,0.70) 0%, rgba(255,255,255,0.82) 52%, rgba(255,255,255,0.90) 100%)',
+            'linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.74) 52%, rgba(255,255,255,0.84) 100%)',
         }
   ), [isDarkTheme]);
 
-  const atmosphereStyle = useMemo<CSSProperties>(() => (
+  const edgeHighlightStyle = useMemo<CSSProperties>(() => (
     isDarkTheme
       ? {
           background:
-            'linear-gradient(180deg, rgba(5,7,10,0.18) 0%, rgba(5,7,10,0.14) 100%)',
+            'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 14%, rgba(255,255,255,0) 34%)',
         }
       : {
           background:
-            'linear-gradient(180deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.28) 100%)',
+            'linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.16) 18%, rgba(255,255,255,0) 42%)',
         }
   ), [isDarkTheme]);
 
@@ -105,13 +105,23 @@ export function FakeBlurDrawerSurface({
           className="absolute inset-0"
           style={{
             background: isDarkTheme
-              ? 'linear-gradient(180deg, rgba(24,28,36,0.96) 0%, rgba(12,14,20,0.995) 100%)'
-              : 'linear-gradient(180deg, rgba(252,253,255,0.98) 0%, rgba(244,247,251,0.995) 100%)',
+              ? 'linear-gradient(180deg, rgba(32,36,46,0.94) 0%, rgba(20,24,32,0.98) 100%)'
+              : 'linear-gradient(180deg, rgba(248,250,252,0.94) 0%, rgba(238,242,247,0.98) 100%)',
           }}
         />
       )}
       <div className="absolute inset-0" style={themeCoverStyle} />
-      <div className="absolute inset-0" style={atmosphereStyle} />
+      <div className="absolute inset-0" style={edgeHighlightStyle} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: isDarkTheme
+            ? 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0.015) 68%, rgba(255,255,255,0.04) 100%)'
+            : 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0.10) 70%, rgba(255,255,255,0.20) 100%)',
+          mixBlendMode: 'screen',
+          opacity: isDarkTheme ? 0.34 : 0.82,
+        }}
+      />
     </div>
   );
 }
