@@ -60,6 +60,9 @@ export function SearchSuggestionsPanel({
       ? extractDomainFromUrl(item.value)
       : '';
     const isCurrentTab = item.type === 'tab' && item.tabId === currentBrowserTabId;
+    const remoteProviderLabel = item.type === 'remote'
+      ? t('search.remoteSuggestionSource', { defaultValue: '搜尋建議' })
+      : '';
     return {
       action,
       item,
@@ -67,7 +70,9 @@ export function SearchSuggestionsPanel({
       isCurrentTab,
       shortcutDomain,
       showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
-      secondaryLabel: isCurrentTab ? t('search.currentTabLabel', { defaultValue: '当前标签页' }) : '',
+      secondaryLabel: isCurrentTab
+        ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
+        : remoteProviderLabel,
       siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
     };
   }), [currentBrowserTabId, historySiteDirectDomainMap, items, t]);
@@ -240,6 +245,8 @@ export function SearchSuggestionsPanel({
         <span className="relative mr-2 flex shrink-0 items-center justify-center" style={{ width: 24, height: 24 }}>
           {item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab' ? (
             <RiLinkM className={`size-3.5 ${secondaryTextClass}`} />
+          ) : item.type === 'remote' ? (
+            <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : item.type === 'history' && siteDirectDomain ? (
             <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : (

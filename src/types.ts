@@ -70,6 +70,7 @@ export type ShortcutDraft = CoreShortcutDraft;
 export type ScenarioShortcuts = CoreScenarioShortcuts;
 
 export type SearchEngine = 'system' | 'google' | 'bing' | 'duckduckgo' | 'baidu';
+export type RemoteSearchSuggestionProvider = '360';
 
 type SearchSuggestionBase = {
   label: string;
@@ -111,13 +112,19 @@ export type CalculatorSearchSuggestionItem = SearchSuggestionBase & {
   formattedValue: string;
 };
 
+export type RemoteSearchSuggestionItem = SearchSuggestionBase & {
+  type: 'remote';
+  provider: RemoteSearchSuggestionProvider;
+};
+
 export type SearchSuggestionItem =
   | HistorySearchSuggestionItem
   | ShortcutSearchSuggestionItem
   | BookmarkSearchSuggestionItem
   | TabSearchSuggestionItem
   | EnginePrefixSearchSuggestionItem
-  | CalculatorSearchSuggestionItem;
+  | CalculatorSearchSuggestionItem
+  | RemoteSearchSuggestionItem;
 
 export interface SearchEngineConfig {
   name: string;

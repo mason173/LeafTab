@@ -12,6 +12,7 @@ type BuildSearchSuggestionActionsArgs = {
   bookmarkSuggestionItems: SearchSuggestionItem[];
   tabSuggestionItems: SearchSuggestionItem[];
   localHistorySuggestionItems: SearchSuggestionItem[];
+  remoteSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
   builtinSiteSuggestionItems: SearchSuggestionItem[];
   shortcutSuggestionItems: SearchSuggestionItem[];
@@ -46,6 +47,9 @@ function getSuggestionDedupKey(item: SearchSuggestionItem): string {
     || looksLikeUrlTarget(rawValue)
   ) {
     return `target|${normalizeUrlTarget(rawValue)}`;
+  }
+  if (item.type === 'history' || item.type === 'remote') {
+    return `query|${rawValue.trim().toLowerCase()}`;
   }
   return `${item.type}|${rawValue.trim().toLowerCase()}`;
 }
@@ -93,6 +97,7 @@ function filterMatchedSuggestions(
 function buildDefaultModeSuggestions(args: {
   searchValue: string;
   localHistorySuggestionItems: SearchSuggestionItem[];
+  remoteSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
   builtinSiteSuggestionItems: SearchSuggestionItem[];
   shortcutSuggestionItems: SearchSuggestionItem[];
@@ -102,6 +107,7 @@ function buildDefaultModeSuggestions(args: {
   const {
     searchValue,
     localHistorySuggestionItems,
+    remoteSuggestionItems,
     browserHistorySuggestionItems,
     builtinSiteSuggestionItems,
     shortcutSuggestionItems,
@@ -141,19 +147,25 @@ function buildDefaultModeSuggestions(args: {
   appendUniqueSuggestions({
     target: items,
     seenKeys,
+    items: filterMatchedSuggestions(builtinSiteSuggestionItems, normalizedQuery),
+    limit: queryStateLimit,
+  });
+  appendUniqueSuggestions({
+    target: items,
+    seenKeys,
     items: filterMatchedSuggestions(localHistorySuggestionItems, normalizedQuery),
     limit: queryStateLimit,
   });
   appendUniqueSuggestions({
     target: items,
     seenKeys,
-    items: filterMatchedSuggestions(browserHistorySuggestionItems, normalizedQuery),
+    items: remoteSuggestionItems,
     limit: queryStateLimit,
   });
   appendUniqueSuggestions({
     target: items,
     seenKeys,
-    items: filterMatchedSuggestions(builtinSiteSuggestionItems, normalizedQuery),
+    items: filterMatchedSuggestions(browserHistorySuggestionItems, normalizedQuery),
     limit: queryStateLimit,
   });
 
@@ -166,6 +178,7 @@ export function buildSearchSuggestionActions({
   bookmarkSuggestionItems,
   tabSuggestionItems,
   localHistorySuggestionItems,
+  remoteSuggestionItems,
   browserHistorySuggestionItems,
   builtinSiteSuggestionItems,
   shortcutSuggestionItems,
@@ -184,6 +197,7 @@ export function buildSearchSuggestionActions({
     return buildDefaultModeSuggestions({
       searchValue,
       localHistorySuggestionItems,
+      remoteSuggestionItems,
       browserHistorySuggestionItems,
       builtinSiteSuggestionItems,
       shortcutSuggestionItems,

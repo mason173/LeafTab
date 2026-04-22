@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SearchSuggestionItem } from '@/types';
+import { getRemoteSearchSuggestionsFromExtension, getCachedRemoteSearchSuggestions } from '@/utils/remoteSearchSuggestions';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
@@ -143,6 +144,7 @@ export type SearchSuggestionSourceStatus = {
   bookmarkLoading: boolean;
   tabLoading: boolean;
   browserHistoryLoading: boolean;
+  remoteSuggestionLoading: boolean;
 };
 
 export function useSearchSuggestionSources({
@@ -214,6 +216,22 @@ export function useSearchSuggestionSources({
       if (!tabsApi) return [];
       return getTabSuggestionsFromApi(tabsApi, query, 50);
     },
+  });
+
+  const {
+    items: remoteSuggestionItems,
+    loading: remoteSuggestionLoading,
+  } = useAsyncSearchSuggestionSource({
+    enabled: isDocumentVisible
+      && suggestionDisplayMode === 'default'
+      && Boolean(normalizedSearchQuery),
+    query: searchValue,
+    getCachedItems: (query) => getCachedRemoteSearchSuggestions('360', query),
+    load: async (query) => getRemoteSearchSuggestionsFromExtension({
+      provider: '360',
+      query,
+      limit: 10,
+    }),
   });
 
   const [browserHistorySuggestionItems, setBrowserHistorySuggestionItems] = useState<SearchSuggestionItem[]>([]);
@@ -305,11 +323,13 @@ export function useSearchSuggestionSources({
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    remoteSuggestionItems,
     sourceStatus: {
       suggestionDisplayMode,
       bookmarkLoading,
       tabLoading,
       browserHistoryLoading,
+      remoteSuggestionLoading,
     },
   };
 }

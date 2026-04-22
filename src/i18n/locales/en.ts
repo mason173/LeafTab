@@ -780,6 +780,7 @@ export default {
       noBookmarks: "No matching bookmarks found",
       noTabs: "No matching tabs found",
       currentTabLabel: "Current tab",
+      remoteSuggestionSource: "Search suggestion",
       justNow: "Just now",
       calculatorCopied: "Result copied to clipboard",
       calculatorCopyFailed: "Copy failed. Please copy manually.",

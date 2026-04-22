@@ -5,6 +5,7 @@ import {
   RiCornerDownLeftLine,
   RiHistoryFill,
   RiLinkM,
+  RiSearchLine,
 } from '@/icons/ri-compat';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ShortcutIcon from '@/components/ShortcutIcon';
@@ -60,6 +61,9 @@ export function SearchSuggestionsPanel({
       ? extractDomainFromUrl(item.value)
       : '';
     const isCurrentTab = item.type === 'tab' && item.tabId === currentBrowserTabId;
+    const remoteProviderLabel = item.type === 'remote'
+      ? t('search.remoteSuggestionSource', { defaultValue: '搜索建议' })
+      : '';
     return {
       action,
       item,
@@ -67,7 +71,9 @@ export function SearchSuggestionsPanel({
       isCurrentTab,
       shortcutDomain,
       showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
-      secondaryLabel: isCurrentTab ? t('search.currentTabLabel', { defaultValue: '当前标签页' }) : '',
+      secondaryLabel: isCurrentTab
+        ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
+        : remoteProviderLabel,
       siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
     };
   }), [currentBrowserTabId, historySiteDirectDomainMap, items, t]);
@@ -252,6 +258,8 @@ export function SearchSuggestionsPanel({
               size={24}
               exact
             />
+          ) : item.type === 'remote' ? (
+            <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : item.type === 'history' && siteDirectDomain ? (
             <RiArrowRightSLine className={`size-3.5 ${secondaryTextClass}`} />
           ) : (

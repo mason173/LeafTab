@@ -66,6 +66,7 @@ export function useSearchSuggestions({
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    remoteSuggestionItems,
     sourceStatus,
   } = useSearchSuggestionSources({
     searchValue,
@@ -86,10 +87,12 @@ export function useSearchSuggestions({
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    remoteSuggestionItems,
   }), [
     bookmarkSuggestionItems,
     browserHistorySuggestionItems,
     filteredHistoryItems,
+    remoteSuggestionItems,
     searchSiteShortcutEnabled,
     searchValue,
     shortcuts,

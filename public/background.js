@@ -1,8 +1,64 @@
 const WEBDAV_PROXY_MESSAGE_TYPE = 'LEAFTAB_WEBDAV_PROXY';
 const DEDUPE_NEW_TAB_MESSAGE_TYPE = 'LEAFTAB_DEDUPE_NEW_TAB';
+const REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE = 'LEAFTAB_REMOTE_SEARCH_SUGGESTIONS';
+const REMOTE_SEARCH_SUGGESTIONS_PROVIDER_360 = '360';
+const REMOTE_SEARCH_SUGGESTIONS_TIMEOUT_MS = 1500;
 
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function normalizeRemoteSuggestionQuery(value) {
+  return String(value || '').trim();
+}
+
+async function fetch360RemoteSearchSuggestions(query, limit) {
+  const normalizedQuery = normalizeRemoteSuggestionQuery(query);
+  if (!normalizedQuery) return [];
+
+  const requestUrl = new URL('https://sug.so.360.cn/suggest');
+  requestUrl.searchParams.set('word', normalizedQuery);
+  requestUrl.searchParams.set('encodein', 'utf-8');
+  requestUrl.searchParams.set('encodeout', 'utf-8');
+
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    abortController.abort();
+  }, REMOTE_SEARCH_SUGGESTIONS_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(requestUrl.toString(), {
+      method: 'GET',
+      signal: abortController.signal,
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`remote_suggestions_${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawItems = Array.isArray(data?.result) ? data.result : [];
+    const items = [];
+    const seen = new Set();
+    const maxItems = Math.max(1, Math.min(Number(limit) || 10, 10));
+
+    rawItems.forEach((entry) => {
+      if (items.length >= maxItems) return;
+      const word = typeof entry?.word === 'string' ? entry.word.trim() : '';
+      if (!word) return;
+      const dedupKey = word.toLowerCase();
+      if (seen.has(dedupKey)) return;
+      seen.add(dedupKey);
+      items.push(word);
+    });
+
+    return items;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function getLeafTabPagePrefixes() {
@@ -23,6 +79,33 @@ function isLeafTabPageUrl(url, prefixes) {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message) return;
+
+  if (message.type === REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE) {
+    const payload = message.payload || {};
+    const provider = String(payload.provider || '');
+    const query = normalizeRemoteSuggestionQuery(payload.query);
+    const limit = Number(payload.limit) || 10;
+
+    (async () => {
+      try {
+        if (provider !== REMOTE_SEARCH_SUGGESTIONS_PROVIDER_360 || !query) {
+          sendResponse({ success: true, items: [] });
+          return;
+        }
+
+        const items = await fetch360RemoteSearchSuggestions(query, limit);
+        sendResponse({ success: true, items });
+      } catch (error) {
+        console.error('[LeafTab][Remote suggestions]', provider, query, error);
+        sendResponse({
+          success: false,
+          error: String(error instanceof Error ? error.message : error),
+        });
+      }
+    })();
+
+    return true;
+  }
 
   if (message.type === DEDUPE_NEW_TAB_MESSAGE_TYPE) {
     const sender = _sender;

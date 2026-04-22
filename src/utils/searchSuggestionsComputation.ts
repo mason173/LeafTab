@@ -23,6 +23,7 @@ export type SearchSuggestionsComputationInput = {
   bookmarkSuggestionItems: SearchSuggestionItem[];
   tabSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
+  remoteSuggestionItems: SearchSuggestionItem[];
 };
 
 export function computeSearchSuggestionActions(
@@ -38,6 +39,7 @@ export function computeSearchSuggestionActions(
     bookmarkSuggestionItems,
     tabSuggestionItems,
     browserHistorySuggestionItems,
+    remoteSuggestionItems,
   } = input;
 
   const {
@@ -58,6 +60,7 @@ export function computeSearchSuggestionActions(
     bookmarkSuggestionItems,
     tabSuggestionItems,
     localHistorySuggestionItems,
+    remoteSuggestionItems,
     browserHistorySuggestionItems,
     builtinSiteSuggestionItems,
     shortcutSuggestionItems,
