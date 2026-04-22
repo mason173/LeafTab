@@ -1,6 +1,8 @@
 import type { SearchBarTheme } from '@/components/search/searchBarTheme';
 import type { SearchAction } from '@/utils/searchActions';
 
+export type SearchSuggestionsPlacement = 'bottom' | 'top';
+
 export interface SearchSuggestionsPanelProps {
   items: SearchAction[];
   isOpen: boolean;
@@ -19,4 +21,5 @@ export interface SearchSuggestionsPanelProps {
   currentBrowserTabId?: number | null;
   emptyStateLabel?: string;
   lightweight?: boolean;
+  placement?: SearchSuggestionsPlacement;
 }

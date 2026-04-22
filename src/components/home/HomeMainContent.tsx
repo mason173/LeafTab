@@ -7,6 +7,7 @@ import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
 import type { SearchExperienceProps } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
+import type { SearchBarPosition } from '@/types';
 import {
   resolveInitialRevealStyle,
 } from '@/config/animationTokens';
@@ -45,6 +46,7 @@ export interface HomeMainContentProps {
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
+  searchBarPosition: SearchBarPosition;
   reduceMotionVisuals?: boolean;
   wallpaperClockProps: HomeMainContentWallpaperClockProps;
   searchExperienceProps: HomeMainContentSearchExperienceProps;
@@ -93,6 +95,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   timeFont,
   onTimeFontChange,
   layout,
+  searchBarPosition,
   reduceMotionVisuals = false,
   wallpaperClockProps,
   searchExperienceProps,
@@ -258,6 +261,7 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerExpandHintVisible={showBlankModeDrawerHint}
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
+        searchBarPosition={searchBarPosition}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
         searchExperienceProps={searchExperienceProps}

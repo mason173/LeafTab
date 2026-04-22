@@ -65,6 +65,13 @@ export default {
             label: "Gợi ý xoay vòng trong ô tìm kiếm",
             description: "Tự động đổi các câu gợi ý trong ô tìm kiếm",
             tooltip: "Khi tắt, ô tìm kiếm sẽ chỉ hiển thị một câu gợi ý cố định."
+          },
+          position: {
+            label: "Vị trí ô tìm kiếm",
+            description: "Chọn hiển thị ô tìm kiếm ở phía trên hoặc phía dưới khu vực lối tắt",
+            tooltip: "Thay đổi sẽ áp dụng ngay và vị trí bạn chọn sẽ được ghi nhớ.",
+            top: "Phía trên",
+            bottom: "Phía dưới"
           }
         }
       },

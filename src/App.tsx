@@ -280,6 +280,7 @@ export default function App() {
     searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled, setSearchCalculatorEnabled,
     searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled,
+    searchBarPosition, setSearchBarPosition,
     preventDuplicateNewTab, setPreventDuplicateNewTab,
     is24Hour, setIs24Hour,
     showDate, setShowDate,
@@ -1195,6 +1196,7 @@ export default function App() {
       searchAnyKeyCaptureEnabled,
       searchCalculatorEnabled,
       searchRotatingPlaceholderEnabled,
+      searchBarPosition,
       preventDuplicateNewTab,
       is24Hour,
       showDate,
@@ -1235,6 +1237,7 @@ export default function App() {
     preventDuplicateNewTab,
     privacyConsent,
     searchAnyKeyCaptureEnabled,
+    searchBarPosition,
     searchCalculatorEnabled,
     searchPrefixEnabled,
     searchRotatingPlaceholderEnabled,
@@ -1300,6 +1303,7 @@ export default function App() {
     setSearchAnyKeyCaptureEnabled(normalized.searchAnyKeyCaptureEnabled);
     setSearchCalculatorEnabled(normalized.searchCalculatorEnabled);
     setSearchRotatingPlaceholderEnabled(normalized.searchRotatingPlaceholderEnabled);
+    setSearchBarPosition(normalized.searchBarPosition);
     setPreventDuplicateNewTab(normalized.preventDuplicateNewTab);
     setIs24Hour(normalized.is24Hour);
     setShowDate(normalized.showDate);
@@ -1976,12 +1980,14 @@ export default function App() {
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
+    searchBarPosition,
     reduceMotionVisuals: visualEffectsLevel === 'low',
     topNavIntroCompleted,
   }), [
     displayMode,
     is24Hour,
     responsiveLayout,
+    searchBarPosition,
     setIs24Hour,
     setShowDate,
     setShowLunar,
@@ -2145,6 +2151,8 @@ export default function App() {
       onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
       searchRotatingPlaceholderEnabled,
       onSearchRotatingPlaceholderEnabledChange: setSearchRotatingPlaceholderEnabled,
+      searchBarPosition,
+      onSearchBarPositionChange: setSearchBarPosition,
       shortcutGuideOpen,
       setShortcutGuideOpen,
       shortcutIconSettingsOpen,

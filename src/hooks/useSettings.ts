@@ -24,6 +24,7 @@ import {
   SHORTCUT_ICON_SCALE_KEY,
   clampShortcutIconScale,
 } from '@/utils/shortcutIconSettings';
+import type { SearchBarPosition } from '@/types';
 
 export type TimeAnimationMode = 'inherit' | 'on' | 'off';
 
@@ -36,6 +37,7 @@ const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
 const SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY = 'search_rotating_placeholder_enabled';
+const SEARCH_BAR_POSITION_KEY = 'search_bar_position';
 const PREVENT_DUPLICATE_NEWTAB_KEY = 'leaftab_prevent_duplicate_newtab';
 const SHOW_DATE_KEY = 'showDate';
 const SHOW_WEEKDAY_KEY = 'showWeekday';
@@ -100,6 +102,11 @@ function readTimeAnimationMode(): TimeAnimationMode {
   return 'on';
 }
 
+function readSearchBarPosition(): SearchBarPosition {
+  const stored = (localStorage.getItem(SEARCH_BAR_POSITION_KEY) || '').trim();
+  return stored === 'bottom' ? 'bottom' : 'top';
+}
+
 function readShortcutGridColumnsByVariant(): Partial<Record<typeof DEFAULT_SHORTCUT_CARD_VARIANT, number>> {
   try {
     const raw = localStorage.getItem(SHORTCUT_GRID_COLUMNS_BY_VARIANT_KEY);
@@ -158,6 +165,7 @@ export function useSettings() {
   const [searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
   const [searchCalculatorEnabled, setSearchCalculatorEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
   const [searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
+  const [searchBarPosition, setSearchBarPosition] = useState<SearchBarPosition>(() => readSearchBarPosition());
   const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
   const [is24Hour, setIs24Hour] = useState(true);
   const [showDate, setShowDate] = useState<boolean>(() => readStoredBoolean(SHOW_DATE_KEY, true));
@@ -251,6 +259,7 @@ export function useSettings() {
     setSearchAnyKeyCaptureEnabled(readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true));
     setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
     setSearchRotatingPlaceholderEnabled(readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
+    setSearchBarPosition(readSearchBarPosition());
     setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
     setShowDate(readStoredBoolean(SHOW_DATE_KEY, true));
     setShowWeekday(readStoredBoolean(SHOW_WEEKDAY_KEY, true));
@@ -303,6 +312,7 @@ export function useSettings() {
     queueLocalStorageSetItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(searchAnyKeyCaptureEnabled));
     queueLocalStorageSetItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(searchCalculatorEnabled));
     queueLocalStorageSetItem(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, JSON.stringify(searchRotatingPlaceholderEnabled));
+    queueLocalStorageSetItem(SEARCH_BAR_POSITION_KEY, searchBarPosition);
     queueLocalStorageSetItem(PREVENT_DUPLICATE_NEWTAB_KEY, JSON.stringify(preventDuplicateNewTab));
     queueLocalStorageSetItem('is24Hour', JSON.stringify(is24Hour));
     queueLocalStorageSetItem(SHOW_DATE_KEY, JSON.stringify(showDate));
@@ -330,6 +340,7 @@ export function useSettings() {
     preventDuplicateNewTab,
     privacyConsent,
     searchAnyKeyCaptureEnabled,
+    searchBarPosition,
     searchCalculatorEnabled,
     searchPrefixEnabled,
     searchRotatingPlaceholderEnabled,
@@ -430,6 +441,8 @@ export function useSettings() {
     setSearchCalculatorEnabled,
     searchRotatingPlaceholderEnabled,
     setSearchRotatingPlaceholderEnabled,
+    searchBarPosition,
+    setSearchBarPosition,
     preventDuplicateNewTab,
     setPreventDuplicateNewTab,
     is24Hour,

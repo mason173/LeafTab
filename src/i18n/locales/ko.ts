@@ -65,6 +65,13 @@ export default {
             label: "검색창 안내 문구 순환",
             description: "검색창 안내 문구를 자동으로 바꿔 보여줍니다",
             tooltip: "끄면 검색창에는 하나의 고정된 안내 문구만 표시됩니다."
+          },
+          position: {
+            label: "검색창 위치",
+            description: "검색창을 바로가기 영역의 위쪽 또는 아래쪽에 표시합니다",
+            tooltip: "바꾸면 바로 적용되며, 선택한 위치가 저장됩니다.",
+            top: "위쪽",
+            bottom: "아래쪽"
           }
         }
       },

@@ -25,6 +25,8 @@ export interface WeatherManualLocation {
   longitude?: number;
 }
 
+export type SearchBarPosition = 'top' | 'bottom';
+
 export interface SyncablePreferences {
   displayMode: DisplayMode;
   openInNewTab: boolean;
@@ -35,6 +37,7 @@ export interface SyncablePreferences {
   searchAnyKeyCaptureEnabled: boolean;
   searchCalculatorEnabled: boolean;
   searchRotatingPlaceholderEnabled: boolean;
+  searchBarPosition: SearchBarPosition;
   searchEngine: SearchEngine;
   preventDuplicateNewTab: boolean;
   is24Hour: boolean;

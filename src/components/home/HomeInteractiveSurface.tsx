@@ -16,7 +16,8 @@ import { resolveInitialRevealStyle } from '@/config/animationTokens';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { useBlurredWallpaperAsset } from '@/hooks/useBlurredWallpaperAsset';
-import { type SearchInteractionState } from '@/components/search/SearchExperience';
+import type { SearchInteractionState } from '@/components/search/SearchExperience';
+import { HomeSearchBar } from '@/components/home/HomeSearchBar';
 import type { WallpaperMode } from '@/wallpaper/types';
 
 const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
@@ -498,6 +499,49 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
     willChange: 'opacity',
   }), []);
+  const showFloatingBottomSearch = homeMainContentBaseProps.searchBarPosition === 'bottom';
+  const floatingBottomSearchOffsetPx = Math.max(
+    16,
+    Math.round(homeMainContentBaseProps.layout.searchHeight * 0.42),
+  );
+
+  const floatingBottomSearchLayer = useMemo(() => {
+    if (!showFloatingBottomSearch) return null;
+
+    return (
+      <div
+        className="fixed inset-x-0 z-[16030] pointer-events-none px-4"
+        style={{
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${floatingBottomSearchOffsetPx}px)`,
+          ...fixedTopNavRevealStyle,
+          opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
+          willChange: 'opacity',
+        }}
+      >
+        <div
+          className="mx-auto max-w-full pointer-events-auto"
+          style={{
+            width: homeMainContentBaseProps.layout.contentWidth,
+          }}
+        >
+          <HomeSearchBar
+            searchExperienceProps={searchExperienceProps}
+            blankMode={modeFlags.searchUsesBlankStyle}
+            forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
+            suggestionsPlacement="top"
+          />
+        </div>
+      </div>
+    );
+  }, [
+    fixedTopNavRevealStyle,
+    floatingBottomSearchOffsetPx,
+    homeMainContentBaseProps.layout.contentWidth,
+    modeFlags.forceWhiteSearchTheme,
+    modeFlags.searchUsesBlankStyle,
+    searchExperienceProps,
+    showFloatingBottomSearch,
+  ]);
 
   return (
     <RenderProfileBoundary id="HomeInteractiveSurface">
@@ -532,6 +576,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             onDrawerExpandedChange={setDrawerExpanded}
             shortcutGridProps={shortcutGridProps}
           />
+          {floatingBottomSearchLayer}
         </>
       </WallpaperBackdropProvider>
     </RenderProfileBoundary>

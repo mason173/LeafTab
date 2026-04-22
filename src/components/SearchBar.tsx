@@ -3,6 +3,7 @@ import { useTheme } from 'next-themes';
 import type React from 'react';
 import { SearchField, type SearchFieldValueChangeHandler } from '@/components/search/SearchField';
 import { SearchSuggestionsPanel } from '@/components/search/SearchSuggestionsPanel';
+import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
 import { shouldBlockSearchSubmitForIme } from '@/components/search/searchInputKeyboard';
 import { resolveSearchBarTheme } from '@/components/search/searchBarTheme';
 import type { SearchAction } from '@/utils/searchActions';
@@ -52,6 +53,7 @@ interface SearchBarProps {
   showSuggestionNumberHints?: boolean;
   currentBrowserTabId?: number | null;
   allowSelectedSuggestionEnter?: boolean;
+  suggestionsPlacement?: SearchSuggestionsPlacement;
 }
 
 export function SearchBar({
@@ -93,6 +95,7 @@ export function SearchBar({
   showSuggestionNumberHints = false,
   currentBrowserTabId = null,
   allowSelectedSuggestionEnter = false,
+  suggestionsPlacement = 'bottom',
 }: SearchBarProps) {
   const { resolvedTheme } = useTheme();
   const theme = useMemo(() => {
@@ -175,6 +178,7 @@ export function SearchBar({
             currentBrowserTabId={currentBrowserTabId}
             emptyStateLabel={emptyStateLabel}
             lightweight={lightweightSearchUi}
+            placement={suggestionsPlacement}
           />
         </div>
       </div>

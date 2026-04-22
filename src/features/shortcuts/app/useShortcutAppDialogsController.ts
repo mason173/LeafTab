@@ -115,6 +115,8 @@ export type UtilityDialogsInput = {
   onSearchCalculatorEnabledChange: SearchSettingsModalProps['onSearchCalculatorEnabledChange'];
   searchRotatingPlaceholderEnabled: SearchSettingsModalProps['searchRotatingPlaceholderEnabled'];
   onSearchRotatingPlaceholderEnabledChange: SearchSettingsModalProps['onSearchRotatingPlaceholderEnabledChange'];
+  searchBarPosition: SearchSettingsModalProps['searchBarPosition'];
+  onSearchBarPositionChange: SearchSettingsModalProps['onSearchBarPositionChange'];
   shortcutGuideOpen: ShortcutGuideDialogProps['open'];
   setShortcutGuideOpen: ShortcutGuideDialogProps['onOpenChange'];
   shortcutIconSettingsOpen: ShortcutIconSettingsDialogProps['open'];
@@ -337,6 +339,8 @@ export function useShortcutAppDialogsController({
     onSearchCalculatorEnabledChange: utilityDialogs.onSearchCalculatorEnabledChange,
     searchRotatingPlaceholderEnabled: utilityDialogs.searchRotatingPlaceholderEnabled,
     onSearchRotatingPlaceholderEnabledChange: utilityDialogs.onSearchRotatingPlaceholderEnabledChange,
+    searchBarPosition: utilityDialogs.searchBarPosition,
+    onSearchBarPositionChange: utilityDialogs.onSearchBarPositionChange,
   } satisfies SearchSettingsModalProps;
 
   const shortcutGuideDialogProps = {

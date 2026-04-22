@@ -65,6 +65,13 @@ export default {
             label: "搜尋框提示輪播",
             description: "讓搜尋框提示自動切換\n關閉後固定顯示預設提示",
             tooltip: "關閉後，搜尋框只會固定顯示「想找什麼？直接輸入，網址也可以」這一條提示。"
+          },
+          position: {
+            label: "搜尋框位置",
+            description: "選擇搜尋框顯示在捷徑區域的上方或下方",
+            tooltip: "切換後會立即生效，並記住你目前選擇的位置。",
+            top: "上方",
+            bottom: "下方"
           }
         }
       },

@@ -32,6 +32,7 @@ import { createSearchSessionModel } from '@/utils/searchSessionModel';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
+import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
@@ -72,6 +73,7 @@ export interface SearchExperienceProps {
   subtleDarkTone?: boolean;
   searchSurfaceStyle?: CSSProperties;
   searchSurfaceTone?: 'default' | 'drawer';
+  suggestionsPlacement?: SearchSuggestionsPlacement;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
 }
 
@@ -155,6 +157,7 @@ export const SearchExperience = memo(function SearchExperience({
   subtleDarkTone,
   searchSurfaceStyle,
   searchSurfaceTone = 'default',
+  suggestionsPlacement = 'bottom',
   onInteractionStateChange,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
@@ -947,6 +950,7 @@ export const SearchExperience = memo(function SearchExperience({
         showSuggestionNumberHints={historyOpen && suggestionModifierHeld}
         currentBrowserTabId={currentBrowserTabId}
         allowSelectedSuggestionEnter={historyOpen && historySelectedIndex !== -1}
+        suggestionsPlacement={suggestionsPlacement}
       />
     </RenderProfileBoundary>
   );

@@ -4,6 +4,8 @@ import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/sw
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import {
+  RiArrowDownLine,
+  RiArrowUpLine,
   RiCalculatorLine,
   RiCodeSSlashFill,
   RiComputerFill,
@@ -16,6 +18,7 @@ import {
 import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from "@/config/featureFlags";
+import type { SearchBarPosition } from "@/types";
 
 type SearchSettingRowProps = {
   id: string;
@@ -86,6 +89,96 @@ function SearchSettingRow({
   );
 }
 
+type SearchPositionRowProps = {
+  label: string;
+  description: string;
+  tooltip: string;
+  value: SearchBarPosition;
+  onValueChange: (value: SearchBarPosition) => void;
+  topLabel: string;
+  bottomLabel: string;
+};
+
+function SearchPositionRow({
+  label,
+  description,
+  tooltip,
+  value,
+  onValueChange,
+  topLabel,
+  bottomLabel,
+}: SearchPositionRowProps) {
+  const options: Array<{
+    value: SearchBarPosition;
+    label: string;
+    icon: ComponentType<{ className?: string }>;
+  }> = [
+    { value: 'top', label: topLabel, icon: RiArrowUpLine },
+    { value: 'bottom', label: bottomLabel, icon: RiArrowDownLine },
+  ];
+
+  return (
+    <div
+      className={[
+        "group relative overflow-hidden rounded-2xl border p-3 transition-all",
+        "border-border/70 bg-card/75 hover:bg-card/90",
+      ].join(" ")}
+    >
+      <div className="relative flex min-h-[96px] flex-col gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background/45">
+          <RiArrowDownLine className="size-4 text-foreground/80" />
+        </div>
+        <div className="min-w-0 pr-12">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-sm font-semibold leading-none truncate">{label}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={tooltip}
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <RiQuestionLine className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8} className="max-w-[220px] px-3 py-2 leading-[1.45] text-left">
+                <span className="block whitespace-normal break-words [text-wrap:wrap]">{tooltip}</span>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+        <div className="mt-auto">
+          <span className="block font-normal text-xs leading-[1.4] text-muted-foreground text-left line-clamp-2 whitespace-pre-line">
+            {description}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {options.map(({ value: optionValue, label: optionLabel, icon: Icon }) => {
+            const active = value === optionValue;
+            return (
+              <button
+                key={optionValue}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onValueChange(optionValue)}
+                className={[
+                  "flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-sm font-medium transition-all",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "border-border/70 bg-background/50 text-foreground/80 hover:bg-background/80",
+                ].join(" ")}
+              >
+                <Icon className="size-4" />
+                <span>{optionLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SearchSettingsModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -104,6 +197,8 @@ interface SearchSettingsModalProps {
   onSearchCalculatorEnabledChange: (checked: boolean) => void;
   searchRotatingPlaceholderEnabled: boolean;
   onSearchRotatingPlaceholderEnabledChange: (checked: boolean) => void;
+  searchBarPosition: SearchBarPosition;
+  onSearchBarPositionChange: (value: SearchBarPosition) => void;
 }
 
 export function SearchSettingsModal({
@@ -124,6 +219,8 @@ export function SearchSettingsModal({
   onSearchCalculatorEnabledChange,
   searchRotatingPlaceholderEnabled,
   onSearchRotatingPlaceholderEnabledChange,
+  searchBarPosition,
+  onSearchBarPositionChange,
 }: SearchSettingsModalProps) {
   const { t } = useTranslation();
 
@@ -207,6 +304,16 @@ export function SearchSettingsModal({
               tooltip={t('settings.searchSettings.items.rotatingPlaceholder.tooltip')}
               checked={searchRotatingPlaceholderEnabled}
               onCheckedChange={onSearchRotatingPlaceholderEnabledChange}
+            />
+
+            <SearchPositionRow
+              label={t('settings.searchSettings.items.position.label')}
+              description={t('settings.searchSettings.items.position.description')}
+              tooltip={t('settings.searchSettings.items.position.tooltip')}
+              value={searchBarPosition}
+              onValueChange={onSearchBarPositionChange}
+              topLabel={t('settings.searchSettings.items.position.top')}
+              bottomLabel={t('settings.searchSettings.items.position.bottom')}
             />
           </div>
         </ScrollArea>

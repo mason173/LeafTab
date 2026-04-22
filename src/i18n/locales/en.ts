@@ -70,6 +70,13 @@ export default {
             label: "Rotating Search Hints",
             description: "Rotate the search box placeholder hints automatically",
             tooltip: "When turned off, the search box keeps a single fixed hint instead of rotating through multiple tips."
+          },
+          position: {
+            label: "Search Bar Position",
+            description: "Choose whether the search bar appears above or below the shortcuts area",
+            tooltip: "The change applies immediately and your selected position will be remembered.",
+            top: "Top",
+            bottom: "Bottom"
           }
         }
       },

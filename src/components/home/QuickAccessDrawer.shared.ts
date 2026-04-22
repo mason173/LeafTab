@@ -3,6 +3,7 @@ import type { RootShortcutGridProps } from '@/features/shortcuts/components/Root
 import type { ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
 import type { SearchExperienceProps } from '@/components/search/SearchExperience';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
+import type { SearchBarPosition } from '@/types';
 
 type QuickAccessModeFlags = Pick<
   DisplayModeLayoutFlags,
@@ -32,6 +33,7 @@ export interface QuickAccessDrawerProps {
   drawerExpandHintVisible?: boolean;
   drawerSearchSurfaceStyle?: CSSProperties;
   subtleDarkTone?: boolean;
+  searchBarPosition: SearchBarPosition;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   searchExperienceProps: SearchExperienceProps;

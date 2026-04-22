@@ -3,7 +3,13 @@ import type { DisplayMode } from '@/displayMode/config';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 import { getDefaultSearchEngineForPlatform, normalizeSearchEngineForPlatform } from '@/platform/search';
-import type { SearchEngine, SyncablePreferences, SyncableWallpaperMode, WeatherManualLocation } from '@/types';
+import type {
+  SearchBarPosition,
+  SearchEngine,
+  SyncablePreferences,
+  SyncableWallpaperMode,
+  WeatherManualLocation,
+} from '@/types';
 import { DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
@@ -28,6 +34,7 @@ const SEARCH_SITE_SHORTCUT_ENABLED_KEY = 'search_site_shortcut_enabled';
 const SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY = 'search_any_key_capture_enabled';
 const SEARCH_CALCULATOR_ENABLED_KEY = 'search_calculator_enabled';
 const SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY = 'search_rotating_placeholder_enabled';
+const SEARCH_BAR_POSITION_KEY = 'search_bar_position';
 const PREVENT_DUPLICATE_NEWTAB_KEY = 'leaftab_prevent_duplicate_newtab';
 const SHOW_DATE_KEY = 'showDate';
 const SHOW_WEEKDAY_KEY = 'showWeekday';
@@ -109,6 +116,10 @@ const normalizeSearchEngine = (value: unknown): SearchEngine => {
   return getDefaultSearchEngineForPlatform();
 };
 
+const normalizeSearchBarPosition = (value: unknown): SearchBarPosition => {
+  return value === 'bottom' ? 'bottom' : 'top';
+};
+
 const normalizeManualLocation = (value: unknown): WeatherManualLocation | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const city = typeof (value as { city?: unknown }).city === 'string'
@@ -166,6 +177,7 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   searchAnyKeyCaptureEnabled: true,
   searchCalculatorEnabled: true,
   searchRotatingPlaceholderEnabled: true,
+  searchBarPosition: 'top',
   searchEngine: getDefaultSearchEngineForPlatform(),
   preventDuplicateNewTab: false,
   is24Hour: true,
@@ -220,6 +232,7 @@ export const normalizeSyncablePreferences = (
     searchAnyKeyCaptureEnabled: typeof candidate.searchAnyKeyCaptureEnabled === 'boolean' ? candidate.searchAnyKeyCaptureEnabled : defaults.searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled: typeof candidate.searchCalculatorEnabled === 'boolean' ? candidate.searchCalculatorEnabled : defaults.searchCalculatorEnabled,
     searchRotatingPlaceholderEnabled: typeof candidate.searchRotatingPlaceholderEnabled === 'boolean' ? candidate.searchRotatingPlaceholderEnabled : defaults.searchRotatingPlaceholderEnabled,
+    searchBarPosition: normalizeSearchBarPosition(candidate.searchBarPosition),
     searchEngine: normalizeSearchEngine(candidate.searchEngine),
     preventDuplicateNewTab: typeof candidate.preventDuplicateNewTab === 'boolean' ? candidate.preventDuplicateNewTab : defaults.preventDuplicateNewTab,
     is24Hour: typeof candidate.is24Hour === 'boolean' ? candidate.is24Hour : defaults.is24Hour,
@@ -301,6 +314,7 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     searchAnyKeyCaptureEnabled: readStoredBoolean(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, true),
     searchCalculatorEnabled: readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true),
     searchRotatingPlaceholderEnabled: readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true),
+    searchBarPosition: normalizeSearchBarPosition(localStorage.getItem(SEARCH_BAR_POSITION_KEY)),
     searchEngine: normalizeSearchEngine(localStorage.getItem(SEARCH_ENGINE_KEY)),
     preventDuplicateNewTab: readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false),
     is24Hour: readStoredBoolean('is24Hour', true),
@@ -341,6 +355,7 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
   localStorage.setItem(SEARCH_ANY_KEY_CAPTURE_ENABLED_KEY, JSON.stringify(normalized.searchAnyKeyCaptureEnabled));
   localStorage.setItem(SEARCH_CALCULATOR_ENABLED_KEY, JSON.stringify(normalized.searchCalculatorEnabled));
   localStorage.setItem(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, JSON.stringify(normalized.searchRotatingPlaceholderEnabled));
+  localStorage.setItem(SEARCH_BAR_POSITION_KEY, normalized.searchBarPosition);
   localStorage.setItem(SEARCH_ENGINE_KEY, normalized.searchEngine);
   localStorage.setItem(PREVENT_DUPLICATE_NEWTAB_KEY, JSON.stringify(normalized.preventDuplicateNewTab));
   localStorage.setItem('is24Hour', JSON.stringify(normalized.is24Hour));

@@ -31,6 +31,7 @@ export function SearchSuggestionsPanel({
   currentBrowserTabId = null,
   emptyStateLabel,
   lightweight = false,
+  placement = 'bottom',
 }: SearchSuggestionsPanelProps) {
   const { t, i18n } = useTranslation();
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
@@ -133,7 +134,9 @@ export function SearchSuggestionsPanel({
   const secondaryTextClass = theme.dropdownSecondaryTextClassName;
   const lightweightPanelStyle = lightweight ? ({
     opacity: isOpen ? 1 : 0,
-    transform: isOpen ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
+    transform: isOpen
+      ? 'translate3d(0, 0, 0)'
+      : `translate3d(0, ${placement === 'top' ? '-8px' : '8px'}, 0)`,
     transition: 'opacity 170ms cubic-bezier(0.22, 1, 0.36, 1), transform 170ms cubic-bezier(0.22, 1, 0.36, 1)',
     pointerEvents: isOpen ? 'auto' : 'none',
     visibility: isOpen ? 'visible' : 'hidden',
@@ -289,7 +292,7 @@ export function SearchSuggestionsPanel({
 
   return (
     <div
-      className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[500] rounded-[20px] border p-[8px] ${theme.dropdownSurfaceClassName} ${lightweight ? 'backdrop-blur-none shadow-none' : ''}`}
+      className={`absolute left-0 right-0 z-[1200] rounded-[20px] border p-[8px] ${theme.dropdownSurfaceClassName} ${lightweight ? 'backdrop-blur-none shadow-none' : ''} ${placement === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}`}
       style={lightweightPanelStyle}
       aria-hidden={!isOpen}
     >

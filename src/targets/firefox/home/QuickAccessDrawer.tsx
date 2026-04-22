@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { FakeBlurDrawerSurface } from '@/components/home/FakeBlurDrawerSurface';
-import { SearchExperience } from '@/components/search/SearchExperience';
+import { HomeSearchBar } from '@/components/home/HomeSearchBar';
 import {
   resolveInitialRevealOpacityTransition,
   resolveInitialRevealStyle,
@@ -38,6 +38,7 @@ export function QuickAccessDrawer({
   drawerExpandHintVisible = false,
   drawerSearchSurfaceStyle,
   subtleDarkTone,
+  searchBarPosition,
   drawerWheelAreaRef,
   drawerShortcutScrollRef,
   searchExperienceProps,
@@ -89,6 +90,7 @@ export function QuickAccessDrawer({
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
   const shortcutsVisibilityInitializedRef = useRef(false);
   const shortcutsPaintVisible = shortcutsVisible;
+  const showDrawerSearch = searchBarPosition !== 'bottom' && !isDrawerExpanded;
 
   const enableInteractiveTransitions = useCallback(() => {
     setInteractiveTransitionsEnabled(true);
@@ -129,6 +131,58 @@ export function QuickAccessDrawer({
       if (timerId) window.clearTimeout(timerId);
     };
   }, [shouldShowDrawerShortcuts]);
+
+  const searchBlock = (
+    <HomeSearchBar
+      className="relative z-20 w-full"
+      searchExperienceProps={searchExperienceProps}
+      blankMode={modeFlags.searchUsesBlankStyle}
+      forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
+      subtleDarkTone={subtleDarkTone}
+      searchSurfaceTone={isDrawerExpanded ? 'drawer' : 'default'}
+      searchSurfaceStyle={drawerSearchSurfaceStyle}
+    />
+  );
+
+  const shortcutsBlock = renderShortcuts ? (
+    <div
+      className={`relative min-h-0 flex-1 w-full transition-[opacity,transform] ease-out ${showDrawerSearch ? 'mt-4' : ''}`}
+      style={{
+        opacity: shortcutsPaintVisible ? 1 : 0,
+        transform: shortcutsPaintVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
+        transitionDuration: `${SHORTCUTS_FADE_DURATION_MS}ms`,
+        pointerEvents: shortcutsPaintVisible ? 'auto' : 'none',
+        visibility: shortcutsPaintVisible ? 'visible' : 'hidden',
+        contain: 'layout style',
+      }}
+      aria-hidden={!shortcutsPaintVisible}
+    >
+      <div
+        ref={drawerShortcutScrollRef}
+        className={`no-scrollbar h-full pr-1 ${(isDrawerExpanded && !drawerScrollLocked) ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
+      >
+        <div
+          style={{
+            transform: drawerBottomBounceOffsetPx > 0.01
+              ? `translate3d(0, ${(-drawerBottomBounceOffsetPx).toFixed(3)}px, 0)`
+              : undefined,
+            willChange: drawerBottomBounceOffsetPx > 0.01 ? 'transform' : undefined,
+          }}
+        >
+          <RootShortcutGrid
+            key={shortcutGridProps.surfaceInstanceKey ?? 'root-shortcut-grid'}
+            {...shortcutGridProps}
+            folderPreviewTone={isDrawerExpanded ? 'drawer' : 'default'}
+            bottomInset={drawerShortcutBottomInset}
+            forceTextWhite={drawerShortcutForceWhiteText}
+            monochromeTone={drawerShortcutMonochromeTone}
+            monochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
+            onShortcutOpen={shortcutGridProps.onShortcutOpen}
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -223,56 +277,9 @@ export function QuickAccessDrawer({
                     className="mx-auto flex min-h-0 max-w-full flex-col items-stretch"
                     style={{ width: contentWidth }}
                   >
-                    <div className="relative z-20 w-full">
-                      <SearchExperience
-                        {...searchExperienceProps}
-                        blankMode={modeFlags.searchUsesBlankStyle}
-                        forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
-                        subtleDarkTone={subtleDarkTone}
-                        searchSurfaceTone={isDrawerExpanded ? 'drawer' : 'default'}
-                        searchSurfaceStyle={drawerSearchSurfaceStyle}
-                      />
-                    </div>
+                    {showDrawerSearch ? searchBlock : null}
                     {drawerExpandHint}
-                    {renderShortcuts && (
-                      <div
-                        className="relative mt-4 min-h-0 flex-1 w-full transition-[opacity,transform] ease-out"
-                        style={{
-                          opacity: shortcutsPaintVisible ? 1 : 0,
-                          transform: shortcutsPaintVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
-                          transitionDuration: `${SHORTCUTS_FADE_DURATION_MS}ms`,
-                          pointerEvents: shortcutsPaintVisible ? 'auto' : 'none',
-                          visibility: shortcutsPaintVisible ? 'visible' : 'hidden',
-                          contain: 'layout style',
-                        }}
-                        aria-hidden={!shortcutsPaintVisible}
-                      >
-                        <div
-                          ref={drawerShortcutScrollRef}
-                          className={`no-scrollbar h-full pr-1 ${(isDrawerExpanded && !drawerScrollLocked) ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
-                        >
-                          <div
-                            style={{
-                              transform: drawerBottomBounceOffsetPx > 0.01
-                                ? `translate3d(0, ${(-drawerBottomBounceOffsetPx).toFixed(3)}px, 0)`
-                                : undefined,
-                              willChange: drawerBottomBounceOffsetPx > 0.01 ? 'transform' : undefined,
-                            }}
-                          >
-                            <RootShortcutGrid
-                              key={shortcutGridProps.surfaceInstanceKey ?? 'root-shortcut-grid'}
-                              {...shortcutGridProps}
-                              folderPreviewTone={isDrawerExpanded ? 'drawer' : 'default'}
-                              bottomInset={drawerShortcutBottomInset}
-                              forceTextWhite={drawerShortcutForceWhiteText}
-                              monochromeTone={drawerShortcutMonochromeTone}
-                              monochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
-                              onShortcutOpen={shortcutGridProps.onShortcutOpen}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    {shortcutsBlock}
                   </div>
                 </div>
               )}
