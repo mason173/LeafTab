@@ -2,12 +2,22 @@ import type { SearchSuggestionItem } from '@/types';
 import type { SearchCommandPermission } from '@/utils/searchCommands';
 import { buildShortcutUsageKey } from '@/utils/suggestionPersonalization';
 
+export type SearchActionDisplayIcon =
+  | 'bookmarks'
+  | 'search-settings'
+  | 'shortcut-guide'
+  | 'shortcut-icon-settings'
+  | 'wallpaper-settings'
+  | 'sync-center'
+  | 'about';
+
 export type SearchAction =
   | {
     id: string;
     kind: 'focus-tab';
     item: SearchSuggestionItem;
     permission: 'tabs';
+    displayIcon?: SearchActionDisplayIcon;
   }
   | {
     id: string;
@@ -15,6 +25,7 @@ export type SearchAction =
     item: SearchSuggestionItem;
     permission: SearchCommandPermission | null;
     usageKey: string | null;
+    displayIcon?: SearchActionDisplayIcon;
   };
 
 function buildSearchActionId(item: SearchSuggestionItem, index: number): string {

@@ -216,6 +216,7 @@ export function commitRootMeasuredRectsForLayoutShift(params: {
   dragging: boolean;
   hasPendingLayoutShiftSourceRects: () => boolean;
   suppressProjectionSettleAnimation: boolean;
+  skipForStableLayoutSignature: boolean;
   commitMeasuredItemRects: (commit: {
     currentRects: Map<string, DOMRect>;
     skip: boolean;
@@ -232,6 +233,7 @@ export function commitRootMeasuredRectsForLayoutShift(params: {
     skip: (
       (params.dragging && !params.hasPendingLayoutShiftSourceRects())
       || params.suppressProjectionSettleAnimation
+      || params.skipForStableLayoutSignature
       || skipLayoutShiftForAnimationToggle
     ),
   });

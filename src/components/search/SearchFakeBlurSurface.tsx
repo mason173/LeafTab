@@ -2,7 +2,11 @@ import { type CSSProperties } from 'react';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
 import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 
-const SEARCH_FAKE_BLUR_PATCH_OPACITY = 0.98;
+const SEARCH_FAKE_BLUR_PATCH_OPACITY = 1;
+const FALLBACK_SURFACE_COLOR = 'rgba(30, 34, 42, 0.18)';
+const DRAWER_SURFACE_OVERLAY_STYLE: CSSProperties = {
+  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+};
 
 function buildSearchBorderStyle(): CSSProperties {
   return {
@@ -10,24 +14,17 @@ function buildSearchBorderStyle(): CSSProperties {
   };
 }
 
-function buildViewportSliceImageStyle(rect: ViewportRect, options?: {
-  sliceOverscanPx?: number;
-  sliceScale?: number;
-}): CSSProperties {
-  const overscanPx = options?.sliceOverscanPx ?? 0;
-  const sliceScale = options?.sliceScale ?? 1;
-
+function buildViewportSliceImageStyle(rect: ViewportRect): CSSProperties {
   return {
     position: 'absolute',
-    left: `${-rect.left - overscanPx}px`,
-    top: `${-rect.top - overscanPx}px`,
-    width: `calc(100vw + ${overscanPx * 2}px)`,
-    height: `calc(100vh + ${overscanPx * 2}px)`,
+    left: `${-rect.left}px`,
+    top: `${-rect.top}px`,
+    width: '100vw',
+    height: '100vh',
     objectFit: 'cover',
     maxWidth: 'none',
-    transform: `translateZ(0) scale(${sliceScale})`,
-    WebkitTransform: `translateZ(0) scale(${sliceScale})`,
-    transformOrigin: 'center center',
+    transform: 'translateZ(0)',
+    WebkitTransform: 'translateZ(0)',
     backfaceVisibility: 'hidden',
     willChange: 'transform',
   };
@@ -50,20 +47,10 @@ export function SearchFakeBlurSurface({
   surfaceNode,
   tone = 'default',
   radiusClassName = 'rounded-[999px]',
-  darkCoverStrength = 'normal',
-  sliceOverscanPx,
-  sliceScale,
-  specularHighlight = 'normal',
-  atmosphereMode = 'normal',
 }: {
   surfaceNode: HTMLElement | null;
   tone?: 'default' | 'drawer';
   radiusClassName?: string;
-  darkCoverStrength?: 'normal' | 'deep';
-  sliceOverscanPx?: number;
-  sliceScale?: number;
-  specularHighlight?: 'normal' | 'none';
-  atmosphereMode?: 'normal' | 'flat';
 }) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const hasViewportBackedSurface = Boolean(
@@ -72,36 +59,44 @@ export function SearchFakeBlurSurface({
   );
   const viewportRect = useLiveViewportRect(surfaceNode, hasViewportBackedSurface);
   const drawerToneActive = tone === 'drawer';
-  const drawerTransparentMode = drawerToneActive;
-  const wallpaperMaskStyle: CSSProperties | null = !drawerTransparentMode && wallpaperBackdrop
+  const wallpaperMaskStyle: CSSProperties | null = !drawerToneActive && wallpaperBackdrop
     ? {
         backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
       }
     : null;
-  void darkCoverStrength;
-  void specularHighlight;
-  void atmosphereMode;
+
+  if (drawerToneActive) {
+    return (
+      <div
+        className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${radiusClassName}`}
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0" style={DRAWER_SURFACE_OVERLAY_STYLE} />
+        <div
+          className={`absolute inset-0 ${radiusClassName}`}
+          style={buildSearchBorderStyle()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
       className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${radiusClassName}`}
       aria-hidden="true"
     >
-      {!drawerTransparentMode && wallpaperBackdrop?.blurredWallpaperSrc && viewportRect ? (
+      {wallpaperBackdrop?.blurredWallpaperSrc && viewportRect ? (
         <img
           src={wallpaperBackdrop.blurredWallpaperSrc}
           alt=""
           draggable={false}
           className="select-none"
           style={{
-            ...buildViewportSliceImageStyle(viewportRect, {
-              sliceOverscanPx,
-              sliceScale,
-            }),
+            ...buildViewportSliceImageStyle(viewportRect),
             opacity: SEARCH_FAKE_BLUR_PATCH_OPACITY,
           }}
         />
-      ) : !drawerTransparentMode && wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient && viewportRect ? (
+      ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient && viewportRect ? (
         <div
           className="absolute inset-0"
           style={{
@@ -114,8 +109,8 @@ export function SearchFakeBlurSurface({
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: drawerTransparentMode ? 'transparent' : 'rgba(127,127,127,0.16)',
-            opacity: drawerTransparentMode ? 1 : SEARCH_FAKE_BLUR_PATCH_OPACITY,
+            backgroundColor: FALLBACK_SURFACE_COLOR,
+            opacity: SEARCH_FAKE_BLUR_PATCH_OPACITY,
           }}
         />
       )}

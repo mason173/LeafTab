@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiLinkM } from '@/icons/ri-compat';
+import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 import { SearchPlaceholderText } from '@/components/search/SearchPlaceholderText';
 import { isSearchCommandShellValue } from '@/utils/searchCommands';
 import { isUrl } from '@/utils';
@@ -195,7 +196,7 @@ export function SearchField({
   showEngineSwitcher = true,
 }: SearchFieldProps) {
   const { t } = useTranslation();
-  void surfaceTone;
+  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
   const clearButtonSize = Math.max(28, searchActionSize - 10);
   const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
@@ -203,7 +204,8 @@ export function SearchField({
 
   return (
     <div
-      className={`content-stretch group relative flex w-full min-w-0 self-stretch cursor-text items-center rounded-[999px] ${theme.surfaceClassName}`}
+      ref={setSurfaceNode}
+      className={`content-stretch group relative isolate flex w-full min-w-0 self-stretch cursor-text items-center rounded-[999px] ${theme.surfaceClassName}`}
       style={{
         height,
         paddingLeft: leftPadding,
@@ -216,13 +218,18 @@ export function SearchField({
         if (value.length > 0) onOpenHistory();
       }}
     >
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[999px] transition-colors" />
+      <SearchFakeBlurSurface
+        surfaceNode={surfaceNode}
+        tone={surfaceTone}
+        radiusClassName="rounded-[999px]"
+      />
       {showEngineSwitcher ? (
         <SearchEngineSwitcher
           engine={searchEngine}
           isOpen={dropdownOpen}
           onOpenChange={onEngineOpenChange}
           onSelect={onEngineSelect}
+          surfaceTone={surfaceTone}
           toneClassName={theme.triggerToneClassName}
           surfaceClassName={theme.engineDropdownSurfaceClassName}
           itemClassName={theme.engineDropdownItemClassName}

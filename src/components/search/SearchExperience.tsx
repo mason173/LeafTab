@@ -17,7 +17,8 @@ import { useSearch } from '@/hooks/useSearch';
 import { useSearchInteractionController } from '@/hooks/useSearchInteractionController';
 import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
 import type { Shortcut } from '@/types';
-import type { SearchAction } from '@/utils/searchActions';
+import type { SearchAction, SearchActionDisplayIcon } from '@/utils/searchActions';
+import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import {
   readSuggestionUsageMap,
   recordSuggestionUsage,
@@ -25,6 +26,7 @@ import {
 import {
   matchSearchCommandAliasInput,
   parseSearchCommand,
+  resolveSearchCommandAutocomplete,
   type SearchSuggestionPermission,
 } from '@/utils/searchCommands';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
@@ -37,6 +39,7 @@ import type { SearchSuggestionsPlacement } from '@/components/search/SearchSugge
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
 const SEARCH_PERMISSION_KEYS: SearchSuggestionPermission[] = ['bookmarks', 'history', 'tabs'];
+const SLASH_COMMAND_ACTION_VALUE_PREFIX = 'leaftab://slash-action/';
 const SEARCH_FOCUS_BLOCKING_SELECTOR = [
   '[data-slot="dialog-content"]',
   '[data-slot="alert-dialog-content"]',
@@ -50,6 +53,51 @@ export type SearchInteractionState = {
   dropdownOpen: boolean;
   typingBurst: boolean;
 };
+
+export type SlashCommandDialogTarget =
+  | 'search-settings'
+  | 'shortcut-guide'
+  | 'shortcut-icon-settings'
+  | 'wallpaper-settings'
+  | 'sync-center'
+  | 'about';
+
+type SlashCommandActionId =
+  | 'bookmarks'
+  | 'search-settings'
+  | 'shortcut-guide'
+  | 'shortcut-icon-settings'
+  | 'wallpaper-settings'
+  | 'sync-center'
+  | 'about';
+
+type SlashCommandEntry = {
+  id: SlashCommandActionId;
+  icon: SearchActionDisplayIcon;
+  label: string;
+  keywords: string[];
+};
+
+function buildSlashCommandActionValue(actionId: SlashCommandActionId): string {
+  return `${SLASH_COMMAND_ACTION_VALUE_PREFIX}${actionId}`;
+}
+
+function parseSlashCommandActionId(value: string): SlashCommandActionId | null {
+  if (!value.startsWith(SLASH_COMMAND_ACTION_VALUE_PREFIX)) return null;
+  const id = value.slice(SLASH_COMMAND_ACTION_VALUE_PREFIX.length);
+  if (
+    id === 'bookmarks'
+    || id === 'search-settings'
+    || id === 'shortcut-guide'
+    || id === 'shortcut-icon-settings'
+    || id === 'wallpaper-settings'
+    || id === 'sync-center'
+    || id === 'about'
+  ) {
+    return id;
+  }
+  return null;
+}
 
 export interface SearchExperienceProps {
   inputRef: RefObject<HTMLInputElement | null>;
@@ -75,6 +123,7 @@ export interface SearchExperienceProps {
   searchSurfaceTone?: 'default' | 'drawer';
   suggestionsPlacement?: SearchSuggestionsPlacement;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
+  onOpenSlashCommandDialog?: (target: SlashCommandDialogTarget) => void;
 }
 
 function hasOpenBlockingLayer() {
@@ -159,6 +208,7 @@ export const SearchExperience = memo(function SearchExperience({
   searchSurfaceTone = 'default',
   suggestionsPlacement = 'bottom',
   onInteractionStateChange,
+  onOpenSlashCommandDialog,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
   const searchAreaRef = useRef<HTMLDivElement>(null);
@@ -178,6 +228,7 @@ export const SearchExperience = memo(function SearchExperience({
   ));
   const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchSuggestionPermission | null>(null);
   const [permissionWarmup, setPermissionWarmup] = useState<SearchSuggestionPermission | null>(null);
+  const [blockingLayerOpen, setBlockingLayerOpen] = useState(() => hasOpenBlockingLayer());
 
   const {
     searchValue,
@@ -281,12 +332,38 @@ export const SearchExperience = memo(function SearchExperience({
   }, [captureSearchInputSelection, dropdownOpen, inputRef, restoreSearchInputSelection]);
 
   useEffect(() => {
+    const syncBlockingLayerState = () => {
+      setBlockingLayerOpen(hasOpenBlockingLayer());
+    };
+
+    syncBlockingLayerState();
+    document.addEventListener('focusin', syncBlockingLayerState, true);
+    document.addEventListener('mousedown', syncBlockingLayerState, true);
+    window.addEventListener('keydown', syncBlockingLayerState, true);
+
+    return () => {
+      document.removeEventListener('focusin', syncBlockingLayerState, true);
+      document.removeEventListener('mousedown', syncBlockingLayerState, true);
+      window.removeEventListener('keydown', syncBlockingLayerState, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!blockingLayerOpen) return;
+    if (!historyOpen) return;
+    closeHistoryPanel('manual');
+    if (dropdownOpen) {
+      setDropdownOpen(false);
+    }
+  }, [blockingLayerOpen, closeHistoryPanel, dropdownOpen, historyOpen, setDropdownOpen]);
+
+  useEffect(() => {
     onInteractionStateChange?.({
-      historyOpen,
+      historyOpen: historyOpen && !blockingLayerOpen,
       dropdownOpen,
       typingBurst: isSearchTypingBurst,
     });
-  }, [dropdownOpen, historyOpen, isSearchTypingBurst, onInteractionStateChange]);
+  }, [blockingLayerOpen, dropdownOpen, historyOpen, isSearchTypingBurst, onInteractionStateChange]);
 
   useEffect(() => () => {
     onInteractionStateChange?.({
@@ -397,6 +474,104 @@ export const SearchExperience = memo(function SearchExperience({
     permissionWarmup,
   });
 
+  const slashCommandInput = useMemo(
+    () => searchValue.trimStart(),
+    [searchValue],
+  );
+  const slashCommandQuery = useMemo(() => {
+    if (!slashCommandInput.startsWith('/')) return '';
+    return slashCommandInput.slice(1).trim();
+  }, [slashCommandInput]);
+  const slashCommandQueryKey = useMemo(
+    () => normalizeSearchQuery(slashCommandQuery),
+    [slashCommandQuery],
+  );
+  const isSlashCommandPanelOpen = historyOpen
+    && slashCommandInput.startsWith('/')
+    && !searchSessionModel.command.active;
+  const slashCommandEntries = useMemo<SlashCommandEntry[]>(() => [
+    {
+      id: 'bookmarks',
+      icon: 'bookmarks',
+      label: t('search.slash.bookmarks', {
+        defaultValue: '/bookmarks · 搜索浏览器书签',
+      }),
+      keywords: ['/bookmarks', '/b', 'bookmarks', '书签'],
+    },
+    {
+      id: 'search-settings',
+      icon: 'search-settings',
+      label: t('search.slash.searchSettings', {
+        defaultValue: '搜索设置',
+      }),
+      keywords: ['设置', '搜索设置', 'search'],
+    },
+    {
+      id: 'shortcut-guide',
+      icon: 'shortcut-guide',
+      label: t('search.slash.shortcutGuide', {
+        defaultValue: '快捷键指南',
+      }),
+      keywords: ['设置', '快捷键', '快捷键指南', 'guide'],
+    },
+    {
+      id: 'shortcut-icon-settings',
+      icon: 'shortcut-icon-settings',
+      label: t('search.slash.shortcutIconSettings', {
+        defaultValue: '图标设置',
+      }),
+      keywords: ['设置', '图标', 'icon'],
+    },
+    {
+      id: 'wallpaper-settings',
+      icon: 'wallpaper-settings',
+      label: t('search.slash.wallpaperSettings', {
+        defaultValue: '壁纸设置',
+      }),
+      keywords: ['设置', '壁纸', 'wallpaper'],
+    },
+    {
+      id: 'sync-center',
+      icon: 'sync-center',
+      label: t('search.slash.syncCenter', {
+        defaultValue: '同步中心',
+      }),
+      keywords: ['设置', '同步', 'sync'],
+    },
+    {
+      id: 'about',
+      icon: 'about',
+      label: t('search.slash.about', {
+        defaultValue: '关于 LeafTab',
+      }),
+      keywords: ['设置', '关于', 'about'],
+    },
+  ], [t]);
+  const slashCommandActions = useMemo<SearchAction[]>(() => {
+    if (!isSlashCommandPanelOpen) return [];
+    const filteredEntries = slashCommandQueryKey
+      ? slashCommandEntries.filter((entry) => {
+          if (normalizeSearchQuery(entry.label).includes(slashCommandQueryKey)) return true;
+          return entry.keywords.some((keyword) => normalizeSearchQuery(keyword).includes(slashCommandQueryKey));
+        })
+      : slashCommandEntries;
+    return filteredEntries.map((entry, index) => ({
+      id: `slash:${entry.id}:${index}`,
+      kind: 'open-target',
+      permission: null,
+      usageKey: null,
+      displayIcon: entry.icon,
+      item: {
+        type: 'history',
+        label: entry.label,
+        value: buildSlashCommandActionValue(entry.id),
+        timestamp: 0,
+        historySource: 'browser',
+      },
+    }));
+  }, [isSlashCommandPanelOpen, slashCommandEntries, slashCommandQueryKey]);
+  const effectiveSearchActions = isSlashCommandPanelOpen ? slashCommandActions : searchActions;
+
   const calculatorPreview = searchSessionModel.calculatorPreview;
   const calculatorInlinePreview = useMemo(() => {
     if (!calculatorPreview) return '';
@@ -461,8 +636,58 @@ export const SearchExperience = memo(function SearchExperience({
     setSearchPermissionsReady(true);
   }, []);
 
+  const executeSlashCommand = useCallback((actionId: SlashCommandActionId) => {
+    if (actionId === 'bookmarks') {
+      setSearchValue(resolveSearchCommandAutocomplete('/bookmarks') || '/bookmarks ');
+      setHistorySelectedIndex(-1);
+      openHistoryPanel({ select: 'none' });
+      void ensureExtensionPermission('bookmarks', { requestIfNeeded: true })
+        .then((granted) => {
+          setSearchPermissionGranted('bookmarks', granted);
+          if (!granted) {
+            showSearchCommandPermissionDeniedToast('bookmarks');
+          }
+        })
+        .catch(() => {
+          setSearchPermissionGranted('bookmarks', false);
+        });
+      return;
+    }
+
+    setSearchValue('');
+    closeHistoryPanel('selection');
+
+    if (actionId === 'search-settings') {
+      onOpenSlashCommandDialog?.('search-settings');
+    } else if (actionId === 'shortcut-guide') {
+      onOpenSlashCommandDialog?.('shortcut-guide');
+    } else if (actionId === 'shortcut-icon-settings') {
+      onOpenSlashCommandDialog?.('shortcut-icon-settings');
+    } else if (actionId === 'wallpaper-settings') {
+      onOpenSlashCommandDialog?.('wallpaper-settings');
+    } else if (actionId === 'sync-center') {
+      onOpenSlashCommandDialog?.('sync-center');
+    } else if (actionId === 'about') {
+      onOpenSlashCommandDialog?.('about');
+    }
+  }, [
+    closeHistoryPanel,
+    onOpenSlashCommandDialog,
+    openHistoryPanel,
+    setSearchPermissionGranted,
+    setHistorySelectedIndex,
+    setSearchValue,
+    showSearchCommandPermissionDeniedToast,
+  ]);
+
   const executeSearchAction = useCallback((action: SearchAction) => {
     const { item } = action;
+    const slashActionId = parseSlashCommandActionId(item.value);
+    if (slashActionId) {
+      executeSlashCommand(slashActionId);
+      return;
+    }
+
     if (action.kind === 'focus-tab' && item.type === 'tab' && Number.isFinite(item.tabId)) {
       const tabsApi = globalThis.chrome?.tabs;
       if (tabsApi?.update && typeof item.tabId === 'number') {
@@ -483,7 +708,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     openSearchWithQuery(item.value);
     closeHistoryPanel('selection');
-  }, [closeHistoryPanel, openSearchWithQuery]);
+  }, [closeHistoryPanel, executeSlashCommand, openSearchWithQuery]);
 
   const activateSearchAction = useCallback((action: SearchAction) => {
     if (action.permission && !searchPermissions[action.permission]) {
@@ -639,7 +864,7 @@ export const SearchExperience = memo(function SearchExperience({
 
   const handleSearchSubmit = useCallback(() => {
     const selectedAction = historySelectedIndex !== -1
-      ? searchActions[historySelectedIndex] ?? null
+      ? effectiveSearchActions[historySelectedIndex] ?? null
       : null;
     const decision = resolveSearchSubmitDecision({
       session: searchSessionModel,
@@ -674,9 +899,9 @@ export const SearchExperience = memo(function SearchExperience({
   }, [
     activateSearchAction,
     closeHistoryPanel,
+    effectiveSearchActions,
     handleSearch,
     historySelectedIndex,
-    searchActions,
     searchSessionModel,
     setSearchValue,
     t,
@@ -690,7 +915,7 @@ export const SearchExperience = memo(function SearchExperience({
     openHistoryPanel,
     closeHistoryPanel,
     setHistorySelectedIndex,
-    searchActions,
+    searchActions: effectiveSearchActions,
     activateSearchAction,
     tabSwitchSearchEngine,
     enableSearchEngineSwitcher: ENABLE_SEARCH_ENGINE_SWITCHER,
@@ -702,6 +927,19 @@ export const SearchExperience = memo(function SearchExperience({
     setSearchValue,
     onKeyboardNavigate: markSuggestionKeyboardNavigation,
   });
+
+  useEffect(() => {
+    if (!isSlashCommandPanelOpen || !historyOpen) return;
+    if (historySelectedIndex !== -1) return;
+    if (slashCommandActions.length <= 0) return;
+    setHistorySelectedIndex(0);
+  }, [
+    historyOpen,
+    historySelectedIndex,
+    isSlashCommandPanelOpen,
+    setHistorySelectedIndex,
+    slashCommandActions.length,
+  ]);
 
   useEffect(() => {
     const handleHistoryOutside = (event: MouseEvent) => {
@@ -731,8 +969,8 @@ export const SearchExperience = memo(function SearchExperience({
 
   useEffect(() => {
     if (!historyOpen) return;
-    syncHistorySelectionByCount(searchActions.length);
-  }, [historyOpen, searchActions.length, syncHistorySelectionByCount]);
+    syncHistorySelectionByCount(effectiveSearchActions.length);
+  }, [historyOpen, effectiveSearchActions.length, syncHistorySelectionByCount]);
 
   const handleSearchHistoryOpen = useCallback(() => {
     setDropdownOpen(false);
@@ -797,6 +1035,8 @@ export const SearchExperience = memo(function SearchExperience({
   );
 
   const searchDropdownStatusNotice = useMemo(() => {
+    if (isSlashCommandPanelOpen) return undefined;
+
     const authorizationLabel = t('search.authorizeHistoryPermission', { defaultValue: '去授权' });
 
     if (searchSessionModel.mode === 'bookmarks') {
@@ -893,6 +1133,7 @@ export const SearchExperience = memo(function SearchExperience({
     searchPermissions,
     searchPermissionsReady,
     searchSessionModel.mode,
+    isSlashCommandPanelOpen,
     suggestionSourceStatus.bookmarkLoading,
     suggestionSourceStatus.browserHistoryLoading,
     suggestionSourceStatus.tabLoading,
@@ -900,6 +1141,9 @@ export const SearchExperience = memo(function SearchExperience({
   ]);
 
   const searchDropdownEmptyStateLabel = useMemo(() => {
+    if (isSlashCommandPanelOpen) {
+      return t('search.slash.empty', { defaultValue: '没有匹配的命令' });
+    }
     if (searchSessionModel.mode === 'bookmarks') {
       return t('search.noBookmarks', { defaultValue: '没有找到匹配的书签' });
     }
@@ -907,7 +1151,7 @@ export const SearchExperience = memo(function SearchExperience({
       return t('search.noTabs', { defaultValue: '没有找到匹配的标签页' });
     }
     return t('search.noHistory');
-  }, [searchSessionModel.mode, t]);
+  }, [isSlashCommandPanelOpen, searchSessionModel.mode, t]);
 
   return (
     <RenderProfileBoundary id="SearchExperience">
@@ -919,7 +1163,7 @@ export const SearchExperience = memo(function SearchExperience({
         dropdownOpen={dropdownOpen}
         onEngineOpenChange={setDropdownOpen}
         onEngineSelect={handleEngineSelect}
-        searchActions={searchActions}
+        searchActions={effectiveSearchActions}
         historyOpen={historyOpen}
         onHistoryOpen={handleSearchHistoryOpen}
         onInputFocus={handleSearchInputFocus}

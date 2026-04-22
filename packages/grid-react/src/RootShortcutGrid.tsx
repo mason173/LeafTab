@@ -5,6 +5,7 @@ import {
 } from '@leaftab/workspace-core';
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
+  buildRootLayoutAnimationSignature,
   buildRootShortcutGridItems,
 } from './rootShortcutGridHelpers';
 import {
@@ -103,6 +104,10 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
     shortcuts,
     resolveItemLayout,
   }), [shortcuts, resolveItemLayout]);
+  const layoutAnimationSignature = useMemo(
+    () => buildRootLayoutAnimationSignature(items),
+    [items],
+  );
 
   const [dragging, setDragging] = useState(false);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -141,6 +146,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   const disableReorderAnimationRef = useRef(disableReorderAnimation);
   const extractHandoffTimerRef = useRef<number | null>(null);
   const boundaryHoveredRef = useRef(false);
+  const previousLayoutAnimationSignatureRef = useRef<string | null>(null);
 
   const {
     layoutShiftOffsets,
@@ -206,8 +212,14 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
+    const previousLayoutAnimationSignature = previousLayoutAnimationSignatureRef.current;
+    const skipLayoutShiftForStableLayoutSignature = (
+      previousLayoutAnimationSignature !== null
+      && previousLayoutAnimationSignature === layoutAnimationSignature
+    );
     if (dragging && !hasPendingLayoutShiftSourceRects()) {
       disableReorderAnimationRef.current = disableReorderAnimation;
+      previousLayoutAnimationSignatureRef.current = layoutAnimationSignature;
       return;
     }
 
@@ -217,15 +229,18 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
       dragging,
       hasPendingLayoutShiftSourceRects,
       suppressProjectionSettleAnimation,
+      skipForStableLayoutSignature: skipLayoutShiftForStableLayoutSignature,
       commitMeasuredItemRects,
       currentRects: measureDragItemRects(itemElementsRef.current),
     });
+    previousLayoutAnimationSignatureRef.current = layoutAnimationSignature;
   }, [
     commitMeasuredItemRects,
     disableReorderAnimation,
     dragging,
     hasPendingLayoutShiftSourceRects,
     items,
+    layoutAnimationSignature,
     packedLayout.placedItems,
     suppressProjectionSettleAnimation,
   ]);

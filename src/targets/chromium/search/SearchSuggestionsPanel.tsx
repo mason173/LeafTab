@@ -2,10 +2,17 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next';
 import {
   RiArrowRightSLine,
+  RiBookOpenFill,
+  RiCloudFill,
   RiCornerDownLeftLine,
   RiHistoryFill,
+  RiImageFill,
+  RiInformationFill,
   RiLinkM,
+  RiPaletteFill,
+  RiQuestionLine,
   RiSearchLine,
+  RiSettings4Fill,
 } from '@/icons/ri-compat';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ShortcutIcon from '@/components/ShortcutIcon';
@@ -15,8 +22,21 @@ import {
   getEngineIcon,
   SEARCH_ENGINE_BRAND_NAMES,
 } from '@/components/search/searchEngineSwitcher.shared';
+import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 import type { SearchSuggestionsPanelProps } from '@/components/search/SearchSuggestionsPanel.shared';
 import type { SearchAction } from '@/utils/searchActions';
+
+function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass: string) {
+  if (!action.displayIcon) return null;
+  if (action.displayIcon === 'bookmarks') return <RiBookOpenFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'search-settings') return <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'shortcut-guide') return <RiQuestionLine className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'shortcut-icon-settings') return <RiPaletteFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'wallpaper-settings') return <RiImageFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'sync-center') return <RiCloudFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'about') return <RiInformationFill className={`size-3.5 ${secondaryTextClass}`} />;
+  return <RiSettings4Fill className={`size-3.5 ${secondaryTextClass}`} />;
+}
 
 export function SearchSuggestionsPanel({
   items,
@@ -32,8 +52,10 @@ export function SearchSuggestionsPanel({
   emptyStateLabel,
   lightweight = false,
   placement = 'bottom',
+  surfaceTone = 'default',
 }: SearchSuggestionsPanelProps) {
   const { t, i18n } = useTranslation();
+  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
   const [shouldRenderPanel, setShouldRenderPanel] = useState(isOpen);
   const hideScrollbarTimerRef = useRef<number | null>(null);
@@ -194,6 +216,7 @@ export function SearchSuggestionsPanel({
     siteDirectDomain: string;
   }) => {
     const isSelected = index === selectedIndex;
+    const customActionIcon = resolveSearchActionDisplayIcon(action, secondaryTextClass);
     const numberHintBadge = (
       <span
         aria-hidden={!showNumberHints}
@@ -253,7 +276,7 @@ export function SearchSuggestionsPanel({
         onClick={() => onSelect(action)}
       >
         <span className="relative mr-2 flex shrink-0 items-center justify-center" style={{ width: 24, height: 24 }}>
-          {item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab' ? (
+          {customActionIcon ? customActionIcon : item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab' ? (
             <ShortcutIcon
               icon={item.icon || ''}
               url={item.value}
@@ -292,81 +315,89 @@ export function SearchSuggestionsPanel({
 
   return (
     <div
-      className={`absolute left-0 right-0 z-[1200] rounded-[20px] border p-[8px] ${theme.dropdownSurfaceClassName} ${lightweight ? 'backdrop-blur-none shadow-none' : ''} ${placement === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}`}
+      ref={setSurfaceNode}
+      className={`absolute left-0 right-0 z-[60] isolate rounded-[20px] p-[8px] ${theme.dropdownSurfaceClassName} ${placement === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}`}
       style={lightweightPanelStyle}
       aria-hidden={!isOpen}
     >
-      {statusNotice ? (
-        <div
-          className={`mb-2 flex items-center justify-between gap-2 rounded-[12px] px-2 py-1.5 ${
-            statusNotice.tone === 'loading'
-              ? theme.dropdownStatusLoadingContainerClassName
-              : theme.dropdownStatusInfoContainerClassName
-          }`}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            {statusNotice.tone === 'loading' ? (
-              <span
-                aria-hidden="true"
-                className={`size-2 shrink-0 animate-pulse rounded-full ${theme.dropdownStatusDotClassName}`}
-              />
+      <SearchFakeBlurSurface
+        surfaceNode={surfaceNode}
+        tone={surfaceTone}
+        radiusClassName="rounded-[20px]"
+      />
+      <div className="relative z-[1]">
+        {statusNotice ? (
+          <div
+            className={`mb-2 flex items-center justify-between gap-2 rounded-[12px] px-2 py-1.5 ${
+              statusNotice.tone === 'loading'
+                ? theme.dropdownStatusLoadingContainerClassName
+                : theme.dropdownStatusInfoContainerClassName
+            }`}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {statusNotice.tone === 'loading' ? (
+                <span
+                  aria-hidden="true"
+                  className={`size-2 shrink-0 animate-pulse rounded-full ${theme.dropdownStatusDotClassName}`}
+                />
+              ) : null}
+              <span className={`text-[12px] ${theme.dropdownStatusTextClassName}`}>
+                {statusNotice.message}
+              </span>
+            </div>
+            {statusNotice.actionLabel && statusNotice.onAction ? (
+              <button
+                type="button"
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] transition-colors ${theme.dropdownStatusButtonClassName}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  statusNotice.onAction?.();
+                }}
+              >
+                {statusNotice.actionLabel}
+              </button>
             ) : null}
-            <span className={`text-[12px] ${theme.dropdownStatusTextClassName}`}>
-              {statusNotice.message}
-            </span>
           </div>
-          {statusNotice.actionLabel && statusNotice.onAction ? (
+        ) : null}
+        {hasLocalHistoryRows ? (
+          <div className="mb-2 flex items-center justify-end px-2">
             <button
               type="button"
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] transition-colors ${theme.dropdownStatusButtonClassName}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                statusNotice.onAction?.();
-              }}
+              className={`text-[12px] transition-colors ${theme.dropdownClearButtonClassName}`}
+              onClick={onClear}
             >
-              {statusNotice.actionLabel}
+              {t('search.clearHistory')}
             </button>
-          ) : null}
-        </div>
-      ) : null}
-      {hasLocalHistoryRows ? (
-        <div className="mb-2 flex items-center justify-end px-2">
-          <button
-            type="button"
-            className={`text-[12px] transition-colors ${theme.dropdownClearButtonClassName}`}
-            onClick={onClear}
+          </div>
+        ) : null}
+        {items.length === 0 ? (
+          <div className={`flex justify-center px-3 py-2 text-[12px] ${theme.dropdownEmptyStateClassName}`}>{emptyStateLabel || t('search.noHistory')}</div>
+        ) : (
+          <ScrollArea
+            ref={scrollAreaRef}
+            data-allow-drawer-locked-scroll="true"
+            className="mt-1 w-full"
+            style={{ height: listHeight }}
+            onWheelCapture={showScrollbar}
+            onTouchMoveCapture={showScrollbar}
+            scrollBarClassName={`transition-opacity duration-200 ${scrollbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
-            {t('search.clearHistory')}
-          </button>
-        </div>
-      ) : null}
-      {items.length === 0 ? (
-        <div className={`flex justify-center px-3 py-2 text-[12px] ${theme.dropdownEmptyStateClassName}`}>{emptyStateLabel || t('search.noHistory')}</div>
-      ) : (
-        <ScrollArea
-          ref={scrollAreaRef}
-          data-allow-drawer-locked-scroll="true"
-          className="mt-1 w-full"
-          style={{ height: listHeight }}
-          onWheelCapture={showScrollbar}
-          onTouchMoveCapture={showScrollbar}
-          scrollBarClassName={`transition-opacity duration-200 ${scrollbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        >
-          <div className="flex w-full flex-col gap-1 overflow-hidden pr-2" style={lightweightListStyle}>
-            {derivedSuggestionRows.map(renderSuggestionRow)}
-          </div>
-        </ScrollArea>
-      )}
+            <div className="flex w-full flex-col gap-1 overflow-hidden pr-2" style={lightweightListStyle}>
+              {derivedSuggestionRows.map(renderSuggestionRow)}
+            </div>
+          </ScrollArea>
+        )}
 
-      {items.length > 0 ? (
-        <div className={`mt-2 flex items-center justify-between gap-4 border-t px-2 pt-2 text-[12px] ${theme.dropdownFooterClassName}`}>
-          <div className="flex items-center gap-4">
-            <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
-            <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
-            <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+        {items.length > 0 ? (
+          <div className={`mt-2 flex items-center justify-between gap-4 border-t px-2 pt-2 text-[12px] ${theme.dropdownFooterClassName}`}>
+            <div className="flex items-center gap-4">
+              <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
+              <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
+              <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

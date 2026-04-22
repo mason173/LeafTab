@@ -22,4 +22,5 @@ export interface SearchSuggestionsPanelProps {
   emptyStateLabel?: string;
   lightweight?: boolean;
   placement?: SearchSuggestionsPlacement;
+  surfaceTone?: 'default' | 'drawer';
 }

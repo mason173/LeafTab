@@ -45,5 +45,7 @@ export function getEngineIcon(engine: SearchEngine) {
       return baiduIcon;
     case 'duckduckgo':
       return duckduckgoIcon;
+    default:
+      return searchIcon;
   }
 }

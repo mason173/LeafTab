@@ -730,6 +730,16 @@ export function shouldSkipLayoutShiftOnAnimationReenable(params: {
   return previousAnimationDisabled && !animationDisabled;
 }
 
+export function buildRootLayoutAnimationSignature<TShortcut extends Shortcut>(
+  items: RootShortcutGridItem<TShortcut>[],
+): string {
+  return items
+    .map((item) => (
+      `${item.sortId}:${item.layout.columnSpan}x${item.layout.rowSpan}:${item.layout.preserveSlot ? 'slot' : 'flow'}`
+    ))
+    .join('|');
+}
+
 export function resolveFinalHoverIntent<TIntent>(resolution: {
   interactionIntent: TIntent | null;
   visualProjectionIntent: TIntent | null;

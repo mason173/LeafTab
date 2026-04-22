@@ -95,6 +95,7 @@ import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEng
 import { useShortcutWorkspaceController } from '@/features/shortcuts/workspace/useShortcutWorkspaceController';
 import { LeafTabSyncProvider } from '@/features/sync/app/LeafTabSyncContext';
 import { useLeafTabSyncRuntimeController } from '@/features/sync/app/useLeafTabSyncRuntimeController';
+import type { SlashCommandDialogTarget } from '@/components/search/SearchExperience';
 
 type FolderOverlaySnapshotRect = {
   left: number;
@@ -1679,6 +1680,50 @@ export default function App() {
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
   }, [setSettingsOpen]);
+  const handleOpenSlashCommandDialog = useCallback((target: SlashCommandDialogTarget) => {
+    setSettingsOpen(false);
+    setSearchSettingsOpen(false);
+    setShortcutGuideOpen(false);
+    setShortcutIconSettingsOpen(false);
+    setWallpaperSettingsOpen(false);
+    setAdminModalOpen(false);
+    setAboutModalOpen(false);
+
+    if (target === 'search-settings') {
+      setSearchSettingsOpen(true);
+      return;
+    }
+    if (target === 'shortcut-guide') {
+      setShortcutGuideOpen(true);
+      return;
+    }
+    if (target === 'shortcut-icon-settings') {
+      setShortcutIconSettingsOpen(true);
+      return;
+    }
+    if (target === 'wallpaper-settings') {
+      setWallpaperSettingsOpen(true);
+      return;
+    }
+    if (target === 'sync-center') {
+      setLeafTabSyncDialogOpen(true);
+      return;
+    }
+    if (target === 'about') {
+      setAboutModalDefaultTab('about');
+      setAboutModalOpen(true);
+    }
+  }, [
+    setAboutModalDefaultTab,
+    setLeafTabSyncDialogOpen,
+    setSettingsOpen,
+    setSearchSettingsOpen,
+    setShortcutGuideOpen,
+    setShortcutIconSettingsOpen,
+    setWallpaperSettingsOpen,
+    setAdminModalOpen,
+    setAboutModalOpen,
+  ]);
   const handleScenarioModeCreate = useCallback(() => {
     setScenarioCreateOpen(true);
   }, [setScenarioCreateOpen]);
@@ -1880,7 +1925,9 @@ export default function App() {
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
+    onOpenSlashCommandDialog: handleOpenSlashCommandDialog,
   }), [
+    handleOpenSlashCommandDialog,
     openInNewTab,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,

@@ -510,7 +510,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
     return (
       <div
-        className="fixed inset-x-0 z-[16030] pointer-events-none px-4"
+        className="fixed inset-x-0 z-[140] pointer-events-none px-4"
         style={{
           bottom: `calc(env(safe-area-inset-bottom, 0px) + ${floatingBottomSearchOffsetPx}px)`,
           ...fixedTopNavRevealStyle,
@@ -528,6 +528,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             searchExperienceProps={searchExperienceProps}
             blankMode={modeFlags.searchUsesBlankStyle}
             forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
+            searchSurfaceTone={drawerExpanded ? 'drawer' : 'default'}
             suggestionsPlacement="top"
           />
         </div>
@@ -539,6 +540,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     homeMainContentBaseProps.layout.contentWidth,
     modeFlags.forceWhiteSearchTheme,
     modeFlags.searchUsesBlankStyle,
+    drawerExpanded,
     searchExperienceProps,
     showFloatingBottomSearch,
   ]);
