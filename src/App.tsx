@@ -83,6 +83,7 @@ import {
   findShortcutById,
   isShortcutFolder,
   isShortcutLink,
+  pruneEmptyShortcutFolders,
 } from '@/utils/shortcutFolders';
 import { useShortcutExperienceRootProps } from '@/features/appShell/useShortcutExperienceRootProps';
 import { ShortcutAppProvider } from '@/features/shortcuts/app/ShortcutAppContext';
@@ -889,7 +890,7 @@ export default function App() {
       if (!changed) return prev;
       return {
         ...prev,
-        [selectedScenarioId]: nextShortcuts,
+        [selectedScenarioId]: pruneEmptyShortcutFolders(nextShortcuts),
       };
     });
     if (!user) localDirtyRef.current = true;

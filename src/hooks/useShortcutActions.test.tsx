@@ -95,6 +95,7 @@ function renderActionsHarness() {
       selectedShortcut,
       currentInsertIndex,
       shortcutDeleteOpen,
+      setScenarioShortcuts,
       setShortcutModalMode,
       setSelectedShortcut,
       setCurrentInsertIndex,
@@ -184,5 +185,43 @@ describe('useShortcutActions', () => {
     expect(result.current.scenarioShortcuts[defaultScenarioModes[0].id]).toEqual([]);
     expect(result.current.shortcutDeleteOpen).toBe(false);
     expect(removeShortcutCustomIconsSpy).toHaveBeenCalled();
+  });
+
+  it('removes a folder when its last child shortcut is deleted', () => {
+    const { result } = renderActionsHarness();
+
+    act(() => {
+      result.current.setCurrentInsertIndex(0);
+      result.current.actions.handleSaveShortcutEdit(createDraft('GitHub', 'github.com'));
+    });
+
+    const childShortcut = result.current.scenarioShortcuts[defaultScenarioModes[0].id][0];
+
+    act(() => {
+      result.current.setScenarioShortcuts((prev) => ({
+        ...prev,
+        [defaultScenarioModes[0].id]: [
+          {
+            id: 'folder-1',
+            title: 'Folder',
+            url: '',
+            icon: '',
+            kind: 'folder',
+            children: [childShortcut],
+          },
+        ],
+      }));
+      result.current.setSelectedShortcut({
+        index: 0,
+        parentFolderId: 'folder-1',
+        shortcut: childShortcut,
+      });
+    });
+
+    act(() => {
+      result.current.actions.handleConfirmDeleteShortcut();
+    });
+
+    expect(result.current.scenarioShortcuts[defaultScenarioModes[0].id]).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@ import type { CloudShortcutsPayloadV3, ScenarioMode, ScenarioShortcuts, Shortcut
 import { defaultScenarioModes, makeScenarioId, type ScenarioIconKey } from '@/scenario/scenario';
 import { getShortcutUrlIdentity } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor, normalizeShortcutVisualMode } from '@/utils/shortcutIconPreferences';
+import { pruneEmptyShortcutFolders } from '@/utils/shortcutFolders';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -141,14 +142,18 @@ export const normalizeScenarioShortcuts = (raw: unknown): ScenarioShortcuts => {
   Object.entries(obj).forEach(([scenarioId, value]) => {
     const seenUrlIdentities = new Set<string>();
     if (Array.isArray(value)) {
-      next[scenarioId] = normalizeShortcutList(value, scenarioId, usedShortcutIds, seenUrlIdentities);
+      next[scenarioId] = pruneEmptyShortcutFolders(
+        normalizeShortcutList(value, scenarioId, usedShortcutIds, seenUrlIdentities),
+      );
     } else if (isRecord(value) && Object.keys(value).length === 0) {
       next[scenarioId] = [];
     } else if (isRecord(value)) {
       const mappedEntries = Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([, entry]) => entry);
-      next[scenarioId] = normalizeShortcutList(mappedEntries, scenarioId, usedShortcutIds, seenUrlIdentities);
+      next[scenarioId] = pruneEmptyShortcutFolders(
+        normalizeShortcutList(mappedEntries, scenarioId, usedShortcutIds, seenUrlIdentities),
+      );
     }
   });
   return next;

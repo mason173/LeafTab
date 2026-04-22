@@ -51,3 +51,23 @@ export function moveTopLevelShortcutIntoFolder(
 ): Shortcut[] | null {
   return moveShortcutIntoFolder(shortcuts, ROOT_SHORTCUTS_PATH, shortcutId, folderId);
 }
+
+export function pruneEmptyShortcutFolders(shortcuts: readonly Shortcut[]): Shortcut[] {
+  return shortcuts.reduce<Shortcut[]>((acc, shortcut) => {
+    if (!isShortcutFolder(shortcut)) {
+      acc.push(shortcut);
+      return acc;
+    }
+
+    const nextChildren = pruneEmptyShortcutFolders(getShortcutChildren(shortcut));
+    if (nextChildren.length === 0) {
+      return acc;
+    }
+
+    acc.push({
+      ...shortcut,
+      children: nextChildren,
+    });
+    return acc;
+  }, []);
+}

@@ -10,7 +10,7 @@ import {
   removeShortcutCustomIcon,
   removeShortcutCustomIcons,
 } from '@/utils/shortcutCustomIcons';
-import { collectShortcutIds, getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
+import { collectShortcutIds, getShortcutChildren, isShortcutFolder, pruneEmptyShortcutFolders } from '@/utils/shortcutFolders';
 
 type TranslateFn = (key: string, options?: any) => string;
 
@@ -269,7 +269,7 @@ export function useShortcutActions({
           changed = true;
           return { ...item, children: nextChildren };
         });
-        return changed ? nextCurrent : current;
+        return changed ? pruneEmptyShortcutFolders(nextCurrent) : current;
       }
       return current.filter((_, index) => index !== selectedShortcut.index);
     });
