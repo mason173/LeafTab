@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RiArrowRightSLine, RiCheckFill, RiSearchLine } from '@/icons/ri-compat';
+import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +12,14 @@ import { getAvailableSearchEngineOrder } from '@/platform/search';
 import {
   getEngineIcon,
   SEARCH_ENGINE_BRAND_NAMES,
+  SEARCH_ENGINE_SWITCHER_INTERACT_EVENT,
   type SearchEngineOption,
   type SearchEngineSwitcherProps,
 } from '@/components/search/searchEngineSwitcher.shared';
 
 import searchIcon from '@/assets/searchicon.svg';
+
+const CHROMIUM_DROPDOWN_DISMISS_GUARD_MS = 220;
 
 export function SearchEngineSwitcher({
   engine,
@@ -30,6 +33,7 @@ export function SearchEngineSwitcher({
   surfaceTone = 'default',
 }: SearchEngineSwitcherProps) {
   const { t } = useTranslation();
+  const dismissGuardUntilRef = useRef(0);
   const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
 
   const engineOptionMap: Record<typeof engine, SearchEngineOption> = {
@@ -40,21 +44,45 @@ export function SearchEngineSwitcher({
     baidu: { id: 'baidu', name: SEARCH_ENGINE_BRAND_NAMES.baidu, icon: getEngineIcon('baidu') },
   };
   const engines = getAvailableSearchEngineOrder().map((item) => engineOptionMap[item]);
+  const markSwitcherInteraction = () => {
+    window.dispatchEvent(new CustomEvent(SEARCH_ENGINE_SWITCHER_INTERACT_EVENT));
+  };
+  const activateDismissGuard = () => {
+    dismissGuardUntilRef.current = Date.now() + CHROMIUM_DROPDOWN_DISMISS_GUARD_MS;
+  };
 
   return (
-    <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
+    <DropdownMenu
+      modal={false}
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (open) {
+          markSwitcherInteraction();
+          activateDismissGuard();
+        }
+        onOpenChange(open);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          data-search-engine-switcher-trigger="true"
+          onMouseDown={(event) => {
+            markSwitcherInteraction();
+            activateDismissGuard();
+            event.preventDefault();
+            event.stopPropagation();
+          }}
           onPointerDown={(event) => {
+            markSwitcherInteraction();
+            activateDismissGuard();
             event.stopPropagation();
           }}
           onClick={(event) => event.stopPropagation()}
           className={`relative z-[1] mr-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-[12px] px-2 py-1.5 ${toneClassName || 'text-foreground/70'}`}
         >
           <span className="relative flex size-5 shrink-0 items-center justify-center">
-            <RiSearchLine className="absolute inset-0 m-auto size-4 opacity-40" />
-            <img alt="" className="pointer-events-none relative z-[1] size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
+            <img alt="" className="pointer-events-none size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
           </span>
           <RiArrowRightSLine className="size-4 opacity-70" />
         </button>
@@ -63,6 +91,19 @@ export function SearchEngineSwitcher({
         align="start"
         side="bottom"
         sideOffset={10}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+        }}
+        onFocusOutside={(event) => {
+          if (Date.now() < dismissGuardUntilRef.current) {
+            event.preventDefault();
+          }
+        }}
+        onInteractOutside={(event) => {
+          if (Date.now() < dismissGuardUntilRef.current) {
+            event.preventDefault();
+          }
+        }}
         ref={setSurfaceNode}
         className={`z-[520] isolate w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] p-2 !border-transparent !bg-transparent !shadow-none !backdrop-blur-none ${surfaceClassName || 'text-white/92'}`}
       >

@@ -1,4 +1,5 @@
-export type DisplayMode = 'panoramic' | 'fresh' | 'minimalist';
+export type DisplayMode = 'fresh' | 'minimalist';
+export const DEFAULT_DISPLAY_MODE: DisplayMode = 'fresh';
 
 export type DisplayModeOption = {
   value: DisplayMode;
@@ -11,11 +12,6 @@ export const DISPLAY_MODE_OPTIONS: DisplayModeOption[] = [
     value: 'fresh',
     labelKey: 'settings.displayMode.rhythm',
     descriptionKey: 'settings.displayMode.rhythmDesc',
-  },
-  {
-    value: 'panoramic',
-    labelKey: 'settings.displayMode.panoramic',
-    descriptionKey: 'settings.displayMode.panoramicDesc',
   },
   {
     value: 'minimalist',
@@ -36,22 +32,31 @@ export type DisplayModeLayoutFlags = {
   searchUsesBlankStyle: boolean;
 };
 
+export const normalizeDisplayMode = (value: unknown): DisplayMode | null => {
+  if (value === 'fresh' || value === 'minimalist') {
+    return value;
+  }
+  if (value === 'panoramic') {
+    return DEFAULT_DISPLAY_MODE;
+  }
+  return null;
+};
+
 export const getDisplayModeLayoutFlags = (mode: DisplayMode): DisplayModeLayoutFlags => {
-  const isPanoramic = mode === 'panoramic';
   const isRhythm = mode === 'fresh';
   const isBlank = mode === 'minimalist';
   return {
-    showHeroWallpaperClock: isPanoramic,
-    showOverlayBackground: !isPanoramic,
-    showInlineTopNav: !isPanoramic,
+    showHeroWallpaperClock: false,
+    showOverlayBackground: true,
+    showInlineTopNav: true,
     showFloatingScenarioMenu: isRhythm,
-    showFloatingWallpaperSelector: !isPanoramic,
+    showFloatingWallpaperSelector: true,
     showShortcuts: !isBlank,
     revealShortcutsOnDrawerExpand: isBlank,
-    forceWhiteSearchTheme: !isPanoramic,
+    forceWhiteSearchTheme: true,
     searchUsesBlankStyle: isBlank,
   };
 };
 
-export const shouldShowTimeDetailControls = (mode: DisplayMode, showTime: boolean): boolean =>
-  mode === 'panoramic' || showTime;
+export const shouldShowTimeDetailControls = (_mode: DisplayMode, showTime: boolean): boolean =>
+  showTime;

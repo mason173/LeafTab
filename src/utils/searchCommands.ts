@@ -6,6 +6,12 @@ export const SEARCH_COMMAND_DEFINITIONS = [
     permission: 'bookmarks',
   },
   {
+    id: 'history',
+    token: '/historys',
+    aliases: ['/h'],
+    permission: 'history',
+  },
+  {
     id: 'tabs',
     token: '/tabs',
     aliases: ['/t'],

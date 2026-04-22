@@ -6,7 +6,7 @@ import {
   clampShortcutGridColumns,
   getShortcutColumns,
 } from '@/components/shortcuts/shortcutCardVariant';
-import { type DisplayMode } from '@/displayMode/config';
+import { DEFAULT_DISPLAY_MODE, normalizeDisplayMode, type DisplayMode } from '@/displayMode/config';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 import {
   queueLocalStorageRemoveItem,
@@ -47,9 +47,9 @@ const VISUAL_EFFECTS_LEVEL_KEY = 'visual_effects_level';
 const REDUCE_VISUAL_EFFECTS_KEY = 'reduce_visual_effects';
 
 function readInitialDisplayMode(): DisplayMode {
-  const storedDisplayMode = localStorage.getItem('displayMode');
-  if (storedDisplayMode === 'panoramic' || storedDisplayMode === 'minimalist' || storedDisplayMode === 'fresh') {
-    return storedDisplayMode;
+  const normalizedStoredDisplayMode = normalizeDisplayMode(localStorage.getItem('displayMode'));
+  if (normalizedStoredDisplayMode) {
+    return normalizedStoredDisplayMode;
   }
   const parseStoredBoolean = (value: string | null): boolean => {
     if (value === null) return false;
@@ -63,7 +63,7 @@ function readInitialDisplayMode(): DisplayMode {
   const storedFreshMode = parseStoredBoolean(localStorage.getItem('freshMode'));
   if (storedMinimalistMode) return 'minimalist';
   if (storedFreshMode) return 'fresh';
-  return 'panoramic';
+  return DEFAULT_DISPLAY_MODE;
 }
 
 function readStoredBoolean(key: string, defaultValue: boolean): boolean {

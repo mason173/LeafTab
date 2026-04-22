@@ -135,9 +135,7 @@ export default {
         blank: "빈 화면",
         blankDesc: "시간, 배경화면, 바로가기 숨김",
         rhythm: "리듬",
-        rhythmDesc: "검색과 바로가기만 유지",
-        panoramic: "파노라마",
-        panoramicDesc: "시간, 날씨, 배경화면, 바로가기 표시"
+        rhythmDesc: "검색과 바로가기만 유지"
       },
       shortcutsLayout: {
         label: "바로가기 밀도",
@@ -344,7 +342,7 @@ export default {
         release130DynamicEffectsOptimize: "전역 동적 효과 경험을 최적화하고 \"동적 효과 줄이기\" 토글 및 통합 모션 축소 동작을 추가",
         release130DynamicWallpaperTab: "새로운 \"다이내믹\" 배경 카테고리를 추가하고 Prism, Silk, Light Rays, Beams, Galaxy, Iridescence 미리보기/적용을 지원",
         release130ManualWeatherCity: "날씨 기능에서 도시를 수동으로 선택해 저장할 수 있어 위치 표시를 더 안정적으로 제어 가능",
-        release129ModeUiRefactor: "파노라마 / 리듬 / 여백 3가지 모드 UI를 재구성하고 공용 컴포넌트로 분리해 중복 레거시 코드를 정리",
+        release129ModeUiRefactor: "리듬 / 여백 2가지 모드 UI를 재구성하고 공용 컴포넌트로 분리해 중복 레거시 코드를 정리",
         release129WallpaperModalRefine: "배경화면 설정 팝업을 Bing / 날씨 / 색상 / 사용자 지정 4개 탭으로 재구성해 인터랙션과 레이아웃을 통일",
         release129ColorWallpaperGradients: "색상 배경화면(12개 그라데이션 프리셋)을 추가하고 그라데이션 강도, 색상 카드 모서리, 미리보기 시각 품질을 개선",
         release129MaskSliderByMode: "배경화면 마스크 투명도 슬라이더(0-100)를 추가하고, 현재 활성화된 배경 타입에서만 hover 시 표시",
@@ -814,6 +812,17 @@ export default {
 	      noComparable: "비교할 수 있는 바로가기 데이터를 찾지 못했습니다."
 	    },
 	    leaftabDangerousSync: {
+	      title: "위험한 동기화를 차단했어요",
+	      description: "북마크 수에 큰 이상이 감지되어 자동 동기화를 일시 중지했습니다.",
+	      riskDescription: "북마크 수가 {{from}}개에서 {{to}}개로 바뀔 예정이며, 약 {{loss}}개가 잘못 삭제될 수 있습니다.",
+	      localBookmarks: "로컬 북마크",
+	      remoteBookmarks: "{{provider}} 북마크",
+	      continueWithoutBookmarks: "바로가기와 설정만 계속 동기화",
+	      continueWithoutBookmarksHint: "이번 실행에서는 북마크를 변경하지 않고, 바로가기와 설정만 동기화합니다.",
+	      deferBookmarks: "북마크는 나중에 처리",
+	      advancedActions: "고급 설정",
+	      useRemotePlain: "{{provider}} 북마크 유지(로컬은 대체됨)",
+	      useLocalPlain: "로컬 북마크 유지({{provider}}는 대체됨)",
 	      toast: {
 	        skipBookmarks: "이번에는 북마크를 건너뛰고 바로가기와 설정만 동기화합니다.",
 	        cloudBookmarksDisabled: "클라우드 동기화가 활성화되었고, “북마크 동기화”를 임시로 껐습니다.",

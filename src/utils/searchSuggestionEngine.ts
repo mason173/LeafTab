@@ -186,13 +186,17 @@ export function buildSearchSuggestionActions({
   queryStateLimit = 15,
 }: BuildSearchSuggestionActionsArgs): SearchAction[] {
   const items = (() => {
-  if (mode === 'tabs') {
+    if (mode === 'tabs') {
       return tabSuggestionItems;
-  }
+    }
 
-  if (mode === 'bookmarks') {
+    if (mode === 'bookmarks') {
       return bookmarkSuggestionItems;
-  }
+    }
+
+    if (mode === 'history') {
+      return browserHistorySuggestionItems;
+    }
 
     return buildDefaultModeSuggestions({
       searchValue,

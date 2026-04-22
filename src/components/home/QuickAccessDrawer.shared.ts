@@ -1,7 +1,7 @@
 import type { CSSProperties, RefObject } from 'react';
 import type { RootShortcutGridProps } from '@/features/shortcuts/components/RootShortcutGrid';
 import type { ShortcutMonochromeTone } from '@/components/ShortcutIconRenderContext';
-import type { SearchExperienceProps } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps, SearchInteractionState } from '@/components/search/SearchExperience';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import type { SearchBarPosition } from '@/types';
 
@@ -34,9 +34,11 @@ export interface QuickAccessDrawerProps {
   drawerSearchSurfaceStyle?: CSSProperties;
   subtleDarkTone?: boolean;
   searchBarPosition: SearchBarPosition;
+  searchHeight: number;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   searchExperienceProps: SearchExperienceProps;
+  interactionState: SearchInteractionState;
   shortcutGridProps: RootShortcutGridProps;
 }
 

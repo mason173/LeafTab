@@ -1,5 +1,5 @@
 import { DEFAULT_SHORTCUT_CARD_VARIANT, getShortcutColumns, parseShortcutCardVariant, type ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVariant';
-import type { DisplayMode } from '@/displayMode/config';
+import { DEFAULT_DISPLAY_MODE, normalizeDisplayMode, type DisplayMode } from '@/displayMode/config';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 import { getDefaultSearchEngineForPlatform, normalizeSearchEngineForPlatform } from '@/platform/search';
@@ -70,15 +70,15 @@ const readNullableBoolean = (value: unknown): boolean | null => {
 };
 
 const readInitialDisplayMode = (): DisplayMode => {
-  const storedDisplayMode = localStorage.getItem('displayMode');
-  if (storedDisplayMode === 'panoramic' || storedDisplayMode === 'minimalist' || storedDisplayMode === 'fresh') {
-    return storedDisplayMode;
+  const normalizedStoredDisplayMode = normalizeDisplayMode(localStorage.getItem('displayMode'));
+  if (normalizedStoredDisplayMode) {
+    return normalizedStoredDisplayMode;
   }
   const storedMinimalistMode = readStoredBoolean('minimalistMode', false);
   const storedFreshMode = readStoredBoolean('freshMode', false);
   if (storedMinimalistMode) return 'minimalist';
   if (storedFreshMode) return 'fresh';
-  return 'panoramic';
+  return DEFAULT_DISPLAY_MODE;
 };
 
 const readTimeAnimationMode = (): TimeAnimationMode => {
@@ -168,7 +168,7 @@ export const readShortcutGridColumnsByVariantFromStorage = (): Record<ShortcutCa
 };
 
 export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
-  displayMode: 'panoramic',
+  displayMode: DEFAULT_DISPLAY_MODE,
   openInNewTab: true,
   searchTabSwitchEngine: true,
   searchPrefixEnabled: true,
@@ -221,9 +221,7 @@ export const normalizeSyncablePreferences = (
   );
 
   return {
-    displayMode: candidate.displayMode === 'minimalist' || candidate.displayMode === 'fresh' || candidate.displayMode === 'panoramic'
-      ? candidate.displayMode
-      : defaults.displayMode,
+    displayMode: normalizeDisplayMode(candidate.displayMode) ?? defaults.displayMode,
     openInNewTab: typeof candidate.openInNewTab === 'boolean' ? candidate.openInNewTab : defaults.openInNewTab,
     searchTabSwitchEngine: typeof candidate.searchTabSwitchEngine === 'boolean' ? candidate.searchTabSwitchEngine : defaults.searchTabSwitchEngine,
     searchPrefixEnabled: typeof candidate.searchPrefixEnabled === 'boolean' ? candidate.searchPrefixEnabled : defaults.searchPrefixEnabled,

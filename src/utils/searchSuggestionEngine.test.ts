@@ -100,4 +100,60 @@ describe('searchSuggestionEngine', () => {
       'openai官网',
     ]);
   });
+
+  it('returns browser history only in history mode', () => {
+    const actions = buildSearchSuggestionActions({
+      mode: 'history',
+      searchValue: '/historys open',
+      bookmarkSuggestionItems: [
+        {
+          type: 'bookmark',
+          label: 'Bookmark',
+          value: 'https://bookmark.example/',
+          icon: '',
+        },
+      ],
+      tabSuggestionItems: [
+        {
+          type: 'tab',
+          label: 'Tab',
+          value: 'https://tab.example/',
+          icon: '',
+          tabId: 1,
+        },
+      ],
+      localHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'Local history',
+          value: 'local query',
+          timestamp: 1,
+          historySource: 'local',
+        },
+      ],
+      remoteSuggestionItems: [
+        {
+          type: 'remote',
+          label: 'Remote suggestion',
+          value: 'remote query',
+          provider: '360',
+        },
+      ],
+      browserHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'OpenAI Platform',
+          value: 'https://platform.openai.com/',
+          timestamp: 2,
+          historySource: 'browser',
+        },
+      ],
+      builtinSiteSuggestionItems: [],
+      shortcutSuggestionItems: [],
+    });
+
+    expect(actions.map((action) => action.item.label)).toEqual([
+      'OpenAI Platform',
+    ]);
+  });
 });

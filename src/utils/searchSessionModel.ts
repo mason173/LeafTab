@@ -6,7 +6,7 @@ import { buildSiteSearchQuery, parseSiteSearchShortcut } from '@/utils/siteSearc
 
 type SearchEngineOverride = Exclude<SearchEngine, 'system'>;
 
-export type SearchSessionMode = 'default' | 'bookmarks' | 'tabs';
+export type SearchSessionMode = 'default' | 'bookmarks' | 'history' | 'tabs';
 
 type SearchSessionModelOptions = {
   prefixEnabled?: boolean;
@@ -54,6 +54,7 @@ export type SearchSessionModel = {
 
 function resolveSearchSessionMode(commandId: ParsedSearchCommand['id']): SearchSessionMode {
   if (commandId === 'bookmarks') return 'bookmarks';
+  if (commandId === 'history') return 'history';
   if (commandId === 'tabs') return 'tabs';
   return 'default';
 }

@@ -4,7 +4,10 @@ import { buildShortcutUsageKey } from '@/utils/suggestionPersonalization';
 
 export type SearchActionDisplayIcon =
   | 'bookmarks'
+  | 'history'
+  | 'tabs'
   | 'search-settings'
+  | 'theme-mode'
   | 'shortcut-guide'
   | 'shortcut-icon-settings'
   | 'wallpaper-settings'

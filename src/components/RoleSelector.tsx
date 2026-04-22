@@ -12,7 +12,6 @@ import {
   RiCheckboxBlankFill,
   RiCodeSSlashFill,
   RiComputerFill,
-  RiDashboardFill,
   RiFlashlightFill,
   RiFolderChartFill,
   RiGraduationCapFill,
@@ -355,14 +354,6 @@ export function RoleSelector({
   };
 
   const renderLayoutPreview = (mode: DisplayMode) => {
-    if (mode === 'panoramic') {
-      return (
-        <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
-          <RiDashboardFill className="w-9 h-9 text-foreground/50" />
-          <div className="w-full h-full rounded absolute inset-0 m-2"></div>
-        </div>
-      );
-    }
     if (mode === 'fresh') {
       return (
         <div className="absolute inset-0 bg-background/50 flex flex-col items-center justify-center p-4 gap-2">
@@ -711,7 +702,7 @@ export function RoleSelector({
                 </TextEffect>
               </motion.div>
               <motion.div
-                className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full"
+                className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"
                 initial={stagedRevealHidden}
                 animate={stagedRevealShown}
                 transition={{ duration: 0.34, ease: "easeOut", delay: 0.2 }}

@@ -29,7 +29,7 @@ vi.mock('@/components/ShortcutIcon', () => ({
   default: ({ url }: { url: string }) => React.createElement('span', { 'data-testid': 'shortcut-icon' }, url),
 }));
 
-if (!window.HTMLElement.prototype.scrollIntoView) {
+if (typeof window !== 'undefined' && window.HTMLElement?.prototype && !window.HTMLElement.prototype.scrollIntoView) {
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
 }
 

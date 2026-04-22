@@ -26,6 +26,11 @@ export function resolveSearchSubmitDecision({
     return { kind: 'activate-action', action: selectedAction };
   }
 
+  if (session.mode === 'history') {
+    if (!selectedAction || selectedAction.item.type !== 'history') return { kind: 'noop' };
+    return { kind: 'activate-action', action: selectedAction };
+  }
+
   if (selectedAction) {
     return { kind: 'activate-action', action: selectedAction };
   }

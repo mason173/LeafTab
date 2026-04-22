@@ -135,9 +135,7 @@ export default {
         blank: "Trống",
         blankDesc: "Ẩn thời gian, hình nền và lối tắt",
         rhythm: "Nhịp điệu",
-        rhythmDesc: "Chỉ giữ tìm kiếm và lối tắt",
-        panoramic: "Toàn cảnh",
-        panoramicDesc: "Hiển thị thời gian, thời tiết, hình nền và lối tắt"
+        rhythmDesc: "Chỉ giữ tìm kiếm và lối tắt"
       },
       shortcutsLayout: {
         label: "Mật độ lối tắt",
@@ -341,7 +339,7 @@ export default {
         release130DynamicEffectsOptimize: "Tối ưu trải nghiệm hiệu ứng động toàn cục với công tắc Giảm hiệu ứng động và cơ chế giảm chuyển động thống nhất",
         release130DynamicWallpaperTab: "Thêm tab hình nền Động mới, hỗ trợ xem trước và áp dụng Prism, Silk, Light Rays, Beams, Galaxy, Iridescence",
         release130ManualWeatherCity: "Tính năng thời tiết nay hỗ trợ chọn thủ công thành phố và lưu lại để hiển thị vị trí ổn định hơn",
-        release129ModeUiRefactor: "Tái cấu trúc UI cho 3 chế độ Toàn cảnh / Nhịp điệu / Khoảng trắng, tách component dùng chung và dọn mã trùng lặp cũ",
+        release129ModeUiRefactor: "Tái cấu trúc UI cho 2 chế độ Nhịp điệu / Khoảng trắng, tách component dùng chung và dọn mã trùng lặp cũ",
         release129WallpaperModalRefine: "Thiết kế lại popup cài đặt hình nền thành 4 tab thống nhất: Bing / Thời tiết / Màu sắc / Tùy chỉnh",
         release129ColorWallpaperGradients: "Thêm hình nền màu (12 preset gradient) và tối ưu độ chuyển màu, bo góc ô màu, cùng chất lượng phần xem trước",
         release129MaskSliderByMode: "Thêm thanh trượt độ mờ lớp phủ nền (0-100), chỉ hiện khi hover và chỉ cho loại hình nền đang được áp dụng",
@@ -811,6 +809,17 @@ export default {
 	      noComparable: "Không tìm thấy dữ liệu lối tắt có thể so sánh."
 	    },
 	    leaftabDangerousSync: {
+	      title: "Đã chặn đồng bộ rủi ro",
+	      description: "Phát hiện số lượng dấu trang thay đổi bất thường nên đã tạm dừng tự động đồng bộ.",
+	      riskDescription: "Số dấu trang dự kiến sẽ đổi từ {{from}} xuống {{to}}, có thể xóa nhầm khoảng {{loss}} mục.",
+	      localBookmarks: "Dấu trang cục bộ",
+	      remoteBookmarks: "Dấu trang {{provider}}",
+	      continueWithoutBookmarks: "Tiếp tục đồng bộ lối tắt và cài đặt",
+	      continueWithoutBookmarksHint: "Lần này sẽ không thay đổi dấu trang; chỉ đồng bộ lối tắt và cài đặt.",
+	      deferBookmarks: "Xử lý dấu trang sau",
+	      advancedActions: "Nâng cao",
+	      useRemotePlain: "Giữ dấu trang {{provider}} (cục bộ sẽ bị ghi đè)",
+	      useLocalPlain: "Giữ dấu trang cục bộ ({{provider}} sẽ bị ghi đè)",
 	      toast: {
 	        skipBookmarks: "Lần này sẽ bỏ qua dấu trang và chỉ đồng bộ lối tắt và cài đặt.",
 	        cloudBookmarksDisabled: "Đã bật đồng bộ đám mây và tạm thời tắt “Đồng bộ dấu trang”.",

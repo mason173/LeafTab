@@ -187,9 +187,7 @@ export default {
         blank: "留白",
         blankDesc: "隐藏时间、壁纸与快捷方式",
         rhythm: "节奏",
-        rhythmDesc: "仅保留搜索与快捷方式",
-        panoramic: "全景",
-        panoramicDesc: "显示时间、天气、壁纸与快捷方式"
+        rhythmDesc: "仅保留搜索与快捷方式"
       },
       shortcutsLayout: {
         label: "快捷方式密度",
@@ -494,7 +492,7 @@ export default {
         release200AutoColorAlgorithm: "优化自动取色算法，自动取色结果更准确、更稳定",
         release200GridSimplify: "移除“丰富网格”样式，统一保留当前简洁的网格布局",
         release145OnboardingAndThemeDefaults: "新手引导默认选中“节奏”模式，并调整默认主题为绿色",
-        release145TopNavAndShortcutGuide: "主页/全景模式顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化",
+        release145TopNavAndShortcutGuide: "主页顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化",
         release145SyncI18nPolish: "同步中心与相关弹窗补齐中英文多语言（含书签同步提示与范围文案）",
         release144TranslationPromptFix: "修复每次打开 LeafTab 都可能出现“是否翻译此界面”的浏览器翻译提示",
         release144AboutQqGroup: "关于 LeafTab 弹窗新增交流 QQ 群号，方便反馈与交流",
@@ -528,7 +526,7 @@ export default {
         release130DynamicEffectsOptimize: "优化全局动态效果体验，新增“减弱动态效果”开关并统一动画降级策略。",
         release130DynamicWallpaperTab: "新增“灵动”动态壁纸分类，支持 Prism、Silk、Light Rays、Beams、Galaxy、Iridescence 预览与应用。",
         release130ManualWeatherCity: "天气功能支持手动选择城市并持久保存，定位与展示更可控。",
-        release129ModeUiRefactor: "重构“全景 / 节奏 / 留白”三种模式主界面，拆分复用组件并清理历史冗余代码。",
+        release129ModeUiRefactor: "重构“节奏 / 留白”两种模式主界面，拆分复用组件并清理历史冗余代码。",
         release129WallpaperModalRefine: "壁纸设置弹窗重构为 Bing / 天气 / 颜色 / 自定义四标签，交互与布局统一。",
         release129ColorWallpaperGradients: "新增颜色壁纸（12 组可选渐变），并优化渐变强度、色卡圆角与预览视觉。",
         release129MaskSliderByMode: "新增壁纸遮罩透明度滑块（0-100），仅当前启用壁纸类型显示且悬停出现。",
@@ -850,6 +848,17 @@ export default {
 	      noComparable: "未读取到可对比的快捷方式数据"
 	    },
 	    leaftabDangerousSync: {
+	      title: "已拦截危险同步",
+	      description: "检测到书签数量出现明显异常，已暂停自动同步。",
+	      riskDescription: "预计书签会从 {{from}} 变成 {{to}}，可能误删约 {{loss}} 条。",
+	      localBookmarks: "本地书签",
+	      remoteBookmarks: "{{provider}}书签",
+	      continueWithoutBookmarks: "继续同步快捷方式和设置",
+	      continueWithoutBookmarksHint: "本次不会改动书签，只会同步快捷方式和设置。",
+	      deferBookmarks: "稍后处理书签",
+	      advancedActions: "高级设置",
+	      useRemotePlain: "保留{{provider}}书签（本地将被替换）",
+	      useLocalPlain: "保留本地书签（{{provider}}将被替换）",
 	      toast: {
 	        skipBookmarks: "本次将跳过书签，仅同步快捷方式和设置",
 	        cloudBookmarksDisabled: "已启用云同步，并暂时关闭“同步书签”",

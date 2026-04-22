@@ -50,12 +50,14 @@ export function SearchFakeBlurSurface({
   radiusClassName = 'rounded-[999px]',
   modeOverlayOpacity = 0.65,
   modeOverlayTransitionMs = 220,
+  showBorder = true,
 }: {
   surfaceNode: HTMLElement | null;
   tone?: 'default' | 'drawer';
   radiusClassName?: string;
   modeOverlayOpacity?: number;
   modeOverlayTransitionMs?: number;
+  showBorder?: boolean;
 }) {
   const { resolvedTheme } = useTheme();
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
@@ -86,10 +88,12 @@ export function SearchFakeBlurSurface({
       >
         <div className="absolute inset-0" style={DRAWER_SURFACE_OVERLAY_STYLE} />
         <div className="absolute inset-0" style={modeOverlayStyle} />
-        <div
-          className={`absolute inset-0 ${radiusClassName}`}
-          style={buildSearchBorderStyle()}
-        />
+        {showBorder ? (
+          <div
+            className={`absolute inset-0 ${radiusClassName}`}
+            style={buildSearchBorderStyle()}
+          />
+        ) : null}
       </div>
     );
   }
@@ -130,10 +134,12 @@ export function SearchFakeBlurSurface({
       )}
       {wallpaperMaskStyle ? <div className="absolute inset-0" style={wallpaperMaskStyle} /> : null}
       <div className="absolute inset-0" style={modeOverlayStyle} />
-      <div
-        className={`absolute inset-0 ${radiusClassName}`}
-        style={buildSearchBorderStyle()}
-      />
+      {showBorder ? (
+        <div
+          className={`absolute inset-0 ${radiusClassName}`}
+          style={buildSearchBorderStyle()}
+        />
+      ) : null}
     </div>
   );
 }

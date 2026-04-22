@@ -586,6 +586,23 @@ export function useQuickAccessDrawer({
     };
   }, [handleDrawerWheel]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isDrawerExpanded) return;
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.key !== 'Escape') return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      triggerDrawerSnap(quickAccessDefaultSnapPoint);
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [isDrawerExpanded, quickAccessDefaultSnapPoint, triggerDrawerSnap]);
+
   return {
     quickAccessOpen,
     isDrawerExpanded,

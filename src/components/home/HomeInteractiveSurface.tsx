@@ -17,16 +17,18 @@ import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { useBlurredWallpaperAsset } from '@/hooks/useBlurredWallpaperAsset';
 import type { SearchInteractionState } from '@/components/search/SearchExperience';
+import { BottomCropFadeOverlay, resolveBottomCropFadeHeight } from '@/components/home/BottomCropFadeOverlay';
 import { HomeSearchBar } from '@/components/home/HomeSearchBar';
+import { focusInputWithRetry } from '@/components/home/focusInputWithRetry';
 import type { WallpaperMode } from '@/wallpaper/types';
 
-const INITIAL_SEARCH_FOCUS_RETRY_MS = 60;
-const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
 const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 0)';
 const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 const FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX = 72;
 const FOLDER_IMMERSIVE_BLUR_SCALE = 1.06;
+const FLOATING_BOTTOM_SEARCH_Z_INDEX = 14030;
+const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 14025;
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -117,6 +119,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 }: HomeInteractiveSurfaceProps) {
   const { t } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const previousDrawerExpandedRef = useRef(false);
   const [searchInteractionState, setSearchInteractionState] = useState<SearchInteractionState>({
     historyOpen: false,
     dropdownOpen: false,
@@ -134,66 +137,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }, []);
 
   useEffect(() => {
-    let attempts = 0;
-    let retryTimer: number | null = null;
-    let rafId: number | null = null;
-
-    const scheduleRetry = () => {
-      if (attempts >= INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS) return;
-      if (retryTimer !== null) return;
-      retryTimer = window.setTimeout(() => {
-        retryTimer = null;
-        tryFocusSearchInput();
-      }, INITIAL_SEARCH_FOCUS_RETRY_MS);
-    };
-
-    const tryFocusSearchInput = () => {
-      attempts += 1;
-      const input = searchInputRef.current;
-      if (!input) {
-        scheduleRetry();
-        return;
-      }
-
-      const activeElement = document.activeElement as HTMLElement | null;
-      const activeTag = activeElement?.tagName?.toLowerCase() || '';
-      const activeIsEditable = Boolean(
-        activeElement
-        && (
-          activeElement.isContentEditable
-          || activeTag === 'input'
-          || activeTag === 'textarea'
-          || activeTag === 'select'
-        ),
-      );
-      if (activeElement && activeElement !== input && activeIsEditable) {
-        return;
-      }
-
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-
-      const cursor = input.value.length;
-      try {
-        input.setSelectionRange(cursor, cursor);
-      } catch {}
-
-      if (document.activeElement !== input) {
-        scheduleRetry();
-      }
-    };
-
-    rafId = window.requestAnimationFrame(() => {
-      tryFocusSearchInput();
-    });
-
-    return () => {
-      if (rafId !== null) window.cancelAnimationFrame(rafId);
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-    };
+    return focusInputWithRetry(searchInputRef);
   }, []);
 
   useEffect(() => {
@@ -257,6 +201,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     if (!drawerExpanded || !wallpaperClockBaseProps.scenarioModeOpen) return;
     wallpaperClockBaseProps.onScenarioModeOpenChange(false);
   }, [drawerExpanded, wallpaperClockBaseProps]);
+
+  useEffect(() => {
+    const wasDrawerExpanded = previousDrawerExpandedRef.current;
+    previousDrawerExpandedRef.current = drawerExpanded;
+
+    if (!wasDrawerExpanded || drawerExpanded) return;
+    return focusInputWithRetry(searchInputRef, { forceStealFocus: true });
+  }, [drawerExpanded]);
 
   const searchPerformanceModeActive = searchInteractionState.historyOpen
     || searchInteractionState.typingBurst;
@@ -343,6 +295,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     disablePointerEventsUntilReady: true,
   }), [initialRevealReady]);
   const normalizedBackdropLuminance = clamp01(blurredWallpaperAverageLuminance ?? 0.52);
+
   const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
@@ -499,19 +452,46 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
     willChange: 'opacity',
   }), []);
-  const showFloatingBottomSearch = homeMainContentBaseProps.searchBarPosition === 'bottom';
+  const showFloatingBottomSearch = homeMainContentBaseProps.searchBarPosition === 'bottom' && !drawerExpanded;
   const floatingBottomSearchOffsetPx = Math.max(
     16,
     Math.round(homeMainContentBaseProps.layout.searchHeight * 0.42),
   );
+  const floatingBottomSearchCropLayer = useMemo(() => {
+    if (!showFloatingBottomSearch) return null;
+
+    const cropHeightPx = resolveBottomCropFadeHeight(homeMainContentBaseProps.layout.searchHeight);
+
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-x-0"
+        style={{
+          zIndex: FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX,
+          bottom: '0px',
+          ...fixedTopNavRevealStyle,
+          opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
+          willChange: 'opacity',
+          pointerEvents: 'none',
+        }}
+      >
+        <BottomCropFadeOverlay heightPx={cropHeightPx} />
+      </div>
+    );
+  }, [
+    fixedTopNavRevealStyle,
+    homeMainContentBaseProps.layout.searchHeight,
+    showFloatingBottomSearch,
+  ]);
 
   const floatingBottomSearchLayer = useMemo(() => {
     if (!showFloatingBottomSearch) return null;
 
     return (
       <div
-        className="fixed inset-x-0 z-[140] pointer-events-none px-4"
+        className="fixed inset-x-0 pointer-events-none px-4"
         style={{
+          zIndex: FLOATING_BOTTOM_SEARCH_Z_INDEX,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + ${floatingBottomSearchOffsetPx}px)`,
           ...fixedTopNavRevealStyle,
           opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
@@ -526,10 +506,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
         >
           <HomeSearchBar
             searchExperienceProps={searchExperienceProps}
+            interactionState={searchInteractionState}
+            maxWidthPx={homeMainContentBaseProps.layout.contentWidth}
             blankMode={modeFlags.searchUsesBlankStyle}
             forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
-            searchSurfaceTone={drawerExpanded ? 'drawer' : 'default'}
+            searchSurfaceTone="default"
             suggestionsPlacement="top"
+            motionContext="floating-bottom"
+            reduceMotionVisuals={homeMainContentBaseProps.reduceMotionVisuals}
           />
         </div>
       </div>
@@ -538,9 +522,10 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     fixedTopNavRevealStyle,
     floatingBottomSearchOffsetPx,
     homeMainContentBaseProps.layout.contentWidth,
+    homeMainContentBaseProps.reduceMotionVisuals,
     modeFlags.forceWhiteSearchTheme,
     modeFlags.searchUsesBlankStyle,
-    drawerExpanded,
+    searchInteractionState,
     searchExperienceProps,
     showFloatingBottomSearch,
   ]);
@@ -574,10 +559,12 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             modeFlags={modeFlags}
             wallpaperClockProps={wallpaperClockProps}
             searchExperienceProps={searchExperienceProps}
+            searchInteractionState={searchInteractionState}
             searchInteractionLocked={searchInteractionLocked}
             onDrawerExpandedChange={setDrawerExpanded}
             shortcutGridProps={shortcutGridProps}
           />
+          {floatingBottomSearchCropLayer}
           {floatingBottomSearchLayer}
         </>
       </WallpaperBackdropProvider>

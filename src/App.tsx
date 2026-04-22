@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
@@ -57,9 +57,6 @@ import {
 import { applyDynamicAccentColor, resolveAccentColorSelection } from '@/utils/dynamicAccentColor';
 import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
 import { ensureExtensionPermission } from '@/utils/extensionPermissions';
-import {
-  PANORAMIC_SURFACE_REVEAL_TIMING,
-} from '@/config/animationTokens';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { type LeafTabSyncSnapshot } from '@/sync/leaftab';
 import {
@@ -1650,7 +1647,7 @@ export default function App() {
   const shortcutsAreaHeight = displayRows * shortcutRowHeight + Math.max(0, displayRows - 1) * shortcutRowGap;
 
   const gridHitInspectorVisible = adminModeEnabled && gridHitDebugVisible;
-  const modeLayersVisible = !roleSelectorOpen && displayMode !== 'panoramic';
+  const modeLayersVisible = !roleSelectorOpen;
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
     ? freshWallpaperSrc
@@ -1928,6 +1925,11 @@ export default function App() {
     currentWallpaperMode: effectiveWallpaperMode,
     currentColorWallpaperId: colorWallpaperId,
     currentShortcutIconAppearance: shortcutIconAppearance,
+    activeSyncProvider: user && syncState.cloudSyncEnabled
+      ? 'cloud'
+      : syncState.leafTabWebdavEnabled
+        ? 'webdav'
+        : 'none',
     onOpenSlashCommandDialog: handleOpenSlashCommandDialog,
   }), [
     colorWallpaperId,
@@ -1946,7 +1948,10 @@ export default function App() {
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
     shortcutIconAppearance,
+    syncState.cloudSyncEnabled,
+    syncState.leafTabWebdavEnabled,
     tabSwitchSearchEngine,
+    user,
     visualEffectsLevel,
   ]);
   const shortcutEngineHostAdapter = useMemo(() => createLeaftabGridEngineHostAdapter({
@@ -2060,14 +2065,7 @@ export default function App() {
     topNavIntroCompleted,
     visualEffectsLevel,
   ]);
-  const compactFolderOverlayProps = useMemo(() => ({
-    ...shortcutEngineHostAdapter.compactFolderOverlayProps,
-    displayMode,
-  }), [displayMode, shortcutEngineHostAdapter.compactFolderOverlayProps]);
-  const panoramicSurfaceRevealStyle: CSSProperties = {
-    backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)',
-    transition: `background-color ${PANORAMIC_SURFACE_REVEAL_TIMING}`,
-  };
+  const compactFolderOverlayProps = shortcutEngineHostAdapter.compactFolderOverlayProps;
   const shouldMountWallpaperSelector = useKeepMountedAfterFirstOpen(wallpaperSettingsOpen);
   const shouldMountUpdateDialog = !IS_STORE_BUILD && useKeepMountedAfterFirstOpen(updateDialogOpen);
   const shortcutExperienceRootProps = useShortcutExperienceRootProps({
@@ -2261,7 +2259,7 @@ export default function App() {
           ref={pageFocusRef}
           tabIndex={-1}
           className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
-          style={panoramicSurfaceRevealStyle}
+          style={{ backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)' }}
         >
           <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
           {shouldMountWallpaperSelector ? (

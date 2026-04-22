@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RiArrowRightSLine, RiCheckFill, RiSearchLine } from '@/icons/ri-compat';
+import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,8 +82,7 @@ export function SearchEngineSwitcher({
           className={`relative z-[1] mr-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-[12px] px-2 py-1.5 ${toneClassName || 'text-foreground/70'}`}
         >
           <span className="relative flex size-5 shrink-0 items-center justify-center">
-            <RiSearchLine className="absolute inset-0 m-auto size-4 opacity-40" />
-            <img alt="" className="pointer-events-none relative z-[1] size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
+            <img alt="" className="pointer-events-none size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
           </span>
           <RiArrowRightSLine className="size-4 opacity-70" />
         </button>

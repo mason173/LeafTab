@@ -135,9 +135,7 @@ export default {
         blank: "空白",
         blankDesc: "時間・壁紙・ショートカットを非表示",
         rhythm: "リズム",
-        rhythmDesc: "検索とショートカットのみ表示",
-        panoramic: "パノラマ",
-        panoramicDesc: "時間・天気・壁紙・ショートカットを表示"
+        rhythmDesc: "検索とショートカットのみ表示"
       },
       shortcutsLayout: {
         label: "ショートカット密度",
@@ -353,7 +351,7 @@ export default {
         release130DynamicEffectsOptimize: "全体の動的エフェクト体験を最適化し、「動的効果を抑える」トグルと統一されたモーション低減挙動を追加",
         release130DynamicWallpaperTab: "新しい「動的」壁紙カテゴリを追加し、Prism / Silk / Light Rays / Beams / Galaxy / Iridescence のプレビューと適用に対応",
         release130ManualWeatherCity: "天気機能で都市を手動選択して保存できるようになり、位置表示をより安定して制御可能に",
-        release129ModeUiRefactor: "「パノラマ / リズム / 余白」の3モードUIを再構成し、共通コンポーネント化と旧重複コードの整理を実施",
+        release129ModeUiRefactor: "「リズム / 余白」の2モードUIを再構成し、共通コンポーネント化と旧重複コードの整理を実施",
         release129WallpaperModalRefine: "壁紙設定ダイアログを Bing / 天気 / カラー / カスタム の4タブ構成に再設計し、操作とレイアウトを統一",
         release129ColorWallpaperGradients: "カラー壁紙（12種のグラデーション）を追加し、グラデーション強度・スウォッチ角丸・プレビュー表現を最適化",
         release129MaskSliderByMode: "壁紙マスク不透明度スライダー（0-100）を追加。現在有効な壁紙タイプのみ、ホバー時に表示",
@@ -828,6 +826,17 @@ export default {
 	      noComparable: "比較できるショートカットデータが見つかりませんでした。"
 	    },
 	    leaftabDangerousSync: {
+	      title: "危険な同期を検出しました",
+	      description: "ブックマーク数に大きな異常が検出されたため、自動同期を一時停止しました。",
+	      riskDescription: "ブックマーク数が {{from}} から {{to}} に変わる見込みで、約 {{loss}} 件が誤って削除される可能性があります。",
+	      localBookmarks: "ローカルのブックマーク",
+	      remoteBookmarks: "{{provider}} のブックマーク",
+	      continueWithoutBookmarks: "ショートカットと設定のみ同期する",
+	      continueWithoutBookmarksHint: "今回はブックマークを変更せず、ショートカットと設定のみを同期します。",
+	      deferBookmarks: "ブックマークは後で処理する",
+	      advancedActions: "詳細設定",
+	      useRemotePlain: "{{provider}} のブックマークを保持する（ローカルは置き換え）",
+	      useLocalPlain: "ローカルのブックマークを保持する（{{provider}} は置き換え）",
 	      toast: {
 	        skipBookmarks: "この回はブックマークをスキップし、ショートカットと設定のみ同期します。",
 	        cloudBookmarksDisabled: "クラウド同期は有効ですが、「ブックマーク同期」を一時的にオフにしました。",

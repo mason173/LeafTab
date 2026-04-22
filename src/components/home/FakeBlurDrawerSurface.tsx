@@ -79,23 +79,22 @@ export function FakeBlurDrawerSurface({
     panelTranslateYPx,
   }), [panelHeightVh, panelTranslateYPx]);
 
-  const themeCoverStyle = useMemo<CSSProperties>(() => (
-    isDarkTheme
-      ? {
-          backgroundColor: `rgba(7,9,12,${(0.68 + (normalizedBackdropLuminance * 0.18)).toFixed(3)})`,
-        }
-      : {
-          backgroundColor: `rgba(248,250,252,${(0.78 - (normalizedBackdropLuminance * 0.24)).toFixed(3)})`,
-        }
-  ), [isDarkTheme, normalizedBackdropLuminance]);
-  const adaptiveDimmingStyle = useMemo<CSSProperties | null>(() => {
-    if (isDarkTheme || normalizedBackdropLuminance < 0.62) return null;
+  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
+    backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
+  }), [normalizedBackdropLuminance]);
+  const immersiveBlurOverlayStyle = useMemo<CSSProperties>(() => {
+    if (normalizedBackdropLuminance > 0.56) {
+      const darkAlpha = 0.05 + ((normalizedBackdropLuminance - 0.56) / 0.44) * 0.11;
+      return {
+        backgroundColor: `rgba(18,22,30,${darkAlpha.toFixed(3)})`,
+      };
+    }
 
-    const alpha = ((normalizedBackdropLuminance - 0.62) / 0.38) * 0.12;
+    const lightAlpha = 0.08 - (normalizedBackdropLuminance / 0.56) * 0.03;
     return {
-      backgroundColor: `rgba(12,16,22,${alpha.toFixed(3)})`,
+      backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
     };
-  }, [isDarkTheme, normalizedBackdropLuminance]);
+  }, [normalizedBackdropLuminance]);
 
   const colorWallpaperStyle = useMemo<CSSProperties>(() => ({
     ...buildViewportSliceGradientStyle({
@@ -135,8 +134,8 @@ export function FakeBlurDrawerSurface({
         />
       )}
       {wallpaperMaskStyle ? <div className="absolute inset-0" style={wallpaperMaskStyle} /> : null}
-      <div className="absolute inset-0" style={themeCoverStyle} />
-      {adaptiveDimmingStyle ? <div className="absolute inset-0" style={adaptiveDimmingStyle} /> : null}
+      <div className="absolute inset-0" style={immersiveBlurOverlayStyle} />
+      <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
     </div>
   );
 }

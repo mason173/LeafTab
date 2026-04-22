@@ -8,7 +8,6 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import {
   RiCheckFill,
   RiCheckboxBlankFill,
-  RiDashboardFill,
   RiDownload2Fill,
   RiFlashlightFill,
   RiUpload2Fill,
@@ -215,7 +214,6 @@ export default function SettingsModal({
     ];
   }, [isDarkTheme, recommendedAccentPalette, t]);
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
-    if (mode === 'panoramic') return <RiDashboardFill className={className} />;
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
     return <RiCheckboxBlankFill className={className} />;
   };
@@ -415,7 +413,7 @@ export default function SettingsModal({
             </div>
             {/* Display Mode Selection */}
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {DISPLAY_MODE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
@@ -540,22 +538,20 @@ export default function SettingsModal({
               </Switch>
             </div>
 
-            {displayMode !== 'panoramic' && (
-              <div className="flex items-center justify-between space-x-2">
-                <div className="flex flex-col space-y-1 items-start">
-                  <span className="text-sm font-medium leading-none">{t('settings.showTime.label')}</span>
-                  <span className="font-normal text-xs text-muted-foreground">{t('settings.showTime.description')}</span>
-                </div>
-                <Switch
-                  id="show-time"
-                  checked={showTime}
-                  onCheckedChange={onShowTimeChange}
-                  className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
-                >
-                  <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
-                </Switch>
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex flex-col space-y-1 items-start">
+                <span className="text-sm font-medium leading-none">{t('settings.showTime.label')}</span>
+                <span className="font-normal text-xs text-muted-foreground">{t('settings.showTime.description')}</span>
               </div>
-            )}
+              <Switch
+                id="show-time"
+                checked={showTime}
+                onCheckedChange={onShowTimeChange}
+                className="relative flex h-6 w-10 items-center justify-start rounded-full border border-border p-0.5 transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              >
+                <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
+              </Switch>
+            </div>
 
           {username && (
             <div className="flex items-center justify-between space-x-2">

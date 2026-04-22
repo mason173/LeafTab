@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type RefObject,
 } from 'react';
+import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
 import { SEARCH_ENGINE_BRAND_NAMES } from '@/components/search/searchEngineSwitcher.shared';
@@ -66,7 +67,10 @@ export type SlashCommandDialogTarget =
 
 type SlashCommandActionId =
   | 'bookmarks'
+  | 'history'
+  | 'tabs'
   | 'search-settings'
+  | 'theme-mode'
   | 'shortcut-guide'
   | 'shortcut-icon-settings'
   | 'wallpaper-settings'
@@ -90,7 +94,10 @@ function parseSlashCommandActionId(value: string): SlashCommandActionId | null {
   const id = value.slice(SLASH_COMMAND_ACTION_VALUE_PREFIX.length);
   if (
     id === 'bookmarks'
+    || id === 'history'
+    || id === 'tabs'
     || id === 'search-settings'
+    || id === 'theme-mode'
     || id === 'shortcut-guide'
     || id === 'shortcut-icon-settings'
     || id === 'wallpaper-settings'
@@ -128,6 +135,7 @@ export interface SearchExperienceProps {
   currentWallpaperMode?: WallpaperMode;
   currentColorWallpaperId?: string;
   currentShortcutIconAppearance?: ShortcutIconAppearance;
+  activeSyncProvider?: 'cloud' | 'webdav' | 'none';
   onInteractionStateChange?: (state: SearchInteractionState) => void;
   onOpenSlashCommandDialog?: (target: SlashCommandDialogTarget) => void;
 }
@@ -216,10 +224,12 @@ export const SearchExperience = memo(function SearchExperience({
   currentWallpaperMode,
   currentColorWallpaperId,
   currentShortcutIconAppearance,
+  activeSyncProvider = 'none',
   onInteractionStateChange,
   onOpenSlashCommandDialog,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
   const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
@@ -531,6 +541,33 @@ export const SearchExperience = memo(function SearchExperience({
     }
     return t('settings.shortcutIconSettings.colorful', { defaultValue: '彩色' });
   }, [currentShortcutIconAppearance, t]);
+  const currentThemePreference = theme === 'light' || theme === 'dark' || theme === 'system'
+    ? theme
+    : 'system';
+  const currentResolvedTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const currentThemeModeLabel = useMemo(() => {
+    if (currentThemePreference === 'system') {
+      return t('search.slash.themeCurrentSystem', {
+        mode: currentResolvedTheme === 'dark'
+          ? t('settings.theme.dark', { defaultValue: '深色' })
+          : t('settings.theme.light', { defaultValue: '浅色' }),
+        defaultValue: `跟随系统 · ${currentResolvedTheme === 'dark' ? '深色' : '浅色'}`,
+      });
+    }
+    if (currentThemePreference === 'dark') {
+      return t('settings.theme.dark', { defaultValue: '深色' });
+    }
+    return t('settings.theme.light', { defaultValue: '浅色' });
+  }, [currentResolvedTheme, currentThemePreference, t]);
+  const activeSyncProviderLabel = useMemo(() => {
+    if (activeSyncProvider === 'cloud') {
+      return t('search.slash.syncProviderCloud', { defaultValue: '云同步' });
+    }
+    if (activeSyncProvider === 'webdav') {
+      return t('search.slash.syncProviderWebdav', { defaultValue: 'WebDAV' });
+    }
+    return t('search.slash.syncProviderNone', { defaultValue: '未启用' });
+  }, [activeSyncProvider, t]);
   const slashCommandEntries = useMemo<SlashCommandEntry[]>(() => [
     {
       id: 'bookmarks',
@@ -541,6 +578,22 @@ export const SearchExperience = memo(function SearchExperience({
       keywords: ['/bookmarks', '/b', 'bookmarks', '书签'],
     },
     {
+      id: 'history',
+      icon: 'history',
+      label: t('search.slash.history', {
+        defaultValue: '/historys · 搜索浏览器历史记录',
+      }),
+      keywords: ['/historys', '/h', 'history', 'historys', '历史', '历史记录'],
+    },
+    {
+      id: 'tabs',
+      icon: 'tabs',
+      label: t('search.slash.tabs', {
+        defaultValue: '/tabs · 搜索已打开标签页',
+      }),
+      keywords: ['/tabs', '/t', 'tabs', '标签页', '已打开标签页'],
+    },
+    {
       id: 'search-settings',
       icon: 'search-settings',
       label: t('search.slash.searchSettings', {
@@ -548,6 +601,15 @@ export const SearchExperience = memo(function SearchExperience({
       }),
       detail: currentSearchEngineLabel,
       keywords: ['设置', '搜索设置', 'search'],
+    },
+    {
+      id: 'theme-mode',
+      icon: 'theme-mode',
+      label: t('search.slash.themeMode', {
+        defaultValue: '主题模式',
+      }),
+      detail: currentThemeModeLabel,
+      keywords: ['/theme', 'theme', '主题', '模式', '深色', '浅色', '跟随系统'],
     },
     {
       id: 'shortcut-guide',
@@ -581,6 +643,7 @@ export const SearchExperience = memo(function SearchExperience({
       label: t('search.slash.syncCenter', {
         defaultValue: '同步中心',
       }),
+      detail: activeSyncProviderLabel,
       keywords: ['设置', '同步', 'sync'],
     },
     {
@@ -591,7 +654,15 @@ export const SearchExperience = memo(function SearchExperience({
       }),
       keywords: ['设置', '关于', 'about'],
     },
-  ], [t]);
+  ], [
+    activeSyncProviderLabel,
+    currentSearchEngineLabel,
+    currentShortcutIconAppearanceLabel,
+    currentThemeModeLabel,
+    currentThemePreference,
+    currentWallpaperModeLabel,
+    t,
+  ]);
   const slashCommandActions = useMemo<SearchAction[]>(() => {
     if (!isSlashCommandPanelOpen) return [];
     const filteredEntries = slashCommandQueryKey
@@ -700,6 +771,52 @@ export const SearchExperience = memo(function SearchExperience({
       return;
     }
 
+    if (actionId === 'history') {
+      setSearchValue(resolveSearchCommandAutocomplete('/historys') || '/historys ');
+      setHistorySelectedIndex(-1);
+      openHistoryPanel({ select: 'none' });
+      void ensureExtensionPermission('history', { requestIfNeeded: true })
+        .then((granted) => {
+          setSearchPermissionGranted('history', granted);
+          if (!granted) {
+            showSearchCommandPermissionDeniedToast('history');
+          }
+        })
+        .catch(() => {
+          setSearchPermissionGranted('history', false);
+        });
+      return;
+    }
+
+    if (actionId === 'tabs') {
+      setSearchValue(resolveSearchCommandAutocomplete('/tabs') || '/tabs ');
+      setHistorySelectedIndex(-1);
+      openHistoryPanel({ select: 'none' });
+      void ensureExtensionPermission('tabs', { requestIfNeeded: true })
+        .then((granted) => {
+          setSearchPermissionGranted('tabs', granted);
+          if (!granted) {
+            showSearchCommandPermissionDeniedToast('tabs');
+          }
+        })
+        .catch(() => {
+          setSearchPermissionGranted('tabs', false);
+        });
+      return;
+    }
+
+    if (actionId === 'theme-mode') {
+      const nextTheme = currentThemePreference === 'system'
+        ? 'light'
+        : currentThemePreference === 'light'
+          ? 'dark'
+          : 'system';
+      setTheme(nextTheme);
+      setSearchValue('');
+      closeHistoryPanel('selection');
+      return;
+    }
+
     setSearchValue('');
     closeHistoryPanel('selection');
 
@@ -718,8 +835,10 @@ export const SearchExperience = memo(function SearchExperience({
     }
   }, [
     closeHistoryPanel,
+    currentThemePreference,
     onOpenSlashCommandDialog,
     openHistoryPanel,
+    setTheme,
     setSearchPermissionGranted,
     setHistorySelectedIndex,
     setSearchValue,
@@ -886,12 +1005,15 @@ export const SearchExperience = memo(function SearchExperience({
     const trimmedInput = nextValue.trimStart().toLowerCase();
     const commandId = (
       trimmedInput === '/bookmarks'
+      || trimmedInput === '/historys'
       || trimmedInput === '/tabs'
       || matchedAlias !== null
     ) ? (parsedCommand.id ?? matchedAlias) : null;
 
     if (commandId === 'bookmarks') {
       runAfterSearchCommandPermission('bookmarks', () => {});
+    } else if (commandId === 'history') {
+      runAfterSearchCommandPermission('history', () => {});
     } else if (commandId === 'tabs') {
       runAfterSearchCommandPermission('tabs', () => {});
     }
@@ -1145,6 +1267,36 @@ export const SearchExperience = memo(function SearchExperience({
       return undefined;
     }
 
+    if (searchSessionModel.mode === 'history') {
+      if (permissionRequestInFlight === 'history') {
+        return {
+          tone: 'loading' as const,
+          message: t('search.historyPermissionPending', {
+            defaultValue: '正在等待历史记录权限确认...',
+          }),
+        };
+      }
+      if (permissionWarmup === 'history' || suggestionSourceStatus.browserHistoryLoading) {
+        return {
+          tone: 'loading' as const,
+          message: t('search.historyPreparing', {
+            defaultValue: '正在加载浏览器历史记录...',
+          }),
+        };
+      }
+      if (searchPermissionsReady && !searchPermissions.history) {
+        return {
+          tone: 'info' as const,
+          message: t('search.historyPermissionBanner', {
+            defaultValue: '授权后可显示浏览器历史记录',
+          }),
+          actionLabel: authorizationLabel,
+          onAction: () => runAfterSearchCommandPermission('history', () => {}),
+        };
+      }
+      return undefined;
+    }
+
     if (permissionRequestInFlight === 'history') {
       return {
         tone: 'loading' as const,
@@ -1195,6 +1347,9 @@ export const SearchExperience = memo(function SearchExperience({
     }
     if (searchSessionModel.mode === 'tabs') {
       return t('search.noTabs', { defaultValue: '没有找到匹配的标签页' });
+    }
+    if (searchSessionModel.mode === 'history') {
+      return t('search.noHistory', { defaultValue: '没有找到匹配的历史记录' });
     }
     return t('search.noHistory');
   }, [isSlashCommandPanelOpen, searchSessionModel.mode, t]);

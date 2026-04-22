@@ -85,7 +85,7 @@
             "build": "npm run build:community",
             "typecheck": "tsc --noEmit -p tsconfig.json",
             "test": "vitest run",
-            "test:e2e:build": "playwright test",
+            "test:e2e:build": "npm run build && playwright test",
             "test:e2e:list": "playwright test --list",
             "profile:fluidity": "node scripts/profile-fluidity.mjs",
             "test:watch": "vitest",

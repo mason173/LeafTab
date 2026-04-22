@@ -276,7 +276,7 @@ export function useSearch(
     let nextValue = rawValue;
 
     // 对齐命令补全交互：
-    // 1) 输入 /b 自动补全为 /bookmarks ，输入 /t 自动补全为 /tabs
+    // 1) 输入 /b 自动补全为 /bookmarks ，输入 /h 自动补全为 /historys ，输入 /t 自动补全为 /tabs
     // 2) 命令壳（token + 可选尾随空格）在退格时按整段处理
     if (inputType === 'deleteContentBackward') {
       if (isSearchCommandShellValue(searchValue)) {

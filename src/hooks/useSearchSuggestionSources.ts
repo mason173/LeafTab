@@ -167,27 +167,34 @@ export function useSearchSuggestionSources({
     () => normalizeSearchQuery(searchValue),
     [searchValue],
   );
-  const trimmedSearchValue = searchValue.trim();
+  const browserHistoryQuery = useMemo(
+    () => (queryModel.mode === 'history' ? commandQuery.trim() : searchValue.trim()),
+    [commandQuery, queryModel.mode, searchValue],
+  );
+  const normalizedBrowserHistoryQuery = useMemo(
+    () => normalizeSearchQuery(browserHistoryQuery),
+    [browserHistoryQuery],
+  );
   const debouncedBrowserHistoryQuery = useDebouncedValue(
-    trimmedSearchValue,
-    trimmedSearchValue ? SEARCH_ASYNC_DEBOUNCE_MS : 0,
+    browserHistoryQuery,
+    browserHistoryQuery ? SEARCH_ASYNC_DEBOUNCE_MS : 0,
   );
   const browserHistoryMaxResults = debouncedBrowserHistoryQuery ? BROWSER_HISTORY_QUERY_LIMIT : BROWSER_HISTORY_EMPTY_QUERY_LIMIT;
   const shouldFetchBrowserHistory = useMemo(() => {
     if (!isDocumentVisible) return false;
     if (!historyPermissionGranted) return false;
     if (permissionWarmup === 'history') return false;
-    if (queryModel.mode !== 'default') return false;
-    if (!trimmedSearchValue) return true;
-    if (!normalizedSearchQuery) return false;
+    if (queryModel.mode !== 'default' && queryModel.mode !== 'history') return false;
+    if (!browserHistoryQuery) return true;
+    if (!normalizedBrowserHistoryQuery) return false;
     return true;
   }, [
+    browserHistoryQuery,
     historyPermissionGranted,
     isDocumentVisible,
-    normalizedSearchQuery,
+    normalizedBrowserHistoryQuery,
     permissionWarmup,
     queryModel.mode,
-    trimmedSearchValue,
   ]);
 
   const {

@@ -135,9 +135,7 @@ export default {
         blank: "留白",
         blankDesc: "隱藏時間、桌布與捷徑",
         rhythm: "節奏",
-        rhythmDesc: "僅保留搜尋與捷徑",
-        panoramic: "全景",
-        panoramicDesc: "顯示時間、天氣、桌布與捷徑"
+        rhythmDesc: "僅保留搜尋與捷徑"
       },
       shortcutsLayout: {
         label: "捷徑密度",
@@ -344,7 +342,7 @@ export default {
         release130DynamicEffectsOptimize: "優化全域動態效果體驗，新增「減弱動態效果」開關並統一動畫降級策略。",
         release130DynamicWallpaperTab: "新增「靈動」動態桌布分類，支援 Prism、Silk、Light Rays、Beams、Galaxy、Iridescence 預覽與套用。",
         release130ManualWeatherCity: "天氣功能支援手動選擇城市並持久保存，定位與顯示更可控。",
-        release129ModeUiRefactor: "重構「全景 / 節奏 / 留白」三種模式主介面，拆分共用元件並清理歷史冗餘程式碼。",
+        release129ModeUiRefactor: "重構「節奏 / 留白」兩種模式主介面，拆分共用元件並清理歷史冗餘程式碼。",
         release129WallpaperModalRefine: "桌布設定彈窗重構為 Bing / 天氣 / 顏色 / 自訂四分頁，互動與布局統一。",
         release129ColorWallpaperGradients: "新增顏色桌布（12 組可選漸層），並優化漸層強度、色卡圓角與預覽視覺。",
         release129MaskSliderByMode: "新增桌布遮罩透明度滑桿（0-100），僅在目前啟用的桌布類型顯示且懸停出現。",
@@ -838,6 +836,17 @@ export default {
 	      noComparable: "未讀取到可對比的捷徑資料"
 	    },
 	    leaftabDangerousSync: {
+	      title: "已攔截危險同步",
+	      description: "偵測到書籤數量出現明顯異常，已暫停自動同步。",
+	      riskDescription: "預計書籤會從 {{from}} 變成 {{to}}，可能誤刪約 {{loss}} 筆。",
+	      localBookmarks: "本地書籤",
+	      remoteBookmarks: "{{provider}}書籤",
+	      continueWithoutBookmarks: "繼續同步捷徑與設定",
+	      continueWithoutBookmarksHint: "本次不會變更書籤，只會同步捷徑與設定。",
+	      deferBookmarks: "稍後處理書籤",
+	      advancedActions: "進階選項",
+	      useRemotePlain: "保留{{provider}}書籤（本地將被取代）",
+	      useLocalPlain: "保留本地書籤（{{provider}}將被取代）",
 	      toast: {
 	        skipBookmarks: "本次將跳過書籤，僅同步捷徑與設定",
 	        cloudBookmarksDisabled: "已啟用雲同步，並暫時關閉「同步書籤」",

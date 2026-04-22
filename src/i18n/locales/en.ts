@@ -184,9 +184,7 @@ export default {
         blank: "Blank",
         blankDesc: "Hide time, wallpaper and shortcuts",
         rhythm: "Rhythm",
-        rhythmDesc: "Keep search and shortcuts only",
-        panoramic: "Panoramic",
-        panoramicDesc: "Show time, weather, wallpaper and shortcuts"
+        rhythmDesc: "Keep search and shortcuts only"
       },
       shortcutsLayout: {
         label: "Shortcut Density",
@@ -536,7 +534,7 @@ export default {
         release130DynamicEffectsOptimize: "Optimized global motion experience with a new Reduce Dynamic Effects toggle and unified motion-reduction behavior",
         release130DynamicWallpaperTab: "Added the new Dynamic wallpaper category with Prism, Silk, Light Rays, Beams, Galaxy, and Iridescence previews",
         release130ManualWeatherCity: "Weather now supports manual city selection with persistent storage for more predictable location display",
-        release129ModeUiRefactor: "Refactored the Panorama / Rhythm / Blank mode UI with shared components and removed legacy duplicate code",
+        release129ModeUiRefactor: "Refactored the Rhythm / Blank mode UI with shared components and removed legacy duplicate code",
         release129WallpaperModalRefine: "Reworked the wallpaper settings dialog into four unified tabs: Bing / Weather / Color / Custom",
         release129ColorWallpaperGradients: "Added Color Wallpaper presets (12 gradients) and tuned gradient intensity, swatch radius, and preview visuals",
         release129MaskSliderByMode: "Added a wallpaper mask opacity slider (0-100) that appears only for the currently active wallpaper type on hover",

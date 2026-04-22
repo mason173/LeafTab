@@ -195,7 +195,7 @@ export function SearchField({
   dropdownOpen,
   onEngineOpenChange,
   showEngineSwitcher = true,
-  panelExpanded = false,
+  panelExpanded: _panelExpanded = false,
 }: SearchFieldProps) {
   const { t } = useTranslation();
   const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
@@ -203,7 +203,7 @@ export function SearchField({
   const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
   const gap = Math.max(8, Math.round(height * 0.2));
-  const modeOverlayOpacity = panelExpanded ? 0.65 : 0.35;
+  const modeOverlayOpacity = 0.75;
 
   return (
     <div
@@ -226,6 +226,7 @@ export function SearchField({
         tone={surfaceTone}
         radiusClassName="rounded-[999px]"
         modeOverlayOpacity={modeOverlayOpacity}
+        showBorder={false}
       />
       {showEngineSwitcher ? (
         <SearchEngineSwitcher

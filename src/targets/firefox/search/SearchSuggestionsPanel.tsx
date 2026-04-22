@@ -5,6 +5,7 @@ import {
   RiBookOpenFill,
   RiCloudFill,
   RiCornerDownLeftLine,
+  RiDashboardFill,
   RiHistoryFill,
   RiImageFill,
   RiInformationFill,
@@ -29,7 +30,10 @@ const FIREFOX_PANEL_TRANSITION_MS = 170;
 function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass: string) {
   if (!action.displayIcon) return null;
   if (action.displayIcon === 'bookmarks') return <RiBookOpenFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'history') return <RiHistoryFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'tabs') return <RiDashboardFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'search-settings') return <RiSearchLine className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'theme-mode') return <RiPaletteFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'shortcut-guide') return <RiQuestionLine className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'shortcut-icon-settings') return <RiPaletteFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'wallpaper-settings') return <RiImageFill className={`size-3.5 ${secondaryTextClass}`} />;
@@ -317,6 +321,7 @@ export function SearchSuggestionsPanel({
         surfaceNode={surfaceNode}
         tone={surfaceTone}
         radiusClassName="rounded-[20px]"
+        showBorder={false}
       />
       <div className="relative z-[1]">
         {statusNotice ? (

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from 'next-themes';
 import type { FolderShortcutDropIntent } from '@leaftab/workspace-core';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
@@ -26,7 +25,6 @@ import {
   getFolderPreviewSlotEntries,
   getFolderPreviewTitle,
 } from '@/components/shortcuts/folderPreviewRegistry';
-import type { DisplayMode } from '@/displayMode/config';
 import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
@@ -48,7 +46,6 @@ export type ShortcutFolderCompactOverlayProps = {
   onShortcutContextMenu: (event: React.MouseEvent<HTMLDivElement>, folderId: string, shortcut: Shortcut) => void;
   onShortcutDropIntent: (intent: FolderShortcutDropIntent) => void;
   onExtractDragStart?: (payload: FolderExtractDragStartPayload) => void;
-  displayMode: DisplayMode;
 };
 
 type OverlayRect = ShortcutFolderOverlayRect;
@@ -687,10 +684,8 @@ export function ShortcutFolderCompactOverlay({
   onShortcutContextMenu,
   onShortcutDropIntent,
   onExtractDragStart,
-  displayMode,
 }: ShortcutFolderCompactOverlayProps) {
   const { t } = useTranslation();
-  const { resolvedTheme } = useTheme();
   const [metrics, setMetrics] = useState<OverlayMetrics | null>(null);
   const [committedMetrics, setCommittedMetrics] = useState<OverlayMetrics | null>(null);
   const [closingSourceSnapshot, setClosingSourceSnapshot] = useState<ShortcutFolderOpeningSourceSnapshot | null>(null);
@@ -711,7 +706,7 @@ export function ShortcutFolderCompactOverlay({
     () => (shortcut && isShortcutFolder(shortcut) ? getShortcutChildren(shortcut) : []),
     [shortcut],
   );
-  const useReadableDarkText = displayMode === 'panoramic' && resolvedTheme !== 'dark';
+  const useReadableDarkText = false;
   const roundedCorner = `${FOLDER_PANEL_RADIUS_PX}px`;
   const maxPanelHeightPx = useMemo(() => {
     if (typeof window === 'undefined') return FOLDER_PANEL_MAX_HEIGHT_PX;

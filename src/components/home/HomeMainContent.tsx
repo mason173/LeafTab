@@ -4,7 +4,7 @@ import type { RootShortcutGridProps } from '@/features/shortcuts/components/Root
 import { WallpaperClock, type WallpaperClockProps } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
-import type { SearchExperienceProps } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps, SearchInteractionState } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { SearchBarPosition } from '@/types';
@@ -50,6 +50,7 @@ export interface HomeMainContentProps {
   reduceMotionVisuals?: boolean;
   wallpaperClockProps: HomeMainContentWallpaperClockProps;
   searchExperienceProps: HomeMainContentSearchExperienceProps;
+  searchInteractionState: SearchInteractionState;
   searchInteractionLocked: boolean;
   shortcutGridProps: HomeMainContentShortcutGridProps;
   onDrawerExpandedChange?: (expanded: boolean) => void;
@@ -62,6 +63,7 @@ export type HomeMainContentBaseProps = Omit<
   | 'modeFlags'
   | 'wallpaperClockProps'
   | 'searchExperienceProps'
+  | 'searchInteractionState'
   | 'searchInteractionLocked'
   | 'shortcutGridProps'
   | 'onDrawerExpandedChange'
@@ -99,6 +101,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   reduceMotionVisuals = false,
   wallpaperClockProps,
   searchExperienceProps,
+  searchInteractionState,
   searchInteractionLocked,
   shortcutGridProps,
   onDrawerExpandedChange,
@@ -262,9 +265,11 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
         subtleDarkTone={useExpandedLightSearchSurface}
         searchBarPosition={searchBarPosition}
+        searchHeight={layout.searchHeight}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
         searchExperienceProps={searchExperienceProps}
+        interactionState={searchInteractionState}
         shortcutGridProps={{
           ...shortcutGridProps,
           onDragStart: handleShortcutGridDragStart,

@@ -31,6 +31,7 @@ type CloudSyncActionOptions = {
   silentSuccess?: boolean;
   requestBookmarkPermission?: boolean;
   allowDestructiveBookmarkChanges?: boolean;
+  forceBookmarksForThisRun?: boolean;
   progressTaskId?: string | null;
   onProgress?: (progress: SyncProgress) => void;
   allowWhenDisabled?: boolean;
@@ -55,9 +56,11 @@ type UseSyncCenterActionsOptions = {
   cloudSyncing: boolean;
   webdavSyncing: boolean;
   webdavSyncBookmarksEnabled: boolean;
+  cloudSyncBookmarksConfigured: boolean;
   cloudSyncBookmarksEnabled: boolean;
   cloudSyncEncryptionScopeKey: string;
   cloudSyncEncryptedTransport: LeafTabSyncEncryptionTransport;
+  setCloudSyncBookmarksPermissionGranted: (granted: boolean) => void;
   ensureSyncEncryptionAccess: (params: {
     providerLabel: string;
     scopeKey: string;
@@ -81,9 +84,11 @@ export function useSyncCenterActions({
   cloudSyncing,
   webdavSyncing,
   webdavSyncBookmarksEnabled,
+  cloudSyncBookmarksConfigured,
   cloudSyncBookmarksEnabled,
   cloudSyncEncryptionScopeKey,
   cloudSyncEncryptedTransport,
+  setCloudSyncBookmarksPermissionGranted,
   ensureSyncEncryptionAccess,
   ensureCloudLegacyMigrationReady,
   handleCloudLeafTabSync,
@@ -227,7 +232,7 @@ export function useSyncCenterActions({
       }, async ({ update }) => {
         const result = await handleCloudLeafTabSync({
           allowWhenDisabled: options?.allowWhenDisabled,
-          requestBookmarkPermission: cloudSyncBookmarksEnabled,
+          requestBookmarkPermission: cloudSyncBookmarksConfigured,
           retryAfterConflictRefresh: true,
           retryAfterForceUnlock: true,
           silentSuccess: true,
@@ -251,7 +256,7 @@ export function useSyncCenterActions({
   }, [
     cloudSyncEncryptedTransport,
     cloudSyncEncryptionScopeKey,
-    cloudSyncBookmarksEnabled,
+    cloudSyncBookmarksConfigured,
     cloudSyncNowInFlightRef,
     cloudSyncing,
     ensureSyncEncryptionAccess,
@@ -317,11 +322,13 @@ export function useSyncCenterActions({
     if (!(await ensureCloudLegacyMigrationReady())) {
       return false;
     }
-    if (cloudSyncBookmarksEnabled) {
-      const permissionGranted = await ensureExtensionPermission('bookmarks', {
+    let bookmarkPermissionGranted = false;
+    if (cloudSyncBookmarksConfigured) {
+      bookmarkPermissionGranted = await ensureExtensionPermission('bookmarks', {
         requestIfNeeded: true,
       }).catch(() => false);
-      if (!permissionGranted) {
+      setCloudSyncBookmarksPermissionGranted(Boolean(bookmarkPermissionGranted));
+      if (!bookmarkPermissionGranted) {
         toast.error(t('leaftabSyncActions.bookmarksPermissionRequired', { defaultValue: '未授予书签权限，无法执行修复同步' }));
         return false;
       }
@@ -339,6 +346,7 @@ export function useSyncCenterActions({
         allowWhenDisabled: true,
         allowDestructiveBookmarkChanges: true,
         requestBookmarkPermission: false,
+        forceBookmarksForThisRun: cloudSyncBookmarksConfigured && bookmarkPermissionGranted,
         retryAfterConflictRefresh: true,
         retryAfterForceUnlock: true,
         silentSuccess: true,
@@ -359,11 +367,12 @@ export function useSyncCenterActions({
       return false;
     });
   }, [
+    cloudSyncBookmarksConfigured,
     handleCloudLeafTabSync,
-    cloudSyncBookmarksEnabled,
     ensureCloudLegacyMigrationReady,
     handleRequestCloudLogin,
     runLongTask,
+    setCloudSyncBookmarksPermissionGranted,
     setLeafTabSyncDialogOpen,
     user,
     cloudSyncDataDetail,

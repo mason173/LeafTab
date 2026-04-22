@@ -68,6 +68,7 @@ type CloudLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   mode?: LeafTabSyncInitialChoice | 'auto';
   allowWhenDisabled?: boolean;
   skipBookmarksForThisRun?: boolean;
+  forceBookmarksForThisRun?: boolean;
   retryAfterForceUnlock?: boolean;
   retryAfterConflictRefresh?: boolean;
   _retriedAfterForceUnlock?: boolean;
@@ -759,6 +760,18 @@ export function useLeafTabSyncRuntimeController({
     stripWallpaperFromCloudSyncPreferences,
   ]);
 
+  const buildCloudLeafTabSyncSnapshotWithBookmarks = useCallback(async () => {
+    return buildLeafTabSyncSnapshotFromCurrentState({
+      baselineStorageKey: cloudSyncBaselineStorageKey,
+      includeBookmarks: true,
+      preferencesTransform: stripWallpaperFromCloudSyncPreferences,
+    });
+  }, [
+    buildLeafTabSyncSnapshotFromCurrentState,
+    cloudSyncBaselineStorageKey,
+    stripWallpaperFromCloudSyncPreferences,
+  ]);
+
   const applyCloudLeafTabSyncSnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
     const snapshotWithoutCloudWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
     const bookmarkMode = resolveCloudSyncBookmarkApplyMode(cloudSyncBookmarksEnabled);
@@ -800,6 +813,14 @@ export function useLeafTabSyncRuntimeController({
     await applyLeafTabSyncSnapshot(snapshotWithoutCloudWallpaper, {
       skipBookmarkApply: true,
     });
+  }, [
+    applyLeafTabSyncSnapshot,
+    mergeCloudSyncSnapshotWithLocalWallpaper,
+  ]);
+
+  const applyCloudLeafTabSyncSnapshotWithBookmarks = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
+    const snapshotWithoutCloudWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
+    await applyLeafTabSyncSnapshot(snapshotWithoutCloudWallpaper);
   }, [
     applyLeafTabSyncSnapshot,
     mergeCloudSyncSnapshotWithLocalWallpaper,
@@ -924,6 +945,18 @@ export function useLeafTabSyncRuntimeController({
     baselineStorageKey: cloudSyncBaselineStorageKey,
   });
 
+  const { runSync: runCloudLeafTabSyncWithBookmarks } = useLeafTabSyncEngine({
+    enabled: Boolean(user && cloudSyncToken),
+    deviceId: leafTabSyncDeviceId,
+    webdav: null,
+    remoteStore: cloudSyncRemoteStore,
+    legacyCompat: cloudLegacyCompat,
+    buildLocalSnapshot: buildCloudLeafTabSyncSnapshotWithBookmarks,
+    applyLocalSnapshot: applyCloudLeafTabSyncSnapshotWithBookmarks,
+    createEmptySnapshot: createEmptyLeafTabSyncSnapshot,
+    baselineStorageKey: cloudSyncBaselineStorageKey,
+  });
+
   const leafTabWebdavConfigured = useMemo(
     () => hasWebdavUrlConfiguredFromStorage(),
     [leafTabSyncConfigVersion, leafTabSyncState.lastSuccessAt, leafTabSyncState.lastErrorAt],
@@ -1000,6 +1033,7 @@ export function useLeafTabSyncRuntimeController({
 
   const webdavSkipBookmarksForThisRunRef = useRef(false);
   const cloudSkipBookmarksForThisRunRef = useRef(false);
+  const cloudForceBookmarksForThisRunRef = useRef(false);
   const webdavDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
   const cloudDeferredDangerousBookmarksScopeKeyRef = useRef<string | null>(null);
 
@@ -1106,13 +1140,16 @@ export function useLeafTabSyncRuntimeController({
     runSync: (mode, progressOptions) => (
       cloudSkipBookmarksForThisRunRef.current
         ? runCloudLeafTabSyncWithoutBookmarks(mode, progressOptions)
-        : runCloudLeafTabSync(mode, progressOptions)
+        : cloudForceBookmarksForThisRunRef.current
+          ? runCloudLeafTabSyncWithBookmarks(mode, progressOptions)
+          : runCloudLeafTabSync(mode, progressOptions)
     ),
     refreshAnalysis: refreshCloudLeafTabSyncAnalysis,
     resolveSyncEncryptionError,
     requestBookmarkPermission: async () => {
       const granted = await ensureExtensionPermission('bookmarks', { requestIfNeeded: true }).catch(() => false);
       setCloudSyncBookmarksPermissionGranted(Boolean(granted));
+      cloudForceBookmarksForThisRunRef.current = Boolean(granted);
       if (!granted && cloudSyncBookmarksConfigured) {
         toast.info(t('leaftabSyncRunner.bookmarksPermissionDeniedToast', { defaultValue: '未授予书签权限，本次仅同步快捷方式和设置' }));
       }
@@ -1240,7 +1277,12 @@ export function useLeafTabSyncRuntimeController({
       setCloudSyncConfigOpen(true);
       return null;
     }
-    if (cloudSyncBookmarksConfigured && !cloudSyncBookmarksPermissionGranted) {
+    if (
+      cloudSyncBookmarksConfigured
+      && !cloudSyncBookmarksPermissionGranted
+      && !options?.forceBookmarksForThisRun
+      && !options?.requestBookmarkPermission
+    ) {
       toast.info(t('leaftabSyncRunner.bookmarksPermissionDeniedToastAlt', { defaultValue: '书签权限未授权，当前仅同步快捷方式和设置' }));
     }
     const hasDeferredDangerousBookmarks = Boolean(
@@ -1258,6 +1300,9 @@ export function useLeafTabSyncRuntimeController({
     if (effectiveSkipBookmarks) {
       cloudSkipBookmarksForThisRunRef.current = true;
     }
+    if (options?.forceBookmarksForThisRun) {
+      cloudForceBookmarksForThisRunRef.current = true;
+    }
     try {
       return await runCloudSyncWithUi({
         ...options,
@@ -1267,6 +1312,7 @@ export function useLeafTabSyncRuntimeController({
       if (effectiveSkipBookmarks) {
         cloudSkipBookmarksForThisRunRef.current = false;
       }
+      cloudForceBookmarksForThisRunRef.current = false;
     }
   }, [
     cloudSyncEncryptionScopeKey,
@@ -1597,9 +1643,11 @@ export function useLeafTabSyncRuntimeController({
     cloudSyncing: cloudLeafTabSyncState.status === 'syncing',
     webdavSyncing: leafTabSyncState.status === 'syncing',
     webdavSyncBookmarksEnabled,
+    cloudSyncBookmarksConfigured,
     cloudSyncBookmarksEnabled,
     cloudSyncEncryptionScopeKey,
     cloudSyncEncryptedTransport,
+    setCloudSyncBookmarksPermissionGranted,
     ensureSyncEncryptionAccess,
     ensureCloudLegacyMigrationReady,
     handleCloudLeafTabSync,

@@ -65,7 +65,7 @@ export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
     date: "2026-04-08",
     notes: [
       t("changelog.items.release145OnboardingAndThemeDefaults", { defaultValue: "新手引导默认选中“节奏”模式，并调整默认主题为绿色" }),
-      t("changelog.items.release145TopNavAndShortcutGuide", { defaultValue: "主页/全景模式顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化" }),
+      t("changelog.items.release145TopNavAndShortcutGuide", { defaultValue: "主页顶部按钮精简为纯图标并优化 hover；快捷键与操作弹窗布局优化" }),
       t("changelog.items.release145SyncI18nPolish", { defaultValue: "同步中心与相关弹窗补齐中英文多语言（含书签同步提示与范围文案）" }),
     ],
   },
