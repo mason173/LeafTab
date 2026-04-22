@@ -95,12 +95,28 @@ export function SearchBar({
   allowSelectedSuggestionEnter = false,
 }: SearchBarProps) {
   const { resolvedTheme } = useTheme();
-  const theme = useMemo(() => resolveSearchBarTheme({
-    blankMode,
-    forceWhiteTheme,
-    subtleDarkTone,
-    resolvedTheme,
-  }), [blankMode, forceWhiteTheme, resolvedTheme, subtleDarkTone]);
+  const theme = useMemo(() => {
+    const baseTheme = resolveSearchBarTheme({
+      blankMode,
+      forceWhiteTheme,
+      subtleDarkTone,
+      resolvedTheme,
+    });
+
+    if (!(resolvedTheme === 'dark' && searchSurfaceTone === 'drawer')) {
+      return baseTheme;
+    }
+
+    return {
+      ...baseTheme,
+      surfaceClassName: 'text-white/88',
+      triggerToneClassName: 'text-white/72',
+      clearButtonClassName: 'text-white/58 hover:text-white/92',
+      inputClassName: 'bg-transparent dark:bg-transparent text-white/88 placeholder:text-white/42',
+      placeholderClassName: 'text-white/42',
+      linkIconClassName: 'text-white/68',
+    };
+  }, [blankMode, forceWhiteTheme, resolvedTheme, searchSurfaceTone, subtleDarkTone]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (shouldBlockSearchSubmitForIme(e, { allowSelectedSuggestionEnter })) return;

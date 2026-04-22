@@ -34,6 +34,7 @@ export function useBlurredWallpaperAsset({
 }: UseBlurredWallpaperAssetOptions) {
   const [viewportSize, setViewportSize] = useState<ViewportSize>(() => readViewportSize());
   const [blurredWallpaperSrc, setBlurredWallpaperSrc] = useState('');
+  const [blurredWallpaperAverageLuminance, setBlurredWallpaperAverageLuminance] = useState<number | null>(null);
   const [resolvedCacheKey, setResolvedCacheKey] = useState('');
   const normalizedSourceUrl = sourceUrl.trim();
 
@@ -76,6 +77,7 @@ export function useBlurredWallpaperAsset({
   useEffect(() => {
     if (!enabled || !normalizedSourceUrl) {
       setBlurredWallpaperSrc('');
+      setBlurredWallpaperAverageLuminance(null);
       setResolvedCacheKey('');
       return;
     }
@@ -88,6 +90,7 @@ export function useBlurredWallpaperAsset({
     }).then((asset) => {
       if (cancelled || !asset) return;
       setBlurredWallpaperSrc(asset.objectUrl);
+      setBlurredWallpaperAverageLuminance(asset.averageLuminance);
       setResolvedCacheKey(asset.cacheKey);
     });
 
@@ -98,6 +101,7 @@ export function useBlurredWallpaperAsset({
 
   return {
     blurredWallpaperSrc,
+    blurredWallpaperAverageLuminance,
     blurredWallpaperReady: nextCacheKey !== '' && resolvedCacheKey === nextCacheKey && blurredWallpaperSrc !== '',
   };
 }

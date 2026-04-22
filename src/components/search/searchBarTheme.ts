@@ -54,7 +54,12 @@ export function resolveSearchBarTheme(args: {
   };
   const darkTheme: SearchBarTheme = {
     ...defaultTheme,
-    surfaceClassName: 'text-foreground',
+    surfaceClassName: 'text-black/85',
+    triggerToneClassName: 'text-black/55',
+    clearButtonClassName: 'text-black/45 hover:text-black/80',
+    inputClassName: 'bg-transparent dark:bg-transparent text-black/85 placeholder:text-black/40',
+    placeholderClassName: 'text-black/40',
+    linkIconClassName: 'text-black/45',
     engineDropdownSurfaceClassName: 'border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none',
   };
 

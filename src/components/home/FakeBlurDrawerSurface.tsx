@@ -2,6 +2,11 @@ import { useMemo, type CSSProperties } from 'react';
 import { useTheme } from 'next-themes';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
 
+function clamp01(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
 type FakeBlurDrawerSurfaceProps = {
   opacity: number;
   transition: string;
@@ -41,6 +46,9 @@ export function FakeBlurDrawerSurface({
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
+  const normalizedBackdropLuminance = clamp01(
+    wallpaperBackdrop?.blurredWallpaperAverageLuminance ?? (isDarkTheme ? 0.42 : 0.68),
+  );
 
   const imageStyle = useMemo(() => buildViewportSliceImageStyle({
     panelHeightVh,
@@ -50,26 +58,20 @@ export function FakeBlurDrawerSurface({
   const themeCoverStyle = useMemo<CSSProperties>(() => (
     isDarkTheme
       ? {
-          background:
-            'linear-gradient(180deg, rgba(4,6,9,0.68) 0%, rgba(7,9,12,0.86) 52%, rgba(9,11,15,0.93) 100%)',
+          backgroundColor: `rgba(7,9,12,${(0.68 + (normalizedBackdropLuminance * 0.18)).toFixed(3)})`,
         }
       : {
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.74) 52%, rgba(255,255,255,0.84) 100%)',
+          backgroundColor: `rgba(248,250,252,${(0.78 - (normalizedBackdropLuminance * 0.24)).toFixed(3)})`,
         }
-  ), [isDarkTheme]);
+  ), [isDarkTheme, normalizedBackdropLuminance]);
+  const adaptiveDimmingStyle = useMemo<CSSProperties | null>(() => {
+    if (isDarkTheme || normalizedBackdropLuminance < 0.62) return null;
 
-  const edgeHighlightStyle = useMemo<CSSProperties>(() => (
-    isDarkTheme
-      ? {
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.015) 14%, rgba(255,255,255,0) 34%)',
-        }
-      : {
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.16) 18%, rgba(255,255,255,0) 42%)',
-        }
-  ), [isDarkTheme]);
+    const alpha = ((normalizedBackdropLuminance - 0.62) / 0.38) * 0.12;
+    return {
+      backgroundColor: `rgba(12,16,22,${alpha.toFixed(3)})`,
+    };
+  }, [isDarkTheme, normalizedBackdropLuminance]);
 
   const colorWallpaperStyle = useMemo<CSSProperties>(() => ({
     position: 'absolute',
@@ -104,24 +106,14 @@ export function FakeBlurDrawerSurface({
         <div
           className="absolute inset-0"
           style={{
-            background: isDarkTheme
-              ? 'linear-gradient(180deg, rgba(32,36,46,0.94) 0%, rgba(20,24,32,0.98) 100%)'
-              : 'linear-gradient(180deg, rgba(248,250,252,0.94) 0%, rgba(238,242,247,0.98) 100%)',
+            backgroundColor: isDarkTheme
+              ? 'rgba(20,24,32,0.98)'
+              : 'rgba(238,242,247,0.98)',
           }}
         />
       )}
       <div className="absolute inset-0" style={themeCoverStyle} />
-      <div className="absolute inset-0" style={edgeHighlightStyle} />
-      <div
-        className="absolute inset-0"
-        style={{
-          background: isDarkTheme
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0.015) 68%, rgba(255,255,255,0.04) 100%)'
-            : 'linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0.10) 70%, rgba(255,255,255,0.20) 100%)',
-          mixBlendMode: 'screen',
-          opacity: isDarkTheme ? 0.34 : 0.82,
-        }}
-      />
+      {adaptiveDimmingStyle ? <div className="absolute inset-0" style={adaptiveDimmingStyle} /> : null}
     </div>
   );
 }

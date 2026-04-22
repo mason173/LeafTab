@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBlurredWallpaperCacheKey,
+  resolveAverageWallpaperLuminance,
   resolveBlurredWallpaperDimensions,
 } from '@/utils/wallpaperBlurAsset';
 
@@ -59,5 +60,22 @@ describe('buildBlurredWallpaperCacheKey', () => {
     });
 
     expect(first).toBe(second);
+  });
+});
+
+describe('resolveAverageWallpaperLuminance', () => {
+  it('returns a brighter luminance for lighter samples', () => {
+    const dark = resolveAverageWallpaperLuminance(new Uint8ClampedArray([
+      16, 18, 24, 255,
+      20, 22, 28, 255,
+    ]));
+    const light = resolveAverageWallpaperLuminance(new Uint8ClampedArray([
+      240, 242, 246, 255,
+      248, 250, 252, 255,
+    ]));
+
+    expect(light).toBeGreaterThan(dark);
+    expect(light).toBeLessThanOrEqual(1);
+    expect(dark).toBeGreaterThanOrEqual(0);
   });
 });

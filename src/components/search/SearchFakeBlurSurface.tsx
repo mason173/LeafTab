@@ -104,18 +104,26 @@ export function SearchFakeBlurSurface({
   const viewportRect = useLiveViewportRect(surfaceNode, Boolean(wallpaperBackdrop?.blurredWallpaperSrc));
   const isDarkTheme = resolvedTheme === 'dark';
   const drawerToneActive = tone === 'drawer';
+  const drawerTransparentMode = drawerToneActive;
   const deepDarkCover = darkCoverStrength === 'deep';
   const specularDisabled = specularHighlight === 'none';
   const flatAtmosphere = atmosphereMode === 'flat';
-
-  const baseTintStyle: CSSProperties = drawerToneActive
+  const baseTintStyle: CSSProperties = drawerTransparentMode
+    ? (isDarkTheme
+        ? { backgroundColor: 'rgba(255,255,255,0.07)' }
+        : { backgroundColor: 'rgba(255,255,255,0.18)' })
+    : drawerToneActive
     ? (isDarkTheme
         ? { background: deepDarkCover ? 'rgba(5,7,10,0.62)' : 'rgba(6,8,12,0.46)' }
         : { background: 'rgba(255,255,255,0.34)' })
     : (isDarkTheme
-        ? { background: deepDarkCover ? 'rgba(7,9,12,0.54)' : 'rgba(10,14,20,0.28)' }
+        ? { background: deepDarkCover ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.10)' }
         : { background: 'rgba(255,255,255,0.18)' });
-  const atmosphereStyle: CSSProperties = flatAtmosphere
+  const atmosphereStyle: CSSProperties = drawerTransparentMode
+    ? (isDarkTheme
+        ? { backgroundColor: 'rgba(0,0,0,0.16)' }
+        : { backgroundColor: 'rgba(255,255,255,0.07)' })
+    : flatAtmosphere
     ? (isDarkTheme
         ? {
             background: drawerToneActive
@@ -123,8 +131,8 @@ export function SearchFakeBlurSurface({
                   ? 'linear-gradient(180deg, rgba(5,7,10,0.14) 0%, rgba(5,7,10,0.10) 100%)'
                   : 'linear-gradient(180deg, rgba(6,8,12,0.10) 0%, rgba(6,8,12,0.08) 100%)')
               : (deepDarkCover
-                  ? 'linear-gradient(180deg, rgba(7,9,12,0.12) 0%, rgba(7,9,12,0.08) 100%)'
-                  : 'linear-gradient(180deg, rgba(10,14,20,0.08) 0%, rgba(10,14,20,0.06) 100%)'),
+                  ? 'linear-gradient(180deg, rgba(7,9,12,0.09) 0%, rgba(7,9,12,0.06) 100%)'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'),
           }
         : {
             background: drawerToneActive
@@ -147,14 +155,16 @@ export function SearchFakeBlurSurface({
             ? {
                 background:
                   deepDarkCover
-                    ? 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 16%, rgba(8,10,14,0.05) 42%, rgba(7,9,12,0.14) 100%)'
-                    : 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 18%, rgba(10,14,20,0.04) 44%, rgba(10,14,20,0.10) 100%)',
+                    ? 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 16%, rgba(8,10,14,0.04) 42%, rgba(7,9,12,0.10) 100%)'
+                    : 'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.035) 18%, rgba(255,255,255,0.02) 44%, rgba(255,255,255,0.03) 100%)',
               }
             : {
                 background:
                   'radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 26%, rgba(255,255,255,0.12) 54%, rgba(255,255,255,0.22) 100%)',
               }));
-  const highlightStyle: CSSProperties = drawerToneActive
+  const highlightStyle: CSSProperties = drawerTransparentMode
+    ? { background: 'transparent' }
+    : drawerToneActive
     ? (isDarkTheme
         ? {
             background:
@@ -177,13 +187,18 @@ export function SearchFakeBlurSurface({
             background:
               'radial-gradient(ellipse at 50% 46%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 24%, rgba(255,255,255,0) 58%)',
           });
+  const compensationStyle: CSSProperties | null = drawerTransparentMode
+    ? (isDarkTheme
+        ? { backgroundColor: 'rgba(255,255,255,0.025)' }
+        : { backgroundColor: 'rgba(255,255,255,0.045)' })
+    : null;
 
   return (
     <div
       className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${radiusClassName}`}
       aria-hidden="true"
     >
-      {wallpaperBackdrop?.blurredWallpaperSrc && viewportRect ? (
+      {!drawerTransparentMode && wallpaperBackdrop?.blurredWallpaperSrc && viewportRect ? (
         <img
           src={wallpaperBackdrop.blurredWallpaperSrc}
           alt=""
@@ -194,7 +209,7 @@ export function SearchFakeBlurSurface({
             sliceScale,
           })}
         />
-      ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient ? (
+      ) : !drawerTransparentMode && wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient ? (
         <div
           className="absolute inset-0"
           style={{
@@ -210,13 +225,18 @@ export function SearchFakeBlurSurface({
           className="absolute inset-0"
           style={{
             background: isDarkTheme
-              ? 'linear-gradient(180deg, rgba(24,30,38,0.94) 0%, rgba(14,18,24,0.98) 100%)'
-              : 'linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(238,242,247,0.99) 100%)',
+              ? (drawerTransparentMode
+                  ? 'transparent'
+                  : 'linear-gradient(180deg, rgba(24,30,38,0.94) 0%, rgba(14,18,24,0.98) 100%)')
+              : (drawerTransparentMode
+                  ? 'transparent'
+                  : 'linear-gradient(180deg, rgba(248,250,252,0.96) 0%, rgba(238,242,247,0.99) 100%)'),
           }}
         />
       )}
       <div className="absolute inset-0" style={baseTintStyle} />
       <div className="absolute inset-0" style={atmosphereStyle} />
+      {compensationStyle ? <div className="absolute inset-0" style={compensationStyle} /> : null}
       {!specularDisabled ? <div className="absolute inset-0" style={highlightStyle} /> : null}
       {!specularDisabled ? (
         <div

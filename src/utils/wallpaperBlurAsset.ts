@@ -5,6 +5,7 @@ type CachedBlurredWallpaperAsset = {
   objectUrl: string;
   cacheKey: string;
   accessedAt: number;
+  averageLuminance: number;
 };
 
 export type BlurredWallpaperDimensions = {
@@ -25,9 +26,9 @@ const BLURRED_WALLPAPER_OUTPUT_MIN_EDGE_PX = 180;
 const BLURRED_WALLPAPER_SAMPLE_SCALE = 0.2;
 const BLURRED_WALLPAPER_MIN_SAMPLE_EDGE_PX = 128;
 const BLURRED_WALLPAPER_MAX_CACHE_ENTRIES = 6;
-const BLURRED_WALLPAPER_CACHE_VERSION = 'v4';
-const BLURRED_WALLPAPER_FIRST_PASS_FILTER = 'blur(18px) saturate(1.02) brightness(1.01)';
-const BLURRED_WALLPAPER_SECOND_PASS_FILTER = 'blur(32px) saturate(1.01) brightness(1)';
+const BLURRED_WALLPAPER_CACHE_VERSION = 'v5';
+const BLURRED_WALLPAPER_FIRST_PASS_FILTER = 'blur(18px) saturate(1.03)';
+const BLURRED_WALLPAPER_SECOND_PASS_FILTER = 'blur(32px) saturate(1.01)';
 const VIDEO_FILE_EXTENSION_PATTERN = /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i;
 const VIDEO_FRAME_SEEK_TIME_SECONDS = 0.12;
 
@@ -116,6 +117,97 @@ function releaseObjectUrl(url: string) {
   try {
     URL.revokeObjectURL(url);
   } catch {}
+}
+
+function clamp01(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+function srgbChannelToLinear(channel: number) {
+  const normalized = clamp01(channel / 255);
+  if (normalized <= 0.04045) {
+    return normalized / 12.92;
+  }
+  return ((normalized + 0.055) / 1.055) ** 2.4;
+}
+
+function resolveRelativeLuminance(red: number, green: number, blue: number) {
+  return (
+    (0.2126 * srgbChannelToLinear(red))
+    + (0.7152 * srgbChannelToLinear(green))
+    + (0.0722 * srgbChannelToLinear(blue))
+  );
+}
+
+export function resolveAverageWallpaperLuminance(pixelData: Uint8ClampedArray | Uint8Array) {
+  if (!pixelData.length) return 0;
+
+  let luminanceSum = 0;
+  let sampleCount = 0;
+  for (let index = 0; index <= pixelData.length - 4; index += 4) {
+    luminanceSum += resolveRelativeLuminance(
+      pixelData[index],
+      pixelData[index + 1],
+      pixelData[index + 2],
+    );
+    sampleCount += 1;
+  }
+
+  if (sampleCount === 0) return 0;
+  return clamp01(luminanceSum / sampleCount);
+}
+
+function measureSurfaceAverageLuminance(
+  context: RenderContext,
+  width: number,
+  height: number,
+) {
+  try {
+    const imageData = context.getImageData(0, 0, width, height);
+    return resolveAverageWallpaperLuminance(imageData.data);
+  } catch {
+    return null;
+  }
+}
+
+function drawWithBrightnessCompensation(params: {
+  source: RenderSurface;
+  width: number;
+  height: number;
+  targetLuminance: number;
+}) {
+  const { source, width, height, targetLuminance } = params;
+  const sourceContext = getRenderContext(source);
+  const sourceLuminance = measureSurfaceAverageLuminance(sourceContext, width, height);
+  const clampedTargetLuminance = clamp01(targetLuminance);
+
+  if (
+    sourceLuminance === null
+    || sourceLuminance < 0.0001
+    || Math.abs(sourceLuminance - clampedTargetLuminance) < 0.015
+  ) {
+    return source;
+  }
+
+  const brightnessScale = Math.min(
+    1.12,
+    Math.max(0.88, clampedTargetLuminance / sourceLuminance),
+  );
+  if (Math.abs(brightnessScale - 1) < 0.015) {
+    return source;
+  }
+
+  const compensatedSurface = createRenderSurface(width, height);
+  const compensatedContext = getRenderContext(compensatedSurface);
+  if ('filter' in compensatedContext) {
+    compensatedContext.filter = `brightness(${brightnessScale})`;
+  }
+  compensatedContext.drawImage(source as CanvasImageSource, 0, 0, width, height);
+  if ('filter' in compensatedContext) {
+    compensatedContext.filter = 'none';
+  }
+  return compensatedSurface;
 }
 
 function pruneBlurredWallpaperAssetCache(preserveKey?: string) {
@@ -307,6 +399,7 @@ export async function generateBlurredWallpaperAsset({
       const sampleSurface = createRenderSurface(sampleWidth, sampleHeight);
       const sampleContext = getRenderContext(sampleSurface);
       sampleContext.drawImage(bitmap, 0, 0, sampleWidth, sampleHeight);
+      const averageLuminance = measureSurfaceAverageLuminance(sampleContext, sampleWidth, sampleHeight) ?? 0.5;
 
       const upscaleSurface = createRenderSurface(outputWidth, outputHeight);
       const upscaleContext = getRenderContext(upscaleSurface);
@@ -335,11 +428,18 @@ export async function generateBlurredWallpaperAsset({
       softenedContext.drawImage(upscaleSurface as CanvasImageSource, 0, 0, outputWidth, outputHeight);
       softenedContext.globalAlpha = 1;
 
-      const objectUrl = await renderSurfaceToObjectUrl(softenedSurface);
+      const compensatedSurface = drawWithBrightnessCompensation({
+        source: softenedSurface,
+        width: outputWidth,
+        height: outputHeight,
+        targetLuminance: averageLuminance,
+      });
+      const objectUrl = await renderSurfaceToObjectUrl(compensatedSurface);
       const nextAsset: CachedBlurredWallpaperAsset = {
         objectUrl,
         cacheKey,
         accessedAt: Date.now(),
+        averageLuminance,
       };
       blurredWallpaperAssetCache.set(cacheKey, nextAsset);
       pruneBlurredWallpaperAssetCache(cacheKey);

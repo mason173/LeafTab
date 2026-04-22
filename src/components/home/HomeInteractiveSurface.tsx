@@ -25,6 +25,11 @@ const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
 const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 0)';
 const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 
+function clamp01(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
   if (target instanceof Element) return target;
   if (target instanceof Node) return target.parentElement;
@@ -269,6 +274,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     && Boolean(wallpaperBlurSourceUrl);
   const {
     blurredWallpaperSrc,
+    blurredWallpaperAverageLuminance,
     blurredWallpaperReady,
   } = useBlurredWallpaperAsset({
     sourceUrl: wallpaperBlurSourceUrl,
@@ -333,6 +339,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const fixedTopNavRevealStyle = useMemo(() => resolveInitialRevealStyle(initialRevealReady, {
     disablePointerEventsUntilReady: true,
   }), [initialRevealReady]);
+  const normalizedBackdropLuminance = clamp01(blurredWallpaperAverageLuminance ?? 0.52);
   const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
@@ -340,21 +347,8 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }), []);
 
   const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
-    background:
-      'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 28%, rgba(10,14,20,0.16) 100%)',
-  }), []);
-
-  const immersiveBackdropHighlightStyle = useMemo<CSSProperties>(() => ({
-    background:
-      'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 24%, rgba(255,255,255,0) 62%)',
-  }), []);
-
-  const immersiveBackdropNoiseStyle = useMemo<CSSProperties>(() => ({
-    background:
-      'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 34%, rgba(255,255,255,0.04) 68%, rgba(255,255,255,0.08) 100%)',
-    mixBlendMode: 'screen',
-    opacity: 0.55,
-  }), []);
+    backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
+  }), [normalizedBackdropLuminance]);
   const immersiveWallpaperBlurLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
@@ -364,11 +358,22 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
     pointerEvents: 'none',
-    background:
-      effectiveWallpaperMode === 'color'
-        ? `${colorWallpaperGradient}, linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(18,22,30,0.24) 100%)`
-        : 'linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(26,32,44,0.32) 100%)',
+    backgroundImage: effectiveWallpaperMode === 'color' ? colorWallpaperGradient : undefined,
+    backgroundColor: effectiveWallpaperMode === 'color' ? 'rgba(18,22,30,0.12)' : 'rgba(26,32,44,0.22)',
   }), [colorWallpaperGradient, effectiveWallpaperMode]);
+  const immersiveBlurOverlayStyle = useMemo<CSSProperties>(() => {
+    if (normalizedBackdropLuminance > 0.56) {
+      const darkAlpha = 0.05 + ((normalizedBackdropLuminance - 0.56) / 0.44) * 0.11;
+      return {
+        backgroundColor: `rgba(18,22,30,${darkAlpha.toFixed(3)})`,
+      };
+    }
+
+    const lightAlpha = 0.08 - (normalizedBackdropLuminance / 0.56) * 0.03;
+    return {
+      backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
+    };
+  }, [normalizedBackdropLuminance]);
 
   const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
     transform: `scale(${FOLDER_IMMERSIVE_SCALE_VAR})`,
@@ -421,9 +426,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
               <div
                 aria-hidden="true"
                 className="absolute inset-0"
-                style={{
-                  backgroundColor: 'rgba(244, 246, 248, 0.10)',
-                }}
+                style={immersiveBlurOverlayStyle}
               />
               <WallpaperMaskOverlay opacity={Math.min(100, effectiveWallpaperMaskOpacity + 8)} />
             </div>
@@ -483,6 +486,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           wallpaperMode: effectiveWallpaperMode,
           colorWallpaperGradient,
           blurredWallpaperSrc,
+          blurredWallpaperAverageLuminance,
         }}
       >
         <>
@@ -493,8 +497,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             style={immersiveBackdropLayerStyle}
           >
             <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
-            <div className="absolute inset-0" style={immersiveBackdropHighlightStyle} />
-            <div className="absolute inset-0" style={immersiveBackdropNoiseStyle} />
           </div>
           <div style={immersiveUiShellStyle}>
             {fixedTopNavLayer}

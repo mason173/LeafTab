@@ -28,7 +28,7 @@ const LARGE_FOLDER_TRIGGER_ICON_RATIO = 0.76;
 const SMALL_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 40;
 const LARGE_FOLDER_PREVIEW_MAX_BORDER_RADIUS_PX = 28;
 const LARGE_FOLDER_TRIGGER_STACK_OFFSET_STEP_PX = 4;
-export const LIGHT_FOLDER_SURFACE_CLASSNAME = 'border-black/8';
+export const LIGHT_FOLDER_SURFACE_CLASSNAME = '';
 const FOLDER_DROP_TARGET_TRANSITION = 'none';
 const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
@@ -45,6 +45,20 @@ function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
     transition: FOLDER_DROP_TARGET_TRANSITION,
     borderColor: highlightBorder ? ACTIVE_FOLDER_BORDER_COLOR : undefined,
     boxShadow: highlightBorder ? ACTIVE_FOLDER_BORDER_SHADOW : undefined,
+  };
+}
+
+function buildFolderGradientBorderStyle(borderRadius: string): CSSProperties {
+  return {
+    position: 'absolute',
+    inset: 0,
+    padding: '0.5px',
+    borderRadius,
+    pointerEvents: 'none',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.16) 100%)',
+    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+    WebkitMaskComposite: 'xor',
+    maskComposite: 'exclude',
   };
 }
 
@@ -166,7 +180,7 @@ function FolderPreviewWallpaperLayer({
       aria-hidden="true"
       className="pointer-events-none absolute inset-0"
       style={{
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(30,34,42,0.22) 100%)',
+        backgroundColor: 'rgba(30,34,42,0.18)',
       }}
     />
   );
@@ -184,32 +198,39 @@ function FolderPreviewGlassLayer({
   const viewportRect = useLiveViewportRect(rootNode, Boolean(wallpaperBackdrop?.blurredWallpaperSrc));
   const drawerToneActive = previewTone === 'drawer';
   const isDarkTheme = resolvedTheme === 'dark';
+  const drawerTransparentMode = drawerToneActive;
 
-  const baseTintStyle: CSSProperties = drawerToneActive
+  const baseTintStyle: CSSProperties = drawerTransparentMode
     ? (isDarkTheme
-        ? { background: 'rgba(6,8,12,0.42)' }
-        : { background: 'rgba(255,255,255,0.28)' })
-    : { background: 'rgba(255,255,255,0.08)' };
-  const verticalGradientStyle: CSSProperties = drawerToneActive
+        ? { backgroundColor: 'rgba(255,255,255,0.07)' }
+        : { backgroundColor: 'rgba(255,255,255,0.18)' })
+    : drawerToneActive
     ? (isDarkTheme
-        ? {
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(12,14,18,0.22) 18%, rgba(6,8,12,0.56) 100%)',
-          }
-        : {
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.56) 0%, rgba(255,255,255,0.34) 24%, rgba(255,255,255,0.66) 100%)',
-          })
-    : {
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 26%, rgba(18,22,30,0.18) 100%)',
-      };
+        ? { backgroundColor: 'rgba(6,8,12,0.42)' }
+        : { backgroundColor: 'rgba(248,250,252,0.12)' })
+    : { backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.10)' : 'rgba(248,250,252,0.08)' };
+  const uniformCompensationStyle: CSSProperties = drawerTransparentMode
+    ? (isDarkTheme
+        ? { backgroundColor: 'rgba(0,0,0,0.16)' }
+        : { backgroundColor: 'rgba(255,255,255,0.07)' })
+    : { backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.03)' };
+  const drawerCompensationStyle = drawerTransparentMode
+    ? (isDarkTheme
+        ? { backgroundColor: 'rgba(255,255,255,0.025)' }
+        : { backgroundColor: 'rgba(255,255,255,0.045)' })
+    : null;
   return (
     <>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <FolderPreviewWallpaperLayer rect={viewportRect} />
-      </div>
+      {!drawerTransparentMode ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          <FolderPreviewWallpaperLayer rect={viewportRect} />
+        </div>
+      ) : null}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={baseTintStyle} />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={verticalGradientStyle} />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={uniformCompensationStyle} />
+      {drawerCompensationStyle ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={drawerCompensationStyle} />
+      ) : null}
     </>
   );
 }
@@ -555,9 +576,9 @@ export function ShortcutFolderPreview({
   return (
     <div
       ref={rootRef}
-      className={`relative overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+      className={`relative overflow-hidden ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         selectionDisabled ? 'cursor-not-allowed' : ''
-      } dark:border-white/10`}
+      }`}
       style={{
         width: size,
         height: size,
@@ -571,6 +592,7 @@ export function ShortcutFolderPreview({
       data-folder-portal-backdrop={portalBackdrop ? 'true' : 'false'}
     >
       <FolderPreviewGlassLayer rootNode={rootNode} previewTone={previewTone} />
+      <div aria-hidden="true" style={buildFolderGradientBorderStyle(borderRadius)} />
       <FolderPreviewContentLayer hidePreviewContents={hidePreviewContents}>
         <div className="grid h-full w-full grid-cols-2 gap-1 p-2">
           {children.length > 0 ? children.map((child, index) => (
@@ -647,9 +669,9 @@ export function ShortcutFolderLargePreview({
   return (
     <div
       ref={rootRef}
-      className={`relative overflow-hidden border ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
+      className={`relative overflow-hidden ${LIGHT_FOLDER_SURFACE_CLASSNAME} ${
         interactive ? '' : 'cursor-not-allowed'
-      } dark:border-white/10`}
+      }`}
       style={{
         width: size,
         height: size,
@@ -664,14 +686,7 @@ export function ShortcutFolderLargePreview({
       onClick={interactive ? onOpenFolder : undefined}
     >
       <FolderPreviewGlassLayer rootNode={rootNode} previewTone={previewTone} />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 42%)',
-          pointerEvents: 'none',
-        }}
-      />
+      <div aria-hidden="true" style={buildFolderGradientBorderStyle(borderRadius)} />
       <FolderPreviewContentLayer hidePreviewContents={hidePreviewContents}>
         {children.length > 0 ? (
           <div
