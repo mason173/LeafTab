@@ -1,12 +1,11 @@
 import {
   useCallback,
-  useLayoutEffect,
   useState,
   type CSSProperties,
 } from 'react';
-import { useTheme } from 'next-themes';
 import { useFolderPreviewRootRef, useFolderPreviewSlotRef } from '@/components/shortcuts/folderPreviewRegistry';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
+import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
   COMPACT_SHORTCUT_GRID_COLUMN_GAP_PX,
@@ -33,13 +32,10 @@ const FOLDER_DROP_TARGET_TRANSITION = 'none';
 const FOLDER_DROP_TARGET_FADE_TRANSITION = 'none';
 const ACTIVE_FOLDER_BORDER_COLOR = 'rgba(255,255,255,0.3)';
 const ACTIVE_FOLDER_BORDER_SHADOW = 'inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.28), 0 0 0 1px rgba(255,255,255,0.08)';
-type ViewportRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+const FOLDER_FAKE_BLUR_PATCH_OPACITY = 1;
+const DRAWER_SURFACE_OVERLAY_STYLE: CSSProperties = {
+  backgroundColor: 'rgba(0, 0, 0, 0.08)',
 };
-
 function buildFolderSurfaceInteractionStyle(highlightBorder: boolean) {
   return {
     transition: FOLDER_DROP_TARGET_TRANSITION,
@@ -52,24 +48,10 @@ function buildFolderGradientBorderStyle(borderRadius: string): CSSProperties {
   return {
     position: 'absolute',
     inset: 0,
-    padding: '0.5px',
+    border: '1px solid rgba(255,255,255,0.18)',
     borderRadius,
     pointerEvents: 'none',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.16) 100%)',
-    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-    WebkitMaskComposite: 'xor',
-    maskComposite: 'exclude',
   };
-}
-
-function rectEquals(left: ViewportRect | null, right: ViewportRect | null) {
-  if (!left || !right) return left === right;
-  return (
-    Math.abs(left.left - right.left) < 0.25
-    && Math.abs(left.top - right.top) < 0.25
-    && Math.abs(left.width - right.width) < 0.25
-    && Math.abs(left.height - right.height) < 0.25
-  );
 }
 
 function useFolderPreviewRootNode(folderId: string) {
@@ -87,44 +69,6 @@ function useFolderPreviewRootNode(folderId: string) {
   };
 }
 
-function useLiveViewportRect(element: HTMLElement | null, enabled: boolean) {
-  const [rect, setRect] = useState<ViewportRect | null>(null);
-
-  useLayoutEffect(() => {
-    if (!enabled || !element || typeof window === 'undefined') {
-      setRect(null);
-      return;
-    }
-
-    let rafId = 0;
-    const syncRect = () => {
-      if (!element.isConnected) {
-        setRect(null);
-        return;
-      }
-
-      const nextRect = element.getBoundingClientRect();
-      const resolvedRect = {
-        left: nextRect.left,
-        top: nextRect.top,
-        width: nextRect.width,
-        height: nextRect.height,
-      };
-      setRect((current) => (rectEquals(current, resolvedRect) ? current : resolvedRect));
-      rafId = window.requestAnimationFrame(syncRect);
-    };
-
-    syncRect();
-    return () => {
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-    };
-  }, [element, enabled]);
-
-  return rect;
-}
-
 function buildViewportSliceImageStyle(rect: ViewportRect): CSSProperties {
   return {
     position: 'absolute',
@@ -136,6 +80,19 @@ function buildViewportSliceImageStyle(rect: ViewportRect): CSSProperties {
     maxWidth: 'none',
     transform: 'translateZ(0)',
     WebkitTransform: 'translateZ(0)',
+    backfaceVisibility: 'hidden',
+    willChange: 'transform',
+  };
+}
+
+function buildViewportSliceGradientStyle(rect: ViewportRect): CSSProperties {
+  return {
+    position: 'absolute',
+    left: `${-rect.left}px`,
+    top: `${-rect.top}px`,
+    width: '100vw',
+    height: '100vh',
+    maxWidth: 'none',
     backfaceVisibility: 'hidden',
     willChange: 'transform',
   };
@@ -156,7 +113,10 @@ function FolderPreviewWallpaperLayer({
         aria-hidden="true"
         className="pointer-events-none select-none"
         draggable={false}
-        style={buildViewportSliceImageStyle(rect)}
+        style={{
+          ...buildViewportSliceImageStyle(rect),
+          opacity: FOLDER_FAKE_BLUR_PATCH_OPACITY,
+        }}
       />
     );
   }
@@ -167,9 +127,9 @@ function FolderPreviewWallpaperLayer({
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
+          ...(rect ? buildViewportSliceGradientStyle(rect) : {}),
           backgroundImage: wallpaperBackdrop.colorWallpaperGradient,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          opacity: FOLDER_FAKE_BLUR_PATCH_OPACITY,
         }}
       />
     );
@@ -181,6 +141,7 @@ function FolderPreviewWallpaperLayer({
       className="pointer-events-none absolute inset-0"
       style={{
         backgroundColor: 'rgba(30,34,42,0.18)',
+        opacity: FOLDER_FAKE_BLUR_PATCH_OPACITY,
       }}
     />
   );
@@ -194,42 +155,33 @@ function FolderPreviewGlassLayer({
   previewTone: 'default' | 'drawer';
 }) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
-  const { resolvedTheme } = useTheme();
-  const viewportRect = useLiveViewportRect(rootNode, Boolean(wallpaperBackdrop?.blurredWallpaperSrc));
-  const drawerToneActive = previewTone === 'drawer';
-  const isDarkTheme = resolvedTheme === 'dark';
-  const drawerTransparentMode = drawerToneActive;
-
-  const baseTintStyle: CSSProperties = drawerTransparentMode
-    ? (isDarkTheme
-        ? { backgroundColor: 'rgba(255,255,255,0.07)' }
-        : { backgroundColor: 'rgba(255,255,255,0.18)' })
-    : drawerToneActive
-    ? (isDarkTheme
-        ? { backgroundColor: 'rgba(6,8,12,0.42)' }
-        : { backgroundColor: 'rgba(248,250,252,0.12)' })
-    : { backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.10)' : 'rgba(248,250,252,0.08)' };
-  const uniformCompensationStyle: CSSProperties = drawerTransparentMode
-    ? (isDarkTheme
-        ? { backgroundColor: 'rgba(0,0,0,0.16)' }
-        : { backgroundColor: 'rgba(255,255,255,0.07)' })
-    : { backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.03)' };
-  const drawerCompensationStyle = drawerTransparentMode
-    ? (isDarkTheme
-        ? { backgroundColor: 'rgba(255,255,255,0.025)' }
-        : { backgroundColor: 'rgba(255,255,255,0.045)' })
+  const hasViewportBackedSurface = Boolean(
+    wallpaperBackdrop?.blurredWallpaperSrc
+    || (wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient),
+  );
+  const viewportRect = useLiveViewportRect(rootNode, hasViewportBackedSurface);
+  const drawerTransparentMode = previewTone === 'drawer';
+  const wallpaperMaskStyle: CSSProperties | null = !drawerTransparentMode && wallpaperBackdrop
+    ? {
+        backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
+      }
     : null;
+
   return (
     <>
       {!drawerTransparentMode ? (
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
           <FolderPreviewWallpaperLayer rect={viewportRect} />
         </div>
-      ) : null}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={baseTintStyle} />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={uniformCompensationStyle} />
-      {drawerCompensationStyle ? (
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={drawerCompensationStyle} />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={DRAWER_SURFACE_OVERLAY_STYLE}
+        />
+      )}
+      {wallpaperMaskStyle ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={wallpaperMaskStyle} />
       ) : null}
     </>
   );

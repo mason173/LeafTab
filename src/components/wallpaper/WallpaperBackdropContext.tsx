@@ -6,6 +6,7 @@ export type WallpaperBackdropSnapshot = {
   colorWallpaperGradient: string;
   blurredWallpaperSrc: string;
   blurredWallpaperAverageLuminance: number | null;
+  effectiveWallpaperMaskOpacity: number;
 };
 
 const WallpaperBackdropContext = createContext<WallpaperBackdropSnapshot | null>(null);

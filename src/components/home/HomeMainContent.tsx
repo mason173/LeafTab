@@ -145,7 +145,7 @@ export const HomeMainContent = memo(function HomeMainContent({
     }
   });
   const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
-    ? ({ backgroundColor: 'rgba(0, 0, 0, 0.15)' } as CSSProperties)
+    ? ({ backgroundColor: 'rgba(0, 0, 0, 0.08)' } as CSSProperties)
     : undefined;
   const isDrawerFullyExpanded = drawer.isDrawerExpanded;
   const showBlankModeDrawerHint = initialRevealReady

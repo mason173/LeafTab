@@ -26,11 +26,17 @@ const BLURRED_WALLPAPER_OUTPUT_MIN_EDGE_PX = 180;
 const BLURRED_WALLPAPER_SAMPLE_SCALE = 0.2;
 const BLURRED_WALLPAPER_MIN_SAMPLE_EDGE_PX = 128;
 const BLURRED_WALLPAPER_MAX_CACHE_ENTRIES = 6;
-const BLURRED_WALLPAPER_CACHE_VERSION = 'v5';
-const BLURRED_WALLPAPER_FIRST_PASS_FILTER = 'blur(18px) saturate(1.03)';
-const BLURRED_WALLPAPER_SECOND_PASS_FILTER = 'blur(32px) saturate(1.01)';
+const BLURRED_WALLPAPER_CACHE_VERSION = 'v8';
+const BLURRED_WALLPAPER_FIRST_PASS_FILTER = 'blur(18px) saturate(1.12)';
+const BLURRED_WALLPAPER_SECOND_PASS_FILTER = 'blur(32px) saturate(1.08)';
 const VIDEO_FILE_EXTENSION_PATTERN = /\.(mp4|webm|mov|m4v|ogv)(?:$|[?#])/i;
 const VIDEO_FRAME_SEEK_TIME_SECONDS = 0.12;
+const WALLPAPER_NORMALIZATION_TARGET_OKLAB_L = 0.605;
+const WALLPAPER_NORMALIZATION_TARGET_RANGE = 0.20;
+const WALLPAPER_NORMALIZATION_BLEND = 0.58;
+const WALLPAPER_NORMALIZATION_MIN_OKLAB_L = 0.38;
+const WALLPAPER_NORMALIZATION_MAX_OKLAB_L = 0.81;
+const WALLPAPER_NORMALIZATION_OFFSET_SOFT_CLIP = 0.24;
 
 const blurredWallpaperAssetCache = new Map<string, CachedBlurredWallpaperAsset>();
 const blurredWallpaperPendingCache = new Map<string, Promise<CachedBlurredWallpaperAsset | null>>();
@@ -156,6 +162,123 @@ export function resolveAverageWallpaperLuminance(pixelData: Uint8ClampedArray | 
 
   if (sampleCount === 0) return 0;
   return clamp01(luminanceSum / sampleCount);
+}
+
+function linearChannelToSrgb(channel: number) {
+  const normalized = clamp01(channel);
+  if (normalized <= 0.0031308) {
+    return normalized * 12.92;
+  }
+  return 1.055 * (normalized ** (1 / 2.4)) - 0.055;
+}
+
+type OklabColor = {
+  l: number;
+  a: number;
+  b: number;
+};
+
+function linearRgbToOklab(red: number, green: number, blue: number): OklabColor {
+  const l = (0.4122214708 * red) + (0.5363325363 * green) + (0.0514459929 * blue);
+  const m = (0.2119034982 * red) + (0.6806995451 * green) + (0.1073969566 * blue);
+  const s = (0.0883024619 * red) + (0.2817188376 * green) + (0.6299787005 * blue);
+
+  const lRoot = Math.cbrt(l);
+  const mRoot = Math.cbrt(m);
+  const sRoot = Math.cbrt(s);
+
+  return {
+    l: (0.2104542553 * lRoot) + (0.793617785 * mRoot) - (0.0040720468 * sRoot),
+    a: (1.9779984951 * lRoot) - (2.428592205 * mRoot) + (0.4505937099 * sRoot),
+    b: (0.0259040371 * lRoot) + (0.7827717662 * mRoot) - (0.808675766 * sRoot),
+  };
+}
+
+function oklabToLinearRgb(color: OklabColor) {
+  const lRoot = color.l + (0.3963377774 * color.a) + (0.2158037573 * color.b);
+  const mRoot = color.l - (0.1055613458 * color.a) - (0.0638541728 * color.b);
+  const sRoot = color.l - (0.0894841775 * color.a) - (1.291485548 * color.b);
+
+  const l = lRoot ** 3;
+  const m = mRoot ** 3;
+  const s = sRoot ** 3;
+
+  return {
+    red: (4.0767416621 * l) - (3.3077115913 * m) + (0.2309699292 * s),
+    green: (-1.2684380046 * l) + (2.6097574011 * m) - (0.3413193965 * s),
+    blue: (-0.0041960863 * l) - (0.7034186147 * m) + (1.707614701 * s),
+  };
+}
+
+function resolvePercentile(sortedValues: Float32Array, percentile: number) {
+  if (!sortedValues.length) return 0;
+  const clampedPercentile = clamp01(percentile);
+  const index = Math.min(
+    sortedValues.length - 1,
+    Math.max(0, Math.round((sortedValues.length - 1) * clampedPercentile)),
+  );
+  return sortedValues[index];
+}
+
+export function normalizeWallpaperLighting(pixelData: Uint8ClampedArray | Uint8Array) {
+  if (!pixelData.length) {
+    return new Uint8ClampedArray(0);
+  }
+
+  const nextPixelData = new Uint8ClampedArray(pixelData);
+  const sampleCount = Math.floor(nextPixelData.length / 4);
+  const lValues = new Float32Array(sampleCount);
+  const aValues = new Float32Array(sampleCount);
+  const bValues = new Float32Array(sampleCount);
+
+  let lSum = 0;
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+    const pixelOffset = sampleIndex * 4;
+    const color = linearRgbToOklab(
+      srgbChannelToLinear(nextPixelData[pixelOffset]),
+      srgbChannelToLinear(nextPixelData[pixelOffset + 1]),
+      srgbChannelToLinear(nextPixelData[pixelOffset + 2]),
+    );
+    lValues[sampleIndex] = color.l;
+    aValues[sampleIndex] = color.a;
+    bValues[sampleIndex] = color.b;
+    lSum += color.l;
+  }
+
+  if (sampleCount === 0) {
+    return nextPixelData;
+  }
+
+  const meanL = lSum / sampleCount;
+  const sortedLValues = Float32Array.from(lValues).sort();
+  const p10 = resolvePercentile(sortedLValues, 0.10);
+  const p90 = resolvePercentile(sortedLValues, 0.90);
+  const currentRange = Math.max(0.08, p90 - p10);
+  const targetMeanL = meanL + ((WALLPAPER_NORMALIZATION_TARGET_OKLAB_L - meanL) * WALLPAPER_NORMALIZATION_BLEND);
+  const targetRange = currentRange + ((WALLPAPER_NORMALIZATION_TARGET_RANGE - currentRange) * WALLPAPER_NORMALIZATION_BLEND);
+  const offsetScale = Math.min(1.28, Math.max(0.72, targetRange / currentRange));
+
+  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
+    const pixelOffset = sampleIndex * 4;
+    const scaledOffset = (lValues[sampleIndex] - meanL) * offsetScale;
+    const softenedOffset = Math.tanh(scaledOffset / WALLPAPER_NORMALIZATION_OFFSET_SOFT_CLIP)
+      * WALLPAPER_NORMALIZATION_OFFSET_SOFT_CLIP;
+    const normalizedL = Math.min(
+      WALLPAPER_NORMALIZATION_MAX_OKLAB_L,
+      Math.max(WALLPAPER_NORMALIZATION_MIN_OKLAB_L, targetMeanL + softenedOffset),
+    );
+    const linearRgb = oklabToLinearRgb({
+      l: normalizedL,
+      a: aValues[sampleIndex],
+      b: bValues[sampleIndex],
+    });
+
+    nextPixelData[pixelOffset] = Math.round(linearChannelToSrgb(linearRgb.red) * 255);
+    nextPixelData[pixelOffset + 1] = Math.round(linearChannelToSrgb(linearRgb.green) * 255);
+    nextPixelData[pixelOffset + 2] = Math.round(linearChannelToSrgb(linearRgb.blue) * 255);
+  }
+
+  return nextPixelData;
 }
 
 function measureSurfaceAverageLuminance(

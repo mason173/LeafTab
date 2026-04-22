@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
 import {
@@ -15,7 +15,6 @@ import {
   type SearchEngineOption,
   type SearchEngineSwitcherProps,
 } from '@/components/search/searchEngineSwitcher.shared';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 
 import searchIcon from '@/assets/searchicon.svg';
 
@@ -26,7 +25,6 @@ export function SearchEngineSwitcher({
   onOpenChange,
   onSelect,
   isOpen,
-  surfaceTone = 'default',
   toneClassName,
   surfaceClassName,
   itemClassName,
@@ -34,7 +32,6 @@ export function SearchEngineSwitcher({
 }: SearchEngineSwitcherProps) {
   const { t } = useTranslation();
   const dismissGuardUntilRef = useRef(0);
-  const [contentNode, setContentNode] = useState<HTMLDivElement | null>(null);
 
   const engineOptionMap: Record<typeof engine, SearchEngineOption> = {
     system: { id: 'system', name: t('search.systemEngine'), icon: searchIcon },
@@ -102,34 +99,23 @@ export function SearchEngineSwitcher({
             event.preventDefault();
           }
         }}
-        className={`relative z-[520] w-[260px] max-h-[320px] overflow-y-auto overflow-x-hidden rounded-[18px] border p-2 backdrop-blur-none ${surfaceClassName || 'border-border bg-transparent text-popover-foreground shadow-lg'}`}
+        className={`z-[520] w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] border p-2 ${surfaceClassName || 'border-border bg-popover text-popover-foreground shadow-lg'}`}
       >
-        <div ref={setContentNode} aria-hidden="true" className="pointer-events-none absolute inset-0" />
-        <SearchFakeBlurSurface
-          surfaceNode={contentNode}
-          tone={surfaceTone}
-          radiusClassName="rounded-[18px]"
-          darkCoverStrength="deep"
-          specularHighlight="none"
-          atmosphereMode="flat"
-        />
-        <div className="relative z-10">
-          {engines.map((option) => (
-            <DropdownMenuItem
-              key={option.id}
-              className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
-                engine === option.id
-                  ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
-                  : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
-              }`}
-              onSelect={() => onSelect(option.id)}
-            >
-              <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
-              <span className="truncate text-sm leading-5">{option.name}</span>
-              <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-primary' : 'opacity-0'}`} />
-            </DropdownMenuItem>
-          ))}
-        </div>
+        {engines.map((option) => (
+          <DropdownMenuItem
+            key={option.id}
+            className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
+              engine === option.id
+                ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
+                : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
+            }`}
+            onSelect={() => onSelect(option.id)}
+          >
+            <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
+            <span className="truncate text-sm leading-5">{option.name}</span>
+            <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-primary' : 'opacity-0'}`} />
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

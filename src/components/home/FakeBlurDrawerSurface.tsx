@@ -37,6 +37,24 @@ function buildViewportSliceImageStyle(params: {
   };
 }
 
+function buildViewportSliceGradientStyle(params: {
+  panelHeightVh: number;
+  panelTranslateYPx: number;
+}): CSSProperties {
+  const { panelHeightVh, panelTranslateYPx } = params;
+
+  return {
+    position: 'absolute',
+    left: '0',
+    top: `calc(${(panelHeightVh - 100).toFixed(4)}vh - ${panelTranslateYPx.toFixed(3)}px)`,
+    width: '100vw',
+    height: '100vh',
+    maxWidth: 'none',
+    backfaceVisibility: 'hidden',
+    willChange: 'transform',
+  };
+}
+
 export function FakeBlurDrawerSurface({
   opacity,
   transition,
@@ -49,6 +67,12 @@ export function FakeBlurDrawerSurface({
   const normalizedBackdropLuminance = clamp01(
     wallpaperBackdrop?.blurredWallpaperAverageLuminance ?? (isDarkTheme ? 0.42 : 0.68),
   );
+  const wallpaperMaskStyle = useMemo<CSSProperties | null>(() => {
+    if (!wallpaperBackdrop) return null;
+    return {
+      backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
+    };
+  }, [wallpaperBackdrop]);
 
   const imageStyle = useMemo(() => buildViewportSliceImageStyle({
     panelHeightVh,
@@ -74,14 +98,12 @@ export function FakeBlurDrawerSurface({
   }, [isDarkTheme, normalizedBackdropLuminance]);
 
   const colorWallpaperStyle = useMemo<CSSProperties>(() => ({
-    position: 'absolute',
-    inset: 0,
+    ...buildViewportSliceGradientStyle({
+      panelHeightVh,
+      panelTranslateYPx,
+    }),
     backgroundImage: wallpaperBackdrop?.colorWallpaperGradient,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    transform: 'scale(1.08)',
-    transformOrigin: 'center center',
-  }), [wallpaperBackdrop?.colorWallpaperGradient]);
+  }), [panelHeightVh, panelTranslateYPx, wallpaperBackdrop?.colorWallpaperGradient]);
 
   return (
     <div
@@ -112,6 +134,7 @@ export function FakeBlurDrawerSurface({
           }}
         />
       )}
+      {wallpaperMaskStyle ? <div className="absolute inset-0" style={wallpaperMaskStyle} /> : null}
       <div className="absolute inset-0" style={themeCoverStyle} />
       {adaptiveDimmingStyle ? <div className="absolute inset-0" style={adaptiveDimmingStyle} /> : null}
     </div>

@@ -7,7 +7,6 @@ import { isSearchCommandShellValue } from '@/utils/searchCommands';
 import { isUrl } from '@/utils';
 import type { SearchEngine } from '@/types';
 import { SearchEngineSwitcher } from '@/components/search/SearchEngineSwitcher';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 import type { SearchBarTheme } from '@/components/search/searchBarTheme';
 
 export type SearchFieldValueChangeHandler = (nextValue: string, nativeEvent?: Event) => void;
@@ -196,7 +195,7 @@ export function SearchField({
   showEngineSwitcher = true,
 }: SearchFieldProps) {
   const { t } = useTranslation();
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  void surfaceTone;
   const clearButtonSize = Math.max(28, searchActionSize - 10);
   const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
@@ -204,7 +203,6 @@ export function SearchField({
 
   return (
     <div
-      ref={surfaceRef}
       className={`content-stretch group relative flex w-full min-w-0 self-stretch cursor-text items-center rounded-[999px] ${theme.surfaceClassName}`}
       style={{
         height,
@@ -218,59 +216,47 @@ export function SearchField({
         if (value.length > 0) onOpenHistory();
       }}
     >
-      <SearchFakeBlurSurface
-        surfaceNode={surfaceRef.current}
-        tone={surfaceTone}
-        darkCoverStrength="deep"
-        sliceOverscanPx={220}
-        sliceScale={1.14}
-        specularHighlight="none"
-        atmosphereMode="flat"
-      />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[999px] transition-colors" />
-      <div className="relative z-10 flex min-w-0 flex-1 items-center" style={{ gap }}>
-        {showEngineSwitcher ? (
-          <SearchEngineSwitcher
-            engine={searchEngine}
-            isOpen={dropdownOpen}
-            onOpenChange={onEngineOpenChange}
-            onSelect={onEngineSelect}
-            surfaceTone={surfaceTone}
-            toneClassName={theme.triggerToneClassName}
-            surfaceClassName={theme.engineDropdownSurfaceClassName}
-            itemClassName={theme.engineDropdownItemClassName}
-            itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
-          />
-        ) : null}
-        <SearchFieldInput
-          value={value}
-          onValueChange={onValueChange}
-          inputRef={inputRef}
-          onInputFocus={onInputFocus}
-          placeholder={placeholder}
-          inlinePreview={inlinePreview}
-          disablePlaceholderAnimation={disablePlaceholderAnimation}
-          lightweightPlaceholderAnimation={lightweightPlaceholderAnimation}
-          theme={theme}
-          inputFontSize={inputFontSize}
+      {showEngineSwitcher ? (
+        <SearchEngineSwitcher
+          engine={searchEngine}
+          isOpen={dropdownOpen}
+          onOpenChange={onEngineOpenChange}
+          onSelect={onEngineSelect}
+          toneClassName={theme.triggerToneClassName}
+          surfaceClassName={theme.engineDropdownSurfaceClassName}
+          itemClassName={theme.engineDropdownItemClassName}
+          itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
         />
-        {value.length > 0 ? (
-          <button
-            type="button"
-            aria-label={t('common.clear')}
-            title={t('common.clear')}
-            className={`relative flex shrink-0 items-center justify-center rounded-[999px] transition-colors ${theme.clearButtonClassName}`}
-            style={{ width: clearButtonSize, height: clearButtonSize }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClear();
-              inputRef.current?.focus();
-            }}
-          >
-            <span className="leading-none" style={{ fontSize: Math.max(16, inputFontSize) }}>×</span>
-          </button>
-        ) : null}
-      </div>
+      ) : null}
+      <SearchFieldInput
+        value={value}
+        onValueChange={onValueChange}
+        inputRef={inputRef}
+        onInputFocus={onInputFocus}
+        placeholder={placeholder}
+        inlinePreview={inlinePreview}
+        disablePlaceholderAnimation={disablePlaceholderAnimation}
+        lightweightPlaceholderAnimation={lightweightPlaceholderAnimation}
+        theme={theme}
+        inputFontSize={inputFontSize}
+      />
+      {value.length > 0 ? (
+        <button
+          type="button"
+          aria-label={t('common.clear')}
+          title={t('common.clear')}
+          className={`relative flex shrink-0 items-center justify-center rounded-[999px] transition-colors ${theme.clearButtonClassName}`}
+          style={{ width: clearButtonSize, height: clearButtonSize }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+            inputRef.current?.focus();
+          }}
+        >
+          <span className="leading-none" style={{ fontSize: Math.max(16, inputFontSize) }}>×</span>
+        </button>
+      ) : null}
     </div>
   );
 }

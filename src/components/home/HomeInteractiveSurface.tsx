@@ -24,6 +24,8 @@ const INITIAL_SEARCH_FOCUS_MAX_ATTEMPTS = 20;
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
 const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 0)';
 const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
+const FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX = 72;
+const FOLDER_IMMERSIVE_BLUR_SCALE = 1.06;
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -358,8 +360,16 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
     pointerEvents: 'none',
+    top: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
+    right: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
+    bottom: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
+    left: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
     backgroundImage: effectiveWallpaperMode === 'color' ? colorWallpaperGradient : undefined,
     backgroundColor: effectiveWallpaperMode === 'color' ? 'rgba(18,22,30,0.12)' : 'rgba(26,32,44,0.22)',
+    backgroundPosition: 'center',
+    backgroundSize: 'cover',
+    transform: `translateZ(0) scale(${FOLDER_IMMERSIVE_BLUR_SCALE})`,
+    transformOrigin: 'center center',
   }), [colorWallpaperGradient, effectiveWallpaperMode]);
   const immersiveBlurOverlayStyle = useMemo<CSSProperties>(() => {
     if (normalizedBackdropLuminance > 0.56) {
@@ -420,8 +430,18 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 src={blurredWallpaperSrc}
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute h-full w-full object-cover"
                 draggable={false}
+                style={{
+                  top: -FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX,
+                  left: -FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX,
+                  width: `calc(100% + ${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX * 2}px)`,
+                  height: `calc(100% + ${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX * 2}px)`,
+                  transform: `translateZ(0) scale(${FOLDER_IMMERSIVE_BLUR_SCALE})`,
+                  transformOrigin: 'center center',
+                  backfaceVisibility: 'hidden',
+                  willChange: 'transform',
+                }}
               />
               <div
                 aria-hidden="true"
@@ -487,6 +507,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           colorWallpaperGradient,
           blurredWallpaperSrc,
           blurredWallpaperAverageLuminance,
+          effectiveWallpaperMaskOpacity,
         }}
       >
         <>

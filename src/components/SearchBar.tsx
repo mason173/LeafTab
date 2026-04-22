@@ -109,7 +109,7 @@ export function SearchBar({
 
     return {
       ...baseTheme,
-      surfaceClassName: 'text-white/88',
+      surfaceClassName: `${baseTheme.surfaceClassName} text-white/88`,
       triggerToneClassName: 'text-white/72',
       clearButtonClassName: 'text-white/58 hover:text-white/92',
       inputClassName: 'bg-transparent dark:bg-transparent text-white/88 placeholder:text-white/42',
