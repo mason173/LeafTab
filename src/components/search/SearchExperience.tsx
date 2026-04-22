@@ -10,13 +10,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
+import { SEARCH_ENGINE_BRAND_NAMES } from '@/components/search/searchEngineSwitcher.shared';
 import { toast } from '@/components/ui/sonner';
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import { useRotatingText } from '@/hooks/useRotatingText';
 import { useSearch } from '@/hooks/useSearch';
 import { useSearchInteractionController } from '@/hooks/useSearchInteractionController';
 import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
-import type { Shortcut } from '@/types';
+import type { Shortcut, ShortcutIconAppearance } from '@/types';
 import type { SearchAction, SearchActionDisplayIcon } from '@/utils/searchActions';
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import {
@@ -35,6 +36,7 @@ import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
+import type { WallpaperMode } from '@/wallpaper/types';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
 const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
@@ -75,6 +77,7 @@ type SlashCommandEntry = {
   id: SlashCommandActionId;
   icon: SearchActionDisplayIcon;
   label: string;
+  detail?: string;
   keywords: string[];
 };
 
@@ -122,6 +125,9 @@ export interface SearchExperienceProps {
   searchSurfaceStyle?: CSSProperties;
   searchSurfaceTone?: 'default' | 'drawer';
   suggestionsPlacement?: SearchSuggestionsPlacement;
+  currentWallpaperMode?: WallpaperMode;
+  currentColorWallpaperId?: string;
+  currentShortcutIconAppearance?: ShortcutIconAppearance;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
   onOpenSlashCommandDialog?: (target: SlashCommandDialogTarget) => void;
 }
@@ -207,6 +213,9 @@ export const SearchExperience = memo(function SearchExperience({
   searchSurfaceStyle,
   searchSurfaceTone = 'default',
   suggestionsPlacement = 'bottom',
+  currentWallpaperMode,
+  currentColorWallpaperId,
+  currentShortcutIconAppearance,
   onInteractionStateChange,
   onOpenSlashCommandDialog,
 }: SearchExperienceProps) {
@@ -489,6 +498,39 @@ export const SearchExperience = memo(function SearchExperience({
   const isSlashCommandPanelOpen = historyOpen
     && slashCommandInput.startsWith('/')
     && !searchSessionModel.command.active;
+  const currentSearchEngineLabel = useMemo(() => (
+    searchEngine === 'system'
+      ? t('search.systemEngine', { defaultValue: '系统默认' })
+      : SEARCH_ENGINE_BRAND_NAMES[searchEngine]
+  ), [searchEngine, t]);
+  const currentWallpaperModeLabel = useMemo(() => {
+    if (currentWallpaperMode === 'bing') {
+      return t('weather.wallpaper.bing', { defaultValue: 'bing' });
+    }
+    if (currentWallpaperMode === 'weather') {
+      return t('weather.wallpaper.weather', { defaultValue: '天气' });
+    }
+    if (currentWallpaperMode === 'custom') {
+      return t('weather.wallpaper.custom', { defaultValue: '自定义' });
+    }
+    if (currentWallpaperMode === 'color') {
+      const colorLabel = currentColorWallpaperId
+        ? t(`weather.wallpaper.colorPresets.${currentColorWallpaperId}`, { defaultValue: currentColorWallpaperId })
+        : t('weather.wallpaper.color', { defaultValue: 'Color' });
+      return colorLabel;
+    }
+    return '';
+  }, [currentColorWallpaperId, currentWallpaperMode, t]);
+  const currentShortcutIconAppearanceLabel = useMemo(() => {
+    if (!currentShortcutIconAppearance) return '';
+    if (currentShortcutIconAppearance === 'monochrome') {
+      return t('settings.shortcutIconSettings.monochrome', { defaultValue: '单色' });
+    }
+    if (currentShortcutIconAppearance === 'accent') {
+      return t('settings.shortcutIconSettings.accent', { defaultValue: '强调色' });
+    }
+    return t('settings.shortcutIconSettings.colorful', { defaultValue: '彩色' });
+  }, [currentShortcutIconAppearance, t]);
   const slashCommandEntries = useMemo<SlashCommandEntry[]>(() => [
     {
       id: 'bookmarks',
@@ -504,6 +546,7 @@ export const SearchExperience = memo(function SearchExperience({
       label: t('search.slash.searchSettings', {
         defaultValue: '搜索设置',
       }),
+      detail: currentSearchEngineLabel,
       keywords: ['设置', '搜索设置', 'search'],
     },
     {
@@ -520,6 +563,7 @@ export const SearchExperience = memo(function SearchExperience({
       label: t('search.slash.shortcutIconSettings', {
         defaultValue: '图标设置',
       }),
+      detail: currentShortcutIconAppearanceLabel,
       keywords: ['设置', '图标', 'icon'],
     },
     {
@@ -528,6 +572,7 @@ export const SearchExperience = memo(function SearchExperience({
       label: t('search.slash.wallpaperSettings', {
         defaultValue: '壁纸设置',
       }),
+      detail: currentWallpaperModeLabel,
       keywords: ['设置', '壁纸', 'wallpaper'],
     },
     {
@@ -564,6 +609,7 @@ export const SearchExperience = memo(function SearchExperience({
       item: {
         type: 'history',
         label: entry.label,
+        detail: entry.detail,
         value: buildSlashCommandActionValue(entry.id),
         timestamp: 0,
         historySource: 'browser',

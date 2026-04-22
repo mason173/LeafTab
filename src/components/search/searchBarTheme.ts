@@ -80,6 +80,14 @@ export function resolveSearchBarTheme(args: {
     : null;
 
   const prefersDarkForeground = (() => {
+    if (args.resolvedTheme === 'light') {
+      return true;
+    }
+
+    if (args.resolvedTheme === 'dark') {
+      return false;
+    }
+
     if (normalizedDarkestLuminance !== null && normalizedBrightestLuminance !== null) {
       const sampledAverage = normalizedAverageLuminance ?? (
         (normalizedDarkestLuminance + normalizedBrightestLuminance) / 2
@@ -119,27 +127,27 @@ export function resolveSearchBarTheme(args: {
 
   if (prefersDarkForeground) {
     return {
-      surfaceClassName: 'overflow-hidden bg-transparent text-black/78 shadow-none',
-      triggerToneClassName: 'text-black/52 transition-colors hover:text-black/78',
-      clearButtonClassName: 'text-black/42 hover:bg-black/6 hover:text-black/74',
-      inputClassName: 'bg-transparent dark:bg-transparent text-black/78 placeholder:text-black/32',
-      placeholderClassName: 'text-black/32',
-      linkIconClassName: 'text-black/48',
-      dropdownSurfaceClassName: 'overflow-hidden bg-transparent text-black/78 shadow-none',
-      dropdownRowClassName: 'text-black/80 hover:bg-black/5 hover:text-black/92 focus:bg-black/5 focus:text-black/92',
-      dropdownRowSelectedClassName: 'bg-black/8 text-black/92',
-      dropdownSecondaryTextClassName: 'text-black/42',
+      surfaceClassName: 'overflow-hidden bg-transparent text-black/72 shadow-none',
+      triggerToneClassName: 'text-black/50 transition-colors hover:text-black/72',
+      clearButtonClassName: 'text-black/40 hover:bg-black/6 hover:text-black/70',
+      inputClassName: 'bg-transparent dark:bg-transparent text-black/74 placeholder:text-black/34',
+      placeholderClassName: 'text-black/34',
+      linkIconClassName: 'text-black/46',
+      dropdownSurfaceClassName: 'overflow-hidden bg-transparent text-black/72 shadow-none',
+      dropdownRowClassName: 'text-black/76 hover:bg-black/5 hover:text-black/88 focus:bg-black/5 focus:text-black/88',
+      dropdownRowSelectedClassName: 'bg-black/8 text-black/86',
+      dropdownSecondaryTextClassName: 'text-black/44',
       engineDropdownSurfaceClassName: 'overflow-hidden bg-transparent text-black/78 shadow-none',
-      engineDropdownItemClassName: 'text-black/80 hover:bg-black/5 hover:text-black/92 focus:bg-black/5 focus:text-black/92',
-      engineDropdownItemSelectedClassName: 'bg-black/8 text-black/92',
+      engineDropdownItemClassName: 'text-black/76 hover:bg-black/5 hover:text-black/88 focus:bg-black/5 focus:text-black/88',
+      engineDropdownItemSelectedClassName: 'bg-black/8 text-black/86',
       dropdownStatusLoadingContainerClassName: 'bg-black/6',
       dropdownStatusInfoContainerClassName: 'bg-black/6',
       dropdownStatusDotClassName: 'bg-black/45',
-      dropdownStatusTextClassName: 'text-black/68',
-      dropdownStatusButtonClassName: 'bg-black/10 text-black/76 hover:bg-black/16',
-      dropdownClearButtonClassName: 'text-black/48 hover:text-black/78',
-      dropdownEmptyStateClassName: 'text-black/48',
-      dropdownFooterClassName: 'border-black/10 text-black/42',
+      dropdownStatusTextClassName: 'text-black/66',
+      dropdownStatusButtonClassName: 'bg-black/10 text-black/72 hover:bg-black/16',
+      dropdownClearButtonClassName: 'text-black/46 hover:text-black/72',
+      dropdownEmptyStateClassName: 'text-black/46',
+      dropdownFooterClassName: 'border-black/10 text-black/44',
     };
   }
 

@@ -92,6 +92,7 @@ export function SearchSuggestionsPanel({
       index,
       isCurrentTab,
       shortcutDomain,
+      detailLabel: item.detail?.trim() || '',
       showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
       secondaryLabel: isCurrentTab
         ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
@@ -196,6 +197,7 @@ export function SearchSuggestionsPanel({
     item,
     index,
     shortcutDomain,
+    detailLabel,
     secondaryLabel,
     showShortcutDomain,
     siteDirectDomain,
@@ -204,6 +206,7 @@ export function SearchSuggestionsPanel({
     item: SearchAction['item'];
     index: number;
     shortcutDomain: string;
+    detailLabel: string;
     secondaryLabel: string;
     showShortcutDomain: boolean;
     siteDirectDomain: string;
@@ -284,6 +287,9 @@ export function SearchSuggestionsPanel({
         {numberHintBadge}
         <span className="flex min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
           <span className="block min-w-0 max-w-full flex-1 truncate">{item.label}</span>
+          {detailLabel && !isSelected ? (
+            <span className={`shrink-0 truncate ${secondaryTextClass}`}>{detailLabel}</span>
+          ) : null}
           {secondaryLabel && !isSelected ? (
             <span className={`shrink-0 truncate ${secondaryTextClass}`}>{secondaryLabel}</span>
           ) : null}

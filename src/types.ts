@@ -78,6 +78,7 @@ export type RemoteSearchSuggestionProvider = '360';
 type SearchSuggestionBase = {
   label: string;
   value: string;
+  detail?: string;
 };
 
 export type HistorySearchSuggestionItem = SearchSuggestionBase & {

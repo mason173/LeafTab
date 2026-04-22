@@ -36,6 +36,7 @@ interface SearchFieldProps {
   dropdownOpen: boolean;
   onEngineOpenChange: (open: boolean) => void;
   showEngineSwitcher?: boolean;
+  panelExpanded?: boolean;
 }
 
 function SearchFieldInput({
@@ -194,6 +195,7 @@ export function SearchField({
   dropdownOpen,
   onEngineOpenChange,
   showEngineSwitcher = true,
+  panelExpanded = false,
 }: SearchFieldProps) {
   const { t } = useTranslation();
   const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
@@ -201,6 +203,7 @@ export function SearchField({
   const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
   const gap = Math.max(8, Math.round(height * 0.2));
+  const modeOverlayOpacity = panelExpanded ? 0.65 : 0.35;
 
   return (
     <div
@@ -222,6 +225,7 @@ export function SearchField({
         surfaceNode={surfaceNode}
         tone={surfaceTone}
         radiusClassName="rounded-[999px]"
+        modeOverlayOpacity={modeOverlayOpacity}
       />
       {showEngineSwitcher ? (
         <SearchEngineSwitcher

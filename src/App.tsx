@@ -1925,8 +1925,13 @@ export default function App() {
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
     searchActionSize: responsiveLayout.searchActionSize,
+    currentWallpaperMode: effectiveWallpaperMode,
+    currentColorWallpaperId: colorWallpaperId,
+    currentShortcutIconAppearance: shortcutIconAppearance,
     onOpenSlashCommandDialog: handleOpenSlashCommandDialog,
   }), [
+    colorWallpaperId,
+    effectiveWallpaperMode,
     handleOpenSlashCommandDialog,
     openInNewTab,
     responsiveLayout.searchActionSize,
@@ -1940,6 +1945,7 @@ export default function App() {
     searchPrefixEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
+    shortcutIconAppearance,
     tabSwitchSearchEngine,
     visualEffectsLevel,
   ]);

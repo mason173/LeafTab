@@ -194,6 +194,7 @@ export function SearchBar({
             dropdownOpen={dropdownOpen}
             onEngineOpenChange={onEngineOpenChange}
             showEngineSwitcher={showEngineSwitcher}
+            panelExpanded={historyOpen || dropdownOpen}
           />
           <SearchSuggestionsPanel
             items={searchActions}

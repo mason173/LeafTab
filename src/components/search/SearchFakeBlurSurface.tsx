@@ -1,4 +1,5 @@
 import { type CSSProperties } from 'react';
+import { useTheme } from 'next-themes';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
 import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 
@@ -47,11 +48,16 @@ export function SearchFakeBlurSurface({
   surfaceNode,
   tone = 'default',
   radiusClassName = 'rounded-[999px]',
+  modeOverlayOpacity = 0.65,
+  modeOverlayTransitionMs = 220,
 }: {
   surfaceNode: HTMLElement | null;
   tone?: 'default' | 'drawer';
   radiusClassName?: string;
+  modeOverlayOpacity?: number;
+  modeOverlayTransitionMs?: number;
 }) {
+  const { resolvedTheme } = useTheme();
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const hasViewportBackedSurface = Boolean(
     wallpaperBackdrop?.blurredWallpaperSrc
@@ -59,6 +65,13 @@ export function SearchFakeBlurSurface({
   );
   const viewportRect = useLiveViewportRect(surfaceNode, hasViewportBackedSurface);
   const drawerToneActive = tone === 'drawer';
+  const normalizedModeOverlayOpacity = Math.max(0, Math.min(1, modeOverlayOpacity));
+  const modeOverlayStyle: CSSProperties = {
+    backgroundColor: resolvedTheme === 'dark'
+      ? `rgba(0, 0, 0, ${normalizedModeOverlayOpacity})`
+      : `rgba(255, 255, 255, ${normalizedModeOverlayOpacity})`,
+    transition: `background-color ${modeOverlayTransitionMs}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+  };
   const wallpaperMaskStyle: CSSProperties | null = !drawerToneActive && wallpaperBackdrop
     ? {
         backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
@@ -72,6 +85,7 @@ export function SearchFakeBlurSurface({
         aria-hidden="true"
       >
         <div className="absolute inset-0" style={DRAWER_SURFACE_OVERLAY_STYLE} />
+        <div className="absolute inset-0" style={modeOverlayStyle} />
         <div
           className={`absolute inset-0 ${radiusClassName}`}
           style={buildSearchBorderStyle()}
@@ -115,6 +129,7 @@ export function SearchFakeBlurSurface({
         />
       )}
       {wallpaperMaskStyle ? <div className="absolute inset-0" style={wallpaperMaskStyle} /> : null}
+      <div className="absolute inset-0" style={modeOverlayStyle} />
       <div
         className={`absolute inset-0 ${radiusClassName}`}
         style={buildSearchBorderStyle()}
