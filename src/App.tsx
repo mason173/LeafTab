@@ -280,6 +280,7 @@ export default function App() {
     searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled, setSearchCalculatorEnabled,
     searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled,
+    searchBarPosition, setSearchBarPosition,
     preventDuplicateNewTab, setPreventDuplicateNewTab,
     is24Hour, setIs24Hour,
     showDate, setShowDate,
