@@ -38,9 +38,13 @@ import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
 import type { WallpaperMode } from '@/wallpaper/types';
+import {
+  focusSearchInputElement,
+  type SearchActivationHandle,
+  type SearchActivationFocusOptions,
+} from '@/components/search/searchActivation.shared';
 
 const POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS = 140;
-const SEARCH_INPUT_FOCUS_LOCK_DELAY_MS = 0;
 const SEARCH_PERMISSION_KEYS: SearchSuggestionPermission[] = ['bookmarks', 'history', 'tabs'];
 const SLASH_COMMAND_ACTION_VALUE_PREFIX = 'leaftab://slash-action/';
 const SEARCH_FOCUS_BLOCKING_SELECTOR = [
@@ -136,47 +140,14 @@ export interface SearchExperienceProps {
   currentColorWallpaperId?: string;
   currentShortcutIconAppearance?: ShortcutIconAppearance;
   activeSyncProvider?: 'cloud' | 'webdav' | 'none';
+  interactionDisabled?: boolean;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
   onOpenSlashCommandDialog?: (target: SlashCommandDialogTarget) => void;
+  onActivationHandleChange?: (handle: SearchActivationHandle | null) => void;
 }
 
 function hasOpenBlockingLayer() {
   return Boolean(document.querySelector(SEARCH_FOCUS_BLOCKING_SELECTOR));
-}
-
-function isEditableElement(el: Element | null) {
-  if (!(el instanceof HTMLElement)) return false;
-  const tag = el.tagName.toLowerCase();
-  return el.isContentEditable
-    || tag === 'textarea'
-    || tag === 'select'
-    || (tag === 'input' && el.getAttribute('type') !== 'button');
-}
-
-function isFocusProtectedElement(el: Element | null) {
-  if (!(el instanceof HTMLElement)) return false;
-  if (isEditableElement(el)) return true;
-
-  return Boolean(
-    el.closest(
-      [
-        'button',
-        'a[href]',
-        '[role="button"]',
-        '[role="menu"]',
-        '[role="menuitem"]',
-        '[role="dialog"]',
-        '[data-slot="popover-trigger"]',
-        '[data-slot="popover-content"]',
-        '[data-slot="dropdown-menu-trigger"]',
-        '[data-slot="dropdown-menu-content"]',
-        '[data-slot="dropdown-menu-item"]',
-        '[data-slot="dialog-content"]',
-        '[data-slot="alert-dialog-content"]',
-        '[data-slot="sheet-content"]',
-      ].join(', '),
-    ),
-  );
 }
 
 function copyTextToClipboard(copyText: string) {
@@ -225,16 +196,15 @@ export const SearchExperience = memo(function SearchExperience({
   currentColorWallpaperId,
   currentShortcutIconAppearance,
   activeSyncProvider = 'none',
+  interactionDisabled = false,
   onInteractionStateChange,
   onOpenSlashCommandDialog,
+  onActivationHandleChange,
 }: SearchExperienceProps) {
   const { t, i18n } = useTranslation();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
-  const lastInputSelectionRef = useRef<{ start: number; end: number } | null>(null);
-  const outsideDismissRefocusTimerRef = useRef<number | null>(null);
-  const suppressNextInputFocusOpenRef = useRef(false);
   const [currentBrowserTabId, setCurrentBrowserTabId] = useState<number | null>(null);
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
   const [searchPermissions, setSearchPermissions] = useState<Record<SearchSuggestionPermission, boolean>>(() => ({
@@ -248,6 +218,7 @@ export const SearchExperience = memo(function SearchExperience({
   const [permissionRequestInFlight, setPermissionRequestInFlight] = useState<SearchSuggestionPermission | null>(null);
   const [permissionWarmup, setPermissionWarmup] = useState<SearchSuggestionPermission | null>(null);
   const [blockingLayerOpen, setBlockingLayerOpen] = useState(() => hasOpenBlockingLayer());
+  const focusedPrintableCapturePendingRef = useRef(false);
 
   const {
     searchValue,
@@ -296,59 +267,8 @@ export const SearchExperience = memo(function SearchExperience({
       if (searchTypingBurstTimerRef.current !== null) {
         window.clearTimeout(searchTypingBurstTimerRef.current);
       }
-      if (outsideDismissRefocusTimerRef.current !== null) {
-        window.clearTimeout(outsideDismissRefocusTimerRef.current);
-      }
     };
   }, []);
-
-  const captureSearchInputSelection = useCallback(() => {
-    const input = inputRef.current;
-    if (!input || document.activeElement !== input) return;
-    lastInputSelectionRef.current = {
-      start: input.selectionStart ?? input.value.length,
-      end: input.selectionEnd ?? input.value.length,
-    };
-  }, [inputRef]);
-
-  const restoreSearchInputSelection = useCallback((input: HTMLInputElement) => {
-    const lastSelection = lastInputSelectionRef.current;
-    const valueLength = input.value.length;
-    const start = Math.max(0, Math.min(lastSelection?.start ?? valueLength, valueLength));
-    const end = Math.max(start, Math.min(lastSelection?.end ?? valueLength, valueLength));
-    try {
-      input.setSelectionRange(start, end);
-    } catch {}
-  }, []);
-
-  const focusSearchInputWithoutOpeningPanel = useCallback(() => {
-    if (dropdownOpen || document.visibilityState === 'hidden' || hasOpenBlockingLayer()) return;
-    const input = inputRef.current;
-    if (!input) return;
-    if (document.activeElement === input) {
-      captureSearchInputSelection();
-      restoreSearchInputSelection(input);
-      return;
-    }
-
-    const activeElement = document.activeElement;
-    if (
-      activeElement
-      && activeElement !== document.body
-      && activeElement !== document.documentElement
-      && activeElement !== input
-      && isEditableElement(activeElement)
-    ) {
-      return;
-    }
-
-    try {
-      input.focus({ preventScroll: true });
-    } catch {
-      input.focus();
-    }
-    restoreSearchInputSelection(input);
-  }, [captureSearchInputSelection, dropdownOpen, inputRef, restoreSearchInputSelection]);
 
   useEffect(() => {
     const syncBlockingLayerState = () => {
@@ -399,71 +319,13 @@ export const SearchExperience = memo(function SearchExperience({
   }, [dropdownOpen, searchEngine, setDropdownOpen, setSearchEngine]);
 
   useEffect(() => {
-    let focusTimer: number | null = null;
-
-    const clearScheduledFocus = () => {
-      if (focusTimer !== null) {
-        window.clearTimeout(focusTimer);
-        focusTimer = null;
-      }
-    };
-
-    const focusSearchInput = () => {
-      clearScheduledFocus();
-      focusSearchInputWithoutOpeningPanel();
-    };
-
-    const scheduleFocusSearchInput = () => {
-      clearScheduledFocus();
-      if (dropdownOpen) return;
-      focusTimer = window.setTimeout(() => {
-        focusTimer = null;
-        focusSearchInput();
-      }, SEARCH_INPUT_FOCUS_LOCK_DELAY_MS);
-    };
-
-    const handleDocumentFocusIn = (event: FocusEvent) => {
-      const input = inputRef.current;
-      if (!input || dropdownOpen || hasOpenBlockingLayer()) return;
-      const target = event.target;
-      if (target === input) {
-        captureSearchInputSelection();
-        return;
-      }
-      if (target instanceof Element && isFocusProtectedElement(target)) {
-        return;
-      }
-      scheduleFocusSearchInput();
-    };
-
-    const handleWindowFocus = () => {
-      scheduleFocusSearchInput();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        scheduleFocusSearchInput();
-      }
-    };
-
-    const handleSelectionChange = () => {
-      captureSearchInputSelection();
-    };
-
-    scheduleFocusSearchInput();
-    document.addEventListener('focusin', handleDocumentFocusIn, true);
-    document.addEventListener('selectionchange', handleSelectionChange);
-    window.addEventListener('focus', handleWindowFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearScheduledFocus();
-      document.removeEventListener('focusin', handleDocumentFocusIn, true);
-      document.removeEventListener('selectionchange', handleSelectionChange);
-      window.removeEventListener('focus', handleWindowFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [captureSearchInputSelection, dropdownOpen, focusSearchInputWithoutOpeningPanel, inputRef]);
+    if (!interactionDisabled) return;
+    closeHistoryPanel('manual');
+    if (dropdownOpen) {
+      setDropdownOpen(false);
+    }
+    inputRef.current?.blur();
+  }, [closeHistoryPanel, dropdownOpen, inputRef, interactionDisabled, setDropdownOpen]);
 
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
   const searchSessionModel = useMemo(() => createSearchSessionModel(searchValue, {
@@ -1075,6 +937,78 @@ export const SearchExperience = memo(function SearchExperience({
     t,
   ]);
 
+  const focusSearchInput = useCallback((options?: SearchActivationFocusOptions) => {
+    if (interactionDisabled) return;
+    const input = inputRef.current;
+    if (!input) return;
+    focusSearchInputElement(input, options);
+    if (options?.openHistory) {
+      openHistoryPanel({
+        select: options.openHistory,
+        itemCount: effectiveSearchActions.length,
+      });
+    }
+  }, [effectiveSearchActions.length, inputRef, interactionDisabled, openHistoryPanel]);
+
+  const appendSearchInputText = useCallback((text: string) => {
+    if (interactionDisabled || text.length === 0) return;
+    pointerHighlightLockUntilRef.current = 0;
+    focusedPrintableCapturePendingRef.current = false;
+    focusSearchInput();
+    handleSearchInputChange(`${searchValue}${text}`);
+  }, [focusSearchInput, handleSearchInputChange, interactionDisabled, searchValue]);
+
+  useEffect(() => {
+    const handleNativeInput = (event: Event) => {
+      if (event.target !== inputRef.current) return;
+      focusedPrintableCapturePendingRef.current = false;
+    };
+    const handleFocusOut = (event: FocusEvent) => {
+      if (event.target !== inputRef.current) return;
+      focusedPrintableCapturePendingRef.current = false;
+    };
+
+    document.addEventListener('input', handleNativeInput, true);
+    document.addEventListener('focusout', handleFocusOut, true);
+    return () => {
+      document.removeEventListener('input', handleNativeInput, true);
+      document.removeEventListener('focusout', handleFocusOut, true);
+    };
+  }, [inputRef]);
+
+  const activationHandle = useMemo<SearchActivationHandle | null>(() => {
+    if (interactionDisabled) return null;
+    return {
+      id: 'home-search',
+      inputRef,
+      anyKeyCaptureEnabled: searchAnyKeyCaptureEnabled,
+      focusInput: focusSearchInput,
+      appendText: appendSearchInputText,
+      armFocusedPrintableCapture: () => {
+        focusedPrintableCapturePendingRef.current = true;
+      },
+      consumeFocusedPrintableCapture: () => {
+        if (!focusedPrintableCapturePendingRef.current) return false;
+        focusedPrintableCapturePendingRef.current = false;
+        return true;
+      },
+    };
+  }, [
+    appendSearchInputText,
+    focusSearchInput,
+    inputRef,
+    interactionDisabled,
+    searchAnyKeyCaptureEnabled,
+  ]);
+
+  useEffect(() => {
+    onActivationHandleChange?.(activationHandle);
+  }, [activationHandle, onActivationHandleChange]);
+
+  useEffect(() => () => {
+    onActivationHandleChange?.(null);
+  }, [onActivationHandleChange]);
+
   const {
     suggestionModifierHeld,
     handleSuggestionKeyDown,
@@ -1090,9 +1024,7 @@ export const SearchExperience = memo(function SearchExperience({
     cycleSearchEngine,
     dropdownOpen,
     setDropdownOpen,
-    searchAnyKeyCaptureEnabled,
     searchInputRef: inputRef,
-    setSearchValue,
     onKeyboardNavigate: markSuggestionKeyboardNavigation,
   });
 
@@ -1111,29 +1043,17 @@ export const SearchExperience = memo(function SearchExperience({
 
   useEffect(() => {
     const handleHistoryOutside = (event: MouseEvent) => {
+      if (interactionDisabled) return;
       if (!historyOpen) return;
       const target = event.target;
       const targetNode = target as Node | null;
       if (searchAreaRef.current && (!targetNode || !searchAreaRef.current.contains(targetNode))) {
-        captureSearchInputSelection();
         closeHistoryPanel('outside');
-        const shouldRestoreFocus = !(target instanceof Element) || !isFocusProtectedElement(target);
-        if (shouldRestoreFocus) {
-          suppressNextInputFocusOpenRef.current = true;
-          if (outsideDismissRefocusTimerRef.current !== null) {
-            window.clearTimeout(outsideDismissRefocusTimerRef.current);
-          }
-          outsideDismissRefocusTimerRef.current = window.setTimeout(() => {
-            outsideDismissRefocusTimerRef.current = null;
-            focusSearchInputWithoutOpeningPanel();
-            suppressNextInputFocusOpenRef.current = false;
-          }, SEARCH_INPUT_FOCUS_LOCK_DELAY_MS);
-        }
       }
     };
     document.addEventListener('mousedown', handleHistoryOutside);
     return () => document.removeEventListener('mousedown', handleHistoryOutside);
-  }, [captureSearchInputSelection, closeHistoryPanel, focusSearchInputWithoutOpeningPanel, historyOpen]);
+  }, [closeHistoryPanel, historyOpen, interactionDisabled]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -1141,21 +1061,19 @@ export const SearchExperience = memo(function SearchExperience({
   }, [historyOpen, effectiveSearchActions.length, syncHistorySelectionByCount]);
 
   const handleSearchHistoryOpen = useCallback(() => {
+    if (interactionDisabled) return;
     setDropdownOpen(false);
     pointerHighlightLockUntilRef.current = 0;
     openHistoryPanel({ select: 'none' });
     refreshSearchPermissionStatus();
-  }, [openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
+  }, [interactionDisabled, openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
 
   const handleSearchInputFocus = useCallback(() => {
-    if (suppressNextInputFocusOpenRef.current) {
-      suppressNextInputFocusOpenRef.current = false;
-      return;
-    }
+    if (interactionDisabled) return;
     if (searchValue.length > 0) {
       handleSearchHistoryOpen();
     }
-  }, [handleSearchHistoryOpen, searchValue.length]);
+  }, [handleSearchHistoryOpen, interactionDisabled, searchValue.length]);
 
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     if (Date.now() < pointerHighlightLockUntilRef.current) return;
@@ -1389,6 +1307,7 @@ export const SearchExperience = memo(function SearchExperience({
         searchInputFontSize={searchInputFontSize}
         searchHorizontalPadding={searchHorizontalPadding}
         searchActionSize={searchActionSize}
+        interactionDisabled={interactionDisabled}
         showEngineSwitcher={ENABLE_SEARCH_ENGINE_SWITCHER}
         statusNotice={searchDropdownStatusNotice}
         emptyStateLabel={searchDropdownEmptyStateLabel}

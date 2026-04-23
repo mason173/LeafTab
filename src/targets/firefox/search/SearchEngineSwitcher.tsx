@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RiArrowRightSLine, RiCheckFill } from '@/icons/ri-compat';
+import { RiCheckFill } from '@/icons/ri-compat';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,7 @@ export function SearchEngineSwitcher({
   onOpenChange,
   onSelect,
   isOpen,
+  disabled = false,
   toneClassName,
   surfaceClassName,
   itemClassName,
@@ -56,6 +57,7 @@ export function SearchEngineSwitcher({
       modal={false}
       open={isOpen}
       onOpenChange={(open) => {
+        if (disabled) return;
         if (open) {
           markSwitcherInteraction();
           activateDismissGuard();
@@ -66,25 +68,29 @@ export function SearchEngineSwitcher({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
+          tabIndex={disabled ? -1 : undefined}
+          aria-disabled={disabled}
           data-search-engine-switcher-trigger="true"
           onMouseDown={(event) => {
+            if (disabled) return;
             markSwitcherInteraction();
             activateDismissGuard();
             event.preventDefault();
             event.stopPropagation();
           }}
           onPointerDown={(event) => {
+            if (disabled) return;
             markSwitcherInteraction();
             activateDismissGuard();
             event.stopPropagation();
           }}
           onClick={(event) => event.stopPropagation()}
-          className={`relative z-[1] mr-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-[12px] px-2 py-1.5 ${toneClassName || 'text-foreground/70'}`}
+          className={`relative z-[1] mr-1 flex shrink-0 items-center rounded-[12px] px-2 py-1.5 ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'} ${toneClassName || 'text-foreground/70'}`}
         >
           <span className="relative flex size-5 shrink-0 items-center justify-center">
             <img alt="" className="pointer-events-none size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
           </span>
-          <RiArrowRightSLine className="size-4 opacity-70" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

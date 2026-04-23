@@ -12,6 +12,7 @@ export type UseShortcutExperienceRootPropsParams = {
   onMoveSelectedShortcutsToFolder: ShortcutExperienceRootProps['selectionActions']['onMoveSelectedShortcutsToFolder'];
   onDissolveFolder: ShortcutExperienceRootProps['selectionActions']['onDissolveFolder'];
   onSetFolderDisplayMode: ShortcutExperienceRootProps['selectionActions']['onSetFolderDisplayMode'];
+  onDrawerFolderChildShortcutContextMenu?: ShortcutExperienceRootProps['onDrawerFolderChildShortcutContextMenu'];
   homeInteractiveSurfaceVisible: boolean;
   initialRevealReady: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['initialRevealReady'];
   modeLayersVisible: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['modeLayersVisible'];
@@ -97,6 +98,7 @@ export function useShortcutExperienceRootProps(
       baseTimeAnimationEnabled: params.baseTimeAnimationEnabled,
       freezeDynamicWallpaperBase: params.freezeDynamicWallpaperBase,
     },
+    onDrawerFolderChildShortcutContextMenu: params.onDrawerFolderChildShortcutContextMenu,
     folderTransitionController: params.folderTransitionController,
     compactFolderOverlayProps: params.compactFolderOverlayBaseProps,
     folderNameDialogOpen: params.folderNameDialogOpen,
@@ -111,6 +113,7 @@ export function useShortcutExperienceRootProps(
     params.closeFolderNameDialog,
     params.colorWallpaperGradient,
     params.compactFolderOverlayBaseProps,
+    params.onDrawerFolderChildShortcutContextMenu,
     params.effectiveOverlayWallpaperSrc,
     params.effectiveWallpaperMaskOpacity,
     params.effectiveWallpaperMode,

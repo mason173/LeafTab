@@ -1,4 +1,4 @@
-import { memo, type ReactNode, type RefObject } from 'react';
+import { memo, useEffect, type ReactNode, type RefObject } from 'react';
 import { ShortcutSelectionProvider } from '@/features/shortcuts/selection/ShortcutSelectionContext';
 import { ShortcutSelectionBulkDeleteDialog } from '@/features/shortcuts/selection/ShortcutSelectionBulkDeleteDialog';
 import { ShortcutSelectionContextMenu } from '@/features/shortcuts/selection/ShortcutSelectionContextMenu';
@@ -95,6 +95,21 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     onMoveSelectedShortcutsToFolder,
     onPinSelectedShortcuts,
   });
+
+  useEffect(() => {
+    if (!shortcutMultiSelectMode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      clearShortcutMultiSelect();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [clearShortcutMultiSelect, shortcutMultiSelectMode]);
 
   return (
     <ShortcutSelectionProvider value={{

@@ -13,6 +13,7 @@ export type SearchEngineSwitcherProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (engine: SearchEngine) => void;
+  disabled?: boolean;
   surfaceTone?: 'default' | 'drawer';
   toneClassName?: string;
   surfaceClassName?: string;
