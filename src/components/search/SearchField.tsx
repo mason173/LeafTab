@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiLinkM } from '@/icons/ri-compat';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import { SearchPlaceholderText } from '@/components/search/SearchPlaceholderText';
 import { isSearchCommandShellValue } from '@/utils/searchCommands';
 import { isUrl } from '@/utils';
@@ -36,7 +36,9 @@ interface SearchFieldProps {
   dropdownOpen: boolean;
   onEngineOpenChange: (open: boolean) => void;
   showEngineSwitcher?: boolean;
+  leadingAccessory?: React.ReactNode;
   panelExpanded?: boolean;
+  interactionDisabled?: boolean;
 }
 
 function SearchFieldInput({
@@ -50,6 +52,7 @@ function SearchFieldInput({
   lightweightPlaceholderAnimation,
   theme,
   inputFontSize = 18,
+  interactionDisabled = false,
 }: {
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
@@ -61,6 +64,7 @@ function SearchFieldInput({
   lightweightPlaceholderAnimation?: boolean;
   theme: SearchBarTheme;
   inputFontSize?: number;
+  interactionDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const [isFocused, setIsFocused] = useState(false);
@@ -96,6 +100,8 @@ function SearchFieldInput({
       <input
         ref={inputRef}
         type="text"
+        disabled={interactionDisabled}
+        tabIndex={interactionDisabled ? -1 : undefined}
         data-testid="home-search-input"
         value={value}
         onChange={(e) => {
@@ -195,20 +201,23 @@ export function SearchField({
   dropdownOpen,
   onEngineOpenChange,
   showEngineSwitcher = true,
+  leadingAccessory,
   panelExpanded: _panelExpanded = false,
+  interactionDisabled = false,
 }: SearchFieldProps) {
   const { t } = useTranslation();
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
   const clearButtonSize = Math.max(28, searchActionSize - 10);
-  const leftPadding = showEngineSwitcher ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
+  const hasLeadingAccessory = showEngineSwitcher || Boolean(leadingAccessory);
+  const leftPadding = hasLeadingAccessory ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
   const gap = Math.max(8, Math.round(height * 0.2));
-  const modeOverlayOpacity = 0.75;
 
   return (
-    <div
-      ref={setSurfaceNode}
-      className={`content-stretch group relative isolate flex w-full min-w-0 self-stretch cursor-text items-center rounded-[999px] ${theme.surfaceClassName}`}
+    <FrostedSurface
+      preset="search-pill"
+      className={interactionDisabled ? 'cursor-default pointer-events-none select-none' : undefined}
+      surfaceClassName={theme.surfaceClassName}
+      contentClassName="w-full gap-[inherit]"
       style={{
         height,
         paddingLeft: leftPadding,
@@ -216,44 +225,50 @@ export function SearchField({
         gap,
         ...surfaceStyle,
       }}
+      surfaceTone={surfaceTone}
       onClick={() => {
+        if (interactionDisabled) return;
         onFocusContainer();
         if (value.length > 0) onOpenHistory();
       }}
     >
-      <SearchFakeBlurSurface
-        surfaceNode={surfaceNode}
-        tone={surfaceTone}
-        radiusClassName="rounded-[999px]"
-        modeOverlayOpacity={modeOverlayOpacity}
-        showBorder={false}
-      />
       {showEngineSwitcher ? (
         <SearchEngineSwitcher
           engine={searchEngine}
           isOpen={dropdownOpen}
           onOpenChange={onEngineOpenChange}
           onSelect={onEngineSelect}
+          disabled={interactionDisabled}
           surfaceTone={surfaceTone}
           toneClassName={theme.triggerToneClassName}
           surfaceClassName={theme.engineDropdownSurfaceClassName}
           itemClassName={theme.engineDropdownItemClassName}
           itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
         />
+      ) : leadingAccessory ? (
+        <div
+          aria-hidden="true"
+          className={`relative z-[1] mr-1 flex shrink-0 items-center gap-2 rounded-[12px] px-2 py-1.5 ${interactionDisabled ? 'cursor-default opacity-60' : 'cursor-default'} ${theme.triggerToneClassName}`}
+        >
+          {leadingAccessory}
+        </div>
       ) : null}
-      <SearchFieldInput
-        value={value}
-        onValueChange={onValueChange}
-        inputRef={inputRef}
-        onInputFocus={onInputFocus}
-        placeholder={placeholder}
-        inlinePreview={inlinePreview}
-        disablePlaceholderAnimation={disablePlaceholderAnimation}
-        lightweightPlaceholderAnimation={lightweightPlaceholderAnimation}
-        theme={theme}
-        inputFontSize={inputFontSize}
-      />
-      {value.length > 0 ? (
+      <div className="flex flex-1 min-w-0 items-center gap-[inherit]">
+        <SearchFieldInput
+          value={value}
+          onValueChange={onValueChange}
+          inputRef={inputRef}
+          onInputFocus={onInputFocus}
+          placeholder={placeholder}
+          inlinePreview={inlinePreview}
+          disablePlaceholderAnimation={disablePlaceholderAnimation}
+          lightweightPlaceholderAnimation={lightweightPlaceholderAnimation}
+          theme={theme}
+          inputFontSize={inputFontSize}
+          interactionDisabled={interactionDisabled}
+        />
+      </div>
+      {value.length > 0 && !interactionDisabled ? (
         <button
           type="button"
           aria-label={t('common.clear')}
@@ -269,6 +284,6 @@ export function SearchField({
           <span className="leading-none" style={{ fontSize: Math.max(16, inputFontSize) }}>×</span>
         </button>
       ) : null}
-    </div>
+    </FrostedSurface>
   );
 }

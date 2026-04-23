@@ -24,9 +24,7 @@ type UseSearchInteractionControllerArgs = {
   cycleSearchEngine: (direction: 1 | -1) => void;
   dropdownOpen: boolean;
   setDropdownOpen: (next: boolean) => void;
-  searchAnyKeyCaptureEnabled: boolean;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
-  setSearchValue: (next: string | ((prev: string) => string)) => void;
   onKeyboardNavigate?: () => void;
 };
 
@@ -47,9 +45,7 @@ export function useSearchInteractionController({
   cycleSearchEngine,
   dropdownOpen,
   setDropdownOpen,
-  searchAnyKeyCaptureEnabled,
   searchInputRef,
-  setSearchValue,
   onKeyboardNavigate,
 }: UseSearchInteractionControllerArgs): UseSearchInteractionControllerResult {
   const [suggestionModifierHeld, setSuggestionModifierHeld] = useState(false);
@@ -149,66 +145,6 @@ export function useSearchInteractionController({
     onKeyboardNavigate,
     setHistorySelectedIndex,
     tabSwitchSearchEngine,
-  ]);
-
-  useEffect(() => {
-    const handleGlobalSearchHotkey = (event: KeyboardEvent) => {
-      const isHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k';
-      const isPasteHotkey = (event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'v';
-      const isPrintableKey = !event.metaKey && !event.ctrlKey && !event.altKey && !event.isComposing && event.key.length === 1;
-      if (!isHotkey && !isPasteHotkey && !isPrintableKey) return;
-      if (isPrintableKey && !searchAnyKeyCaptureEnabled) return;
-
-      const input = searchInputRef.current;
-      if (!input) return;
-      const target = event.target as HTMLElement | null;
-      if (target && target !== input) {
-        const tag = target.tagName.toLowerCase();
-        const isEditable = target.isContentEditable || tag === 'textarea' || tag === 'select' || (tag === 'input' && target.getAttribute('type') !== 'button');
-        if (isEditable) return;
-      }
-      const hasOpenModal = Boolean(
-        document.querySelector(
-          '[data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"]',
-        )
-      );
-      if (hasOpenModal && target !== input) return;
-
-      if (isPasteHotkey) {
-        if (target === input) return;
-        input.focus();
-        openHistoryPanel({ select: 'none' });
-        return;
-      }
-
-      if (isHotkey) {
-        event.preventDefault();
-        input.focus();
-        input.select();
-        onKeyboardNavigate?.();
-        openHistoryPanel({
-          select: 'first',
-          itemCount: searchActions.length,
-        });
-        return;
-      }
-
-      if (target === input) return;
-      // Focus first and let the browser/IME handle the current key naturally.
-      // Manually appending event.key breaks IME pinyin composition (e.g. "ren" loses the first letter).
-      input.focus();
-      openHistoryPanel({ select: 'none' });
-    };
-
-    window.addEventListener('keydown', handleGlobalSearchHotkey);
-    return () => window.removeEventListener('keydown', handleGlobalSearchHotkey);
-  }, [
-    searchActions.length,
-    openHistoryPanel,
-    onKeyboardNavigate,
-    searchAnyKeyCaptureEnabled,
-    searchInputRef,
-    setSearchValue,
   ]);
 
   return {

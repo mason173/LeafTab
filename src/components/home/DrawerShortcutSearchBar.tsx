@@ -1,15 +1,22 @@
-import { useMemo, useState, type RefObject } from 'react';
-import { useTheme } from 'next-themes';
-import { RiCloseLine, RiSearchLine } from '@/icons/ri-compat';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { RiDashboardFill } from '@/icons/ri-compat';
+import { SearchBar } from '@/components/SearchBar';
+import {
+  FloatingSearchDock,
+  resolveFloatingSearchMotionPhase,
+} from '@/components/home/FloatingSearchDock';
+import type { SearchAction } from '@/utils/searchActions';
 
 type DrawerShortcutSearchBarProps = {
   inputRef: RefObject<HTMLInputElement | null>;
   value: string;
   onValueChange: (value: string) => void;
   className?: string;
-  widthPercent?: number;
   height: number;
+  maxWidthPx?: number;
+  reduceMotionVisuals?: boolean;
+  interactionDisabled?: boolean;
+  withDock?: boolean;
 };
 
 export function DrawerShortcutSearchBar({
@@ -17,74 +24,106 @@ export function DrawerShortcutSearchBar({
   value,
   onValueChange,
   className,
-  widthPercent = 70,
   height,
+  maxWidthPx,
+  reduceMotionVisuals = false,
+  interactionDisabled = false,
+  withDock = true,
 }: DrawerShortcutSearchBarProps) {
-  const { resolvedTheme } = useTheme();
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
-  const trimmedWidthPercent = Math.max(40, Math.min(100, widthPercent));
-  const isDarkTheme = resolvedTheme === 'dark';
+  const [isFocused, setIsFocused] = useState(false);
+  const deferredSyncTimerRef = useRef<number | null>(null);
+  const historyRef = useRef<HTMLDivElement | null>(null);
+  const hasValue = value.trim().length > 0;
+  const motionPhase = resolveFloatingSearchMotionPhase({
+    isFocused,
+    hasValue,
+  });
 
-  const inputClassName = useMemo(() => (
-    isDarkTheme
-      ? 'text-white/92 placeholder:text-white/42'
-      : 'text-black/78 placeholder:text-black/36'
-  ), [isDarkTheme]);
+  useEffect(() => {
+    const syncFromInput = () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
 
-  const iconClassName = useMemo(() => (
-    isDarkTheme ? 'text-white/56' : 'text-black/42'
-  ), [isDarkTheme]);
+      const input = inputRef.current;
+      const nextFocused = Boolean(input && document.activeElement === input);
+      setIsFocused((current) => (current === nextFocused ? current : nextFocused));
+    };
+
+    const scheduleSyncFromInput = () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+      }
+      deferredSyncTimerRef.current = window.setTimeout(syncFromInput, 0);
+    };
+
+    syncFromInput();
+    document.addEventListener('focusin', syncFromInput, true);
+    document.addEventListener('focusout', scheduleSyncFromInput, true);
+
+    return () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
+      document.removeEventListener('focusin', syncFromInput, true);
+      document.removeEventListener('focusout', scheduleSyncFromInput, true);
+    };
+  }, [inputRef]);
+
+  const emptyActions = useMemo<SearchAction[]>(() => [], []);
+  const leadingAccessory = useMemo(() => (
+    <span className="relative flex size-5 shrink-0 items-center justify-center">
+      <RiDashboardFill className="size-[18px]" />
+    </span>
+  ), []);
+
+  const content = (
+    <SearchBar
+      value={value}
+      onValueChange={(nextValue) => {
+        onValueChange(nextValue);
+      }}
+      onSubmit={() => {}}
+      searchEngine="system"
+      dropdownOpen={false}
+      onEngineOpenChange={() => {}}
+      onEngineSelect={() => {}}
+      searchActions={emptyActions}
+      historyOpen={false}
+      onHistoryOpen={() => {}}
+      onSuggestionSelect={() => {}}
+      onSuggestionHighlight={() => {}}
+      onHistoryClear={() => {}}
+      onClear={() => {
+        onValueChange('');
+      }}
+      historyRef={historyRef}
+      placeholder="搜索快捷方式"
+      disablePlaceholderAnimation={true}
+      inputRef={inputRef}
+      searchHeight={height}
+      searchSurfaceTone="default"
+      interactionDisabled={interactionDisabled}
+      showEngineSwitcher={false}
+      leadingAccessory={leadingAccessory}
+      searchHorizontalPadding={24}
+    />
+  );
+
+  if (!withDock) {
+    return <div className={className}>{content}</div>;
+  }
 
   return (
-    <div className={className}>
-      <div className="flex w-full justify-center">
-        <div
-          ref={setSurfaceNode}
-          className="relative w-full max-w-full overflow-hidden rounded-[999px]"
-          style={{
-            width: `${trimmedWidthPercent}%`,
-            height,
-          }}
-          onClick={() => {
-            inputRef.current?.focus();
-          }}
-        >
-          <SearchFakeBlurSurface
-            surfaceNode={surfaceNode}
-            modeOverlayOpacity={0.75}
-            showBorder={false}
-          />
-          <div
-            className="relative z-10 flex h-full items-center gap-3 px-5"
-          >
-            <RiSearchLine className={`size-4 shrink-0 ${iconClassName}`} />
-            <input
-              ref={inputRef}
-              type="text"
-              value={value}
-              onChange={(event) => {
-                onValueChange(event.target.value);
-              }}
-              placeholder="搜索快捷方式"
-              aria-label="搜索快捷方式"
-              className={`h-full w-full border-none bg-transparent text-[15px] outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${inputClassName}`}
-            />
-            {value.trim().length > 0 ? (
-              <button
-                type="button"
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${iconClassName} hover:bg-black/8 dark:hover:bg-white/10`}
-                aria-label="清空快捷方式搜索"
-                onClick={() => {
-                  onValueChange('');
-                  inputRef.current?.focus();
-                }}
-              >
-                <RiCloseLine className="size-4" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </div>
+    <FloatingSearchDock
+      className={className}
+      phase={motionPhase}
+      reduceMotionVisuals={reduceMotionVisuals}
+      maxWidthPx={maxWidthPx}
+    >
+      {content}
+    </FloatingSearchDock>
   );
 }

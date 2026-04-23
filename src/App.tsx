@@ -16,6 +16,7 @@ import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useLongTaskIndicator } from './hooks/useLongTaskIndicator';
 import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
+import { useBlurredWallpaperAsset } from './hooks/useBlurredWallpaperAsset';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
 import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
 
@@ -90,9 +91,10 @@ import { ShortcutSyncDialogsRoot } from '@/features/shortcuts/app/ShortcutSyncDi
 import { useShortcutAppContextValue } from '@/features/shortcuts/app/useShortcutAppContextValue';
 import { createLeaftabGridEngineHostAdapter } from '@/features/shortcuts/gridEngine/leaftabGridEngineHostAdapter';
 import { useShortcutWorkspaceController } from '@/features/shortcuts/workspace/useShortcutWorkspaceController';
+import { WallpaperBackdropProvider } from '@/components/wallpaper/WallpaperBackdropContext';
 import { LeafTabSyncProvider } from '@/features/sync/app/LeafTabSyncContext';
 import { useLeafTabSyncRuntimeController } from '@/features/sync/app/useLeafTabSyncRuntimeController';
-import type { SlashCommandDialogTarget } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps, SlashCommandDialogTarget } from '@/components/search/SearchExperience';
 
 type FolderOverlaySnapshotRect = {
   left: number;
@@ -278,7 +280,6 @@ export default function App() {
     searchAnyKeyCaptureEnabled, setSearchAnyKeyCaptureEnabled,
     searchCalculatorEnabled, setSearchCalculatorEnabled,
     searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled,
-    searchBarPosition, setSearchBarPosition,
     preventDuplicateNewTab, setPreventDuplicateNewTab,
     is24Hour, setIs24Hour,
     showDate, setShowDate,
@@ -1194,7 +1195,7 @@ export default function App() {
       searchAnyKeyCaptureEnabled,
       searchCalculatorEnabled,
       searchRotatingPlaceholderEnabled,
-      searchBarPosition,
+      searchBarPosition: 'bottom',
       preventDuplicateNewTab,
       is24Hour,
       showDate,
@@ -1235,7 +1236,6 @@ export default function App() {
     preventDuplicateNewTab,
     privacyConsent,
     searchAnyKeyCaptureEnabled,
-    searchBarPosition,
     searchCalculatorEnabled,
     searchPrefixEnabled,
     searchRotatingPlaceholderEnabled,
@@ -1301,7 +1301,6 @@ export default function App() {
     setSearchAnyKeyCaptureEnabled(normalized.searchAnyKeyCaptureEnabled);
     setSearchCalculatorEnabled(normalized.searchCalculatorEnabled);
     setSearchRotatingPlaceholderEnabled(normalized.searchRotatingPlaceholderEnabled);
-    setSearchBarPosition(normalized.searchBarPosition);
     setPreventDuplicateNewTab(normalized.preventDuplicateNewTab);
     setIs24Hour(normalized.is24Hour);
     setShowDate(normalized.showDate);
@@ -1674,6 +1673,21 @@ export default function App() {
     handleOverlayImageReady();
     setWallpaperImageReadyTick((prev) => prev + 1);
   }, [handleOverlayImageReady]);
+  const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
+    ? freshWeatherVideo
+    : effectiveWallpaperMode === 'color'
+      ? ''
+      : effectiveOverlayWallpaperSrc;
+  const imageWallpaperBlurEnabled = showOverlayWallpaperLayer
+    && effectiveWallpaperMode !== 'color'
+    && Boolean(wallpaperBlurSourceUrl);
+  const {
+    blurredWallpaperSrc,
+    blurredWallpaperAverageLuminance,
+  } = useBlurredWallpaperAsset({
+    sourceUrl: wallpaperBlurSourceUrl,
+    enabled: imageWallpaperBlurEnabled,
+  });
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
   }, [setSettingsOpen]);
@@ -1906,7 +1920,7 @@ export default function App() {
     effectiveWallpaperMode,
     weatherCode,
   ]);
-  const searchExperienceBaseProps = useMemo(() => ({
+  const searchExperienceBaseProps = useMemo<Omit<SearchExperienceProps, 'inputRef' | 'onInteractionStateChange'>>(() => ({
     openInNewTab,
     shortcuts,
     tabSwitchSearchEngine,
@@ -2038,14 +2052,12 @@ export default function App() {
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
-    searchBarPosition,
     reduceMotionVisuals: visualEffectsLevel === 'low',
     topNavIntroCompleted,
   }), [
     displayMode,
     is24Hour,
     responsiveLayout,
-    searchBarPosition,
     setIs24Hour,
     setShowDate,
     setShowLunar,
@@ -2073,6 +2085,7 @@ export default function App() {
     onEditFolderShortcut: handleOpenFolderChildShortcutEditor,
     onDeleteFolderShortcut: handleDeleteFolderChildShortcut,
     onShortcutOpen: handleShortcutActivate,
+    onDrawerFolderChildShortcutContextMenu: handleFolderChildShortcutContextMenu,
     onCreateFolder: handleCreateFolderFromSelection,
     onPinSelectedShortcuts: handlePinSelectedShortcuts,
     onMoveSelectedShortcutsToScenario: handleMoveSelectedShortcutsToScenario,
@@ -2261,7 +2274,17 @@ export default function App() {
           className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
           style={{ backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)' }}
         >
-          <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
+          <WallpaperBackdropProvider
+            value={{
+              wallpaperMode: effectiveWallpaperMode,
+              colorWallpaperGradient,
+              blurredWallpaperSrc,
+              blurredWallpaperAverageLuminance,
+              effectiveWallpaperMaskOpacity,
+            }}
+          >
+            <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
+          </WallpaperBackdropProvider>
           {shouldMountWallpaperSelector ? (
             <Suspense fallback={null}>
               <LazyWallpaperSelector

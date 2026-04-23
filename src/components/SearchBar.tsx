@@ -1,13 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useTheme } from 'next-themes';
+import { useCallback, useState } from 'react';
 import type React from 'react';
+import { useFrostedSurfaceTheme } from '@/components/frosted/useFrostedSurfaceTheme';
 import { SearchField, type SearchFieldValueChangeHandler } from '@/components/search/SearchField';
 import { SearchSuggestionsPanel } from '@/components/search/SearchSuggestionsPanel';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
 import { shouldBlockSearchSubmitForIme } from '@/components/search/searchInputKeyboard';
-import { resolveSearchBarTheme } from '@/components/search/searchBarTheme';
-import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
-import { useWallpaperRegionLuminance } from '@/components/search/useWallpaperRegionLuminance';
 import type { SearchAction } from '@/utils/searchActions';
 import { SearchEngine } from '@/types';
 
@@ -45,6 +42,7 @@ interface SearchBarProps {
   searchSurfaceTone?: 'default' | 'drawer';
   subtleDarkTone?: boolean;
   showEngineSwitcher?: boolean;
+  leadingAccessory?: React.ReactNode;
   statusNotice?: {
     tone?: 'info' | 'loading';
     message: string;
@@ -56,6 +54,7 @@ interface SearchBarProps {
   currentBrowserTabId?: number | null;
   allowSelectedSuggestionEnter?: boolean;
   suggestionsPlacement?: SearchSuggestionsPlacement;
+  interactionDisabled?: boolean;
 }
 
 export function SearchBar({
@@ -92,64 +91,27 @@ export function SearchBar({
   searchSurfaceTone = 'default',
   subtleDarkTone,
   showEngineSwitcher = true,
+  leadingAccessory,
   statusNotice,
   emptyStateLabel,
   showSuggestionNumberHints = false,
   currentBrowserTabId = null,
   allowSelectedSuggestionEnter = false,
   suggestionsPlacement = 'bottom',
+  interactionDisabled = false,
 }: SearchBarProps) {
-  const { resolvedTheme } = useTheme();
-  const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
-  const regionLuminance = useWallpaperRegionLuminance(surfaceNode, searchSurfaceTone !== 'drawer');
   const attachHistoryRef = useCallback((node: HTMLDivElement | null) => {
     setSurfaceNode(node);
     historyRef.current = node;
   }, [historyRef]);
-  const backgroundLuminanceStats = useMemo(() => {
-    if (searchSurfaceTone === 'drawer') {
-      return {
-        average: 0,
-        p15: 0,
-        p85: 0,
-      };
-    }
-
-    if (!regionLuminance) {
-      return null;
-    }
-
-    const maskOpacity = Math.max(0, Math.min(1, (wallpaperBackdrop?.effectiveWallpaperMaskOpacity ?? 0) / 100));
-
-    const maskMultiplier = 1 - maskOpacity;
-    return {
-      average: regionLuminance.average * maskMultiplier,
-      p15: regionLuminance.p15 * maskMultiplier,
-      p85: regionLuminance.p85 * maskMultiplier,
-    };
-  }, [
-    regionLuminance,
-    searchSurfaceTone,
-    wallpaperBackdrop?.effectiveWallpaperMaskOpacity,
-  ]);
-  const backgroundLuminance = backgroundLuminanceStats?.average ?? null;
-  const backgroundLuminanceRange = useMemo(() => (
-    backgroundLuminanceStats
-      ? {
-          darkest: backgroundLuminanceStats.p15,
-          brightest: backgroundLuminanceStats.p85,
-        }
-      : null
-  ), [backgroundLuminanceStats]);
-  const theme = useMemo(() => resolveSearchBarTheme({
+  const { theme } = useFrostedSurfaceTheme({
+    surfaceNode,
+    surfaceTone: searchSurfaceTone,
     blankMode,
     forceWhiteTheme,
     subtleDarkTone,
-    resolvedTheme,
-    backgroundLuminance,
-    backgroundLuminanceRange,
-  }), [backgroundLuminance, backgroundLuminanceRange, blankMode, forceWhiteTheme, resolvedTheme, subtleDarkTone]);
+  });
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (shouldBlockSearchSubmitForIme(e, { allowSelectedSuggestionEnter })) return;
@@ -167,7 +129,11 @@ export function SearchBar({
   };
 
   return (
-    <div className="relative content-stretch flex w-full items-start" onKeyDown={handleKeyDown}>
+    <div
+      className="relative content-stretch flex w-full items-start"
+      onKeyDown={handleKeyDown}
+      aria-disabled={interactionDisabled}
+    >
       <div className="relative flex-1 min-w-0">
         <div className="relative" ref={attachHistoryRef}>
           <SearchField
@@ -189,11 +155,13 @@ export function SearchBar({
             searchActionSize={searchActionSize}
             surfaceStyle={searchSurfaceStyle}
             surfaceTone={searchSurfaceTone}
+            interactionDisabled={interactionDisabled}
             searchEngine={searchEngine}
             onEngineSelect={onEngineSelect}
             dropdownOpen={dropdownOpen}
             onEngineOpenChange={onEngineOpenChange}
             showEngineSwitcher={showEngineSwitcher}
+            leadingAccessory={leadingAccessory}
             panelExpanded={historyOpen || dropdownOpen}
           />
           <SearchSuggestionsPanel

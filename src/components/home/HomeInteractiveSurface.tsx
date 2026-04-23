@@ -1,10 +1,9 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TopNavBar, type TopNavBarProps } from '@/components/TopNavBar';
 import {
   HomeMainContent,
   type HomeMainContentBaseProps,
-  type HomeMainContentSearchExperienceProps,
   type HomeMainContentShortcutGridProps,
   type HomeMainContentWallpaperClockProps,
 } from '@/components/home/HomeMainContent';
@@ -16,10 +15,24 @@ import { resolveInitialRevealStyle } from '@/config/animationTokens';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { useBlurredWallpaperAsset } from '@/hooks/useBlurredWallpaperAsset';
-import type { SearchInteractionState } from '@/components/search/SearchExperience';
+import type { SearchExperienceProps, SearchInteractionState } from '@/components/search/SearchExperience';
 import { BottomCropFadeOverlay, resolveBottomCropFadeHeight } from '@/components/home/BottomCropFadeOverlay';
+import {
+  FloatingSearchDock,
+  resolveFloatingSearchMotionPhase,
+  resolveFloatingSearchOffsetPx,
+} from '@/components/home/FloatingSearchDock';
+import { DrawerShortcutSearchBar } from '@/components/home/DrawerShortcutSearchBar';
 import { HomeSearchBar } from '@/components/home/HomeSearchBar';
-import { focusInputWithRetry } from '@/components/home/focusInputWithRetry';
+import { useGlobalSearchActivation } from '@/components/home/useGlobalSearchActivation';
+import { useSearchBootstrapFocus } from '@/components/home/useSearchBootstrapFocus';
+import {
+  focusSearchInputElement,
+  type SearchActivationHandle,
+} from '@/components/search/searchActivation.shared';
+import { useDrawerShortcutSearchController } from '@/components/home/useDrawerShortcutSearchController';
+import { HOME_ROOT_SHORTCUT_GRID_ANCHOR } from '@/features/shortcuts/selection/shortcutSelectionLayout';
+import type { Shortcut } from '@/types';
 import type { WallpaperMode } from '@/wallpaper/types';
 
 const INITIAL_VISUAL_BOOT_SETTLE_MS = 700;
@@ -27,12 +40,104 @@ const FOLDER_IMMERSIVE_PROGRESS_VAR = 'var(--leaftab-folder-immersive-progress, 
 const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 const FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX = 72;
 const FOLDER_IMMERSIVE_BLUR_SCALE = 1.06;
-const FLOATING_BOTTOM_SEARCH_Z_INDEX = 14030;
-const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 14025;
+const FLOATING_BOTTOM_SEARCH_Z_INDEX = 15030;
+const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 15025;
+const FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS = 300;
+const FLOATING_BOTTOM_SEARCH_HIDE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.min(1, Math.max(0, value));
+}
+
+function useTrackedInputSnapshot(inputRef: RefObject<HTMLInputElement | null>) {
+  const [snapshot, setSnapshot] = useState({
+    isFocused: false,
+    hasValue: false,
+  });
+  const deferredSyncTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const syncFromInput = () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
+
+      const input = inputRef.current;
+      const nextSnapshot = {
+        isFocused: Boolean(input && document.activeElement === input),
+        hasValue: Boolean(input?.value.trim()),
+      };
+
+      setSnapshot((current) => (
+        current.isFocused === nextSnapshot.isFocused
+        && current.hasValue === nextSnapshot.hasValue
+      ) ? current : nextSnapshot);
+    };
+
+    const scheduleSyncFromInput = () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+      }
+      deferredSyncTimerRef.current = window.setTimeout(syncFromInput, 0);
+    };
+
+    syncFromInput();
+    document.addEventListener('focusin', syncFromInput, true);
+    document.addEventListener('focusout', scheduleSyncFromInput, true);
+    document.addEventListener('input', scheduleSyncFromInput, true);
+    document.addEventListener('change', scheduleSyncFromInput, true);
+
+    return () => {
+      if (deferredSyncTimerRef.current !== null) {
+        window.clearTimeout(deferredSyncTimerRef.current);
+        deferredSyncTimerRef.current = null;
+      }
+      document.removeEventListener('focusin', syncFromInput, true);
+      document.removeEventListener('focusout', scheduleSyncFromInput, true);
+      document.removeEventListener('input', scheduleSyncFromInput, true);
+      document.removeEventListener('change', scheduleSyncFromInput, true);
+    };
+  }, [inputRef]);
+
+  return snapshot;
+}
+
+function useOpenDialogOverlayActivity() {
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const overlaySelector = [
+      '[data-slot="dialog-overlay"][data-state="open"]',
+      '[data-slot="alert-dialog-overlay"][data-state="open"]',
+    ].join(',');
+
+    const syncActivity = () => {
+      setActive(Boolean(document.querySelector(overlaySelector)));
+    };
+
+    syncActivity();
+
+    const observer = new MutationObserver(() => {
+      syncActivity();
+    });
+
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return active;
 }
 
 const resolveEventTargetElement = (target: EventTarget | null): Element | null => {
@@ -68,14 +173,19 @@ export type HomeInteractiveSurfaceProps = {
   effectiveWallpaperMaskOpacity: number;
   topNavModeProps: TopNavBarProps;
   homeMainContentBaseProps: HomeMainContentBaseProps;
+  onDrawerFolderChildShortcutContextMenu?: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    folderId: string,
+    shortcut: Shortcut,
+  ) => void;
   shortcutGridBaseProps: Omit<
     HomeMainContentShortcutGridProps,
     'heatZoneInspectorEnabled' | 'hiddenShortcutId' | 'selectionMode' | 'selectedShortcutIndexes' | 'onToggleShortcutSelection'
   >;
+  shortcutGridSelectionMode: HomeMainContentShortcutGridProps['selectionMode'];
   shortcutGridHeatZoneInspectorEnabled: HomeMainContentShortcutGridProps['heatZoneInspectorEnabled'];
   shortcutGridHiddenShortcutId: HomeMainContentShortcutGridProps['hiddenShortcutId'];
   shortcutGridOpenFolderPreviewId: HomeMainContentShortcutGridProps['openFolderPreviewId'];
-  shortcutGridSelectionMode: HomeMainContentShortcutGridProps['selectionMode'];
   shortcutGridSelectedShortcutIndexes: HomeMainContentShortcutGridProps['selectedShortcutIndexes'];
   onToggleShortcutSelection: HomeMainContentShortcutGridProps['onToggleShortcutSelection'];
   wallpaperClockBaseProps: Omit<
@@ -83,7 +193,7 @@ export type HomeInteractiveSurfaceProps = {
     'timeAnimationEnabled' | 'pauseDynamicWallpaper'
   >;
   searchExperienceBaseProps: Omit<
-    HomeMainContentSearchExperienceProps,
+    SearchExperienceProps,
     'inputRef' | 'onInteractionStateChange'
   >;
   baseTimeAnimationEnabled: boolean;
@@ -105,6 +215,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   effectiveWallpaperMaskOpacity,
   topNavModeProps,
   homeMainContentBaseProps,
+  onDrawerFolderChildShortcutContextMenu,
   shortcutGridBaseProps,
   shortcutGridHeatZoneInspectorEnabled,
   shortcutGridHiddenShortcutId,
@@ -119,6 +230,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 }: HomeInteractiveSurfaceProps) {
   const { t } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const drawerShortcutSearchInputRef = useRef<HTMLInputElement>(null);
   const previousDrawerExpandedRef = useRef(false);
   const [searchInteractionState, setSearchInteractionState] = useState<SearchInteractionState>({
     historyOpen: false,
@@ -127,6 +239,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   });
   const [visualBootSettled, setVisualBootSettled] = useState(initialRevealReady);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const [globalSearchActivationHandle, setGlobalSearchActivationHandle] = useState<SearchActivationHandle | null>(null);
 
   const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
     setSearchInteractionState((prevState) => (
@@ -134,10 +247,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       && prevState.dropdownOpen === nextState.dropdownOpen
       && prevState.typingBurst === nextState.typingBurst
     ) ? prevState : nextState);
-  }, []);
-
-  useEffect(() => {
-    return focusInputWithRetry(searchInputRef);
   }, []);
 
   useEffect(() => {
@@ -203,12 +312,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }, [drawerExpanded, wallpaperClockBaseProps]);
 
   useEffect(() => {
-    const wasDrawerExpanded = previousDrawerExpandedRef.current;
-    previousDrawerExpandedRef.current = drawerExpanded;
-
-    if (!wasDrawerExpanded || drawerExpanded) return;
-    return focusInputWithRetry(searchInputRef, { forceStealFocus: true });
-  }, [drawerExpanded]);
+    if (!shortcutGridSelectionMode) return;
+    searchInputRef.current?.blur();
+    setSearchInteractionState({
+      historyOpen: false,
+      dropdownOpen: false,
+      typingBurst: false,
+    });
+  }, [shortcutGridSelectionMode]);
 
   const searchPerformanceModeActive = searchInteractionState.historyOpen
     || searchInteractionState.typingBurst;
@@ -218,7 +329,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const shouldFreezeDynamicWallpaper = freezeDynamicWallpaperBase
     || !visualBootSettled
     || searchPerformanceModeActive;
-  const searchInteractionLocked = searchInteractionState.historyOpen || searchInteractionState.dropdownOpen;
+  const searchInteractionLocked = searchInteractionState.historyOpen
+    || searchInteractionState.dropdownOpen
+    || Boolean(shortcutGridSelectionMode);
   const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
     ? freshWeatherVideo
     : effectiveWallpaperMode === 'color'
@@ -266,9 +379,16 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     () => ({
       ...searchExperienceBaseProps,
       inputRef: searchInputRef,
+      interactionDisabled: Boolean(shortcutGridSelectionMode || drawerExpanded),
       onInteractionStateChange: handleSearchInteractionStateChange,
+      onActivationHandleChange: setGlobalSearchActivationHandle,
     }),
-    [handleSearchInteractionStateChange, searchExperienceBaseProps],
+    [
+      drawerExpanded,
+      handleSearchInteractionStateChange,
+      searchExperienceBaseProps,
+      shortcutGridSelectionMode,
+    ],
   );
   const shortcutGridProps = useMemo(
     () => ({
@@ -276,6 +396,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       heatZoneInspectorEnabled: shortcutGridHeatZoneInspectorEnabled,
       hiddenShortcutId: shortcutGridHiddenShortcutId,
       openFolderPreviewId: shortcutGridOpenFolderPreviewId,
+      surfaceAnchorId: HOME_ROOT_SHORTCUT_GRID_ANCHOR,
       selectionMode: shortcutGridSelectionMode,
       selectedShortcutIndexes: shortcutGridSelectedShortcutIndexes,
       onToggleShortcutSelection,
@@ -290,6 +411,113 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       shortcutGridSelectionMode,
     ],
   );
+  const drawerShortcutSearchController = useDrawerShortcutSearchController({
+    enabled: drawerExpanded,
+    interactionDisabled: Boolean(shortcutGridSelectionMode),
+    shortcutGridProps,
+    onFolderChildShortcutContextMenu: onDrawerFolderChildShortcutContextMenu,
+  });
+
+  useEffect(() => {
+    drawerShortcutSearchInputRef.current = drawerShortcutSearchController.inputRef.current;
+  }, [drawerShortcutSearchController.inputRef]);
+
+  const drawerSearchActivationHandle = useMemo<SearchActivationHandle | null>(() => {
+    if (!drawerExpanded || shortcutGridSelectionMode) return null;
+    return {
+      id: 'drawer-search',
+      inputRef: drawerShortcutSearchController.inputRef,
+      anyKeyCaptureEnabled: searchExperienceBaseProps.searchAnyKeyCaptureEnabled,
+      focusInput: (options) => {
+        const input = drawerShortcutSearchController.inputRef.current;
+        if (!input) return;
+        focusSearchInputElement(input, options);
+      },
+      appendText: (text) => {
+        if (text.length === 0) return;
+        const input = drawerShortcutSearchController.inputRef.current;
+        if (input) {
+          focusSearchInputElement(input);
+        }
+        drawerShortcutSearchController.setSearchValue((prev) => `${prev}${text}`);
+      },
+    };
+  }, [
+    drawerExpanded,
+    drawerShortcutSearchController.inputRef,
+    drawerShortcutSearchController.setSearchValue,
+    searchExperienceBaseProps.searchAnyKeyCaptureEnabled,
+    shortcutGridSelectionMode,
+  ]);
+
+  const drawerShortcutSearchProps = useMemo(() => ({
+    normalizedShortcutSearchQuery: drawerShortcutSearchController.normalizedShortcutSearchQuery,
+    activeIndexLetter: drawerShortcutSearchController.activeIndexLetter,
+    availableLetters: drawerShortcutSearchController.availableLetters,
+    showAlphabetRail: drawerShortcutSearchController.showAlphabetRail,
+    showShortcutSearchEmptyState: drawerShortcutSearchController.showShortcutSearchEmptyState,
+    filteredShortcutGridProps: drawerShortcutSearchController.filteredShortcutGridProps,
+    onLetterSelect: drawerShortcutSearchController.onLetterSelect,
+    onBlankAreaExitLetterFilter: drawerShortcutSearchController.handleBlankAreaExitLetterFilter,
+  }), [
+    drawerShortcutSearchController.activeIndexLetter,
+    drawerShortcutSearchController.availableLetters,
+    drawerShortcutSearchController.filteredShortcutGridProps,
+    drawerShortcutSearchController.handleBlankAreaExitLetterFilter,
+    drawerShortcutSearchController.normalizedShortcutSearchQuery,
+    drawerShortcutSearchController.onLetterSelect,
+    drawerShortcutSearchController.showAlphabetRail,
+    drawerShortcutSearchController.showShortcutSearchEmptyState,
+    shortcutGridOpenFolderPreviewId,
+  ]);
+  const globalSearchSnapshot = useTrackedInputSnapshot(searchInputRef);
+  const drawerSearchSnapshot = useTrackedInputSnapshot(drawerShortcutSearchController.inputRef);
+  const dialogOverlayActive = useOpenDialogOverlayActivity();
+  const folderImmersiveOpen = Boolean(shortcutGridOpenFolderPreviewId);
+  const floatingSearchHiddenByDialog = dialogOverlayActive || wallpaperClockBaseProps.scenarioModeOpen;
+  const floatingSearchHiddenByAlphabetIndex = drawerExpanded && drawerShortcutSearchController.activeIndexLetter !== null;
+  const floatingSearchHidden = floatingSearchHiddenByDialog || floatingSearchHiddenByAlphabetIndex || folderImmersiveOpen;
+  const activeFloatingSearchSnapshot = drawerExpanded
+    ? drawerSearchSnapshot
+    : globalSearchSnapshot;
+  const activeSearchActivationHandle = drawerExpanded
+    ? drawerSearchActivationHandle
+    : globalSearchActivationHandle;
+  const floatingSearchPhase = useMemo(() => (
+    drawerExpanded
+      ? 'active'
+      : resolveFloatingSearchMotionPhase({
+          isFocused: activeFloatingSearchSnapshot.isFocused,
+          hasValue: activeFloatingSearchSnapshot.hasValue,
+          interactionState: searchInteractionState,
+        })
+  ), [
+    activeFloatingSearchSnapshot.hasValue,
+    activeFloatingSearchSnapshot.isFocused,
+    drawerExpanded,
+    searchInteractionState,
+  ]);
+
+  useGlobalSearchActivation(activeSearchActivationHandle);
+  useSearchBootstrapFocus(activeSearchActivationHandle, !floatingSearchHidden);
+
+  useEffect(() => {
+    const wasDrawerExpanded = previousDrawerExpandedRef.current;
+    previousDrawerExpandedRef.current = drawerExpanded;
+
+    if (!wasDrawerExpanded && drawerExpanded) {
+      searchInputRef.current?.blur();
+    }
+    if (wasDrawerExpanded && !drawerExpanded) {
+      drawerShortcutSearchInputRef.current?.blur();
+    }
+  }, [drawerExpanded]);
+
+  useEffect(() => {
+    if (!floatingSearchHidden) return;
+    searchInputRef.current?.blur();
+    drawerShortcutSearchInputRef.current?.blur();
+  }, [floatingSearchHidden]);
 
   const fixedTopNavRevealStyle = useMemo(() => resolveInitialRevealStyle(initialRevealReady, {
     disablePointerEventsUntilReady: true,
@@ -452,11 +680,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
     willChange: 'opacity',
   }), []);
-  const showFloatingBottomSearch = homeMainContentBaseProps.searchBarPosition === 'bottom' && !drawerExpanded;
-  const floatingBottomSearchOffsetPx = Math.max(
-    16,
-    Math.round(homeMainContentBaseProps.layout.searchHeight * 0.42),
-  );
+  const showFloatingBottomSearch = true;
+  const floatingBottomSearchOffsetPx = resolveFloatingSearchOffsetPx(homeMainContentBaseProps.layout.searchHeight);
+  const floatingBottomSearchHiddenTranslateYPx = homeMainContentBaseProps.layout.searchHeight + floatingBottomSearchOffsetPx + 48;
   const floatingBottomSearchCropLayer = useMemo(() => {
     if (!showFloatingBottomSearch) return null;
 
@@ -470,8 +696,8 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           zIndex: FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX,
           bottom: '0px',
           ...fixedTopNavRevealStyle,
-          opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
-          willChange: 'opacity',
+          opacity: floatingSearchHiddenByDialog ? 0 : 1,
+          transition: `opacity ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
           pointerEvents: 'none',
         }}
       >
@@ -480,6 +706,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     );
   }, [
     fixedTopNavRevealStyle,
+    floatingSearchHiddenByDialog,
     homeMainContentBaseProps.layout.searchHeight,
     showFloatingBottomSearch,
   ]);
@@ -494,40 +721,74 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           zIndex: FLOATING_BOTTOM_SEARCH_Z_INDEX,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + ${floatingBottomSearchOffsetPx}px)`,
           ...fixedTopNavRevealStyle,
-          opacity: 'var(--leaftab-folder-immersive-inverse-opacity, 1)',
-          willChange: 'opacity',
         }}
       >
         <div
-          className="mx-auto max-w-full pointer-events-auto"
+          className="mx-auto max-w-full"
           style={{
             width: homeMainContentBaseProps.layout.contentWidth,
+            opacity: floatingSearchHidden ? 0 : 1,
+            transform: floatingSearchHidden
+              ? `translate3d(0, ${floatingBottomSearchHiddenTranslateYPx}px, 0) scale3d(0.2, 1, 1)`
+              : 'translate3d(0, 0, 0) scale3d(1, 1, 1)',
+            transformOrigin: 'center bottom',
+            transition: [
+              `opacity ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
+              `transform ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
+            ].join(', '),
+            willChange: 'opacity, transform',
+            pointerEvents: floatingSearchHidden ? 'none' : 'auto',
           }}
         >
-          <HomeSearchBar
-            searchExperienceProps={searchExperienceProps}
-            interactionState={searchInteractionState}
-            maxWidthPx={homeMainContentBaseProps.layout.contentWidth}
-            blankMode={modeFlags.searchUsesBlankStyle}
-            forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
-            searchSurfaceTone="default"
-            suggestionsPlacement="top"
-            motionContext="floating-bottom"
+          <FloatingSearchDock
+            phase={floatingSearchPhase}
             reduceMotionVisuals={homeMainContentBaseProps.reduceMotionVisuals}
-          />
+            maxWidthPx={homeMainContentBaseProps.layout.contentWidth}
+          >
+            {drawerExpanded ? (
+              <DrawerShortcutSearchBar
+                inputRef={drawerShortcutSearchController.inputRef}
+                value={drawerShortcutSearchController.searchValue}
+                onValueChange={drawerShortcutSearchController.setSearchValue}
+                height={homeMainContentBaseProps.layout.searchHeight}
+                interactionDisabled={Boolean(shortcutGridSelectionMode || !drawerExpanded)}
+                withDock={false}
+              />
+            ) : (
+              <HomeSearchBar
+                searchExperienceProps={searchExperienceProps}
+                interactionState={searchInteractionState}
+                blankMode={modeFlags.searchUsesBlankStyle}
+                forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
+                searchSurfaceTone="default"
+                suggestionsPlacement="top"
+                withDock={false}
+              />
+            )}
+          </FloatingSearchDock>
         </div>
       </div>
     );
   }, [
+    drawerShortcutSearchController.inputRef,
+    drawerShortcutSearchController.searchValue,
+    drawerShortcutSearchController.setSearchValue,
     fixedTopNavRevealStyle,
+    folderImmersiveOpen,
+    floatingSearchPhase,
+    floatingBottomSearchHiddenTranslateYPx,
+    floatingSearchHidden,
     floatingBottomSearchOffsetPx,
     homeMainContentBaseProps.layout.contentWidth,
+    homeMainContentBaseProps.layout.searchHeight,
     homeMainContentBaseProps.reduceMotionVisuals,
     modeFlags.forceWhiteSearchTheme,
     modeFlags.searchUsesBlankStyle,
     searchInteractionState,
     searchExperienceProps,
     showFloatingBottomSearch,
+    shortcutGridSelectionMode,
+    drawerExpanded,
   ]);
 
   return (
@@ -558,9 +819,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             initialRevealReady={initialRevealReady}
             modeFlags={modeFlags}
             wallpaperClockProps={wallpaperClockProps}
-            searchExperienceProps={searchExperienceProps}
-            searchInteractionState={searchInteractionState}
             searchInteractionLocked={searchInteractionLocked}
+            drawerShortcutSearchProps={drawerShortcutSearchProps}
+            onFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
             onDrawerExpandedChange={setDrawerExpanded}
             shortcutGridProps={shortcutGridProps}
           />

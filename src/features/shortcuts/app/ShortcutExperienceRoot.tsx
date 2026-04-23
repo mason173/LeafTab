@@ -44,6 +44,7 @@ export type ShortcutExperienceRootProps = {
     HomeInteractiveSurfaceProps,
     'shortcutGridSelectionMode' | 'shortcutGridSelectedShortcutIndexes' | 'onToggleShortcutSelection'
   >;
+  onDrawerFolderChildShortcutContextMenu?: HomeInteractiveSurfaceProps['onDrawerFolderChildShortcutContextMenu'];
   folderTransitionController: FolderTransitionController;
   compactFolderOverlayProps: Omit<
     ShortcutFolderCompactOverlayProps,
@@ -60,7 +61,11 @@ export type ShortcutExperienceRootProps = {
 const ShortcutExperienceSurface = memo(function ShortcutExperienceSurface({
   homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
-}: Pick<ShortcutExperienceRootProps, 'homeInteractiveSurfaceVisible' | 'homeInteractiveSurfaceBaseProps'>) {
+  onDrawerFolderChildShortcutContextMenu,
+}: Pick<
+  ShortcutExperienceRootProps,
+  'homeInteractiveSurfaceVisible' | 'homeInteractiveSurfaceBaseProps' | 'onDrawerFolderChildShortcutContextMenu'
+>) {
   const {
     selectionMode,
     selectedShortcutIndexes,
@@ -75,6 +80,7 @@ const ShortcutExperienceSurface = memo(function ShortcutExperienceSurface({
     <Suspense fallback={<div className="w-full min-h-[60vh]" aria-hidden="true" />}>
       <LazyHomeInteractiveSurface
         {...homeInteractiveSurfaceBaseProps}
+        onDrawerFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
         shortcutGridSelectionMode={selectionMode}
         shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
         onToggleShortcutSelection={onToggleShortcutSelection}
@@ -158,6 +164,7 @@ export const ShortcutExperienceRoot = memo(function ShortcutExperienceRoot({
   selectionActions,
   homeInteractiveSurfaceVisible,
   homeInteractiveSurfaceBaseProps,
+  onDrawerFolderChildShortcutContextMenu,
   folderTransitionController,
   compactFolderOverlayProps,
   folderNameDialogOpen,
@@ -230,6 +237,7 @@ export const ShortcutExperienceRoot = memo(function ShortcutExperienceRoot({
           <ShortcutExperienceSurface
             homeInteractiveSurfaceVisible={homeInteractiveSurfaceVisible}
             homeInteractiveSurfaceBaseProps={homeInteractiveSurfaceBaseProps}
+            onDrawerFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
           />
         </ShortcutSelectionShell>
         <ShortcutExperienceCompactOverlay

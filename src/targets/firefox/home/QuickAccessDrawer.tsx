@@ -1,18 +1,16 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { DrawerShortcutAlphabetRail } from '@/components/home/DrawerShortcutAlphabetRail';
+import { resolveDrawerAlphabetRailLayout } from '@/components/home/drawerAlphabetRailLayout';
 import {
   DrawerShortcutOverflowFadeOverlay,
   resolveDrawerShortcutOverflowFadeHeight,
   resolveDrawerShortcutOverflowFadeInset,
 } from '@/components/home/DrawerShortcutOverflowFadeOverlay';
+import {
+  resolveFloatingSearchReservePx,
+} from '@/components/home/FloatingSearchDock';
 import { FakeBlurDrawerSurface } from '@/components/home/FakeBlurDrawerSurface';
-import { DrawerShortcutSearchBar } from '@/components/home/DrawerShortcutSearchBar';
-import { focusInputWithRetry } from '@/components/home/focusInputWithRetry';
-import { HomeSearchBar } from '@/components/home/HomeSearchBar';
-import { useDrawerShortcutAlphabetIndex } from '@/components/home/useDrawerShortcutAlphabetIndex';
-import { filterShortcutsByIndexLetter } from '@/components/home/drawerShortcutAlphabetIndex';
-import { isShortcutFolder } from '@/utils/shortcutFolders';
 import {
   resolveInitialRevealOpacityTransition,
   resolveInitialRevealStyle,
@@ -31,6 +29,7 @@ export function QuickAccessDrawer({
   initialRevealReady,
   modeFlags,
   contentWidth,
+  viewportWidth,
   quickAccessOpen,
   isDrawerExpanded,
   drawerOverlayOpacity,
@@ -46,20 +45,14 @@ export function QuickAccessDrawer({
   drawerShortcutMonochromeTone,
   drawerShortcutMonochromeTileBackdropBlur,
   drawerScrollLocked,
-  reduceMotionVisuals = false,
+  reduceMotionVisuals: _reduceMotionVisuals = false,
   drawerExpandHintVisible = false,
-  drawerSearchSurfaceStyle,
-  subtleDarkTone,
-  searchBarPosition,
   searchHeight,
   drawerWheelAreaRef,
   drawerShortcutScrollRef,
-  searchExperienceProps,
-  interactionState,
-  shortcutGridProps,
+  shortcutGridProps: _shortcutGridProps,
+  drawerShortcutSearchProps,
 }: QuickAccessDrawerProps) {
-  const shortcutSearchInputRef = useRef<HTMLInputElement>(null);
-  const [shortcutSearchValue, setShortcutSearchValue] = useState('');
   const drawerExpandHint = drawerExpandHintVisible ? (
     <div
       className="pointer-events-none mt-3 flex items-center justify-center"
@@ -106,54 +99,26 @@ export function QuickAccessDrawer({
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
   const shortcutsVisibilityInitializedRef = useRef(false);
   const shortcutsPaintVisible = shortcutsVisible;
-  const showDrawerSearch = searchBarPosition !== 'bottom' && !isDrawerExpanded;
-  const deferredShortcutSearchValue = useDeferredValue(shortcutSearchValue);
-  const normalizedShortcutSearchQuery = deferredShortcutSearchValue.trim().toLocaleLowerCase();
-  const searchingShortcuts = normalizedShortcutSearchQuery.length > 0;
-
-  const searchedShortcuts = useMemo(() => {
-    if (!searchingShortcuts) return shortcutGridProps.shortcuts;
-
-    return shortcutGridProps.shortcuts.filter((shortcut) => {
-      const title = (shortcut.title || '').trim().toLocaleLowerCase();
-      const url = (shortcut.url || '').trim().toLocaleLowerCase();
-      const kind = (shortcut.kind || '').trim().toLocaleLowerCase();
-      const folderKeywords = isShortcutFolder(shortcut) ? ' folder 文件夹' : '';
-      const haystack = `${title}\n${url}\n${kind}${folderKeywords}`;
-      return haystack.includes(normalizedShortcutSearchQuery);
-    });
-  }, [normalizedShortcutSearchQuery, searchingShortcuts, shortcutGridProps.shortcuts]);
   const {
-    activeLetter: activeIndexLetter,
+    normalizedShortcutSearchQuery,
+    activeIndexLetter,
     availableLetters,
     showAlphabetRail,
+    showShortcutSearchEmptyState,
+    filteredShortcutGridProps,
     onLetterSelect,
-  } = useDrawerShortcutAlphabetIndex({
-    enabled: isDrawerExpanded && renderShortcuts,
-    shortcuts: searchedShortcuts,
-  });
-  const filteringByLetter = activeIndexLetter !== '#';
-  const filteredShortcuts = useMemo(
-    () => filterShortcutsByIndexLetter(searchedShortcuts, activeIndexLetter),
-    [activeIndexLetter, searchedShortcuts],
-  );
-  const showShortcutSearchEmptyState = (searchingShortcuts || filteringByLetter) && filteredShortcuts.length === 0;
+    onBlankAreaExitLetterFilter,
+  } = drawerShortcutSearchProps;
   const shortcutOverflowFadeHeightPx = resolveDrawerShortcutOverflowFadeHeight(searchHeight);
   const shortcutOverflowFadeInsetPx = resolveDrawerShortcutOverflowFadeInset(searchHeight);
-  const showShortcutOverflowFade = isDrawerExpanded && filteredShortcuts.length > 0;
-
-  const filteredShortcutGridProps = useMemo(() => (
-    (searchingShortcuts || filteringByLetter)
-      ? {
-          ...shortcutGridProps,
-          shortcuts: filteredShortcuts,
-          disableReorderAnimation: true,
-          selectionMode: false,
-          selectedShortcutIndexes: undefined,
-          onToggleShortcutSelection: undefined,
-        }
-      : shortcutGridProps
-  ), [filteredShortcuts, filteringByLetter, searchingShortcuts, shortcutGridProps]);
+  const floatingShortcutSearchReservePx = isDrawerExpanded ? resolveFloatingSearchReservePx(searchHeight) : 0;
+  const showShortcutOverflowFade = isDrawerExpanded && filteredShortcutGridProps.shortcuts.length > 0;
+  const alphabetRailLayout = resolveDrawerAlphabetRailLayout({
+    contentWidth,
+    viewportWidth,
+  });
+  const showDockedAlphabetRail = showAlphabetRail && alphabetRailLayout.dockOutside;
+  const shortcutScrollRightPaddingPx = 4;
 
   const enableInteractiveTransitions = useCallback(() => {
     setInteractiveTransitionsEnabled(true);
@@ -196,18 +161,8 @@ export function QuickAccessDrawer({
   }, [shouldShowDrawerShortcuts]);
 
   useEffect(() => {
-    if (!isDrawerExpanded) {
-      setShortcutSearchValue('');
-      return;
-    }
-
-    if (!quickAccessOpen) return;
-    return focusInputWithRetry(shortcutSearchInputRef, { forceStealFocus: true });
-  }, [isDrawerExpanded, quickAccessOpen]);
-
-  useEffect(() => {
     if (!isDrawerExpanded || !renderShortcuts) return;
-    if (normalizedShortcutSearchQuery.length === 0 && activeIndexLetter === '#') return;
+    if (normalizedShortcutSearchQuery.length === 0 && activeIndexLetter === null) return;
 
     const scrollContainer = drawerShortcutScrollRef.current;
     if (!scrollContainer) return;
@@ -224,36 +179,15 @@ export function QuickAccessDrawer({
     renderShortcuts,
   ]);
 
-  const searchBlock = (
-    <HomeSearchBar
-      className="relative z-20 w-full"
-      searchExperienceProps={searchExperienceProps}
-      interactionState={interactionState}
-      maxWidthPx={contentWidth}
-      blankMode={modeFlags.searchUsesBlankStyle}
-      forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
-      subtleDarkTone={subtleDarkTone}
-      searchSurfaceTone={isDrawerExpanded ? 'drawer' : 'default'}
-      searchSurfaceStyle={drawerSearchSurfaceStyle}
-      motionContext="drawer"
-      reduceMotionVisuals={reduceMotionVisuals}
-    />
-  );
-
-  const shortcutSearchBlock = isDrawerExpanded ? (
-    <DrawerShortcutSearchBar
-      className="relative z-20 mb-6 mt-1 w-full"
-      inputRef={shortcutSearchInputRef}
-      value={shortcutSearchValue}
-      onValueChange={setShortcutSearchValue}
-      widthPercent={70}
-      height={searchHeight}
+  const shortcutOverflowFadeLayer = showShortcutOverflowFade ? (
+    <DrawerShortcutOverflowFadeOverlay
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[12]"
+      heightPx={shortcutOverflowFadeHeightPx}
     />
   ) : null;
-
   const shortcutsBlock = renderShortcuts ? (
     <div
-      className={`relative min-h-0 flex-1 w-full transition-[opacity,transform] ease-out ${showDrawerSearch ? 'mt-4' : ''}`}
+      className="relative min-h-0 flex-1 w-full transition-[opacity,transform] ease-out"
       style={{
         opacity: shortcutsPaintVisible ? 1 : 0,
         transform: shortcutsPaintVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 8px, 0)',
@@ -265,19 +199,24 @@ export function QuickAccessDrawer({
       aria-hidden={!shortcutsPaintVisible}
     >
       <div className="relative h-full">
-        {showAlphabetRail ? (
+        {quickAccessOpen && showDockedAlphabetRail ? (
           <DrawerShortcutAlphabetRail
-            className="pointer-events-auto absolute inset-y-0 right-0 z-20 flex items-center"
+            className="pointer-events-auto absolute inset-y-0 z-20 flex items-center"
+            style={{
+              right: `${alphabetRailLayout.railRightOffsetPx}px`,
+            }}
             letters={availableLetters}
             activeLetter={activeIndexLetter}
             onLetterSelect={onLetterSelect}
           />
         ) : null}
-
         <div
           ref={drawerShortcutScrollRef}
           data-allow-drawer-locked-scroll="true"
-          className={`no-scrollbar h-full ${(isDrawerExpanded && !drawerScrollLocked) ? 'overflow-y-auto' : 'overflow-y-hidden'} ${showAlphabetRail ? 'pr-14' : 'pr-1'}`}
+          className={`no-scrollbar h-full ${(isDrawerExpanded && !drawerScrollLocked) ? 'overflow-y-auto' : 'overflow-y-hidden'}`}
+          style={{
+            paddingRight: `${shortcutScrollRightPaddingPx}px`,
+          }}
         >
           <div
             style={{
@@ -285,7 +224,7 @@ export function QuickAccessDrawer({
                 ? `translate3d(0, ${(-drawerBottomBounceOffsetPx).toFixed(3)}px, 0)`
                 : undefined,
               willChange: drawerBottomBounceOffsetPx > 0.01 ? 'transform' : undefined,
-              paddingBottom: showShortcutOverflowFade ? `${shortcutOverflowFadeInsetPx}px` : undefined,
+              paddingBottom: `${(showShortcutOverflowFade ? shortcutOverflowFadeInsetPx : 0) + floatingShortcutSearchReservePx}px`,
             }}
           >
             {showShortcutSearchEmptyState ? (
@@ -312,23 +251,26 @@ export function QuickAccessDrawer({
     </div>
   ) : null;
 
-  const shortcutOverflowFadeLayer = showShortcutOverflowFade ? (
-    <DrawerShortcutOverflowFadeOverlay
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-[12]"
-      heightPx={shortcutOverflowFadeHeightPx}
-    />
-  ) : null;
-
   return (
     <>
       <div
         className="fixed inset-0 z-[14000]"
         style={{
-          backgroundColor: '#000000',
+          backgroundColor: 'rgba(18,22,30,0.38)',
           opacity: normalizedOverlayOpacity,
           transition: interactiveTransitionsEnabled
-            ? `opacity ${drawerBackgroundFadeTransition}`
+            ? [
+                `opacity ${drawerBackgroundFadeTransition}`,
+                `backdrop-filter ${drawerBackgroundFadeTransition}`,
+                `-webkit-backdrop-filter ${drawerBackgroundFadeTransition}`,
+              ].join(', ')
             : initialRevealOpacityTransition,
+          backdropFilter: normalizedOverlayOpacity > 0.001
+            ? `blur(${Math.max(0, drawerSurfaceOpacity * 12).toFixed(2)}px)`
+            : undefined,
+          WebkitBackdropFilter: normalizedOverlayOpacity > 0.001
+            ? `blur(${Math.max(0, drawerSurfaceOpacity * 12).toFixed(2)}px)`
+            : undefined,
           backfaceVisibility: 'hidden',
           pointerEvents: isDrawerExpanded ? 'auto' : 'none',
         }}
@@ -390,6 +332,7 @@ export function QuickAccessDrawer({
                   style={{
                     paddingTop: `${drawerContentTopPaddingPx}px`,
                   }}
+                  onPointerDown={onBlankAreaExitLetterFilter}
                   onPointerDownCapture={enableInteractiveTransitions}
                   onTouchStartCapture={enableInteractiveTransitions}
                   onWheelCapture={(event) => {
@@ -411,9 +354,8 @@ export function QuickAccessDrawer({
                   <div
                     className="mx-auto flex min-h-0 max-w-full flex-col items-stretch"
                     style={{ width: contentWidth }}
+                    onPointerDown={onBlankAreaExitLetterFilter}
                   >
-                    {shortcutSearchBlock}
-                    {showDrawerSearch ? searchBlock : null}
                     {drawerExpandHint}
                     {shortcutsBlock}
                   </div>

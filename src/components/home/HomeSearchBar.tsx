@@ -4,10 +4,10 @@ import {
   type SearchExperienceProps,
   type SearchInteractionState,
 } from '@/components/search/SearchExperience';
-
-type HomeSearchBarMotionContext = 'drawer' | 'floating-bottom';
-
-type SearchBarMotionPhase = 'idle' | 'focus' | 'active';
+import {
+  FloatingSearchDock,
+  resolveFloatingSearchMotionPhase,
+} from '@/components/home/FloatingSearchDock';
 
 type HomeSearchBarProps = {
   searchExperienceProps: SearchExperienceProps;
@@ -18,62 +18,13 @@ type HomeSearchBarProps = {
   searchSurfaceStyle?: React.CSSProperties;
   suggestionsPlacement?: 'bottom' | 'top';
   className?: string;
-  motionContext?: HomeSearchBarMotionContext;
   interactionState?: SearchInteractionState;
   reduceMotionVisuals?: boolean;
   maxWidthPx?: number;
+  withDock?: boolean;
 };
 
-const SEARCH_BAR_MOTION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const SEARCH_BAR_IDLE_COLLAPSE_DELAY_MS = 300;
-
-function resolveMotionPhase({
-  isFocused,
-  hasValue,
-  interactionState,
-}: {
-  isFocused: boolean;
-  hasValue: boolean;
-  interactionState?: SearchInteractionState;
-}): SearchBarMotionPhase {
-  if (
-    hasValue
-    || interactionState?.historyOpen
-    || interactionState?.typingBurst
-  ) {
-    return 'active';
-  }
-
-  if (isFocused) return 'focus';
-  return 'idle';
-}
-
-function resolveMotionMetrics(
-  motionContext: HomeSearchBarMotionContext,
-  phase: SearchBarMotionPhase,
-): {
-  widthPercent: number;
-  minWidth: string;
-  translateYPx: number;
-} {
-  if (motionContext === 'floating-bottom') {
-    if (phase === 'active') {
-      return { widthPercent: 100, minWidth: 'min(100%, 22rem)', translateYPx: -8 };
-    }
-    if (phase === 'focus') {
-      return { widthPercent: 78, minWidth: 'min(100%, 20.5rem)', translateYPx: -4 };
-    }
-    return { widthPercent: 68, minWidth: 'min(100%, 20rem)', translateYPx: 0 };
-  }
-
-  if (phase === 'active') {
-    return { widthPercent: 100, minWidth: 'min(100%, 20rem)', translateYPx: -4 };
-  }
-  if (phase === 'focus') {
-    return { widthPercent: 82, minWidth: 'min(100%, 18.5rem)', translateYPx: -2 };
-  }
-  return { widthPercent: 74, minWidth: 'min(100%, 18rem)', translateYPx: 0 };
-}
 
 export function HomeSearchBar({
   searchExperienceProps,
@@ -84,14 +35,14 @@ export function HomeSearchBar({
   searchSurfaceStyle,
   suggestionsPlacement = 'bottom',
   className,
-  motionContext = 'drawer',
   interactionState,
   reduceMotionVisuals = false,
   maxWidthPx,
+  withDock = true,
 }: HomeSearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [hasValue, setHasValue] = useState(false);
-  const [motionPhase, setMotionPhase] = useState<SearchBarMotionPhase>('idle');
+  const [motionPhase, setMotionPhase] = useState<'idle' | 'focus' | 'active'>('idle');
   const deferredSyncTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -119,8 +70,8 @@ export function HomeSearchBar({
     syncFromInput();
     document.addEventListener('focusin', syncFromInput, true);
     document.addEventListener('focusout', scheduleSyncFromInput, true);
-    document.addEventListener('input', syncFromInput, true);
-    document.addEventListener('change', syncFromInput, true);
+    document.addEventListener('input', scheduleSyncFromInput, true);
+    document.addEventListener('change', scheduleSyncFromInput, true);
 
     return () => {
       if (deferredSyncTimerRef.current !== null) {
@@ -129,12 +80,12 @@ export function HomeSearchBar({
       }
       document.removeEventListener('focusin', syncFromInput, true);
       document.removeEventListener('focusout', scheduleSyncFromInput, true);
-      document.removeEventListener('input', syncFromInput, true);
-      document.removeEventListener('change', syncFromInput, true);
+      document.removeEventListener('input', scheduleSyncFromInput, true);
+      document.removeEventListener('change', scheduleSyncFromInput, true);
     };
   }, [searchExperienceProps.inputRef]);
 
-  const targetMotionPhase = useMemo(() => resolveMotionPhase({
+  const targetMotionPhase = useMemo(() => resolveFloatingSearchMotionPhase({
     isFocused,
     hasValue,
     interactionState,
@@ -160,43 +111,30 @@ export function HomeSearchBar({
     };
   }, [reduceMotionVisuals, targetMotionPhase]);
 
-  const motionMetrics = useMemo(
-    () => resolveMotionMetrics(motionContext, motionPhase),
-    [motionContext, motionPhase],
+  const content = (
+    <SearchExperience
+      {...searchExperienceProps}
+      blankMode={blankMode}
+      forceWhiteTheme={forceWhiteTheme}
+      subtleDarkTone={subtleDarkTone}
+      searchSurfaceTone={searchSurfaceTone}
+      searchSurfaceStyle={searchSurfaceStyle}
+      suggestionsPlacement={suggestionsPlacement}
+    />
   );
 
+  if (!withDock) {
+    return <div className={className}>{content}</div>;
+  }
+
   return (
-    <div className={className}>
-      <div className="flex w-full justify-center">
-        <div
-          className="w-full max-w-full"
-          style={{
-            width: `${motionMetrics.widthPercent}%`,
-            minWidth: motionMetrics.minWidth,
-            maxWidth: maxWidthPx ? `${maxWidthPx}px` : undefined,
-            transform: reduceMotionVisuals
-              ? undefined
-              : `translate3d(0, ${motionMetrics.translateYPx}px, 0)`,
-            transition: reduceMotionVisuals
-              ? 'none'
-              : [
-                  `width 260ms ${SEARCH_BAR_MOTION_EASING}`,
-                  `transform 260ms ${SEARCH_BAR_MOTION_EASING}`,
-                ].join(', '),
-            willChange: reduceMotionVisuals ? undefined : 'width, transform',
-          }}
-        >
-          <SearchExperience
-            {...searchExperienceProps}
-            blankMode={blankMode}
-            forceWhiteTheme={forceWhiteTheme}
-            subtleDarkTone={subtleDarkTone}
-            searchSurfaceTone={searchSurfaceTone}
-            searchSurfaceStyle={searchSurfaceStyle}
-            suggestionsPlacement={suggestionsPlacement}
-          />
-        </div>
-      </div>
-    </div>
+    <FloatingSearchDock
+      className={className}
+      phase={motionPhase}
+      reduceMotionVisuals={reduceMotionVisuals}
+      maxWidthPx={maxWidthPx}
+    >
+      {content}
+    </FloatingSearchDock>
   );
 }

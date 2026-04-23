@@ -1,17 +1,19 @@
-import { memo, useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { useTheme } from 'next-themes';
 import type { RootShortcutGridProps } from '@/features/shortcuts/components/RootShortcutGrid';
 import { WallpaperClock, type WallpaperClockProps } from '@/components/WallpaperClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { DisplayMode, DisplayModeLayoutFlags } from '@/displayMode/config';
-import type { SearchExperienceProps, SearchInteractionState } from '@/components/search/SearchExperience';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
-import type { SearchBarPosition } from '@/types';
+import type { Shortcut } from '@/types';
 import {
   resolveInitialRevealStyle,
 } from '@/config/animationTokens';
-import { QuickAccessDrawer } from './QuickAccessDrawer';
+import {
+  QuickAccessDrawer,
+  type DrawerShortcutSearchPresentationProps,
+} from './QuickAccessDrawer';
 import { InlineTime } from './InlineTime';
 import { useQuickAccessDrawer } from './useQuickAccessDrawer';
 
@@ -21,7 +23,6 @@ export type HomeContentFlags = Pick<
 >;
 
 export type HomeMainContentWallpaperClockProps = WallpaperClockProps;
-export type HomeMainContentSearchExperienceProps = SearchExperienceProps;
 export type HomeMainContentShortcutGridProps = RootShortcutGridProps;
 
 export interface HomeMainContentProps {
@@ -46,13 +47,16 @@ export interface HomeMainContentProps {
   timeFont: string;
   onTimeFontChange: (font: string) => void;
   layout: ResponsiveLayout;
-  searchBarPosition: SearchBarPosition;
   reduceMotionVisuals?: boolean;
   wallpaperClockProps: HomeMainContentWallpaperClockProps;
-  searchExperienceProps: HomeMainContentSearchExperienceProps;
-  searchInteractionState: SearchInteractionState;
   searchInteractionLocked: boolean;
   shortcutGridProps: HomeMainContentShortcutGridProps;
+  drawerShortcutSearchProps: DrawerShortcutSearchPresentationProps;
+  onFolderChildShortcutContextMenu?: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    folderId: string,
+    shortcut: Shortcut,
+  ) => void;
   onDrawerExpandedChange?: (expanded: boolean) => void;
   topNavIntroCompleted?: boolean;
 }
@@ -62,9 +66,8 @@ export type HomeMainContentBaseProps = Omit<
   'initialRevealReady'
   | 'modeFlags'
   | 'wallpaperClockProps'
-  | 'searchExperienceProps'
-  | 'searchInteractionState'
   | 'searchInteractionLocked'
+  | 'drawerShortcutSearchProps'
   | 'shortcutGridProps'
   | 'onDrawerExpandedChange'
 >;
@@ -97,13 +100,12 @@ export const HomeMainContent = memo(function HomeMainContent({
   timeFont,
   onTimeFontChange,
   layout,
-  searchBarPosition,
   reduceMotionVisuals = false,
   wallpaperClockProps,
-  searchExperienceProps,
-  searchInteractionState,
   searchInteractionLocked,
   shortcutGridProps,
+  drawerShortcutSearchProps,
+  onFolderChildShortcutContextMenu,
   onDrawerExpandedChange,
   topNavIntroCompleted = false,
 }: HomeMainContentProps) {
@@ -139,7 +141,6 @@ export const HomeMainContent = memo(function HomeMainContent({
   };
 
   const isLightTheme = resolvedTheme !== 'dark';
-  const useExpandedLightSearchSurface = isLightTheme && drawer.isDrawerExpanded;
   const drawerShortcutForceWhiteText = displayMode === 'fresh' && !(isLightTheme && drawer.isDrawerExpanded);
   const drawerShortcutMonochromeTone = 'theme-adaptive';
   const drawerShortcutMonochromeTileBackdropBlur = false;
@@ -150,9 +151,6 @@ export const HomeMainContent = memo(function HomeMainContent({
       return false;
     }
   });
-  const drawerSearchSurfaceStyle = useExpandedLightSearchSurface
-    ? ({ backgroundColor: 'rgba(0, 0, 0, 0.08)' } as CSSProperties)
-    : undefined;
   const isDrawerFullyExpanded = drawer.isDrawerExpanded;
   const showBlankModeDrawerHint = initialRevealReady
     && displayMode === 'minimalist'
@@ -245,6 +243,7 @@ export const HomeMainContent = memo(function HomeMainContent({
         initialRevealReady={initialRevealReady}
         modeFlags={modeFlags}
         contentWidth={layout.contentWidth}
+        viewportWidth={layout.viewportWidth}
         quickAccessOpen={drawer.quickAccessOpen}
         isDrawerExpanded={drawer.isDrawerExpanded}
         drawerOverlayOpacity={drawer.drawerOverlayOpacity}
@@ -262,19 +261,16 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerScrollLocked={drawer.drawerScrollLocked}
         reduceMotionVisuals={reduceMotionVisuals}
         drawerExpandHintVisible={showBlankModeDrawerHint}
-        drawerSearchSurfaceStyle={drawerSearchSurfaceStyle}
-        subtleDarkTone={useExpandedLightSearchSurface}
-        searchBarPosition={searchBarPosition}
         searchHeight={layout.searchHeight}
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
-        searchExperienceProps={searchExperienceProps}
-        interactionState={searchInteractionState}
+        drawerShortcutSearchProps={drawerShortcutSearchProps}
         shortcutGridProps={{
           ...shortcutGridProps,
           onDragStart: handleShortcutGridDragStart,
           onDragEnd: handleShortcutGridDragEnd,
         }}
+        onFolderChildShortcutContextMenu={onFolderChildShortcutContextMenu}
       />
     </>
   );
