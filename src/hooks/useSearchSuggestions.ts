@@ -13,6 +13,12 @@ import {
   computeSearchSuggestionActions,
   type SearchSuggestionsComputationInput,
 } from '@/utils/searchSuggestionsComputation';
+import {
+  buildShortcutSearchIndex,
+  prepareShortcutSearchIndex,
+  type IndexedShortcutSuggestion,
+} from '@/utils/searchSuggestionSources';
+import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 
 type UseSearchSuggestionsOptions = {
   searchValue: string;
@@ -76,12 +82,37 @@ export function useSearchSuggestions({
     tabsPermissionGranted,
     permissionWarmup,
   });
+  const [shortcutSearchIndex, setShortcutSearchIndex] = useState<IndexedShortcutSuggestion[]>(
+    () => buildShortcutSearchIndex(shortcuts),
+  );
+
+  useEffect(() => {
+    let canceled = false;
+    setShortcutSearchIndex(buildShortcutSearchIndex(shortcuts));
+
+    const cancelDeferredPreparation = scheduleAfterInteractivePaint(() => {
+      void prepareShortcutSearchIndex(shortcuts).then((nextShortcutSearchIndex) => {
+        if (!canceled) {
+          setShortcutSearchIndex(nextShortcutSearchIndex);
+        }
+      });
+    }, {
+      delayMs: 96,
+      idleTimeoutMs: 240,
+    });
+
+    return () => {
+      canceled = true;
+      cancelDeferredPreparation();
+    };
+  }, [shortcuts]);
 
   const computationInput = useMemo<SearchSuggestionsComputationInput>(() => ({
     suggestionDisplayMode,
     searchValue,
     filteredHistoryItems,
     shortcuts,
+    shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     bookmarkSuggestionItems,
@@ -95,6 +126,7 @@ export function useSearchSuggestions({
     remoteSuggestionItems,
     searchSiteShortcutEnabled,
     searchValue,
+    shortcutSearchIndex,
     shortcuts,
     suggestionDisplayMode,
     suggestionUsageMap,

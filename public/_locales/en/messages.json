@@ -1,10 +1,10 @@
 {
   "appTitle": {
-    "message": "LeafTab - Open-Source E2EE + WebDAV New Tab",
+    "message": "LeafTab - Open-Source E2EE + WebDAV New Tab [Community]",
     "description": "The title of the application"
   },
   "appDescription": {
-    "message": "Open-source new tab with end-to-end encrypted backup, WebDAV and cloud sync, customizable shortcuts, and a clean focus layout.",
+    "message": "Open-source new tab with end-to-end encrypted backup, WebDAV and cloud sync, customizable shortcuts, and a clean focus layout. [Community Edition]",
     "description": "The description of the application"
   }
 }

@@ -1,7 +1,5 @@
 import type { SearchSuggestionItem, Shortcut } from '@/types';
 import {
-  buildSearchMatchCandidates,
-  getShortcutSuggestionScoreFromCandidates,
   normalizeSearchQuery,
 } from '@/utils/searchHelpers';
 import { getBuiltinSiteShortcutSuggestions } from '@/utils/siteSearch';
@@ -10,6 +8,13 @@ import {
   getSuggestionUsageBoost,
   type SuggestionUsageMap,
 } from '@/utils/suggestionPersonalization';
+import {
+  buildShortcutSearchMatchIndex,
+  getShortcutSearchScoreFromMatchIndex,
+  mergeShortcutSearchMatchIndexes,
+  prepareShortcutSearchMatchIndexes,
+  type ShortcutSearchMatchIndex,
+} from '@/utils/shortcutSearch';
 import { flattenShortcutLinks } from '@/utils/shortcutFolders';
 
 type SearchHistoryLikeEntry = {
@@ -17,15 +22,14 @@ type SearchHistoryLikeEntry = {
   timestamp: number;
 };
 
-type IndexedShortcutSuggestion = {
+export type IndexedShortcutSuggestion = {
   id: string;
   label: string;
   url: string;
   icon: string;
   order: number;
   usageKey: string;
-  titleCandidates: string[];
-  urlCandidates: string[];
+  matchIndex: ShortcutSearchMatchIndex;
 };
 
 type RankedSuggestion = {
@@ -33,21 +37,6 @@ type RankedSuggestion = {
   score: number;
   order: number;
 };
-
-function mergeSearchMatchCandidates(
-  baseCandidates: string[],
-  nextCandidates: readonly string[],
-): string[] {
-  if (nextCandidates.length === 0) return baseCandidates;
-  const seen = new Set(baseCandidates);
-  const merged = [...baseCandidates];
-  nextCandidates.forEach((candidate) => {
-    if (seen.has(candidate)) return;
-    seen.add(candidate);
-    merged.push(candidate);
-  });
-  return merged;
-}
 
 export type SearchSuggestionSourceItems = {
   localHistorySuggestionItems: SearchSuggestionItem[];
@@ -84,10 +73,10 @@ export function buildShortcutSearchIndex(
     const url = shortcut.url.trim();
     if (!url) return;
 
-    const titleCandidates = buildSearchMatchCandidates(shortcut.title || '');
+    const matchIndex = buildShortcutSearchMatchIndex(shortcut);
     const existing = dedupedByUrl.get(url);
     if (existing) {
-      existing.titleCandidates = mergeSearchMatchCandidates(existing.titleCandidates, titleCandidates);
+      existing.matchIndex = mergeShortcutSearchMatchIndexes(existing.matchIndex, matchIndex);
       if ((!existing.label || existing.label === existing.url) && shortcut.title) {
         existing.label = shortcut.title;
       }
@@ -104,13 +93,19 @@ export function buildShortcutSearchIndex(
       icon: shortcut.icon || '',
       order,
       usageKey: buildShortcutUsageKey(url),
-      titleCandidates,
-      urlCandidates: buildSearchMatchCandidates(url),
+      matchIndex,
     });
     order += 1;
   });
 
   return Array.from(dedupedByUrl.values());
+}
+
+export async function prepareShortcutSearchIndex(
+  shortcuts: readonly Shortcut[],
+): Promise<IndexedShortcutSuggestion[]> {
+  await prepareShortcutSearchMatchIndexes(shortcuts);
+  return buildShortcutSearchIndex(shortcuts);
 }
 
 export function buildShortcutSuggestionItems(args: {
@@ -124,11 +119,7 @@ export function buildShortcutSuggestionItems(args: {
 
   const topMatches: RankedSuggestion[] = [];
   for (const shortcut of shortcutSearchIndex) {
-    const score = getShortcutSuggestionScoreFromCandidates({
-      titleCandidates: shortcut.titleCandidates,
-      urlCandidates: shortcut.urlCandidates,
-      normalizedQuery,
-    });
+    const score = getShortcutSearchScoreFromMatchIndex(shortcut.matchIndex, normalizedQuery);
     if (score === 0) continue;
 
     insertRankedSuggestion(topMatches, {

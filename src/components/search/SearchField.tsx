@@ -134,7 +134,7 @@ function SearchFieldInput({
       />
       {value.length > 0 && inlinePreview ? (
         <span
-          className="pointer-events-none absolute top-1/2 -translate-y-1/2 select-none whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 font-normal text-primary"
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 select-none whitespace-nowrap rounded-full px-2 py-0.5 font-normal ${theme.inlinePreviewClassName}`}
           style={{
             left: `${inputTextInsetPx + Math.ceil(typedTextWidth) + 4}px`,
             fontSize: inlinePreviewFontSize,

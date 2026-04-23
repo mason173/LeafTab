@@ -110,6 +110,7 @@ function HeatZoneInspectorPanel({
 export type RootShortcutGridCardRenderParams = {
   shortcut: Shortcut;
   compactShowTitle: boolean;
+  highlighted: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
@@ -260,6 +261,7 @@ export interface RootShortcutGridProps {
   onShortcutDropIntent?: (intent: RootShortcutDropIntent) => void;
   onGridContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
   compactShowTitle?: boolean;
+  highlightedShortcutId?: string | null;
   layoutDensity?: ShortcutLayoutDensity;
   compactIconSize?: number;
   iconCornerRadius?: number;
@@ -308,6 +310,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   onShortcutDropIntent,
   onGridContextMenu,
   compactShowTitle = true,
+  highlightedShortcutId = null,
   layoutDensity: _layoutDensity = 'regular',
   compactIconSize = 72,
   iconCornerRadius = 22,
@@ -477,6 +480,7 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
               const card = renderShortcutCard({
                 shortcut: params.shortcut,
                 compactShowTitle,
+                highlighted: highlightedShortcutId === params.shortcut.id,
                 compactIconSize,
                 iconCornerRadius,
                 iconAppearance,

@@ -4,10 +4,12 @@ import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { getCompactShortcutCardMetrics } from '@/components/shortcuts/compactFolderLayout';
 import { useFolderPreviewTitleRef } from '@/components/shortcuts/folderPreviewRegistry';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
+import { getShortcutIconSmoothClipPathStyles } from '@/utils/shortcutIconSettings';
 import { ShortcutVisualRenderer } from './ShortcutVisualRenderer';
 
 interface ShortcutCardCompactProps {
   shortcut: Shortcut;
+  highlighted?: boolean;
   showTitle: boolean;
   iconSize?: number;
   iconCornerRadius?: number;
@@ -45,6 +47,7 @@ interface ShortcutCardCompactProps {
 
 export function ShortcutCardCompact({
   shortcut,
+  highlighted = false,
   showTitle,
   iconSize = 72,
   iconCornerRadius,
@@ -74,6 +77,7 @@ export function ShortcutCardCompact({
   const firefox = isFirefoxBuildTarget();
   const folder = isShortcutFolder(shortcut);
   const folderSelectionDisabled = selectionDisabled && folder;
+  const shineActive = highlighted && !folder;
   const metrics = getCompactShortcutCardMetrics({
     shortcut,
     iconSize,
@@ -90,6 +94,7 @@ export function ShortcutCardCompact({
   const resolvedTitleOpacity = showTitle
     ? (animateTitleOnMount ? (titleFadeReady ? 1 : 0) : 1)
     : 0;
+  const iconSurfaceMaskStyle = shineActive ? getShortcutIconSmoothClipPathStyles(iconCornerRadius ?? 22) : undefined;
 
   useEffect(() => {
     if (!animateTitleOnMount) return;
@@ -160,6 +165,18 @@ export function ShortcutCardCompact({
               />
             )}
           </div>
+          {shineActive ? (
+            <div
+              className="pointer-events-none absolute inset-0 overflow-hidden"
+              style={iconSurfaceMaskStyle}
+              aria-hidden="true"
+            >
+              <div
+                className="absolute left-[-172%] top-[-52%] h-[236%] w-[138%] rotate-[20deg] bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.04),rgba(255,255,255,0.22),rgba(255,255,255,0.05),rgba(255,255,255,0))] opacity-56 blur-[3px]"
+                style={{ animation: 'leaftab-shortcut-shine 1.9s linear infinite' }}
+              />
+            </div>
+          ) : null}
         </div>
         {floatingTitle ? (
           <p

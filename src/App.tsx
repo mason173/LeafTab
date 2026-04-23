@@ -239,6 +239,7 @@ export default function App() {
       return false;
     }
   });
+  const [pendingShortcutShineId, setPendingShortcutShineId] = useState<string | null>(null);
   const legacyCloudMigrationResolverRef = useRef<((value: boolean) => void) | null>(null);
   useEffect(() => {
     const syncAdminModeEnabled = () => {
@@ -451,6 +452,11 @@ export default function App() {
     openInNewTab,
     API_URL,
     handleLogout,
+    {
+      onShortcutCreated: (shortcut) => {
+        setPendingShortcutShineId(shortcut.id);
+      },
+    },
   );
   const {
     scenarioModes,
@@ -611,12 +617,14 @@ export default function App() {
       return;
     }
     folderOpenRequestIdRef.current += 1;
+    setPendingShortcutShineId((current) => (current === shortcut.id ? null : current));
     handleShortcutOpen(shortcut);
   }, [
     captureFolderOpeningSourceSnapshot,
     ensureFolderOverlayReady,
     folderTransitionController,
     handleShortcutOpen,
+    setPendingShortcutShineId,
   ]);
 
   const handleOpenShortcutEditor = useCallback((shortcutIndex: number, shortcut: Shortcut) => {
@@ -1972,6 +1980,7 @@ export default function App() {
   const shortcutEngineHostAdapter = useMemo(() => createLeaftabGridEngineHostAdapter({
     scenarioId: selectedScenarioId,
     shortcuts: rootDisplayShortcuts,
+    surfaceStructureShortcuts: shortcuts,
     containerHeight: shortcutsAreaHeight,
     bottomInset: 0,
     gridColumns: normalizedGridColumns,
@@ -1980,6 +1989,7 @@ export default function App() {
     compactIconSize: scaledCompactShortcutSize,
     compactTitleFontSize: responsiveLayout.compactShortcutTitleSize,
     compactShowTitle: shortcutCompactShowTitle,
+    highlightedShortcutId: pendingShortcutShineId,
     iconCornerRadius: shortcutIconCornerRadius,
     iconAppearance: shortcutIconAppearance,
     disableReorderAnimation: visualEffectsPolicy.disableShortcutReorderMotion || Boolean(openFolderShortcut),
@@ -2014,6 +2024,7 @@ export default function App() {
     responsiveLayout.compactShortcutTitleSize,
     scaledCompactShortcutSize,
     shortcutCompactShowTitle,
+    pendingShortcutShineId,
     shortcutIconCornerRadius,
     shortcutIconAppearance,
     visualEffectsPolicy.disableShortcutReorderMotion,

@@ -37,6 +37,7 @@ function createDraft(title: string, url: string): ShortcutDraft {
 
 function renderActionsHarness() {
   const reportDomain = vi.fn();
+  const onShortcutCreated = vi.fn();
 
   const hook = renderHook(() => {
     const localDirtyRef = useRef(false);
@@ -59,6 +60,7 @@ function renderActionsHarness() {
       openInNewTab: true,
       translate: (key) => key,
       reportDomain,
+      onShortcutCreated,
       shortcutModalMode,
       currentInsertIndex,
       currentEditScenarioId,
@@ -106,6 +108,7 @@ function renderActionsHarness() {
   return {
     ...hook,
     reportDomain,
+    onShortcutCreated,
   };
 }
 
@@ -145,7 +148,7 @@ describe('useShortcutActions', () => {
   });
 
   it('creates, edits, and deletes shortcuts through the current scenario updater', () => {
-    const { result, reportDomain } = renderActionsHarness();
+    const { result, reportDomain, onShortcutCreated } = renderActionsHarness();
 
     act(() => {
       result.current.actions.handleSaveShortcutEdit(createDraft('GitHub', 'github.com'));
@@ -155,6 +158,7 @@ describe('useShortcutActions', () => {
     expect(createdShortcut.title).toBe('GitHub');
     expect(createdShortcut.url).toBe('github.com');
     expect(reportDomain).toHaveBeenCalledWith('github.com');
+    expect(onShortcutCreated).toHaveBeenCalledWith(createdShortcut);
     expect(result.current.shortcutEditOpen).toBe(false);
     expect(result.current.currentInsertIndex).toBeNull();
 
@@ -173,6 +177,7 @@ describe('useShortcutActions', () => {
     const updatedShortcut = result.current.scenarioShortcuts[defaultScenarioModes[0].id][0];
     expect(updatedShortcut.title).toBe('GitHub Home');
     expect(updatedShortcut.url).toBe('https://github.com');
+    expect(onShortcutCreated).toHaveBeenCalledTimes(1);
 
     act(() => {
       result.current.setSelectedShortcut({

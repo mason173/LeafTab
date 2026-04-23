@@ -225,7 +225,7 @@ export function SearchSuggestionsPanel({
         }`}
       >
         <span
-          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground transition-[opacity,transform] duration-300 ease-out origin-left ${
+          className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-current/12 px-1.5 text-[11px] font-medium text-current transition-[opacity,transform] duration-300 ease-out origin-left ${
             showNumberHints ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
           }`}
         >

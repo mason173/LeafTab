@@ -4,6 +4,7 @@ export type SearchBarTheme = {
   clearButtonClassName: string;
   inputClassName: string;
   placeholderClassName: string;
+  inlinePreviewClassName: string;
   linkIconClassName: string;
   dropdownSurfaceClassName: string;
   dropdownRowClassName: string;
@@ -132,6 +133,7 @@ export function resolveSearchBarTheme(args: {
       clearButtonClassName: 'text-black/40 hover:bg-black/6 hover:text-black/70',
       inputClassName: 'bg-transparent dark:bg-transparent text-black/74 placeholder:text-black/34',
       placeholderClassName: 'text-black/34',
+      inlinePreviewClassName: 'bg-black/6 text-black/52',
       linkIconClassName: 'text-black/46',
       dropdownSurfaceClassName: 'overflow-hidden bg-transparent text-black/72 shadow-none',
       dropdownRowClassName: 'text-black/76 hover:bg-black/5 hover:text-black/88 focus:bg-black/5 focus:text-black/88',
@@ -157,14 +159,15 @@ export function resolveSearchBarTheme(args: {
     clearButtonClassName: 'text-white/58 hover:bg-white/8 hover:text-white/94',
     inputClassName: 'bg-transparent dark:bg-transparent text-white/92 placeholder:text-white/42',
     placeholderClassName: 'text-white/42',
+    inlinePreviewClassName: 'bg-white/10 text-white/[0.78]',
     linkIconClassName: 'text-white/54',
     dropdownSurfaceClassName: 'overflow-hidden bg-transparent text-white/92 shadow-none',
-    dropdownRowClassName: 'text-white/88 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white',
-    dropdownRowSelectedClassName: 'bg-white/12 text-white',
+    dropdownRowClassName: 'text-white/88 hover:bg-white/10 hover:text-white/[0.96] focus:bg-white/10 focus:text-white/[0.96]',
+    dropdownRowSelectedClassName: 'bg-white/12 text-white/[0.96]',
     dropdownSecondaryTextClassName: 'text-white/52',
     engineDropdownSurfaceClassName: 'overflow-hidden bg-transparent text-white/92 shadow-none',
-    engineDropdownItemClassName: 'text-white/88 hover:bg-white/10 hover:text-white focus:bg-white/10 focus:text-white',
-    engineDropdownItemSelectedClassName: 'bg-white/12 text-white',
+    engineDropdownItemClassName: 'text-white/88 hover:bg-white/10 hover:text-white/[0.96] focus:bg-white/10 focus:text-white/[0.96]',
+    engineDropdownItemSelectedClassName: 'bg-white/12 text-white/[0.96]',
     dropdownStatusLoadingContainerClassName: 'bg-white/10',
     dropdownStatusInfoContainerClassName: 'bg-white/10',
     dropdownStatusDotClassName: 'bg-white/72',

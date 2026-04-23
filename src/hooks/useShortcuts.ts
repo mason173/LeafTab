@@ -13,6 +13,9 @@ export function useShortcuts(
   openInNewTab: boolean,
   API_URL: string,
   handleLogout: (input?: string | { message?: string; clearLocal?: boolean }) => void,
+  options?: {
+    onShortcutCreated?: Parameters<typeof useShortcutActions>[0]['onShortcutCreated'];
+  },
 ) {
   const { t, i18n } = useTranslation();
 
@@ -148,6 +151,7 @@ export function useShortcuts(
     openInNewTab,
     translate: t,
     reportDomain,
+    onShortcutCreated: options?.onShortcutCreated,
     shortcutModalMode,
     currentInsertIndex,
     currentEditScenarioId,

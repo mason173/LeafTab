@@ -2,7 +2,10 @@ import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchAction } from '@/utils/searchActions';
 import { buildSearchSuggestionActions } from '@/utils/searchSuggestionEngine';
 import type { SearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
-import { buildSearchSuggestionSourceItems } from '@/utils/searchSuggestionSources';
+import {
+  buildSearchSuggestionSourceItems,
+  type IndexedShortcutSuggestion,
+} from '@/utils/searchSuggestionSources';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
 
 export const SEARCH_SUGGESTION_EMPTY_STATE_LIMIT = 30;
@@ -18,6 +21,7 @@ export type SearchSuggestionsComputationInput = {
   searchValue: string;
   filteredHistoryItems: SearchSuggestionHistoryEntry[];
   shortcuts: Shortcut[];
+  shortcutSearchIndex?: IndexedShortcutSuggestion[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   bookmarkSuggestionItems: SearchSuggestionItem[];
@@ -34,6 +38,7 @@ export function computeSearchSuggestionActions(
     searchValue,
     filteredHistoryItems,
     shortcuts,
+    shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     bookmarkSuggestionItems,
@@ -49,6 +54,7 @@ export function computeSearchSuggestionActions(
   } = buildSearchSuggestionSourceItems({
     searchValue,
     filteredHistoryItems,
+    shortcutSearchIndex,
     shortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,

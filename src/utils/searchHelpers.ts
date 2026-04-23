@@ -8,31 +8,6 @@ const URL_PROTOCOL_PREFIX_RE = /^https?:\/\//i;
 const URL_WWW_PREFIX_RE = /^www\./i;
 const NON_ALNUM_RE = /[^a-z0-9]+/i;
 
-const CHINESE_PINYIN_INITIAL_BOUNDARIES = [
-  '啊', '芭', '擦', '搭', '蛾', '发', '噶', '哈', '机', '喀', '垃',
-  '妈', '拿', '哦', '啪', '期', '然', '撒', '塌', '挖', '昔', '压', '匝',
-] as const;
-const CHINESE_PINYIN_INITIAL_LETTERS = 'abcdefghjklmnopqrstwxyz' as const;
-const zhPinyinCollator = new Intl.Collator('zh-CN-u-co-pinyin');
-
-function isHanCharacter(ch: string): boolean {
-  const codePoint = ch.codePointAt(0);
-  if (codePoint === undefined) return false;
-  return (
-    (codePoint >= 0x3400 && codePoint <= 0x9fff) ||
-    (codePoint >= 0xf900 && codePoint <= 0xfaff)
-  );
-}
-
-function getChinesePinyinInitial(ch: string): string {
-  for (let i = CHINESE_PINYIN_INITIAL_BOUNDARIES.length - 1; i >= 0; i -= 1) {
-    if (zhPinyinCollator.compare(ch, CHINESE_PINYIN_INITIAL_BOUNDARIES[i]) >= 0) {
-      return CHINESE_PINYIN_INITIAL_LETTERS[i];
-    }
-  }
-  return '';
-}
-
 const SEARCH_ENGINE_PREFIX_MAP: Record<string, SearchEngineOverride> = {
   g: 'google',
   google: 'google',
@@ -50,27 +25,15 @@ export function normalizeSearchQuery(rawValue: string): string {
   return rawValue.trim().toLowerCase();
 }
 
-function buildInitialsToken(rawValue: string): string {
+function buildLatinWordInitialsToken(rawValue: string): string {
   const normalized = normalizeSearchQuery(rawValue);
   if (!normalized) return '';
 
-  let initials = '';
-  let atWordStart = true;
-  for (const ch of normalized) {
-    if (/[a-z0-9]/.test(ch)) {
-      if (atWordStart) initials += ch;
-      atWordStart = false;
-      continue;
-    }
-    if (isHanCharacter(ch)) {
-      const chineseInitial = getChinesePinyinInitial(ch);
-      if (chineseInitial) initials += chineseInitial;
-      atWordStart = false;
-      continue;
-    }
-    atWordStart = true;
-  }
-  return initials;
+  return normalized
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((token) => token[0])
+    .join('');
 }
 
 function isSubsequenceMatch(candidate: string, query: string): boolean {
@@ -140,8 +103,8 @@ export function buildSearchMatchCandidates(rawValue: string): string[] {
     candidates.push(noWww.split(/[^a-z0-9]+/).filter(Boolean).join(''));
   }
 
-  const initials = buildInitialsToken(rawValue);
-  if (initials) candidates.push(initials);
+  const latinWordInitials = buildLatinWordInitialsToken(rawValue);
+  if (latinWordInitials) candidates.push(latinWordInitials);
 
   return Array.from(new Set(candidates));
 }

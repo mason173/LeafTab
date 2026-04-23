@@ -5,6 +5,7 @@ import { ShortcutCardCompact } from './ShortcutCardCompact';
 interface ShortcutCardRendererProps {
   compactShowTitle: boolean;
   shortcut: Shortcut;
+  highlighted?: boolean;
   compactIconSize?: number;
   iconCornerRadius?: number;
   iconAppearance?: ShortcutIconAppearance;
@@ -29,6 +30,7 @@ interface ShortcutCardRendererProps {
 export function ShortcutCardRenderer({
   compactShowTitle,
   shortcut,
+  highlighted = false,
   compactIconSize,
   iconCornerRadius,
   iconAppearance,
@@ -52,6 +54,7 @@ export function ShortcutCardRenderer({
   return (
     <ShortcutCardCompact
       shortcut={shortcut}
+      highlighted={highlighted}
       showTitle={compactShowTitle}
       iconSize={compactIconSize}
       iconCornerRadius={iconCornerRadius}

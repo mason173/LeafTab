@@ -10,13 +10,11 @@ import {
 import {
   resolveFloatingSearchReservePx,
 } from '@/components/home/FloatingSearchDock';
-import { FakeBlurDrawerSurface } from '@/components/home/FakeBlurDrawerSurface';
 import {
   resolveInitialRevealOpacityTransition,
   resolveInitialRevealStyle,
 } from '@/config/animationTokens';
 import {
-  DRAWER_CONTENT_BG_MAX_OPACITY,
   DRAWER_LAYOUT_LINKED_ANIMATION_MS,
   DRAWER_SURFACE_LINKED_ANIMATION_MS,
 } from '@/components/home/quickAccessDrawer.constants';
@@ -33,7 +31,7 @@ export function QuickAccessDrawer({
   quickAccessOpen,
   isDrawerExpanded,
   drawerOverlayOpacity,
-  drawerSurfaceOpacity,
+  drawerSurfaceOpacity: _drawerSurfaceOpacity,
   drawerLayoutProgress: _drawerLayoutProgress,
   drawerBottomBounceOffsetPx,
   drawerContentTopPaddingPx,
@@ -85,14 +83,6 @@ export function QuickAccessDrawer({
   });
   const initialRevealOpacityTransition = resolveInitialRevealOpacityTransition();
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
-  const drawerSurfaceLayerOpacity = Math.max(
-    0,
-    Math.min(
-      1,
-      drawerSurfaceOpacity
-      * DRAWER_CONTENT_BG_MAX_OPACITY,
-    ),
-  );
   const shouldShowDrawerShortcuts = modeFlags.showShortcuts || (modeFlags.revealShortcutsOnDrawerExpand && isDrawerExpanded);
   const [renderShortcuts, setRenderShortcuts] = useState(shouldShowDrawerShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(shouldShowDrawerShortcuts);
@@ -259,18 +249,8 @@ export function QuickAccessDrawer({
           backgroundColor: 'rgba(18,22,30,0.38)',
           opacity: normalizedOverlayOpacity,
           transition: interactiveTransitionsEnabled
-            ? [
-                `opacity ${drawerBackgroundFadeTransition}`,
-                `backdrop-filter ${drawerBackgroundFadeTransition}`,
-                `-webkit-backdrop-filter ${drawerBackgroundFadeTransition}`,
-              ].join(', ')
+            ? `opacity ${drawerBackgroundFadeTransition}`
             : initialRevealOpacityTransition,
-          backdropFilter: !reduceMotionVisuals && normalizedOverlayOpacity > 0.001
-            ? `blur(${Math.max(0, drawerSurfaceOpacity * 14).toFixed(2)}px)`
-            : undefined,
-          WebkitBackdropFilter: !reduceMotionVisuals && normalizedOverlayOpacity > 0.001
-            ? `blur(${Math.max(0, drawerSurfaceOpacity * 14).toFixed(2)}px)`
-            : undefined,
           willChange: 'opacity',
           backfaceVisibility: 'hidden',
           pointerEvents: isDrawerExpanded ? 'auto' : 'none',
@@ -293,7 +273,7 @@ export function QuickAccessDrawer({
         aria-hidden="true"
       />
 
-      <div className="fixed inset-0 z-[14010] pointer-events-none">
+      <div className="fixed inset-0 z-[14030] pointer-events-none">
         <div
           className="mx-auto h-full max-w-full"
           style={{
@@ -325,13 +305,6 @@ export function QuickAccessDrawer({
             }}
             aria-label="Quick Access Drawer"
           >
-            <FakeBlurDrawerSurface
-              opacity={drawerSurfaceLayerOpacity}
-              transition={interactiveTransitionsEnabled ? `opacity ${drawerBackgroundFadeTransition}` : 'none'}
-              panelHeightVh={drawerPanelHeightVh}
-              panelTranslateYPx={drawerPanelTranslateYPx}
-            />
-
             <div className="relative z-10 flex min-h-0 flex-1 flex-col">
               <h2 className="sr-only">Quick Access Drawer</h2>
               <p className="sr-only">Search and shortcut list panel.</p>

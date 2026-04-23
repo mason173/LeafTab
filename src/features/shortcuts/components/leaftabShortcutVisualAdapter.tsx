@@ -15,6 +15,7 @@ const SELECTION_INDICATOR_OFFSET_PX = -4;
 type RootShortcutGridCardRenderParamsShape = {
   shortcut: Shortcut;
   compactShowTitle: boolean;
+  highlighted: boolean;
   compactIconSize: number;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
@@ -158,6 +159,7 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
   return (
     <ShortcutCardRenderer
       compactShowTitle={params.compactShowTitle}
+      highlighted={params.highlighted}
       compactIconSize={params.compactIconSize}
       iconCornerRadius={params.iconCornerRadius}
       iconAppearance={params.iconAppearance}

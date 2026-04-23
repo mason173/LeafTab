@@ -23,7 +23,6 @@ import {
   DEFAULT_SHORTCUT_ICON_APPEARANCE,
   DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
   getShortcutIconSmoothClipPathStyles,
-  getShortcutIconSmoothSvgPathData,
 } from '@/utils/shortcutIconSettings';
 import { getAdaptiveShortcutForegroundColor } from '@/utils/shortcutColorHsl';
 import { useShortcutIconRenderContext } from './ShortcutIconRenderContext';
@@ -241,57 +240,12 @@ const SHORTCUT_ICON_ACCENT_PHOTO_FILTER_ID = 'leaftab-shortcut-icon-filter-accen
 const FIXED_WHITE_MONOCHROME_COLOR = '#FFFFFF';
 const UNIFIED_ICON_GLYPH_CONTENT_RATIO = 0.56;
 const COLORFUL_TILE_TEXTURE_GRADIENT = 'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 40%, rgba(0,0,0,0.025) 72%, rgba(0,0,0,0.06) 100%)';
-const ICON_SURFACE_BORDER_COLOR = 'color-mix(in srgb, var(--foreground) 12%, transparent)';
 const OFFICIAL_SVG_TINT_MODE_CACHE = new Map<string, Exclude<OfficialSvgTintMode, 'unknown'>>();
 const OFFICIAL_SVG_TINT_MODE_IN_FLIGHT = new Map<string, Promise<Exclude<OfficialSvgTintMode, 'unknown'>>>();
 const SVG_RASTER_CONTENT_PATTERN = /<(?:image|feImage|foreignObject)\b|(?:xlink:href|href)\s*=\s*["']data:image\/(?:png|jpeg|jpg|webp|gif|bmp|ico|avif)/i;
 let shortcutIconFilterSyncRaf = 0;
 let shortcutIconFilterSyncTimeout = 0;
 let shortcutIconFilterAutoSyncInstalled = false;
-
-function ShortcutIconSmoothBorder({
-  cornerRadius,
-  color,
-  smooth,
-}: {
-  cornerRadius: number;
-  color: string;
-  smooth: boolean;
-}) {
-  if (!smooth) {
-    return (
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          borderRadius: `${cornerRadius}%`,
-          border: `1px solid ${color}`,
-        }}
-      />
-    );
-  }
-
-  const pathData = getShortcutIconSmoothSvgPathData(cornerRadius);
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="absolute inset-0 pointer-events-none"
-      viewBox="-1 -1 102 102"
-      preserveAspectRatio="none"
-      style={{ overflow: 'visible' }}
-    >
-      <path
-        d={pathData}
-        fill="none"
-        stroke={color}
-        strokeWidth="1"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
 
 function decodeSvgTextFromDataUrl(value: string) {
   const normalized = (value || '').trim();
@@ -984,10 +938,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
   const centeredOverlayImageSize = Math.max(12, Math.round(Math.min(size, overlaySize) * normalizedRemoteIconScale));
   const requestedIconAppearance: ShortcutIconAppearance = iconAppearance;
   const roundedShapeStyle = getShortcutIconSmoothClipPathStyles(resolvedCornerRadius);
-  const useSmoothOutlineBorder = (
-    Object.prototype.hasOwnProperty.call(roundedShapeStyle, 'clipPath')
-    || Object.prototype.hasOwnProperty.call(roundedShapeStyle, 'WebkitClipPath')
-  );
   const isOfficialSvg = activeCandidate?.kind === 'official' && isSvgImageSource(src);
   const shouldResolveOfficialSvgTintMode = (
     activeCandidate?.kind === 'official'
@@ -1113,11 +1063,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
             ...monochromeTileSurfaceStyle,
           }}
         />
-        <ShortcutIconSmoothBorder
-          cornerRadius={resolvedCornerRadius}
-          color={ICON_SURFACE_BORDER_COLOR}
-          smooth={useSmoothOutlineBorder}
-        />
         {src ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative select-none" style={{ width: overlaySize, height: overlaySize }}>
@@ -1159,11 +1104,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
             }}
             data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
           >
-            <ShortcutIconSmoothBorder
-              cornerRadius={resolvedCornerRadius}
-              color={ICON_SURFACE_BORDER_COLOR}
-              smooth={useSmoothOutlineBorder}
-            />
             <div
               className="text-[10px] flex items-center justify-center font-['PingFang_SC:Regular',sans-serif] select-none"
               style={{
@@ -1214,11 +1154,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
             style={{ width: scaledSize, height: scaledSize }}
           />
         </div>
-        <ShortcutIconSmoothBorder
-          cornerRadius={resolvedCornerRadius}
-          color={ICON_SURFACE_BORDER_COLOR}
-          smooth={useSmoothOutlineBorder}
-        />
       </div>
     );
   }
@@ -1236,11 +1171,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
             ...colorfulTileSurfaceStyle,
             ...monochromeTileSurfaceStyle,
           }}
-        />
-        <ShortcutIconSmoothBorder
-          cornerRadius={resolvedCornerRadius}
-          color={ICON_SURFACE_BORDER_COLOR}
-          smooth={useSmoothOutlineBorder}
         />
         <div className="absolute inset-0 flex items-center justify-center">
           {useOfficialSvgMask ? (
@@ -1304,11 +1234,6 @@ const ShortcutIcon = memo(function ShortcutIcon({
           }}
           data-shortcut-icon-surface={monochromeTileSurfaceStyle ? 'enhanced' : undefined}
         >
-          <ShortcutIconSmoothBorder
-            cornerRadius={resolvedCornerRadius}
-            color={ICON_SURFACE_BORDER_COLOR}
-            smooth={useSmoothOutlineBorder}
-          />
           <div className="relative select-none overflow-hidden" style={{ width: innerSize, height: innerSize, ...roundedShapeStyle }}>
             {image}
           </div>

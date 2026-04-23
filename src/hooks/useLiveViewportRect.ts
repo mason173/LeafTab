@@ -9,6 +9,8 @@ export type ViewportRect = {
 
 const VIEWPORT_RECT_BURST_FRAME_COUNT = 12;
 const VIEWPORT_RECT_ANIMATION_FRAME_COUNT = 20;
+const VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT = 2;
+const VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT = 8;
 const VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS = 240;
 
 function rectEquals(left: ViewportRect | null, right: ViewportRect | null) {
@@ -78,12 +80,30 @@ export function useLiveViewportRect(element: HTMLElement | null, enabled: boolea
       requestSync(VIEWPORT_RECT_ANIMATION_FRAME_COUNT);
     };
 
+    const handlePointerDown = () => {
+      requestSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const pointerDragging = event.buttons !== 0 || event.pointerType === 'touch';
+      if (!pointerDragging) return;
+      requestSync(VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT);
+    };
+
+    const handlePointerRelease = () => {
+      requestSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
+    };
+
     commitRect();
     requestSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
 
     window.addEventListener('resize', handleViewportChange, { passive: true });
     window.addEventListener('scroll', handleViewportChange, { passive: true, capture: true });
     window.addEventListener('orientationchange', handleViewportChange);
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true, capture: true });
+    window.addEventListener('pointermove', handlePointerMove, { passive: true, capture: true });
+    window.addEventListener('pointerup', handlePointerRelease, { passive: true, capture: true });
+    window.addEventListener('pointercancel', handlePointerRelease, { passive: true, capture: true });
     document.addEventListener('transitionrun', handleAnimatedChange, true);
     document.addEventListener('transitionend', handleAnimatedChange, true);
     document.addEventListener('animationstart', handleAnimatedChange, true);
@@ -117,6 +137,10 @@ export function useLiveViewportRect(element: HTMLElement | null, enabled: boolea
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', handleViewportChange, true);
       window.removeEventListener('orientationchange', handleViewportChange);
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('pointermove', handlePointerMove, true);
+      window.removeEventListener('pointerup', handlePointerRelease, true);
+      window.removeEventListener('pointercancel', handlePointerRelease, true);
       document.removeEventListener('transitionrun', handleAnimatedChange, true);
       document.removeEventListener('transitionend', handleAnimatedChange, true);
       document.removeEventListener('animationstart', handleAnimatedChange, true);

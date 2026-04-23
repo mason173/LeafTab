@@ -86,7 +86,7 @@ export function SearchEngineSwitcher({
             event.stopPropagation();
           }}
           onClick={(event) => event.stopPropagation()}
-          className={`relative z-[1] mr-1 flex shrink-0 items-center rounded-[12px] px-2 py-1.5 ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'} ${toneClassName || 'text-foreground/70'}`}
+          className={`relative z-[1] mr-1 flex shrink-0 items-center rounded-[12px] px-2 py-1.5 ${disabled ? 'cursor-default opacity-60' : 'cursor-pointer'} ${toneClassName || 'text-black/50 dark:text-white/72'}`}
         >
           <span className="relative flex size-5 shrink-0 items-center justify-center">
             <img alt="" className="pointer-events-none size-5 shrink-0 object-contain" src={getEngineIcon(engine)} />
@@ -111,7 +111,7 @@ export function SearchEngineSwitcher({
           }
         }}
         ref={setSurfaceNode}
-        className={`z-[520] isolate w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] p-2 !border-transparent !bg-transparent !shadow-none !backdrop-blur-none ${surfaceClassName || 'text-white/92'}`}
+        className={`z-[520] isolate w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] p-2 !border-transparent !bg-transparent !shadow-none !backdrop-blur-none ${surfaceClassName || 'text-black/72 dark:text-white/92'}`}
       >
         <SearchFakeBlurSurface
           surfaceNode={surfaceNode}
@@ -124,14 +124,14 @@ export function SearchEngineSwitcher({
               key={option.id}
               className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
                 engine === option.id
-                  ? (itemSelectedClassName || 'bg-accent text-accent-foreground')
-                  : (itemClassName || 'text-foreground hover:bg-accent hover:text-accent-foreground')
+                  ? (itemSelectedClassName || 'bg-black/8 text-black/86 dark:bg-white/12 dark:text-white/[0.96]')
+                  : (itemClassName || 'text-black/76 hover:bg-black/5 hover:text-black/88 dark:text-white/88 dark:hover:bg-white/10 dark:hover:text-white/[0.96]')
               }`}
               onSelect={() => onSelect(option.id)}
             >
               <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
               <span className="truncate text-sm leading-5">{option.name}</span>
-              <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-primary' : 'opacity-0'}`} />
+              <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-current' : 'opacity-0'}`} />
             </DropdownMenuItem>
           ))}
         </div>

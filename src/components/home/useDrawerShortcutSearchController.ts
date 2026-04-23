@@ -14,8 +14,10 @@ import {
   buildDrawerShortcutEntries,
   collectDrawerShortcutIndexTargets,
   filterDrawerShortcutEntriesByIndexLetter,
+  searchDrawerShortcutEntries,
 } from '@/components/home/drawerShortcutFiltering';
-import { isShortcutFolder } from '@/utils/shortcutFolders';
+import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
+import { prepareShortcutSearchMatchIndexes } from '@/utils/shortcutSearch';
 
 type UseDrawerShortcutSearchControllerParams = {
   enabled: boolean;
@@ -36,23 +38,38 @@ export function useDrawerShortcutSearchController({
 }: UseDrawerShortcutSearchControllerParams) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchValue, setSearchValue] = useState('');
+  const [, setSearchPreparationVersion] = useState(0);
   const deferredShortcutSearchValue = useDeferredValue(searchValue);
   const normalizedShortcutSearchQuery = deferredShortcutSearchValue.trim().toLocaleLowerCase();
   const searchingShortcuts = normalizedShortcutSearchQuery.length > 0;
+  const drawerShortcutEntries = useMemo(
+    () => buildDrawerShortcutEntries(shortcutGridProps.shortcuts),
+    [shortcutGridProps.shortcuts],
+  );
+
+  useEffect(() => {
+    let canceled = false;
+    const cancelDeferredPreparation = scheduleAfterInteractivePaint(() => {
+      void prepareShortcutSearchMatchIndexes(shortcutGridProps.shortcuts).then(() => {
+        if (!canceled) {
+          setSearchPreparationVersion((current) => current + 1);
+        }
+      });
+    }, {
+      delayMs: 96,
+      idleTimeoutMs: 240,
+    });
+
+    return () => {
+      canceled = true;
+      cancelDeferredPreparation();
+    };
+  }, [shortcutGridProps.shortcuts]);
 
   const searchedShortcutEntries = useMemo(() => {
-    const entries = buildDrawerShortcutEntries(shortcutGridProps.shortcuts);
-    if (!searchingShortcuts) return entries;
-
-    return entries.filter(({ shortcut }) => {
-      const title = (shortcut.title || '').trim().toLocaleLowerCase();
-      const url = (shortcut.url || '').trim().toLocaleLowerCase();
-      const kind = (shortcut.kind || '').trim().toLocaleLowerCase();
-      const folderKeywords = isShortcutFolder(shortcut) ? ' folder 文件夹' : '';
-      const haystack = `${title}\n${url}\n${kind}${folderKeywords}`;
-      return haystack.includes(normalizedShortcutSearchQuery);
-    });
-  }, [normalizedShortcutSearchQuery, searchingShortcuts, shortcutGridProps.shortcuts]);
+    if (!searchingShortcuts) return drawerShortcutEntries;
+    return searchDrawerShortcutEntries(drawerShortcutEntries, normalizedShortcutSearchQuery);
+  }, [drawerShortcutEntries, normalizedShortcutSearchQuery, searchingShortcuts]);
 
   const searchedShortcuts = useMemo(
     () => collectDrawerShortcutIndexTargets(searchedShortcutEntries),

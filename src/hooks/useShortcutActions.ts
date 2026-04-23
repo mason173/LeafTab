@@ -19,6 +19,7 @@ type UseShortcutActionsParams = {
   openInNewTab: boolean;
   translate: TranslateFn;
   reportDomain: (url: string) => void;
+  onShortcutCreated?: (shortcut: Shortcut) => void;
   shortcutModalMode: 'add' | 'edit';
   currentInsertIndex: number | null;
   currentEditScenarioId: string;
@@ -42,6 +43,7 @@ export function useShortcutActions({
   openInNewTab,
   translate,
   reportDomain,
+  onShortcutCreated,
   shortcutModalMode,
   currentInsertIndex,
   currentEditScenarioId,
@@ -181,6 +183,7 @@ export function useShortcutActions({
         const insertIndex = Math.min(Math.max(currentInsertIndex, 0), current.length);
         saved = true;
         savedShortcutId = newShortcut.id;
+        onShortcutCreated?.(newShortcut);
         return [...current.slice(0, insertIndex), newShortcut, ...current.slice(insertIndex)];
       });
     } else {
@@ -254,7 +257,7 @@ export function useShortcutActions({
     setShortcutEditOpen(false);
     setSelectedShortcut(null);
     setCurrentInsertIndex(null);
-  }, [currentInsertIndex, reportDomain, selectedShortcut, setCurrentInsertIndex, setSelectedShortcut, setShortcutEditOpen, shortcutModalMode, translate, updateScenarioShortcuts]);
+  }, [currentInsertIndex, onShortcutCreated, reportDomain, selectedShortcut, setCurrentInsertIndex, setSelectedShortcut, setShortcutEditOpen, shortcutModalMode, translate, updateScenarioShortcuts]);
 
   const handleConfirmDeleteShortcut = useCallback(() => {
     if (!selectedShortcut) return;

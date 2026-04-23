@@ -60,6 +60,16 @@
   }
 }
 
+@keyframes leaftab-shortcut-shine {
+  0% {
+    transform: translateX(0) rotate(18deg);
+  }
+
+  100% {
+    transform: translateX(560%) rotate(18deg);
+  }
+}
+
 /* Vaul's defaultOpen only disables keyframe animations, but transform transitions
    on the drawer can still run on first paint. Force-disable both for boot state. */
 [data-vaul-animate='false'] {

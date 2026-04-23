@@ -4,7 +4,9 @@ import {
   buildDrawerShortcutEntries,
   collectDrawerShortcutIndexTargets,
   filterDrawerShortcutEntriesByIndexLetter,
+  searchDrawerShortcutEntries,
 } from '@/components/home/drawerShortcutFiltering';
+import { prepareShortcutSearchMatchIndexes } from '@/utils/shortcutSearch';
 
 function createShortcut(overrides: Partial<Shortcut> = {}): Shortcut {
   return {
@@ -113,5 +115,50 @@ describe('drawerShortcutFiltering', () => {
       collectDrawerShortcutIndexTargets(buildDrawerShortcutEntries(shortcuts))
         .map((shortcut) => shortcut.id),
     ).toEqual(['root-a', 'child-w', 'child-q']);
+  });
+
+  it('matches folder children by pinyin initials and full pinyin in drawer search', async () => {
+    const shortcuts = [
+      createShortcut({ id: 'root-a', title: 'Apple' }),
+      createShortcut({
+        id: 'folder-1',
+        title: '常用合集',
+        kind: 'folder',
+        children: [
+          createShortcut({ id: 'child-wxds', title: '微信读书', url: 'https://weread.qq.com' }),
+          createShortcut({ id: 'child-zh', title: '知乎', url: 'https://zhihu.com' }),
+        ],
+      }),
+    ];
+
+    const entries = buildDrawerShortcutEntries(shortcuts);
+    await prepareShortcutSearchMatchIndexes(shortcuts);
+
+    expect(
+      searchDrawerShortcutEntries(entries, 'wxds').map((entry) => entry.shortcut.id),
+    ).toEqual(['child-wxds']);
+    expect(
+      searchDrawerShortcutEntries(entries, 'weixindushu').map((entry) => entry.shortcut.id),
+    ).toEqual(['child-wxds']);
+    expect(
+      searchDrawerShortcutEntries(entries, 'zhihu').map((entry) => entry.shortcut.id),
+    ).toEqual(['child-zh']);
+  });
+
+  it('keeps folder shells searchable by their own titles', () => {
+    const shortcuts = [
+      createShortcut({
+        id: 'folder-1',
+        title: '常用合集',
+        kind: 'folder',
+        children: [
+          createShortcut({ id: 'child-1', title: '微信', url: 'https://weixin.qq.com' }),
+        ],
+      }),
+    ];
+
+    expect(
+      searchDrawerShortcutEntries(buildDrawerShortcutEntries(shortcuts), '常用').map((entry) => entry.shortcut.id),
+    ).toEqual(['folder-1']);
   });
 });

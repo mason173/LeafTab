@@ -1,5 +1,9 @@
 import type { Shortcut } from '@/types';
 import { resolveShortcutIndexLetter } from '@/components/home/drawerShortcutAlphabetIndex';
+import {
+  buildShortcutSearchMatchIndex,
+  matchesShortcutSearchQuery,
+} from '@/utils/shortcutSearch';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
 
 export type DrawerShortcutEntry = {
@@ -18,6 +22,10 @@ export function buildDrawerShortcutEntries(shortcuts: Shortcut[]): DrawerShortcu
 
 export function collectDrawerShortcutIndexTargets(entries: DrawerShortcutEntry[]): Shortcut[] {
   return entries.flatMap((entry) => {
+    if (entry.parentFolderId) {
+      return [entry.shortcut];
+    }
+
     if (isShortcutFolder(entry.shortcut)) {
       return getShortcutChildren(entry.shortcut).filter((child) => !isShortcutFolder(child));
     }
@@ -33,6 +41,10 @@ export function filterDrawerShortcutEntriesByIndexLetter(
   if (!letter) return entries;
 
   return entries.flatMap((entry) => {
+    if (entry.parentFolderId) {
+      return resolveShortcutIndexLetter(entry.shortcut) === letter ? [entry] : [];
+    }
+
     if (isShortcutFolder(entry.shortcut)) {
       return getShortcutChildren(entry.shortcut)
         .filter((child) => resolveShortcutIndexLetter(child) === letter)
@@ -48,5 +60,70 @@ export function filterDrawerShortcutEntriesByIndexLetter(
     }
 
     return [entry];
+  });
+}
+
+function collectMatchingFolderChildren(
+  children: readonly Shortcut[],
+  rootIndex: number,
+  parentFolderId: string,
+  normalizedQuery: string,
+): DrawerShortcutEntry[] {
+  return children.flatMap((child) => {
+    if (isShortcutFolder(child)) {
+      return collectMatchingFolderChildren(
+        getShortcutChildren(child),
+        rootIndex,
+        child.id,
+        normalizedQuery,
+      );
+    }
+
+    return matchesShortcutSearchQuery(
+      buildShortcutSearchMatchIndex(child),
+      normalizedQuery,
+    )
+      ? [{
+          shortcut: child,
+          rootIndex,
+          parentFolderId,
+        }]
+      : [];
+  });
+}
+
+export function searchDrawerShortcutEntries(
+  entries: DrawerShortcutEntry[],
+  normalizedQuery: string,
+): DrawerShortcutEntry[] {
+  if (!normalizedQuery) return entries;
+
+  return entries.flatMap((entry) => {
+    if (entry.parentFolderId) {
+      return matchesShortcutSearchQuery(
+        buildShortcutSearchMatchIndex(entry.shortcut),
+        normalizedQuery,
+      ) ? [entry] : [];
+    }
+
+    if (isShortcutFolder(entry.shortcut)) {
+      const matchesFolderShell = matchesShortcutSearchQuery(
+        buildShortcutSearchMatchIndex(entry.shortcut),
+        normalizedQuery,
+      );
+      const matchingChildren = collectMatchingFolderChildren(
+        getShortcutChildren(entry.shortcut),
+        entry.rootIndex,
+        entry.shortcut.id,
+        normalizedQuery,
+      );
+
+      return matchesFolderShell ? [entry, ...matchingChildren] : matchingChildren;
+    }
+
+    return matchesShortcutSearchQuery(
+      buildShortcutSearchMatchIndex(entry.shortcut),
+      normalizedQuery,
+    ) ? [entry] : [];
   });
 }

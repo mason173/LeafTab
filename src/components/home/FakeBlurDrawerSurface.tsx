@@ -1,6 +1,7 @@
 import { useMemo, type CSSProperties } from 'react';
 import { useTheme } from 'next-themes';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
+import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -8,23 +9,18 @@ function clamp01(value: number) {
 }
 
 type FakeBlurDrawerSurfaceProps = {
+  surfaceNode: HTMLElement | null;
   opacity: number;
   transition: string;
-  panelHeightVh: number;
-  panelTranslateYPx: number;
 };
 
-function buildViewportSliceImageStyle(params: {
-  panelHeightVh: number;
-  panelTranslateYPx: number;
-}): CSSProperties {
-  const { panelHeightVh, panelTranslateYPx } = params;
+function buildViewportSliceImageStyle(rect: ViewportRect): CSSProperties {
   const overscanPx = 96;
 
   return {
     position: 'absolute',
-    left: `${-overscanPx}px`,
-    top: `calc(${(panelHeightVh - 100).toFixed(4)}vh - ${panelTranslateYPx.toFixed(3)}px - ${overscanPx}px)`,
+    left: `${-rect.left - overscanPx}px`,
+    top: `${-rect.top - overscanPx}px`,
     width: `calc(100vw + ${overscanPx * 2}px)`,
     height: `calc(100vh + ${overscanPx * 2}px)`,
     maxWidth: 'none',
@@ -37,16 +33,11 @@ function buildViewportSliceImageStyle(params: {
   };
 }
 
-function buildViewportSliceGradientStyle(params: {
-  panelHeightVh: number;
-  panelTranslateYPx: number;
-}): CSSProperties {
-  const { panelHeightVh, panelTranslateYPx } = params;
-
+function buildViewportSliceGradientStyle(rect: ViewportRect): CSSProperties {
   return {
     position: 'absolute',
-    left: '0',
-    top: `calc(${(panelHeightVh - 100).toFixed(4)}vh - ${panelTranslateYPx.toFixed(3)}px)`,
+    left: `${-rect.left}px`,
+    top: `${-rect.top}px`,
     width: '100vw',
     height: '100vh',
     maxWidth: 'none',
@@ -56,14 +47,18 @@ function buildViewportSliceGradientStyle(params: {
 }
 
 export function FakeBlurDrawerSurface({
+  surfaceNode,
   opacity,
   transition,
-  panelHeightVh,
-  panelTranslateYPx,
 }: FakeBlurDrawerSurfaceProps) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
+  const hasViewportBackedSurface = Boolean(
+    wallpaperBackdrop?.blurredWallpaperSrc
+    || (wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient),
+  );
+  const viewportRect = useLiveViewportRect(surfaceNode, hasViewportBackedSurface);
   const normalizedBackdropLuminance = clamp01(
     wallpaperBackdrop?.blurredWallpaperAverageLuminance ?? (isDarkTheme ? 0.42 : 0.68),
   );
@@ -74,10 +69,9 @@ export function FakeBlurDrawerSurface({
     };
   }, [wallpaperBackdrop]);
 
-  const imageStyle = useMemo(() => buildViewportSliceImageStyle({
-    panelHeightVh,
-    panelTranslateYPx,
-  }), [panelHeightVh, panelTranslateYPx]);
+  const imageStyle = useMemo(() => (
+    viewportRect ? buildViewportSliceImageStyle(viewportRect) : null
+  ), [viewportRect]);
 
   const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
     backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
@@ -97,12 +91,9 @@ export function FakeBlurDrawerSurface({
   }, [normalizedBackdropLuminance]);
 
   const colorWallpaperStyle = useMemo<CSSProperties>(() => ({
-    ...buildViewportSliceGradientStyle({
-      panelHeightVh,
-      panelTranslateYPx,
-    }),
+    ...(viewportRect ? buildViewportSliceGradientStyle(viewportRect) : {}),
     backgroundImage: wallpaperBackdrop?.colorWallpaperGradient,
-  }), [panelHeightVh, panelTranslateYPx, wallpaperBackdrop?.colorWallpaperGradient]);
+  }), [viewportRect, wallpaperBackdrop?.colorWallpaperGradient]);
 
   return (
     <div
@@ -113,7 +104,7 @@ export function FakeBlurDrawerSurface({
       }}
       aria-hidden="true"
     >
-      {wallpaperBackdrop?.blurredWallpaperSrc ? (
+      {wallpaperBackdrop?.blurredWallpaperSrc && imageStyle ? (
         <img
           src={wallpaperBackdrop.blurredWallpaperSrc}
           alt=""
@@ -121,7 +112,7 @@ export function FakeBlurDrawerSurface({
           className="select-none"
           style={imageStyle}
         />
-      ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient ? (
+      ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient && viewportRect ? (
         <div style={colorWallpaperStyle} />
       ) : (
         <div

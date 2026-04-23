@@ -25,6 +25,7 @@ export type LeaftabGridEngineRootSurfaceProps = Pick<
   | 'compactIconSize'
   | 'compactTitleFontSize'
   | 'compactShowTitle'
+  | 'highlightedShortcutId'
   | 'iconCornerRadius'
   | 'iconAppearance'
   | 'disableReorderAnimation'
@@ -105,6 +106,7 @@ export function buildLeaftabRootSurfaceInstanceKey(
 type CreateLeaftabGridEngineHostAdapterParams = {
   scenarioId: string;
   shortcuts: Shortcut[];
+  surfaceStructureShortcuts?: readonly Shortcut[];
   containerHeight: number;
   bottomInset?: number;
   gridColumns: number;
@@ -113,6 +115,7 @@ type CreateLeaftabGridEngineHostAdapterParams = {
   compactIconSize: number;
   compactTitleFontSize: number;
   compactShowTitle: boolean;
+  highlightedShortcutId?: string | null;
   iconCornerRadius: number;
   iconAppearance: ShortcutIconAppearance;
   disableReorderAnimation: boolean;
@@ -150,9 +153,10 @@ export function createLeaftabGridEngineHostAdapter(
   params: CreateLeaftabGridEngineHostAdapterParams,
 ): LeaftabGridEngineHostAdapter {
   const rootItems = shortcutsToGridEngineItems(params.shortcuts);
+  const surfaceStructureShortcuts = params.surfaceStructureShortcuts ?? params.shortcuts;
   const rootSurfaceInstanceKey = buildLeaftabRootSurfaceInstanceKey(
     params.scenarioId,
-    params.shortcuts,
+    surfaceStructureShortcuts,
   );
 
   return {
@@ -179,6 +183,7 @@ export function createLeaftabGridEngineHostAdapter(
       compactIconSize: params.compactIconSize,
       compactTitleFontSize: params.compactTitleFontSize,
       compactShowTitle: params.compactShowTitle,
+      highlightedShortcutId: params.highlightedShortcutId,
       iconCornerRadius: params.iconCornerRadius,
       iconAppearance: params.iconAppearance,
       disableReorderAnimation: params.disableReorderAnimation,
