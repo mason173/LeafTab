@@ -60,6 +60,7 @@ export interface HomeMainContentProps {
     shortcut: Shortcut,
   ) => void;
   onDrawerExpandedChange?: (expanded: boolean) => void;
+  onDrawerExpandActionChange?: (action: (() => void) | null) => void;
   topNavIntroCompleted?: boolean;
 }
 
@@ -72,6 +73,7 @@ export type HomeMainContentBaseProps = Omit<
   | 'drawerShortcutSearchProps'
   | 'shortcutGridProps'
   | 'onDrawerExpandedChange'
+  | 'onDrawerExpandActionChange'
 >;
 
 const HOME_TOP_OFFSET_NUDGE_VH = 1.5;
@@ -112,6 +114,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   drawerShortcutSearchProps,
   onFolderChildShortcutContextMenu,
   onDrawerExpandedChange,
+  onDrawerExpandActionChange,
   topNavIntroCompleted = false,
 }: HomeMainContentProps) {
   const firefox = isFirefoxBuildTarget();
@@ -182,6 +185,13 @@ export const HomeMainContent = memo(function HomeMainContent({
   useEffect(() => {
     onDrawerExpandedChange?.(isDrawerFullyExpanded);
   }, [isDrawerFullyExpanded, onDrawerExpandedChange]);
+
+  useEffect(() => {
+    onDrawerExpandActionChange?.(drawer.expandDrawer);
+    return () => {
+      onDrawerExpandActionChange?.(null);
+    };
+  }, [drawer.expandDrawer, onDrawerExpandActionChange]);
 
   useEffect(() => () => {
     onDrawerExpandedChange?.(false);

@@ -38,8 +38,8 @@ export default {
           },
           prefix: {
             label: "Prefix 検索",
-            description: "g / bing / ddg / bd などで一時的にエンジンを指定",
-            tooltip: "例: `g AI` と入力すると、その検索だけ Google を使用します。"
+            description: "!g / !b / !d / !bd などで一時的にエンジンを指定",
+            tooltip: "例: `!g AI` と入力すると、その検索だけ Google を使用します。"
           },
           siteDirect: {
             label: "サイト直指定検索",
@@ -520,7 +520,7 @@ export default {
       placeholderHintTabSwitch: "検索方法を変えたいときは Tab",
       placeholderHintCalculator: "12*8 のように入力すると計算できます",
       placeholderHintSiteDirect: "github react と入力すると GitHub を探せます",
-      placeholderHintPrefix: "g AI と入力すると Google で検索できます",
+      placeholderHintPrefix: "!g AI と入力すると Google で検索できます",
       enterKey: "Enter",
       actionOpen: "開く",
       actionClose: "閉じる",

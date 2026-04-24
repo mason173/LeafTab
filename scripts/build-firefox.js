@@ -90,9 +90,11 @@ const firefoxManifest = {
   ...manifest,
   ...firefoxManifestOverlay,
   background: firefoxBackground,
-  permissions: Array.isArray(firefoxManifestOverlay.permissions)
-    ? firefoxManifestOverlay.permissions
-    : filteredPermissions,
+  permissions: buildChannel === 'community'
+    ? filteredPermissions
+    : Array.isArray(firefoxManifestOverlay.permissions)
+      ? firefoxManifestOverlay.permissions
+      : filteredPermissions,
 };
 
 fs.writeFileSync(path.join(firefoxDir, 'manifest.json'), JSON.stringify(firefoxManifest, null, 2));

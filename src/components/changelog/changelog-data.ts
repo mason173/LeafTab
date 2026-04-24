@@ -17,7 +17,61 @@ export interface ChangelogSection {
   items: ChangelogItem[];
 }
 
-export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
+type ParsedChangelogVersion = {
+  major: number;
+  minor: number;
+  patch: number;
+  prereleaseRank: number;
+  prereleaseIteration: number;
+};
+
+const CHANGELOG_PRERELEASE_RANK: Record<NonNullable<ChangelogItem["tag"]>, number> = {
+  rc: 2,
+  beta: 1,
+  alpha: 0,
+};
+
+function parseChangelogVersion(item: ChangelogItem): ParsedChangelogVersion {
+  const [corePart, prereleasePart] = item.version.split("-");
+  const [major = "0", minor = "0", patch = "0"] = corePart.split(".");
+  const prereleasePieces = prereleasePart?.split(".") ?? [];
+  const prereleaseTag = (item.tag ?? prereleasePieces[0]) as ChangelogItem["tag"] | undefined;
+  const prereleaseIteration = Number.parseInt(prereleasePieces[1] ?? "0", 10);
+
+  return {
+    major: Number.parseInt(major, 10) || 0,
+    minor: Number.parseInt(minor, 10) || 0,
+    patch: Number.parseInt(patch, 10) || 0,
+    prereleaseRank: prereleaseTag ? CHANGELOG_PRERELEASE_RANK[prereleaseTag] : 3,
+    prereleaseIteration: Number.isFinite(prereleaseIteration) ? prereleaseIteration : 0,
+  };
+}
+
+function compareChangelogItemsDesc(a: ChangelogItem, b: ChangelogItem) {
+  const dateCompare = b.date.localeCompare(a.date);
+  if (dateCompare !== 0) return dateCompare;
+
+  const aChannel = a.channel ?? "stable";
+  const bChannel = b.channel ?? "stable";
+  if (aChannel !== bChannel) {
+    return aChannel === "stable" ? -1 : 1;
+  }
+
+  const parsedA = parseChangelogVersion(a);
+  const parsedB = parseChangelogVersion(b);
+  if (parsedA.major !== parsedB.major) return parsedB.major - parsedA.major;
+  if (parsedA.minor !== parsedB.minor) return parsedB.minor - parsedA.minor;
+  if (parsedA.patch !== parsedB.patch) return parsedB.patch - parsedA.patch;
+  if (parsedA.prereleaseRank !== parsedB.prereleaseRank) return parsedB.prereleaseRank - parsedA.prereleaseRank;
+  if (parsedA.prereleaseIteration !== parsedB.prereleaseIteration) return parsedB.prereleaseIteration - parsedA.prereleaseIteration;
+  return b.version.localeCompare(a.version);
+}
+
+function sortChangelogItems(items: ChangelogItem[]) {
+  return [...items].sort(compareChangelogItemsDesc);
+}
+
+export const buildChangelogItems = (t: TFunction): ChangelogItem[] => sortChangelogItems([
   {
     version: "1.4.8-alpha.3",
     date: "2026-04-19",
@@ -319,12 +373,12 @@ export const buildChangelogItems = (t: TFunction): ChangelogItem[] => [
       t("changelog.items.dots"),
     ],
   },
-];
+]);
 
 export const buildChangelogSections = (t: TFunction): ChangelogSection[] => {
   const items = buildChangelogItems(t);
-  const stableItems = items.filter((item) => (item.channel || "stable") === "stable");
-  const previewItems = items.filter((item) => item.channel === "preview");
+  const stableItems = sortChangelogItems(items.filter((item) => (item.channel || "stable") === "stable"));
+  const previewItems = sortChangelogItems(items.filter((item) => item.channel === "preview"));
 
   const sections = [
     {

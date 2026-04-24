@@ -43,8 +43,8 @@ export default {
           },
           prefix: {
             label: "Prefix Search",
-            description: "Use prefixes like g / bing / ddg / bd to override engine",
-            tooltip: "Example: `g AI` searches with Google just for this query without changing your default engine."
+            description: "Use `!g` / `!b` / `!d` / `!bd` to override the engine for one query",
+            tooltip: "Example: `!g AI` searches with Google just for this query without changing your default engine."
           },
           siteDirect: {
             label: "Site Direct Search",
@@ -99,6 +99,7 @@ export default {
         items: {
           focusSearch: "Focus the search box and select the current text",
           switchEngine: "Press Tab or Shift+Tab in the search box to switch engines",
+          temporaryEnginePrefix: "Type !g / !b / !d / !bd, then a space and keywords, to override the engine for just this search",
           switchScenarioNext: "When not typing, cycle to the next scenario mode",
           bookmarksMode: "Enter bookmark search mode; browser permission may be requested on first use",
           tabsMode: "Enter tab search mode; browser permission may be requested on first use",
@@ -108,7 +109,7 @@ export default {
           showNumberHints: "Show number hints in the results list",
           openNumberedResult: "Open the result using its number"
         },
-        footer: "Tip: number hints and number shortcuts only work while the results list is open; /t and /b depend on browser permissions."
+        footer: "Tip: number hints only work while the results list is open; use !g / !b / !d / !bd for temporary engine overrides; /t and /b depend on browser permissions."
       },
       timeFormat: {
         label: "24-Hour Clock",
@@ -763,7 +764,7 @@ export default {
       placeholderHintTabSwitch: "Want a different search engine? Press Tab",
       placeholderHintCalculator: "Type 12*8 to calculate",
       placeholderHintSiteDirect: "Type github react to search GitHub",
-      placeholderHintPrefix: "Type g AI to search with Google",
+      placeholderHintPrefix: "Type !g AI to search with Google",
       enterKey: "Enter",
       actionOpen: "Open",
       actionClose: "Close",

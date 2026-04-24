@@ -85,6 +85,8 @@ export type HistorySearchSuggestionItem = SearchSuggestionBase & {
   type: 'history';
   timestamp: number;
   historySource: 'local' | 'browser';
+  searchActionKey?: string;
+  searchActionState?: string;
 };
 
 export type ShortcutSearchSuggestionItem = SearchSuggestionBase & {
@@ -96,6 +98,7 @@ export type ShortcutSearchSuggestionItem = SearchSuggestionBase & {
 export type BookmarkSearchSuggestionItem = SearchSuggestionBase & {
   type: 'bookmark';
   icon: string;
+  bookmarkId?: string;
 };
 
 export type TabSearchSuggestionItem = SearchSuggestionBase & {
@@ -103,6 +106,7 @@ export type TabSearchSuggestionItem = SearchSuggestionBase & {
   icon: string;
   tabId: number;
   windowId?: number;
+  pinned?: boolean;
 };
 
 export type EnginePrefixSearchSuggestionItem = SearchSuggestionBase & {

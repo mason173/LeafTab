@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiAddLine, RiCheckFill, RiSubtractLine } from '@/icons/ri-compat';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -72,7 +72,7 @@ function AppearanceCard({
   );
 }
 
-export function ShortcutIconSettingsDialog({
+export const ShortcutIconSettingsDialog = memo(function ShortcutIconSettingsDialog({
   open,
   onOpenChange,
   onBackToSettings,
@@ -92,6 +92,14 @@ export function ShortcutIconSettingsDialog({
   const [draftScale, setDraftScale] = useState(scale);
   const [isSliderInteracting, setIsSliderInteracting] = useState(false);
   const [activeSlider, setActiveSlider] = useState<'columns' | 'cornerRadius' | 'size' | null>(null);
+  const stylePreviewFrameRef = useRef<number | null>(null);
+  const iconPreviewFrameRef = useRef<number | null>(null);
+  const pendingStylePreviewRef = useRef<{ compactShowTitle: boolean; columns: number } | null>(null);
+  const pendingIconPreviewRef = useRef<{
+    appearance: ShortcutIconAppearance;
+    cornerRadius: number;
+    scale: number;
+  } | null>(null);
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
   const sliderSurfaceClass = 'w-full [&_[data-slot=scrubber-track]]:border [&_[data-slot=scrubber-track]]:border-white/24 [&_[data-slot=scrubber-track]]:bg-white/12 [&_[data-slot=scrubber-track]]:backdrop-blur-xl dark:[&_[data-slot=scrubber-track]]:border-white/10 dark:[&_[data-slot=scrubber-track]]:bg-black/18 [&_[data-slot=scrubber-fill]]:bg-primary [&_[data-slot=scrubber-tick]]:bg-white/70 [&_[data-slot=scrubber-label]]:text-white [&_[data-slot=scrubber-value]]:text-white';
   const previewStageSize = 124;
@@ -111,56 +119,155 @@ export function ShortcutIconSettingsDialog({
     setDraftScale(clampShortcutIconScale(scale));
   }, [appearance, columns, compactShowTitle, cornerRadius, open, scale]);
 
-  const emitLiveStyleUpdate = (nextCompactShowTitle: boolean, nextColumns: number) => {
-    onSaveStyle({
+  useEffect(() => () => {
+    if (stylePreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(stylePreviewFrameRef.current);
+    }
+    if (iconPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(iconPreviewFrameRef.current);
+    }
+  }, []);
+
+  const flushStylePreviewUpdate = useCallback(() => {
+    stylePreviewFrameRef.current = null;
+    const pending = pendingStylePreviewRef.current;
+    if (!pending) return;
+    pendingStylePreviewRef.current = null;
+    startTransition(() => {
+      onSaveStyle({
+        compactShowTitle: pending.compactShowTitle,
+        columns: pending.columns,
+      });
+    });
+  }, [onSaveStyle]);
+
+  const scheduleStylePreviewUpdate = useCallback((nextCompactShowTitle: boolean, nextColumns: number) => {
+    pendingStylePreviewRef.current = {
       compactShowTitle: nextCompactShowTitle,
       columns: nextColumns,
+    };
+    if (stylePreviewFrameRef.current !== null) return;
+    stylePreviewFrameRef.current = window.requestAnimationFrame(() => {
+      flushStylePreviewUpdate();
     });
-  };
+  }, [flushStylePreviewUpdate]);
 
-  const handleCompactShowTitleChange = (nextCompactShowTitle: boolean) => {
+  const commitStyleUpdate = useCallback((nextCompactShowTitle: boolean, nextColumns: number) => {
+    pendingStylePreviewRef.current = null;
+    if (stylePreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(stylePreviewFrameRef.current);
+      stylePreviewFrameRef.current = null;
+    }
+    startTransition(() => {
+      onSaveStyle({
+        compactShowTitle: nextCompactShowTitle,
+        columns: nextColumns,
+      });
+    });
+  }, [onSaveStyle]);
+
+  const handleCompactShowTitleChange = useCallback((nextCompactShowTitle: boolean) => {
     setDraftCompactShowTitle(nextCompactShowTitle);
-    emitLiveStyleUpdate(nextCompactShowTitle, draftColumns);
-  };
+    commitStyleUpdate(nextCompactShowTitle, draftColumns);
+  }, [commitStyleUpdate, draftColumns]);
 
-  const handleColumnsChange = (nextRawValue: number) => {
+  const handleColumnsPreviewChange = useCallback((nextRawValue: number) => {
     const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue));
     setDraftColumns(nextColumns);
-    emitLiveStyleUpdate(draftCompactShowTitle, nextColumns);
-  };
+    scheduleStylePreviewUpdate(draftCompactShowTitle, nextColumns);
+  }, [draftCompactShowTitle, scheduleStylePreviewUpdate]);
 
-  const emitLiveIconUpdate = (nextAppearance: ShortcutIconAppearance, nextCornerRadius: number, nextScale: number) => {
-    onSave({
-      appearance: nextAppearance,
-      cornerRadius: clampShortcutIconCornerRadius(nextCornerRadius),
-      scale: clampShortcutIconScale(nextScale),
+  const commitColumnsChange = useCallback((nextRawValue: number) => {
+    const nextColumns = clampShortcutGridColumns(Math.round(nextRawValue));
+    setDraftColumns(nextColumns);
+    commitStyleUpdate(draftCompactShowTitle, nextColumns);
+  }, [commitStyleUpdate, draftCompactShowTitle]);
+
+  const flushIconPreviewUpdate = useCallback(() => {
+    iconPreviewFrameRef.current = null;
+    const pending = pendingIconPreviewRef.current;
+    if (!pending) return;
+    pendingIconPreviewRef.current = null;
+    startTransition(() => {
+      onSave({
+        appearance: pending.appearance,
+        cornerRadius: clampShortcutIconCornerRadius(pending.cornerRadius),
+        scale: clampShortcutIconScale(pending.scale),
+      });
     });
-  };
+  }, [onSave]);
 
-  const handleAppearanceChange = (nextAppearance: ShortcutIconAppearance) => {
+  const scheduleIconPreviewUpdate = useCallback((
+    nextAppearance: ShortcutIconAppearance,
+    nextCornerRadius: number,
+    nextScale: number,
+  ) => {
+    pendingIconPreviewRef.current = {
+      appearance: nextAppearance,
+      cornerRadius: nextCornerRadius,
+      scale: nextScale,
+    };
+    if (iconPreviewFrameRef.current !== null) return;
+    iconPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      flushIconPreviewUpdate();
+    });
+  }, [flushIconPreviewUpdate]);
+
+  const commitIconUpdate = useCallback((
+    nextAppearance: ShortcutIconAppearance,
+    nextCornerRadius: number,
+    nextScale: number,
+  ) => {
+    pendingIconPreviewRef.current = null;
+    if (iconPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(iconPreviewFrameRef.current);
+      iconPreviewFrameRef.current = null;
+    }
+    startTransition(() => {
+      onSave({
+        appearance: nextAppearance,
+        cornerRadius: clampShortcutIconCornerRadius(nextCornerRadius),
+        scale: clampShortcutIconScale(nextScale),
+      });
+    });
+  }, [onSave]);
+
+  const handleAppearanceChange = useCallback((nextAppearance: ShortcutIconAppearance) => {
     setDraftAppearance(nextAppearance);
-    emitLiveIconUpdate(nextAppearance, draftCornerRadius, draftScale);
-  };
+    commitIconUpdate(nextAppearance, draftCornerRadius, draftScale);
+  }, [commitIconUpdate, draftCornerRadius, draftScale]);
 
-  const handleCornerRadiusChange = (nextCornerRadius: number) => {
+  const handleCornerRadiusPreviewChange = useCallback((nextCornerRadius: number) => {
     const normalized = clampShortcutIconCornerRadius(nextCornerRadius);
     setDraftCornerRadius(normalized);
-    emitLiveIconUpdate(draftAppearance, normalized, draftScale);
-  };
+    scheduleIconPreviewUpdate(draftAppearance, normalized, draftScale);
+  }, [draftAppearance, draftScale, scheduleIconPreviewUpdate]);
 
-  const handleScaleChange = (nextScale: number) => {
+  const commitCornerRadiusChange = useCallback((nextCornerRadius: number) => {
+    const normalized = clampShortcutIconCornerRadius(nextCornerRadius);
+    setDraftCornerRadius(normalized);
+    commitIconUpdate(draftAppearance, normalized, draftScale);
+  }, [commitIconUpdate, draftAppearance, draftScale]);
+
+  const handleScalePreviewChange = useCallback((nextScale: number) => {
     const normalized = clampShortcutIconScale(nextScale);
     setDraftScale(normalized);
-    emitLiveIconUpdate(draftAppearance, draftCornerRadius, normalized);
-  };
+    scheduleIconPreviewUpdate(draftAppearance, draftCornerRadius, normalized);
+  }, [draftAppearance, draftCornerRadius, scheduleIconPreviewUpdate]);
 
-  const handleDialogOpenChange = (nextOpen: boolean) => {
+  const commitScaleChange = useCallback((nextScale: number) => {
+    const normalized = clampShortcutIconScale(nextScale);
+    setDraftScale(normalized);
+    commitIconUpdate(draftAppearance, draftCornerRadius, normalized);
+  }, [commitIconUpdate, draftAppearance, draftCornerRadius]);
+
+  const handleDialogOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen) {
       setIsSliderInteracting(false);
       setActiveSlider(null);
     }
     onOpenChange(nextOpen);
-  };
+  }, [onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -226,7 +333,8 @@ export function ShortcutIconSettingsDialog({
               max={MAX_SHORTCUT_ICON_CORNER_RADIUS}
               step={1}
               value={draftCornerRadius}
-              onValueChange={handleCornerRadiusChange}
+              onValueChange={handleCornerRadiusPreviewChange}
+              onValueCommit={commitCornerRadiusChange}
               onDragStart={() => {
                 setIsSliderInteracting(true);
                 setActiveSlider('cornerRadius');
@@ -252,7 +360,8 @@ export function ShortcutIconSettingsDialog({
               max={MAX_SHORTCUT_ICON_SCALE}
               step={1}
               value={draftScale || DEFAULT_SHORTCUT_ICON_SCALE}
-              onValueChange={handleScaleChange}
+              onValueChange={handleScalePreviewChange}
+              onValueCommit={commitScaleChange}
               onDragStart={() => {
                 setIsSliderInteracting(true);
                 setActiveSlider('size');
@@ -294,7 +403,7 @@ export function ShortcutIconSettingsDialog({
               variant="secondary"
               size="icon"
               className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-              onClick={() => handleColumnsChange(Math.max(columnBounds.min, draftColumns - 1))}
+              onClick={() => commitColumnsChange(Math.max(columnBounds.min, draftColumns - 1))}
               disabled={draftColumns <= columnBounds.min}
             >
               <RiSubtractLine className="size-4" />
@@ -306,7 +415,8 @@ export function ShortcutIconSettingsDialog({
               max={columnBounds.max}
               step={1}
               value={draftColumns}
-              onValueChange={handleColumnsChange}
+              onValueChange={handleColumnsPreviewChange}
+              onValueCommit={commitColumnsChange}
               onDragStart={() => {
                 setIsSliderInteracting(true);
                 setActiveSlider('columns');
@@ -327,7 +437,7 @@ export function ShortcutIconSettingsDialog({
               variant="secondary"
               size="icon"
               className={`h-8 w-8 rounded-full ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-              onClick={() => handleColumnsChange(Math.min(columnBounds.max, draftColumns + 1))}
+              onClick={() => commitColumnsChange(Math.min(columnBounds.max, draftColumns + 1))}
               disabled={draftColumns >= columnBounds.max}
             >
               <RiAddLine className="size-4" />
@@ -343,4 +453,6 @@ export function ShortcutIconSettingsDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+ShortcutIconSettingsDialog.displayName = 'ShortcutIconSettingsDialog';

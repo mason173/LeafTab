@@ -185,17 +185,20 @@ export function parseSearchEnginePrefix(rawQuery: string): {
   query: string;
   overrideEngine: SearchEngineOverride | null;
 } {
-  const trimmed = rawQuery.trim();
+  const trimmedStart = rawQuery.trimStart();
+  const trimmed = trimmedStart.trim();
   if (!trimmed) return { query: '', overrideEngine: null };
 
-  const match = trimmed.match(/^([a-z]+)\s+(.+)$/i);
+  const match = trimmedStart.match(/^([!！])([a-z\uFF21-\uFF3A\uFF41-\uFF5A]+)\s+(.*)$/u);
   if (!match) return { query: trimmed, overrideEngine: null };
 
-  const prefix = match[1].toLowerCase();
-  const nextQuery = match[2].trim();
+  const prefix = match[2].normalize('NFKC').toLowerCase();
+  const nextQuery = match[3].trim();
   const overrideEngine = SEARCH_ENGINE_PREFIX_MAP[prefix] || null;
   if (!overrideEngine || !nextQuery) {
-    return { query: trimmed, overrideEngine: null };
+    return overrideEngine
+      ? { query: '', overrideEngine }
+      : { query: trimmed, overrideEngine: null };
   }
   return { query: nextQuery, overrideEngine };
 }

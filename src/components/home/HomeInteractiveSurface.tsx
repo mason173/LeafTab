@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RiArrowUpSLine } from '@/icons/ri-compat';
 import { TopNavBar, type TopNavBarProps } from '@/components/TopNavBar';
 import {
   HomeMainContent,
@@ -41,11 +42,12 @@ const FOLDER_IMMERSIVE_SCALE_VAR = 'var(--leaftab-folder-immersive-scale, 1)';
 const FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX = 72;
 const FOLDER_IMMERSIVE_BLUR_SCALE = 1.06;
 const FLOATING_BOTTOM_SEARCH_Z_INDEX = 15030;
+const FLOATING_BOTTOM_SEARCH_ARROW_Z_INDEX = 15035;
 const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 15025;
 const FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS = 300;
 const FLOATING_BOTTOM_SEARCH_HIDE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
-const FLOATING_BOTTOM_SEARCH_HEIGHT_PX = 52;
-const FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX = 32;
+const FLOATING_BOTTOM_SEARCH_HEIGHT_PX = 44;
+const FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX = 16;
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -241,6 +243,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   });
   const [visualBootSettled, setVisualBootSettled] = useState(initialRevealReady);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const [requestDrawerExpand, setRequestDrawerExpand] = useState<(() => void) | null>(null);
   const [globalSearchActivationHandle, setGlobalSearchActivationHandle] = useState<SearchActivationHandle | null>(null);
 
   const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
@@ -693,6 +696,12 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const showFloatingBottomSearch = true;
   const floatingBottomSearchOffsetPx = resolveFloatingSearchOffsetPx(FLOATING_BOTTOM_SEARCH_HEIGHT_PX);
   const floatingBottomSearchHiddenTranslateYPx = FLOATING_BOTTOM_SEARCH_HEIGHT_PX + floatingBottomSearchOffsetPx + 48;
+  const blankModeExpandArrowBottomPx = floatingBottomSearchOffsetPx + FLOATING_BOTTOM_SEARCH_HEIGHT_PX + 6;
+  const showBlankModeExpandArrow = modeFlags.searchUsesBlankStyle
+    && !drawerExpanded
+    && !floatingSearchHidden
+    && !searchInteractionState.historyOpen
+    && !searchInteractionState.dropdownOpen;
   const floatingBottomSearchCropLayer = useMemo(() => {
     if (!showFloatingBottomSearch) return null;
 
@@ -800,6 +809,56 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     drawerExpanded,
   ]);
 
+  const floatingBottomExpandArrowLayer = useMemo(() => {
+    if (!showBlankModeExpandArrow) return null;
+
+    return (
+      <div
+        className="fixed inset-x-0 pointer-events-none px-5 sm:px-6"
+        style={{
+          zIndex: FLOATING_BOTTOM_SEARCH_ARROW_Z_INDEX,
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${blankModeExpandArrowBottomPx}px)`,
+          ...fixedTopNavRevealStyle,
+        }}
+      >
+        <div
+          className="mx-auto flex max-w-full justify-center"
+          style={{
+            width: homeMainContentBaseProps.layout.contentWidth,
+            opacity: floatingSearchHidden ? 0 : 1,
+            transform: floatingSearchHidden
+              ? `translate3d(0, ${floatingBottomSearchHiddenTranslateYPx}px, 0)`
+              : 'translate3d(0, 0, 0)',
+            transition: [
+              `opacity ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
+              `transform ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
+            ].join(', '),
+            willChange: 'opacity, transform',
+          }}
+        >
+          <button
+            type="button"
+            aria-label={t('home.expandDrawerHint.ariaLabel', { defaultValue: '展开快捷方式抽屉' })}
+            className="pointer-events-auto inline-flex items-center justify-center px-2 py-1 text-white/50 transition-[opacity,color] duration-300 hover:text-white/72 focus-visible:outline-none focus-visible:text-white/78 disabled:cursor-default disabled:opacity-35"
+            onClick={() => requestDrawerExpand?.()}
+            disabled={!requestDrawerExpand}
+          >
+            <RiArrowUpSLine className="size-7 motion-safe:animate-[leaftab-drawer-hint-float_2.8s_ease-in-out_infinite]" />
+          </button>
+        </div>
+      </div>
+    );
+  }, [
+    blankModeExpandArrowBottomPx,
+    fixedTopNavRevealStyle,
+    floatingBottomSearchHiddenTranslateYPx,
+    floatingSearchHidden,
+    homeMainContentBaseProps.layout.contentWidth,
+    requestDrawerExpand,
+    showBlankModeExpandArrow,
+    t,
+  ]);
+
   return (
     <RenderProfileBoundary id="HomeInteractiveSurface">
       <WallpaperBackdropProvider
@@ -832,9 +891,13 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             drawerShortcutSearchProps={drawerShortcutSearchProps}
             onFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
             onDrawerExpandedChange={setDrawerExpanded}
+            onDrawerExpandActionChange={(action) => {
+              setRequestDrawerExpand(() => action);
+            }}
             shortcutGridProps={shortcutGridProps}
           />
           {floatingBottomSearchCropLayer}
+          {floatingBottomExpandArrowLayer}
           {floatingBottomSearchLayer}
         </>
       </WallpaperBackdropProvider>

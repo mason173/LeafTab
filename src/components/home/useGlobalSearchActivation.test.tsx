@@ -83,6 +83,26 @@ describe('useGlobalSearchActivation', () => {
       bubbles: true,
       cancelable: true,
     });
+    fireEvent.change(input, {
+      target: {
+        value: 'a',
+      },
+    });
+
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue('a');
+  });
+
+  it('falls back to manual append when a focused printable capture is consumed outside the input target', () => {
+    const { getByTestId } = render(<ActivationHarness armFocusedCapture />);
+    const input = getByTestId('search-input') as HTMLInputElement;
+
+    input.focus();
+    fireEvent.keyDown(window, {
+      key: 'a',
+      bubbles: true,
+      cancelable: true,
+    });
 
     expect(input).toHaveFocus();
     expect(input).toHaveValue('a');

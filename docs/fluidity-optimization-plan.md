@@ -65,7 +65,7 @@
 
 ## 进度追踪
 
-当前 focus：文件夹打开场景里的 overlay / grid 局部提交压力已继续收紧；下一步最值得处理的是搜索输入导致的整块首页 surface 跟随重渲染，暂不直接进入 Phase 4。
+当前 focus：文件夹打开场景里的 overlay / grid 局部提交压力已继续收紧；在正式进入 Phase 4 前，先补一轮设置 dialogs 的局部 churn 收紧，随后继续处理搜索输入导致的整块首页 surface 跟随重渲染。
 
 - [x] Phase 0 Step 1. 创建体感流畅优化文档并收敛任务优先级。
 - [x] Phase 0 Step 2. 补充当前基线数据与验证口径。
@@ -78,6 +78,7 @@
 - [x] Phase 3 Step 3. 建立首页互动面 render profiling 采样，并用自动交互刷新热点排序。
 - [x] Phase 3 Step 4. 把文件夹过渡的高频动画状态从 `App` / 首页主树中剥离出去。
 - [x] Phase 3 Step 5. 收紧文件夹 overlay / grid 自己的局部提交压力。
+- [x] Follow-up. 收紧设置 dialogs 内 slider / settings list / dialog root 的局部更新压力。
 - [ ] Phase 4 Step 1. 收口 browser target 分叉的共享基础实现。
 
 ## 验证口径
@@ -899,3 +900,28 @@ Phase 2 第二刀落地：
   - 尚未执行手工文件夹开关与拖拽体感复核
   - 尚未开始搜索输入链路的局部订阅下放
 - 下一阶段 focus 调整为：优先处理搜索输入导致的 `HomeInteractiveSurface` / `HomeMainContent` 整块跟随 rerender，暂不进入 Phase 4。
+
+### 2026-04-24
+
+- 完成一轮设置 dialogs 局部流畅度收紧，目标是减少“滑杆拖动 / 设置开关 / dialog keep-mounted”对首页主树和已挂载弹窗子树的连带惊动。
+- 本轮核心改动：
+  - `src/components/ui/smoothui/scrubber/index.tsx`
+  - `src/components/ShortcutIconSettingsDialog.tsx`
+  - `src/components/SearchSettingsModal.tsx`
+  - `src/features/shortcuts/app/ShortcutAppDialogsRoot.tsx`
+  - `src/features/shortcuts/app/ShortcutSyncDialogsRoot.tsx`
+  - `src/App.tsx`
+- 本轮结构性收益：
+  - `Scrubber` 新增了提交落点，允许上层把“拖动时预览”和“真正向外提交”拆开。
+  - `ShortcutIconSettingsDialog` 的圆角 / 大小 / 列数滑杆现在优先更新 dialog 内本地 draft，再在拖动结束时用 `startTransition` 提交到全局设置，减少连续拖动时首页 grid 跟随刷新。
+  - `SearchSettingsModal` 的设置卡片和 modal 自身都加了 memo 边界，并把 row props 收敛成稳定列表，切换单个开关时更容易只惊动对应卡片。
+  - `ShortcutAppDialogsRoot` 与 `ShortcutSyncDialogsRoot` 已加 memo，`App.tsx` 传给 dialogs root 的多组 props 也已稳定化，降低搜索 / 壁纸 / 拖拽等高频状态对 dialog 子树的无关 rerender。
+- 自动化验证：
+  - `npm run typecheck` 通过
+  - `npm test` 未通过
+    - 失败集中在 `src/components/frosted/frostedSurfacePresets.test.ts`
+    - 当前工作区里 `src/components/frosted/frostedSurfacePresets.ts` 本身已有未提交修改，因此本轮不把这组失败直接归因为本次 dialogs / slider 优化
+- 本轮未完成项：
+  - 尚未补 React DevTools Profiler 对比
+  - 尚未执行手工“拖图标设置滑杆 / 连续切搜索设置开关 / 打开设置后继续输入搜索”的体感复核
+- 下一阶段 focus 保持不变：继续处理搜索输入导致的 `HomeInteractiveSurface` / `HomeMainContent` 整块跟随 rerender，暂不进入 Phase 4。

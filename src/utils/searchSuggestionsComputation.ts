@@ -1,4 +1,4 @@
-import type { SearchSuggestionItem, Shortcut } from '@/types';
+import type { SearchSuggestionItem } from '@/types';
 import type { SearchAction } from '@/utils/searchActions';
 import { buildSearchSuggestionActions } from '@/utils/searchSuggestionEngine';
 import type { SearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
@@ -20,12 +20,13 @@ export type SearchSuggestionsComputationInput = {
   suggestionDisplayMode: SearchSuggestionDisplayMode;
   searchValue: string;
   filteredHistoryItems: SearchSuggestionHistoryEntry[];
-  shortcuts: Shortcut[];
-  shortcutSearchIndex?: IndexedShortcutSuggestion[];
+  shortcutSearchIndex: IndexedShortcutSuggestion[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   bookmarkSuggestionItems: SearchSuggestionItem[];
   tabSuggestionItems: SearchSuggestionItem[];
+  commandSuggestionItems: SearchSuggestionItem[];
+  settingSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
   remoteSuggestionItems: SearchSuggestionItem[];
 };
@@ -37,12 +38,13 @@ export function computeSearchSuggestionActions(
     suggestionDisplayMode,
     searchValue,
     filteredHistoryItems,
-    shortcuts,
     shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     bookmarkSuggestionItems,
     tabSuggestionItems,
+    commandSuggestionItems,
+    settingSuggestionItems,
     browserHistorySuggestionItems,
     remoteSuggestionItems,
   } = input;
@@ -55,7 +57,6 @@ export function computeSearchSuggestionActions(
     searchValue,
     filteredHistoryItems,
     shortcutSearchIndex,
-    shortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   });
@@ -65,6 +66,8 @@ export function computeSearchSuggestionActions(
     searchValue,
     bookmarkSuggestionItems,
     tabSuggestionItems,
+    commandSuggestionItems,
+    settingSuggestionItems,
     localHistorySuggestionItems,
     remoteSuggestionItems,
     browserHistorySuggestionItems,

@@ -145,7 +145,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (isFiniteNumber(keepTab.windowId) && windowsApi?.update) {
         windowsApi.update(keepTab.windowId, { focused: true }, () => {});
       }
-      tabsApi.update(keepTab.id, { active: true }, () => {});
+      tabsApi.update(keepTab.id, { active: true }, () => {
+        if (chrome.runtime.lastError) return;
+        tabsApi.reload?.(keepTab.id, () => {});
+      });
       tabsApi.remove(senderTabId, () => {});
     });
 

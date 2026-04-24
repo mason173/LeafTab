@@ -19,39 +19,14 @@
     "search",
     "permissions",
     "activeTab",
-    "identity"
-  ],
-  "optional_permissions": [
     "bookmarks",
     "history",
-    "tabs"
-  ],
-  "optional_host_permissions": [
-    "https://*/*",
-    "http://*/*"
+    "tabs",
+    "identity"
   ],
   "host_permissions": [
-    "https://www.leaftab.cc/*",
-    "https://api.iowen.cn/*",
-    "https://icon.horse/*",
-    "https://wttr.in/*",
-    "https://cn.bing.com/*",
-    "https://www.bing.com/*",
-    "https://bing.biturl.top/*",
-    "https://sug.so.360.cn/*",
-    "https://mason173.github.io/*",
-    "https://raw.githubusercontent.com/*",
-    "https://fonts.googleapis.com/*",
-    "https://fonts.gstatic.com/*",
-    "https://dav.jianguoyun.com/*",
-    "https://ewebdav.pcloud.com/*",
-    "https://webdav.pcloud.com/*",
-    "https://webdav.mc.gmx.net/*",
-    "https://webdav.icedrive.io/*",
-    "https://webdav.yandex.com/*",
-    "https://magentacloud.de/*",
-    "https://dav.mailbox.org/*",
-    "https://webdav.smartdrive.web.de/*"
+    "https://*/*",
+    "http://*/*"
   ],
   "offline_enabled": true,
   "icons": {

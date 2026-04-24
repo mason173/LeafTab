@@ -166,7 +166,7 @@ export function useSettings() {
   const [searchCalculatorEnabled, setSearchCalculatorEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
   const [searchRotatingPlaceholderEnabled, setSearchRotatingPlaceholderEnabled] = useState<boolean>(() => readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
   const [searchBarPosition, setSearchBarPosition] = useState<SearchBarPosition>(() => readSearchBarPosition());
-  const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
+  const [preventDuplicateNewTab, setPreventDuplicateNewTab] = useState<boolean>(() => readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, true));
   const [is24Hour, setIs24Hour] = useState(true);
   const [showDate, setShowDate] = useState<boolean>(() => readStoredBoolean(SHOW_DATE_KEY, true));
   const [showWeekday, setShowWeekday] = useState<boolean>(() => readStoredBoolean(SHOW_WEEKDAY_KEY, true));
@@ -260,7 +260,7 @@ export function useSettings() {
     setSearchCalculatorEnabled(readStoredBoolean(SEARCH_CALCULATOR_ENABLED_KEY, true));
     setSearchRotatingPlaceholderEnabled(readStoredBoolean(SEARCH_ROTATING_PLACEHOLDER_ENABLED_KEY, true));
     setSearchBarPosition(readSearchBarPosition());
-    setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, false));
+    setPreventDuplicateNewTab(readStoredBoolean(PREVENT_DUPLICATE_NEWTAB_KEY, true));
     setShowDate(readStoredBoolean(SHOW_DATE_KEY, true));
     setShowWeekday(readStoredBoolean(SHOW_WEEKDAY_KEY, true));
     setShowLunar(readStoredBoolean(SHOW_LUNAR_KEY, true));

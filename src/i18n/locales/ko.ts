@@ -38,8 +38,8 @@ export default {
           },
           prefix: {
             label: "Prefix 검색",
-            description: "g / bing / ddg / bd 같은 접두어로 임시 엔진 지정",
-            tooltip: "예: `g AI` 입력 시 해당 검색만 Google로 실행되고 기본 엔진은 유지됩니다."
+            description: "!g / !b / !d / !bd 같은 접두어로 임시 엔진 지정",
+            tooltip: "예: `!g AI` 입력 시 해당 검색만 Google로 실행되고 기본 엔진은 유지됩니다."
           },
           siteDirect: {
             label: "사이트 직접 검색",
@@ -494,7 +494,7 @@ export default {
       placeholderHintTabSwitch: "검색 방식을 바꾸려면 Tab",
       placeholderHintCalculator: "12*8 처럼 입력하면 바로 계산돼요",
       placeholderHintSiteDirect: "github react 를 입력하면 GitHub에서 찾을 수 있어요",
-      placeholderHintPrefix: "g AI 를 입력하면 Google로 검색돼요",
+      placeholderHintPrefix: "!g AI 를 입력하면 Google로 검색돼요",
       enterKey: "Enter",
       actionOpen: "열기",
       actionClose: "닫기",

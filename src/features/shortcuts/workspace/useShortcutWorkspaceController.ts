@@ -32,6 +32,8 @@ export function useShortcutWorkspaceController({
     createInitialShortcutWorkspaceState,
   );
   const pendingExtractRootDragStartedRef = useRef(false);
+  const pendingExtractPointerFinishTimerRef = useRef<number | null>(null);
+  const pendingFolderExtractDragRef = useRef<PendingFolderExtractDrag | null>(null);
 
   const setEditingFolderId = useCallback((value: SetStateAction<string | null>) => {
     dispatch({ type: 'set-editing-folder-id', value });
@@ -69,12 +71,20 @@ export function useShortcutWorkspaceController({
       : null
   ), [selectedScenarioId, state.pendingFolderExtractDrag]);
 
+  useEffect(() => {
+    pendingFolderExtractDragRef.current = state.pendingFolderExtractDrag;
+  }, [state.pendingFolderExtractDrag]);
+
   const startFolderExtractDrag = useCallback((
     payload: FolderExtractDragStartPayload,
     options?: {
       onCloseFolderOverlay?: () => void;
     },
   ) => {
+    if (pendingExtractPointerFinishTimerRef.current !== null) {
+      window.clearTimeout(pendingExtractPointerFinishTimerRef.current);
+      pendingExtractPointerFinishTimerRef.current = null;
+    }
     const outcome = applyFolderExtractDragStart(shortcuts, payload);
     if (outcome.kind !== 'start-root-drag-session') {
       return false;
@@ -168,9 +178,13 @@ export function useShortcutWorkspaceController({
   const finalizePendingFolderExtractDrag = useCallback((options?: {
     commitPendingPreview?: boolean;
   }) => {
-    const pendingExtractDrag = state.pendingFolderExtractDrag;
+    const pendingExtractDrag = pendingFolderExtractDragRef.current;
     if (!pendingExtractDrag) return;
 
+    if (pendingExtractPointerFinishTimerRef.current !== null) {
+      window.clearTimeout(pendingExtractPointerFinishTimerRef.current);
+      pendingExtractPointerFinishTimerRef.current = null;
+    }
     pendingExtractRootDragStartedRef.current = false;
 
     if (options?.commitPendingPreview && !pendingExtractDrag.committed) {
@@ -188,17 +202,39 @@ export function useShortcutWorkspaceController({
     setExternalShortcutDragSession,
     setPendingExtractHiddenShortcutId,
     setPendingFolderExtractDrag,
-    state.pendingFolderExtractDrag,
   ]);
+
+  useEffect(() => () => {
+    if (pendingExtractPointerFinishTimerRef.current !== null) {
+      window.clearTimeout(pendingExtractPointerFinishTimerRef.current);
+      pendingExtractPointerFinishTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!state.pendingFolderExtractDrag) return;
 
     const handleWindowPointerFinish = (event: PointerEvent) => {
-      if (event.pointerId !== state.pendingFolderExtractDrag?.pointerId) return;
-      finalizePendingFolderExtractDrag({
-        commitPendingPreview: event.type === 'pointerup',
-      });
+      if (event.pointerId !== pendingFolderExtractDragRef.current?.pointerId) return;
+
+      const finalize = () => {
+        pendingExtractPointerFinishTimerRef.current = null;
+        finalizePendingFolderExtractDrag({
+          commitPendingPreview: event.type === 'pointerup',
+        });
+      };
+
+      if (!pendingExtractRootDragStartedRef.current) {
+        finalize();
+        return;
+      }
+
+      if (pendingExtractPointerFinishTimerRef.current !== null) {
+        window.clearTimeout(pendingExtractPointerFinishTimerRef.current);
+      }
+      // Let the root grid release pipeline settle first so it can commit the
+      // real drop intent instead of us persisting the initial extract preview.
+      pendingExtractPointerFinishTimerRef.current = window.setTimeout(finalize, 0);
     };
 
     window.addEventListener('pointerup', handleWindowPointerFinish, true);

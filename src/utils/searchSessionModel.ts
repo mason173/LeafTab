@@ -59,11 +59,16 @@ function resolveSearchSessionMode(commandId: ParsedSearchCommand['id']): SearchS
   return 'default';
 }
 
+export function shouldAutoOpenSearchSuggestions(session: Pick<SearchSessionModel, 'mode' | 'enginePrefix'>): boolean {
+  return !(session.mode === 'default' && session.enginePrefix.active);
+}
+
 export function createSearchSessionModel(
   rawValue: string,
   options?: SearchSessionModelOptions,
 ): SearchSessionModel {
   const trimmedValue = rawValue.trim();
+  const trimmedStartValue = rawValue.trimStart();
   const parsedCommand = parseSearchCommand(rawValue);
   const mode = resolveSearchSessionMode(parsedCommand.id);
   const commandQuery = parsedCommand.active ? parsedCommand.query : trimmedValue;
@@ -79,10 +84,10 @@ export function createSearchSessionModel(
   const defaultEngine = options?.defaultEngine ?? null;
 
   const prefixedResult = mode === 'default' && prefixEnabled
-    ? parseSearchEnginePrefix(commandQuery)
+    ? parseSearchEnginePrefix(parsedCommand.active ? parsedCommand.query : trimmedStartValue)
     : { query: commandQuery, overrideEngine: null as SearchEngineOverride | null };
   const enginePrefix = {
-    active: Boolean(mode === 'default' && prefixEnabled && prefixedResult.overrideEngine && prefixedResult.query),
+    active: Boolean(mode === 'default' && prefixEnabled && prefixedResult.overrideEngine),
     overrideEngine: prefixedResult.overrideEngine,
     query: prefixedResult.query,
   };

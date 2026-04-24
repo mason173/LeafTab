@@ -18,6 +18,7 @@ import {
   CloudRain,
   CloudSnow,
   Code,
+  Copy,
   CornerDownLeft,
   Download,
   Ellipsis,
@@ -56,6 +57,8 @@ import {
   Palette,
   PanelLeft,
   Pencil,
+  Pin,
+  PinOff,
   Plus,
   RefreshCw,
   Rocket,
@@ -100,6 +103,7 @@ export const RiCloseLine = X;
 export const RiCloudFill = Cloud;
 export const RiCodeSSlashFill = Code;
 export const RiComputerFill = Monitor;
+export const RiFileCopyLine = Copy;
 export const RiCornerDownLeftLine = CornerDownLeft;
 export const RiDashboardFill = LayoutDashboard;
 export const RiDeleteBin6Fill = Trash2;
@@ -139,6 +143,7 @@ export const RiMoreFill = Ellipsis;
 export const RiMusicFill = Music;
 export const RiPaletteFill = Palette;
 export const RiPencilFill = Pencil;
+export const RiPushpinLine = Pin;
 export const RiQuestionLine = CircleHelp;
 export const RiRainyFill = CloudRain;
 export const RiRefreshFill = RefreshCw;
@@ -158,5 +163,6 @@ export const RiSunFill = Sun;
 export const RiTeamFill = Users;
 export const RiThunderstormsFill = CloudLightning;
 export const RiToolsFill = Wrench;
+export const RiUnpinLine = PinOff;
 export const RiUpload2Fill = Upload;
 export const RiUserFill = User;

@@ -70,6 +70,9 @@ export function useGlobalSearchActivation(target: SearchActivationHandle | null)
         if (!target.anyKeyCaptureEnabled) return;
         if (!isPrintableActivationKey(event)) return;
         if (!target.consumeFocusedPrintableCapture?.()) return;
+        if (targetElement === target.inputRef.current) {
+          return;
+        }
         event.preventDefault();
         target.appendText(event.key);
         return;

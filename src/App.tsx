@@ -83,6 +83,8 @@ import {
   isShortcutLink,
   pruneEmptyShortcutFolders,
 } from '@/utils/shortcutFolders';
+import { hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
+import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
 import { useShortcutExperienceRootProps } from '@/features/appShell/useShortcutExperienceRootProps';
 import { ShortcutAppProvider } from '@/features/shortcuts/app/ShortcutAppContext';
 import { ShortcutAppDialogsRoot } from '@/features/shortcuts/app/ShortcutAppDialogsRoot';
@@ -129,6 +131,15 @@ function createFolderShortcutId() {
     }
   } catch {}
   return `fld_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function createShortcutId() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {}
+  return `sht_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 const getApiBase = () => {
@@ -672,6 +683,80 @@ export default function App() {
     runAfterFolderOverlayClose,
     setSelectedShortcut,
     setShortcutDeleteOpen,
+  ]);
+
+  const handleEditShortcutSearchAction = useCallback((target: {
+    shortcut: Shortcut;
+    index: number;
+    parentFolderId?: string | null;
+  }) => {
+    if (target.parentFolderId) {
+      handleOpenFolderChildShortcutEditor(target.parentFolderId, target.shortcut);
+      return;
+    }
+    handleOpenShortcutEditor(target.index, target.shortcut);
+  }, [handleOpenFolderChildShortcutEditor, handleOpenShortcutEditor]);
+
+  const handleDeleteShortcutSearchAction = useCallback((target: {
+    shortcut: Shortcut;
+    index: number;
+    parentFolderId?: string | null;
+  }) => {
+    if (target.parentFolderId) {
+      handleDeleteFolderChildShortcut(target.parentFolderId, target.shortcut);
+      return;
+    }
+    setSelectedShortcut({ index: target.index, shortcut: target.shortcut });
+    setShortcutDeleteOpen(true);
+  }, [handleDeleteFolderChildShortcut, setSelectedShortcut, setShortcutDeleteOpen]);
+
+  const handleAddShortcutSearchAction = useCallback((target: {
+    title: string;
+    url: string;
+    icon?: string;
+  }) => {
+    const normalizedUrl = target.url.trim();
+    if (!normalizedUrl) return;
+
+    if (hasShortcutUrlConflict(shortcuts, normalizedUrl)) {
+      toast.error(t('shortcutModal.errors.duplicateUrl', {
+        defaultValue: '该网站已存在快捷方式',
+      }), {
+        description: t('shortcutModal.errors.duplicateUrlDesc', {
+          defaultValue: '同一网站仅保留一个快捷方式，请检查网址后重试',
+        }),
+      });
+      return;
+    }
+
+    const nextShortcut: Shortcut = {
+      id: createShortcutId(),
+      title: target.title.trim() || normalizedUrl,
+      url: normalizedUrl,
+      icon: target.icon || '',
+      useOfficialIcon: true,
+      autoUseOfficialIcon: true,
+      officialIconAvailableAtSave: false,
+      officialIconColorOverride: false,
+      iconColor: normalizeShortcutIconColor(''),
+    };
+
+    setScenarioShortcuts((prev) => ({
+      ...prev,
+      [selectedScenarioId]: [nextShortcut, ...(prev[selectedScenarioId] || [])],
+    }));
+    markShortcutStateDirty();
+    setPendingShortcutShineId(nextShortcut.id);
+    toast.success(t('search.shortcutAdded', {
+      defaultValue: '已添加为快捷方式',
+    }));
+  }, [
+    markShortcutStateDirty,
+    selectedScenarioId,
+    setPendingShortcutShineId,
+    setScenarioShortcuts,
+    shortcuts,
+    t,
   ]);
 
   const handleFolderChildShortcutContextMenu = useCallback((
@@ -1709,6 +1794,10 @@ export default function App() {
     setAdminModalOpen(false);
     setAboutModalOpen(false);
 
+    if (target === 'settings-home') {
+      setSettingsOpen(true);
+      return;
+    }
     if (target === 'search-settings') {
       setSearchSettingsOpen(true);
       return;
@@ -1948,17 +2037,35 @@ export default function App() {
     currentWallpaperMode: effectiveWallpaperMode,
     currentColorWallpaperId: colorWallpaperId,
     currentShortcutIconAppearance: shortcutIconAppearance,
+    currentShortcutIconCornerRadius: shortcutIconCornerRadius,
+    currentShortcutIconScale: shortcutIconScale,
+    shortcutShowTitleEnabled: shortcutCompactShowTitle,
+    currentShortcutGridColumns: normalizedGridColumns,
+    currentVisualEffectsLevel: visualEffectsLevel,
+    preventDuplicateNewTab,
+    showTime,
     activeSyncProvider: user && syncState.cloudSyncEnabled
       ? 'cloud'
       : syncState.leafTabWebdavEnabled
         ? 'webdav'
         : 'none',
+    onEditShortcutAction: handleEditShortcutSearchAction,
+    onDeleteShortcutAction: handleDeleteShortcutSearchAction,
+    onAddShortcutAction: handleAddShortcutSearchAction,
+    onSetShowTimeAction: setShowTime,
+    onSetWallpaperModeAction: setWallpaperMode,
+    onSetShortcutIconAppearanceAction: setShortcutIconAppearance,
     onOpenSlashCommandDialog: handleOpenSlashCommandDialog,
   }), [
     colorWallpaperId,
     effectiveWallpaperMode,
+    handleAddShortcutSearchAction,
+    handleDeleteShortcutSearchAction,
+    handleEditShortcutSearchAction,
     handleOpenSlashCommandDialog,
+    normalizedGridColumns,
     openInNewTab,
+    preventDuplicateNewTab,
     responsiveLayout.searchActionSize,
     responsiveLayout.searchHeight,
     responsiveLayout.searchHorizontalPadding,
@@ -1970,7 +2077,14 @@ export default function App() {
     searchPrefixEnabled,
     searchSiteDirectEnabled,
     searchSiteShortcutEnabled,
+    setShortcutIconAppearance,
+    setShowTime,
+    setWallpaperMode,
+    shortcutCompactShowTitle,
     shortcutIconAppearance,
+    shortcutIconCornerRadius,
+    shortcutIconScale,
+    showTime,
     syncState.cloudSyncEnabled,
     syncState.leafTabWebdavEnabled,
     tabSwitchSearchEngine,
@@ -2137,145 +2251,278 @@ export default function App() {
     folderNameDialogInitialName,
     onFolderNameSubmit: handleSaveFolderName,
   });
-  const shortcutAppDialogsRootProps = {
-    nonSyncExternalDialogActivity:
-      isAuthModalOpen
-      || settingsOpen
-      || searchSettingsOpen
-      || shortcutGuideOpen
-      || shortcutIconSettingsOpen
-      || adminModalOpen
-      || aboutModalOpen
-      || webdavDialogOpen
-      || cloudSyncConfigOpen
-      || confirmDisableConsentOpen,
-    authDialog: {
-      isAuthModalOpen,
-      onOpenChange: handleAuthModalOpenChange,
-      onLoginSuccess,
-      setAuthModalMode,
-      apiServer,
-      onApiServerChange: setApiServer,
-      customApiUrl,
-      customApiName,
-      defaultApiBase,
-      authModalMode,
-      linkedUsername: user,
-    },
-    settingsDialogs: {
-      settingsOpen,
-      setSettingsOpen,
-      username: user,
-      onLogout: requestLogoutConfirmation,
-      shortcutsCount: totalShortcuts,
-      displayMode,
-      onDisplayModeChange: setDisplayMode,
-      shortcutIconCornerRadius,
-      onShortcutIconCornerRadiusChange: setShortcutIconCornerRadius,
-      shortcutIconScale,
-      onShortcutIconScaleChange: setShortcutIconScale,
-      shortcutIconAppearance,
-      onShortcutIconAppearanceChange: setShortcutIconAppearance,
-      shortcutCompactShowTitle,
-      onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
-      shortcutGridColumns: normalizedGridColumns,
-      onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
-      onOpenShortcutIconSettings: handleOpenShortcutIconSettings,
-      openInNewTab,
-      onOpenInNewTabChange: setOpenInNewTab,
-      preventDuplicateNewTab,
-      onPreventDuplicateNewTabChange: handlePreventDuplicateNewTabChange,
-      onOpenSearchSettings: handleOpenSearchSettings,
-      visualEffectsLevel,
-      onVisualEffectsLevelChange: setVisualEffectsLevel,
-      disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
-      showTime,
-      onShowTimeChange: setShowTime,
-      wallpaperMode: effectiveWallpaperMode,
-      onWallpaperModeChange: setWallpaperMode,
-      bingWallpaper,
-      customWallpaper,
-      onCustomWallpaperChange: setCustomWallpaper,
-      weatherCode,
-      colorWallpaperId,
-      onColorWallpaperIdChange: setColorWallpaperId,
-      wallpaperMaskOpacity,
-      onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
-      setWallpaperSettingsOpen,
-      privacyConsent,
-      onPrivacyConsentChange: handlePrivacySwitchChange,
-      onOpenAdminModal: handleOpenAdminModal,
-      onOpenAboutModal: handleOpenAboutModal,
-      setLeafTabSyncDialogOpen,
-      setShortcutGuideOpen,
-    },
-    utilityDialogs: {
-      searchSettingsOpen,
-      setSearchSettingsOpen,
-      onBackToSettings: handleBackToMainSettings,
-      tabSwitchSearchEngine,
-      onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
-      searchPrefixEnabled,
-      onSearchPrefixEnabledChange: setSearchPrefixEnabled,
-      searchSiteDirectEnabled,
-      onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
-      searchSiteShortcutEnabled,
-      onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
-      searchAnyKeyCaptureEnabled,
-      onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
-      searchCalculatorEnabled,
-      onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
-      searchRotatingPlaceholderEnabled,
-      onSearchRotatingPlaceholderEnabledChange: setSearchRotatingPlaceholderEnabled,
-      searchBarPosition,
-      onSearchBarPositionChange: setSearchBarPosition,
-      shortcutGuideOpen,
-      setShortcutGuideOpen,
-      shortcutIconSettingsOpen,
-      setShortcutIconSettingsOpen,
-      adminModalOpen,
-      setAdminModalOpen,
-      onExportDomains: handleExportDomains,
-      gridHitDebugEnabled: gridHitDebugVisible,
-      onGridHitDebugEnabledChange: handleGridHitDebugEnabledChange,
-      weatherDebugEnabled: weatherDebugVisible,
-      onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
-      onWeatherDebugApply: handleWeatherDebugApply,
-      customApiUrl,
-      onCustomApiUrlChange: setCustomApiUrl,
-      customApiName,
-      onCustomApiNameChange: setCustomApiName,
-      aboutModalOpen,
-      setAboutModalOpen,
-      defaultAboutTab: aboutModalDefaultTab,
-    },
-    syncProviderDialogs: {
-      webdavDialogOpen,
-      onBackToParent: handleBackFromSyncProviderConfig,
-      setWebdavDialogOpen,
-      enableAfterSave: webdavEnableAfterConfigSave,
-      showConnectionFields: webdavShowConnectionFields,
-      setWebdavEnableAfterConfigSave,
-      setWebdavShowConnectionFields,
-      setPendingWebdavEnableScopeKey,
-      setConfirmDisableWebdavSyncOpen,
-      cloudSyncConfigOpen,
-      setCloudSyncConfigOpen,
-      onLinkGoogle: openGoogleLinkAuthModal,
-      onCloudSyncLogout: requestLogoutConfirmation,
-    },
-    consentDialogs: {
-      confirmDisableConsentOpen,
-      setConfirmDisableConsentOpen,
-      onPrivacyConsent: handlePrivacyConsent,
-    },
-  };
-  const shortcutSyncDialogsRootProps = {
+  const nonSyncExternalDialogActivity = (
+    isAuthModalOpen
+    || settingsOpen
+    || searchSettingsOpen
+    || shortcutGuideOpen
+    || shortcutIconSettingsOpen
+    || adminModalOpen
+    || aboutModalOpen
+    || webdavDialogOpen
+    || cloudSyncConfigOpen
+    || confirmDisableConsentOpen
+  );
+  const shortcutAppDialogsAuthDialog = useMemo(() => ({
+    isAuthModalOpen,
+    onOpenChange: handleAuthModalOpenChange,
+    onLoginSuccess,
+    setAuthModalMode,
+    apiServer,
+    onApiServerChange: setApiServer,
+    customApiUrl,
+    customApiName,
+    defaultApiBase,
+    authModalMode,
+    linkedUsername: user,
+  }), [
+    apiServer,
+    authModalMode,
+    customApiName,
+    customApiUrl,
+    defaultApiBase,
+    handleAuthModalOpenChange,
+    isAuthModalOpen,
+    onLoginSuccess,
+    setAuthModalMode,
+    user,
+  ]);
+  const shortcutAppDialogsSettingsDialogs = useMemo(() => ({
+    settingsOpen,
+    setSettingsOpen,
+    username: user,
+    onLogout: requestLogoutConfirmation,
+    shortcutsCount: totalShortcuts,
+    displayMode,
+    onDisplayModeChange: setDisplayMode,
+    shortcutIconCornerRadius,
+    onShortcutIconCornerRadiusChange: setShortcutIconCornerRadius,
+    shortcutIconScale,
+    onShortcutIconScaleChange: setShortcutIconScale,
+    shortcutIconAppearance,
+    onShortcutIconAppearanceChange: setShortcutIconAppearance,
+    shortcutCompactShowTitle,
+    onShortcutCompactShowTitleChange: setShortcutCompactShowTitle,
+    shortcutGridColumns: normalizedGridColumns,
+    onShortcutGridColumnsChange: handleShortcutGridColumnsChange,
+    onOpenShortcutIconSettings: handleOpenShortcutIconSettings,
+    openInNewTab,
+    onOpenInNewTabChange: setOpenInNewTab,
+    preventDuplicateNewTab,
+    onPreventDuplicateNewTabChange: handlePreventDuplicateNewTabChange,
+    onOpenSearchSettings: handleOpenSearchSettings,
+    visualEffectsLevel,
+    onVisualEffectsLevelChange: setVisualEffectsLevel,
+    disableSyncCardAccentAnimation: visualEffectsPolicy.disableSyncCardAccentAnimation,
+    showTime,
+    onShowTimeChange: setShowTime,
+    wallpaperMode: effectiveWallpaperMode,
+    onWallpaperModeChange: setWallpaperMode,
+    bingWallpaper,
+    customWallpaper,
+    onCustomWallpaperChange: setCustomWallpaper,
+    weatherCode,
+    colorWallpaperId,
+    onColorWallpaperIdChange: setColorWallpaperId,
+    wallpaperMaskOpacity,
+    onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
+    setWallpaperSettingsOpen,
+    privacyConsent,
+    onPrivacyConsentChange: handlePrivacySwitchChange,
+    onOpenAdminModal: handleOpenAdminModal,
+    onOpenAboutModal: handleOpenAboutModal,
+    setLeafTabSyncDialogOpen,
+    setShortcutGuideOpen,
+  }), [
+    bingWallpaper,
+    colorWallpaperId,
+    customWallpaper,
+    displayMode,
+    effectiveWallpaperMode,
+    handleOpenAboutModal,
+    handleOpenAdminModal,
+    handleOpenSearchSettings,
+    handleOpenShortcutIconSettings,
+    handlePreventDuplicateNewTabChange,
+    handlePrivacySwitchChange,
+    handleShortcutGridColumnsChange,
+    normalizedGridColumns,
+    openInNewTab,
+    preventDuplicateNewTab,
+    privacyConsent,
+    requestLogoutConfirmation,
+    setColorWallpaperId,
+    setDisplayMode,
+    setLeafTabSyncDialogOpen,
+    setOpenInNewTab,
+    setShortcutGuideOpen,
+    setSettingsOpen,
+    setShortcutCompactShowTitle,
+    setShortcutIconAppearance,
+    setShortcutIconCornerRadius,
+    setShortcutIconScale,
+    setShowTime,
+    setVisualEffectsLevel,
+    setWallpaperMode,
+    setWallpaperMaskOpacity,
+    setWallpaperSettingsOpen,
+    setCustomWallpaper,
+    shortcutCompactShowTitle,
+    shortcutIconAppearance,
+    shortcutIconCornerRadius,
+    shortcutIconScale,
+    settingsOpen,
+    showTime,
+    totalShortcuts,
+    user,
+    visualEffectsLevel,
+    wallpaperMaskOpacity,
+    weatherCode,
+    visualEffectsPolicy.disableSyncCardAccentAnimation,
+  ]);
+  const shortcutAppDialogsUtilityDialogs = useMemo(() => ({
+    searchSettingsOpen,
+    setSearchSettingsOpen,
+    onBackToSettings: handleBackToMainSettings,
+    tabSwitchSearchEngine,
+    onTabSwitchSearchEngineChange: setTabSwitchSearchEngine,
+    searchPrefixEnabled,
+    onSearchPrefixEnabledChange: setSearchPrefixEnabled,
+    searchSiteDirectEnabled,
+    onSearchSiteDirectEnabledChange: setSearchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    onSearchSiteShortcutEnabledChange: setSearchSiteShortcutEnabled,
+    searchAnyKeyCaptureEnabled,
+    onSearchAnyKeyCaptureEnabledChange: setSearchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
+    onSearchCalculatorEnabledChange: setSearchCalculatorEnabled,
+    searchRotatingPlaceholderEnabled,
+    onSearchRotatingPlaceholderEnabledChange: setSearchRotatingPlaceholderEnabled,
+    searchBarPosition,
+    onSearchBarPositionChange: setSearchBarPosition,
+    shortcutGuideOpen,
+    setShortcutGuideOpen,
+    shortcutIconSettingsOpen,
+    setShortcutIconSettingsOpen,
+    adminModalOpen,
+    setAdminModalOpen,
+    onExportDomains: handleExportDomains,
+    gridHitDebugEnabled: gridHitDebugVisible,
+    onGridHitDebugEnabledChange: handleGridHitDebugEnabledChange,
+    weatherDebugEnabled: weatherDebugVisible,
+    onWeatherDebugEnabledChange: handleWeatherDebugEnabledChange,
+    onWeatherDebugApply: handleWeatherDebugApply,
+    customApiUrl,
+    onCustomApiUrlChange: setCustomApiUrl,
+    customApiName,
+    onCustomApiNameChange: setCustomApiName,
+    aboutModalOpen,
+    setAboutModalOpen,
+    defaultAboutTab: aboutModalDefaultTab,
+  }), [
+    aboutModalDefaultTab,
+    aboutModalOpen,
+    adminModalOpen,
+    customApiName,
+    customApiUrl,
+    gridHitDebugVisible,
+    handleBackToMainSettings,
+    handleExportDomains,
+    handleGridHitDebugEnabledChange,
+    handleWeatherDebugApply,
+    handleWeatherDebugEnabledChange,
+    searchAnyKeyCaptureEnabled,
+    searchBarPosition,
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchRotatingPlaceholderEnabled,
+    searchSettingsOpen,
+    searchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    setAboutModalOpen,
+    setAdminModalOpen,
+    setCustomApiName,
+    setCustomApiUrl,
+    setSearchAnyKeyCaptureEnabled,
+    setSearchBarPosition,
+    setSearchCalculatorEnabled,
+    setSearchPrefixEnabled,
+    setSearchRotatingPlaceholderEnabled,
+    setSearchSettingsOpen,
+    setSearchSiteDirectEnabled,
+    setSearchSiteShortcutEnabled,
+    setShortcutGuideOpen,
+    setShortcutIconSettingsOpen,
+    setTabSwitchSearchEngine,
+    shortcutGuideOpen,
+    shortcutIconSettingsOpen,
+    tabSwitchSearchEngine,
+    weatherDebugVisible,
+  ]);
+  const shortcutAppDialogsSyncProviderDialogs = useMemo(() => ({
+    webdavDialogOpen,
+    onBackToParent: handleBackFromSyncProviderConfig,
+    setWebdavDialogOpen,
+    enableAfterSave: webdavEnableAfterConfigSave,
+    showConnectionFields: webdavShowConnectionFields,
+    setWebdavEnableAfterConfigSave,
+    setWebdavShowConnectionFields,
+    setPendingWebdavEnableScopeKey,
+    setConfirmDisableWebdavSyncOpen,
+    cloudSyncConfigOpen,
+    setCloudSyncConfigOpen,
+    onLinkGoogle: openGoogleLinkAuthModal,
+    onCloudSyncLogout: requestLogoutConfirmation,
+  }), [
+    cloudSyncConfigOpen,
+    handleBackFromSyncProviderConfig,
+    openGoogleLinkAuthModal,
+    requestLogoutConfirmation,
+    setCloudSyncConfigOpen,
+    setConfirmDisableWebdavSyncOpen,
+    setPendingWebdavEnableScopeKey,
+    setWebdavDialogOpen,
+    setWebdavEnableAfterConfigSave,
+    setWebdavShowConnectionFields,
+    webdavDialogOpen,
+    webdavEnableAfterConfigSave,
+    webdavShowConnectionFields,
+  ]);
+  const shortcutAppDialogsConsentDialogs = useMemo(() => ({
+    confirmDisableConsentOpen,
+    setConfirmDisableConsentOpen,
+    onPrivacyConsent: handlePrivacyConsent,
+  }), [
+    confirmDisableConsentOpen,
+    handlePrivacyConsent,
+    setConfirmDisableConsentOpen,
+  ]);
+  const shortcutAppDialogsRootProps = useMemo(() => ({
+    nonSyncExternalDialogActivity,
+    authDialog: shortcutAppDialogsAuthDialog,
+    settingsDialogs: shortcutAppDialogsSettingsDialogs,
+    utilityDialogs: shortcutAppDialogsUtilityDialogs,
+    syncProviderDialogs: shortcutAppDialogsSyncProviderDialogs,
+    consentDialogs: shortcutAppDialogsConsentDialogs,
+  }), [
+    nonSyncExternalDialogActivity,
+    shortcutAppDialogsAuthDialog,
+    shortcutAppDialogsConsentDialogs,
+    shortcutAppDialogsSettingsDialogs,
+    shortcutAppDialogsSyncProviderDialogs,
+    shortcutAppDialogsUtilityDialogs,
+  ]);
+  const shortcutSyncDialogsRootProps = useMemo(() => ({
     leafTabSyncDialogOpen,
     setLeafTabSyncDialogOpen,
     setSyncConfigBackTarget,
     user,
-  };
+  }), [
+    leafTabSyncDialogOpen,
+    setLeafTabSyncDialogOpen,
+    setSyncConfigBackTarget,
+    user,
+  ]);
 
   return (
     <ShortcutAppProvider value={shortcutApp}>

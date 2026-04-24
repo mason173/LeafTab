@@ -43,8 +43,8 @@ export default {
           },
           prefix: {
             label: "快速指定搜索引擎",
-            description: "输入引擎简称加空格，临时切换\n只影响本次搜索，不改默认引擎",
-            tooltip: "例如：g AI 用 Google 搜，bd 天气 用百度搜。只影响这一次，不会改默认引擎。"
+            description: "输入 ! + 引擎简称 + 空格，临时切换\n只影响本次搜索，不改默认引擎",
+            tooltip: "例如：!g AI 用 Google 搜，!bd 天气 用百度搜。只影响这一次，不会改默认引擎。"
           },
           siteDirect: {
             label: "站点直达搜索",
@@ -99,6 +99,7 @@ export default {
         items: {
           focusSearch: "聚焦搜索框并选中当前内容",
           switchEngine: "在搜索框中按 Tab 或 Shift+Tab 切换搜索引擎",
+          temporaryEnginePrefix: "输入 !g / !b / !d / !bd 后接空格和关键词，临时指定本次搜索使用的引擎",
           switchScenarioNext: "不在输入状态时，循环切换到下一个情景模式",
           bookmarksMode: "进入书签搜索模式，首次使用时可能会请求书签权限",
           tabsMode: "进入标签页搜索模式，首次使用时可能会请求标签页权限",
@@ -108,7 +109,7 @@ export default {
           showNumberHints: "在结果列表中显示数字提示",
           openNumberedResult: "按对应数字直接打开结果"
         },
-        footer: "提示：数字提示和数字直达只在结果列表打开时生效；/t 与 /b 模式依赖浏览器权限。"
+        footer: "提示：数字提示和数字直达只在结果列表打开时生效；临时搜索引擎切换请使用 !g / !b / !d / !bd；/t 与 /b 模式依赖浏览器权限。"
       },
       timeFormat: {
         label: "24 小时制",
@@ -1040,7 +1041,7 @@ export default {
       placeholderHintTabSwitch: "想换搜索方式？按 Tab 试试",
       placeholderHintCalculator: "输入 12*8 这样也能直接算",
       placeholderHintSiteDirect: "输入 bilibili 动画，可直接搜 Bilibili",
-      placeholderHintPrefix: "想用 Google 搜？先输入 g，再空一格后输入内容",
+      placeholderHintPrefix: "想用 Google 搜？先输入 !g，再空一格后输入内容",
       enterKey: "回车",
       actionOpen: "打开",
       actionClose: "关闭",

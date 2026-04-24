@@ -38,8 +38,8 @@ export default {
           },
           prefix: {
             label: "Tìm kiếm Prefix",
-            description: "Dùng tiền tố g / bing / ddg / bd để đổi công cụ tạm thời",
-            tooltip: "Ví dụ: `g AI` sẽ tìm bằng Google cho truy vấn đó mà không đổi công cụ mặc định."
+            description: "Dùng tiền tố !g / !b / !d / !bd để đổi công cụ tạm thời",
+            tooltip: "Ví dụ: `!g AI` sẽ tìm bằng Google cho truy vấn đó mà không đổi công cụ mặc định."
           },
           siteDirect: {
             label: "Tìm kiếm trực tiếp theo site",
@@ -491,7 +491,7 @@ export default {
       placeholderHintTabSwitch: "Muốn đổi cách tìm? Hãy nhấn Tab",
       placeholderHintCalculator: "Gõ 12*8 để tính nhanh",
       placeholderHintSiteDirect: "Gõ github react để tìm trên GitHub",
-      placeholderHintPrefix: "Gõ g AI để tìm bằng Google",
+      placeholderHintPrefix: "Gõ !g AI để tìm bằng Google",
       enterKey: "Enter",
       actionOpen: "Mở",
       actionClose: "Đóng",

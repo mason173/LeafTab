@@ -1,5 +1,5 @@
 import type { SearchBarTheme } from '@/components/search/searchBarTheme';
-import type { SearchAction } from '@/utils/searchActions';
+import type { SearchAction, SearchSecondaryAction } from '@/utils/searchActions';
 
 export type SearchSuggestionsPlacement = 'bottom' | 'top';
 
@@ -23,4 +23,8 @@ export interface SearchSuggestionsPanelProps {
   lightweight?: boolean;
   placement?: SearchSuggestionsPlacement;
   surfaceTone?: 'default' | 'drawer';
+  actionModeActive?: boolean;
+  selectedSecondaryActionIndex?: number;
+  pendingConfirmationActionKey?: string | null;
+  onSecondaryActionSelect?: (action: SearchAction, secondaryAction: SearchSecondaryAction, index: number) => void;
 }

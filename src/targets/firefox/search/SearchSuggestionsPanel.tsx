@@ -1,19 +1,33 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  RiAddLine,
   RiArrowRightSLine,
   RiBookOpenFill,
+  RiCheckboxCircleFill,
+  RiCloseLine,
   RiCloudFill,
+  RiComputerFill,
   RiCornerDownLeftLine,
   RiDashboardFill,
+  RiDeleteBinLine,
+  RiEyeFill,
+  RiEyeOffFill,
+  RiFileCopyLine,
   RiHistoryFill,
   RiImageFill,
   RiInformationFill,
   RiLinkM,
+  RiMoonFill,
   RiPaletteFill,
+  RiPencilFill,
+  RiPushpinLine,
   RiQuestionLine,
+  RiRefreshFill,
   RiSearchLine,
   RiSettings4Fill,
+  RiSunFill,
+  RiUnpinLine,
 } from '@/icons/ri-compat';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { extractDomainFromUrl, isUrl } from '@/utils';
@@ -24,7 +38,7 @@ import {
 } from '@/components/search/searchEngineSwitcher.shared';
 import { MaterialSurfaceFrame } from '@/components/frosted/MaterialSurfaceFrame';
 import type { SearchSuggestionsPanelProps } from '@/components/search/SearchSuggestionsPanel.shared';
-import type { SearchAction } from '@/utils/searchActions';
+import type { SearchAction, SearchSecondaryAction } from '@/utils/searchActions';
 
 const FIREFOX_PANEL_TRANSITION_MS = 170;
 
@@ -57,6 +71,10 @@ export function SearchSuggestionsPanel({
   emptyStateLabel,
   placement = 'bottom',
   surfaceTone = 'default',
+  actionModeActive = false,
+  selectedSecondaryActionIndex = 0,
+  pendingConfirmationActionKey = null,
+  onSecondaryActionSelect,
 }: SearchSuggestionsPanelProps) {
   const { t, i18n } = useTranslation();
   const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<HTMLDivElement>();
@@ -170,6 +188,8 @@ export function SearchSuggestionsPanel({
     contentVisibility: isOpen ? 'auto' : 'hidden',
   } as CSSProperties;
   const enterKeyLabel = t('search.enterKey', { defaultValue: 'Enter' });
+  const selectedActionHasSecondaryActions = selectedIndex !== -1
+    && ((items[selectedIndex]?.secondaryActions.length ?? 0) > 0);
   const enterHint = (
     <span className="ml-2 inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-current opacity-70">
       <RiCornerDownLeftLine className="size-3.5 shrink-0" />
@@ -196,6 +216,7 @@ export function SearchSuggestionsPanel({
       setScrollbarVisible(false);
     }, 700);
   };
+  const getSecondaryActionKey = (actionId: string, secondaryActionIndex: number) => `${actionId}:${secondaryActionIndex}`;
 
   const renderSuggestionRow = ({
     action,
@@ -218,6 +239,8 @@ export function SearchSuggestionsPanel({
   }) => {
     const isSelected = index === selectedIndex;
     const customActionIcon = resolveSearchActionDisplayIcon(action, secondaryTextClass);
+    const secondaryActions = action.secondaryActions;
+    const showSecondaryActions = isSelected && secondaryActions.length > 0;
     const numberHintBadge = (
       <span
         aria-hidden={!showNumberHints}
@@ -264,6 +287,133 @@ export function SearchSuggestionsPanel({
     }
 
     const historyTimeText = item.type === 'history' ? formatRelativeTime(item.timestamp) : '';
+    const resolveSecondaryActionLabel = (secondaryAction: SearchSecondaryAction) => {
+      if (secondaryAction.kind === 'add-shortcut') {
+        return t('search.secondaryAction.addShortcut', { defaultValue: '添加为快捷方式' });
+      }
+      if (secondaryAction.kind === 'close-tab') {
+        return t('search.secondaryAction.closeTab', { defaultValue: '关闭标签页' });
+      }
+      if (secondaryAction.kind === 'remove-bookmark') {
+        return t('search.secondaryAction.removeBookmark', { defaultValue: '删除书签' });
+      }
+      if (secondaryAction.kind === 'edit-shortcut') {
+        return t('search.secondaryAction.editShortcut', { defaultValue: '编辑快捷方式' });
+      }
+      if (secondaryAction.kind === 'delete-shortcut') {
+        return t('search.secondaryAction.deleteShortcut', { defaultValue: '删除快捷方式' });
+      }
+      if (secondaryAction.kind === 'set-theme-mode') {
+        if (secondaryAction.targetMode === 'system') {
+          return t('search.secondaryAction.themeSystem', { defaultValue: '跟随系统主题' });
+        }
+        if (secondaryAction.targetMode === 'light') {
+          return t('search.secondaryAction.themeLight', { defaultValue: '切换到浅色模式' });
+        }
+        return t('search.secondaryAction.themeDark', { defaultValue: '切换到深色模式' });
+      }
+      if (secondaryAction.kind === 'cycle-search-engine') {
+        return t('search.secondaryAction.cycleSearchEngine', { defaultValue: '切换搜索引擎' });
+      }
+      if (secondaryAction.kind === 'toggle-show-time') {
+        return secondaryAction.active
+          ? t('search.secondaryAction.hideTime', { defaultValue: '隐藏时间' })
+          : t('search.secondaryAction.showTime', { defaultValue: '显示时间' });
+      }
+      if (secondaryAction.kind === 'set-wallpaper-mode') {
+        if (secondaryAction.targetMode === 'bing') {
+          return t('search.secondaryAction.wallpaperBing', { defaultValue: '切换到必应壁纸' });
+        }
+        if (secondaryAction.targetMode === 'weather') {
+          return t('search.secondaryAction.wallpaperWeather', { defaultValue: '切换到天气壁纸' });
+        }
+        if (secondaryAction.targetMode === 'color') {
+          return t('search.secondaryAction.wallpaperColor', { defaultValue: '切换到纯色壁纸' });
+        }
+        return t('search.secondaryAction.wallpaperCustom', { defaultValue: '切换到自定义壁纸' });
+      }
+      if (secondaryAction.kind === 'set-shortcut-icon-appearance') {
+        if (secondaryAction.targetAppearance === 'colorful') {
+          return t('search.secondaryAction.shortcutIconColorful', { defaultValue: '切换到彩色图标' });
+        }
+        if (secondaryAction.targetAppearance === 'monochrome') {
+          return t('search.secondaryAction.shortcutIconMonochrome', { defaultValue: '切换到单色图标' });
+        }
+        return t('search.secondaryAction.shortcutIconAccent', { defaultValue: '切换到强调色图标' });
+      }
+      if (secondaryAction.kind === 'toggle-pin-tab') {
+        return secondaryAction.active
+          ? t('search.secondaryAction.unpinTab', { defaultValue: '取消固定' })
+          : t('search.secondaryAction.pinTab', { defaultValue: '固定标签页' });
+      }
+      return t('search.secondaryAction.copyLink', { defaultValue: '复制链接' });
+    };
+    const resolveSecondaryActionTooltip = (secondaryAction: SearchSecondaryAction, isPendingConfirmation: boolean) => {
+      if (secondaryAction.kind === 'remove-bookmark' && isPendingConfirmation) {
+        return t('search.secondaryAction.confirmRemoveBookmark', { defaultValue: '再次确认删除书签' });
+      }
+      return resolveSecondaryActionLabel(secondaryAction);
+    };
+    const renderSecondaryActionIcon = (secondaryAction: SearchSecondaryAction) => {
+      if (secondaryAction.kind === 'add-shortcut') {
+        return <RiAddLine className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'close-tab') {
+        return <RiCloseLine className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'remove-bookmark') {
+        return <RiDeleteBinLine className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'edit-shortcut') {
+        return <RiPencilFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'delete-shortcut') {
+        return <RiDeleteBinLine className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'set-theme-mode') {
+        if (secondaryAction.targetMode === 'system') {
+          return <RiComputerFill className="size-3.5" />;
+        }
+        return secondaryAction.targetMode === 'light'
+          ? <RiSunFill className="size-3.5" />
+          : <RiMoonFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'cycle-search-engine') {
+        return <RiRefreshFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'set-wallpaper-mode') {
+        if (secondaryAction.targetMode === 'weather') {
+          return <RiCloudFill className="size-3.5" />;
+        }
+        if (secondaryAction.targetMode === 'color') {
+          return <RiPaletteFill className="size-3.5" />;
+        }
+        if (secondaryAction.targetMode === 'custom') {
+          return <RiAddLine className="size-3.5" />;
+        }
+        return <RiImageFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'set-shortcut-icon-appearance') {
+        if (secondaryAction.targetAppearance === 'colorful') {
+          return <RiPaletteFill className="size-3.5" />;
+        }
+        if (secondaryAction.targetAppearance === 'monochrome') {
+          return <RiCheckboxCircleFill className="size-3.5" />;
+        }
+        return <RiSunFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'toggle-show-time') {
+        return secondaryAction.active
+          ? <RiEyeOffFill className="size-3.5" />
+          : <RiEyeFill className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'toggle-pin-tab') {
+        return secondaryAction.active
+          ? <RiUnpinLine className="size-3.5" />
+          : <RiPushpinLine className="size-3.5" />;
+      }
+      return <RiFileCopyLine className="size-3.5" />;
+    };
     return (
       <button
         key={action.id}
@@ -302,7 +452,52 @@ export function SearchSuggestionsPanel({
             <span className={`max-w-[35%] shrink-0 truncate ${secondaryTextClass}`}>{shortcutDomain}</span>
           ) : null}
         </span>
-        {isSelected
+        {showSecondaryActions ? (
+          <span className="ml-2 flex shrink-0 items-center gap-1">
+            {secondaryActions.map((secondaryAction, secondaryActionIndex) => {
+              const actionKey = getSecondaryActionKey(action.id, secondaryActionIndex);
+              const isActionSelected = actionModeActive && secondaryActionIndex === selectedSecondaryActionIndex;
+              const isPendingConfirmation = secondaryAction.kind === 'remove-bookmark'
+                && pendingConfirmationActionKey === actionKey;
+              const isActionActive = secondaryAction.active === true;
+              const actionLabel = resolveSecondaryActionTooltip(secondaryAction, isPendingConfirmation);
+              return (
+                <span
+                  key={`${action.id}:${secondaryAction.id}`}
+                  data-selected-action={isActionSelected ? 'true' : undefined}
+                  role="button"
+                  tabIndex={-1}
+                  aria-label={actionLabel}
+                  title={actionLabel}
+                  className={`relative inline-flex size-6 items-center justify-center rounded-full transition-colors ${
+                    isPendingConfirmation
+                      ? 'bg-red-500/14 text-red-500 hover:bg-red-500/18'
+                      : isActionSelected
+                      ? 'bg-current/16 text-current'
+                      : isActionActive
+                        ? 'bg-current/10 text-current'
+                        : `text-current/70 hover:bg-current/10 hover:text-current ${secondaryTextClass}`
+                  }`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSecondaryActionSelect?.(action, secondaryAction, secondaryActionIndex);
+                  }}
+                >
+                  {(isActionSelected || isPendingConfirmation) ? (
+                    <span className="pointer-events-none absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-sm">
+                      {actionLabel}
+                    </span>
+                  ) : null}
+                  {isActionActive ? (
+                    <RiCheckboxCircleFill className="pointer-events-none absolute -right-0.5 -top-0.5 size-2.5 text-current" />
+                  ) : null}
+                  {renderSecondaryActionIcon(secondaryAction)}
+                </span>
+              );
+            })}
+          </span>
+        ) : isSelected
           ? enterHint
           : historyTimeText
             ? <span className={`ml-2 mr-1 shrink-0 text-[12px] ${secondaryTextClass}`}>{historyTimeText}</span>
@@ -390,9 +585,23 @@ export function SearchSuggestionsPanel({
         {items.length > 0 ? (
           <div className={`mt-2 flex items-center justify-between gap-4 border-t px-2 pt-2 text-[12px] ${theme.dropdownFooterClassName}`}>
             <div className="flex items-center gap-4">
-              <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
-              <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
-              <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+              {actionModeActive ? (
+                <>
+                  <span>↵ {t('search.footer.executeAction', { defaultValue: '执行动作' })}</span>
+                  <span>→ {t('search.footer.nextAction', { defaultValue: '下一个动作' })}</span>
+                  <span>← {t('search.footer.backToResult', { defaultValue: '返回结果' })}</span>
+                  <span>Esc {t('search.footer.exitActionMode', { defaultValue: '退出动作模式' })}</span>
+                </>
+              ) : (
+                <>
+                  <span>↑↓ {t('search.actionSelect', { defaultValue: '选择' })}</span>
+                  <span>↵ {t('search.actionOpen', { defaultValue: '打开' })}</span>
+                  {selectedActionHasSecondaryActions ? (
+                    <span>→ {t('search.footer.enterActionMode', { defaultValue: '动作' })}</span>
+                  ) : null}
+                  <span>Esc {t('search.actionClose', { defaultValue: '关闭' })}</span>
+                </>
+              )}
             </div>
           </div>
         ) : null}

@@ -66,6 +66,7 @@ interface UseQuickAccessDrawerResult {
   drawerScrollLocked: boolean;
   drawerWheelAreaRef: RefObject<HTMLDivElement | null>;
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
+  expandDrawer: () => void;
   handleShortcutDragStart: () => void;
   handleShortcutDragEnd: () => void;
 }
@@ -603,6 +604,21 @@ export function useQuickAccessDrawer({
     };
   }, [isDrawerExpanded, quickAccessDefaultSnapPoint, triggerDrawerSnap]);
 
+  const expandDrawer = useCallback(() => {
+    if (isDrawerExpanded) return;
+    stopBottomBounceRelease();
+    setBottomBounceOffsetImmediate(0);
+    blockedShortcutScrollSessionRef.current = null;
+    wheelIntentRef.current = 0;
+    triggerDrawerSnap(quickAccessFullSnapPoint);
+  }, [
+    isDrawerExpanded,
+    quickAccessFullSnapPoint,
+    setBottomBounceOffsetImmediate,
+    stopBottomBounceRelease,
+    triggerDrawerSnap,
+  ]);
+
   return {
     quickAccessOpen,
     isDrawerExpanded,
@@ -617,6 +633,7 @@ export function useQuickAccessDrawer({
     drawerScrollLocked,
     drawerWheelAreaRef,
     drawerShortcutScrollRef,
+    expandDrawer,
     handleShortcutDragStart,
     handleShortcutDragEnd,
   };

@@ -26,6 +26,12 @@ type UseSearchInteractionControllerArgs = {
   setDropdownOpen: (next: boolean) => void;
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   onKeyboardNavigate?: () => void;
+  actionModeActive?: boolean;
+  actionModeActionCount?: number;
+  enterActionMode?: () => void;
+  exitActionMode?: () => void;
+  cycleActionModeSelection?: () => void;
+  activateSelectedSecondaryAction?: () => void;
 };
 
 type UseSearchInteractionControllerResult = {
@@ -47,6 +53,12 @@ export function useSearchInteractionController({
   setDropdownOpen,
   searchInputRef,
   onKeyboardNavigate,
+  actionModeActive = false,
+  actionModeActionCount = 0,
+  enterActionMode,
+  exitActionMode,
+  cycleActionModeSelection,
+  activateSelectedSecondaryAction,
 }: UseSearchInteractionControllerArgs): UseSearchInteractionControllerResult {
   const [suggestionModifierHeld, setSuggestionModifierHeld] = useState(false);
 
@@ -78,6 +90,36 @@ export function useSearchInteractionController({
   }, [historyOpen]);
 
   const handleSuggestionKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (actionModeActive && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      exitActionMode?.();
+    }
+
+    if (actionModeActive && e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      activateSelectedSecondaryAction?.();
+      return;
+    }
+
+    if (historyOpen && e.key === 'ArrowRight' && actionModeActionCount > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      onKeyboardNavigate?.();
+      if (!actionModeActive) {
+        enterActionMode?.();
+      } else {
+        cycleActionModeSelection?.();
+      }
+      return;
+    }
+
+    if (historyOpen && actionModeActive && e.key === 'ArrowLeft') {
+      e.preventDefault();
+      e.stopPropagation();
+      exitActionMode?.();
+      return;
+    }
+
     const hasNumberHotkeyModifier = (e.metaKey || e.ctrlKey) && !e.altKey;
     if (historyOpen && hasNumberHotkeyModifier) {
       const hotkeyIndex = resolveNumberHotkeyIndex(e.key);
@@ -95,6 +137,10 @@ export function useSearchInteractionController({
     if (e.key === 'Escape' && historyOpen) {
       e.preventDefault();
       e.stopPropagation();
+      if (actionModeActive) {
+        exitActionMode?.();
+        return;
+      }
       closeHistoryPanel('escape');
       searchInputRef.current?.focus();
       return;
@@ -145,6 +191,12 @@ export function useSearchInteractionController({
     onKeyboardNavigate,
     setHistorySelectedIndex,
     tabSwitchSearchEngine,
+    actionModeActionCount,
+    actionModeActive,
+    activateSelectedSecondaryAction,
+    cycleActionModeSelection,
+    enterActionMode,
+    exitActionMode,
   ]);
 
   return {

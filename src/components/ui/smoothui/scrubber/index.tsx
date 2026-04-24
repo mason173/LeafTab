@@ -9,6 +9,7 @@ export interface ScrubberProps {
   value?: number;
   defaultValue?: number;
   onValueChange?: (value: number) => void;
+  onValueCommit?: (value: number) => void;
   onDragStart?: () => void;
   onDragEnd?: () => void;
   min?: number;
@@ -35,6 +36,7 @@ const Scrubber = ({
   value: controlledValue,
   defaultValue = 0,
   onValueChange,
+  onValueCommit,
   onDragStart,
   onDragEnd,
   min = 0,
@@ -79,6 +81,15 @@ const Scrubber = ({
       onValueChange?.(clamped);
     },
     [disabled, step, min, max, isControlled, onValueChange]
+  );
+
+  const commitValue = useCallback(
+    (newValue: number) => {
+      if (disabled) return;
+      const clamped = clamp(roundToStep(newValue, step, min), min, max);
+      onValueCommit?.(clamped);
+    },
+    [disabled, max, min, onValueCommit, step]
   );
 
   const getValueFromPointer = useCallback(
@@ -128,10 +139,11 @@ const Scrubber = ({
       onDragStart?.();
     }
     if (!isDragging && wasDraggingRef.current) {
+      commitValue(value);
       onDragEnd?.();
     }
     wasDraggingRef.current = isDragging;
-  }, [isDragging, onDragEnd, onDragStart]);
+  }, [commitValue, isDragging, onDragEnd, onDragStart, value]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -157,8 +169,9 @@ const Scrubber = ({
       }
       e.preventDefault();
       setValue(next);
+      commitValue(next);
     },
-    [disabled, value, step, min, max, setValue]
+    [commitValue, disabled, value, step, min, max, setValue]
   );
 
   const springConfig = shouldReduceMotion

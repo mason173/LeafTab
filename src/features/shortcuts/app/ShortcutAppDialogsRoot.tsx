@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, memo, useEffect, useState } from 'react';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import { LazyAppDialogs } from '@/lazy/components';
 import { useShortcutUiContext } from '@/features/shortcuts/app/ShortcutAppContext';
@@ -33,7 +33,7 @@ export type ShortcutAppDialogsRootProps = {
   consentDialogs: ConsentDialogsInput;
 };
 
-export function ShortcutAppDialogsRoot({
+export const ShortcutAppDialogsRoot = memo(function ShortcutAppDialogsRoot({
   nonSyncExternalDialogActivity,
   authDialog,
   settingsDialogs,
@@ -75,4 +75,6 @@ export function ShortcutAppDialogsRoot({
       </Suspense>
     </RenderProfileBoundary>
   );
-}
+});
+
+ShortcutAppDialogsRoot.displayName = 'ShortcutAppDialogsRoot';

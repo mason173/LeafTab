@@ -18,12 +18,12 @@
     "search",
     "permissions",
     "activeTab",
+    "tabs",
     "identity"
   ],
   "optional_permissions": [
     "bookmarks",
-    "history",
-    "tabs"
+    "history"
   ],
   "optional_host_permissions": [
     "https://*/*",

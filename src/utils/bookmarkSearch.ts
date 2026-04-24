@@ -10,6 +10,7 @@ import { yieldToMainThread } from '@/utils/mainThreadScheduler';
 type BookmarkApi = typeof chrome.bookmarks;
 
 type BookmarkIndexEntry = {
+  id: string;
   label: string;
   url: string;
   order: number;
@@ -46,6 +47,7 @@ function toBookmarkSuggestionItem(node: chrome.bookmarks.BookmarkTreeNode): Sear
     label,
     value: url,
     icon: '',
+    bookmarkId: node.id,
   };
 }
 
@@ -101,7 +103,7 @@ function normalizeBookmarkQueryCacheKey(rawQuery: string): string {
   return normalizeSearchQuery(rawQuery);
 }
 
-function invalidateBookmarkSearchCaches() {
+export function invalidateBookmarkSearchCaches() {
   bookmarkIndexCache = null;
   bookmarkIndexPromise = null;
   bookmarkQueryCache.clear();
@@ -218,6 +220,7 @@ async function getBookmarkIndex(
       if (!url || dedupedByUrl.has(url)) continue;
       const label = (node.title || url).trim() || url;
       dedupedByUrl.set(url, {
+        id: node.id,
         label,
         url,
         order,
@@ -355,6 +358,7 @@ export async function getBookmarkSuggestionsFromApi(
       label: candidate.entry.label,
       value: candidate.entry.url,
       icon: '',
+      bookmarkId: candidate.entry.id,
     });
   }
 

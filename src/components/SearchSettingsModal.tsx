@@ -13,7 +13,7 @@ import {
   RiQuestionLine,
   RiRefreshFill,
 } from "@/icons/ri-compat";
-import type { ComponentType } from "react";
+import { memo, useMemo, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from "@/config/featureFlags";
 import type { SearchBarPosition } from "@/types";
@@ -29,7 +29,7 @@ type SearchSettingRowProps = {
   disabled?: boolean;
 };
 
-function SearchSettingRow({
+const SearchSettingRow = memo(function SearchSettingRow({
   id,
   icon: Icon,
   label,
@@ -85,7 +85,7 @@ function SearchSettingRow({
       </div>
     </div>
   );
-}
+});
 
 interface SearchSettingsModalProps {
   isOpen: boolean;
@@ -109,7 +109,7 @@ interface SearchSettingsModalProps {
   onSearchBarPositionChange: (value: SearchBarPosition) => void;
 }
 
-export function SearchSettingsModal({
+export const SearchSettingsModal = memo(function SearchSettingsModal({
   isOpen,
   onOpenChange,
   onBackToSettings,
@@ -133,6 +133,88 @@ export function SearchSettingsModal({
   const { t } = useTranslation();
   void searchBarPosition;
   void onSearchBarPositionChange;
+  const searchSettingRows = useMemo(() => ([
+    {
+      id: "search-engine-tab-switch",
+      icon: RiRefreshFill,
+      label: t('settings.searchSettings.items.tabSwitch.label'),
+      description: t('settings.searchSettings.items.tabSwitch.description'),
+      tooltip: t('settings.searchSettings.items.tabSwitch.tooltip'),
+      checked: tabSwitchSearchEngine,
+      onCheckedChange: onTabSwitchSearchEngineChange,
+      disabled: !ENABLE_SEARCH_ENGINE_SWITCHER,
+    },
+    {
+      id: "search-prefix-enabled",
+      icon: RiCodeSSlashFill,
+      label: t('settings.searchSettings.items.prefix.label'),
+      description: t('settings.searchSettings.items.prefix.description'),
+      tooltip: t('settings.searchSettings.items.prefix.tooltip'),
+      checked: searchPrefixEnabled,
+      onCheckedChange: onSearchPrefixEnabledChange,
+    },
+    {
+      id: "search-site-direct-enabled",
+      icon: RiLinkM,
+      label: t('settings.searchSettings.items.siteDirect.label'),
+      description: t('settings.searchSettings.items.siteDirect.description'),
+      tooltip: t('settings.searchSettings.items.siteDirect.tooltip'),
+      checked: searchSiteDirectEnabled,
+      onCheckedChange: onSearchSiteDirectEnabledChange,
+    },
+    {
+      id: "search-site-shortcut-enabled",
+      icon: RiDashboardFill,
+      label: t('settings.searchSettings.items.siteShortcut.label'),
+      description: t('settings.searchSettings.items.siteShortcut.description'),
+      tooltip: t('settings.searchSettings.items.siteShortcut.tooltip'),
+      checked: searchSiteShortcutEnabled,
+      onCheckedChange: onSearchSiteShortcutEnabledChange,
+    },
+    {
+      id: "search-any-key-capture-enabled",
+      icon: RiComputerFill,
+      label: t('settings.searchSettings.items.anyKeyCapture.label'),
+      description: t('settings.searchSettings.items.anyKeyCapture.description'),
+      tooltip: t('settings.searchSettings.items.anyKeyCapture.tooltip'),
+      checked: searchAnyKeyCaptureEnabled,
+      onCheckedChange: onSearchAnyKeyCaptureEnabledChange,
+    },
+    {
+      id: "search-calculator-enabled",
+      icon: RiCalculatorLine,
+      label: t('settings.searchSettings.items.calculator.label'),
+      description: t('settings.searchSettings.items.calculator.description'),
+      tooltip: t('settings.searchSettings.items.calculator.tooltip'),
+      checked: searchCalculatorEnabled,
+      onCheckedChange: onSearchCalculatorEnabledChange,
+    },
+    {
+      id: "search-rotating-placeholder-enabled",
+      icon: RiFileTextFill,
+      label: t('settings.searchSettings.items.rotatingPlaceholder.label'),
+      description: t('settings.searchSettings.items.rotatingPlaceholder.description'),
+      tooltip: t('settings.searchSettings.items.rotatingPlaceholder.tooltip'),
+      checked: searchRotatingPlaceholderEnabled,
+      onCheckedChange: onSearchRotatingPlaceholderEnabledChange,
+    },
+  ]), [
+    onSearchAnyKeyCaptureEnabledChange,
+    onSearchCalculatorEnabledChange,
+    onSearchPrefixEnabledChange,
+    onSearchRotatingPlaceholderEnabledChange,
+    onSearchSiteDirectEnabledChange,
+    onSearchSiteShortcutEnabledChange,
+    onTabSwitchSearchEngineChange,
+    searchAnyKeyCaptureEnabled,
+    searchCalculatorEnabled,
+    searchPrefixEnabled,
+    searchRotatingPlaceholderEnabled,
+    searchSiteDirectEnabled,
+    searchSiteShortcutEnabled,
+    t,
+    tabSwitchSearchEngine,
+  ]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -148,79 +230,15 @@ export function SearchSettingsModal({
         </DialogHeader>
         <ScrollArea className="max-h-[68vh]" scrollBarClassName="data-[orientation=vertical]:translate-x-4">
           <div className="mx-auto w-full max-w-[500px] grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <SearchSettingRow
-              id="search-engine-tab-switch"
-              icon={RiRefreshFill}
-              label={t('settings.searchSettings.items.tabSwitch.label')}
-              description={t('settings.searchSettings.items.tabSwitch.description')}
-              tooltip={t('settings.searchSettings.items.tabSwitch.tooltip')}
-              checked={tabSwitchSearchEngine}
-              onCheckedChange={onTabSwitchSearchEngineChange}
-              disabled={!ENABLE_SEARCH_ENGINE_SWITCHER}
-            />
-
-            <SearchSettingRow
-              id="search-prefix-enabled"
-              icon={RiCodeSSlashFill}
-              label={t('settings.searchSettings.items.prefix.label')}
-              description={t('settings.searchSettings.items.prefix.description')}
-              tooltip={t('settings.searchSettings.items.prefix.tooltip')}
-              checked={searchPrefixEnabled}
-              onCheckedChange={onSearchPrefixEnabledChange}
-            />
-
-            <SearchSettingRow
-              id="search-site-direct-enabled"
-              icon={RiLinkM}
-              label={t('settings.searchSettings.items.siteDirect.label')}
-              description={t('settings.searchSettings.items.siteDirect.description')}
-              tooltip={t('settings.searchSettings.items.siteDirect.tooltip')}
-              checked={searchSiteDirectEnabled}
-              onCheckedChange={onSearchSiteDirectEnabledChange}
-            />
-
-            <SearchSettingRow
-              id="search-site-shortcut-enabled"
-              icon={RiDashboardFill}
-              label={t('settings.searchSettings.items.siteShortcut.label')}
-              description={t('settings.searchSettings.items.siteShortcut.description')}
-              tooltip={t('settings.searchSettings.items.siteShortcut.tooltip')}
-              checked={searchSiteShortcutEnabled}
-              onCheckedChange={onSearchSiteShortcutEnabledChange}
-            />
-
-            <SearchSettingRow
-              id="search-any-key-capture-enabled"
-              icon={RiComputerFill}
-              label={t('settings.searchSettings.items.anyKeyCapture.label')}
-              description={t('settings.searchSettings.items.anyKeyCapture.description')}
-              tooltip={t('settings.searchSettings.items.anyKeyCapture.tooltip')}
-              checked={searchAnyKeyCaptureEnabled}
-              onCheckedChange={onSearchAnyKeyCaptureEnabledChange}
-            />
-
-            <SearchSettingRow
-              id="search-calculator-enabled"
-              icon={RiCalculatorLine}
-              label={t('settings.searchSettings.items.calculator.label')}
-              description={t('settings.searchSettings.items.calculator.description')}
-              tooltip={t('settings.searchSettings.items.calculator.tooltip')}
-              checked={searchCalculatorEnabled}
-              onCheckedChange={onSearchCalculatorEnabledChange}
-            />
-
-            <SearchSettingRow
-              id="search-rotating-placeholder-enabled"
-              icon={RiFileTextFill}
-              label={t('settings.searchSettings.items.rotatingPlaceholder.label')}
-              description={t('settings.searchSettings.items.rotatingPlaceholder.description')}
-              tooltip={t('settings.searchSettings.items.rotatingPlaceholder.tooltip')}
-              checked={searchRotatingPlaceholderEnabled}
-              onCheckedChange={onSearchRotatingPlaceholderEnabledChange}
-            />
+            {searchSettingRows.map((row) => (
+              <SearchSettingRow key={row.id} {...row} />
+            ))}
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+SearchSettingRow.displayName = "SearchSettingRow";
+SearchSettingsModal.displayName = "SearchSettingsModal";

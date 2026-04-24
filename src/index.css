@@ -152,6 +152,19 @@
   }
 }
 
+@keyframes leaftab-drawer-hint-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.78;
+  }
+
+  50% {
+    transform: translate3d(0, -3px, 0);
+    opacity: 1;
+  }
+}
+
 /* Vaul's defaultOpen only disables keyframe animations, but transform transitions
    on the drawer can still run on first paint. Force-disable both for boot state. */
 [data-vaul-animate='false'] {

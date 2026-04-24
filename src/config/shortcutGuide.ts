@@ -3,6 +3,7 @@ export type ShortcutGuideSectionId = 'search' | 'results';
 export type ShortcutGuideItemId =
   | 'focusSearch'
   | 'switchEngine'
+  | 'temporaryEnginePrefix'
   | 'switchScenarioNext'
   | 'bookmarksMode'
   | 'tabsMode'
@@ -28,6 +29,7 @@ export const SHORTCUT_GUIDE_SECTIONS: readonly ShortcutGuideSection[] = [
     items: [
       { id: 'focusSearch', combos: [['Cmd / Ctrl', 'K']] },
       { id: 'switchEngine', combos: [['Tab'], ['Shift', 'Tab']] },
+      { id: 'temporaryEnginePrefix', combos: [['!g 关键词'], ['!b 关键词'], ['!d 关键词'], ['!bd 关键词']] },
       { id: 'switchScenarioNext', combos: [['Cmd / Ctrl', 'Alt', 'S']] },
       { id: 'bookmarksMode', combos: [['/b'], ['/bookmarks']] },
       { id: 'tabsMode', combos: [['/t'], ['/tabs']] },

@@ -179,8 +179,7 @@ export function buildLocalHistorySuggestionItems(
 export function buildSearchSuggestionSourceItems(args: {
   searchValue: string;
   filteredHistoryItems: readonly SearchHistoryLikeEntry[];
-  shortcutSearchIndex?: IndexedShortcutSuggestion[];
-  shortcuts?: readonly Shortcut[];
+  shortcutSearchIndex: IndexedShortcutSuggestion[];
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
 }): SearchSuggestionSourceItems {
@@ -188,11 +187,9 @@ export function buildSearchSuggestionSourceItems(args: {
     searchValue,
     filteredHistoryItems,
     shortcutSearchIndex,
-    shortcuts,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
   } = args;
-  const resolvedShortcutSearchIndex = shortcutSearchIndex ?? buildShortcutSearchIndex(shortcuts || []);
 
   return {
     localHistorySuggestionItems: buildLocalHistorySuggestionItems(filteredHistoryItems),
@@ -203,7 +200,7 @@ export function buildSearchSuggestionSourceItems(args: {
     }),
     shortcutSuggestionItems: buildShortcutSuggestionItems({
       searchValue,
-      shortcutSearchIndex: resolvedShortcutSearchIndex,
+      shortcutSearchIndex,
       suggestionUsageMap,
     }),
   };

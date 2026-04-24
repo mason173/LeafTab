@@ -4,6 +4,7 @@ import { getRemoteSearchSuggestionsFromExtension, getCachedRemoteSearchSuggestio
 import { normalizeSearchQuery } from '@/utils/searchHelpers';
 import { getBookmarkSuggestionsFromApi, getCachedBookmarkSuggestions } from '@/utils/bookmarkSearch';
 import { getCachedTabSuggestions, getTabSuggestionsFromApi } from '@/utils/tabSearch';
+import { createMixedSearchQueryModel } from '@/utils/mixedSearchQueryModel';
 import { resolveSearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { SearchSessionModel } from '@/utils/searchSessionModel';
 import type { SearchSuggestionPermission } from '@/utils/searchCommands';
@@ -16,6 +17,7 @@ type UseSearchSuggestionSourcesOptions = {
   bookmarksPermissionGranted: boolean;
   tabsPermissionGranted: boolean;
   permissionWarmup: SearchSuggestionPermission | null;
+  refreshVersion?: number;
 };
 
 type SuggestionCacheEntry = {
@@ -57,10 +59,11 @@ function useAsyncSearchSuggestionSource(args: {
   enabled: boolean;
   query: string;
   debounceMs?: number;
+  refreshKey?: number;
   getCachedItems?: (query: string) => SearchSuggestionItem[] | null;
   load: (query: string, signal?: AbortSignal) => Promise<SearchSuggestionItem[]>;
 }) {
-  const { enabled, query, debounceMs = SEARCH_ASYNC_DEBOUNCE_MS, getCachedItems, load } = args;
+  const { enabled, query, debounceMs = SEARCH_ASYNC_DEBOUNCE_MS, refreshKey = 0, getCachedItems, load } = args;
   const [items, setItems] = useState<SearchSuggestionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const getCachedItemsRef = useRef(getCachedItems);
@@ -117,7 +120,7 @@ function useAsyncSearchSuggestionSource(args: {
       canceled = true;
       abortController.abort();
     };
-  }, [debouncedQuery, enabled]);
+  }, [debouncedQuery, enabled, refreshKey]);
 
   return { items, loading };
 }
@@ -154,6 +157,7 @@ export function useSearchSuggestionSources({
   bookmarksPermissionGranted,
   tabsPermissionGranted,
   permissionWarmup,
+  refreshVersion = 0,
 }: UseSearchSuggestionSourcesOptions) {
   const isDocumentVisible = useDocumentVisibility();
   const browserHistoryCacheRef = useRef(new Map<string, SuggestionCacheEntry>());
@@ -162,10 +166,30 @@ export function useSearchSuggestionSources({
     () => resolveSearchSuggestionDisplayMode(queryModel.command.id),
     [queryModel.command.id],
   );
+  const mixedSearchQueryModel = useMemo(() => createMixedSearchQueryModel({
+    searchValue,
+    displayMode: suggestionDisplayMode,
+  }), [searchValue, suggestionDisplayMode]);
   const commandQuery = queryModel.commandQuery;
   const normalizedSearchQuery = useMemo(
     () => normalizeSearchQuery(searchValue),
     [searchValue],
+  );
+  const defaultTabsSourceEnabled = useMemo(() => (
+    suggestionDisplayMode === 'default'
+    && mixedSearchQueryModel.sourcePlan.includes('tabs')
+  ), [mixedSearchQueryModel.normalizedQuery, mixedSearchQueryModel.sourcePlan, suggestionDisplayMode]);
+  const defaultBookmarksSourceEnabled = useMemo(() => (
+    suggestionDisplayMode === 'default'
+    && mixedSearchQueryModel.sourcePlan.includes('bookmarks')
+  ), [mixedSearchQueryModel.normalizedQuery, mixedSearchQueryModel.sourcePlan, suggestionDisplayMode]);
+  const bookmarkSuggestionQuery = useMemo(
+    () => (suggestionDisplayMode === 'bookmarks' ? commandQuery : searchValue),
+    [commandQuery, searchValue, suggestionDisplayMode],
+  );
+  const tabSuggestionQuery = useMemo(
+    () => (suggestionDisplayMode === 'tabs' ? commandQuery : searchValue),
+    [commandQuery, searchValue, suggestionDisplayMode],
   );
   const browserHistoryQuery = useMemo(
     () => (queryModel.mode === 'history' ? commandQuery.trim() : searchValue.trim()),
@@ -201,8 +225,12 @@ export function useSearchSuggestionSources({
     items: bookmarkSuggestionItems,
     loading: bookmarkLoading,
   } = useAsyncSearchSuggestionSource({
-    enabled: isDocumentVisible && suggestionDisplayMode === 'bookmarks' && bookmarksPermissionGranted && permissionWarmup !== 'bookmarks',
-    query: commandQuery,
+    enabled: isDocumentVisible
+      && bookmarksPermissionGranted
+      && permissionWarmup !== 'bookmarks'
+      && (suggestionDisplayMode === 'bookmarks' || defaultBookmarksSourceEnabled),
+    query: bookmarkSuggestionQuery,
+    refreshKey: refreshVersion,
     getCachedItems: (query) => getCachedBookmarkSuggestions(query, BOOKMARK_SUGGESTION_LIMIT),
     load: async (query, signal) => {
       const bookmarksApi = globalThis.chrome?.bookmarks;
@@ -215,8 +243,12 @@ export function useSearchSuggestionSources({
     items: tabSuggestionItems,
     loading: tabLoading,
   } = useAsyncSearchSuggestionSource({
-    enabled: isDocumentVisible && suggestionDisplayMode === 'tabs' && tabsPermissionGranted && permissionWarmup !== 'tabs',
-    query: commandQuery,
+    enabled: isDocumentVisible
+      && tabsPermissionGranted
+      && permissionWarmup !== 'tabs'
+      && (suggestionDisplayMode === 'tabs' || defaultTabsSourceEnabled),
+    query: tabSuggestionQuery,
+    refreshKey: refreshVersion,
     getCachedItems: (query) => getCachedTabSuggestions(query, 50),
     load: async (query) => {
       const tabsApi = globalThis.chrome?.tabs;

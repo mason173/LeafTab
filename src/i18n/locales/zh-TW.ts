@@ -38,8 +38,8 @@ export default {
           },
           prefix: {
             label: "Prefix 搜尋",
-            description: "支援 g / bing / ddg / bd 等前綴暫時切換引擎",
-            tooltip: "例如輸入 g AI，會暫時使用 Google 搜尋 AI，不會改變預設引擎。"
+            description: "支援 !g / !b / !d / !bd 等前綴暫時切換引擎",
+            tooltip: "例如輸入 !g AI，會暫時使用 Google 搜尋 AI，不會改變預設引擎。"
           },
           siteDirect: {
             label: "站點直達搜尋",
@@ -499,7 +499,7 @@ export default {
       placeholderHintTabSwitch: "想換搜尋方式？按 Tab 試試",
       placeholderHintCalculator: "輸入 12*8 這樣也能直接算",
       placeholderHintSiteDirect: "輸入 bilibili 動畫，可直接搜 Bilibili",
-      placeholderHintPrefix: "想用 Google 搜？先輸入 g，再空一格後輸入內容",
+      placeholderHintPrefix: "想用 Google 搜？先輸入 !g，再空一格後輸入內容",
       enterKey: "Enter",
       actionOpen: "開啟",
       actionClose: "關閉",

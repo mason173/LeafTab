@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LeafTabDangerousSyncDialog } from '@/components/sync/LeafTabDangerousSyncDialog';
 import {
@@ -31,7 +31,7 @@ export type ShortcutSyncDialogsRootProps = {
   user: string | null;
 };
 
-export function ShortcutSyncDialogsRoot({
+export const ShortcutSyncDialogsRoot = memo(function ShortcutSyncDialogsRoot({
   leafTabSyncDialogOpen,
   setLeafTabSyncDialogOpen,
   setSyncConfigBackTarget,
@@ -166,4 +166,6 @@ export function ShortcutSyncDialogsRoot({
       ) : null}
     </>
   );
-}
+});
+
+ShortcutSyncDialogsRoot.displayName = 'ShortcutSyncDialogsRoot';

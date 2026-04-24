@@ -15,6 +15,7 @@ type IndexedTab = {
   label: string;
   value: string;
   icon: string;
+  pinned: boolean;
   order: number;
   titleCandidates: string[];
   urlCandidates: string[];
@@ -83,6 +84,7 @@ function indexTabs(tabs: chrome.tabs.Tab[]): IndexedTab[] {
       label,
       value,
       icon: (tab.favIconUrl || '').trim(),
+      pinned: Boolean(tab.pinned),
       order,
       titleCandidates: buildSearchMatchCandidates(tabTitle),
       urlCandidates: buildSearchMatchCandidates(tabUrl),
@@ -99,6 +101,7 @@ function toSuggestion(tab: IndexedTab): SearchSuggestionItem {
     tabId: tab.id,
     windowId: tab.windowId,
     icon: tab.icon,
+    pinned: tab.pinned,
   };
 }
 
@@ -106,7 +109,7 @@ function normalizeTabQueryCacheKey(rawQuery: string): string {
   return normalizeSearchQuery(rawQuery);
 }
 
-function invalidateTabSearchCaches() {
+export function invalidateTabSearchCaches() {
   tabIndexCache = null;
   tabIndexPromise = null;
   tabQueryCache.clear();

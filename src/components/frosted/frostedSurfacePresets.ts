@@ -57,7 +57,7 @@ const DEFAULT_FROSTED_SURFACE_MATERIAL_TOKENS: FrostedSurfaceMaterialTokens = {
   darkSurfaceOverlayOpacity: 0.61,
   borderVisible: false,
   sampleScale: 1,
-  sampleOverscanPx: 0,
+  sampleOverscanPx: 100,
   sampleBlurPx: 0,
   backdropMaskStrength: 1,
 };

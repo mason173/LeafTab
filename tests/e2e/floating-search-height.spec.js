@@ -37,7 +37,7 @@ test.describe('floating search height', () => {
     }, snapshot);
   });
 
-  test('renders the bottom floating search shell at 52px tall', async ({ page }) => {
+  test('renders the bottom floating search shell at 44px tall', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(APP_URL, { waitUntil: 'load' });
 
@@ -50,6 +50,6 @@ test.describe('floating search height', () => {
       return Math.round(shell.getBoundingClientRect().height);
     });
 
-    expect(shellHeight).toBe(52);
+    expect(shellHeight).toBe(44);
   });
 });

@@ -50,7 +50,7 @@ export function ShortcutFolderNameDialog({
             onSubmit(nextName);
           }}
         />
-        <DialogFooter className="flex w-full gap-4 sm:gap-4">
+        <DialogFooter className="mt-2 flex w-full gap-4 sm:gap-4">
           <Button
             variant="secondary"
             className="flex-1"

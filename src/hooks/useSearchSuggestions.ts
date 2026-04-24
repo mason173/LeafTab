@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
-import type { Shortcut } from '@/types';
+import type { SearchSuggestionItem, Shortcut } from '@/types';
 import type { SearchHistoryEntry } from '@/hooks/useSearch';
 import type { SearchAction } from '@/utils/searchActions';
 import type { SuggestionUsageMap } from '@/utils/suggestionPersonalization';
@@ -25,12 +25,16 @@ type UseSearchSuggestionsOptions = {
   queryModel: SearchSessionModel;
   filteredHistoryItems: SearchHistoryEntry[];
   shortcuts: Shortcut[];
+  commandSuggestionItems: SearchSuggestionItem[];
+  settingSuggestionItems: SearchSuggestionItem[];
+  shortcutSuggestionsActive: boolean;
   searchSiteShortcutEnabled: boolean;
   suggestionUsageMap: SuggestionUsageMap;
   historyPermissionGranted: boolean;
   bookmarksPermissionGranted: boolean;
   tabsPermissionGranted: boolean;
   permissionWarmup: SearchSuggestionPermission | null;
+  refreshVersion?: number;
 };
 
 type SearchSuggestionsWorkerResponse =
@@ -60,12 +64,16 @@ export function useSearchSuggestions({
   queryModel,
   filteredHistoryItems,
   shortcuts,
+  commandSuggestionItems,
+  settingSuggestionItems,
+  shortcutSuggestionsActive,
   searchSiteShortcutEnabled,
   suggestionUsageMap,
   historyPermissionGranted,
   bookmarksPermissionGranted,
   tabsPermissionGranted,
   permissionWarmup,
+  refreshVersion = 0,
 }: UseSearchSuggestionsOptions): SearchSuggestionsResult {
   const {
     suggestionDisplayMode,
@@ -81,13 +89,17 @@ export function useSearchSuggestions({
     bookmarksPermissionGranted,
     tabsPermissionGranted,
     permissionWarmup,
+    refreshVersion,
   });
-  const [shortcutSearchIndex, setShortcutSearchIndex] = useState<IndexedShortcutSuggestion[]>(
-    () => buildShortcutSearchIndex(shortcuts),
-  );
+  const [shortcutSearchIndex, setShortcutSearchIndex] = useState<IndexedShortcutSuggestion[]>([]);
+  const indexedShortcutsSourceRef = useRef<Shortcut[] | null>(null);
 
   useEffect(() => {
+    if (!shortcutSuggestionsActive) return;
+    if (indexedShortcutsSourceRef.current === shortcuts) return;
+
     let canceled = false;
+    indexedShortcutsSourceRef.current = shortcuts;
     setShortcutSearchIndex(buildShortcutSearchIndex(shortcuts));
 
     const cancelDeferredPreparation = scheduleAfterInteractivePaint(() => {
@@ -105,18 +117,19 @@ export function useSearchSuggestions({
       canceled = true;
       cancelDeferredPreparation();
     };
-  }, [shortcuts]);
+  }, [shortcutSuggestionsActive, shortcuts]);
 
   const computationInput = useMemo<SearchSuggestionsComputationInput>(() => ({
     suggestionDisplayMode,
     searchValue,
     filteredHistoryItems,
-    shortcuts,
     shortcutSearchIndex,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
     bookmarkSuggestionItems,
     tabSuggestionItems,
+    commandSuggestionItems,
+    settingSuggestionItems,
     browserHistorySuggestionItems,
     remoteSuggestionItems,
   }), [
@@ -127,10 +140,11 @@ export function useSearchSuggestions({
     searchSiteShortcutEnabled,
     searchValue,
     shortcutSearchIndex,
-    shortcuts,
     suggestionDisplayMode,
     suggestionUsageMap,
     tabSuggestionItems,
+    commandSuggestionItems,
+    settingSuggestionItems,
   ]);
 
   const [actions, setActions] = useState<SearchAction[]>(

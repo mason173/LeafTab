@@ -236,6 +236,138 @@ describe('useShortcutWorkspaceController', () => {
     expect(result.current.externalShortcutDragSession).toBeNull();
   });
 
+  it('defers pointerup finalization after the root extract drag has started', () => {
+    vi.useFakeTimers();
+    try {
+      const shortcuts = [
+        {
+          id: 'folder-1',
+          title: 'Folder',
+          url: '',
+          icon: '',
+          kind: 'folder' as const,
+          children: [
+            { id: 'child-1', title: 'Child 1', url: 'https://child-1.example', icon: '' },
+            { id: 'child-2', title: 'Child 2', url: 'https://child-2.example', icon: '' },
+          ],
+        },
+        { id: 'root-1', title: 'Root 1', url: 'https://root-1.example', icon: '' },
+      ];
+      const onCommitPendingExtractPreview = vi.fn();
+      const { result } = renderHook(() => useShortcutWorkspaceController({
+        selectedScenarioId: 'life-mode-001',
+        shortcuts,
+        onCommitPendingExtractPreview,
+      }));
+
+      act(() => {
+        result.current.startFolderExtractDrag({
+          folderId: 'folder-1',
+          shortcutId: 'child-2',
+          pointerId: 44,
+          pointerType: 'mouse',
+          pointer: { x: 10, y: 20 },
+          anchor: { xRatio: 0.5, yRatio: 0.5 },
+        });
+      });
+
+      act(() => {
+        result.current.markRootShortcutDragStart();
+      });
+
+      const pointerUpEvent = new Event('pointerup');
+      Object.defineProperty(pointerUpEvent, 'pointerId', { value: 44 });
+
+      act(() => {
+        window.dispatchEvent(pointerUpEvent);
+      });
+
+      expect(onCommitPendingExtractPreview).not.toHaveBeenCalled();
+      expect(result.current.pendingFolderExtractDrag).not.toBeNull();
+
+      act(() => {
+        vi.runAllTimers();
+      });
+
+      expect(onCommitPendingExtractPreview).toHaveBeenCalledTimes(1);
+      expect(result.current.pendingFolderExtractDrag).toBeNull();
+      expect(result.current.pendingExtractHiddenShortcutId).toBeNull();
+      expect(result.current.externalShortcutDragSession).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still clears the hidden extract shortcut after the preview is committed before deferred finalize runs', () => {
+    vi.useFakeTimers();
+    try {
+      const shortcuts = [
+        {
+          id: 'folder-1',
+          title: 'Folder',
+          url: '',
+          icon: '',
+          kind: 'folder' as const,
+          children: [
+            { id: 'child-1', title: 'Child 1', url: 'https://child-1.example', icon: '' },
+            { id: 'child-2', title: 'Child 2', url: 'https://child-2.example', icon: '' },
+          ],
+        },
+        { id: 'root-1', title: 'Root 1', url: 'https://root-1.example', icon: '' },
+      ];
+      const committedPreviewShortcuts = [
+        { id: 'child-1', title: 'Child 1', url: 'https://child-1.example', icon: '' },
+        { id: 'root-1', title: 'Root 1', url: 'https://root-1.example', icon: '' },
+        { id: 'child-2', title: 'Child 2', url: 'https://child-2.example', icon: '' },
+      ];
+      const onCommitPendingExtractPreview = vi.fn();
+      const { result } = renderHook(() => useShortcutWorkspaceController({
+        selectedScenarioId: 'life-mode-001',
+        shortcuts,
+        onCommitPendingExtractPreview,
+      }));
+
+      act(() => {
+        result.current.startFolderExtractDrag({
+          folderId: 'folder-1',
+          shortcutId: 'child-2',
+          pointerId: 45,
+          pointerType: 'mouse',
+          pointer: { x: 10, y: 20 },
+          anchor: { xRatio: 0.5, yRatio: 0.5 },
+        });
+      });
+
+      act(() => {
+        result.current.markRootShortcutDragStart();
+      });
+
+      const pointerUpEvent = new Event('pointerup');
+      Object.defineProperty(pointerUpEvent, 'pointerId', { value: 45 });
+
+      act(() => {
+        window.dispatchEvent(pointerUpEvent);
+      });
+
+      act(() => {
+        result.current.commitPendingFolderExtractPreview(committedPreviewShortcuts);
+      });
+
+      expect(result.current.pendingExtractHiddenShortcutId).toBe('child-2');
+      expect(result.current.pendingFolderExtractDrag?.committed).toBe(true);
+
+      act(() => {
+        vi.runAllTimers();
+      });
+
+      expect(result.current.pendingFolderExtractDrag).toBeNull();
+      expect(result.current.pendingExtractHiddenShortcutId).toBeNull();
+      expect(result.current.externalShortcutDragSession).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('clears drag state without committing preview on pointercancel', () => {
     const shortcuts = [
       {

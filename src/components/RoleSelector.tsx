@@ -166,6 +166,14 @@ export function RoleSelector({
     ],
     [t],
   );
+  const showPermissionsStep = useMemo(
+    () => Object.values(permissionSupport).some((support) => support !== 'granted'),
+    [permissionSupport],
+  );
+  const visibleSteps = useMemo<readonly StepType[]>(
+    () => (showPermissionsStep ? STEP_ORDER : STEP_ORDER.filter((stepItem) => stepItem !== 'permissions')),
+    [showPermissionsStep],
+  );
 
   const handleLanguageSelect = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -312,6 +320,12 @@ export function RoleSelector({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (showPermissionsStep) return;
+    setStep((current) => (current === 'permissions' ? 'layout' : current));
+  }, [open, showPermissionsStep]);
+
   const LANGUAGES = [
     { code: 'zh', label: t('languages.zh') },
     { code: 'en', label: t('languages.en') },
@@ -326,16 +340,17 @@ export function RoleSelector({
   }
 
   const normalizedLanguage = i18n.language === 'zh-CN' ? 'zh' : i18n.language;
-  const currentStepIndex = STEP_ORDER.indexOf(step);
+  const currentStepIndex = visibleSteps.indexOf(step);
   const allPermissionsGranted = grantedPermissions.history && grantedPermissions.bookmarks && grantedPermissions.tabs;
   const canAccessStep = (targetStep: StepType) => {
+    if (!visibleSteps.includes(targetStep)) return false;
     if (targetStep === 'appearance' || targetStep === 'role') return true;
     return Boolean(selectedRole);
   };
 
   const goToStep = (nextStep: StepType) => {
     if (!canAccessStep(nextStep)) return;
-    const nextIndex = STEP_ORDER.indexOf(nextStep);
+    const nextIndex = visibleSteps.indexOf(nextStep);
     setDirection(nextIndex > currentStepIndex ? 1 : -1);
     setStep(nextStep);
   };
@@ -519,7 +534,7 @@ export function RoleSelector({
                 animate={appearanceRevealReady ? stagedRevealShown : stagedRevealHidden}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.5 }}
               >
-                {STEP_ORDER.map((item, index) => (
+                {visibleSteps.map((item, index) => (
                   <button
                     key={item}
                     type="button"
@@ -627,7 +642,7 @@ export function RoleSelector({
                 animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.34 }}
               >
-                {STEP_ORDER.map((item, index) => (
+                {visibleSteps.map((item, index) => (
                   <button
                     key={item}
                     type="button"
@@ -741,7 +756,7 @@ export function RoleSelector({
                 animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.42 }}
               >
-                {STEP_ORDER.map((item, index) => (
+                {visibleSteps.map((item, index) => (
                   <button
                     key={item}
                     type="button"
@@ -760,8 +775,11 @@ export function RoleSelector({
                 animate={stagedRevealShown}
                 transition={{ duration: 0.28, ease: "easeOut", delay: 0.5 }}
               >
-                <Button className="w-full h-12 rounded-xl text-base" onClick={() => goToStep('permissions')}>
-                  {t('onboarding.next')}
+                <Button
+                  className="w-full h-12 rounded-xl text-base"
+                  onClick={showPermissionsStep ? () => goToStep('permissions') : completeOnboarding}
+                >
+                  {showPermissionsStep ? t('onboarding.next') : t('onboarding.enterHome')}
                 </Button>
               </motion.div>
                 </motion.div>
@@ -909,7 +927,7 @@ export function RoleSelector({
                 animate={stagedRevealShown}
                 transition={{ duration: 0.26, ease: "easeOut", delay: 0.42 }}
               >
-                {STEP_ORDER.map((item, index) => (
+                {visibleSteps.map((item, index) => (
                   <button
                     key={item}
                     type="button"
