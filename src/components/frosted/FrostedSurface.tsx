@@ -1,5 +1,5 @@
 import { useCallback, useState, type CSSProperties, type MouseEventHandler, type ReactNode } from 'react';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
+import { FrostedBackdrop } from '@/components/frosted/FrostedBackdrop';
 import { cn } from '@/components/ui/utils';
 
 type FrostedSurfacePreset = 'search-pill' | 'floating-toolbar';
@@ -9,6 +9,8 @@ type FrostedSurfaceProps = {
   className?: string;
   contentClassName?: string;
   surfaceClassName?: string;
+  dataTestId?: string;
+  radiusClassName?: string;
   style?: CSSProperties;
   surfaceTone?: 'default' | 'drawer';
   modeOverlayOpacity?: number;
@@ -46,6 +48,8 @@ export function FrostedSurface({
   className,
   contentClassName,
   surfaceClassName,
+  dataTestId,
+  radiusClassName,
   style,
   surfaceTone = 'default',
   modeOverlayOpacity,
@@ -56,6 +60,7 @@ export function FrostedSurface({
 }: FrostedSurfaceProps) {
   const presetConfig = FROSTED_SURFACE_PRESETS[preset];
   const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
+  const resolvedRadiusClassName = radiusClassName ?? presetConfig.radiusClassName;
 
   const handleSurfaceRef = useCallback((node: HTMLDivElement | null) => {
     setSurfaceNode(node);
@@ -70,13 +75,14 @@ export function FrostedSurface({
         surfaceClassName,
         className,
       )}
+      data-testid={dataTestId}
       style={style}
       onClick={onClick}
     >
-      <SearchFakeBlurSurface
+      <FrostedBackdrop
         surfaceNode={surfaceNode}
         tone={surfaceTone}
-        radiusClassName={presetConfig.radiusClassName}
+        radiusClassName={resolvedRadiusClassName}
         modeOverlayOpacity={modeOverlayOpacity ?? presetConfig.modeOverlayOpacity}
         showBorder={showBorder ?? presetConfig.showBorder}
       />

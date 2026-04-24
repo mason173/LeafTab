@@ -9,7 +9,7 @@ import {
   RiFolderChartFill,
   RiFolderTransferLine,
 } from '@/icons/ri-compat';
-import { Button } from '@/components/ui/button';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import type { ScenarioMode, Shortcut } from '@/types';
 
 type SelectionToolbarTranslation = (key: string, options?: Record<string, unknown>) => string;
@@ -23,14 +23,19 @@ function SelectionToolbarPopover({
   children: ReactNode;
 }) {
   return (
-    <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-[15050] w-[280px] -translate-x-1/2 rounded-2xl border border-border bg-popover/95 p-2 text-foreground shadow-2xl backdrop-blur-xl">
-      <div className="px-2 pb-1 pt-1 text-xs text-muted-foreground">
+    <FrostedSurface
+      preset="floating-toolbar"
+      radiusClassName="rounded-[24px]"
+      className="pointer-events-auto absolute right-[calc(100%+12px)] top-1/2 z-[17040] w-[272px] -translate-y-1/2 rounded-[24px] shadow-[0_16px_38px_rgba(8,10,14,0.22)]"
+      contentClassName="flex max-h-[320px] flex-col gap-1 overflow-hidden px-2 py-2"
+    >
+      <div className="px-2 pb-1 pt-1 text-xs font-medium text-black/48 dark:text-white/58">
         {title}
       </div>
       <div className="max-h-[260px] space-y-1 overflow-y-auto">
         {children}
       </div>
-    </div>
+    </FrostedSurface>
   );
 }
 
@@ -41,7 +46,7 @@ function SelectionToolbarActionButton({
   ariaExpanded,
   onClick,
   children,
-  className = 'h-8 w-8 rounded-xl',
+  className = 'h-9 w-9',
 }: {
   title: string;
   testId: string;
@@ -52,10 +57,16 @@ function SelectionToolbarActionButton({
   className?: string;
 }) {
   return (
-    <Button
-      size="icon"
-      variant="secondary"
-      className={className}
+    <button
+      type="button"
+      className={[
+        'flex items-center justify-center rounded-full bg-black/15 text-black/90 shadow-[0_8px_18px_rgba(0,0,0,0.12)] transition-[transform,background-color,color,opacity] duration-200 ease-out',
+        'hover:bg-black/38 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/28',
+        'dark:bg-white/15 dark:text-white/90 dark:shadow-[0_8px_18px_rgba(0,0,0,0.16)] dark:hover:bg-white/38 dark:focus-visible:ring-black/18',
+        'disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-black/12 disabled:text-black/38 disabled:shadow-none',
+        'dark:disabled:bg-white/12 dark:disabled:text-white/38',
+        className,
+      ].filter(Boolean).join(' ')}
       data-testid={testId}
       title={title}
       aria-label={title}
@@ -64,7 +75,7 @@ function SelectionToolbarActionButton({
       onClick={onClick}
     >
       {children}
-    </Button>
+    </button>
   );
 }
 
@@ -97,7 +108,7 @@ export function ShortcutSelectionScenarioMoveAction({
         ariaExpanded={multiSelectMoveOpen}
         onClick={() => setMultiSelectMoveOpen((prev) => !prev)}
       >
-        <RiDashboardFill className="size-4" />
+        <RiDashboardFill className="size-3.5" />
       </SelectionToolbarActionButton>
       {multiSelectMoveOpen ? (
         <SelectionToolbarPopover title={moveToScenarioLabel}>
@@ -111,7 +122,7 @@ export function ShortcutSelectionScenarioMoveAction({
               key={mode.id}
               type="button"
               data-testid={`shortcut-multi-select-move-target-${mode.id}`}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-[18px] px-3 py-2.5 text-left text-sm text-black/82 transition-colors hover:bg-black/6 dark:text-white/90 dark:hover:bg-white/10"
               onClick={() => onMoveSelectedShortcutsToScenario(mode.id)}
             >
               <span
@@ -165,7 +176,7 @@ export function ShortcutSelectionFolderMoveAction({
         disabled={selectedLinkCount <= 0 || selectedFolderCount > 0}
         onClick={() => setMultiSelectFolderOpen((prev) => !prev)}
       >
-        <RiFolderTransferLine className="size-4" />
+        <RiFolderTransferLine className="size-3.5" />
       </SelectionToolbarActionButton>
       {multiSelectFolderOpen ? (
         <SelectionToolbarPopover title={moveToFolderLabel}>
@@ -179,7 +190,7 @@ export function ShortcutSelectionFolderMoveAction({
               key={folder.id}
               type="button"
               data-testid={`shortcut-multi-select-folder-target-${folder.id}`}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-[18px] px-3 py-2.5 text-left text-sm text-black/82 transition-colors hover:bg-black/6 dark:text-white/90 dark:hover:bg-white/10"
               onClick={() => onMoveSelectedShortcutsToFolder(folder.id)}
             >
               <RiFolderChartFill className="size-4 text-muted-foreground" />
@@ -217,7 +228,7 @@ export function ShortcutSelectionCreateFolderAction({
       disabled={selectedLinkCount < 2 || selectedFolderCount > 0}
       onClick={onCreateFolder}
     >
-      <RiAddLine className="size-4" />
+      <RiAddLine className="size-3.5" />
     </SelectionToolbarActionButton>
   );
 }
@@ -243,10 +254,10 @@ export function ShortcutSelectionPinAction({
         defaultValue: isTop ? '置顶已选' : '置底已选',
       })}
       disabled={disabled}
-      className="h-8 w-8 rounded-xl disabled:pointer-events-auto disabled:cursor-not-allowed disabled:bg-secondary/55 disabled:text-muted-foreground"
+      className="h-9 w-9"
       onClick={() => onPinSelectedShortcuts(position)}
     >
-      {isTop ? <RiArrowUpLine className="size-4" /> : <RiArrowDownLine className="size-4" />}
+      {isTop ? <RiArrowUpLine className="size-3.5" /> : <RiArrowDownLine className="size-3.5" />}
     </SelectionToolbarActionButton>
   );
 }
@@ -267,9 +278,10 @@ export function ShortcutSelectionDeleteAction({
       testId="shortcut-multi-select-delete"
       title={t('context.deleteSelected', { defaultValue: '删除已选' })}
       disabled={selectedShortcutCount <= 0}
+      className="h-9 w-9"
       onClick={onRequestBulkDeleteShortcuts}
     >
-      <RiDeleteBinLine className="size-4" />
+      <RiDeleteBinLine className="size-3.5" />
     </SelectionToolbarActionButton>
   );
 }
@@ -287,9 +299,10 @@ export function ShortcutSelectionCancelAction({
     <SelectionToolbarActionButton
       testId="shortcut-multi-select-cancel"
       title={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
+      className="h-9 w-9"
       onClick={onClearShortcutMultiSelect}
     >
-      <RiCloseLine className="size-4" />
+      <RiCloseLine className="size-3.5" />
     </SelectionToolbarActionButton>
   );
 }

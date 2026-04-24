@@ -1,4 +1,7 @@
-import type { RefObject } from 'react';
+import { useMemo, type CSSProperties, type RefObject } from 'react';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
+import { useDocumentElementById } from '@/components/frosted/useDocumentElementById';
+import { useLiveViewportRect } from '@/hooks/useLiveViewportRect';
 import {
   ShortcutSelectionCancelAction,
   ShortcutSelectionCreateFolderAction,
@@ -10,6 +13,7 @@ import {
 import type { ScenarioMode, Shortcut } from '@/types';
 
 type ShortcutSelectionToolbarProps = {
+  anchorId: string;
   t: (key: string, options?: Record<string, unknown>) => string;
   selectedShortcutCount: number;
   moveTargetScenarioModes: ScenarioMode[];
@@ -32,7 +36,12 @@ type ShortcutSelectionToolbarProps = {
   onClearShortcutMultiSelect: () => void;
 };
 
+const TOOLBAR_WIDTH_PX = 60;
+const TOOLBAR_OFFSET_PX = 14;
+const TOOLBAR_VIEWPORT_MARGIN_PX = 14;
+
 export function ShortcutSelectionToolbar({
+  anchorId,
   t,
   selectedShortcutCount,
   moveTargetScenarioModes,
@@ -54,11 +63,55 @@ export function ShortcutSelectionToolbar({
   onRequestBulkDeleteShortcuts,
   onClearShortcutMultiSelect,
 }: ShortcutSelectionToolbarProps) {
+  const anchorElement = useDocumentElementById(anchorId, true);
+  const anchorRect = useLiveViewportRect(anchorElement, Boolean(anchorElement));
+  const toolbarStyle = useMemo<CSSProperties>(() => {
+    if (typeof window === 'undefined') {
+      return {
+        right: `${TOOLBAR_VIEWPORT_MARGIN_PX}px`,
+        top: '50%',
+        transform: 'translate3d(0, -50%, 0)',
+      };
+    }
+
+    const fallbackLeft = Math.max(
+      TOOLBAR_VIEWPORT_MARGIN_PX,
+      window.innerWidth - TOOLBAR_VIEWPORT_MARGIN_PX - TOOLBAR_WIDTH_PX,
+    );
+
+    if (!anchorRect) {
+      return {
+        left: `${fallbackLeft}px`,
+        top: '50%',
+        transform: 'translate3d(0, -50%, 0)',
+      };
+    }
+
+    const preferredLeft = anchorRect.left + anchorRect.width + TOOLBAR_OFFSET_PX;
+    const maxLeft = Math.max(
+      TOOLBAR_VIEWPORT_MARGIN_PX,
+      window.innerWidth - TOOLBAR_VIEWPORT_MARGIN_PX - TOOLBAR_WIDTH_PX,
+    );
+
+    return {
+      left: `${Math.min(maxLeft, preferredLeft)}px`,
+      top: '50%',
+      transform: 'translate3d(0, -50%, 0)',
+    };
+  }, [anchorRect]);
+
   return (
-    <div className="fixed bottom-6 left-1/2 z-[17025] -translate-x-1/2 rounded-full border border-border bg-popover/95 px-3 py-2 shadow-xl backdrop-blur-xl" data-testid="shortcut-multi-select-toolbar">
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground min-w-[88px]">
-          {t('context.selectedCount', { count: selectedShortcutCount, defaultValue: '已选 {{count}} 项' })}
+    <FrostedSurface
+      preset="floating-toolbar"
+      radiusClassName="rounded-[28px]"
+      className="fixed z-[17025] rounded-[28px] shadow-[0_18px_44px_rgba(8,10,14,0.22)]"
+      contentClassName="flex flex-col items-center gap-2.5 px-2.5 py-3"
+      dataTestId="shortcut-multi-select-toolbar"
+      style={toolbarStyle}
+    >
+      <div className="flex flex-col items-center gap-2.5">
+        <span className="min-w-[36px] text-center text-[12px] font-medium tracking-[0.01em] text-black/68 dark:text-white/84">
+          {`${selectedShortcutCount}项`}
         </span>
         <ShortcutSelectionScenarioMoveAction
           t={t}
@@ -107,6 +160,6 @@ export function ShortcutSelectionToolbar({
           onClearShortcutMultiSelect={onClearShortcutMultiSelect}
         />
       </div>
-    </div>
+    </FrostedSurface>
   );
 }

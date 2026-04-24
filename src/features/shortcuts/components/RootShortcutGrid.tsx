@@ -123,6 +123,7 @@ export type RootShortcutGridCardRenderParams = {
   folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
+  editWobbleActive?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 };
@@ -243,6 +244,7 @@ function RootShortcutGridVisibilityShell({
 
 export interface RootShortcutGridProps {
   surfaceInstanceKey?: string;
+  surfaceAnchorId?: string;
   containerHeight: number;
   bottomInset?: number;
   shortcuts: Shortcut[];
@@ -292,6 +294,7 @@ export interface RootShortcutGridProps {
 
 export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   surfaceInstanceKey: _surfaceInstanceKey,
+  surfaceAnchorId,
   containerHeight,
   bottomInset = 0,
   shortcuts,
@@ -435,7 +438,12 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
   return (
     <RenderProfileBoundary id="RootShortcutGrid">
       <ShortcutIconRenderContext.Provider value={shortcutIconRenderContextValue}>
-        <div ref={wrapperRef} className="relative w-full">
+        <div
+          id={surfaceAnchorId}
+          data-surface-anchor={surfaceAnchorId || undefined}
+          ref={wrapperRef}
+          className="relative w-full"
+        >
           <PackageRootShortcutGrid
             containerHeight={containerHeight}
             bottomInset={bottomInset}
@@ -493,6 +501,10 @@ export const RootShortcutGrid = React.memo(function RootShortcutGrid({
                 folderPreviewTone,
                 onPreviewShortcutOpen: selectionMode ? undefined : onShortcutOpen,
                 selectionDisabled: params.selectionDisabled,
+                editWobbleActive: selectionMode
+                  && params.shortcut.kind !== 'folder'
+                  && !params.selectionDisabled
+                  && !params.selected,
                 onOpen: params.onOpen,
                 onContextMenu: params.onContextMenu,
               });

@@ -3,6 +3,7 @@ import { ShortcutSelectionProvider } from '@/features/shortcuts/selection/Shortc
 import { ShortcutSelectionBulkDeleteDialog } from '@/features/shortcuts/selection/ShortcutSelectionBulkDeleteDialog';
 import { ShortcutSelectionContextMenu } from '@/features/shortcuts/selection/ShortcutSelectionContextMenu';
 import { ShortcutSelectionToolbar } from '@/features/shortcuts/selection/ShortcutSelectionToolbar';
+import { HOME_ROOT_SHORTCUT_GRID_ANCHOR } from '@/features/shortcuts/selection/shortcutSelectionLayout';
 import { useShortcutSelectionController } from '@/features/shortcuts/selection/useShortcutSelectionController';
 import type { ContextMenuState, ScenarioMode, Shortcut } from '@/types';
 
@@ -149,6 +150,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
 
       {shortcutMultiSelectMode ? (
         <ShortcutSelectionToolbar
+          anchorId={HOME_ROOT_SHORTCUT_GRID_ANCHOR}
           t={t}
           selectedShortcutCount={selectedShortcutCount}
           moveTargetScenarioModes={moveTargetScenarioModes}
