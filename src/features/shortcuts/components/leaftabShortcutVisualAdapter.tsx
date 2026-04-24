@@ -28,6 +28,7 @@ type RootShortcutGridCardRenderParamsShape = {
   folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled: boolean;
+  editWobbleActive?: boolean;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
 };
@@ -139,8 +140,8 @@ function ShortcutSelectionIndicator({
         data-selected={selected}
         className={`absolute flex items-center justify-center rounded-full border shadow-[0_3px_10px_rgba(0,0,0,0.16)] ${
           selected
-            ? 'border-white/85 bg-primary text-primary-foreground'
-            : 'border-white/35 bg-black/35 text-transparent backdrop-blur-[6px]'
+            ? 'border-white/72 bg-primary text-primary-foreground dark:border-black/16'
+            : 'border-black/10 bg-black/12 text-transparent backdrop-blur-[6px] dark:border-white/14 dark:bg-white/12'
         }`}
         style={{
           right: SELECTION_INDICATOR_OFFSET_PX,
@@ -149,7 +150,7 @@ function ShortcutSelectionIndicator({
           height: SELECTION_INDICATOR_SIZE_PX,
         }}
       >
-        {selected ? <RiCheckFill className="size-[10px]" /> : null}
+        {selected ? <RiCheckFill className="size-[11px]" /> : null}
       </span>
     </span>
   );
@@ -173,6 +174,7 @@ export function renderRootShortcutGridCard(params: RootShortcutGridCardRenderPar
       folderPreviewTone={params.folderPreviewTone}
       onPreviewShortcutOpen={params.onPreviewShortcutOpen}
       selectionDisabled={params.selectionDisabled}
+      editWobbleActive={params.editWobbleActive}
       folderPortalBackdrop
       rootProps={{
         'data-testid': `root-shortcut-card-${params.shortcut.id}`,

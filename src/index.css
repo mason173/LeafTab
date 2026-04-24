@@ -70,6 +70,38 @@
   }
 }
 
+@keyframes leaftab-shortcut-edit-rotate {
+  0% {
+    transform: rotate(-1deg);
+  }
+
+  100% {
+    transform: rotate(1deg);
+  }
+}
+
+@keyframes leaftab-shortcut-edit-drift {
+  0% {
+    transform: translateX(-0.2px);
+  }
+
+  16.667% {
+    transform: translateX(0.6px);
+  }
+
+  50% {
+    transform: translateX(-0.4px);
+  }
+
+  83.333% {
+    transform: translateX(0.46px);
+  }
+
+  100% {
+    transform: translateX(-0.32px);
+  }
+}
+
 /* Vaul's defaultOpen only disables keyframe animations, but transform transitions
    on the drawer can still run on first paint. Force-disable both for boot state. */
 [data-vaul-animate='false'] {

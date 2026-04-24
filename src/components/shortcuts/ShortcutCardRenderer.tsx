@@ -19,6 +19,7 @@ interface ShortcutCardRendererProps {
   folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
+  editWobbleActive?: boolean;
   folderPortalBackdrop?: boolean;
   rootProps?: React.ComponentProps<typeof ShortcutCardCompact>['rootProps'];
   iconContentProps?: React.ComponentProps<typeof ShortcutCardCompact>['iconContentProps'];
@@ -44,6 +45,7 @@ export function ShortcutCardRenderer({
   folderPreviewTone = 'default',
   onPreviewShortcutOpen,
   selectionDisabled = false,
+  editWobbleActive = false,
   folderPortalBackdrop = false,
   rootProps,
   iconContentProps,
@@ -69,6 +71,7 @@ export function ShortcutCardRenderer({
       folderPreviewTone={folderPreviewTone}
       onPreviewShortcutOpen={onPreviewShortcutOpen}
       selectionDisabled={selectionDisabled}
+      editWobbleActive={editWobbleActive}
       folderPortalBackdrop={folderPortalBackdrop}
       rootProps={rootProps}
       iconContentProps={iconContentProps}

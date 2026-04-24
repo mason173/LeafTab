@@ -44,7 +44,7 @@ function resolveFloatingSearchMotionMetrics(phase: FloatingSearchMotionPhase): {
 }
 
 export function resolveFloatingSearchOffsetPx(searchHeight: number) {
-  return Math.max(16, Math.round(searchHeight * 0.42));
+  return Math.max(12, Math.round(searchHeight * 0.24));
 }
 
 export function resolveFloatingSearchReservePx(searchHeight: number) {

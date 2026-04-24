@@ -379,9 +379,9 @@ export default function SettingsModal({
           scrollBarClassName="data-[orientation=vertical]:translate-x-4"
         >
           <div className="flex flex-col gap-5">
-            <div className="relative flex h-[142px] flex-col items-center justify-center overflow-hidden rounded-[24px] border border-border/60 bg-secondary/20 px-4 text-center">
+            <div className="relative flex flex-col items-center justify-center px-4 pt-1 text-center">
               {DIST_CHANNEL === 'community' ? (
-                <div className="absolute right-3 top-3 rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[9px] font-normal text-foreground/70 backdrop-blur">
+                <div className="absolute right-0 top-0 rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[9px] font-normal text-foreground/70 backdrop-blur">
                   {languageValue === 'zh' || languageValue === 'zh-TW' ? '社区版' : 'Community'}
                 </div>
               ) : null}
@@ -394,7 +394,7 @@ export default function SettingsModal({
                   draggable={false}
                 />
               </div>
-              <div className="relative mt-2 flex w-full max-w-[420px] flex-col items-center gap-0.5">
+              <div className="relative mt-3 flex w-full max-w-[420px] flex-col items-center gap-0.5">
                 <h2 className="max-w-full text-[16px] font-bold leading-none tracking-[-0.03em] text-foreground">
                   {settingsHeroCopy.title}
                 </h2>
@@ -418,7 +418,7 @@ export default function SettingsModal({
                   <button
                     key={option.value}
                     type="button"
-                    className={`flex h-11 items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-center border transition-all ${displayMode === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-secondary/50 text-foreground hover:bg-secondary'}`}
+                    className={`flex h-11 items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-center transition-all ${displayMode === option.value ? 'bg-primary/10 text-primary' : 'bg-secondary/50 text-foreground hover:bg-secondary'}`}
                     onClick={() => { onDisplayModeChange(option.value); onOpenChange(false); }}
                   >
                     {renderDisplayModeIcon(option.value, "size-4.5 shrink-0")}
@@ -450,7 +450,6 @@ export default function SettingsModal({
               </div>
             </div>
             <Separator className="bg-border/60" />
-
             <div className="flex items-center justify-between space-x-2">
               <div className="flex flex-col space-y-1 items-start">
                 <span className="text-sm font-medium leading-none">{t('settings.searchSettings.label')}</span>

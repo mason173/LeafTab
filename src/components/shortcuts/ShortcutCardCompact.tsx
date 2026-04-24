@@ -25,6 +25,7 @@ interface ShortcutCardCompactProps {
   folderPreviewTone?: 'default' | 'drawer';
   onPreviewShortcutOpen?: (shortcut: Shortcut) => void;
   selectionDisabled?: boolean;
+  editWobbleActive?: boolean;
   disableIconWrapperEffects?: boolean;
   animateTitleOnMount?: boolean;
   titleFadeDurationMs?: number;
@@ -63,6 +64,7 @@ export function ShortcutCardCompact({
   folderPreviewTone = 'default',
   onPreviewShortcutOpen,
   selectionDisabled = false,
+  editWobbleActive = false,
   disableIconWrapperEffects = false,
   animateTitleOnMount = false,
   titleFadeDurationMs = 300,
@@ -91,10 +93,48 @@ export function ShortcutCardCompact({
   const iconWrapperMotionClass = disableIconWrapperEffects || firefox || folder || folderSelectionDisabled
     ? ''
     : 'transform-gpu transition-transform duration-150 ease-out will-change-transform group-hover/shortcut:scale-[1.05]';
+  const driftMotionClass = editWobbleActive
+    ? 'transform-gpu will-change-transform'
+    : '';
+  const rotateMotionClass = editWobbleActive
+    ? 'transform-gpu will-change-transform'
+    : '';
   const resolvedTitleOpacity = showTitle
     ? (animateTitleOnMount ? (titleFadeReady ? 1 : 0) : 1)
     : 0;
   const iconSurfaceMaskStyle = shineActive ? getShortcutIconSmoothClipPathStyles(iconCornerRadius ?? 22) : undefined;
+  const wobbleSeed = shortcut.id || shortcut.url || shortcut.title || 'shortcut';
+  let wobbleHash = 0;
+  for (let index = 0; index < wobbleSeed.length; index += 1) {
+    wobbleHash = (wobbleHash * 33 + wobbleSeed.charCodeAt(index)) >>> 0;
+  }
+  const normalizedVariance = (wobbleHash % 1000) / 1000;
+  const rotateDurationMs = 176 + Math.round(normalizedVariance * 26);
+  const driftDurationMs = 520 + Math.round(normalizedVariance * 70);
+  const rotateDelayMs = -1 * (wobbleHash % 220);
+  const driftDelayMs = -1 * ((wobbleHash >> 3) % 640);
+  const driftMotionStyle = editWobbleActive
+    ? ({
+        animationName: 'leaftab-shortcut-edit-drift',
+        animationDuration: `${driftDurationMs}ms`,
+        animationTimingFunction: 'linear',
+        animationIterationCount: 'infinite',
+        animationDelay: `${driftDelayMs}ms`,
+        backfaceVisibility: 'hidden',
+      } satisfies React.CSSProperties)
+    : undefined;
+  const rotateMotionStyle = editWobbleActive
+    ? ({
+        animationName: 'leaftab-shortcut-edit-rotate',
+        animationDuration: `${rotateDurationMs}ms`,
+        animationTimingFunction: 'ease-in-out',
+        animationIterationCount: 'infinite',
+        animationDirection: 'alternate',
+        animationDelay: `${rotateDelayMs}ms`,
+        transformOrigin: '50% 0%',
+        backfaceVisibility: 'hidden',
+      } satisfies React.CSSProperties)
+    : undefined;
 
   useEffect(() => {
     if (!animateTitleOnMount) return;
@@ -123,60 +163,62 @@ export function ShortcutCardCompact({
       onContextMenu={onContextMenu}
     >
       <div
-        className={`flex items-center justify-start ${floatingTitle ? '' : 'flex-col gap-[4px]'}`}
-        style={{ width: metrics.width, height: metrics.height }}
+        className={`flex items-center justify-start ${driftMotionClass} ${floatingTitle ? '' : 'flex-col gap-[4px]'}`}
+        style={{ width: metrics.width, height: metrics.height, ...driftMotionStyle }}
       >
-        <div
-          {...iconWrapperProps}
-          className={`relative shrink-0 origin-center ${iconWrapperMotionClass} ${iconWrapperProps?.className ?? ''}`}
-          style={{ height: metrics.previewSize, width: metrics.previewSize, ...iconWrapperProps?.style }}
-        >
+        <div className={rotateMotionClass} style={rotateMotionStyle}>
           <div
-            {...iconContentProps}
-            className={`absolute inset-0 flex items-center justify-center origin-center ${iconContentProps?.className ?? ''}`}
-            style={{ ...iconContentProps?.style }}
+            {...iconWrapperProps}
+            className={`relative shrink-0 origin-center ${iconWrapperMotionClass} ${iconWrapperProps?.className ?? ''}`}
+            style={{ height: metrics.previewSize, width: metrics.previewSize, ...iconWrapperProps?.style }}
           >
-            {folder ? (
-              <ShortcutVisualRenderer
-                shortcut={shortcut}
-                previewSize={metrics.previewSize}
-                largeFolder={metrics.largeFolder}
-                iconSize={iconSize}
-                iconCornerRadius={iconCornerRadius}
-                iconAppearance={iconAppearance}
-                remoteIconScale={remoteIconScale}
-                dropTargetActive={dropTargetActive}
-                hideFolderPreviewContents={hideFolderPreviewContents}
-                folderPreviewTone={folderPreviewTone}
-                onOpenFolder={onOpen}
-                onPreviewShortcutOpen={onPreviewShortcutOpen}
-                selectionDisabled={folderSelectionDisabled}
-                folderPortalBackdrop={folderPortalBackdrop}
-              />
-            ) : (
-              <ShortcutVisualRenderer
-                shortcut={shortcut}
-                previewSize={metrics.previewSize}
-                iconSize={iconSize}
-                iconCornerRadius={iconCornerRadius}
-                iconAppearance={iconAppearance}
-                remoteIconScale={remoteIconScale}
-                dropTargetActive={dropTargetActive}
-              />
-            )}
-          </div>
-          {shineActive ? (
             <div
-              className="pointer-events-none absolute inset-0 overflow-hidden"
-              style={iconSurfaceMaskStyle}
-              aria-hidden="true"
+              {...iconContentProps}
+              className={`absolute inset-0 flex items-center justify-center origin-center ${iconContentProps?.className ?? ''}`}
+              style={{ ...iconContentProps?.style }}
             >
-              <div
-                className="absolute left-[-172%] top-[-52%] h-[236%] w-[138%] rotate-[20deg] bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.04),rgba(255,255,255,0.22),rgba(255,255,255,0.05),rgba(255,255,255,0))] opacity-56 blur-[3px]"
-                style={{ animation: 'leaftab-shortcut-shine 1.9s linear infinite' }}
-              />
+              {folder ? (
+                <ShortcutVisualRenderer
+                  shortcut={shortcut}
+                  previewSize={metrics.previewSize}
+                  largeFolder={metrics.largeFolder}
+                  iconSize={iconSize}
+                  iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
+                  remoteIconScale={remoteIconScale}
+                  dropTargetActive={dropTargetActive}
+                  hideFolderPreviewContents={hideFolderPreviewContents}
+                  folderPreviewTone={folderPreviewTone}
+                  onOpenFolder={onOpen}
+                  onPreviewShortcutOpen={onPreviewShortcutOpen}
+                  selectionDisabled={folderSelectionDisabled}
+                  folderPortalBackdrop={folderPortalBackdrop}
+                />
+              ) : (
+                <ShortcutVisualRenderer
+                  shortcut={shortcut}
+                  previewSize={metrics.previewSize}
+                  iconSize={iconSize}
+                  iconCornerRadius={iconCornerRadius}
+                  iconAppearance={iconAppearance}
+                  remoteIconScale={remoteIconScale}
+                  dropTargetActive={dropTargetActive}
+                />
+              )}
             </div>
-          ) : null}
+            {shineActive ? (
+              <div
+                className="pointer-events-none absolute inset-0 overflow-hidden"
+                style={iconSurfaceMaskStyle}
+                aria-hidden="true"
+              >
+                <div
+                  className="absolute left-[-172%] top-[-52%] h-[236%] w-[138%] rotate-[20deg] bg-[linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,0.04),rgba(255,255,255,0.22),rgba(255,255,255,0.05),rgba(255,255,255,0))] opacity-56 blur-[3px]"
+                  style={{ animation: 'leaftab-shortcut-shine 1.9s linear infinite' }}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
         {floatingTitle ? (
           <p
