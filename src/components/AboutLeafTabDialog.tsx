@@ -167,7 +167,7 @@ export function AboutLeafTabDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         data-testid="about-leaftab-dialog"
-        className="flex h-[min(76vh,664px)] w-[min(1040px,calc(100vw-1rem))] max-w-[1040px] min-w-0 flex-col gap-0 overflow-hidden rounded-[36px] border-border bg-background p-0 text-foreground sm:max-w-[1040px]"
+        className="flex h-[min(72vh,620px)] w-[min(920px,calc(100vw-1rem))] max-w-[920px] min-w-0 flex-col gap-0 overflow-hidden rounded-[34px] border-border bg-background p-0 text-foreground sm:max-w-[920px]"
       >
         <DialogHeader className="px-5 pb-1 pt-4 text-left">
           <div className="flex min-w-0 items-center gap-3 pr-10">
@@ -210,8 +210,8 @@ export function AboutLeafTabDialog({
         <div className="min-h-0 flex-1 overflow-hidden">
           {activeTab === 'about' ? (
             <div className="h-full px-5 pb-2.5 pt-1.5">
-              <div className="mx-auto flex h-full max-w-[972px] flex-col gap-3">
-                <div className="grid min-h-0 gap-3.5 md:grid-cols-[176px_minmax(0,1fr)] md:items-start">
+              <div className="mx-auto flex h-full max-w-[860px] flex-col gap-3">
+                <div className="grid min-h-0 gap-3 md:grid-cols-[160px_minmax(0,1fr)] md:items-start">
                   <div className="flex min-w-0 flex-col items-center gap-2 text-center md:pt-1">
                     <img
                       src={aboutIcon}
@@ -229,7 +229,7 @@ export function AboutLeafTabDialog({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1.12fr)_minmax(290px,0.88fr)]">
+                  <div className="grid gap-2.5 md:grid-cols-[minmax(0,1.08fr)_minmax(240px,0.92fr)]">
                     <div className="space-y-2.5">
                       <p className="text-[11.5px] leading-5 whitespace-pre-wrap break-words text-muted-foreground [overflow-wrap:anywhere]">
                         {t('settings.about.content')}
@@ -285,7 +285,7 @@ export function AboutLeafTabDialog({
 
         {activeTab === 'about' ? (
           <div className="border-t border-border/60 px-5 pb-3 pt-2.5">
-            <div className="mx-auto grid max-w-[972px] min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="mx-auto grid max-w-[860px] min-w-0 grid-cols-2 gap-2 md:grid-cols-4">
               <StoreLinkCard
                 href="https://chromewebstore.google.com/detail/leaftab/lfogogokkkpmolbfbklchcbgdiboccdf?hl=zh-CN&gl=DE"
                 icon={<RiChromeFill className="h-4 w-4" />}
