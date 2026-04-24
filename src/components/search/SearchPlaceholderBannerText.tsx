@@ -77,9 +77,10 @@ export function SearchPlaceholderBannerText({
     );
   }
 
-  const transition = `transform ${transitionMs}ms ${PLACEHOLDER_SLIDE_EASING}, opacity ${transitionMs}ms ${PLACEHOLDER_SLIDE_EASING}`;
-  const previousTranslateY = isAnimating ? -lineHeight : 0;
-  const currentTranslateY = previousText === null ? 0 : (isAnimating ? 0 : lineHeight);
+  const transition = `transform ${transitionMs}ms ${PLACEHOLDER_SLIDE_EASING}`;
+  const trackTranslateY = previousText === null
+    ? 0
+    : (isAnimating ? -lineHeight : 0);
 
   return (
     <span
@@ -92,28 +93,46 @@ export function SearchPlaceholderBannerText({
     >
       {previousText !== null ? (
         <span
-          className="absolute inset-x-0 top-0 block truncate whitespace-nowrap"
+          className="absolute inset-x-0 top-0 block"
           style={{
-            transform: `translate3d(0, ${previousTranslateY}px, 0)`,
-            opacity: isAnimating ? 0 : 1,
+            transform: `translate3d(0, ${trackTranslateY}px, 0)`,
             transition,
-            willChange: 'transform, opacity',
+            willChange: 'transform',
           }}
         >
-          {previousText}
+          <span
+            className="flex truncate whitespace-nowrap"
+            style={{
+              height: `${lineHeight}px`,
+              lineHeight: `${lineHeight}px`,
+              alignItems: 'center',
+            }}
+          >
+            {previousText}
+          </span>
+          <span
+            className="flex truncate whitespace-nowrap"
+            style={{
+              height: `${lineHeight}px`,
+              lineHeight: `${lineHeight}px`,
+              alignItems: 'center',
+            }}
+          >
+            {currentText}
+          </span>
         </span>
       ) : null}
-      <span
-        className={`${previousText === null ? 'block' : 'absolute inset-x-0 top-0 block'} truncate whitespace-nowrap`}
-        style={{
-          transform: `translate3d(0, ${currentTranslateY}px, 0)`,
-          opacity: previousText === null ? 1 : (isAnimating ? 1 : 0),
-          transition: previousText === null ? 'none' : transition,
-          willChange: previousText === null ? undefined : 'transform, opacity',
-        }}
-      >
-        {currentText}
-      </span>
+      {previousText === null ? (
+        <span
+          className="block truncate whitespace-nowrap"
+          style={{
+            height: `${lineHeight}px`,
+            lineHeight: `${lineHeight}px`,
+          }}
+        >
+          {currentText}
+        </span>
+      ) : null}
     </span>
   );
 }

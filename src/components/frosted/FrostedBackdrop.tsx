@@ -137,6 +137,7 @@ export function FrostedBackdrop({
   if (preset === 'immersive-drawer') {
     return (
       <div
+        data-slot="material-surface-backdrop"
         className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
         style={{
           opacity,
@@ -194,6 +195,7 @@ export function FrostedBackdrop({
   if (drawerToneActive) {
     return (
       <div
+        data-slot="material-surface-backdrop"
         className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${radiusClassName}`}
         aria-hidden="true"
       >
@@ -211,6 +213,7 @@ export function FrostedBackdrop({
 
   return (
     <div
+      data-slot="material-surface-backdrop"
       className={`pointer-events-none absolute inset-0 z-0 overflow-hidden ${radiusClassName}`}
       aria-hidden="true"
     >

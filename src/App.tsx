@@ -36,7 +36,7 @@ import { DEFAULT_SHORTCUT_CARD_VARIANT, clampShortcutGridColumns } from '@/compo
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabModal';
+import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabDialog';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
 import {

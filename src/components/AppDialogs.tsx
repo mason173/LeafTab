@@ -1,7 +1,7 @@
 import { useEffect, useState, type ComponentProps } from 'react';
 import { RiShieldCrossFill } from '@/icons/ri-compat';
 import { useTranslation } from 'react-i18next';
-import { AboutLeafTabModal } from './AboutLeafTabModal';
+import { AboutLeafTabDialog } from './AboutLeafTabDialog';
 import { AdminModal } from './AdminModal';
 import AuthModal from './AuthModal';
 import ConfirmDialog from './ConfirmDialog';
@@ -35,7 +35,7 @@ type SearchSettingsModalProps = ComponentProps<typeof SearchSettingsModal>;
 type ShortcutGuideDialogProps = ComponentProps<typeof ShortcutGuideDialog>;
 type ShortcutIconSettingsDialogProps = ComponentProps<typeof ShortcutIconSettingsDialog>;
 type AdminModalProps = ComponentProps<typeof AdminModal>;
-type AboutLeafTabModalProps = ComponentProps<typeof AboutLeafTabModal>;
+type AboutLeafTabDialogProps = ComponentProps<typeof AboutLeafTabDialog>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
 type CloudSyncConfigDialogProps = ComponentProps<typeof CloudSyncConfigDialog>;
 type BackupScopeDialogProps = ComponentProps<typeof BackupScopeDialog>;
@@ -94,7 +94,7 @@ export interface AppDialogsProps {
   shortcutGuideDialogProps: ShortcutGuideDialogProps;
   shortcutIconSettingsDialogProps: ShortcutIconSettingsDialogProps;
   adminModalProps: AdminModalProps;
-  aboutModalProps: AboutLeafTabModalProps;
+  aboutModalProps: AboutLeafTabDialogProps;
   exportBackupDialogProps: BackupScopeDialogProps;
   importBackupDialogProps: BackupScopeDialogProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
@@ -171,7 +171,7 @@ export function AppDialogs({
       {shouldMountShortcutGuideDialog ? <ShortcutGuideDialog {...shortcutGuideDialogProps} /> : null}
       {shouldMountShortcutIconSettingsDialog ? <ShortcutIconSettingsDialog {...shortcutIconSettingsDialogProps} /> : null}
       {shouldMountAdminModal ? <AdminModal {...adminModalProps} /> : null}
-      {shouldMountAboutModal ? <AboutLeafTabModal {...aboutModalProps} /> : null}
+      {shouldMountAboutModal ? <AboutLeafTabDialog {...aboutModalProps} /> : null}
       {shouldMountExportBackupDialog ? <BackupScopeDialog {...exportBackupDialogProps} /> : null}
       {shouldMountImportBackupDialog ? <BackupScopeDialog {...importBackupDialogProps} /> : null}
       {shouldMountWebdavConfigDialog ? <WebdavConfigDialog {...webdavConfigDialogProps} /> : null}

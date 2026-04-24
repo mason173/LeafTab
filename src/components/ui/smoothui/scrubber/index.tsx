@@ -217,7 +217,7 @@ const Scrubber = ({
                   data-slot="scrubber-tick"
                   className={cn(
                     "absolute top-1/2 h-2 w-px -translate-x-1/2 -translate-y-1/2 rounded-full",
-                    "bg-primary"
+                    "bg-white/70"
                   )}
                   key={pos}
                   style={{ left: `${pos}%` }}
@@ -252,7 +252,7 @@ const Scrubber = ({
         {showLabel ? (
           <div
             data-slot="scrubber-label"
-            className="pointer-events-none absolute top-1/2 left-4 z-[4] -translate-y-1/2 whitespace-nowrap text-sm text-foreground"
+            className="pointer-events-none absolute top-1/2 left-4 z-[4] -translate-y-1/2 whitespace-nowrap text-sm text-white"
           >
             {label}
           </div>
@@ -261,7 +261,7 @@ const Scrubber = ({
         {showValue ? (
           <div
             data-slot="scrubber-value"
-            className="pointer-events-none absolute top-1/2 right-3 z-[4] -translate-y-1/2 text-sm font-medium text-foreground"
+            className="pointer-events-none absolute top-1/2 right-3 z-[4] -translate-y-1/2 text-sm font-medium text-white"
             style={{
               fontFamily: "ui-monospace, monospace",
               fontVariantNumeric: "tabular-nums",

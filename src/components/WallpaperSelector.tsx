@@ -117,9 +117,9 @@ export default function WallpaperSelector({
       </DialogTrigger>
       <DialogContent
         overlayClassName={`transition-opacity duration-220 ease-out ${isMaskSliderIsolation ? "!opacity-0 !bg-black/0" : ""}`}
-        className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
+        className={`max-w-[480px] rounded-[32px] overflow-hidden p-0 transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>[data-slot=material-surface-backdrop]]:transition-opacity [&>[data-slot=material-surface-backdrop]]:duration-220 [&>[data-slot=material-surface-backdrop]]:ease-out [&>button]:text-foreground ${
           isMaskSliderIsolation
-            ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none"
+            ? "bg-transparent border-transparent shadow-none backdrop-blur-none [&>[data-slot=material-surface-backdrop]]:opacity-0 [&>button]:opacity-0 [&>button]:pointer-events-none"
             : firefox
               ? "bg-popover/98 border-white/10 shadow-lg [&>button]:opacity-70 [&>button:hover]:opacity-100"
               : "bg-popover/95 backdrop-blur-xl border-white/10 shadow-2xl [&>button]:opacity-70 [&>button:hover]:opacity-100"

@@ -93,6 +93,7 @@ export function ShortcutIconSettingsDialog({
   const [isSliderInteracting, setIsSliderInteracting] = useState(false);
   const [activeSlider, setActiveSlider] = useState<'columns' | 'cornerRadius' | 'size' | null>(null);
   const isolationFadeClass = 'transition-opacity duration-220 ease-out';
+  const sliderSurfaceClass = 'w-full [&_[data-slot=scrubber-track]]:border [&_[data-slot=scrubber-track]]:border-white/24 [&_[data-slot=scrubber-track]]:bg-white/12 [&_[data-slot=scrubber-track]]:backdrop-blur-xl dark:[&_[data-slot=scrubber-track]]:border-white/10 dark:[&_[data-slot=scrubber-track]]:bg-black/18 [&_[data-slot=scrubber-fill]]:bg-primary [&_[data-slot=scrubber-tick]]:bg-white/70 [&_[data-slot=scrubber-label]]:text-white [&_[data-slot=scrubber-value]]:text-white';
   const previewStageSize = 124;
   const previewIconSize = scaleShortcutIconSize(92, draftScale);
   const columnBounds = useMemo(() => getShortcutColumnBounds(), []);
@@ -165,9 +166,9 @@ export function ShortcutIconSettingsDialog({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         overlayClassName={`${isolationFadeClass} ${isSliderInteracting ? '!opacity-0 !bg-black/0' : ''}`}
-        className={`sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-[32px] flex flex-col transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>button]:text-foreground ${
+        className={`sm:max-w-[500px] w-[500px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] rounded-[32px] flex flex-col transition-[background-color,border-color,box-shadow] duration-220 ease-out [&>[data-slot=material-surface-backdrop]]:transition-opacity [&>[data-slot=material-surface-backdrop]]:duration-220 [&>[data-slot=material-surface-backdrop]]:ease-out [&>button]:text-foreground ${
           isSliderInteracting
-            ? 'bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none'
+            ? '[&>[data-slot=material-surface-backdrop]]:opacity-0 bg-transparent border-transparent shadow-none backdrop-blur-none [&>button]:opacity-0 [&>button]:pointer-events-none'
             : 'bg-background border-border text-foreground'
         }`}
       >
@@ -219,7 +220,7 @@ export function ShortcutIconSettingsDialog({
 
           <div className={`${isolationFadeClass} ${activeSlider && activeSlider !== 'cornerRadius' ? 'opacity-0 pointer-events-none select-none' : ''}`}>
             <Scrubber
-              className="flex-1"
+              className={`flex-1 ${sliderSurfaceClass}`}
               label={t('settings.shortcutIconSettings.cornerRadius', { defaultValue: '圆角' })}
               min={MIN_SHORTCUT_ICON_CORNER_RADIUS}
               max={MAX_SHORTCUT_ICON_CORNER_RADIUS}
@@ -245,7 +246,7 @@ export function ShortcutIconSettingsDialog({
 
           <div className={`${isolationFadeClass} ${activeSlider && activeSlider !== 'size' ? 'opacity-0 pointer-events-none select-none' : ''}`}>
             <Scrubber
-              className="flex-1"
+              className={`flex-1 ${sliderSurfaceClass}`}
               label={t('settings.shortcutIconSettings.size', { defaultValue: '图标大小' })}
               min={MIN_SHORTCUT_ICON_SCALE}
               max={MAX_SHORTCUT_ICON_SCALE}
@@ -299,7 +300,7 @@ export function ShortcutIconSettingsDialog({
               <RiSubtractLine className="size-4" />
             </Button>
             <Scrubber
-              className="flex-1"
+              className={`flex-1 ${sliderSurfaceClass}`}
               label={t('settings.shortcutsStyle.columns')}
               min={columnBounds.min}
               max={columnBounds.max}
@@ -334,7 +335,7 @@ export function ShortcutIconSettingsDialog({
           </div>
         </div>
 
-        <DialogFooter className={`flex w-full gap-3 sm:gap-3 ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
+        <DialogFooter className={`mt-2 flex w-full gap-3 sm:gap-3 ${isolationFadeClass} ${isSliderInteracting ? 'opacity-0 pointer-events-none select-none' : ''}`}>
           <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => onOpenChange(false)}>
             {t('common.close')}
           </Button>

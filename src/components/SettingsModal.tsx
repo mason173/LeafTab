@@ -13,7 +13,7 @@ import {
   RiUpload2Fill,
 } from "@/icons/ri-compat";
 import { useTheme } from "next-themes";
-import type { AboutLeafTabModalTab } from "./AboutLeafTabModal";
+import type { AboutLeafTabModalTab } from "./AboutLeafTabDialog";
 import type { WebdavConfig } from "@/types/webdav";
 import { toast } from "./ui/sonner";
 import { parseLeafTabLocalBackupImport, type LeafTabLocalBackupImportData } from "@/sync/leaftab";

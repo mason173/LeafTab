@@ -27,17 +27,17 @@ export function ChangelogTimeline({
       {items.map((item) => {
         const notes = item.notes.filter(Boolean);
         return (
-          <section key={item.version} className="relative grid grid-cols-[5.5rem_1fr] gap-3 pb-6 last:pb-0">
+          <section key={item.version} className="relative grid grid-cols-[5rem_1fr] gap-3 pb-5 last:pb-0">
             <div className="relative z-10 flex items-start justify-center">
               <span
-                className="inline-flex min-w-[62px] justify-center rounded-full border border-border/60 bg-muted px-3 py-1 text-[15px] leading-none font-semibold tracking-wide text-muted-foreground"
+                className="inline-flex min-w-[54px] justify-center rounded-full border border-border/60 bg-muted px-2.5 py-1 text-[12px] leading-none font-semibold tracking-wide text-muted-foreground"
               >
                 v{item.version}
               </span>
             </div>
 
             <div className="min-w-0 pt-0.5">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
                 <span>{formatChangelogDate(item.date, language)}</span>
                 {item.tag ? (
                   <span className="inline-flex rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
@@ -46,15 +46,15 @@ export function ChangelogTimeline({
                 ) : null}
               </div>
               {notes.length > 0 ? (
-                <ul className="mt-1.5 space-y-1.5 pl-4 list-disc marker:text-muted-foreground/80">
+                <ul className="mt-1.5 list-disc space-y-1 pl-4 marker:text-muted-foreground/80">
                   {notes.map((note, noteIndex) => (
-                    <li key={noteIndex} className="text-[13px] leading-5 font-normal text-foreground/90">
+                    <li key={noteIndex} className="text-[11px] leading-[18px] font-normal text-foreground/90">
                       {note}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1.5 text-[13px] leading-5 font-normal text-muted-foreground">{`v${item.version}`}</p>
+                <p className="mt-1.5 text-[11px] leading-[18px] font-normal text-muted-foreground">{`v${item.version}`}</p>
               )}
             </div>
           </section>
