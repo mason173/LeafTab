@@ -32,6 +32,8 @@
     [data-slot="button"],
     [data-slot="input"],
     [data-slot="textarea"],
+    [data-slot="select-trigger"],
+    [data-slot="switch"],
     [data-slot="tabs-list"],
     [data-slot="tabs-trigger"],
     [role="tablist"],
@@ -39,8 +41,56 @@
     button:not([data-slot="checkbox"]):not([data-slot="switch"]):not([data-slot="radio-group-item"]):not([role="checkbox"]):not([role="switch"]):not([role="radio"]):not(.no-pill-radius),
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not(.no-pill-radius),
     textarea:not(.no-pill-radius)
-  ) {
+  ):not(:where([data-search-ui] *)) {
     border-radius: 9999px !important;
+  }
+
+  :where(
+    [data-frosted-ui-scope],
+    [data-slot="dialog-content"],
+    [data-slot="popover-content"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="context-menu-content"],
+    [data-slot="context-menu-sub-content"],
+    [data-slot="tooltip-content"],
+    [data-slot="hover-card-content"],
+    [data-slot="alert-dialog-content"],
+    [data-slot="sheet-content"],
+    [data-slot="drawer-content"],
+    [data-slot="select-content"],
+    [data-slot="menubar-content"],
+    [data-slot="menubar-sub-content"],
+    [data-slot="navigation-menu-content"],
+    [data-slot="navigation-menu-viewport"],
+    [data-testid="shortcut-context-menu"]
+  ) {
+    --background: var(--frosted-ui-background);
+    --foreground: var(--frosted-ui-foreground);
+    --card: var(--frosted-ui-card);
+    --card-foreground: var(--frosted-ui-foreground);
+    --popover: var(--frosted-ui-card);
+    --popover-foreground: var(--frosted-ui-foreground);
+    --secondary: var(--frosted-ui-secondary);
+    --secondary-foreground: var(--frosted-ui-foreground);
+    --muted: var(--frosted-ui-muted);
+    --muted-foreground: var(--frosted-ui-muted-foreground);
+    --accent: var(--frosted-ui-accent);
+    --accent-foreground: var(--frosted-ui-foreground);
+    --border: var(--frosted-ui-border);
+    --input: var(--frosted-ui-border);
+    --input-background: var(--frosted-ui-background);
+  }
+}
+
+@layer utilities {
+  .frosted-control-surface {
+    background-color: var(--frosted-ui-control-fill);
+    border: 1px solid var(--frosted-ui-border);
+  }
+
+  .frosted-control-surface:hover {
+    background-color: var(--frosted-ui-control-fill-hover);
   }
 }
 
@@ -131,6 +181,7 @@
 :root {
   --font-size: 16px;
   --tint-rgb: 59 130 246;
+  --ui-hairline-border: rgba(0, 0, 0, 0.04);
   --initial-reveal-surface: #323232;
   --background: color-mix(in srgb, #ffffff 99.2%, rgb(var(--tint-rgb)) 0.8%);
   --foreground: rgba(0, 0, 0, 0.88);
@@ -148,8 +199,8 @@
   --accent-foreground: #111111;
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: color-mix(in srgb, rgba(0, 0, 0, 0.1) 95%, rgb(var(--tint-rgb)) 5%);
-  --input: color-mix(in srgb, rgba(0, 0, 0, 0.1) 95.5%, rgb(var(--tint-rgb)) 4.5%);
+  --border: var(--ui-hairline-border);
+  --input: var(--ui-hairline-border);
   --input-background: color-mix(in srgb, #f2f2f2 96%, rgb(var(--tint-rgb)) 4%);
   --shortcut-monochrome-surface-theme-adaptive: #ffffff;
   --ring: oklch(0.708 0 0);
@@ -167,10 +218,22 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --frosted-ui-background: rgba(0, 0, 0, 0.12);
+  --frosted-ui-control-fill: rgba(0, 0, 0, 0.04);
+  --frosted-ui-control-fill-hover: rgba(0, 0, 0, 0.06);
+  --frosted-ui-border: var(--ui-hairline-border);
+  --frosted-ui-card: var(--frosted-ui-control-fill);
+  --frosted-ui-card-hover: var(--frosted-ui-control-fill-hover);
+  --frosted-ui-secondary: var(--frosted-ui-control-fill);
+  --frosted-ui-muted: var(--frosted-ui-control-fill);
+  --frosted-ui-accent: var(--frosted-ui-control-fill-hover);
+  --frosted-ui-foreground: rgba(0, 0, 0, 0.76);
+  --frosted-ui-muted-foreground: rgba(0, 0, 0, 0.52);
 }
 
 .dark {
   --initial-reveal-surface: #323232;
+  --ui-hairline-border: rgba(255, 255, 255, 0.04);
   --background: color-mix(in srgb, #1f1f20 98.4%, rgb(var(--tint-rgb)) 1.6%);
   --foreground: rgba(255, 255, 255, 0.88);
   --card: color-mix(in srgb, #232325 97.2%, rgb(var(--tint-rgb)) 2.8%);
@@ -187,8 +250,8 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: #ff5a6b;
   --destructive-foreground: #ffffff;
-  --border: color-mix(in srgb, rgba(255, 255, 255, 0.11) 93%, rgb(var(--tint-rgb)) 7%);
-  --input: color-mix(in srgb, #2b2b30 94%, rgb(var(--tint-rgb)) 6%);
+  --border: var(--ui-hairline-border);
+  --input: var(--ui-hairline-border);
   --shortcut-monochrome-surface-theme-adaptive: var(--background);
   --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -204,6 +267,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --frosted-ui-background: rgba(255, 255, 255, 0.12);
+  --frosted-ui-control-fill: rgba(255, 255, 255, 0.04);
+  --frosted-ui-control-fill-hover: rgba(255, 255, 255, 0.06);
+  --frosted-ui-border: var(--ui-hairline-border);
+  --frosted-ui-card: var(--frosted-ui-control-fill);
+  --frosted-ui-card-hover: var(--frosted-ui-control-fill-hover);
+  --frosted-ui-secondary: var(--frosted-ui-control-fill);
+  --frosted-ui-muted: var(--frosted-ui-control-fill);
+  --frosted-ui-accent: var(--frosted-ui-control-fill-hover);
+  --frosted-ui-foreground: rgba(255, 255, 255, 0.9);
+  --frosted-ui-muted-foreground: rgba(255, 255, 255, 0.62);
 }
 
 @theme inline {
@@ -345,6 +419,12 @@
   box-shadow: none !important;
 }
 
+[data-slot="select-content"],
+[data-slot="select-content"]:focus,
+[data-slot="select-content"]:focus-visible {
+  box-shadow: 0 16px 44px rgba(8, 12, 18, 0.18) !important;
+}
+
 /* Keep all modal/popup surfaces above page blur/masks */
 [data-slot="dialog-overlay"],
 [data-slot="alert-dialog-overlay"],
@@ -372,4 +452,22 @@
 [data-slot="hover-card-content"],
 [data-slot="tooltip-content"] {
   z-index: 15030 !important;
+}
+
+@keyframes leaftab-marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes leaftab-marquee-scroll-reverse {
+  from {
+    transform: translate3d(-50%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
 }

@@ -13,6 +13,19 @@ const VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT = 2;
 const VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT = 8;
 const VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS = 240;
 
+type RectListener = (rect: ViewportRect | null) => void;
+type SubscriptionEntry = {
+  listeners: Set<RectListener>;
+  rect: ViewportRect | null;
+};
+
+const viewportRectSubscriptions = new Map<HTMLElement, SubscriptionEntry>();
+let viewportRectRafId = 0;
+let viewportRectIntervalId = 0;
+let viewportRectBurstFramesRemaining = 0;
+let viewportRectResizeObserver: ResizeObserver | null = null;
+let viewportRectListenersAttached = false;
+
 function rectEquals(left: ViewportRect | null, right: ViewportRect | null) {
   if (!left || !right) return left === right;
   return (
@@ -35,6 +48,164 @@ function resolveViewportRect(element: HTMLElement): ViewportRect | null {
   };
 }
 
+function notifyViewportRectListeners(element: HTMLElement, nextRect: ViewportRect | null) {
+  const entry = viewportRectSubscriptions.get(element);
+  if (!entry) return;
+  if (rectEquals(entry.rect, nextRect)) return;
+  entry.rect = nextRect;
+  entry.listeners.forEach((listener) => {
+    listener(nextRect);
+  });
+}
+
+function commitViewportRects() {
+  viewportRectSubscriptions.forEach((_entry, element) => {
+    notifyViewportRectListeners(element, resolveViewportRect(element));
+  });
+}
+
+function flushViewportRectFrame() {
+  viewportRectRafId = 0;
+  commitViewportRects();
+  if (viewportRectBurstFramesRemaining > 0) {
+    viewportRectBurstFramesRemaining -= 1;
+    viewportRectRafId = window.requestAnimationFrame(flushViewportRectFrame);
+  }
+}
+
+function requestViewportRectSync(burstFrames = 0) {
+  if (typeof window === 'undefined') return;
+  viewportRectBurstFramesRemaining = Math.max(viewportRectBurstFramesRemaining, burstFrames);
+  if (viewportRectRafId) return;
+  viewportRectRafId = window.requestAnimationFrame(flushViewportRectFrame);
+}
+
+function handleViewportRectViewportChange() {
+  requestViewportRectSync(1);
+}
+
+function handleViewportRectAnimatedChange() {
+  requestViewportRectSync(VIEWPORT_RECT_ANIMATION_FRAME_COUNT);
+}
+
+function handleViewportRectPointerDown() {
+  requestViewportRectSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
+}
+
+function handleViewportRectPointerMove(event: PointerEvent) {
+  const pointerDragging = event.buttons !== 0 || event.pointerType === 'touch';
+  if (!pointerDragging) return;
+  requestViewportRectSync(VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT);
+}
+
+function handleViewportRectPointerRelease() {
+  requestViewportRectSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
+}
+
+function attachViewportRectListeners() {
+  if (viewportRectListenersAttached || typeof window === 'undefined') return;
+
+  window.addEventListener('resize', handleViewportRectViewportChange, { passive: true });
+  window.addEventListener('scroll', handleViewportRectViewportChange, { passive: true, capture: true });
+  window.addEventListener('orientationchange', handleViewportRectViewportChange);
+  window.addEventListener('pointerdown', handleViewportRectPointerDown, { passive: true, capture: true });
+  window.addEventListener('pointermove', handleViewportRectPointerMove, { passive: true, capture: true });
+  window.addEventListener('pointerup', handleViewportRectPointerRelease, { passive: true, capture: true });
+  window.addEventListener('pointercancel', handleViewportRectPointerRelease, { passive: true, capture: true });
+  document.addEventListener('transitionrun', handleViewportRectAnimatedChange, true);
+  document.addEventListener('transitionend', handleViewportRectAnimatedChange, true);
+  document.addEventListener('animationstart', handleViewportRectAnimatedChange, true);
+  document.addEventListener('animationend', handleViewportRectAnimatedChange, true);
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleViewportRectViewportChange, { passive: true });
+    window.visualViewport.addEventListener('scroll', handleViewportRectViewportChange, { passive: true });
+  }
+
+  viewportRectIntervalId = window.setInterval(() => {
+    requestViewportRectSync();
+  }, VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS);
+
+  viewportRectResizeObserver = new ResizeObserver(() => {
+    requestViewportRectSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
+  });
+  viewportRectResizeObserver.observe(document.documentElement);
+  viewportRectSubscriptions.forEach((_entry, element) => {
+    viewportRectResizeObserver?.observe(element);
+  });
+
+  viewportRectListenersAttached = true;
+}
+
+function detachViewportRectListeners() {
+  if (!viewportRectListenersAttached || typeof window === 'undefined') return;
+
+  if (viewportRectRafId) {
+    window.cancelAnimationFrame(viewportRectRafId);
+    viewportRectRafId = 0;
+  }
+  if (viewportRectIntervalId) {
+    window.clearInterval(viewportRectIntervalId);
+    viewportRectIntervalId = 0;
+  }
+
+  viewportRectResizeObserver?.disconnect();
+  viewportRectResizeObserver = null;
+
+  window.removeEventListener('resize', handleViewportRectViewportChange);
+  window.removeEventListener('scroll', handleViewportRectViewportChange, true);
+  window.removeEventListener('orientationchange', handleViewportRectViewportChange);
+  window.removeEventListener('pointerdown', handleViewportRectPointerDown, true);
+  window.removeEventListener('pointermove', handleViewportRectPointerMove, true);
+  window.removeEventListener('pointerup', handleViewportRectPointerRelease, true);
+  window.removeEventListener('pointercancel', handleViewportRectPointerRelease, true);
+  document.removeEventListener('transitionrun', handleViewportRectAnimatedChange, true);
+  document.removeEventListener('transitionend', handleViewportRectAnimatedChange, true);
+  document.removeEventListener('animationstart', handleViewportRectAnimatedChange, true);
+  document.removeEventListener('animationend', handleViewportRectAnimatedChange, true);
+
+  if (window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', handleViewportRectViewportChange);
+    window.visualViewport.removeEventListener('scroll', handleViewportRectViewportChange);
+  }
+
+  viewportRectBurstFramesRemaining = 0;
+  viewportRectListenersAttached = false;
+}
+
+function subscribeToViewportRect(element: HTMLElement, listener: RectListener) {
+  let entry = viewportRectSubscriptions.get(element);
+  if (!entry) {
+    entry = {
+      listeners: new Set<RectListener>(),
+      rect: resolveViewportRect(element),
+    };
+    viewportRectSubscriptions.set(element, entry);
+  }
+
+  entry.listeners.add(listener);
+  listener(entry.rect);
+
+  attachViewportRectListeners();
+  viewportRectResizeObserver?.observe(element);
+  requestViewportRectSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
+
+  return () => {
+    const currentEntry = viewportRectSubscriptions.get(element);
+    if (!currentEntry) return;
+
+    currentEntry.listeners.delete(listener);
+    if (currentEntry.listeners.size > 0) return;
+
+    viewportRectResizeObserver?.unobserve(element);
+    viewportRectSubscriptions.delete(element);
+
+    if (viewportRectSubscriptions.size === 0) {
+      detachViewportRectListeners();
+    }
+  };
+}
+
 export function useLiveViewportRect(element: HTMLElement | null, enabled: boolean) {
   const [rect, setRect] = useState<ViewportRect | null>(null);
 
@@ -44,112 +215,7 @@ export function useLiveViewportRect(element: HTMLElement | null, enabled: boolea
       return;
     }
 
-    let rafId = 0;
-    let intervalId = 0;
-    let burstFramesRemaining = 0;
-    let resizeObserver: ResizeObserver | null = null;
-
-    const commitRect = () => {
-      const nextRect = resolveViewportRect(element);
-      setRect((current) => (rectEquals(current, nextRect) ? current : nextRect));
-      return nextRect;
-    };
-
-    const flushFrame = () => {
-      rafId = 0;
-      const nextRect = commitRect();
-      if (!nextRect) return;
-
-      if (burstFramesRemaining > 0) {
-        burstFramesRemaining -= 1;
-        rafId = window.requestAnimationFrame(flushFrame);
-      }
-    };
-
-    const requestSync = (burstFrames = 0) => {
-      burstFramesRemaining = Math.max(burstFramesRemaining, burstFrames);
-      if (rafId) return;
-      rafId = window.requestAnimationFrame(flushFrame);
-    };
-
-    const handleViewportChange = () => {
-      requestSync(1);
-    };
-
-    const handleAnimatedChange = () => {
-      requestSync(VIEWPORT_RECT_ANIMATION_FRAME_COUNT);
-    };
-
-    const handlePointerDown = () => {
-      requestSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const pointerDragging = event.buttons !== 0 || event.pointerType === 'touch';
-      if (!pointerDragging) return;
-      requestSync(VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT);
-    };
-
-    const handlePointerRelease = () => {
-      requestSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
-    };
-
-    commitRect();
-    requestSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
-
-    window.addEventListener('resize', handleViewportChange, { passive: true });
-    window.addEventListener('scroll', handleViewportChange, { passive: true, capture: true });
-    window.addEventListener('orientationchange', handleViewportChange);
-    window.addEventListener('pointerdown', handlePointerDown, { passive: true, capture: true });
-    window.addEventListener('pointermove', handlePointerMove, { passive: true, capture: true });
-    window.addEventListener('pointerup', handlePointerRelease, { passive: true, capture: true });
-    window.addEventListener('pointercancel', handlePointerRelease, { passive: true, capture: true });
-    document.addEventListener('transitionrun', handleAnimatedChange, true);
-    document.addEventListener('transitionend', handleAnimatedChange, true);
-    document.addEventListener('animationstart', handleAnimatedChange, true);
-    document.addEventListener('animationend', handleAnimatedChange, true);
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleViewportChange, { passive: true });
-      window.visualViewport.addEventListener('scroll', handleViewportChange, { passive: true });
-    }
-
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => {
-        requestSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
-      });
-      resizeObserver.observe(element);
-      resizeObserver.observe(document.documentElement);
-    }
-
-    intervalId = window.setInterval(() => {
-      requestSync();
-    }, VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS);
-
-    return () => {
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', handleViewportChange);
-      window.removeEventListener('scroll', handleViewportChange, true);
-      window.removeEventListener('orientationchange', handleViewportChange);
-      window.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('pointermove', handlePointerMove, true);
-      window.removeEventListener('pointerup', handlePointerRelease, true);
-      window.removeEventListener('pointercancel', handlePointerRelease, true);
-      document.removeEventListener('transitionrun', handleAnimatedChange, true);
-      document.removeEventListener('transitionend', handleAnimatedChange, true);
-      document.removeEventListener('animationstart', handleAnimatedChange, true);
-      document.removeEventListener('animationend', handleAnimatedChange, true);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleViewportChange);
-        window.visualViewport.removeEventListener('scroll', handleViewportChange);
-      }
-    };
+    return subscribeToViewportRect(element, setRect);
   }, [element, enabled]);
 
   return rect;

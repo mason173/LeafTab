@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 import { buttonVariants } from "./button";
@@ -40,19 +43,33 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof AlertDialogPrimitive.Content>>();
+  const frostedAlertDialogPreset = getFrostedSurfacePreset("dialog-panel");
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
+        ref={handleSurfaceNodeRef}
         data-slot="alert-dialog-content"
         className={cn(
-          "bg-background fixed top-[50%] left-[50%] z-[18001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[32px] border p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
+          "fixed top-[50%] left-[50%] z-[18001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden border border-border bg-transparent shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200",
+          frostedAlertDialogPreset.shellClassName,
           className,
+          "!bg-transparent !backdrop-blur-none",
         )}
         {...props}
-      />
+      >
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dialog-panel"
+          radiusClassName={frostedAlertDialogPreset.radiusClassName}
+        >
+          {children}
+        </MaterialSurfaceFrame>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }

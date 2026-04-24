@@ -19,8 +19,9 @@ type TabsListProps = React.ComponentProps<typeof TabsPrimitive.List>;
 function TabsList({ className, ...props }: TabsListProps) {
   return (
     <TabsPrimitive.List
+      data-slot="tabs-list"
       className={cn(
-        "bg-muted dark:bg-secondary/60 inline-flex h-9 w-fit items-center justify-center rounded-full p-[3px] text-muted-foreground",
+        "frosted-control-surface inline-flex h-10 w-fit items-center justify-center rounded-full p-1 text-muted-foreground",
         className,
       )}
       {...props}
@@ -33,8 +34,9 @@ type TabsTriggerProps = React.ComponentProps<typeof TabsPrimitive.Trigger>;
 function TabsTrigger({ className, ...props }: TabsTriggerProps) {
   return (
     <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
       className={cn(
-        "inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "inline-flex h-full flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors hover:bg-[var(--frosted-ui-control-fill-hover)] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}

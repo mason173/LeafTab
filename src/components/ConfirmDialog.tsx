@@ -30,9 +30,11 @@ function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px] bg-background border-border text-foreground rounded-[32px]">
-        <DialogHeader>
+        <DialogHeader className="gap-4 pr-8">
           <DialogTitle className="text-foreground">{title}</DialogTitle>
-          <DialogDescription className="text-muted-foreground">{description}</DialogDescription>
+          <DialogDescription className="not-sr-only text-sm leading-6 text-muted-foreground">
+            {description}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex w-full gap-4 sm:gap-4">
           <Button data-testid="confirm-dialog-cancel" className={cancelButtonClassName ?? "flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80"} onClick={() => onOpenChange(false)}>

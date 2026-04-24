@@ -13,6 +13,7 @@ type DrawerShortcutSearchBarProps = {
   onValueChange: (value: string) => void;
   className?: string;
   height: number;
+  horizontalPadding?: number;
   maxWidthPx?: number;
   reduceMotionVisuals?: boolean;
   interactionDisabled?: boolean;
@@ -25,6 +26,7 @@ export function DrawerShortcutSearchBar({
   onValueChange,
   className,
   height,
+  horizontalPadding = 24,
   maxWidthPx,
   reduceMotionVisuals = false,
   interactionDisabled = false,
@@ -108,7 +110,7 @@ export function DrawerShortcutSearchBar({
       interactionDisabled={interactionDisabled}
       showEngineSwitcher={false}
       leadingAccessory={leadingAccessory}
-      searchHorizontalPadding={24}
+      searchHorizontalPadding={horizontalPadding}
     />
   );
 

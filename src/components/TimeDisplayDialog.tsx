@@ -105,7 +105,7 @@ export function TimeDisplayDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[760px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px]">
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle>{t("settings.timeDisplay.title")}</DialogTitle>
           <DialogDescription>{t("settings.timeDisplay.description")}</DialogDescription>
         </DialogHeader>

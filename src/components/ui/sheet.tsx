@@ -3,6 +3,9 @@
 import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { RiCloseFill as XIcon } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -52,13 +55,23 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
 }) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof SheetPrimitive.Content>>();
+  const frostedSheetPreset = getFrostedSurfacePreset("dialog-panel");
+  const radiusClassName = cn(
+    side === "right" && "rounded-none sm:rounded-l-[32px]",
+    side === "left" && "rounded-none sm:rounded-r-[32px]",
+    side === "top" && "rounded-none rounded-b-[32px]",
+    side === "bottom" && "rounded-none rounded-t-[32px]",
+  );
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        ref={handleSurfaceNodeRef}
         data-slot="sheet-content"
         className={cn(
-          "bg-background fixed z-50 flex flex-col gap-4 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200",
+          "fixed z-50 flex flex-col gap-4 overflow-hidden border border-border bg-transparent shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200",
+          frostedSheetPreset.shellClassName,
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
           side === "left" &&
@@ -68,10 +81,18 @@ function SheetContent({
           side === "bottom" &&
             "inset-x-0 bottom-0 h-auto border-t",
           className,
+          "!bg-transparent !backdrop-blur-none",
         )}
         {...props}
       >
-        {children}
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dialog-panel"
+          radiusClassName={radiusClassName}
+          contentClassName="flex h-full min-h-0 flex-col gap-4"
+        >
+          {children}
+        </MaterialSurfaceFrame>
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>

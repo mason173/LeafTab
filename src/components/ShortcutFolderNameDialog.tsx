@@ -32,7 +32,7 @@ export function ShortcutFolderNameDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[420px] rounded-[32px] border-border bg-background text-foreground">
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle>{title || t('context.renameFolder', { defaultValue: '重命名文件夹' })}</DialogTitle>
           <DialogDescription>{description || t('context.renameFolderDesc', { defaultValue: '给这个文件夹起一个好记的名字。' })}</DialogDescription>
         </DialogHeader>

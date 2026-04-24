@@ -127,11 +127,11 @@ function ScenarioModeCreateDialog({
                         <button
                           key={key}
                           type="button"
-                          className={`size-[40px] rounded-[999px] flex items-center justify-center transition-[background-color,transform]  ${selected ? "bg-primary hover:bg-primary/90" : "bg-background/40 hover:bg-background/70"}`}
+                          className={`size-[40px] rounded-[999px] flex items-center justify-center transition-[background-color,transform] ${selected ? "bg-accent text-foreground" : "bg-background hover:bg-accent"}`}
                           onClick={() => setIcon(key)}
                           aria-label={t('scenario.iconPicker')}
                         >
-                          <OptIcon className={`size-[16px] ${selected ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                          <OptIcon className={`size-[16px] ${selected ? "text-foreground" : "text-muted-foreground"}`} />
                         </button>
                       );
                     })}
@@ -142,7 +142,7 @@ function ScenarioModeCreateDialog({
           </div>
 
           <DialogFooter className="px-[16px] pb-[16px] pt-[0px] flex w-full gap-3 sm:gap-3">
-            <Button className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-[14px] h-[40px]" onClick={() => onOpenChange(false)}>
+            <Button variant="secondary" className="flex-1 rounded-[14px] h-[40px]" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
             <Button

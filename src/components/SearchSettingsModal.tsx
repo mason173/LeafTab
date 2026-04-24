@@ -43,7 +43,7 @@ function SearchSettingRow({
     <div
       className={[
         "group relative overflow-hidden rounded-2xl border p-3 transition-all",
-        "border-border/70 bg-card/75 hover:bg-card/90",
+        "border-border/70 bg-card hover:bg-[var(--frosted-ui-card-hover)]",
         disabled ? "opacity-55" : "",
       ].join(" ")}
     >
@@ -57,8 +57,8 @@ function SearchSettingRow({
         <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
       </Switch>
       <div className="relative flex min-h-[96px] flex-col gap-1.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background/45">
-          <Icon className="size-4 text-foreground/80" />
+        <div className="frosted-control-surface flex h-7 w-7 items-center justify-center rounded-lg border border-border/70">
+          <Icon className="size-4 text-foreground" />
         </div>
         <div className="min-w-0 pr-12">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -68,7 +68,7 @@ function SearchSettingRow({
                 <button
                   type="button"
                   aria-label={tooltip}
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <RiQuestionLine className="size-3.5" />
                 </button>
@@ -136,8 +136,11 @@ export function SearchSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-background border-border text-foreground rounded-[32px] overflow-visible">
-        <DialogHeader>
+      <DialogContent
+        surfaceVariant="frosted"
+        className="sm:max-w-[560px] border-border text-foreground rounded-[32px] overflow-visible"
+      >
+        <DialogHeader className="pb-3 pr-8">
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToSettings} />
             <DialogTitle className="text-foreground">{t('settings.searchSettings.title')}</DialogTitle>

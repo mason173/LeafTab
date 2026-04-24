@@ -7,6 +7,9 @@ import {
   RiCheckFill as CheckIcon,
   RiCheckboxBlankCircleFill as CircleIcon,
 } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -75,19 +78,33 @@ function MenubarContent({
   sideOffset = 8,
   ...props
 }: React.ComponentProps<typeof MenubarPrimitive.Content>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof MenubarPrimitive.Content>>();
+  const frostedMenubarPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <MenubarPortal>
       <MenubarPrimitive.Content
+        ref={handleSurfaceNodeRef}
         data-slot="menubar-content"
         align={align}
         alignOffset={alignOffset}
         sideOffset={sideOffset}
         className={cn(
-          "bg-popover text-popover-foreground z-50 min-w-[12rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden rounded-[12px] border p-1 shadow-md",
+          "relative isolate z-50 min-w-[12rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden border bg-transparent text-popover-foreground shadow-md backdrop-blur-none",
+          frostedMenubarPreset.shellClassName,
           className,
+          "!bg-transparent !backdrop-blur-none",
         )}
         {...props}
-      />
+      >
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dropdown-panel"
+          radiusClassName={frostedMenubarPreset.radiusClassName}
+          contentClassName="p-1"
+        >
+          {props.children}
+        </MaterialSurfaceFrame>
+      </MenubarPrimitive.Content>
     </MenubarPortal>
   );
 }
@@ -248,15 +265,29 @@ function MenubarSubContent({
   className,
   ...props
 }: React.ComponentProps<typeof MenubarPrimitive.SubContent>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof MenubarPrimitive.SubContent>>();
+  const frostedMenubarPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <MenubarPrimitive.SubContent
+      ref={handleSurfaceNodeRef}
       data-slot="menubar-sub-content"
       className={cn(
-        "bg-popover text-popover-foreground z-50 min-w-[8rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden rounded-[12px] border p-1 shadow-lg",
+        "relative isolate z-50 min-w-[8rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
+        frostedMenubarPreset.shellClassName,
         className,
+        "!bg-transparent !backdrop-blur-none",
       )}
       {...props}
-    />
+    >
+      <MaterialSurfaceFrame
+        surfaceNode={surfaceNode}
+        preset="dropdown-panel"
+        radiusClassName={frostedMenubarPreset.radiusClassName}
+        contentClassName="p-1"
+      >
+        {props.children}
+      </MaterialSurfaceFrame>
+    </MenubarPrimitive.SubContent>
   );
 }
 

@@ -748,7 +748,7 @@ export default function AuthModal({
           <div className="space-y-2 pt-2">
             <Label className="text-foreground">{t('auth.server.label')}</Label>
             <Select value={apiServer} onValueChange={(v: string) => onApiServerChange(v as 'official' | 'custom')}>
-              <SelectTrigger className="bg-secondary border-none text-foreground rounded-[16px] focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="border-none text-foreground rounded-[16px] focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={t('auth.server.label')} />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border text-popover-foreground w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
@@ -770,7 +770,7 @@ export default function AuthModal({
             <Button
               type="button"
               variant="secondary"
-              className="w-full gap-2 rounded-[16px] bg-secondary/50 hover:bg-secondary"
+              className="w-full gap-2 rounded-[16px]"
               onClick={handleGoogleLogin}
               disabled={isLoading}
             >
@@ -786,7 +786,7 @@ export default function AuthModal({
           </div>
         ) : (
         <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <Tabs.List className="grid h-10 w-full grid-cols-2 rounded-[16px] bg-muted p-1 text-muted-foreground">
+          <Tabs.List className="frosted-control-surface grid h-10 w-full grid-cols-2 rounded-[16px] p-1 text-muted-foreground">
             <Tabs.Trigger
               value="login"
               className="inline-flex items-center justify-center rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"

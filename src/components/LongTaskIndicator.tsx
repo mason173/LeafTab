@@ -1,4 +1,5 @@
 import { RiCheckFill, RiErrorWarningFill, RiRefreshFill } from '@/icons/ri-compat';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import type { LongTaskIndicatorState } from '@/hooks/useLongTaskIndicator';
 import { cn } from '@/components/ui/utils';
 
@@ -30,10 +31,15 @@ export function LongTaskIndicator({ task, className }: LongTaskIndicatorProps) {
       aria-live="polite"
       aria-atomic="true"
     >
-      <div className={cn(
-        'overflow-hidden rounded-[18px] border bg-background/96 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl animate-in slide-in-from-top-2 fade-in',
-        task.tone === 'error' ? 'border-destructive/30' : 'border-border/70',
-      )}>
+      <FrostedSurface
+        preset="popover-panel"
+        className={cn(
+          'animate-in slide-in-from-top-2 fade-in rounded-[18px]',
+          task.tone === 'error' ? 'border-destructive/30' : 'border-border/70',
+        )}
+        radiusClassName="rounded-[18px]"
+        contentClassName="relative z-[1]"
+      >
         <div className="flex min-h-[52px] items-center gap-3 px-3.5 py-2.5">
           <div className={cn(
             'flex size-8 shrink-0 items-center justify-center rounded-full',
@@ -57,7 +63,7 @@ export function LongTaskIndicator({ task, className }: LongTaskIndicatorProps) {
             </div>
           </div>
         </div>
-      </div>
+      </FrostedSurface>
     </div>
   );
 }

@@ -110,8 +110,8 @@ function createRenderSurface(width: number, height: number): RenderSurface {
 }
 
 function getRenderContext(surface: RenderSurface): RenderContext {
-  const context = surface.getContext('2d', { alpha: false });
-  if (!context) {
+  const context = surface.getContext('2d', { alpha: false }) as RenderContext | null;
+  if (!context || !('drawImage' in context)) {
     throw new Error('wallpaper-blur-context-unavailable');
   }
   context.imageSmoothingEnabled = true;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { DrawerShortcutAlphabetRail } from '@/components/home/DrawerShortcutAlphabetRail';
 import { resolveDrawerAlphabetRailLayout } from '@/components/home/drawerAlphabetRailLayout';
@@ -56,7 +57,13 @@ export function QuickAccessDrawer({
       className="pointer-events-none mt-3 flex items-center justify-center"
       aria-hidden="true"
     >
-      <div className="flex min-w-[188px] flex-col items-center gap-2 rounded-2xl border border-border bg-popover px-4 py-3 text-center text-popover-foreground shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
+      <FrostedSurface
+        preset="popover-panel"
+        data-frosted-ui-scope="true"
+        className="min-w-[188px] rounded-2xl text-center text-popover-foreground"
+        radiusClassName="rounded-2xl"
+        contentClassName="flex flex-col items-center gap-2 px-4 py-3"
+      >
         <div className="relative flex h-9 w-7 items-start justify-center rounded-full border border-foreground/20">
           <div className="mt-1.5 h-2 w-1 rounded-full bg-foreground/65 motion-safe:animate-bounce" />
         </div>
@@ -71,7 +78,7 @@ export function QuickAccessDrawer({
         <p className="text-xs leading-5 text-muted-foreground">
           向上滚动滚轮，展开快捷面板
         </p>
-      </div>
+      </FrostedSurface>
     </div>
   ) : null;
 

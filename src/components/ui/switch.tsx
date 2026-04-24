@@ -17,7 +17,7 @@ const SwitchThumb = React.forwardRef<
     <SwitchPrimitive.Thumb
       ref={ref}
       data-slot="switch-thumb"
-      className={cn("block h-full aspect-square rounded-full bg-background", className)}
+      className={cn("block h-full aspect-square rounded-full bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.14)] dark:bg-white/90 dark:shadow-[0_1px_2px_rgba(0,0,0,0.28)]", className)}
       {...props}
     />
   );

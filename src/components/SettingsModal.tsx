@@ -367,11 +367,12 @@ export default function SettingsModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
-        data-testid="settings-modal"
-        className="sm:max-w-[560px] max-h-[calc(100vh-1.5rem)] bg-background border-border text-foreground rounded-[32px] overflow-visible"
-      >
-        <DialogHeader>
+        <DialogContent
+          data-testid="settings-modal"
+          surfaceVariant="frosted"
+          className="sm:max-w-[600px] max-h-[calc(100vh-1.5rem)] border-border text-foreground rounded-[32px] overflow-visible"
+        >
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle className="text-foreground">{t('settings.title')}</DialogTitle>
         </DialogHeader>
         <ScrollArea
@@ -385,7 +386,7 @@ export default function SettingsModal({
                   {languageValue === 'zh' || languageValue === 'zh-TW' ? '社区版' : 'Community'}
                 </div>
               ) : null}
-              <div className="relative flex h-[48px] w-[48px] items-center justify-center rounded-[16px] bg-background ring-1 ring-border/60">
+              <div className="frosted-control-surface relative flex h-[48px] w-[48px] items-center justify-center rounded-[16px] ring-1 ring-border/60">
                 <img
                   src={aboutIcon}
                   alt=""
@@ -418,7 +419,7 @@ export default function SettingsModal({
                   <button
                     key={option.value}
                     type="button"
-                    className={`flex h-11 items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-center transition-all ${displayMode === option.value ? 'bg-primary/10 text-primary' : 'bg-secondary/50 text-foreground hover:bg-secondary'}`}
+                    className={`flex h-11 items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-center transition-all ${displayMode === option.value ? 'bg-primary/10 text-primary' : 'frosted-control-surface text-foreground'}`}
                     onClick={() => { onDisplayModeChange(option.value); onOpenChange(false); }}
                   >
                     {renderDisplayModeIcon(option.value, "size-4.5 shrink-0")}
@@ -435,8 +436,8 @@ export default function SettingsModal({
                 <button
                   key={option.name}
                   onClick={() => handleColorChange(option.name)}
-                  className={`relative flex size-10 items-center justify-center rounded-full overflow-hidden border transition-transform ${accentColor === option.name ? 'scale-105' : 'hover:scale-[1.04]'}`}
-                  style={{ backgroundColor: option.value, borderColor: option.accentDetailColor }}
+                  className={`relative flex size-10 appearance-none items-center justify-center overflow-hidden rounded-full border-none outline-none ring-0 shadow-none transition-transform focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${accentColor === option.name ? 'scale-105 brightness-[1.02]' : 'hover:scale-[1.04]'}`}
+                  style={{ backgroundColor: option.value, border: 'none', boxShadow: 'none' }}
                   aria-label={option.label}
                 >
                   {accentColor === option.name ? (
@@ -458,7 +459,7 @@ export default function SettingsModal({
               <Button
                 variant="secondary"
                 size="sm"
-                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
                 onClick={handleOpenSearchSettings}
               >
                 {t('settings.searchSettings.open')}
@@ -472,7 +473,7 @@ export default function SettingsModal({
               <Button
                 variant="secondary"
                 size="sm"
-                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
                 onClick={handleOpenShortcutGuide}
               >
                 {t('settings.shortcutGuide.open')}
@@ -487,7 +488,7 @@ export default function SettingsModal({
               <Button
                 variant="secondary"
                 size="sm"
-                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
                 onClick={handleOpenWallpaperSettings}
                 >
                   {t('settings.shortcutsLayout.set')}
@@ -501,7 +502,7 @@ export default function SettingsModal({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0 bg-secondary/50 hover:bg-secondary"
+                  className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
                   onClick={handleOpenShortcutIconSettings}
                 >
                   {t('settings.shortcutIconSettings.open', { defaultValue: '打开' })}
@@ -575,10 +576,10 @@ export default function SettingsModal({
               <span className="font-normal text-xs text-muted-foreground">{t('settings.language.description')}</span>
             </div>
             <Select value={languageValue} onValueChange={changeLanguage}>
-              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="w-[126px] border-none text-foreground focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={t('settings.language.selectPlaceholder')} />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
+              <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
                 <SelectItem value="zh" className="focus:bg-accent focus:text-accent-foreground">{t('languages.zh')}</SelectItem>
                 <SelectItem value="zh-TW" className="focus:bg-accent focus:text-accent-foreground">{t('languages.zh-TW')}</SelectItem>
                 <SelectItem value="en" className="focus:bg-accent focus:text-accent-foreground">{t('languages.en')}</SelectItem>
@@ -595,10 +596,10 @@ export default function SettingsModal({
                 <span className="font-normal text-xs text-muted-foreground">{t('settings.visualEffectsLevel.description')}</span>
               </div>
 	              <Select value={visualEffectsLevel} onValueChange={(value: string) => onVisualEffectsLevelChange(value as VisualEffectsLevel)}>
-                <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+                <SelectTrigger className="w-[126px] border-none text-foreground focus:ring-0 focus:ring-offset-0">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border text-popover-foreground">
+                <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
                   <SelectItem value="low" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.low')}</SelectItem>
                   <SelectItem value="medium" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.medium')}</SelectItem>
                   <SelectItem value="high" className="focus:bg-accent focus:text-accent-foreground">{t('settings.visualEffectsLevel.high')}</SelectItem>
@@ -612,10 +613,10 @@ export default function SettingsModal({
               <span className="font-normal text-xs text-muted-foreground">{t('settings.theme.description')}</span>
             </div>
             <Select value={mounted ? theme : "system"} onValueChange={setTheme}>
-              <SelectTrigger className="w-[126px] bg-secondary border-none text-foreground focus:ring-0 focus:ring-offset-0">
+              <SelectTrigger className="w-[126px] border-none text-foreground focus:ring-0 focus:ring-offset-0">
                 <SelectValue placeholder={t('settings.theme.selectPlaceholder')} />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
+              <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
                 <SelectItem value="system" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.system')}</SelectItem>
                 <SelectItem value="light" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.light')}</SelectItem>
                 <SelectItem value="dark" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.dark')}</SelectItem>
@@ -632,7 +633,7 @@ export default function SettingsModal({
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="flex-1 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary"
+                className="flex-1 gap-2 rounded-xl"
                 onClick={handleImportClick}
               >
                 <RiUpload2Fill className="size-4" />
@@ -641,7 +642,7 @@ export default function SettingsModal({
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="flex-1 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary"
+                className="flex-1 gap-2 rounded-xl"
                 onClick={() => {
                   onOpenChange(false);
                   void onExportData();
@@ -670,7 +671,7 @@ export default function SettingsModal({
               <Button
                 variant="secondary"
                 size="sm"
-                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+                className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
                 onClick={() => onOpenAdminModal?.()}
               >
                 {t('settings.adminMode.open')}
@@ -686,7 +687,7 @@ export default function SettingsModal({
             <Button
               variant="secondary"
               size="sm"
-              className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl bg-secondary/50 hover:bg-secondary shrink-0"
+              className="!h-[34px] !min-w-[108px] px-6 gap-2 rounded-xl shrink-0"
               onClick={() => onOpenAboutModal?.('about')}
             >
               {t('settings.about.open')}

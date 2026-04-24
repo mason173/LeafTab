@@ -210,7 +210,7 @@ export function SearchField({
   const hasLeadingAccessory = showEngineSwitcher || Boolean(leadingAccessory);
   const leftPadding = hasLeadingAccessory ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
-  const gap = Math.max(8, Math.round(height * 0.2));
+  const gap = showEngineSwitcher ? 0 : Math.max(8, Math.round(height * 0.2));
 
   return (
     <FrostedSurface

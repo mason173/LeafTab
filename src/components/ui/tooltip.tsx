@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -40,19 +43,30 @@ function TooltipContent({
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<HTMLDivElement>();
+  const frostedTooltipPreset = getFrostedSurfacePreset("popover-panel");
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
+        ref={handleSurfaceNodeRef}
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-primary text-primary-foreground z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-xl px-3 py-1.5 text-xs text-balance",
+          "relative isolate z-50 w-fit origin-(--radix-tooltip-content-transform-origin) overflow-hidden border border-border bg-transparent text-popover-foreground shadow-md backdrop-blur-none",
+          frostedTooltipPreset.shellClassName,
           className,
+          "!bg-transparent !backdrop-blur-none",
         )}
         {...props}
       >
-        {children}
-        <TooltipPrimitive.Arrow className="bg-primary fill-primary z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="popover-panel"
+          radiusClassName={frostedTooltipPreset.radiusClassName}
+          contentClassName="px-3 py-1.5 text-xs text-balance"
+        >
+          {children}
+        </MaterialSurfaceFrame>
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

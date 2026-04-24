@@ -1,46 +1,21 @@
-import { useCallback, useState, type CSSProperties, type MouseEventHandler, type ReactNode } from 'react';
-import { FrostedBackdrop } from '@/components/frosted/FrostedBackdrop';
+import { type HTMLAttributes, type ReactNode } from 'react';
+import { MaterialSurfaceFrame } from '@/components/frosted/MaterialSurfaceFrame';
+import { getFrostedSurfacePreset, type FrostedSurfacePreset } from '@/components/frosted/frostedSurfacePresets';
+import { useStableElementState } from '@/hooks/useStableElementState';
 import { cn } from '@/components/ui/utils';
 
-type FrostedSurfacePreset = 'search-pill' | 'floating-toolbar';
-
-type FrostedSurfaceProps = {
+type FrostedSurfaceProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   preset?: FrostedSurfacePreset;
-  className?: string;
+  children?: ReactNode;
   contentClassName?: string;
   surfaceClassName?: string;
   dataTestId?: string;
   radiusClassName?: string;
-  style?: CSSProperties;
   surfaceTone?: 'default' | 'drawer';
-  modeOverlayOpacity?: number;
+  lightModeOverlayOpacity?: number;
+  darkModeOverlayOpacity?: number;
   showBorder?: boolean;
   surfaceRef?: (node: HTMLDivElement | null) => void;
-  onClick?: MouseEventHandler<HTMLDivElement>;
-  children: ReactNode;
-};
-
-const FROSTED_SURFACE_PRESETS: Record<FrostedSurfacePreset, {
-  shellClassName: string;
-  radiusClassName: string;
-  contentClassName: string;
-  modeOverlayOpacity: number;
-  showBorder: boolean;
-}> = {
-  'search-pill': {
-    shellClassName: 'content-stretch group relative isolate flex w-full min-w-0 self-stretch cursor-text items-center rounded-[999px]',
-    radiusClassName: 'rounded-[999px]',
-    contentClassName: 'relative z-10 flex w-full min-w-0 items-center',
-    modeOverlayOpacity: 0.75,
-    showBorder: false,
-  },
-  'floating-toolbar': {
-    shellClassName: 'content-stretch group relative isolate rounded-[999px] shadow-xl',
-    radiusClassName: 'rounded-[999px]',
-    contentClassName: 'relative z-10',
-    modeOverlayOpacity: 0.75,
-    showBorder: false,
-  },
 };
 
 export function FrostedSurface({
@@ -52,20 +27,16 @@ export function FrostedSurface({
   radiusClassName,
   style,
   surfaceTone = 'default',
-  modeOverlayOpacity,
+  lightModeOverlayOpacity,
+  darkModeOverlayOpacity,
   showBorder,
   surfaceRef,
-  onClick,
   children,
+  ...props
 }: FrostedSurfaceProps) {
-  const presetConfig = FROSTED_SURFACE_PRESETS[preset];
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
+  const presetConfig = getFrostedSurfacePreset(preset);
+  const [surfaceNode, handleSurfaceRef] = useStableElementState<HTMLDivElement>({ ref: surfaceRef });
   const resolvedRadiusClassName = radiusClassName ?? presetConfig.radiusClassName;
-
-  const handleSurfaceRef = useCallback((node: HTMLDivElement | null) => {
-    setSurfaceNode(node);
-    surfaceRef?.(node);
-  }, [surfaceRef]);
 
   return (
     <div
@@ -77,18 +48,20 @@ export function FrostedSurface({
       )}
       data-testid={dataTestId}
       style={style}
-      onClick={onClick}
+      {...props}
     >
-      <FrostedBackdrop
+      <MaterialSurfaceFrame
         surfaceNode={surfaceNode}
+        preset={preset}
         tone={surfaceTone}
         radiusClassName={resolvedRadiusClassName}
-        modeOverlayOpacity={modeOverlayOpacity ?? presetConfig.modeOverlayOpacity}
-        showBorder={showBorder ?? presetConfig.showBorder}
-      />
-      <div className={cn(presetConfig.contentClassName, contentClassName)}>
+        lightModeOverlayOpacity={lightModeOverlayOpacity}
+        darkModeOverlayOpacity={darkModeOverlayOpacity}
+        showBorder={showBorder}
+        contentClassName={contentClassName}
+      >
         {children}
-      </div>
+      </MaterialSurfaceFrame>
     </div>
   );
 }

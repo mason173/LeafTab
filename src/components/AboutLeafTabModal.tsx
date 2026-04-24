@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RiChromeFill, RiEdgeFill, RiFirefoxFill, RiGithubFill } from "@/icons/ri-compat";
-import { InfiniteSlider } from "@/components/motion-primitives/infinite-slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { buildChangelogItems } from "@/components/changelog/changelog-data";
 import { ChangelogTimeline } from "@/components/changelog/ChangelogTimeline";
@@ -10,6 +9,46 @@ import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import aboutIcon from "@/assets/abouticon.svg";
 
 export type AboutLeafTabModalTab = "about" | "changelog";
+
+function AboutAcknowledgementMarquee({
+  items,
+  reverse = false,
+  durationSeconds = 28,
+}: {
+  items: Array<{ name: string; url: string }>;
+  reverse?: boolean;
+  durationSeconds?: number;
+}) {
+  const marqueeItems = useMemo(() => items.concat(items), [items]);
+
+  return (
+    <div className="group relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+      <div
+        className="flex w-max items-center gap-2 group-hover:[animation-play-state:paused]"
+        style={{
+          animationDuration: `${durationSeconds}s`,
+          animationIterationCount: 'infinite',
+          animationTimingFunction: 'linear',
+          animationName: reverse
+            ? 'leaftab-marquee-scroll-reverse'
+            : 'leaftab-marquee-scroll',
+        }}
+      >
+        {marqueeItems.map((item, index) => (
+          <a
+            key={`${item.url}-${index}`}
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors whitespace-nowrap hover:bg-accent"
+          >
+            {item.name}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function AboutLeafTabModal({
   open,
@@ -114,11 +153,11 @@ export function AboutLeafTabModal({
           </div>
         </DialogHeader>
 
-        <div className="w-full h-9 rounded-[16px] bg-muted p-[3px] grid grid-cols-2 gap-0.5 shrink-0">
+        <div className="frosted-control-surface w-full h-10 rounded-[18px] p-1 grid grid-cols-2 gap-1 shrink-0">
           <button
             type="button"
-            className={`rounded-[12px] text-sm font-medium ${
-              activeTab === "about" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            className={`rounded-[14px] text-sm font-medium transition-colors ${
+              activeTab === "about" ? "bg-[var(--frosted-ui-control-fill-hover)] text-foreground" : "text-muted-foreground hover:bg-[var(--frosted-ui-control-fill-hover)] hover:text-foreground"
             }`}
             onClick={() => setActiveTab("about")}
           >
@@ -126,8 +165,8 @@ export function AboutLeafTabModal({
           </button>
           <button
             type="button"
-            className={`rounded-[12px] text-sm font-medium ${
-              activeTab === "changelog" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            className={`rounded-[14px] text-sm font-medium transition-colors ${
+              activeTab === "changelog" ? "bg-[var(--frosted-ui-control-fill-hover)] text-foreground" : "text-muted-foreground hover:bg-[var(--frosted-ui-control-fill-hover)] hover:text-foreground"
             }`}
             onClick={() => setActiveTab("changelog")}
           >
@@ -139,7 +178,7 @@ export function AboutLeafTabModal({
           {activeTab === "about" ? (
             <div className="h-full min-h-0 flex flex-col">
               <div className="shrink-0 flex flex-col items-center">
-                <img src={aboutIcon} alt="LeafTab" className="h-14 w-14 rounded-xl bg-secondary/40 p-1.5 object-contain" />
+                <img src={aboutIcon} alt="LeafTab" className="frosted-control-surface h-14 w-14 rounded-xl p-1.5 object-contain" />
                 <div className="mt-2 text-lg font-semibold text-foreground text-center">LeafTab</div>
                 <div className="mt-0.5 text-xs text-foreground/80 text-center">
                   {t("settings.about.versionLabel", { defaultValue: "版本 v{{version}}", version: appVersion })}
@@ -154,7 +193,7 @@ export function AboutLeafTabModal({
                   {t("settings.about.content")}
                 </p>
 
-                <div className="mt-3 w-full rounded-xl border border-border/70 bg-secondary/30 px-3 py-2 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
+                <div className="mt-3 w-full rounded-xl border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">
                   <p>
                     {t("settings.about.openSourceNoticePrefix", { defaultValue: "LeafTab Community Edition is open source under " })}
                     <a
@@ -178,48 +217,15 @@ export function AboutLeafTabModal({
                   <div className="text-sm font-semibold">{t("settings.about.ackTitle")}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{t("settings.about.ackDesc")}</div>
                   <div className="mt-3 space-y-2 overflow-x-hidden">
-                    <InfiniteSlider
-                      speed={58}
-                      speedOnHover={24}
-                      gap={8}
-                      className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
-                    >
-                      <div className="flex w-max items-center gap-2">
-                        {acknowledgementRow1.map((item) => (
-                          <a
-                            key={item.url}
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
-                          >
-                            {item.name}
-                          </a>
-                        ))}
-                      </div>
-                    </InfiniteSlider>
-
-                    <InfiniteSlider
+                    <AboutAcknowledgementMarquee
+                      items={acknowledgementRow1}
+                      durationSeconds={30}
+                    />
+                    <AboutAcknowledgementMarquee
+                      items={acknowledgementRow2}
                       reverse
-                      speed={52}
-                      speedOnHover={22}
-                      gap={8}
-                      className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
-                    >
-                      <div className="flex w-max items-center gap-2">
-                        {acknowledgementRow2.map((item) => (
-                          <a
-                            key={item.url}
-                            href={item.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground hover:bg-secondary/70 transition-colors whitespace-nowrap"
-                          >
-                            {item.name}
-                          </a>
-                        ))}
-                      </div>
-                    </InfiniteSlider>
+                      durationSeconds={27}
+                    />
                   </div>
                 </div>
               </div>
@@ -229,7 +235,7 @@ export function AboutLeafTabModal({
                   href="https://chromewebstore.google.com/detail/leaftab/lfogogokkkpmolbfbklchcbgdiboccdf?hl=zh-CN&gl=DE"
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-accent transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
                 >
                   <RiChromeFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
                   <span className="truncate">{t("settings.about.chromeStore")}</span>
@@ -238,7 +244,7 @@ export function AboutLeafTabModal({
                   href="https://microsoftedge.microsoft.com/addons/detail/leaftab/nfbdmggppgfmfbaddobdhdleppgffphn"
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-accent transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
                 >
                   <RiEdgeFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
                   <span className="truncate">{t("settings.about.edgeStore")}</span>
@@ -247,7 +253,7 @@ export function AboutLeafTabModal({
                   href="https://addons.mozilla.org/zh-CN/firefox/addon/leaftab/"
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-accent transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
                 >
                   <RiFirefoxFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
                   <span className="truncate">{t("settings.about.firefoxStore")}</span>
@@ -256,7 +262,7 @@ export function AboutLeafTabModal({
                   href="https://github.com/mason173/LeafTab"
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary/80 transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
+                  className="min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-full bg-secondary/50 hover:bg-accent transition-all text-[11px] font-medium text-foreground whitespace-nowrap"
                 >
                   <RiGithubFill className="w-3.5 h-3.5 shrink-0 text-foreground" />
                   <span className="truncate">{t("settings.about.github")}</span>

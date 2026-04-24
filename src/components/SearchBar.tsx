@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
 import type React from 'react';
 import { useFrostedSurfaceTheme } from '@/components/frosted/useFrostedSurfaceTheme';
+import { useStableElementState } from '@/hooks/useStableElementState';
 import { SearchField, type SearchFieldValueChangeHandler } from '@/components/search/SearchField';
 import { SearchSuggestionsPanel } from '@/components/search/SearchSuggestionsPanel';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
@@ -100,11 +100,7 @@ export function SearchBar({
   suggestionsPlacement = 'bottom',
   interactionDisabled = false,
 }: SearchBarProps) {
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
-  const attachHistoryRef = useCallback((node: HTMLDivElement | null) => {
-    setSurfaceNode(node);
-    historyRef.current = node;
-  }, [historyRef]);
+  const [surfaceNode, attachHistoryRef] = useStableElementState<HTMLDivElement>({ ref: historyRef });
   const { theme } = useFrostedSurfaceTheme({
     surfaceNode,
     surfaceTone: searchSurfaceTone,
@@ -131,6 +127,7 @@ export function SearchBar({
   return (
     <div
       className="relative content-stretch flex w-full items-start"
+      data-search-ui="true"
       onKeyDown={handleKeyDown}
       aria-disabled={interactionDisabled}
     >

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RiCheckFill } from '@/icons/ri-compat';
 import {
@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
 import { getAvailableSearchEngineOrder } from '@/platform/search';
 import {
   getEngineIcon,
@@ -35,7 +34,6 @@ export function SearchEngineSwitcher({
 }: SearchEngineSwitcherProps) {
   const { t } = useTranslation();
   const dismissGuardUntilRef = useRef(0);
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
 
   const engineOptionMap: Record<typeof engine, SearchEngineOption> = {
     system: { id: 'system', name: t('search.systemEngine'), icon: searchIcon },
@@ -97,6 +95,10 @@ export function SearchEngineSwitcher({
         align="start"
         side="bottom"
         sideOffset={10}
+        data-search-ui="true"
+        surfaceVariant="frosted"
+        surfacePreset="dropdown-panel"
+        surfaceTone={surfaceTone}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
         }}
@@ -110,31 +112,23 @@ export function SearchEngineSwitcher({
             event.preventDefault();
           }
         }}
-        ref={setSurfaceNode}
         className={`z-[520] isolate w-[260px] max-h-[320px] overflow-y-auto rounded-[18px] p-2 !border-transparent !bg-transparent !shadow-none !backdrop-blur-none ${surfaceClassName || 'text-black/72 dark:text-white/92'}`}
       >
-        <SearchFakeBlurSurface
-          surfaceNode={surfaceNode}
-          tone={surfaceTone}
-          radiusClassName="rounded-[18px]"
-        />
-        <div className="relative z-[1]">
-          {engines.map((option) => (
-            <DropdownMenuItem
-              key={option.id}
-              className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
-                engine === option.id
-                  ? (itemSelectedClassName || 'bg-black/8 text-black/86 dark:bg-white/12 dark:text-white/[0.96]')
-                  : (itemClassName || 'text-black/76 hover:bg-black/5 hover:text-black/88 dark:text-white/88 dark:hover:bg-white/10 dark:hover:text-white/[0.96]')
-              }`}
-              onSelect={() => onSelect(option.id)}
-            >
-              <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
-              <span className="truncate text-sm leading-5">{option.name}</span>
-              <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-current' : 'opacity-0'}`} />
-            </DropdownMenuItem>
-          ))}
-        </div>
+        {engines.map((option) => (
+          <DropdownMenuItem
+            key={option.id}
+            className={`gap-2.5 rounded-[16px] px-3 py-2 text-sm ${
+              engine === option.id
+                ? (itemSelectedClassName || 'bg-black/8 text-black/86 dark:bg-white/12 dark:text-white/[0.96]')
+                : (itemClassName || 'text-black/76 hover:bg-black/5 hover:text-black/88 dark:text-white/88 dark:hover:bg-white/10 dark:hover:text-white/[0.96]')
+            }`}
+            onSelect={() => onSelect(option.id)}
+          >
+            <img alt="" className="pointer-events-none size-[22px] shrink-0 object-contain" src={option.icon} />
+            <span className="truncate text-sm leading-5">{option.name}</span>
+            <RiCheckFill className={`ml-auto size-[18px] ${engine === option.id ? 'opacity-100 text-current' : 'opacity-0'}`} />
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

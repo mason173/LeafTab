@@ -74,27 +74,28 @@ export function ShortcutSelectionToolbar({
       };
     }
 
-    const fallbackLeft = Math.max(
-      TOOLBAR_VIEWPORT_MARGIN_PX,
-      window.innerWidth - TOOLBAR_VIEWPORT_MARGIN_PX - TOOLBAR_WIDTH_PX,
-    );
+    const fallbackRight = TOOLBAR_VIEWPORT_MARGIN_PX;
 
     if (!anchorRect) {
       return {
-        left: `${fallbackLeft}px`,
+        right: `${fallbackRight}px`,
         top: '50%',
         transform: 'translate3d(0, -50%, 0)',
       };
     }
 
-    const preferredLeft = anchorRect.left + anchorRect.width + TOOLBAR_OFFSET_PX;
-    const maxLeft = Math.max(
+    const anchorRight = anchorRect.left + anchorRect.width;
+    const preferredRight = Math.max(
       TOOLBAR_VIEWPORT_MARGIN_PX,
-      window.innerWidth - TOOLBAR_VIEWPORT_MARGIN_PX - TOOLBAR_WIDTH_PX,
+      window.innerWidth - anchorRight + TOOLBAR_OFFSET_PX,
+    );
+    const maxRight = Math.max(
+      TOOLBAR_VIEWPORT_MARGIN_PX,
+      window.innerWidth - TOOLBAR_WIDTH_PX - TOOLBAR_VIEWPORT_MARGIN_PX,
     );
 
     return {
-      left: `${Math.min(maxLeft, preferredLeft)}px`,
+      right: `${Math.min(maxRight, preferredRight)}px`,
       top: '50%',
       transform: 'translate3d(0, -50%, 0)',
     };

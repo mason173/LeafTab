@@ -18,10 +18,10 @@ function Command({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
-    <CommandPrimitive
+      <CommandPrimitive
       data-slot="command"
       className={cn(
-        "bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-xl",
+        "bg-transparent text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-xl",
         className,
       )}
       {...props}

@@ -653,7 +653,7 @@ export function LeafTabSyncDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-visible rounded-[32px] border-border bg-background text-foreground sm:max-w-[560px]">
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle>{t('leaftabSyncCenter.title', { defaultValue: '同步中心' })}</DialogTitle>
           <DialogDescription>
             {t('leaftabSyncDialog.description', { defaultValue: '统一管理云同步与 WebDAV 同步。' })}

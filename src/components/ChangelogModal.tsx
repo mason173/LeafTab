@@ -12,7 +12,7 @@ export function ChangelogModal({ open, onOpenChange }: { open: boolean; onOpenCh
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[680px] max-h-[78vh] overflow-hidden bg-background border-border text-foreground rounded-[32px]">
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle>{t("changelog.title")}</DialogTitle>
           <DialogDescription>{t("changelog.description")}</DialogDescription>
         </DialogHeader>

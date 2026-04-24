@@ -38,7 +38,7 @@ export function SyncSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={`sm:max-w-[560px] max-h-[85vh] overflow-visible bg-background border-border text-foreground rounded-[32px] ${contentClassName || ''}`}>
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <div className="flex items-center gap-2">
             <BackToSettingsButton onClick={onBackToParent} label={backButtonLabel} />
             <DialogTitle>{title}</DialogTitle>

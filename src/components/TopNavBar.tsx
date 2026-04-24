@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { RiCloudFill, RiErrorWarningFill, RiRefreshFill, RiSettings4Fill } from '@/icons/ri-compat';
 import { WeatherCard } from '@/components/WeatherCard';
 import { Button } from '@/components/ui/button';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { useTranslation } from 'react-i18next';
 
@@ -77,14 +78,18 @@ function TopNavIntroBubble({
     : 'left-4';
 
   return (
-    <div
-      className={`absolute top-[calc(100%+12px)] z-20 w-[248px] rounded-2xl border border-border bg-popover p-3 text-left text-popover-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)] ${align === 'end' ? 'right-0' : 'left-0'} pointer-events-auto`}
+    <FrostedSurface
+      preset="popover-panel"
+      surfaceTone="default"
+      data-frosted-ui-scope="true"
+      className={`absolute top-[calc(100%+12px)] z-20 w-[248px] rounded-2xl border border-border text-left text-popover-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)] ${align === 'end' ? 'right-0' : 'left-0'} pointer-events-auto`}
+      contentClassName="space-y-2 p-3"
       role="dialog"
       aria-live="polite"
     >
       <div
         aria-hidden="true"
-        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-popover ${arrowPositionClass}`}
+        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-white/70 dark:bg-black/70 ${arrowPositionClass}`}
       />
       <div className="space-y-2">
         <div className="space-y-1">
@@ -102,7 +107,7 @@ function TopNavIntroBubble({
           </Button>
         </div>
       </div>
-    </div>
+    </FrostedSurface>
   );
 }
 

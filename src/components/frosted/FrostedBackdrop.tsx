@@ -3,14 +3,16 @@ import { useTheme } from 'next-themes';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
 import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 
-type FrostedBackdropPreset = 'default' | 'immersive-drawer';
+export type FrostedBackdropPreset = 'default' | 'immersive-drawer';
+export type FrostedSurfaceTone = 'default' | 'drawer';
 
-type FrostedBackdropProps = {
+export type FrostedBackdropProps = {
   surfaceNode: HTMLElement | null;
   preset?: FrostedBackdropPreset;
-  tone?: 'default' | 'drawer';
+  tone?: FrostedSurfaceTone;
   radiusClassName?: string;
-  modeOverlayOpacity?: number;
+  lightModeOverlayOpacity?: number;
+  darkModeOverlayOpacity?: number;
   modeOverlayTransitionMs?: number;
   showBorder?: boolean;
   fallbackSurfaceColor?: string;
@@ -18,6 +20,8 @@ type FrostedBackdropProps = {
   transition?: string;
   imageOverscanPx?: number;
   imageScale?: number;
+  imageBlurPx?: number;
+  wallpaperMaskOpacityMultiplier?: number;
 };
 
 const DEFAULT_FALLBACK_SURFACE_COLOR = 'rgba(30, 34, 42, 0.18)';
@@ -40,6 +44,7 @@ function buildViewportSliceImageStyle(
   rect: ViewportRect,
   overscanPx: number,
   scale: number,
+  blurPx: number,
 ): CSSProperties {
   return {
     position: 'absolute',
@@ -53,13 +58,16 @@ function buildViewportSliceImageStyle(
     WebkitTransform: `translateZ(0) scale(${scale})`,
     transformOrigin: 'center center',
     backfaceVisibility: 'hidden',
-    willChange: 'transform',
+    filter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
+    WebkitFilter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
+    willChange: blurPx > 0 ? 'transform, filter' : 'transform',
   };
 }
 
 function buildViewportSliceGradientStyle(
   rect: ViewportRect,
   overscanPx: number,
+  blurPx: number,
 ): CSSProperties {
   return {
     position: 'absolute',
@@ -68,8 +76,10 @@ function buildViewportSliceGradientStyle(
     width: `calc(100vw + ${overscanPx * 2}px)`,
     height: `calc(100vh + ${overscanPx * 2}px)`,
     maxWidth: 'none',
+    filter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
+    WebkitFilter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
     backfaceVisibility: 'hidden',
-    willChange: 'transform',
+    willChange: blurPx > 0 ? 'filter' : 'transform',
   };
 }
 
@@ -78,7 +88,8 @@ export function FrostedBackdrop({
   preset = 'default',
   tone = 'default',
   radiusClassName = 'rounded-[999px]',
-  modeOverlayOpacity = 0.65,
+  lightModeOverlayOpacity = 0.9,
+  darkModeOverlayOpacity = 0.65,
   modeOverlayTransitionMs = 220,
   showBorder = true,
   fallbackSurfaceColor = DEFAULT_FALLBACK_SURFACE_COLOR,
@@ -86,6 +97,8 @@ export function FrostedBackdrop({
   transition,
   imageOverscanPx = 0,
   imageScale = 1,
+  imageBlurPx = 0,
+  wallpaperMaskOpacityMultiplier = 1,
 }: FrostedBackdropProps) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const { resolvedTheme } = useTheme();
@@ -137,12 +150,12 @@ export function FrostedBackdrop({
             alt=""
             draggable={false}
             className="select-none"
-            style={buildViewportSliceImageStyle(viewportRect, imageOverscanPx, imageScale)}
+            style={buildViewportSliceImageStyle(viewportRect, imageOverscanPx, imageScale, imageBlurPx)}
           />
         ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient && viewportRect ? (
           <div
             style={{
-              ...buildViewportSliceGradientStyle(viewportRect, imageOverscanPx),
+              ...buildViewportSliceGradientStyle(viewportRect, imageOverscanPx, imageBlurPx),
               backgroundImage: wallpaperBackdrop.colorWallpaperGradient,
             }}
           />
@@ -164,16 +177,17 @@ export function FrostedBackdrop({
   }
 
   const drawerToneActive = tone === 'drawer';
-  const normalizedModeOverlayOpacity = clamp01(modeOverlayOpacity);
+  const normalizedLightModeOverlayOpacity = clamp01(lightModeOverlayOpacity);
+  const normalizedDarkModeOverlayOpacity = clamp01(darkModeOverlayOpacity);
   const modeOverlayStyle: CSSProperties = {
     backgroundColor: isDarkTheme
-      ? `rgba(0, 0, 0, ${normalizedModeOverlayOpacity})`
-      : `rgba(255, 255, 255, ${normalizedModeOverlayOpacity})`,
+      ? `rgba(0, 0, 0, ${normalizedDarkModeOverlayOpacity})`
+      : `rgba(255, 255, 255, ${normalizedLightModeOverlayOpacity})`,
     transition: `background-color ${modeOverlayTransitionMs}ms cubic-bezier(0.22, 1, 0.36, 1)`,
   };
   const wallpaperMaskStyle: CSSProperties | null = !drawerToneActive && wallpaperBackdrop
     ? {
-        backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
+        backgroundColor: `rgba(0, 0, 0, ${(Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100) * clamp01(wallpaperMaskOpacityMultiplier)})`,
       }
     : null;
 
@@ -206,13 +220,13 @@ export function FrostedBackdrop({
           alt=""
           draggable={false}
           className="select-none"
-          style={buildViewportSliceImageStyle(viewportRect, imageOverscanPx, imageScale)}
+          style={buildViewportSliceImageStyle(viewportRect, imageOverscanPx, imageScale, imageBlurPx)}
         />
       ) : wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient && viewportRect ? (
         <div
           className="absolute inset-0"
           style={{
-            ...buildViewportSliceGradientStyle(viewportRect, imageOverscanPx),
+            ...buildViewportSliceGradientStyle(viewportRect, imageOverscanPx, imageBlurPx),
             backgroundImage: wallpaperBackdrop.colorWallpaperGradient,
           }}
         />

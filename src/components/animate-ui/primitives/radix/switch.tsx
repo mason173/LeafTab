@@ -12,7 +12,7 @@ function Switch({ className, children, ...props }: SwitchProps) {
     <SwitchPrimitives.Root
       data-slot="switch"
       className={cn(
-        "relative inline-flex h-6 w-10 shrink-0 items-center justify-start rounded-full border border-border p-0.5 outline-none transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex h-6 w-10 shrink-0 items-center justify-start rounded-full border border-transparent p-0.5 outline-none transition-colors data-[state=checked]:justify-end data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -30,7 +30,7 @@ function SwitchThumb({ className, pressedAnimation: _pressedAnimation, ...props 
   return (
     <SwitchPrimitives.Thumb
       data-slot="switch-thumb"
-      className={cn("block h-full aspect-square rounded-full bg-background", className)}
+      className={cn("block h-full aspect-square rounded-full bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.14)] dark:bg-white/90 dark:shadow-[0_1px_2px_rgba(0,0,0,0.28)]", className)}
       {...props}
     />
   );

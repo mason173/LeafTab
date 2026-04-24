@@ -126,7 +126,7 @@ export default function WallpaperSelector({
         }`}
       >
         <div className="flex flex-col h-full">
-          <DialogHeader className={`px-6 pt-6 pb-2 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
+          <DialogHeader className={`px-6 pt-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
             <div className="flex items-center gap-2">
               <BackToSettingsButton onClick={onBackToSettings} />
               <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">{t("weather.wallpaper.mode")}</DialogTitle>

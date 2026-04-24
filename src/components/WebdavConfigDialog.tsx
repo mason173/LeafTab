@@ -283,7 +283,7 @@ export function WebdavConfigDialog({
               <SelectTrigger className="bg-secondary border-border text-foreground rounded-[16px]">
                 <SelectValue placeholder={t("settings.backup.webdav.providerPlaceholder")} />
               </SelectTrigger>
-              <SelectContent className="bg-popover border-border text-popover-foreground">
+              <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
                 {webdavProviders.map((provider) => (
                   <SelectItem key={provider.id} value={provider.id}>
                     {provider.label}

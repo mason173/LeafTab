@@ -7,8 +7,14 @@ import {
   RiCheckFill as CheckIcon,
   RiCheckboxBlankCircleFill as CircleIcon,
 } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset, type FrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import type { FrostedSurfaceTone } from "@/components/frosted/FrostedBackdrop";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
+
+const DEFAULT_DROPDOWN_SURFACE_CONTENT_CLASS_NAME = "p-1";
 
 function DropdownMenu({
   ...props
@@ -37,20 +43,47 @@ function DropdownMenuTrigger({
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    surfaceVariant?: "solid" | "frosted";
+    surfacePreset?: FrostedSurfacePreset;
+    surfaceTone?: FrostedSurfaceTone;
+    surfaceContentClassName?: string;
+  }
+>(({ className, sideOffset = 4, children, surfaceVariant = "frosted", surfacePreset = "dropdown-panel", surfaceTone = "default", surfaceContentClassName, ...props }, forwardedRef) => {
+  const [surfaceNode, handleContentRef] = useStableElementState<React.ElementRef<typeof DropdownMenuPrimitive.Content>>({ ref: forwardedRef });
+  const frostedDropdownPreset = getFrostedSurfacePreset(surfacePreset);
+
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
-        ref={ref}
+        ref={handleContentRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-popover/80 text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[12px] border border-border p-1 shadow-lg backdrop-blur-md",
+          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto text-popover-foreground",
+          surfaceVariant === "frosted"
+            ? cn(
+                "relative isolate overflow-hidden border border-border bg-transparent backdrop-blur-none",
+                frostedDropdownPreset.shellClassName,
+              )
+            : "rounded-[12px] border border-border bg-popover/80 p-1 shadow-lg backdrop-blur-md",
           className,
+          surfaceVariant === "frosted" ? "!bg-transparent !backdrop-blur-none" : undefined,
         )}
         {...props}
-      />
+      >
+        {surfaceVariant === "frosted" ? (
+          <MaterialSurfaceFrame
+            surfaceNode={surfaceNode}
+            preset={surfacePreset}
+            tone={surfaceTone}
+            radiusClassName={frostedDropdownPreset.radiusClassName}
+            contentClassName={cn(DEFAULT_DROPDOWN_SURFACE_CONTENT_CLASS_NAME, surfaceContentClassName)}
+          >
+            {children}
+          </MaterialSurfaceFrame>
+        ) : children}
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
 });
@@ -229,17 +262,32 @@ function DropdownMenuSubTrigger({
 
 function DropdownMenuSubContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof DropdownMenuPrimitive.SubContent>>();
+  const frostedDropdownPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <DropdownMenuPrimitive.SubContent
+      ref={handleSurfaceNodeRef}
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "bg-popover text-popover-foreground z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[12px] border p-1 shadow-lg",
+        "relative isolate z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden border border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
+        frostedDropdownPreset.shellClassName,
         className,
+        "!bg-transparent !backdrop-blur-none",
       )}
       {...props}
-    />
+    >
+      <MaterialSurfaceFrame
+        surfaceNode={surfaceNode}
+        preset="dropdown-panel"
+        radiusClassName={frostedDropdownPreset.radiusClassName}
+        contentClassName={DEFAULT_DROPDOWN_SURFACE_CONTENT_CLASS_NAME}
+      >
+        {children}
+      </MaterialSurfaceFrame>
+    </DropdownMenuPrimitive.SubContent>
   );
 }
 

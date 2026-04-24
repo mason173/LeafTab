@@ -52,6 +52,7 @@ const SEARCH_FOCUS_BLOCKING_SELECTOR = [
   '[data-slot="alert-dialog-content"]',
   '[data-slot="sheet-content"]',
   '[data-slot="popover-content"]',
+  '[data-slot="select-content"]',
   '[data-slot="dropdown-menu-content"]',
 ].join(', ');
 

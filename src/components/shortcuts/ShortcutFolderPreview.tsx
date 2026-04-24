@@ -1,10 +1,9 @@
 import {
-  useCallback,
-  useState,
   type CSSProperties,
 } from 'react';
 import { useFolderPreviewRootRef, useFolderPreviewSlotRef } from '@/components/shortcuts/folderPreviewRegistry';
 import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBackdropContext';
+import { useStableElementState } from '@/hooks/useStableElementState';
 import { useLiveViewportRect, type ViewportRect } from '@/hooks/useLiveViewportRect';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import {
@@ -56,12 +55,7 @@ function buildFolderGradientBorderStyle(borderRadius: string): CSSProperties {
 
 function useFolderPreviewRootNode(folderId: string) {
   const registryRef = useFolderPreviewRootRef(folderId);
-  const [rootNode, setRootNode] = useState<HTMLElement | null>(null);
-
-  const rootRef = useCallback((node: HTMLElement | null) => {
-    setRootNode(node);
-    registryRef(node);
-  }, [registryRef]);
+  const [rootNode, rootRef] = useStableElementState<HTMLElement>({ ref: registryRef });
 
   return {
     rootNode,

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { RiArrowRightSLine } from '@/icons/ri-compat';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import type { ContextMenuState, ScenarioMode, Shortcut } from '@/types';
 import { isShortcutFolder } from '@/utils/shortcutFolders';
 
@@ -74,12 +75,13 @@ function ContextMenuSubmenuItem({
         <RiArrowRightSLine className="size-4" />
       </button>
       {open ? (
-        <div
-          className="absolute top-[-6px] z-[17030] w-[220px] rounded-[18px] border border-border bg-popover p-[6px] shadow-lg"
-          style={{ left: 'calc(100% - 6px)' }}
+        <FrostedSurface
+          preset="dropdown-panel"
+          className="absolute left-[calc(100%+10px)] top-[-8px] z-[17030] w-[220px] rounded-[18px] border border-border shadow-lg"
+          contentClassName="p-[6px]"
         >
           {children}
-        </div>
+        </FrostedSurface>
       ) : null}
     </div>
   );

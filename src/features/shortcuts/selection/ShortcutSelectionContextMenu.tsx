@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import {
   FolderShortcutContextMenuContent,
   GridContextMenuContent,
@@ -67,7 +68,11 @@ export function ShortcutSelectionContextMenu({
 
   return (
     <div ref={contextMenuRef} className="fixed z-[17020]" data-testid="shortcut-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
-      <div className="bg-popover rounded-[20px] border border-border shadow-lg w-[160px] p-[6px]">
+      <FrostedSurface
+        preset="dropdown-panel"
+        className="w-[160px] overflow-visible rounded-[20px] border border-border shadow-lg"
+        contentClassName="p-[6px]"
+      >
         {contextMenu.kind === 'shortcut' ? (
           <ShortcutContextMenuContent
             t={t}
@@ -118,7 +123,7 @@ export function ShortcutSelectionContextMenu({
             onCloseContextMenu={onCloseContextMenu}
           />
         ) : null}
-      </div>
+      </FrostedSurface>
     </div>
   );
 }

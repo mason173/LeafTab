@@ -2,6 +2,9 @@ import * as React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import { cva } from "class-variance-authority";
 import { RiArrowDownSLine as ChevronDownIcon } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -86,16 +89,38 @@ function NavigationMenuContent({
   className,
   ...props
 }: React.ComponentProps<typeof NavigationMenuPrimitive.Content>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof NavigationMenuPrimitive.Content>>();
+  const frostedNavigationPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <NavigationMenuPrimitive.Content
+      ref={handleSurfaceNodeRef}
       data-slot="navigation-menu-content"
       className={cn(
         "top-0 left-0 w-full p-2 pr-2.5 md:absolute md:w-auto",
-        "group-data-[viewport=false]/navigation-menu:bg-popover group-data-[viewport=false]/navigation-menu:text-popover-foreground group-data-[viewport=false]/navigation-menu:top-full group-data-[viewport=false]/navigation-menu:mt-1.5 group-data-[viewport=false]/navigation-menu:overflow-hidden group-data-[viewport=false]/navigation-menu:rounded-xl group-data-[viewport=false]/navigation-menu:border group-data-[viewport=false]/navigation-menu:shadow group-data-[viewport=false]/navigation-menu:duration-200 **:data-[slot=navigation-menu-link]:focus:ring-0 **:data-[slot=navigation-menu-link]:focus:outline-none",
+        "group-data-[viewport=false]/navigation-menu:text-popover-foreground group-data-[viewport=false]/navigation-menu:top-full group-data-[viewport=false]/navigation-menu:mt-1.5 group-data-[viewport=false]/navigation-menu:overflow-hidden group-data-[viewport=false]/navigation-menu:border group-data-[viewport=false]/navigation-menu:shadow group-data-[viewport=false]/navigation-menu:duration-200 group-data-[viewport=false]/navigation-menu:backdrop-blur-none **:data-[slot=navigation-menu-link]:focus:ring-0 **:data-[slot=navigation-menu-link]:focus:outline-none",
+        "group-data-[viewport=false]/navigation-menu:relative group-data-[viewport=false]/navigation-menu:isolate group-data-[viewport=false]/navigation-menu:bg-transparent",
+        "group-data-[viewport=false]/navigation-menu:rounded-[18px]",
+        "group-data-[viewport=false]/navigation-menu:!bg-transparent group-data-[viewport=false]/navigation-menu:!backdrop-blur-none",
+        "group-data-[viewport=false]/navigation-menu:[&>[data-slot=navigation-menu-surface]]:hidden",
+        "group-data-[viewport=false]/navigation-menu:[&>[data-slot=navigation-menu-content-body]]:relative group-data-[viewport=false]/navigation-menu:[&>[data-slot=navigation-menu-content-body]]:z-[1]",
         className,
       )}
       {...props}
-    />
+    >
+      <div
+        data-slot="navigation-menu-surface"
+        className="pointer-events-none absolute inset-0 hidden group-data-[viewport=false]/navigation-menu:block"
+      >
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dropdown-panel"
+          radiusClassName={frostedNavigationPreset.radiusClassName}
+        />
+      </div>
+      <div data-slot="navigation-menu-content-body">
+        {props.children}
+      </div>
+    </NavigationMenuPrimitive.Content>
   );
 }
 
@@ -103,6 +128,8 @@ function NavigationMenuViewport({
   className,
   ...props
 }: React.ComponentProps<typeof NavigationMenuPrimitive.Viewport>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof NavigationMenuPrimitive.Viewport>>();
+  const frostedNavigationPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <div
       className={cn(
@@ -110,13 +137,24 @@ function NavigationMenuViewport({
       )}
     >
       <NavigationMenuPrimitive.Viewport
+        ref={handleSurfaceNodeRef}
         data-slot="navigation-menu-viewport"
         className={cn(
-          "origin-top-center bg-popover text-popover-foreground relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-xl border shadow md:w-[var(--radix-navigation-menu-viewport-width)]",
+          "origin-top-center text-popover-foreground relative isolate mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden border bg-transparent shadow md:w-[var(--radix-navigation-menu-viewport-width)] backdrop-blur-none",
+          frostedNavigationPreset.shellClassName,
           className,
+          "!bg-transparent !backdrop-blur-none",
         )}
         {...props}
-      />
+      >
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dropdown-panel"
+          radiusClassName={frostedNavigationPreset.radiusClassName}
+        >
+          {props.children}
+        </MaterialSurfaceFrame>
+      </NavigationMenuPrimitive.Viewport>
     </div>
   );
 }

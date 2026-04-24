@@ -3,6 +3,10 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { RiCloseFill as XIcon } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset, type FrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import type { FrostedSurfaceTone } from "@/components/frosted/FrostedBackdrop";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -54,6 +58,10 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   overlayClassName?: string;
   overlayStyle?: React.CSSProperties;
+  surfaceVariant?: "solid" | "frosted";
+  surfaceTone?: FrostedSurfaceTone;
+  surfacePreset?: FrostedSurfacePreset;
+  surfaceContentClassName?: string;
 };
 
 function DialogContent({
@@ -61,6 +69,10 @@ function DialogContent({
   children,
   overlayClassName,
   overlayStyle,
+  surfaceVariant = "frosted",
+  surfaceTone = "default",
+  surfacePreset = "dialog-panel",
+  surfaceContentClassName,
   onOpenAutoFocus,
   onCloseAutoFocus,
   onEscapeKeyDown,
@@ -68,29 +80,57 @@ function DialogContent({
   onInteractOutside,
   ...props
 }: DialogContentProps) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<HTMLDivElement>();
+  const frostedDialogPreset = getFrostedSurfacePreset(surfacePreset);
+  const resolvedOverlayClassName = cn(
+    surfaceVariant === "frosted" ? "bg-black/0 dark:bg-black/16" : undefined,
+    overlayClassName,
+  );
+
   return (
     <DialogPortal>
-      <DialogOverlay className={overlayClassName} style={overlayStyle} />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        aria-describedby={undefined}
-        onOpenAutoFocus={onOpenAutoFocus}
-        onCloseAutoFocus={onCloseAutoFocus}
-        onEscapeKeyDown={onEscapeKeyDown}
-        onPointerDownOutside={onPointerDownOutside}
-        onInteractOutside={onInteractOutside}
-        className={cn(
-          "bg-background/80 fixed top-[50%] left-[50%] z-[18001] grid w-full min-w-0 max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden rounded-[32px] border border-border p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-colors hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
+      <DialogOverlay className={resolvedOverlayClassName} style={overlayStyle} />
+      <div className="fixed inset-0 z-[18001] flex items-center justify-center p-4 pointer-events-none sm:p-6">
+        <DialogPrimitive.Content
+          ref={handleSurfaceNodeRef}
+          data-slot="dialog-content"
+          aria-describedby={undefined}
+          onOpenAutoFocus={onOpenAutoFocus}
+          onCloseAutoFocus={onCloseAutoFocus}
+          onEscapeKeyDown={onEscapeKeyDown}
+          onPointerDownOutside={onPointerDownOutside}
+          onInteractOutside={onInteractOutside}
+          className={cn(
+            "pointer-events-auto relative grid w-full min-w-0 max-w-[calc(100%-2rem)] gap-4 overflow-hidden rounded-[32px] border border-border p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
+            surfaceVariant === "frosted"
+              ? cn(frostedDialogPreset.shellClassName, "bg-transparent")
+              : "bg-background/80",
+            className,
+            surfaceVariant === "frosted" ? "!bg-transparent !backdrop-blur-none" : undefined,
+          )}
+          {...props}
+        >
+          {surfaceVariant === "frosted" ? (
+            <MaterialSurfaceFrame
+              surfaceNode={surfaceNode}
+              preset={surfacePreset}
+              tone={surfaceTone}
+              radiusClassName={frostedDialogPreset.radiusClassName}
+              contentClassName={surfaceContentClassName}
+            >
+              {children}
+            </MaterialSurfaceFrame>
+          ) : (
+            <div className="grid" style={{ gap: "inherit" }}>
+              {children}
+            </div>
+          )}
+          <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 z-10 rounded-xs opacity-70 transition-colors hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </div>
     </DialogPortal>
   );
 }

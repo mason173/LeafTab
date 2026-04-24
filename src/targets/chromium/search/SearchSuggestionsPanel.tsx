@@ -19,11 +19,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ShortcutIcon from '@/components/ShortcutIcon';
 import { extractDomainFromUrl, isUrl } from '@/utils';
 import { parseSiteSearchShortcut } from '@/utils/siteSearch';
+import { useStableElementState } from '@/hooks/useStableElementState';
 import {
   getEngineIcon,
   SEARCH_ENGINE_BRAND_NAMES,
 } from '@/components/search/searchEngineSwitcher.shared';
-import { SearchFakeBlurSurface } from '@/components/search/SearchFakeBlurSurface';
+import { MaterialSurfaceFrame } from '@/components/frosted/MaterialSurfaceFrame';
 import type { SearchSuggestionsPanelProps } from '@/components/search/SearchSuggestionsPanel.shared';
 import type { SearchAction } from '@/utils/searchActions';
 
@@ -59,7 +60,7 @@ export function SearchSuggestionsPanel({
   surfaceTone = 'default',
 }: SearchSuggestionsPanelProps) {
   const { t, i18n } = useTranslation();
-  const [surfaceNode, setSurfaceNode] = useState<HTMLDivElement | null>(null);
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<HTMLDivElement>();
   const [scrollbarVisible, setScrollbarVisible] = useState(false);
   const [shouldRenderPanel, setShouldRenderPanel] = useState(isOpen);
   const hideScrollbarTimerRef = useRef<number | null>(null);
@@ -325,18 +326,18 @@ export function SearchSuggestionsPanel({
 
   return (
     <div
-      ref={setSurfaceNode}
+      ref={handleSurfaceNodeRef}
       className={`absolute left-0 right-0 z-[60] isolate rounded-[20px] p-[8px] ${theme.dropdownSurfaceClassName} ${placement === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}`}
       style={lightweightPanelStyle}
       aria-hidden={!isOpen}
     >
-      <SearchFakeBlurSurface
+      <MaterialSurfaceFrame
         surfaceNode={surfaceNode}
+        preset="search-panel"
         tone={surfaceTone}
         radiusClassName="rounded-[20px]"
         showBorder={false}
-      />
-      <div className="relative z-[1]">
+      >
         {statusNotice ? (
           <div
             className={`mb-2 flex items-center justify-between gap-2 rounded-[12px] px-2 py-1.5 ${
@@ -408,7 +409,7 @@ export function SearchSuggestionsPanel({
             </div>
           </div>
         ) : null}
-      </div>
+      </MaterialSurfaceFrame>
     </div>
   );
 }

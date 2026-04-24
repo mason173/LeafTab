@@ -37,7 +37,7 @@ export function WallpaperMaskOpacitySlider({
       showLabel
       showValue
       trackHeight={40}
-      className={`w-full ${className}`}
+      className={`w-full [&_[data-slot=scrubber-track]]:border [&_[data-slot=scrubber-track]]:border-white/24 [&_[data-slot=scrubber-track]]:bg-white/12 [&_[data-slot=scrubber-track]]:backdrop-blur-xl dark:[&_[data-slot=scrubber-track]]:border-white/10 dark:[&_[data-slot=scrubber-track]]:bg-black/18 [&_[data-slot=scrubber-fill]]:bg-black/20 dark:[&_[data-slot=scrubber-fill]]:bg-white/14 [&_[data-slot=scrubber-tick]]:bg-black/28 dark:[&_[data-slot=scrubber-tick]]:bg-white/18 ${className}`}
       onDragStart={onInteractionStart}
       onDragEnd={onInteractionEnd}
       onValueChange={(nextRawValue) => {

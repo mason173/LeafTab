@@ -44,6 +44,8 @@ const FLOATING_BOTTOM_SEARCH_Z_INDEX = 15030;
 const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 15025;
 const FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS = 300;
 const FLOATING_BOTTOM_SEARCH_HIDE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const FLOATING_BOTTOM_SEARCH_HEIGHT_PX = 52;
+const FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX = 32;
 
 function clamp01(value: number) {
   if (!Number.isFinite(value)) return 0;
@@ -390,6 +392,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       shortcutGridSelectionMode,
     ],
   );
+  const floatingBottomSearchExperienceProps = useMemo(
+    () => ({
+      ...searchExperienceProps,
+      searchHeight: FLOATING_BOTTOM_SEARCH_HEIGHT_PX,
+      searchHorizontalPadding: FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX,
+    }),
+    [searchExperienceProps],
+  );
   const shortcutGridProps = useMemo(
     () => ({
       ...shortcutGridBaseProps,
@@ -681,12 +691,12 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     willChange: 'opacity',
   }), []);
   const showFloatingBottomSearch = true;
-  const floatingBottomSearchOffsetPx = resolveFloatingSearchOffsetPx(homeMainContentBaseProps.layout.searchHeight);
-  const floatingBottomSearchHiddenTranslateYPx = homeMainContentBaseProps.layout.searchHeight + floatingBottomSearchOffsetPx + 48;
+  const floatingBottomSearchOffsetPx = resolveFloatingSearchOffsetPx(FLOATING_BOTTOM_SEARCH_HEIGHT_PX);
+  const floatingBottomSearchHiddenTranslateYPx = FLOATING_BOTTOM_SEARCH_HEIGHT_PX + floatingBottomSearchOffsetPx + 48;
   const floatingBottomSearchCropLayer = useMemo(() => {
     if (!showFloatingBottomSearch) return null;
 
-    const cropHeightPx = resolveBottomCropFadeHeight(homeMainContentBaseProps.layout.searchHeight);
+    const cropHeightPx = resolveBottomCropFadeHeight(FLOATING_BOTTOM_SEARCH_HEIGHT_PX);
 
     return (
       <div
@@ -707,7 +717,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }, [
     fixedTopNavRevealStyle,
     floatingSearchHiddenByDialog,
-    homeMainContentBaseProps.layout.searchHeight,
     showFloatingBottomSearch,
   ]);
 
@@ -716,7 +725,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
     return (
       <div
-        className="fixed inset-x-0 pointer-events-none px-4"
+        className="fixed inset-x-0 pointer-events-none px-5 sm:px-6"
         style={{
           zIndex: FLOATING_BOTTOM_SEARCH_Z_INDEX,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + ${floatingBottomSearchOffsetPx}px)`,
@@ -750,13 +759,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 inputRef={drawerShortcutSearchController.inputRef}
                 value={drawerShortcutSearchController.searchValue}
                 onValueChange={drawerShortcutSearchController.setSearchValue}
-                height={homeMainContentBaseProps.layout.searchHeight}
+                height={FLOATING_BOTTOM_SEARCH_HEIGHT_PX}
+                horizontalPadding={FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX}
                 interactionDisabled={Boolean(shortcutGridSelectionMode || !drawerExpanded)}
                 withDock={false}
               />
             ) : (
               <HomeSearchBar
-                searchExperienceProps={searchExperienceProps}
+                searchExperienceProps={floatingBottomSearchExperienceProps}
                 interactionState={searchInteractionState}
                 blankMode={modeFlags.searchUsesBlankStyle}
                 forceWhiteTheme={modeFlags.forceWhiteSearchTheme}
@@ -779,13 +789,12 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     floatingBottomSearchHiddenTranslateYPx,
     floatingSearchHidden,
     floatingBottomSearchOffsetPx,
+    floatingBottomSearchExperienceProps,
     homeMainContentBaseProps.layout.contentWidth,
-    homeMainContentBaseProps.layout.searchHeight,
     homeMainContentBaseProps.reduceMotionVisuals,
     modeFlags.forceWhiteSearchTheme,
     modeFlags.searchUsesBlankStyle,
     searchInteractionState,
-    searchExperienceProps,
     showFloatingBottomSearch,
     shortcutGridSelectionMode,
     drawerExpanded,

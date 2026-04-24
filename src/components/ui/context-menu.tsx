@@ -7,6 +7,9 @@ import {
   RiCheckFill as CheckIcon,
   RiCheckboxBlankCircleFill as CircleIcon,
 } from "@/icons/ri-compat";
+import { MaterialSurfaceFrame } from "@/components/frosted/MaterialSurfaceFrame";
+import { getFrostedSurfacePreset } from "@/components/frosted/frostedSurfacePresets";
+import { useStableElementState } from "@/hooks/useStableElementState";
 
 import { cn } from "./utils";
 
@@ -83,34 +86,64 @@ function ContextMenuSubTrigger({
 
 function ContextMenuSubContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof ContextMenuPrimitive.SubContent>>();
+  const frostedContextMenuPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <ContextMenuPrimitive.SubContent
+      ref={handleSurfaceNodeRef}
       data-slot="context-menu-sub-content"
       className={cn(
-        "bg-popover text-popover-foreground z-50 min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-[12px] border p-1 shadow-lg",
+        "relative isolate z-50 min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-hidden border border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
+        frostedContextMenuPreset.shellClassName,
         className,
+        "!bg-transparent !backdrop-blur-none",
       )}
       {...props}
-    />
+    >
+      <MaterialSurfaceFrame
+        surfaceNode={surfaceNode}
+        preset="dropdown-panel"
+        radiusClassName={frostedContextMenuPreset.radiusClassName}
+        contentClassName="p-1"
+      >
+        {children}
+      </MaterialSurfaceFrame>
+    </ContextMenuPrimitive.SubContent>
   );
 }
 
 function ContextMenuContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+  const [surfaceNode, handleSurfaceNodeRef] = useStableElementState<React.ElementRef<typeof ContextMenuPrimitive.Content>>();
+  const frostedContextMenuPreset = getFrostedSurfacePreset("dropdown-panel");
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
+        ref={handleSurfaceNodeRef}
         data-slot="context-menu-content"
         className={cn(
-        "bg-popover text-popover-foreground z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[12px] border p-1 shadow-lg",
-        className,
-      )}
+          "relative isolate z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto border border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
+          frostedContextMenuPreset.shellClassName,
+          className,
+          "!bg-transparent !backdrop-blur-none",
+        )}
         {...props}
-      />
+      >
+        <MaterialSurfaceFrame
+          surfaceNode={surfaceNode}
+          preset="dropdown-panel"
+          radiusClassName={frostedContextMenuPreset.radiusClassName}
+          contentClassName="p-1"
+        >
+          {children}
+        </MaterialSurfaceFrame>
+      </ContextMenuPrimitive.Content>
     </ContextMenuPrimitive.Portal>
   );
 }

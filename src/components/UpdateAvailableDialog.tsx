@@ -66,7 +66,7 @@ export function UpdateAvailableDialog({
                 {t('updateNotice.badge', { defaultValue: '新版本 v{{version}}', version: resolvedLatestVersion })}
               </span>
             ) : null}
-            <div className="relative flex h-[54px] w-[54px] items-center justify-center rounded-[18px] bg-background ring-1 ring-border/60">
+            <div className="frosted-control-surface relative flex h-[54px] w-[54px] items-center justify-center rounded-[18px] ring-1 ring-border/60">
               <img
                 src={aboutIcon}
                 alt=""

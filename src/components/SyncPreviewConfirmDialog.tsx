@@ -223,7 +223,7 @@ export function SyncPreviewConfirmDialog({
           if (requireDecision) event.preventDefault();
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="pb-3 pr-8">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{hint}</DialogDescription>
         </DialogHeader>

@@ -2296,110 +2296,110 @@ export default function App() {
             }}
           >
             <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
+            {shouldMountWallpaperSelector ? (
+              <Suspense fallback={null}>
+                <LazyWallpaperSelector
+                  {...wallpaperSelectorLayerProps}
+                  mode={effectiveWallpaperMode}
+                  hideWeather={firefox}
+                  open={wallpaperSettingsOpen}
+                  onOpenChange={setWallpaperSettingsOpen}
+                  onBackToSettings={handleBackToMainSettings}
+                  trigger={<span className="hidden" aria-hidden="true" />}
+                />
+              </Suspense>
+            ) : null}
+
+            <ConfirmDialog
+              open={confirmDisableWebdavSyncOpen}
+              onOpenChange={setConfirmDisableWebdavSyncOpen}
+              title={t('settings.backup.webdav.disableConfirmTitle')}
+              description={t('settings.backup.webdav.disableConfirmDesc')}
+              cancelText={t('common.cancel')}
+              confirmText={t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
+              onConfirm={() => {
+                setConfirmDisableWebdavSyncOpen(false);
+                setLeafTabSyncDialogOpen(false);
+                void syncActions.handleDisableWebdavSync();
+              }}
+              confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            />
+
+            <ConfirmDialog
+              open={confirmLogoutOpen}
+              onOpenChange={setConfirmLogoutOpen}
+              title={t('logoutConfirm.title')}
+              description={t('user.logoutOfflineWarning', {
+                defaultValue: t('logoutConfirm.description'),
+              })}
+              cancelText={t('logoutConfirm.cancel')}
+              confirmText={t('logoutConfirm.confirm')}
+              onConfirm={() => {
+                setConfirmLogoutOpen(false);
+                void handleLogoutWithOptions();
+              }}
+              confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            />
+
+            <ConfirmDialog
+              open={confirmLegacyCloudMigrationOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setConfirmLegacyCloudMigrationOpen(true);
+                  return;
+                }
+                syncActions.resolveLegacyCloudMigrationPrompt(false);
+              }}
+              title={t('settings.backup.cloud.legacyMigrationTitle', { defaultValue: '检测到旧版云同步数据' })}
+              description={t('settings.backup.cloud.legacyMigrationDesc', {
+                defaultValue: '检测到这个账号里还有旧版未加密的快捷方式云数据。继续后需要先设置同步口令，LeafTab 才会把这批旧数据迁移到新版加密同步里；在你确认之前，旧数据不会被删除。',
+              })}
+              cancelText={t('common.cancel', { defaultValue: '取消' })}
+              confirmText={t('settings.backup.cloud.startMigration', { defaultValue: '继续迁移' })}
+              onConfirm={() => {
+                syncActions.resolveLegacyCloudMigrationPrompt(true);
+              }}
+            />
+            <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
+            <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
+            <FolderTransitionDocumentEffects controller={folderTransitionController} />
+            {shouldMountUpdateDialog ? (
+              <Suspense fallback={null}>
+                <LazyUpdateAvailableDialog
+                  open={updateDialogOpen}
+                  onOpenChange={setUpdateDialogOpen}
+                  latestVersion={latestVersion}
+                  releaseUrl={releaseUrl}
+                  notes={updateNotes}
+                  onLater={snoozeCurrentRelease}
+                />
+              </Suspense>
+            ) : null}
+            <LongTaskIndicator task={longTaskIndicator} />
+            <Toaster offset={longTaskIndicator ? 96 : 16} />
+            {roleSelectorOpen ? (
+              <Suspense fallback={null}>
+                <LazyRoleSelector
+                  open={roleSelectorOpen}
+                  wallpaperMode={effectiveWallpaperMode}
+                  bingWallpaper={bingWallpaper}
+                  customWallpaper={customWallpaper}
+                  weatherCode={weatherCode}
+                  colorWallpaperId={colorWallpaperId}
+                  onSelect={(id, layout) => {
+                    handleRoleSelect(id);
+                    if (layout) {
+                      setDisplayMode(layout);
+                    }
+                  }}
+                />
+              </Suspense>
+            ) : null}
+            <PrivacyConsentModal
+              isOpen={showPrivacyModal}
+              onConsent={handlePrivacyConsent}
+            />
           </WallpaperBackdropProvider>
-          {shouldMountWallpaperSelector ? (
-            <Suspense fallback={null}>
-              <LazyWallpaperSelector
-                {...wallpaperSelectorLayerProps}
-                mode={effectiveWallpaperMode}
-                hideWeather={firefox}
-                open={wallpaperSettingsOpen}
-                onOpenChange={setWallpaperSettingsOpen}
-                onBackToSettings={handleBackToMainSettings}
-                trigger={<span className="hidden" aria-hidden="true" />}
-              />
-            </Suspense>
-          ) : null}
-
-          <ConfirmDialog
-            open={confirmDisableWebdavSyncOpen}
-            onOpenChange={setConfirmDisableWebdavSyncOpen}
-            title={t('settings.backup.webdav.disableConfirmTitle')}
-            description={t('settings.backup.webdav.disableConfirmDesc')}
-            cancelText={t('common.cancel')}
-            confirmText={t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
-            onConfirm={() => {
-              setConfirmDisableWebdavSyncOpen(false);
-              setLeafTabSyncDialogOpen(false);
-              void syncActions.handleDisableWebdavSync();
-            }}
-            confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          />
-
-          <ConfirmDialog
-            open={confirmLogoutOpen}
-            onOpenChange={setConfirmLogoutOpen}
-            title={t('logoutConfirm.title')}
-            description={t('user.logoutOfflineWarning', {
-              defaultValue: t('logoutConfirm.description'),
-            })}
-            cancelText={t('logoutConfirm.cancel')}
-            confirmText={t('logoutConfirm.confirm')}
-            onConfirm={() => {
-              setConfirmLogoutOpen(false);
-              void handleLogoutWithOptions();
-            }}
-            confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          />
-
-          <ConfirmDialog
-            open={confirmLegacyCloudMigrationOpen}
-            onOpenChange={(open) => {
-              if (open) {
-                setConfirmLegacyCloudMigrationOpen(true);
-                return;
-              }
-              syncActions.resolveLegacyCloudMigrationPrompt(false);
-            }}
-            title={t('settings.backup.cloud.legacyMigrationTitle', { defaultValue: '检测到旧版云同步数据' })}
-            description={t('settings.backup.cloud.legacyMigrationDesc', {
-              defaultValue: '检测到这个账号里还有旧版未加密的快捷方式云数据。继续后需要先设置同步口令，LeafTab 才会把这批旧数据迁移到新版加密同步里；在你确认之前，旧数据不会被删除。',
-            })}
-            cancelText={t('common.cancel', { defaultValue: '取消' })}
-            confirmText={t('settings.backup.cloud.startMigration', { defaultValue: '继续迁移' })}
-            onConfirm={() => {
-              syncActions.resolveLegacyCloudMigrationPrompt(true);
-            }}
-          />
-          <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
-          <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
-          <FolderTransitionDocumentEffects controller={folderTransitionController} />
-          {shouldMountUpdateDialog ? (
-            <Suspense fallback={null}>
-              <LazyUpdateAvailableDialog
-                open={updateDialogOpen}
-                onOpenChange={setUpdateDialogOpen}
-                latestVersion={latestVersion}
-                releaseUrl={releaseUrl}
-                notes={updateNotes}
-                onLater={snoozeCurrentRelease}
-              />
-            </Suspense>
-          ) : null}
-          <LongTaskIndicator task={longTaskIndicator} />
-          <Toaster offset={longTaskIndicator ? 96 : 16} />
-          {roleSelectorOpen ? (
-            <Suspense fallback={null}>
-              <LazyRoleSelector
-                open={roleSelectorOpen}
-                wallpaperMode={effectiveWallpaperMode}
-                bingWallpaper={bingWallpaper}
-                customWallpaper={customWallpaper}
-                weatherCode={weatherCode}
-                colorWallpaperId={colorWallpaperId}
-                onSelect={(id, layout) => {
-                  handleRoleSelect(id);
-                  if (layout) {
-                    setDisplayMode(layout);
-                  }
-                }}
-              />
-            </Suspense>
-          ) : null}
-          <PrivacyConsentModal
-            isOpen={showPrivacyModal}
-            onConsent={handlePrivacyConsent}
-          />
         </div>
       </LeafTabSyncProvider>
     </ShortcutAppProvider>
