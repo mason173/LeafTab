@@ -99,6 +99,7 @@ export interface SearchExperienceProps {
   suggestionsPlacement?: SearchSuggestionsPlacement;
   currentWallpaperMode?: WallpaperMode;
   currentColorWallpaperId?: string;
+  darkModeAutoDimWallpaperEnabled?: boolean;
   currentShortcutIconAppearance?: ShortcutIconAppearance;
   currentShortcutIconCornerRadius?: number;
   currentShortcutIconScale?: number;
@@ -115,6 +116,16 @@ export interface SearchExperienceProps {
   onSetShowTimeAction?: (nextValue: boolean) => void;
   onSetWallpaperModeAction?: (nextValue: WallpaperMode) => void;
   onSetShortcutIconAppearanceAction?: (nextValue: ShortcutIconAppearance) => void;
+  onSetSearchTabSwitchEngineAction?: (nextValue: boolean) => void;
+  onSetSearchPrefixEnabledAction?: (nextValue: boolean) => void;
+  onSetSearchSiteDirectEnabledAction?: (nextValue: boolean) => void;
+  onSetSearchSiteShortcutEnabledAction?: (nextValue: boolean) => void;
+  onSetSearchAnyKeyCaptureEnabledAction?: (nextValue: boolean) => void;
+  onSetSearchCalculatorEnabledAction?: (nextValue: boolean) => void;
+  onSetSearchRotatingPlaceholderEnabledAction?: (nextValue: boolean) => void;
+  onSetShortcutShowTitleAction?: (nextValue: boolean) => void;
+  onSetPreventDuplicateNewTabAction?: (nextValue: boolean) => void;
+  onSetDarkModeAutoDimWallpaperAction?: (nextValue: boolean) => void;
   onInteractionStateChange?: (state: SearchInteractionState) => void;
   onOpenSlashCommandDialog?: (target: SlashCommandDialogTarget) => void;
   onActivationHandleChange?: (handle: SearchActivationHandle | null) => void;
@@ -208,6 +219,7 @@ export const SearchExperience = memo(function SearchExperience({
   suggestionsPlacement = 'bottom',
   currentWallpaperMode,
   currentColorWallpaperId,
+  darkModeAutoDimWallpaperEnabled,
   currentShortcutIconAppearance,
   currentShortcutIconCornerRadius,
   currentShortcutIconScale,
@@ -224,6 +236,16 @@ export const SearchExperience = memo(function SearchExperience({
   onSetShowTimeAction,
   onSetWallpaperModeAction,
   onSetShortcutIconAppearanceAction,
+  onSetSearchTabSwitchEngineAction,
+  onSetSearchPrefixEnabledAction,
+  onSetSearchSiteDirectEnabledAction,
+  onSetSearchSiteShortcutEnabledAction,
+  onSetSearchAnyKeyCaptureEnabledAction,
+  onSetSearchCalculatorEnabledAction,
+  onSetSearchRotatingPlaceholderEnabledAction,
+  onSetShortcutShowTitleAction,
+  onSetPreventDuplicateNewTabAction,
+  onSetDarkModeAutoDimWallpaperAction,
   onInteractionStateChange,
   onOpenSlashCommandDialog,
   onActivationHandleChange,
@@ -521,6 +543,7 @@ export const SearchExperience = memo(function SearchExperience({
     preventDuplicateNewTab,
     showTime,
     languageLabel: currentLanguageLabel,
+    darkModeAutoDimWallpaperEnabled,
   }), [
     activeSyncProviderLabel,
     currentLanguageLabel,
@@ -535,6 +558,7 @@ export const SearchExperience = memo(function SearchExperience({
     currentVisualEffectsLevelLabel,
     currentWallpaperMode,
     currentWallpaperModeLabel,
+    darkModeAutoDimWallpaperEnabled,
     preventDuplicateNewTab,
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
@@ -959,6 +983,33 @@ export const SearchExperience = memo(function SearchExperience({
     }
 
     if (item.type === 'history' && item.searchActionKey) {
+      if (secondaryAction.kind === 'toggle-setting') {
+        if (secondaryAction.settingKey === 'search-tab-switch-setting') {
+          onSetSearchTabSwitchEngineAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-prefix-setting') {
+          onSetSearchPrefixEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-site-direct-setting') {
+          onSetSearchSiteDirectEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-site-shortcut-setting') {
+          onSetSearchSiteShortcutEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-any-key-capture-setting') {
+          onSetSearchAnyKeyCaptureEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-calculator-setting') {
+          onSetSearchCalculatorEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'search-rotating-placeholder-setting') {
+          onSetSearchRotatingPlaceholderEnabledAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'shortcut-icon-show-title-setting') {
+          onSetShortcutShowTitleAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'prevent-duplicate-new-tab-setting') {
+          onSetPreventDuplicateNewTabAction?.(!secondaryAction.active);
+        } else if (secondaryAction.settingKey === 'wallpaper-auto-dim-setting') {
+          onSetDarkModeAutoDimWallpaperAction?.(!secondaryAction.active);
+        }
+        recordSearchPersonalizationUsage(action, secondaryAction);
+        exitActionMode();
+        return;
+      }
+
       if (secondaryAction.kind === 'set-theme-mode') {
         setTheme(secondaryAction.targetMode);
         recordSearchPersonalizationUsage(action, secondaryAction);
@@ -1015,6 +1066,16 @@ export const SearchExperience = memo(function SearchExperience({
     onDeleteShortcutAction,
     onEditShortcutAction,
     onSetShortcutIconAppearanceAction,
+    onSetSearchAnyKeyCaptureEnabledAction,
+    onSetSearchCalculatorEnabledAction,
+    onSetSearchPrefixEnabledAction,
+    onSetSearchRotatingPlaceholderEnabledAction,
+    onSetSearchSiteDirectEnabledAction,
+    onSetSearchSiteShortcutEnabledAction,
+    onSetSearchTabSwitchEngineAction,
+    onSetShortcutShowTitleAction,
+    onSetPreventDuplicateNewTabAction,
+    onSetDarkModeAutoDimWallpaperAction,
     onSetShowTimeAction,
     onSetWallpaperModeAction,
     pendingConfirmationActionKey,

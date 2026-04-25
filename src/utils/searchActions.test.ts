@@ -129,4 +129,33 @@ describe('createSearchAction', () => {
       { id: 'set-shortcut-icon-appearance', kind: 'set-shortcut-icon-appearance', targetAppearance: 'accent', active: true },
     ]);
   });
+
+  it('adds toggle direct actions for supported boolean settings entries', () => {
+    const prefixAction = createSearchAction({
+      type: 'history',
+      label: '搜索前缀',
+      value: 'leaftab://slash-action/search-settings',
+      timestamp: 0,
+      historySource: 'browser',
+      searchActionKey: 'search-prefix-setting',
+      searchActionState: 'enabled',
+    }, 0);
+
+    const autoDimAction = createSearchAction({
+      type: 'history',
+      label: '深色模式自动调暗壁纸',
+      value: 'leaftab://slash-action/wallpaper-settings',
+      timestamp: 0,
+      historySource: 'browser',
+      searchActionKey: 'wallpaper-auto-dim-setting',
+      searchActionState: 'disabled',
+    }, 0);
+
+    expect(prefixAction.secondaryActions).toEqual([
+      { id: 'toggle-setting', kind: 'toggle-setting', settingKey: 'search-prefix-setting', active: true },
+    ]);
+    expect(autoDimAction.secondaryActions).toEqual([
+      { id: 'toggle-setting', kind: 'toggle-setting', settingKey: 'wallpaper-auto-dim-setting', active: false },
+    ]);
+  });
 });

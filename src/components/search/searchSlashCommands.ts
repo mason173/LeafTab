@@ -278,6 +278,10 @@ function resolveBooleanSettingDetail(t: TFunction, enabled: boolean) {
     : t('common.disabled', { defaultValue: '已关闭' });
 }
 
+function resolveBooleanSettingState(enabled: boolean) {
+  return enabled ? 'enabled' : 'disabled';
+}
+
 function resolveWallpaperSettingDetail(
   t: TFunction,
   currentWallpaperMode: WallpaperMode | undefined,
@@ -370,6 +374,7 @@ export function buildSettingsSearchEntries(args: {
   preventDuplicateNewTab?: boolean;
   showTime?: boolean;
   languageLabel?: string;
+  darkModeAutoDimWallpaperEnabled?: boolean;
 }): SettingsSearchEntry[] {
   const {
     t,
@@ -396,6 +401,7 @@ export function buildSettingsSearchEntries(args: {
     preventDuplicateNewTab,
     showTime,
     languageLabel,
+    darkModeAutoDimWallpaperEnabled,
   } = args;
 
   return [
@@ -483,6 +489,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.preventDuplicateNewTab.label', { defaultValue: '避免重复打开 LeafTab' }),
       detail: resolveBooleanSettingDetail(t, Boolean(preventDuplicateNewTab)),
       keywords: ['避免重复打开', '重复新标签页', '新标签页', 'duplicate new tab', 'prevent duplicate'],
+      actionState: resolveBooleanSettingState(Boolean(preventDuplicateNewTab)),
     },
     {
       id: 'show-time-setting',
@@ -498,6 +505,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.tabSwitch.label', { defaultValue: '切换到已打开标签页' }),
       detail: resolveBooleanSettingDetail(t, searchTabSwitchEngine),
       keywords: ['标签页搜索', '切换标签页', '切换到已打开标签页', 'tab switch', 'search tabs'],
+      actionState: resolveBooleanSettingState(searchTabSwitchEngine),
     },
     {
       id: 'search-prefix-setting',
@@ -505,6 +513,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.prefix.label', { defaultValue: '搜索前缀' }),
       detail: resolveBooleanSettingDetail(t, searchPrefixEnabled),
       keywords: ['搜索前缀', '前缀搜索', 'prefix', 'engine prefix'],
+      actionState: resolveBooleanSettingState(searchPrefixEnabled),
     },
     {
       id: 'search-site-direct-setting',
@@ -512,6 +521,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.siteDirect.label', { defaultValue: '站内搜索' }),
       detail: resolveBooleanSettingDetail(t, searchSiteDirectEnabled),
       keywords: ['站内搜索', 'site search', 'site direct', '网站搜索'],
+      actionState: resolveBooleanSettingState(searchSiteDirectEnabled),
     },
     {
       id: 'search-site-shortcut-setting',
@@ -519,6 +529,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.siteShortcut.label', { defaultValue: '站点快捷搜索' }),
       detail: resolveBooleanSettingDetail(t, searchSiteShortcutEnabled),
       keywords: ['站点快捷搜索', '网站快捷搜索', 'site shortcut', '快捷搜索'],
+      actionState: resolveBooleanSettingState(searchSiteShortcutEnabled),
     },
     {
       id: 'search-any-key-capture-setting',
@@ -526,6 +537,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.anyKeyCapture.label', { defaultValue: '任意键唤起搜索' }),
       detail: resolveBooleanSettingDetail(t, searchAnyKeyCaptureEnabled),
       keywords: ['任意键唤起搜索', '键盘唤起搜索', '直接输入搜索', 'any key capture', 'type to search'],
+      actionState: resolveBooleanSettingState(searchAnyKeyCaptureEnabled),
     },
     {
       id: 'search-calculator-setting',
@@ -533,6 +545,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.calculator.label', { defaultValue: '计算器' }),
       detail: resolveBooleanSettingDetail(t, searchCalculatorEnabled),
       keywords: ['计算器', 'calculator', '算式', '公式计算'],
+      actionState: resolveBooleanSettingState(searchCalculatorEnabled),
     },
     {
       id: 'search-rotating-placeholder-setting',
@@ -540,6 +553,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.searchSettings.items.rotatingPlaceholder.label', { defaultValue: '轮播占位提示' }),
       detail: resolveBooleanSettingDetail(t, searchRotatingPlaceholderEnabled),
       keywords: ['占位提示', '轮播提示', 'placeholder', 'rotating placeholder', '搜索提示文案'],
+      actionState: resolveBooleanSettingState(searchRotatingPlaceholderEnabled),
     },
     {
       id: 'shortcut-icon-appearance-setting',
@@ -569,6 +583,7 @@ export function buildSettingsSearchEntries(args: {
       label: t('settings.shortcutsStyle.showName', { defaultValue: '显示名称' }),
       detail: resolveBooleanSettingDetail(t, Boolean(shortcutShowTitleEnabled)),
       keywords: ['显示名称', '显示标题', '图标名称', 'show name', 'show title'],
+      actionState: resolveBooleanSettingState(Boolean(shortcutShowTitleEnabled)),
     },
     {
       id: 'shortcut-grid-columns-setting',
@@ -613,7 +628,9 @@ export function buildSettingsSearchEntries(args: {
       id: 'wallpaper-auto-dim-setting',
       actionId: 'wallpaper-settings',
       label: t('weather.wallpaper.autoDimInDarkMode', { defaultValue: '深色模式自动调暗壁纸' }),
+      detail: resolveBooleanSettingDetail(t, Boolean(darkModeAutoDimWallpaperEnabled)),
       keywords: ['深色模式自动调暗壁纸', '调暗壁纸', 'auto dim wallpaper', 'dark mode wallpaper'],
+      actionState: resolveBooleanSettingState(Boolean(darkModeAutoDimWallpaperEnabled)),
     },
   ];
 }

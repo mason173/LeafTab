@@ -528,6 +528,56 @@ export function SearchSuggestionsPanel({
 
     const historyTimeText = item.type === 'history' ? formatRelativeTime(item.timestamp) : '';
     const resolveSecondaryActionLabel = (secondaryAction: SearchSecondaryAction) => {
+      if (secondaryAction.kind === 'toggle-setting') {
+        if (secondaryAction.settingKey === 'search-tab-switch-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableTabSwitchSearch', { defaultValue: '关闭已打开标签页结果' })
+            : t('search.secondaryAction.enableTabSwitchSearch', { defaultValue: '开启已打开标签页结果' });
+        }
+        if (secondaryAction.settingKey === 'search-prefix-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableSearchPrefix', { defaultValue: '关闭搜索前缀' })
+            : t('search.secondaryAction.enableSearchPrefix', { defaultValue: '开启搜索前缀' });
+        }
+        if (secondaryAction.settingKey === 'search-site-direct-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableSiteDirect', { defaultValue: '关闭站内搜索' })
+            : t('search.secondaryAction.enableSiteDirect', { defaultValue: '开启站内搜索' });
+        }
+        if (secondaryAction.settingKey === 'search-site-shortcut-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableSiteShortcut', { defaultValue: '关闭站点快捷搜索' })
+            : t('search.secondaryAction.enableSiteShortcut', { defaultValue: '开启站点快捷搜索' });
+        }
+        if (secondaryAction.settingKey === 'search-any-key-capture-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableAnyKeyCapture', { defaultValue: '关闭任意键唤起搜索' })
+            : t('search.secondaryAction.enableAnyKeyCapture', { defaultValue: '开启任意键唤起搜索' });
+        }
+        if (secondaryAction.settingKey === 'search-calculator-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableCalculator', { defaultValue: '关闭计算器' })
+            : t('search.secondaryAction.enableCalculator', { defaultValue: '开启计算器' });
+        }
+        if (secondaryAction.settingKey === 'search-rotating-placeholder-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disableRotatingPlaceholder', { defaultValue: '关闭轮播占位提示' })
+            : t('search.secondaryAction.enableRotatingPlaceholder', { defaultValue: '开启轮播占位提示' });
+        }
+        if (secondaryAction.settingKey === 'shortcut-icon-show-title-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.hideShortcutTitle', { defaultValue: '隐藏图标名称' })
+            : t('search.secondaryAction.showShortcutTitle', { defaultValue: '显示图标名称' });
+        }
+        if (secondaryAction.settingKey === 'prevent-duplicate-new-tab-setting') {
+          return secondaryAction.active
+            ? t('search.secondaryAction.disablePreventDuplicateNewTab', { defaultValue: '允许重复打开 LeafTab' })
+            : t('search.secondaryAction.enablePreventDuplicateNewTab', { defaultValue: '避免重复打开 LeafTab' });
+        }
+        return secondaryAction.active
+          ? t('search.secondaryAction.disableWallpaperAutoDim', { defaultValue: '关闭深色模式自动调暗壁纸' })
+          : t('search.secondaryAction.enableWallpaperAutoDim', { defaultValue: '开启深色模式自动调暗壁纸' });
+      }
       if (secondaryAction.kind === 'add-shortcut') {
         return t('search.secondaryAction.addShortcut', { defaultValue: '添加为快捷方式' });
       }
@@ -595,6 +645,26 @@ export function SearchSuggestionsPanel({
       return resolveSecondaryActionLabel(secondaryAction);
     };
     const renderSecondaryActionIcon = (secondaryAction: SearchSecondaryAction) => {
+      if (secondaryAction.kind === 'toggle-setting') {
+        if (secondaryAction.settingKey === 'shortcut-icon-show-title-setting') {
+          return secondaryAction.active
+            ? <RiEyeOffFill className="size-3.5" />
+            : <RiEyeFill className="size-3.5" />;
+        }
+        if (secondaryAction.settingKey === 'prevent-duplicate-new-tab-setting') {
+          return secondaryAction.active
+            ? <RiRefreshFill className="size-3.5" />
+            : <RiDashboardFill className="size-3.5" />;
+        }
+        if (secondaryAction.settingKey === 'wallpaper-auto-dim-setting') {
+          return secondaryAction.active
+            ? <RiMoonFill className="size-3.5" />
+            : <RiSunFill className="size-3.5" />;
+        }
+        return secondaryAction.active
+          ? <RiEyeOffFill className="size-3.5" />
+          : <RiEyeFill className="size-3.5" />;
+      }
       if (secondaryAction.kind === 'add-shortcut') {
         return <RiAddLine className="size-3.5" />;
       }

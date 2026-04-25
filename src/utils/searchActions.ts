@@ -9,6 +9,22 @@ import { buildShortcutUsageKey } from '@/utils/suggestionPersonalization';
 
 export type SearchSecondaryAction =
   | {
+      id: 'toggle-setting';
+      kind: 'toggle-setting';
+      settingKey:
+        | 'search-tab-switch-setting'
+        | 'search-prefix-setting'
+        | 'search-site-direct-setting'
+        | 'search-site-shortcut-setting'
+        | 'search-any-key-capture-setting'
+        | 'search-calculator-setting'
+        | 'search-rotating-placeholder-setting'
+        | 'shortcut-icon-show-title-setting'
+        | 'prevent-duplicate-new-tab-setting'
+        | 'wallpaper-auto-dim-setting';
+      active: boolean;
+    }
+  | {
       id: 'add-shortcut';
       kind: 'add-shortcut';
       active?: false;
@@ -174,6 +190,26 @@ function buildSettingsSecondaryActions(item: Extract<SearchSuggestionItem, { typ
     return [{
       id: 'toggle-show-time',
       kind: 'toggle-show-time',
+      active: item.searchActionState === 'enabled',
+    }];
+  }
+
+  if (
+    actionKey === 'search-tab-switch-setting'
+    || actionKey === 'search-prefix-setting'
+    || actionKey === 'search-site-direct-setting'
+    || actionKey === 'search-site-shortcut-setting'
+    || actionKey === 'search-any-key-capture-setting'
+    || actionKey === 'search-calculator-setting'
+    || actionKey === 'search-rotating-placeholder-setting'
+    || actionKey === 'shortcut-icon-show-title-setting'
+    || actionKey === 'prevent-duplicate-new-tab-setting'
+    || actionKey === 'wallpaper-auto-dim-setting'
+  ) {
+    return [{
+      id: 'toggle-setting',
+      kind: 'toggle-setting',
+      settingKey: actionKey,
       active: item.searchActionState === 'enabled',
     }];
   }
