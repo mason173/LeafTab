@@ -13,6 +13,7 @@ interface SearchBarProps {
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
   onSubmit: () => void;
+  onBackspaceAtEmpty?: () => void;
   searchEngine: SearchEngine;
   dropdownOpen: boolean;
   onEngineOpenChange: (open: boolean) => void;
@@ -65,6 +66,7 @@ interface SearchBarProps {
 type SearchInputShellProps = {
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
+  onBackspaceAtEmpty?: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
   onInputFocus?: () => void;
   onHistoryOpen: () => void;
@@ -93,6 +95,7 @@ type SearchInputShellProps = {
 const SearchInputShell = memo(function SearchInputShell({
   value,
   onValueChange,
+  onBackspaceAtEmpty,
   inputRef,
   onInputFocus,
   onHistoryOpen,
@@ -121,6 +124,7 @@ const SearchInputShell = memo(function SearchInputShell({
     <SearchField
       value={value}
       onValueChange={onValueChange}
+      onBackspaceAtEmpty={onBackspaceAtEmpty}
       inputRef={inputRef}
       onFocusContainer={() => inputRef.current?.focus()}
       onInputFocus={onInputFocus}
@@ -223,6 +227,7 @@ export function SearchBar({
   value,
   onValueChange,
   onSubmit,
+  onBackspaceAtEmpty,
   searchEngine,
   dropdownOpen,
   onEngineOpenChange,
@@ -300,6 +305,7 @@ export function SearchBar({
           <SearchInputShell
             value={value}
             onValueChange={onValueChange}
+            onBackspaceAtEmpty={onBackspaceAtEmpty}
             inputRef={inputRef}
             onInputFocus={onInputFocus}
             onHistoryOpen={onHistoryOpen}

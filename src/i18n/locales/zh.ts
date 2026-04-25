@@ -42,19 +42,19 @@ export default {
             tooltip: "先点一下搜索框，再按 Tab 切到下一个引擎；按 Shift+Tab 切回上一个。"
           },
           prefix: {
-            label: "快速指定搜索引擎",
-            description: "输入 ! + 引擎简称 + 空格，临时切换\n只影响本次搜索，不改默认引擎",
-            tooltip: "例如：!g AI 用 Google 搜，!bd 天气 用百度搜。只影响这一次，不会改默认引擎。"
+            label: "临时搜索引擎面板",
+            description: "输入 ! 打开引擎面板并选择目标\n选中后只影响这一次搜索，不改默认引擎",
+            tooltip: "例如先输入 !，再选 Google 或百度，左侧会显示一个主色标签，随后输入关键词即可。"
           },
           siteDirect: {
-            label: "站点直达搜索",
-            description: "输入“站点名 + 关键词”，优先站内搜索\n若站点不支持模板会自动回退为 site: 搜索",
-            tooltip: "支持 GitHub、GitLab、Gitee、知乎、B站、YouTube、Google、Bing、百度、Wikipedia、Reddit、Amazon 等站点。若站点不支持模板会自动回退为 site: 搜索。"
+            label: "@ 目标面板",
+            description: "输入 @ 打开目标面板\n可选 GitHub、Bilibili、ChatGPT、Gemini 等，再输入内容",
+            tooltip: "站点直达搜索和 AI 目标都统一收进 @ 面板；选中后会在左侧显示一个主色标签，再继续输入内容。"
           },
           siteShortcut: {
-            label: "站点快捷建议",
-            description: "输入站点名时优先匹配关键词\n先给出常用站点建议，回车可直达",
-            tooltip: "例如输入 git，会优先出现 GitHub / GitLab / Gitee，回车可直接打开。"
+            label: "@ 面板站点建议",
+            description: "控制 @ 面板里是否显示常用站点目标\n关闭后仅保留 AI 等目标",
+            tooltip: "开启后，在 @ 面板中会出现 GitHub、B站、知乎、YouTube 等常用站点目标。"
           },
           anyKeyCapture: {
             label: "任意键直接搜索",
@@ -69,7 +69,7 @@ export default {
           rotatingPlaceholder: {
             label: "搜索框提示轮播",
             description: "让搜索框里的能力提示自动轮播\n默认开启，关闭后固定显示单条默认提示",
-            tooltip: "会轮播展示搜索能力提示，例如搜索标签页/书签、切换搜索引擎、直达设置和结果快捷操作。"
+            tooltip: "会轮播展示 @ 面板、! 引擎面板、/ 范围面板、结果快捷操作等提示。"
           },
           position: {
             label: "搜索框位置",
@@ -99,7 +99,7 @@ export default {
         items: {
           focusSearch: "聚焦搜索框并选中当前内容",
           switchEngine: "在搜索框中按 Tab 或 Shift+Tab 切换搜索引擎",
-          temporaryEnginePrefix: "输入 !g / !b / !d / !bd 后接空格和关键词，临时指定本次搜索使用的引擎",
+          temporaryEnginePrefix: "输入 ! 打开引擎面板，选中后只对当前这次搜索生效",
           switchScenarioNext: "不在输入状态时，循环切换到下一个情景模式",
           bookmarksMode: "进入书签搜索模式，首次使用时可能会请求书签权限",
           tabsMode: "进入标签页搜索模式，首次使用时可能会请求标签页权限",
@@ -109,7 +109,7 @@ export default {
           showNumberHints: "在结果列表中显示数字提示",
           openNumberedResult: "按对应数字直接打开结果"
         },
-        footer: "提示：数字提示和数字直达只在结果列表打开时生效；临时搜索引擎切换请使用 !g / !b / !d / !bd；/t 与 /b 模式依赖浏览器权限。"
+        footer: "提示：数字提示和数字直达只在结果列表打开时生效；输入 ! 可打开引擎面板，输入 @ 可打开目标面板，输入 / 可打开范围与设置面板。"
       },
       timeFormat: {
         label: "24 小时制",
@@ -1038,12 +1038,35 @@ export default {
     search: {
       placeholder: "想找什么？直接输入就行",
       placeholderDynamic: "可搜标签页、书签、历史、快捷方式，网址也能直接打开",
-      placeholderHintTabSwitch: "按 Tab 切换搜索引擎，或输入 !g / ！g 临时切换",
+      placeholderHintTabSwitch: "按 Tab 切换搜索引擎，或输入 ! 打开临时引擎面板",
       placeholderHintCalculator: "输入 12*8 这种算式，可直接计算",
-      placeholderHintSiteDirect: "输入 github react、bilibili 动画，可直接站内搜",
-      placeholderHintPrefix: "先输入 !g 或 ！g，再空一格后输入内容即可切换搜索引擎",
-      placeholderHintSettings: "搜“主题模式”“图标大小”“壁纸模式”可直达设置",
+      placeholderHintSiteDirect: "输入 @ 打开目标面板，可选 GitHub、Bilibili、ChatGPT 等",
+      placeholderHintPrefix: "输入 ! 打开引擎面板，选中后再输入内容即可临时切换搜索引擎",
+      placeholderHintSettings: "输入 / 打开范围与设置面板，也可搜“主题模式”“图标大小”等直达设置",
       placeholderHintActions: "选中结果后按 →，可关闭标签页、复制链接、添加快捷方式",
+      aiPromptPlaceholder: "向{{provider}}提问",
+      sitePromptPlaceholder: "在{{site}}中搜索",
+      enginePromptPlaceholder: "用{{engine}}搜索",
+      scopePromptPlaceholder: "继续输入内容以搜索{{scope}}",
+      aiSubmitSent: "已将问题发送到{{provider}}",
+      aiSubmitFilled: "已打开{{provider}}，并填入问题",
+      aiSubmitOpened: "已打开{{provider}}，请手动输入或粘贴",
+      aiSubmitCopiedAndOpened: "已复制内容并打开{{provider}}，请手动粘贴发送",
+      aiSubmitCopyFailed: "复制内容或打开{{provider}}失败，请重试",
+      aiSubmitFailed: "打开{{provider}}失败，请重试",
+      aiPasteNotice: "已为{{provider}}复制问题，按{{shortcut}}粘贴后发送",
+      atPanelPinned: "已置顶到前面",
+      atPanelUnpinned: "已取消置顶",
+      aiProvidersEmpty: "没有匹配的目标",
+      secondaryAction: {
+        pinAtTarget: "置顶到最前",
+        unpinAtTarget: "取消置顶",
+        copyLink: "复制链接"
+      },
+      bang: {
+        detail: "仅本次搜索使用这个引擎",
+        empty: "没有匹配的搜索引擎"
+      },
       enterKey: "回车",
       actionOpen: "打开",
       actionClose: "关闭",
@@ -1067,12 +1090,12 @@ export default {
       currentTabLabel: "当前标签页",
       systemEngine: "系统默认",
       useEngineSearch: "使用{{engine}} 搜索",
-      prefixEngineInlineHint: "用{{engine}}搜索",
+      prefixEngineInlineHint: "本次使用{{engine}}搜索",
       historyTitle: "搜索历史",
       clearHistory: "清空",
       noHistory: "暂无搜索记录",
       remoteSuggestionSource: "搜索建议",
-      justNow: "刚刚",
+      justNow: "刚刚"
     },
     groups: {
       edit: "编辑",

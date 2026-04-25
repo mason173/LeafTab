@@ -707,7 +707,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
     return (
       <div
-        className="fixed left-6 right-6 top-6 z-[14020] overflow-visible pointer-events-auto"
+        className="fixed left-6 right-6 top-6 z-[14040] overflow-visible pointer-events-auto"
         style={{
           height: topNavLayerHeight,
           ...fixedTopNavRevealStyle,

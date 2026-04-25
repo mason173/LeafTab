@@ -13,6 +13,18 @@ import { useTranslation } from 'react-i18next';
 import { SearchBar } from '@/components/SearchBar';
 import { SEARCH_ENGINE_BRAND_NAMES } from '@/components/search/searchEngineSwitcher.shared';
 import {
+  buildAiMentionActions,
+  buildAiMentionEntries,
+  parseAiProviderActionId,
+  parseSiteShortcutActionId,
+} from '@/components/search/searchAiMentions';
+import { toggleSearchAtPanelTargetPin } from '@/components/search/searchAtPanelPreferences';
+import {
+  buildBangCommandActions,
+  buildBangCommandEntries,
+  parseBangCommandActionId,
+} from '@/components/search/searchBangCommands';
+import {
   buildSlashCommandActions,
   buildSlashCommandEntries,
   buildSettingsSearchEntries,
@@ -31,7 +43,7 @@ import { useSearch } from '@/hooks/useSearch';
 import { useSearchInteractionController } from '@/hooks/useSearchInteractionController';
 import { useSearchPermissionsState } from '@/hooks/useSearchPermissionsState';
 import { useSearchSuggestions } from '@/hooks/useSearchSuggestions';
-import type { Shortcut, ShortcutIconAppearance } from '@/types';
+import type { SearchEngine, Shortcut, ShortcutIconAppearance } from '@/types';
 import type { SearchAction, SearchSecondaryAction } from '@/utils/searchActions';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 import { getShortcutChildren, isShortcutFolder } from '@/utils/shortcutFolders';
@@ -47,12 +59,15 @@ import { consumeRecentShortcutAddition } from '@/utils/recentShortcutAdditions';
 import {
   matchSearchCommandAliasInput,
   parseSearchCommand,
-  resolveSearchCommandAutocomplete,
+  type SearchCommandId,
   type SearchSuggestionPermission,
 } from '@/utils/searchCommands';
 import { createSearchSessionModel, shouldAutoOpenSearchSuggestions } from '@/utils/searchSessionModel';
 import { createMixedSearchQueryModel } from '@/utils/mixedSearchQueryModel';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
+import { openAiProviderChat } from '@/utils/aiProviderLaunch';
+import { getAiProviderById, type AiProviderId } from '@/utils/aiProviders';
+import { getBuiltinSiteShortcutById } from '@/utils/siteSearch';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
 import type { WallpaperMode } from '@/wallpaper/types';
@@ -185,6 +200,24 @@ function copyTextToClipboard(copyText: string) {
   return Promise.resolve();
 }
 
+function resolveCurrentToastTheme() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return {
+      primaryColor: '#3b82f6',
+      foregroundColor: '#ffffff',
+    };
+  }
+
+  const styles = window.getComputedStyle(document.documentElement);
+  const primaryColor = styles.getPropertyValue('--primary').trim() || '#3b82f6';
+  const foregroundColor = styles.getPropertyValue('--primary-foreground').trim() || '#ffffff';
+
+  return {
+    primaryColor,
+    foregroundColor,
+  };
+}
+
 function resolveSearchLanguageLabel(language: string) {
   if (language.startsWith('zh')) return '简体中文';
   if (language.startsWith('en')) return 'English';
@@ -192,6 +225,51 @@ function resolveSearchLanguageLabel(language: string) {
   if (language.startsWith('ko')) return '한국어';
   if (language.startsWith('vi')) return 'Tiếng Việt';
   return language;
+}
+
+function resolveSearchScopeToken(scopeId: SearchCommandId | null) {
+  if (scopeId === 'bookmarks') return '/bookmarks';
+  if (scopeId === 'history') return '/historys';
+  if (scopeId === 'tabs') return '/tabs';
+  return '';
+}
+
+function resolveEngineBangToken(engine: Exclude<SearchEngine, 'system'> | null) {
+  if (engine === 'google') return '!g';
+  if (engine === 'bing') return '!b';
+  if (engine === 'duckduckgo') return '!d';
+  if (engine === 'baidu') return '!bd';
+  return '';
+}
+
+function buildDecoratedSearchValue(args: {
+  rawValue: string;
+  activeScopeCommand: SearchCommandId | null;
+  activeEngineCommand: Exclude<SearchEngine, 'system'> | null;
+  activeSiteShortcutId: string | null;
+}) {
+  const { rawValue, activeScopeCommand, activeEngineCommand, activeSiteShortcutId } = args;
+  const trimmedRawValue = rawValue.trim();
+
+  if (activeScopeCommand) {
+    const scopeToken = resolveSearchScopeToken(activeScopeCommand);
+    return trimmedRawValue ? `${scopeToken} ${trimmedRawValue}` : `${scopeToken} `;
+  }
+
+  if (activeSiteShortcutId) {
+    const site = getBuiltinSiteShortcutById(activeSiteShortcutId);
+    const siteToken = site?.aliases[0] || site?.id || '';
+    if (siteToken) {
+      return trimmedRawValue ? `${siteToken} ${trimmedRawValue}` : siteToken;
+    }
+  }
+
+  if (activeEngineCommand) {
+    const engineToken = resolveEngineBangToken(activeEngineCommand);
+    return trimmedRawValue ? `${engineToken} ${trimmedRawValue}` : `${engineToken} `;
+  }
+
+  return rawValue;
 }
 
 export const SearchExperience = memo(function SearchExperience({
@@ -259,6 +337,7 @@ export const SearchExperience = memo(function SearchExperience({
     () => readSearchPersonalizationProfile(),
   );
   const [searchSourceRefreshVersion, setSearchSourceRefreshVersion] = useState(0);
+  const [aiMentionPreferenceVersion, setAiMentionPreferenceVersion] = useState(0);
   const [actionModeState, setActionModeState] = useState<{ actionId: string; selectedSecondaryActionIndex: number } | null>(null);
   const [pendingConfirmationActionKey, setPendingConfirmationActionKey] = useState<string | null>(null);
   const focusedPrintableCapturePendingRef = useRef(false);
@@ -295,6 +374,10 @@ export const SearchExperience = memo(function SearchExperience({
     onPermissionDenied: showSearchCommandPermissionDeniedToast,
     onRequestFailed: handleSearchPermissionRequestFailed,
   });
+  const [activeAiProviderId, setActiveAiProviderId] = useState<AiProviderId | null>(null);
+  const [activeSiteShortcutId, setActiveSiteShortcutId] = useState<string | null>(null);
+  const [activeEngineCommand, setActiveEngineCommand] = useState<Exclude<SearchEngine, 'system'> | null>(null);
+  const [activeScopeCommand, setActiveScopeCommand] = useState<SearchCommandId | null>(null);
 
   const {
     searchValue,
@@ -312,14 +395,27 @@ export const SearchExperience = memo(function SearchExperience({
     syncHistorySelectionByCount,
     handleSearchChange,
     filteredHistoryItems,
-    handleSearch,
     handleEngineSelect,
     cycleSearchEngine,
     openSearchWithQuery,
   } = useSearch(openInNewTab, {
-    prefixEnabled: searchPrefixEnabled,
-    siteDirectEnabled: searchSiteDirectEnabled,
+    prefixEnabled: Boolean(activeEngineCommand) && searchPrefixEnabled,
+    siteDirectEnabled: Boolean(activeSiteShortcutId) && (searchSiteDirectEnabled || searchSiteShortcutEnabled),
   });
+  const activeAiProvider = useMemo(
+    () => getAiProviderById(activeAiProviderId),
+    [activeAiProviderId],
+  );
+  const activeSiteShortcut = useMemo(
+    () => getBuiltinSiteShortcutById(activeSiteShortcutId || ''),
+    [activeSiteShortcutId],
+  );
+  const decoratedSearchValue = useMemo(() => buildDecoratedSearchValue({
+    rawValue: searchValue,
+    activeScopeCommand,
+    activeEngineCommand,
+    activeSiteShortcutId,
+  }), [activeEngineCommand, activeScopeCommand, activeSiteShortcutId, searchValue]);
 
   const [isSearchTypingBurst, setIsSearchTypingBurst] = useState(false);
   const searchTypingBurstTimerRef = useRef<number | null>(null);
@@ -387,15 +483,18 @@ export const SearchExperience = memo(function SearchExperience({
   }, [closeHistoryPanel, dropdownOpen, inputRef, interactionDisabled, setDropdownOpen]);
 
   const suggestionUsageMap = useMemo(() => readSuggestionUsageMap(), [suggestionUsageVersion]);
-  const searchSessionModel = useMemo(() => createSearchSessionModel(searchValue, {
-    prefixEnabled: searchPrefixEnabled,
-    siteDirectEnabled: searchSiteDirectEnabled,
+  const searchSessionModel = useMemo(() => createSearchSessionModel(decoratedSearchValue, {
+    prefixEnabled: Boolean(activeEngineCommand) && searchPrefixEnabled,
+    siteDirectEnabled: Boolean(activeSiteShortcutId) && (searchSiteDirectEnabled || searchSiteShortcutEnabled),
     calculatorEnabled: searchCalculatorEnabled,
   }), [
+    activeEngineCommand,
+    activeSiteShortcutId,
     searchCalculatorEnabled,
     searchPrefixEnabled,
     searchSiteDirectEnabled,
-    searchValue,
+    searchSiteShortcutEnabled,
+    decoratedSearchValue,
   ]);
   const autoOpenSuggestionsEnabled = shouldAutoOpenSearchSuggestions(searchSessionModel);
   const shortcutSuggestionsActive = useMemo(
@@ -408,6 +507,22 @@ export const SearchExperience = memo(function SearchExperience({
     () => searchValue.trimStart(),
     [searchValue],
   );
+  const aiMentionInput = useMemo(
+    () => searchValue.trimStart(),
+    [searchValue],
+  );
+  const bangCommandInput = useMemo(
+    () => searchValue.trimStart(),
+    [searchValue],
+  );
+  const aiMentionQuery = useMemo(() => {
+    if (!aiMentionInput.startsWith('@')) return '';
+    return aiMentionInput.slice(1).trim();
+  }, [aiMentionInput]);
+  const bangCommandQuery = useMemo(() => {
+    if (!bangCommandInput.startsWith('!') && !bangCommandInput.startsWith('！')) return '';
+    return bangCommandInput.slice(1).trim();
+  }, [bangCommandInput]);
   const slashCommandQuery = useMemo(() => {
     if (!slashCommandInput.startsWith('/')) return '';
     return slashCommandInput.slice(1).trim();
@@ -501,6 +616,17 @@ export const SearchExperience = memo(function SearchExperience({
     () => resolveSearchLanguageLabel(i18n.language),
     [i18n.language],
   );
+  const aiMentionEntries = useMemo(
+    () => buildAiMentionEntries({
+      t,
+      includeSites: searchSiteDirectEnabled || searchSiteShortcutEnabled,
+    }),
+    [aiMentionPreferenceVersion, searchSiteDirectEnabled, searchSiteShortcutEnabled, t],
+  );
+  const bangCommandEntries = useMemo(
+    () => buildBangCommandEntries({ t }),
+    [t],
+  );
   const slashCommandEntries = useMemo(() => buildSlashCommandEntries({
     t,
     details: {
@@ -589,14 +715,14 @@ export const SearchExperience = memo(function SearchExperience({
     actions: searchActions,
     sourceStatus: suggestionSourceStatus,
   } = useSearchSuggestions({
-    searchValue,
+    searchValue: decoratedSearchValue,
     queryModel: searchSessionModel,
     filteredHistoryItems,
     shortcuts,
     commandSuggestionItems,
     settingSuggestionItems,
     shortcutSuggestionsActive,
-    searchSiteShortcutEnabled,
+    searchSiteShortcutEnabled: false,
     suggestionUsageMap,
     searchPersonalizationProfile,
     historyPermissionGranted: searchPermissions.history,
@@ -606,23 +732,62 @@ export const SearchExperience = memo(function SearchExperience({
     refreshVersion: searchSourceRefreshVersion,
   });
   const isSlashCommandPanelOpen = historyOpen
+    && !activeAiProvider
+    && !activeSiteShortcut
+    && !activeEngineCommand
+    && !activeScopeCommand
     && slashCommandInput.startsWith('/')
     && !searchSessionModel.command.active;
+  const isAiMentionPanelOpen = historyOpen
+    && !activeAiProvider
+    && !activeSiteShortcut
+    && !activeEngineCommand
+    && !activeScopeCommand
+    && aiMentionInput.startsWith('@');
+  const isBangCommandPanelOpen = historyOpen
+    && !activeAiProvider
+    && !activeSiteShortcut
+    && !activeEngineCommand
+    && !activeScopeCommand
+    && searchPrefixEnabled
+    && (bangCommandInput.startsWith('!') || bangCommandInput.startsWith('！'));
   const searchPersonalizationQueryModel = useMemo(() => createMixedSearchQueryModel({
-    searchValue: isSlashCommandPanelOpen ? slashCommandQuery : searchValue,
-    displayMode: isSlashCommandPanelOpen ? 'default' : suggestionSourceStatus.suggestionDisplayMode,
+    searchValue: isSlashCommandPanelOpen ? slashCommandQuery : decoratedSearchValue,
+    displayMode: (isSlashCommandPanelOpen || isAiMentionPanelOpen || isBangCommandPanelOpen || activeAiProvider || activeSiteShortcut) ? 'default' : suggestionSourceStatus.suggestionDisplayMode,
   }), [
+    activeAiProvider,
+    activeSiteShortcut,
+    isBangCommandPanelOpen,
+    isAiMentionPanelOpen,
     isSlashCommandPanelOpen,
-    searchValue,
+    decoratedSearchValue,
     slashCommandQuery,
     suggestionSourceStatus.suggestionDisplayMode,
   ]);
+  const aiMentionActions = useMemo(() => buildAiMentionActions({
+    isOpen: isAiMentionPanelOpen,
+    entries: aiMentionEntries,
+    queryKey: aiMentionQuery,
+  }), [aiMentionEntries, aiMentionQuery, isAiMentionPanelOpen]);
+  const bangCommandActions = useMemo(() => buildBangCommandActions({
+    isOpen: isBangCommandPanelOpen,
+    entries: bangCommandEntries,
+    queryKey: bangCommandQuery,
+  }), [bangCommandEntries, bangCommandQuery, isBangCommandPanelOpen]);
   const slashCommandActions = useMemo(() => buildSlashCommandActions({
     isOpen: isSlashCommandPanelOpen,
     entries: slashCommandEntries,
     queryKey: slashCommandQuery,
   }), [isSlashCommandPanelOpen, slashCommandEntries, slashCommandQuery]);
-  const effectiveSearchActions = isSlashCommandPanelOpen ? slashCommandActions : searchActions;
+  const effectiveSearchActions = activeAiProvider
+    ? []
+    : isAiMentionPanelOpen
+      ? aiMentionActions
+      : isBangCommandPanelOpen
+        ? bangCommandActions
+      : isSlashCommandPanelOpen
+        ? slashCommandActions
+        : searchActions;
   const visibleSearchActions = useMemo(
     () => effectiveSearchActions.filter((action) => (
       action.item.type !== 'tab'
@@ -723,9 +888,50 @@ export const SearchExperience = memo(function SearchExperience({
     }));
   }, [searchPersonalizationQueryModel, visibleSearchActions]);
 
+  const executeAiProviderAction = useCallback((providerId: AiProviderId) => {
+    const provider = getAiProviderById(providerId);
+    if (!provider) return false;
+    setActiveAiProviderId(provider.id);
+    setActiveSiteShortcutId(null);
+    setActiveEngineCommand(null);
+    setActiveScopeCommand(null);
+    setSearchValue('');
+    setHistorySelectedIndex(-1);
+    closeHistoryPanel('selection');
+    return true;
+  }, [closeHistoryPanel, setHistorySelectedIndex, setSearchValue]);
+
+  const executeSiteShortcutAction = useCallback((siteId: string) => {
+    const site = getBuiltinSiteShortcutById(siteId);
+    if (!site) return false;
+    setActiveAiProviderId(null);
+    setActiveSiteShortcutId(site.id);
+    setActiveEngineCommand(null);
+    setActiveScopeCommand(null);
+    setSearchValue('');
+    setHistorySelectedIndex(-1);
+    closeHistoryPanel('selection');
+    return true;
+  }, [closeHistoryPanel, setHistorySelectedIndex, setSearchValue]);
+
+  const executeBangCommand = useCallback((engine: Exclude<SearchEngine, 'system'>) => {
+    setActiveAiProviderId(null);
+    setActiveSiteShortcutId(null);
+    setActiveEngineCommand(engine);
+    setActiveScopeCommand(null);
+    setSearchValue('');
+    setHistorySelectedIndex(-1);
+    closeHistoryPanel('selection');
+    return true;
+  }, [closeHistoryPanel, setHistorySelectedIndex, setSearchValue]);
+
   const executeSlashCommand = useCallback((actionId: SlashCommandActionId) => {
     if (actionId === 'bookmarks') {
-      setSearchValue(resolveSearchCommandAutocomplete('/bookmarks') || '/bookmarks ');
+      setActiveAiProviderId(null);
+      setActiveSiteShortcutId(null);
+      setActiveEngineCommand(null);
+      setActiveScopeCommand('bookmarks');
+      setSearchValue('');
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('bookmarks', () => {});
@@ -733,7 +939,11 @@ export const SearchExperience = memo(function SearchExperience({
     }
 
     if (actionId === 'history') {
-      setSearchValue(resolveSearchCommandAutocomplete('/historys') || '/historys ');
+      setActiveAiProviderId(null);
+      setActiveSiteShortcutId(null);
+      setActiveEngineCommand(null);
+      setActiveScopeCommand('history');
+      setSearchValue('');
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('history', () => {});
@@ -741,7 +951,11 @@ export const SearchExperience = memo(function SearchExperience({
     }
 
     if (actionId === 'tabs') {
-      setSearchValue(resolveSearchCommandAutocomplete('/tabs') || '/tabs ');
+      setActiveAiProviderId(null);
+      setActiveSiteShortcutId(null);
+      setActiveEngineCommand(null);
+      setActiveScopeCommand('tabs');
+      setSearchValue('');
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('tabs', () => {});
@@ -761,6 +975,7 @@ export const SearchExperience = memo(function SearchExperience({
     }
 
     setSearchValue('');
+    setActiveScopeCommand(null);
     closeHistoryPanel('selection');
 
     if (actionId === 'settings-home') {
@@ -792,6 +1007,18 @@ export const SearchExperience = memo(function SearchExperience({
 
   const executeSearchAction = useCallback((action: SearchAction) => {
     const { item } = action;
+    const aiProviderActionId = parseAiProviderActionId(item.value);
+    if (aiProviderActionId) {
+      return executeAiProviderAction(aiProviderActionId);
+    }
+    const siteShortcutActionId = parseSiteShortcutActionId(item.value);
+    if (siteShortcutActionId) {
+      return executeSiteShortcutAction(siteShortcutActionId);
+    }
+    const bangCommandActionId = parseBangCommandActionId(item.value);
+    if (bangCommandActionId) {
+      return executeBangCommand(bangCommandActionId);
+    }
     const slashActionId = parseSlashCommandActionId(item.value);
     if (slashActionId) {
       return executeSlashCommand(slashActionId);
@@ -834,7 +1061,15 @@ export const SearchExperience = memo(function SearchExperience({
     openSearchWithQuery(item.value);
     closeHistoryPanel('selection');
     return true;
-  }, [closeHistoryPanel, currentBrowserTabId, executeSlashCommand, openSearchWithQuery]);
+  }, [
+    closeHistoryPanel,
+    currentBrowserTabId,
+    executeAiProviderAction,
+    executeBangCommand,
+    executeSiteShortcutAction,
+    executeSlashCommand,
+    openSearchWithQuery,
+  ]);
 
   const activateSearchAction = useCallback((action: SearchAction) => {
     if (action.permission && !searchPermissions[action.permission]) {
@@ -947,6 +1182,29 @@ export const SearchExperience = memo(function SearchExperience({
 
     if (pendingConfirmationActionKey) {
       setPendingConfirmationActionKey(null);
+    }
+
+    if (secondaryAction.kind === 'pin-at-target') {
+      const aiProviderActionId = parseAiProviderActionId(item.value);
+      const siteShortcutActionId = parseSiteShortcutActionId(item.value);
+      const nextPinned = aiProviderActionId
+        ? toggleSearchAtPanelTargetPin('ai-provider', aiProviderActionId)
+        : siteShortcutActionId
+          ? toggleSearchAtPanelTargetPin('site-shortcut', siteShortcutActionId)
+          : null;
+
+      if (nextPinned === null) return;
+
+      setAiMentionPreferenceVersion((prev) => prev + 1);
+      recordSearchPersonalizationUsage(action, secondaryAction);
+      toast.success(
+        t(nextPinned ? 'search.atPanelPinned' : 'search.atPanelUnpinned', {
+          defaultValue: nextPinned ? '已置顶到前面' : '已取消置顶',
+        }),
+        { description: item.label },
+      );
+      exitActionMode();
+      return;
     }
 
     if (
@@ -1066,6 +1324,8 @@ export const SearchExperience = memo(function SearchExperience({
     onDeleteShortcutAction,
     onEditShortcutAction,
     onSetShortcutIconAppearanceAction,
+    onSetDarkModeAutoDimWallpaperAction,
+    onSetPreventDuplicateNewTabAction,
     onSetSearchAnyKeyCaptureEnabledAction,
     onSetSearchCalculatorEnabledAction,
     onSetSearchPrefixEnabledAction,
@@ -1074,8 +1334,6 @@ export const SearchExperience = memo(function SearchExperience({
     onSetSearchSiteShortcutEnabledAction,
     onSetSearchTabSwitchEngineAction,
     onSetShortcutShowTitleAction,
-    onSetPreventDuplicateNewTabAction,
-    onSetDarkModeAutoDimWallpaperAction,
     onSetShowTimeAction,
     onSetWallpaperModeAction,
     pendingConfirmationActionKey,
@@ -1113,6 +1371,14 @@ export const SearchExperience = memo(function SearchExperience({
       || trimmedInput === '/tabs'
       || matchedAlias !== null
     ) ? (parsedCommand.id ?? matchedAlias) : null;
+    const exactBangCommand = (() => {
+      const normalizedBangInput = trimmedInput.normalize('NFKC');
+      if (normalizedBangInput === '!g' || normalizedBangInput === '!google') return 'google';
+      if (normalizedBangInput === '!b' || normalizedBangInput === '!bing') return 'bing';
+      if (normalizedBangInput === '!d' || normalizedBangInput === '!ddg' || normalizedBangInput === '!duckduckgo') return 'duckduckgo';
+      if (normalizedBangInput === '!bd' || normalizedBangInput === '!baidu') return 'baidu';
+      return null;
+    })();
 
     if (commandId === 'bookmarks') {
       runAfterSearchPermission('bookmarks', () => {});
@@ -1121,21 +1387,144 @@ export const SearchExperience = memo(function SearchExperience({
     } else if (commandId === 'tabs') {
       runAfterSearchPermission('tabs', () => {});
     }
+    const shouldConvertExactScopeTrigger = !activeAiProvider
+      && !activeSiteShortcut
+      && !activeEngineCommand
+      && !activeScopeCommand
+      && commandId !== null
+      && (
+        trimmedInput === '/bookmarks'
+        || trimmedInput === '/historys'
+        || trimmedInput === '/tabs'
+        || matchedAlias !== null
+      );
+    if (shouldConvertExactScopeTrigger) {
+      pointerHighlightLockUntilRef.current = 0;
+      exitActionMode();
+      setActiveScopeCommand(commandId);
+      setSearchValue('');
+      setHistorySelectedIndex(-1);
+      openHistoryPanel({ select: 'none' });
+      return;
+    }
+    const shouldConvertExactBangTrigger = searchPrefixEnabled
+      && !activeAiProvider
+      && !activeSiteShortcut
+      && !activeEngineCommand
+      && !activeScopeCommand
+      && exactBangCommand !== null;
+    if (shouldConvertExactBangTrigger) {
+      pointerHighlightLockUntilRef.current = 0;
+      exitActionMode();
+      setActiveEngineCommand(exactBangCommand);
+      setSearchValue('');
+      setHistorySelectedIndex(-1);
+      closeHistoryPanel('manual');
+      return;
+    }
+    const shouldOpenAiMentionPanel = !activeAiProvider && !activeSiteShortcut && !activeEngineCommand && !activeScopeCommand && nextValue.trimStart().startsWith('@');
+    const shouldOpenBangPanel = searchPrefixEnabled
+      && !activeAiProvider
+      && !activeSiteShortcut
+      && !activeEngineCommand
+      && !activeScopeCommand
+      && (nextValue.trimStart().startsWith('!') || nextValue.trimStart().startsWith('！'));
     pointerHighlightLockUntilRef.current = 0;
     exitActionMode();
     handleSearchChange(nextValue, nativeEvent);
+    if (shouldOpenAiMentionPanel) {
+      openHistoryPanel({ select: 'none' });
+      return;
+    }
+    if (shouldOpenBangPanel) {
+      openHistoryPanel({ select: 'none' });
+      return;
+    }
+    if (activeAiProvider) {
+      closeHistoryPanel('manual');
+      return;
+    }
+    if (activeSiteShortcut) {
+      closeHistoryPanel('manual');
+      return;
+    }
     if (shouldAutoOpenSearchSuggestions(nextSearchSessionModel)) {
       openHistoryPanel({ select: 'none' });
       return;
     }
     closeHistoryPanel('manual');
-  }, [closeHistoryPanel, exitActionMode, handleSearchChange, openHistoryPanel, runAfterSearchPermission, searchPrefixEnabled]);
+  }, [
+    activeAiProvider,
+    activeEngineCommand,
+    activeScopeCommand,
+    activeSiteShortcut,
+    closeHistoryPanel,
+    exitActionMode,
+    handleSearchChange,
+    openHistoryPanel,
+    runAfterSearchPermission,
+    searchPrefixEnabled,
+    setHistorySelectedIndex,
+    setSearchValue,
+  ]);
 
   const markSuggestionKeyboardNavigation = useCallback(() => {
     pointerHighlightLockUntilRef.current = Date.now() + POINTER_HIGHLIGHT_KEYBOARD_LOCK_MS;
   }, []);
 
   const handleSearchSubmit = useCallback(() => {
+    if (activeAiProvider) {
+      const prompt = searchValue.trim();
+      void (async () => {
+        try {
+          if (prompt) {
+            await copyTextToClipboard(prompt);
+          }
+
+          await openAiProviderChat({
+            providerId: activeAiProvider.id,
+            prompt: '',
+            autoSend: false,
+            noticeMessage: prompt
+              ? t('search.aiPasteNotice', {
+                  provider: activeAiProvider.label,
+                  defaultValue: '已为 {{provider}} 复制问题，按 {{shortcut}} 粘贴后发送',
+                  shortcut: navigator.platform.toLowerCase().includes('mac') ? 'Cmd+V' : 'Ctrl+V',
+                })
+              : '',
+            noticeTheme: resolveCurrentToastTheme(),
+          });
+
+          toast.success(prompt
+            ? t('search.aiSubmitCopiedAndOpened', {
+                provider: activeAiProvider.label,
+                defaultValue: `已复制内容并打开 ${activeAiProvider.label}，请手动粘贴发送`,
+              })
+            : t('search.aiSubmitOpened', {
+                provider: activeAiProvider.label,
+                defaultValue: `已打开 ${activeAiProvider.label}，请手动输入或粘贴`,
+              }));
+        } catch {
+          toast.error(prompt
+            ? t('search.aiSubmitCopyFailed', {
+                provider: activeAiProvider.label,
+                defaultValue: `复制内容或打开 ${activeAiProvider.label} 失败，请重试`,
+              })
+            : t('search.aiSubmitFailed', {
+                provider: activeAiProvider.label,
+                defaultValue: `打开 ${activeAiProvider.label} 失败，请重试`,
+              }));
+        }
+      })();
+      setSearchValue('');
+      closeHistoryPanel('submit');
+      return;
+    }
+
+    if ((isAiMentionPanelOpen || isBangCommandPanelOpen || isSlashCommandPanelOpen) && visibleSearchActions.length === 0) {
+      return;
+    }
+
     const selectedAction = historySelectedIndex !== -1
       ? visibleSearchActions[historySelectedIndex] ?? null
       : null;
@@ -1168,16 +1557,30 @@ export const SearchExperience = memo(function SearchExperience({
       return;
     }
 
-    handleSearch();
+    if (activeSiteShortcut && !searchValue.trim()) {
+      openSearchWithQuery(activeSiteShortcut.url);
+      closeHistoryPanel('submit');
+      return;
+    }
+
+    openSearchWithQuery(decoratedSearchValue);
+    closeHistoryPanel('submit');
   }, [
+    activeAiProvider,
+    activeSiteShortcut,
     activateSearchAction,
     closeHistoryPanel,
-    visibleSearchActions,
-    handleSearch,
+    decoratedSearchValue,
+    isBangCommandPanelOpen,
+    isAiMentionPanelOpen,
+    isSlashCommandPanelOpen,
     historySelectedIndex,
+    openSearchWithQuery,
     searchSessionModel,
+    searchValue,
     setSearchValue,
     t,
+    visibleSearchActions,
   ]);
 
   const focusSearchInput = useCallback((options?: SearchActivationFocusOptions) => {
@@ -1278,13 +1681,28 @@ export const SearchExperience = memo(function SearchExperience({
   });
 
   useEffect(() => {
-    if (!isSlashCommandPanelOpen || !historyOpen) return;
-    if (historySelectedIndex !== -1) return;
-    if (slashCommandActions.length <= 0) return;
-    setHistorySelectedIndex(0);
+    if (!historyOpen || historySelectedIndex !== -1) return;
+
+    if (isAiMentionPanelOpen && aiMentionActions.length > 0) {
+      setHistorySelectedIndex(0);
+      return;
+    }
+
+    if (isBangCommandPanelOpen && bangCommandActions.length > 0) {
+      setHistorySelectedIndex(0);
+      return;
+    }
+
+    if (isSlashCommandPanelOpen && slashCommandActions.length > 0) {
+      setHistorySelectedIndex(0);
+    }
   }, [
+    aiMentionActions.length,
+    bangCommandActions.length,
     historyOpen,
     historySelectedIndex,
+    isBangCommandPanelOpen,
+    isAiMentionPanelOpen,
     isSlashCommandPanelOpen,
     setHistorySelectedIndex,
     slashCommandActions.length,
@@ -1311,18 +1729,39 @@ export const SearchExperience = memo(function SearchExperience({
 
   const handleSearchHistoryOpen = useCallback(() => {
     if (interactionDisabled) return;
+    if (activeAiProvider || activeSiteShortcut) {
+      closeHistoryPanel('manual');
+      return;
+    }
     setDropdownOpen(false);
     pointerHighlightLockUntilRef.current = 0;
     openHistoryPanel({ select: 'none' });
     refreshSearchPermissionStatus();
-  }, [interactionDisabled, openHistoryPanel, refreshSearchPermissionStatus, setDropdownOpen]);
+  }, [
+    activeAiProvider,
+    activeSiteShortcut,
+    closeHistoryPanel,
+    interactionDisabled,
+    openHistoryPanel,
+    refreshSearchPermissionStatus,
+    setDropdownOpen,
+  ]);
 
   const handleSearchInputFocus = useCallback(() => {
     if (interactionDisabled) return;
+    if (activeAiProvider || activeSiteShortcut) return;
     if (searchSessionModel.mode === 'default' && !searchSessionModel.trimmedValue) return;
     if (!autoOpenSuggestionsEnabled) return;
     handleSearchHistoryOpen();
-  }, [autoOpenSuggestionsEnabled, handleSearchHistoryOpen, interactionDisabled, searchSessionModel.mode, searchSessionModel.trimmedValue]);
+  }, [
+    activeAiProvider,
+    activeSiteShortcut,
+    autoOpenSuggestionsEnabled,
+    handleSearchHistoryOpen,
+    interactionDisabled,
+    searchSessionModel.mode,
+    searchSessionModel.trimmedValue,
+  ]);
 
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     if (Date.now() < pointerHighlightLockUntilRef.current) return;
@@ -1338,6 +1777,16 @@ export const SearchExperience = memo(function SearchExperience({
     exitActionMode();
   }, [exitActionMode, setSearchHistory, setHistorySelectedIndex]);
 
+  const handleActiveCommandClear = useCallback(() => {
+    setActiveAiProviderId(null);
+    setActiveSiteShortcutId(null);
+    setActiveEngineCommand(null);
+    setActiveScopeCommand(null);
+    setSearchValue('');
+    closeHistoryPanel('manual');
+    exitActionMode();
+  }, [closeHistoryPanel, exitActionMode, setSearchValue]);
+
   const handleSearchClear = useCallback(() => {
     setSearchValue('');
     closeHistoryPanel('manual');
@@ -1350,7 +1799,7 @@ export const SearchExperience = memo(function SearchExperience({
         defaultValue: '可搜标签页、书签、历史、快捷方式，网址也能直接打开',
       }),
       t('search.placeholderHintSettings', {
-        defaultValue: '搜“主题模式”“图标大小”“壁纸模式”可直达设置',
+        defaultValue: '输入 / 打开范围与设置面板，也可搜“主题模式”“图标大小”等直达设置',
       }),
       t('search.placeholderHintActions', {
         defaultValue: '选中结果后按 →，可关闭标签页、复制链接、添加快捷方式',
@@ -1358,7 +1807,7 @@ export const SearchExperience = memo(function SearchExperience({
     ];
     if ((ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) || searchPrefixEnabled) {
       items.push(t('search.placeholderHintTabSwitch', {
-        defaultValue: '按 Tab 切换搜索引擎，或输入 !g / ！g 临时切换',
+        defaultValue: '输入 ! 打开引擎面板，选中后只影响这一次搜索',
       }));
     }
     if (searchCalculatorEnabled) {
@@ -1368,7 +1817,7 @@ export const SearchExperience = memo(function SearchExperience({
     }
     if (searchSiteDirectEnabled) {
       items.push(t('search.placeholderHintSiteDirect', {
-        defaultValue: '输入 github react、bilibili 动画，可直接站内搜',
+        defaultValue: '输入 @ 打开目标面板，可选 GitHub、Bilibili、ChatGPT 等',
       }));
     }
     return items;
@@ -1386,9 +1835,61 @@ export const SearchExperience = memo(function SearchExperience({
     3000,
     !searchRotatingPlaceholderEnabled,
   );
+  const activeCommandLabel = useMemo(() => {
+    if (activeAiProvider) return `@${activeAiProvider.label}`;
+    if (activeSiteShortcut) return `@${activeSiteShortcut.label}`;
+    if (activeEngineCommand) {
+      const engineLabelMap = {
+        google: 'Google',
+        bing: 'Bing',
+        duckduckgo: 'DuckDuckGo',
+        baidu: 'Baidu',
+      } as const;
+      return `!${engineLabelMap[activeEngineCommand]}`;
+    }
+    if (activeScopeCommand) {
+      if (activeScopeCommand === 'tabs') return '/tabs';
+      if (activeScopeCommand === 'bookmarks') return '/bookmarks';
+      if (activeScopeCommand === 'history') return '/historys';
+    }
+    return '';
+  }, [activeAiProvider, activeEngineCommand, activeScopeCommand, activeSiteShortcut]);
+  const activeCommandAccessory = useMemo(() => {
+    if (!activeCommandLabel) return null;
+
+    return (
+      <span className="flex items-center gap-1 whitespace-nowrap text-primary">
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+        <span className="rounded-full border border-primary/20 bg-primary/10 px-1 py-px text-[11px] font-medium text-primary">
+          {activeCommandLabel}
+        </span>
+      </span>
+    );
+  }, [activeCommandLabel]);
+  const resolvedSearchPlaceholder = activeAiProvider
+    ? t('search.aiPromptPlaceholder', {
+        provider: activeAiProvider.label,
+        defaultValue: `向 ${activeAiProvider.label} 提问`,
+      })
+    : activeSiteShortcut
+      ? t('search.sitePromptPlaceholder', {
+          site: activeSiteShortcut.label,
+          defaultValue: `在 ${activeSiteShortcut.label} 中搜索`,
+        })
+      : activeEngineCommand
+        ? t('search.enginePromptPlaceholder', {
+            engine: activeCommandLabel.replace(/^!/, ''),
+            defaultValue: `用 ${activeCommandLabel.replace(/^!/, '')} 搜索`,
+          })
+        : activeScopeCommand
+          ? t('search.scopePromptPlaceholder', {
+              scope: activeCommandLabel,
+              defaultValue: `继续输入内容以搜索 ${activeCommandLabel}`,
+            })
+          : (rotatingSearchPlaceholder || t('search.placeholderDynamic'));
 
   const searchDropdownStatusNotice = useMemo(() => {
-    if (isSlashCommandPanelOpen) return undefined;
+    if (isSlashCommandPanelOpen || isAiMentionPanelOpen || isBangCommandPanelOpen || activeAiProvider || activeSiteShortcut) return undefined;
 
     const authorizationLabel = t('search.authorizeHistoryPermission', { defaultValue: '去授权' });
 
@@ -1499,6 +2000,10 @@ export const SearchExperience = memo(function SearchExperience({
     }
     return undefined;
   }, [
+    activeAiProvider,
+    activeSiteShortcut,
+    isBangCommandPanelOpen,
+    isAiMentionPanelOpen,
     permissionRequestInFlight,
     permissionWarmup,
     runAfterSearchPermission,
@@ -1513,6 +2018,12 @@ export const SearchExperience = memo(function SearchExperience({
   ]);
 
   const searchDropdownEmptyStateLabel = useMemo(() => {
+    if (isAiMentionPanelOpen) {
+      return t('search.aiProvidersEmpty', { defaultValue: '没有匹配的目标' });
+    }
+    if (isBangCommandPanelOpen) {
+      return t('search.bang.empty', { defaultValue: '没有匹配的搜索引擎' });
+    }
     if (isSlashCommandPanelOpen) {
       return t('search.slash.empty', { defaultValue: '没有匹配的命令' });
     }
@@ -1526,7 +2037,7 @@ export const SearchExperience = memo(function SearchExperience({
       return t('search.noHistory', { defaultValue: '没有找到匹配的历史记录' });
     }
     return t('search.noHistory');
-  }, [isSlashCommandPanelOpen, searchSessionModel.mode, t]);
+  }, [isAiMentionPanelOpen, isBangCommandPanelOpen, isSlashCommandPanelOpen, searchSessionModel.mode, t]);
 
   return (
     <RenderProfileBoundary id="SearchExperience">
@@ -1534,6 +2045,7 @@ export const SearchExperience = memo(function SearchExperience({
         value={searchValue}
         onValueChange={handleSearchInputChange}
         onSubmit={handleSearchSubmit}
+        onBackspaceAtEmpty={activeCommandLabel ? handleActiveCommandClear : undefined}
         searchEngine={searchEngine}
         dropdownOpen={dropdownOpen}
         onEngineOpenChange={setDropdownOpen}
@@ -1547,8 +2059,8 @@ export const SearchExperience = memo(function SearchExperience({
         onHistoryClear={handleSearchHistoryClear}
         onClear={handleSearchClear}
         historyRef={searchAreaRef}
-        placeholder={rotatingSearchPlaceholder || t('search.placeholderDynamic')}
-        calculatorInlinePreview={searchInlinePreview}
+        placeholder={resolvedSearchPlaceholder}
+        calculatorInlinePreview={(activeAiProvider || activeSiteShortcut || activeEngineCommand || activeScopeCommand) ? '' : searchInlinePreview}
         onKeyDown={handleSuggestionKeyDown}
         historySelectedIndex={historySelectedIndex}
         inputRef={inputRef}
@@ -1565,6 +2077,7 @@ export const SearchExperience = memo(function SearchExperience({
         searchActionSize={searchActionSize}
         interactionDisabled={interactionDisabled}
         showEngineSwitcher={ENABLE_SEARCH_ENGINE_SWITCHER}
+        leadingAccessory={activeCommandAccessory}
         statusNotice={searchDropdownStatusNotice}
         emptyStateLabel={searchDropdownEmptyStateLabel}
         showSuggestionNumberHints={historyOpen && suggestionModifierHeld}

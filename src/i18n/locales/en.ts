@@ -42,19 +42,19 @@ export default {
             tooltip: "Use Tab or Shift+Tab to quickly switch search engines while the search box is focused."
           },
           prefix: {
-            label: "Prefix Search",
-            description: "Use `!g` / `!b` / `!d` / `!bd` to override the engine for one query",
-            tooltip: "Example: `!g AI` searches with Google just for this query without changing your default engine."
+            label: "Temporary Engine Panel",
+            description: "Type `!` to open the engine panel and pick one target\nIt only affects the current query and keeps your default engine unchanged",
+            tooltip: "Type `!`, choose Google/Bing/Baidu/DuckDuckGo, then keep typing with a colored token shown on the left."
           },
           siteDirect: {
-            label: "Site Direct Search",
-            description: "Use `site + keywords` to jump to a site's own search page first",
-            tooltip: "Supports GitHub, GitLab, Gitee, Zhihu, Bilibili, YouTube, Google, Bing, Baidu, Wikipedia, Reddit, Amazon, and more. Example: `yt loagao`. If a site has no template, it falls back to `site:domain` search."
+            label: "@ Target Panel",
+            description: "Type `@` to open a target panel\nPick GitHub, Bilibili, ChatGPT, Gemini, and more, then enter your query",
+            tooltip: "Site-direct search and AI targets now share the same `@` panel flow with a colored token shown on the left after selection."
           },
           siteShortcut: {
-            label: "Site Shortcut Suggestions",
-            description: "Show built-in site shortcuts when typing site names",
-            tooltip: "Typing `git` can prioritize suggestions like GitHub, GitLab, and Gitee."
+            label: "@ Panel Site Targets",
+            description: "Control whether common site targets appear inside the `@` panel",
+            tooltip: "When enabled, the `@` panel can suggest GitHub, Bilibili, Zhihu, YouTube, and other built-in sites."
           },
           anyKeyCapture: {
             label: "Any-Key Search Capture",
@@ -69,7 +69,7 @@ export default {
           rotatingPlaceholder: {
             label: "Rotating Search Hints",
             description: "Rotate capability hints in the search box automatically\nEnabled by default; turn it off to keep a single static hint",
-            tooltip: "Shows a guided loop of search capabilities like tabs/bookmarks search, engine switching, settings jump-in, and quick result actions."
+            tooltip: "Shows hints for the `@` target panel, the `!` engine panel, the `/` scope panel, and quick result actions."
           },
           position: {
             label: "Search Bar Position",
@@ -99,7 +99,7 @@ export default {
         items: {
           focusSearch: "Focus the search box and select the current text",
           switchEngine: "Press Tab or Shift+Tab in the search box to switch engines",
-          temporaryEnginePrefix: "Type !g / !b / !d / !bd, then a space and keywords, to override the engine for just this search",
+          temporaryEnginePrefix: "Type `!` to open the engine panel, then pick the engine for just this search",
           switchScenarioNext: "When not typing, cycle to the next scenario mode",
           bookmarksMode: "Enter bookmark search mode; browser permission may be requested on first use",
           tabsMode: "Enter tab search mode; browser permission may be requested on first use",
@@ -109,7 +109,7 @@ export default {
           showNumberHints: "Show number hints in the results list",
           openNumberedResult: "Open the result using its number"
         },
-        footer: "Tip: number hints only work while the results list is open; use !g / !b / !d / !bd for temporary engine overrides; /t and /b depend on browser permissions."
+        footer: "Tip: number hints only work while the results list is open; type `!` for the engine panel, `@` for the target panel, and `/` for scope and settings."
       },
       timeFormat: {
         label: "24-Hour Clock",
@@ -761,12 +761,35 @@ export default {
     search: {
       placeholder: "Type what you want to find",
       placeholderDynamic: "Search tabs, bookmarks, history, shortcuts, or open a pasted URL",
-      placeholderHintTabSwitch: "Press Tab or use !g / ！g to switch search engines",
+      placeholderHintTabSwitch: "Press Tab or type ! to open the temporary engine panel",
       placeholderHintCalculator: "Type 12*8 to calculate instantly",
-      placeholderHintSiteDirect: "Type github react or bilibili anime to search inside a site",
-      placeholderHintPrefix: "Type !g or ！g, then a space, to switch search engines temporarily",
-      placeholderHintSettings: "Search theme mode, icon size, or wallpaper mode to jump into settings",
+      placeholderHintSiteDirect: "Type @ to open targets like GitHub, Bilibili, ChatGPT, or Gemini",
+      placeholderHintPrefix: "Type ! to open the engine panel, then keep typing with that engine for this query",
+      placeholderHintSettings: "Type / to open the scope and settings panel, or search theme mode, icon size, and wallpaper mode directly",
       placeholderHintActions: "Press → on a result to close tabs, copy links, or add shortcuts",
+      aiPromptPlaceholder: "Ask {{provider}}",
+      sitePromptPlaceholder: "Search in {{site}}",
+      enginePromptPlaceholder: "Search with {{engine}}",
+      scopePromptPlaceholder: "Keep typing to search in {{scope}}",
+      aiSubmitSent: "Sent your prompt to {{provider}}",
+      aiSubmitFilled: "Opened {{provider}} and filled in your prompt",
+      aiSubmitOpened: "Opened {{provider}}. Please type or paste your prompt manually",
+      aiSubmitCopiedAndOpened: "Copied your prompt and opened {{provider}}. Please paste and send it manually",
+      aiSubmitCopyFailed: "Failed to copy your prompt or open {{provider}}. Please try again",
+      aiSubmitFailed: "Failed to open {{provider}}. Please try again",
+      aiPasteNotice: "Your prompt for {{provider}} was copied. Press {{shortcut}} to paste and send it",
+      atPanelPinned: "Pinned to the front",
+      atPanelUnpinned: "Removed from pinned targets",
+      aiProvidersEmpty: "No matching targets",
+      secondaryAction: {
+        pinAtTarget: "Pin to front",
+        unpinAtTarget: "Unpin",
+        copyLink: "Copy link"
+      },
+      bang: {
+        detail: "Use this engine for the current query only",
+        empty: "No matching search engine"
+      },
       enterKey: "Enter",
       actionOpen: "Open",
       actionClose: "Close",
@@ -794,7 +817,7 @@ export default {
       calculatorCopyFailed: "Copy failed. Please copy manually.",
       systemEngine: "System default",
       useEngineSearch: "Search with {{engine}}",
-      prefixEngineInlineHint: "Search with {{engine}}",
+      prefixEngineInlineHint: "Use {{engine}} for this query",
       historyTitle: "Recent searches",
       clearHistory: "Clear",
       noHistory: "No recent searches"

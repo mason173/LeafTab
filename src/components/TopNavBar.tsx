@@ -1,4 +1,5 @@
-import React, { memo } from 'react';
+import React, { memo, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { RiCloudFill, RiErrorWarningFill, RiRefreshFill, RiSettings4Fill } from '@/icons/ri-compat';
 import { WeatherCard } from '@/components/WeatherCard';
 import { Button } from '@/components/ui/button';
@@ -66,16 +67,19 @@ function TopNavIntroBubble({
   align = 'start',
   actionLabel,
   onAcknowledge,
+  anchorRef,
 }: {
   title: string;
   description: string;
   align?: 'start' | 'end';
   actionLabel: string;
   onAcknowledge: () => void;
+  anchorRef: React.RefObject<HTMLElement | null>;
 }) {
-  const arrowPositionClass = align === 'end'
-    ? 'right-4'
-    : 'left-4';
+  const [portalState, setPortalState] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const handleAcknowledgePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -88,20 +92,84 @@ function TopNavIntroBubble({
     onAcknowledge();
   };
 
-  return (
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    let frameId = 0;
+    const bubbleWidth = 248;
+    const viewportPadding = 16;
+    const verticalOffset = 12;
+
+    const updatePosition = () => {
+      const anchorNode = anchorRef.current;
+      if (!anchorNode) {
+        setPortalState(null);
+        return;
+      }
+
+      const rect = anchorNode.getBoundingClientRect();
+      const preferredLeft = align === 'end'
+        ? rect.right - bubbleWidth
+        : rect.left;
+      const maxLeft = Math.max(viewportPadding, window.innerWidth - bubbleWidth - viewportPadding);
+      const nextLeft = Math.min(maxLeft, Math.max(viewportPadding, preferredLeft));
+      const nextTop = rect.bottom + verticalOffset;
+
+      setPortalState((current) => {
+        if (
+          current
+          && current.top === nextTop
+          && current.left === nextLeft
+        ) {
+          return current;
+        }
+        return {
+          top: nextTop,
+          left: nextLeft,
+        };
+      });
+    };
+
+    const scheduleUpdate = () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updatePosition);
+    };
+
+    scheduleUpdate();
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('scroll', scheduleUpdate, true);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(scheduleUpdate)
+      : null;
+    if (anchorRef.current && resizeObserver) {
+      resizeObserver.observe(anchorRef.current);
+    }
+
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate, true);
+      resizeObserver?.disconnect();
+    };
+  }, [align, anchorRef]);
+
+  if (!portalState || typeof document === 'undefined') return null;
+
+  return createPortal(
     <FrostedSurface
       preset="popover-panel"
       surfaceTone="default"
       data-frosted-ui-scope="true"
-      className={`absolute top-[calc(100%+12px)] z-20 w-[248px] rounded-2xl border border-border text-left text-popover-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)] ${align === 'end' ? 'right-0' : 'left-0'} pointer-events-auto`}
+      className="fixed z-[17050] w-[248px] rounded-2xl border border-border text-left text-popover-foreground shadow-[0_12px_40px_rgba(0,0,0,0.18)] pointer-events-auto"
+      style={{
+        top: `${portalState.top}px`,
+        left: `${portalState.left}px`,
+      }}
       contentClassName="space-y-2 p-3"
       role="dialog"
       aria-live="polite"
     >
-      <div
-        aria-hidden="true"
-        className={`pointer-events-none absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-white/70 dark:bg-black/70 ${arrowPositionClass}`}
-      />
       <div className="relative z-[1] space-y-2 pointer-events-auto">
         <div className="space-y-1">
           <p className="text-sm font-semibold leading-none">{title}</p>
@@ -119,7 +187,8 @@ function TopNavIntroBubble({
           </Button>
         </div>
       </div>
-    </FrostedSurface>
+    </FrostedSurface>,
+    document.body,
   );
 }
 
@@ -141,6 +210,9 @@ export const TopNavBar = memo(function TopNavBar({
 }: TopNavBarProps) {
   const { t } = useTranslation();
   const firefox = isFirefoxBuildTarget();
+  const scenarioIntroAnchorRef = useRef<HTMLDivElement | null>(null);
+  const syncIntroAnchorRef = useRef<HTMLDivElement | null>(null);
+  const settingsIntroAnchorRef = useRef<HTMLDivElement | null>(null);
   const weatherContent = (
     <WeatherCard
       onWeatherUpdate={onWeatherUpdate}
@@ -220,7 +292,7 @@ export const TopNavBar = memo(function TopNavBar({
       )}
 
       {leftSlot ? (
-        <div className="absolute left-0 top-0 pointer-events-auto">
+        <div ref={scenarioIntroAnchorRef} className="absolute left-0 top-0 pointer-events-auto">
           <div className={`${fadeClass}`}>
             <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${leftRevealClass}`}>
               {leftSlot}
@@ -232,6 +304,7 @@ export const TopNavBar = memo(function TopNavBar({
               description={introGuideContent.description}
               actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
               onAcknowledge={introGuide.onAcknowledge}
+              anchorRef={scenarioIntroAnchorRef}
             />
           ) : null}
         </div>
@@ -243,7 +316,7 @@ export const TopNavBar = memo(function TopNavBar({
             className={`flex items-center gap-6 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}
           >
             {syncButton ? (
-              <div className="relative">
+              <div ref={syncIntroAnchorRef} className="relative">
                 <div className={actionFadeClass}>
                   {syncButton}
                 </div>
@@ -254,12 +327,13 @@ export const TopNavBar = memo(function TopNavBar({
                     align="end"
                     actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
                     onAcknowledge={introGuide.onAcknowledge}
+                    anchorRef={syncIntroAnchorRef}
                   />
                 ) : null}
               </div>
             ) : null}
             {settingsNode ? (
-              <div className="relative">
+              <div ref={settingsIntroAnchorRef} className="relative">
                 <div className={actionFadeClass}>
                   {settingsNode}
                 </div>
@@ -270,6 +344,7 @@ export const TopNavBar = memo(function TopNavBar({
                     align="end"
                     actionLabel={t('topNavIntro.confirm', { defaultValue: '我知道了' })}
                     onAcknowledge={introGuide.onAcknowledge}
+                    anchorRef={settingsIntroAnchorRef}
                   />
                 ) : null}
               </div>

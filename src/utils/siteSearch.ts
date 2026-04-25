@@ -288,7 +288,7 @@ const BUILTIN_SITE_SHORTCUT_SEEDS: BuiltinSiteShortcutSeed[] = [
   },
 ];
 
-const BUILTIN_SITE_SHORTCUTS: BuiltinSiteShortcut[] = BUILTIN_SITE_SHORTCUT_SEEDS.map((site) => ({
+export const BUILTIN_SITE_SHORTCUTS: BuiltinSiteShortcut[] = BUILTIN_SITE_SHORTCUT_SEEDS.map((site) => ({
   ...site,
   url: site.url || `https://${site.domain}`,
 }));
@@ -387,6 +387,10 @@ function findSiteByToken(rawToken: string): BuiltinSiteShortcut | null {
   const token = normalizeSiteToken(rawToken);
   if (!token) return null;
   return BUILTIN_SITE_TOKEN_INDEX.get(token) || null;
+}
+
+export function getBuiltinSiteShortcutById(id: string): BuiltinSiteShortcut | null {
+  return BUILTIN_SITE_SHORTCUTS.find((site) => site.id === id) ?? null;
 }
 
 export function getBuiltinSiteShortcutSuggestions(

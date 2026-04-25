@@ -14,6 +14,7 @@ import {
   RiEyeFill,
   RiEyeOffFill,
   RiFileCopyLine,
+  RiFlashlightFill,
   RiHistoryFill,
   RiImageFill,
   RiInformationFill,
@@ -64,6 +65,8 @@ const MAX_VISIBLE_VISUAL_ROWS = 11;
 
 function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass: string) {
   if (!action.displayIcon) return null;
+  if (action.displayIcon === 'ai-provider') return <RiFlashlightFill className={`size-3.5 ${secondaryTextClass}`} />;
+  if (action.displayIcon === 'site-target') return <RiComputerFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'bookmarks') return <RiBookOpenFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'history') return <RiHistoryFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'tabs') return <RiDashboardFill className={`size-3.5 ${secondaryTextClass}`} />;
@@ -183,6 +186,20 @@ function resolveSuggestionGroupMeta(args: {
     return {
       key: 'settings',
       label: t('search.group.settings', { defaultValue: '设置' }),
+    };
+  }
+
+  if (action.displayIcon === 'ai-provider') {
+    return {
+      key: 'ai-providers',
+      label: t('search.group.aiAssistants', { defaultValue: 'AI 助手' }),
+    };
+  }
+
+  if (action.displayIcon === 'site-target') {
+    return {
+      key: 'site-targets',
+      label: t('search.group.siteTargets', { defaultValue: '常用站点' }),
     };
   }
 
@@ -628,6 +645,11 @@ export function SearchSuggestionsPanel({
           ? t('search.secondaryAction.unpinTab', { defaultValue: '取消固定' })
           : t('search.secondaryAction.pinTab', { defaultValue: '固定标签页' });
       }
+      if (secondaryAction.kind === 'pin-at-target') {
+        return secondaryAction.active
+          ? t('search.secondaryAction.unpinAtTarget', { defaultValue: '取消置顶' })
+          : t('search.secondaryAction.pinAtTarget', { defaultValue: '置顶到最前' });
+      }
       return t('search.secondaryAction.copyLink', { defaultValue: '复制链接' });
     };
     const resolveSecondaryActionTooltip = (secondaryAction: SearchSecondaryAction, isPendingConfirmation: boolean) => {
@@ -710,6 +732,11 @@ export function SearchSuggestionsPanel({
           : <RiEyeFill className="size-3.5" />;
       }
       if (secondaryAction.kind === 'toggle-pin-tab') {
+        return secondaryAction.active
+          ? <RiUnpinLine className="size-3.5" />
+          : <RiPushpinLine className="size-3.5" />;
+      }
+      if (secondaryAction.kind === 'pin-at-target') {
         return secondaryAction.active
           ? <RiUnpinLine className="size-3.5" />
           : <RiPushpinLine className="size-3.5" />;

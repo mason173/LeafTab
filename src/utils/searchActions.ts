@@ -40,6 +40,11 @@ export type SearchSecondaryAction =
       active: boolean;
     }
   | {
+      id: 'pin-at-target';
+      kind: 'pin-at-target';
+      active: boolean;
+    }
+  | {
       id: 'copy-link';
       kind: 'copy-link';
       active?: false;
@@ -89,6 +94,8 @@ export type SearchSecondaryAction =
     };
 
 export type SearchActionDisplayIcon =
+  | 'ai-provider'
+  | 'site-target'
   | 'bookmarks'
   | 'history'
   | 'tabs'

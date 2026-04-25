@@ -15,6 +15,7 @@ export type SearchFieldValueChangeHandler = (nextValue: string, nativeEvent?: Ev
 interface SearchFieldProps {
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
+  onBackspaceAtEmpty?: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFocusContainer: () => void;
   onInputFocus?: () => void;
@@ -44,6 +45,7 @@ interface SearchFieldProps {
 function SearchFieldInput({
   value,
   onValueChange,
+  onBackspaceAtEmpty,
   inputRef,
   onInputFocus,
   placeholder,
@@ -56,6 +58,7 @@ function SearchFieldInput({
 }: {
   value: string;
   onValueChange: SearchFieldValueChangeHandler;
+  onBackspaceAtEmpty?: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInputFocus?: () => void;
   placeholder?: string;
@@ -121,6 +124,11 @@ function SearchFieldInput({
           if (e.key === 'Backspace' && isSearchCommandShellValue(value) && hasCollapsedSelection && caretAtEnd) {
             e.preventDefault();
             onValueChange('', e.nativeEvent);
+            return;
+          }
+          if (e.key === 'Backspace' && value.length === 0 && hasCollapsedSelection && caretAtEnd && onBackspaceAtEmpty) {
+            e.preventDefault();
+            onBackspaceAtEmpty();
           }
         }}
         placeholder=""
@@ -180,6 +188,7 @@ function SearchFieldInput({
 export function SearchField({
   value,
   onValueChange,
+  onBackspaceAtEmpty,
   inputRef,
   onFocusContainer,
   onInputFocus,
@@ -210,7 +219,11 @@ export function SearchField({
   const hasLeadingAccessory = showEngineSwitcher || Boolean(leadingAccessory);
   const leftPadding = hasLeadingAccessory ? Math.max(10, horizontalPadding - 14) : horizontalPadding;
   const rightPadding = Math.max(12, horizontalPadding - 10);
-  const gap = showEngineSwitcher ? 0 : Math.max(8, Math.round(height * 0.2));
+  const gap = showEngineSwitcher && !leadingAccessory
+    ? 0
+    : leadingAccessory
+      ? Math.max(2, Math.round(height * 0.05))
+      : Math.max(8, Math.round(height * 0.2));
 
   return (
     <FrostedSurface
@@ -245,10 +258,11 @@ export function SearchField({
           itemClassName={theme.engineDropdownItemClassName}
           itemSelectedClassName={theme.engineDropdownItemSelectedClassName}
         />
-      ) : leadingAccessory ? (
+      ) : null}
+      {leadingAccessory ? (
         <div
           aria-hidden="true"
-          className={`relative z-[1] mr-1 flex shrink-0 items-center gap-2 rounded-[12px] px-2 py-1.5 ${interactionDisabled ? 'cursor-default opacity-60' : 'cursor-default'} ${theme.triggerToneClassName}`}
+          className={`relative z-[1] mr-0 flex shrink-0 items-center gap-0.5 rounded-[8px] px-1 py-0.5 ${interactionDisabled ? 'cursor-default opacity-60' : 'cursor-default'} ${theme.triggerToneClassName}`}
         >
           {leadingAccessory}
         </div>
@@ -257,6 +271,7 @@ export function SearchField({
         <SearchFieldInput
           value={value}
           onValueChange={onValueChange}
+          onBackspaceAtEmpty={onBackspaceAtEmpty}
           inputRef={inputRef}
           onInputFocus={onInputFocus}
           placeholder={placeholder}
