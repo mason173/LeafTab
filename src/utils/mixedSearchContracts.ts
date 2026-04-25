@@ -2,6 +2,7 @@ import type { SearchSuggestionItem } from '@/types';
 
 export type MixedSearchSourceId =
   | 'tabs'
+  | 'recently-closed'
   | 'bookmarks'
   | 'browser-history'
   | 'local-history'

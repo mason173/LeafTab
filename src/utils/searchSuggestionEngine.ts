@@ -1,5 +1,8 @@
 import type { SearchSuggestionItem } from '@/types';
-import { buildSearchActions, type SearchAction } from '@/utils/searchActions';
+import {
+  buildSearchActionsFromResults,
+  type SearchAction,
+} from '@/utils/searchActions';
 import { type MixedSearchSourceBundle } from '@/utils/mixedSearchContracts';
 import { buildMixedSearchResults } from '@/utils/mixedSearchFusion';
 import { createMixedSearchQueryModel } from '@/utils/mixedSearchQueryModel';
@@ -13,6 +16,7 @@ type BuildSearchSuggestionActionsArgs = {
   localHistorySuggestionItems: SearchSuggestionItem[];
   commandSuggestionItems: SearchSuggestionItem[];
   settingSuggestionItems: SearchSuggestionItem[];
+  recentClosedSuggestionItems?: SearchSuggestionItem[];
   remoteSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
   builtinSiteSuggestionItems: SearchSuggestionItem[];
@@ -29,6 +33,7 @@ export function buildSearchSuggestionActions({
   localHistorySuggestionItems,
   commandSuggestionItems,
   settingSuggestionItems,
+  recentClosedSuggestionItems = [],
   remoteSuggestionItems,
   browserHistorySuggestionItems,
   builtinSiteSuggestionItems,
@@ -42,6 +47,7 @@ export function buildSearchSuggestionActions({
   });
   const sourceBundles: MixedSearchSourceBundle[] = [
     { sourceId: 'tabs', items: tabSuggestionItems },
+    { sourceId: 'recently-closed', items: recentClosedSuggestionItems },
     { sourceId: 'bookmarks', items: bookmarkSuggestionItems },
     { sourceId: 'browser-history', items: browserHistorySuggestionItems },
     { sourceId: 'local-history', items: localHistorySuggestionItems },
@@ -51,12 +57,12 @@ export function buildSearchSuggestionActions({
     { sourceId: 'settings', items: settingSuggestionItems },
     { sourceId: 'remote', items: remoteSuggestionItems },
   ];
-  const items = buildMixedSearchResults({
+  const results = buildMixedSearchResults({
     queryModel,
     sourceBundles,
     emptyStateLimit,
     queryStateLimit,
-  }).map((result) => result.candidate.item);
+  });
 
-  return buildSearchActions(items);
+  return buildSearchActionsFromResults(results);
 }

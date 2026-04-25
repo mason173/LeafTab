@@ -75,6 +75,8 @@ function getSourceIntentWeight(sourceId: MixedSearchSourceId, queryModel: MixedS
     switch (sourceId) {
       case 'tabs':
         return 420;
+      case 'recently-closed':
+        return 340;
       case 'shortcuts':
         return 390;
       case 'bookmarks':
@@ -115,16 +117,14 @@ function getSourceIntentWeight(sourceId: MixedSearchSourceId, queryModel: MixedS
 
   if (intent === 'empty') {
     switch (sourceId) {
-      case 'tabs':
-        return 300;
-      case 'local-history':
-        return 260;
-      case 'bookmarks':
-        return 220;
+      case 'recently-closed':
+        return 320;
       case 'browser-history':
-        return 180;
-      case 'settings':
-        return 120;
+        return 280;
+      case 'shortcuts':
+        return 240;
+      case 'local-history':
+        return 200;
       default:
         return 0;
     }
@@ -182,7 +182,10 @@ function scoreSuggestionItem(
   const normalizedLabel = (item.label || '').trim().toLowerCase();
   const normalizedValue = (item.value || '').trim().toLowerCase();
   const normalizedDetail = (item.detail || '').trim().toLowerCase();
-  const compactQuery = resolveCompactQuery(rankingQuery);
+  const compactQuery = queryModel.compactRankingQuery || resolveCompactQuery(rankingQuery);
+  const compactLabel = resolveCompactQuery(normalizedLabel);
+  const compactValue = resolveCompactQuery(normalizedValue);
+  const compactDetail = resolveCompactQuery(normalizedDetail);
   const normalizedTarget = normalizeUrlTarget(item.value || '');
   const normalizedDomain = normalizedTarget.split('/')[0] || normalizedTarget;
 
@@ -192,12 +195,20 @@ function scoreSuggestionItem(
   if (normalizedLabel === rankingQuery) score += 180;
   else if (normalizedLabel.startsWith(rankingQuery)) score += 110;
   else if (normalizedLabel.includes(rankingQuery)) score += 44;
+  else if (compactQuery && compactLabel === compactQuery) score += 132;
+  else if (compactQuery && compactLabel.startsWith(compactQuery)) score += 88;
+  else if (compactQuery && compactLabel.includes(compactQuery)) score += 32;
 
   if (normalizedValue === rankingQuery) score += 100;
   else if (normalizedValue.startsWith(rankingQuery)) score += 54;
   else if (normalizedValue.includes(rankingQuery)) score += 24;
+  else if (compactQuery && compactValue === compactQuery) score += 80;
+  else if (compactQuery && compactValue.startsWith(compactQuery)) score += 42;
+  else if (compactQuery && compactValue.includes(compactQuery)) score += 16;
 
   if (normalizedDetail === rankingQuery) score += 32;
+  else if (compactQuery && compactDetail === compactQuery) score += 24;
+  else if (compactQuery && compactDetail.includes(compactQuery)) score += 12;
 
   if (compactQuery && normalizedDomain.includes(compactQuery)) {
     score += 150;
@@ -366,15 +377,24 @@ function appendPhaseCandidates(args: {
   }
 }
 
-function resolveFusionPhases(intent: MixedSearchIntent): FusionPhase[] {
+function resolveFusionPhases(
+  intent: MixedSearchIntent,
+  queues?: Map<MixedSearchSourceId, SearchSuggestionItem[]>,
+): FusionPhase[] {
   switch (intent) {
-    case 'empty':
+    case 'empty': {
+      const topShortcutCandidate = queues?.get('shortcuts')?.[0];
+      if (topShortcutCandidate?.type === 'shortcut' && topShortcutCandidate.recentlyAdded) {
+        return [
+          { sources: ['shortcuts', 'recently-closed', 'browser-history', 'local-history'], rounds: 1 },
+          { sources: ['shortcuts', 'recently-closed', 'browser-history', 'local-history'], rounds: 'all' },
+        ];
+      }
       return [
-        { sources: ['tabs', 'local-history'], rounds: 1 },
-        { sources: ['bookmarks', 'browser-history'], rounds: 1 },
-        { sources: ['settings'], rounds: 1 },
-        { sources: ['tabs', 'local-history', 'bookmarks', 'browser-history', 'settings'], rounds: 'all' },
+        { sources: ['recently-closed', 'browser-history', 'shortcuts', 'local-history'], rounds: 1 },
+        { sources: ['recently-closed', 'browser-history', 'shortcuts', 'local-history'], rounds: 'all' },
       ];
+    }
     case 'scoped-tabs':
       return [
         { sources: ['tabs'], rounds: 'all' },
@@ -448,7 +468,7 @@ export function buildMixedSearchResults(args: {
     return results;
   }
 
-  for (const phase of resolveFusionPhases(queryModel.intent)) {
+  for (const phase of resolveFusionPhases(queryModel.intent, queues)) {
     appendPhaseCandidates({
       target: results,
       seenKeys,

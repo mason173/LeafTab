@@ -97,6 +97,7 @@ import { WallpaperBackdropProvider } from '@/components/wallpaper/WallpaperBackd
 import { LeafTabSyncProvider } from '@/features/sync/app/LeafTabSyncContext';
 import { useLeafTabSyncRuntimeController } from '@/features/sync/app/useLeafTabSyncRuntimeController';
 import type { SearchExperienceProps, SlashCommandDialogTarget } from '@/components/search/SearchExperience';
+import { recordRecentShortcutAddition } from '@/utils/recentShortcutAdditions';
 
 type FolderOverlaySnapshotRect = {
   left: number;
@@ -466,6 +467,7 @@ export default function App() {
     {
       onShortcutCreated: (shortcut) => {
         setPendingShortcutShineId(shortcut.id);
+        recordRecentShortcutAddition(shortcut.url);
       },
     },
   );
@@ -747,6 +749,7 @@ export default function App() {
     }));
     markShortcutStateDirty();
     setPendingShortcutShineId(nextShortcut.id);
+    recordRecentShortcutAddition(nextShortcut.url);
     toast.success(t('search.shortcutAdded', {
       defaultValue: '已添加为快捷方式',
     }));

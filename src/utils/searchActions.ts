@@ -1,5 +1,6 @@
 import type { SearchSuggestionItem } from '@/types';
 import type { SearchCommandPermission } from '@/utils/searchCommands';
+import type { MixedSearchResult, MixedSearchSourceId } from '@/utils/mixedSearchContracts';
 import {
   getSlashCommandDisplayIcon,
   parseSlashCommandActionId,
@@ -91,6 +92,9 @@ export type SearchAction =
     permission: 'tabs';
     secondaryActions: SearchSecondaryAction[];
     displayIcon?: SearchActionDisplayIcon;
+    sourceId?: MixedSearchSourceId;
+    baseRank?: number;
+    reasons?: readonly string[];
   }
   | {
     id: string;
@@ -100,6 +104,9 @@ export type SearchAction =
     usageKey: string | null;
     secondaryActions: SearchSecondaryAction[];
     displayIcon?: SearchActionDisplayIcon;
+    sourceId?: MixedSearchSourceId;
+    baseRank?: number;
+    reasons?: readonly string[];
   };
 
 function buildTabSecondaryActions(item: Extract<SearchSuggestionItem, { type: 'tab' }>): SearchSecondaryAction[] {
@@ -253,7 +260,15 @@ function buildSearchActionId(item: SearchSuggestionItem, index: number): string 
   return `${item.type}:${item.value}:${index}`;
 }
 
-export function createSearchAction(item: SearchSuggestionItem, index: number): SearchAction {
+export function createSearchAction(
+  item: SearchSuggestionItem,
+  index: number,
+  metadata?: {
+    sourceId?: MixedSearchSourceId;
+    baseRank?: number;
+    reasons?: readonly string[];
+  },
+): SearchAction {
   if (item.type === 'tab') {
     return {
       id: buildSearchActionId(item, index),
@@ -261,6 +276,9 @@ export function createSearchAction(item: SearchSuggestionItem, index: number): S
       item,
       permission: 'tabs',
       secondaryActions: buildTabSecondaryActions(item),
+      sourceId: metadata?.sourceId,
+      baseRank: metadata?.baseRank,
+      reasons: metadata?.reasons,
     };
   }
 
@@ -272,6 +290,9 @@ export function createSearchAction(item: SearchSuggestionItem, index: number): S
       permission: 'bookmarks',
       usageKey: null,
       secondaryActions: buildBookmarkSecondaryActions(item),
+      sourceId: metadata?.sourceId,
+      baseRank: metadata?.baseRank,
+      reasons: metadata?.reasons,
     };
   }
 
@@ -283,6 +304,9 @@ export function createSearchAction(item: SearchSuggestionItem, index: number): S
       permission: null,
       usageKey: buildShortcutUsageKey(item.value),
       secondaryActions: buildShortcutSecondaryActions(item),
+      sourceId: metadata?.sourceId,
+      baseRank: metadata?.baseRank,
+      reasons: metadata?.reasons,
     };
   }
 
@@ -299,9 +323,20 @@ export function createSearchAction(item: SearchSuggestionItem, index: number): S
     usageKey: null,
     secondaryActions: historySecondaryActions,
     displayIcon: slashActionId ? getSlashCommandDisplayIcon(slashActionId) : undefined,
+    sourceId: metadata?.sourceId,
+    baseRank: metadata?.baseRank,
+    reasons: metadata?.reasons,
   };
 }
 
 export function buildSearchActions(items: readonly SearchSuggestionItem[]): SearchAction[] {
   return items.map((item, index) => createSearchAction(item, index));
+}
+
+export function buildSearchActionsFromResults(results: readonly MixedSearchResult[]): SearchAction[] {
+  return results.map((result, index) => createSearchAction(result.candidate.item, index, {
+    sourceId: result.candidate.sourceId,
+    baseRank: result.globalRank,
+    reasons: result.reasons,
+  }));
 }

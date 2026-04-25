@@ -40,12 +40,18 @@ import {
   recordSuggestionUsage,
 } from '@/utils/suggestionPersonalization';
 import {
+  readSearchPersonalizationProfile,
+  recordSearchPersonalizationEvent,
+} from '@/utils/searchPersonalization';
+import { consumeRecentShortcutAddition } from '@/utils/recentShortcutAdditions';
+import {
   matchSearchCommandAliasInput,
   parseSearchCommand,
   resolveSearchCommandAutocomplete,
   type SearchSuggestionPermission,
 } from '@/utils/searchCommands';
 import { createSearchSessionModel, shouldAutoOpenSearchSuggestions } from '@/utils/searchSessionModel';
+import { createMixedSearchQueryModel } from '@/utils/mixedSearchQueryModel';
 import { resolveSearchSubmitDecision } from '@/utils/searchSubmit';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { SearchSuggestionsPlacement } from '@/components/search/SearchSuggestionsPanel.shared';
@@ -227,6 +233,9 @@ export const SearchExperience = memo(function SearchExperience({
   const searchAreaRef = useRef<HTMLDivElement>(null);
   const pointerHighlightLockUntilRef = useRef(0);
   const [suggestionUsageVersion, setSuggestionUsageVersion] = useState(0);
+  const [searchPersonalizationProfile, setSearchPersonalizationProfile] = useState(
+    () => readSearchPersonalizationProfile(),
+  );
   const [searchSourceRefreshVersion, setSearchSourceRefreshVersion] = useState(0);
   const [actionModeState, setActionModeState] = useState<{ actionId: string; selectedSecondaryActionIndex: number } | null>(null);
   const [pendingConfirmationActionKey, setPendingConfirmationActionKey] = useState<string | null>(null);
@@ -368,8 +377,10 @@ export const SearchExperience = memo(function SearchExperience({
   ]);
   const autoOpenSuggestionsEnabled = shouldAutoOpenSearchSuggestions(searchSessionModel);
   const shortcutSuggestionsActive = useMemo(
-    () => searchSessionModel.mode === 'default' && Boolean(searchSessionModel.normalizedQuery),
-    [searchSessionModel.mode, searchSessionModel.normalizedQuery],
+    () => searchSessionModel.mode === 'default' && (
+      Boolean(searchSessionModel.normalizedQuery) || historyOpen
+    ),
+    [historyOpen, searchSessionModel.mode, searchSessionModel.normalizedQuery],
   );
   const slashCommandInput = useMemo(
     () => searchValue.trimStart(),
@@ -563,6 +574,7 @@ export const SearchExperience = memo(function SearchExperience({
     shortcutSuggestionsActive,
     searchSiteShortcutEnabled,
     suggestionUsageMap,
+    searchPersonalizationProfile,
     historyPermissionGranted: searchPermissions.history,
     bookmarksPermissionGranted: searchPermissions.bookmarks,
     tabsPermissionGranted: searchPermissions.tabs,
@@ -572,6 +584,15 @@ export const SearchExperience = memo(function SearchExperience({
   const isSlashCommandPanelOpen = historyOpen
     && slashCommandInput.startsWith('/')
     && !searchSessionModel.command.active;
+  const searchPersonalizationQueryModel = useMemo(() => createMixedSearchQueryModel({
+    searchValue: isSlashCommandPanelOpen ? slashCommandQuery : searchValue,
+    displayMode: isSlashCommandPanelOpen ? 'default' : suggestionSourceStatus.suggestionDisplayMode,
+  }), [
+    isSlashCommandPanelOpen,
+    searchValue,
+    slashCommandQuery,
+    suggestionSourceStatus.suggestionDisplayMode,
+  ]);
   const slashCommandActions = useMemo(() => buildSlashCommandActions({
     isOpen: isSlashCommandPanelOpen,
     entries: slashCommandEntries,
@@ -665,13 +686,26 @@ export const SearchExperience = memo(function SearchExperience({
     });
   }, [historyOpen, selectedSearchAction, selectedSecondaryActions.length]);
 
+  const recordSearchPersonalizationUsage = useCallback((
+    action: SearchAction,
+    secondaryAction?: SearchSecondaryAction,
+  ) => {
+    setSearchPersonalizationProfile((prev) => recordSearchPersonalizationEvent({
+      profile: prev,
+      queryModel: searchPersonalizationQueryModel,
+      action,
+      secondaryAction,
+      visibleActions: visibleSearchActions,
+    }));
+  }, [searchPersonalizationQueryModel, visibleSearchActions]);
+
   const executeSlashCommand = useCallback((actionId: SlashCommandActionId) => {
     if (actionId === 'bookmarks') {
       setSearchValue(resolveSearchCommandAutocomplete('/bookmarks') || '/bookmarks ');
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('bookmarks', () => {});
-      return;
+      return true;
     }
 
     if (actionId === 'history') {
@@ -679,7 +713,7 @@ export const SearchExperience = memo(function SearchExperience({
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('history', () => {});
-      return;
+      return true;
     }
 
     if (actionId === 'tabs') {
@@ -687,7 +721,7 @@ export const SearchExperience = memo(function SearchExperience({
       setHistorySelectedIndex(-1);
       openHistoryPanel({ select: 'none' });
       runAfterSearchPermission('tabs', () => {});
-      return;
+      return true;
     }
 
     if (actionId === 'theme-mode') {
@@ -699,7 +733,7 @@ export const SearchExperience = memo(function SearchExperience({
       setTheme(nextTheme);
       setSearchValue('');
       closeHistoryPanel('selection');
-      return;
+      return true;
     }
 
     setSearchValue('');
@@ -720,6 +754,7 @@ export const SearchExperience = memo(function SearchExperience({
     } else if (actionId === 'about') {
       onOpenSlashCommandDialog?.('about');
     }
+    return true;
   }, [
     closeHistoryPanel,
     currentThemePreference,
@@ -735,13 +770,12 @@ export const SearchExperience = memo(function SearchExperience({
     const { item } = action;
     const slashActionId = parseSlashCommandActionId(item.value);
     if (slashActionId) {
-      executeSlashCommand(slashActionId);
-      return;
+      return executeSlashCommand(slashActionId);
     }
 
     if (action.kind === 'focus-tab' && item.type === 'tab' && Number.isFinite(item.tabId)) {
       if (currentBrowserTabId !== null && item.tabId === currentBrowserTabId) {
-        return;
+        return false;
       }
       const tabsApi = globalThis.chrome?.tabs;
       if (tabsApi?.update && typeof item.tabId === 'number') {
@@ -752,16 +786,30 @@ export const SearchExperience = memo(function SearchExperience({
         windowsApi.update(item.windowId, { focused: true }, () => {});
       }
       closeHistoryPanel('selection');
-      return;
+      return true;
+    }
+
+    if (action.kind === 'open-target' && item.type === 'history' && item.historySource === 'session' && item.sessionId) {
+      const sessionsApi = globalThis.chrome?.sessions;
+      if (sessionsApi?.restore) {
+        sessionsApi.restore(item.sessionId, () => {});
+        closeHistoryPanel('selection');
+        return true;
+      }
     }
 
     if (action.kind === 'open-target' && action.usageKey) {
       recordSuggestionUsage(action.usageKey);
       setSuggestionUsageVersion((prev) => prev + 1);
     }
+    if (item.type === 'shortcut' && item.recentlyAdded) {
+      consumeRecentShortcutAddition(item.value);
+      setSearchSourceRefreshVersion((prev) => prev + 1);
+    }
 
     openSearchWithQuery(item.value);
     closeHistoryPanel('selection');
+    return true;
   }, [closeHistoryPanel, currentBrowserTabId, executeSlashCommand, openSearchWithQuery]);
 
   const activateSearchAction = useCallback((action: SearchAction) => {
@@ -770,8 +818,15 @@ export const SearchExperience = memo(function SearchExperience({
       return;
     }
 
-    executeSearchAction(action);
-  }, [executeSearchAction, searchPermissions, showSearchCommandPermissionDeniedToast]);
+    if (executeSearchAction(action)) {
+      recordSearchPersonalizationUsage(action);
+    }
+  }, [
+    executeSearchAction,
+    recordSearchPersonalizationUsage,
+    searchPermissions,
+    showSearchCommandPermissionDeniedToast,
+  ]);
 
   const exitActionMode = useCallback(() => {
     setActionModeState(null);
@@ -814,8 +869,15 @@ export const SearchExperience = memo(function SearchExperience({
       if (secondaryAction.kind === 'close-tab') {
         invalidateTabSearchCaches();
         tabsApi.remove(item.tabId, () => {
+          if (globalThis.chrome?.runtime?.lastError) return;
           invalidateTabSearchCaches();
           setSearchSourceRefreshVersion((prev) => prev + 1);
+          recordSearchPersonalizationUsage(action, secondaryAction);
+          toast.success(t('search.tabClosedToast', {
+            defaultValue: '标签页已关闭',
+          }), {
+            description: item.label,
+          });
         });
         exitActionMode();
         return;
@@ -824,8 +886,10 @@ export const SearchExperience = memo(function SearchExperience({
       if (secondaryAction.kind === 'toggle-pin-tab') {
         invalidateTabSearchCaches();
         tabsApi.update(item.tabId, { pinned: !item.pinned }, () => {
+          if (globalThis.chrome?.runtime?.lastError) return;
           invalidateTabSearchCaches();
           setSearchSourceRefreshVersion((prev) => prev + 1);
+          recordSearchPersonalizationUsage(action, secondaryAction);
         });
         exitActionMode();
         return;
@@ -842,8 +906,15 @@ export const SearchExperience = memo(function SearchExperience({
       if (!bookmarksApi?.remove) return;
       invalidateBookmarkSearchCaches();
       bookmarksApi.remove(item.bookmarkId, () => {
+        if (globalThis.chrome?.runtime?.lastError) return;
         invalidateBookmarkSearchCaches();
         setSearchSourceRefreshVersion((prev) => prev + 1);
+        recordSearchPersonalizationUsage(action, secondaryAction);
+        toast.success(t('search.bookmarkRemovedToast', {
+          defaultValue: '书签已删除',
+        }), {
+          description: item.label,
+        });
       });
       setPendingConfirmationActionKey(null);
       exitActionMode();
@@ -863,6 +934,7 @@ export const SearchExperience = memo(function SearchExperience({
         url: item.value,
         icon: item.icon,
       });
+      recordSearchPersonalizationUsage(action, secondaryAction);
       exitActionMode();
       return;
     }
@@ -873,12 +945,14 @@ export const SearchExperience = memo(function SearchExperience({
 
       if (secondaryAction.kind === 'edit-shortcut') {
         onEditShortcutAction?.(target);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
 
       if (secondaryAction.kind === 'delete-shortcut') {
         onDeleteShortcutAction?.(target);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
@@ -887,30 +961,35 @@ export const SearchExperience = memo(function SearchExperience({
     if (item.type === 'history' && item.searchActionKey) {
       if (secondaryAction.kind === 'set-theme-mode') {
         setTheme(secondaryAction.targetMode);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
 
       if (secondaryAction.kind === 'cycle-search-engine') {
         cycleSearchEngine(1);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
 
       if (secondaryAction.kind === 'toggle-show-time') {
         onSetShowTimeAction?.(!secondaryAction.active);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
 
       if (secondaryAction.kind === 'set-wallpaper-mode') {
         onSetWallpaperModeAction?.(secondaryAction.targetMode);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
 
       if (secondaryAction.kind === 'set-shortcut-icon-appearance') {
         onSetShortcutIconAppearanceAction?.(secondaryAction.targetAppearance);
+        recordSearchPersonalizationUsage(action, secondaryAction);
         exitActionMode();
         return;
       }
@@ -918,6 +997,7 @@ export const SearchExperience = memo(function SearchExperience({
 
     void copyTextToClipboard(item.value)
       .then(() => {
+        recordSearchPersonalizationUsage(action, secondaryAction);
         toast.success(t('search.linkCopied', { defaultValue: '链接已复制到剪贴板' }));
       })
       .catch(() => {
@@ -938,6 +1018,7 @@ export const SearchExperience = memo(function SearchExperience({
     onSetShowTimeAction,
     onSetWallpaperModeAction,
     pendingConfirmationActionKey,
+    recordSearchPersonalizationUsage,
     setTheme,
     shortcutActionTargetMap,
     t,
@@ -982,11 +1063,7 @@ export const SearchExperience = memo(function SearchExperience({
     pointerHighlightLockUntilRef.current = 0;
     exitActionMode();
     handleSearchChange(nextValue, nativeEvent);
-    if (nextValue.length > 0) {
-      if (!shouldAutoOpenSearchSuggestions(nextSearchSessionModel)) {
-        closeHistoryPanel('manual');
-        return;
-      }
+    if (shouldAutoOpenSearchSuggestions(nextSearchSessionModel)) {
       openHistoryPanel({ select: 'none' });
       return;
     }
@@ -1181,11 +1258,10 @@ export const SearchExperience = memo(function SearchExperience({
 
   const handleSearchInputFocus = useCallback(() => {
     if (interactionDisabled) return;
+    if (searchSessionModel.mode === 'default' && !searchSessionModel.trimmedValue) return;
     if (!autoOpenSuggestionsEnabled) return;
-    if (searchValue.length > 0) {
-      handleSearchHistoryOpen();
-    }
-  }, [autoOpenSuggestionsEnabled, handleSearchHistoryOpen, interactionDisabled, searchValue.length]);
+    handleSearchHistoryOpen();
+  }, [autoOpenSuggestionsEnabled, handleSearchHistoryOpen, interactionDisabled, searchSessionModel.mode, searchSessionModel.trimmedValue]);
 
   const handleSearchSuggestionHighlight = useCallback((index: number) => {
     if (Date.now() < pointerHighlightLockUntilRef.current) return;
@@ -1348,7 +1424,12 @@ export const SearchExperience = memo(function SearchExperience({
         }),
       };
     }
-    if (searchPermissionsReady && !searchPermissions.history && searchSessionModel.mode === 'default') {
+    if (
+      searchPermissionsReady
+      && !searchPermissions.history
+      && searchSessionModel.mode === 'default'
+      && visibleSearchActions.length === 0
+    ) {
       return {
         tone: 'info' as const,
         message: t('search.historyPermissionBanner', {
@@ -1366,6 +1447,7 @@ export const SearchExperience = memo(function SearchExperience({
     searchPermissions,
     searchPermissionsReady,
     searchSessionModel.mode,
+    visibleSearchActions.length,
     isSlashCommandPanelOpen,
     suggestionSourceStatus.bookmarkLoading,
     suggestionSourceStatus.browserHistoryLoading,
@@ -1436,6 +1518,20 @@ export const SearchExperience = memo(function SearchExperience({
         selectedSecondaryActionIndex={selectedSecondaryActionIndex}
         pendingConfirmationActionKey={pendingConfirmationActionKey}
         onSecondaryActionSelect={(action, secondaryAction, index) => {
+          const nextActionModeState = {
+            actionId: action.id,
+            selectedSecondaryActionIndex: index,
+          };
+          if (secondaryAction.kind === 'remove-bookmark') {
+            const secondaryActionKey = getSecondaryActionSelectionKey(action.id, index);
+            const isSameSecondaryActionSelected = actionModeState?.actionId === action.id
+              && actionModeState.selectedSecondaryActionIndex === index;
+            setActionModeState(nextActionModeState);
+            if (!isSameSecondaryActionSelected || pendingConfirmationActionKey !== secondaryActionKey) {
+              setPendingConfirmationActionKey(secondaryActionKey);
+              return;
+            }
+          }
           setActionModeState({
             actionId: action.id,
             selectedSecondaryActionIndex: index,

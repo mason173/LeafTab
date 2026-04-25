@@ -40,7 +40,27 @@ import { MaterialSurfaceFrame } from '@/components/frosted/MaterialSurfaceFrame'
 import type { SearchSuggestionsPanelProps } from '@/components/search/SearchSuggestionsPanel.shared';
 import type { SearchAction, SearchSecondaryAction } from '@/utils/searchActions';
 
+type SuggestionGroupMeta = {
+  key: string;
+  label: string;
+};
+
+type SuggestionVisualRow =
+  | {
+    kind: 'header';
+    key: string;
+    label: string;
+  }
+  | ({
+    kind: 'item';
+    groupKey: string;
+  } & ReturnType<typeof buildSuggestionRowViewModel>);
+
 const FIREFOX_PANEL_TRANSITION_MS = 170;
+const SUGGESTION_ITEM_ROW_HEIGHT_PX = 32;
+const SUGGESTION_HEADER_ROW_HEIGHT_PX = 16;
+const SUGGESTION_ROW_GAP_PX = 2;
+const MAX_VISIBLE_VISUAL_ROWS = 11;
 
 function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass: string) {
   if (!action.displayIcon) return null;
@@ -55,6 +75,187 @@ function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass
   if (action.displayIcon === 'sync-center') return <RiCloudFill className={`size-3.5 ${secondaryTextClass}`} />;
   if (action.displayIcon === 'about') return <RiInformationFill className={`size-3.5 ${secondaryTextClass}`} />;
   return <RiSettings4Fill className={`size-3.5 ${secondaryTextClass}`} />;
+}
+
+function resolveSearchActionPersonalizationTitle(
+  action: SearchAction,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  const reasons = action.reasons || [];
+  const labels: string[] = [];
+
+  if (reasons.includes('personalization:query-target-affinity')) {
+    labels.push(t('search.personalization.queryTargetAffinity', {
+      defaultValue: '你经常用这个关键词打开它',
+    }));
+  } else if (reasons.includes('personalization:target-affinity')) {
+    labels.push(t('search.personalization.targetAffinity', {
+      defaultValue: '你最近常打开这个结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:query-source-affinity')) {
+    labels.push(t('search.personalization.querySourceAffinity', {
+      defaultValue: '你常从这个来源选择结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:domain-source-affinity')) {
+    labels.push(t('search.personalization.domainSourceAffinity', {
+      defaultValue: '你常从同类站点里选结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:action-affinity')) {
+    labels.push(t('search.personalization.actionAffinity', {
+      defaultValue: '你常对这类结果执行类似动作',
+    }));
+  }
+
+  if (reasons.includes('personalization:query-target-avoidance')) {
+    labels.push(t('search.personalization.queryTargetAvoidance', {
+      defaultValue: '这个关键词下你最近更少选择它',
+    }));
+  } else if (reasons.includes('personalization:target-avoidance')) {
+    labels.push(t('search.personalization.targetAvoidance', {
+      defaultValue: '你最近更少选择这个结果',
+    }));
+  }
+
+  return labels.length > 0
+    ? t('search.personalization.title', {
+        summary: labels.join(' · '),
+        defaultValue: `排序依据：${labels.join(' · ')}`,
+      })
+    : '';
+}
+
+function buildSuggestionRowViewModel(args: {
+  action: SearchAction;
+  index: number;
+  currentBrowserTabId: number | null;
+  t: SearchSuggestionsPanelProps['currentBrowserTabId'] extends never ? never : ReturnType<typeof useTranslation>['t'];
+  historySiteDirectDomainMap: Map<string, string>;
+}) {
+  const {
+    action,
+    index,
+    currentBrowserTabId,
+    t,
+    historySiteDirectDomainMap,
+  } = args;
+  const { item } = action;
+  const shortcutDomain = item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab'
+    ? extractDomainFromUrl(item.value)
+    : '';
+  const isCurrentTab = item.type === 'tab' && item.tabId === currentBrowserTabId;
+  const remoteProviderLabel = item.type === 'remote'
+    ? t('search.remoteSuggestionSource', { defaultValue: '搜尋建議' })
+    : '';
+  const recentClosedLabel = item.type === 'history' && item.historySource === 'session'
+    ? t('search.recentlyClosedSource', { defaultValue: '最近關閉' })
+    : '';
+
+  return {
+    action,
+    item,
+    index,
+    isCurrentTab,
+    shortcutDomain,
+    detailLabel: item.detail?.trim() || '',
+    showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
+    secondaryLabel: isCurrentTab
+      ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
+      : recentClosedLabel || remoteProviderLabel,
+    siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
+  };
+}
+
+function resolveSuggestionGroupMeta(args: {
+  action: SearchAction;
+  currentBrowserTabId: number | null;
+  t: ReturnType<typeof useTranslation>['t'];
+}): SuggestionGroupMeta {
+  const { action, currentBrowserTabId, t } = args;
+  const { item } = action;
+
+  if (action.displayIcon === 'search-settings') {
+    return {
+      key: 'settings',
+      label: t('search.group.settings', { defaultValue: '设置' }),
+    };
+  }
+
+  if (
+    action.displayIcon === 'theme-mode'
+    || action.displayIcon === 'shortcut-guide'
+    || action.displayIcon === 'shortcut-icon-settings'
+    || action.displayIcon === 'wallpaper-settings'
+    || action.displayIcon === 'sync-center'
+    || action.displayIcon === 'about'
+  ) {
+    return {
+      key: 'settings',
+      label: t('search.group.settings', { defaultValue: '设置' }),
+    };
+  }
+
+  if (item.type === 'tab') {
+    const isCurrentTab = item.tabId === currentBrowserTabId;
+    return isCurrentTab
+      ? {
+          key: 'current-tab',
+          label: t('search.currentTabLabel', { defaultValue: '当前标签页' }),
+        }
+      : {
+          key: 'tabs',
+          label: t('search.group.tabs', { defaultValue: '标签页' }),
+        };
+  }
+
+  if (item.type === 'shortcut') {
+    return {
+      key: 'shortcuts',
+      label: t('search.group.shortcuts', { defaultValue: '快捷方式' }),
+    };
+  }
+
+  if (item.type === 'bookmark') {
+    return {
+      key: 'bookmarks',
+      label: t('search.group.bookmarks', { defaultValue: '书签' }),
+    };
+  }
+
+  if (item.type === 'remote' || item.type === 'engine-prefix') {
+    return {
+      key: 'remote',
+      label: t('search.remoteSuggestionSource', { defaultValue: '搜尋建議' }),
+    };
+  }
+
+  if (item.type === 'history') {
+    if (item.historySource === 'session') {
+      return {
+        key: 'recently-closed',
+        label: t('search.group.recentlyClosed', { defaultValue: '最近关闭' }),
+      };
+    }
+    return item.historySource === 'local'
+      ? {
+          key: 'local-history',
+          label: t('search.group.continueSearch', { defaultValue: '继续搜索' }),
+        }
+      : {
+          key: 'browser-history',
+          label: t('search.group.recentVisits', { defaultValue: '最近访问' }),
+        };
+  }
+
+  return {
+    key: item.type,
+    label: t('search.group.results', { defaultValue: '结果' }),
+  };
 }
 
 export function SearchSuggestionsPanel({
@@ -88,7 +289,7 @@ export function SearchSuggestionsPanel({
     [i18n.language],
   );
   const hasLocalHistoryRows = useMemo(
-    () => items.some(({ item }) => item.type === 'history' && item.historySource !== 'browser'),
+    () => items.some(({ item }) => item.type === 'history' && item.historySource === 'local'),
     [items],
   );
   const historySiteDirectDomainMap = useMemo(() => {
@@ -100,35 +301,64 @@ export function SearchSuggestionsPanel({
     });
     return map;
   }, [items]);
-  const derivedSuggestionRows = useMemo(() => items.map((action, index) => {
-    const { item } = action;
-    const shortcutDomain = item.type === 'shortcut' || item.type === 'bookmark' || item.type === 'tab'
-      ? extractDomainFromUrl(item.value)
-      : '';
-    const isCurrentTab = item.type === 'tab' && item.tabId === currentBrowserTabId;
-    const remoteProviderLabel = item.type === 'remote'
-      ? t('search.remoteSuggestionSource', { defaultValue: '搜尋建議' })
-      : '';
-    return {
-      action,
-      item,
-      index,
-      isCurrentTab,
-      shortcutDomain,
-      detailLabel: item.detail?.trim() || '',
-      showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
-      secondaryLabel: isCurrentTab
-        ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
-        : remoteProviderLabel,
-      siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
-    };
-  }), [currentBrowserTabId, historySiteDirectDomainMap, items, t]);
+  const derivedSuggestionRows = useMemo(() => items.map((action, index) => buildSuggestionRowViewModel({
+    action,
+    index,
+    currentBrowserTabId,
+    t,
+    historySiteDirectDomainMap,
+  })), [currentBrowserTabId, historySiteDirectDomainMap, items, t]);
+  const suggestionGroupCount = useMemo(() => {
+    const groupKeys = new Set(
+      items.map((action) => resolveSuggestionGroupMeta({
+        action,
+        currentBrowserTabId,
+        t,
+      }).key),
+    );
+    return groupKeys.size;
+  }, [currentBrowserTabId, items, t]);
+  const visualRows = useMemo<SuggestionVisualRow[]>(() => {
+    if (derivedSuggestionRows.length === 0) return [];
 
-  const visualRowCount = items.length;
-  const maxVisibleRows = 8;
-  const canScroll = visualRowCount > maxVisibleRows;
-  const visibleCount = Math.min(visualRowCount, maxVisibleRows);
-  const listHeight = visibleCount > 0 ? visibleCount * 32 + Math.max(0, visibleCount - 1) * 4 : 0;
+    const shouldShowHeaders = suggestionGroupCount > 1;
+    const rows: SuggestionVisualRow[] = [];
+    let previousGroupKey: string | null = null;
+
+    derivedSuggestionRows.forEach((row) => {
+      const group = resolveSuggestionGroupMeta({
+        action: row.action,
+        currentBrowserTabId,
+        t,
+      });
+
+      if (shouldShowHeaders && group.key !== previousGroupKey) {
+        rows.push({
+          kind: 'header',
+          key: `group:${group.key}:${row.action.id}`,
+          label: group.label,
+        });
+      }
+
+      rows.push({
+        kind: 'item',
+        groupKey: group.key,
+        ...row,
+      });
+      previousGroupKey = group.key;
+    });
+
+    return rows;
+  }, [currentBrowserTabId, derivedSuggestionRows, suggestionGroupCount, t]);
+
+  const visualRowCount = visualRows.length;
+  const canScroll = visualRowCount > MAX_VISIBLE_VISUAL_ROWS;
+  const visibleRows = visualRows.slice(0, MAX_VISIBLE_VISUAL_ROWS);
+  const listHeight = visibleRows.length > 0
+    ? visibleRows.reduce((total, row) => (
+      total + (row.kind === 'header' ? SUGGESTION_HEADER_ROW_HEIGHT_PX : SUGGESTION_ITEM_ROW_HEIGHT_PX)
+    ), 0) + Math.max(0, visibleRows.length - 1) * SUGGESTION_ROW_GAP_PX
+    : 0;
 
   useEffect(() => {
     if (isOpen && selectedIndex !== -1 && scrollAreaRef.current) {
@@ -169,7 +399,7 @@ export function SearchSuggestionsPanel({
 
   if (!shouldRenderPanel) return null;
 
-  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${theme.dropdownRowClassName} ${index === selectedIndex ? theme.dropdownRowSelectedClassName : ''}`;
+  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-visible ${theme.dropdownRowClassName} ${index === selectedIndex ? theme.dropdownRowSelectedClassName : ''}`;
   const secondaryTextClass = theme.dropdownSecondaryTextClassName;
   const firefoxPanelStyle = {
     opacity: isOpen ? 1 : 0,
@@ -239,6 +469,7 @@ export function SearchSuggestionsPanel({
   }) => {
     const isSelected = index === selectedIndex;
     const customActionIcon = resolveSearchActionDisplayIcon(action, secondaryTextClass);
+    const personalizationTitle = resolveSearchActionPersonalizationTitle(action, t);
     const secondaryActions = action.secondaryActions;
     const showSecondaryActions = isSelected && secondaryActions.length > 0;
     const numberHintBadge = (
@@ -270,6 +501,7 @@ export function SearchSuggestionsPanel({
           type="button"
           data-selected={index === selectedIndex}
           className={rowClass(index)}
+          title={personalizationTitle || undefined}
           onMouseMove={() => {
             if (index === selectedIndex) return;
             onHighlight?.(index);
@@ -420,6 +652,7 @@ export function SearchSuggestionsPanel({
         type="button"
         data-selected={index === selectedIndex}
         className={rowClass(index)}
+        title={personalizationTitle || undefined}
         onMouseMove={() => {
           if (index === selectedIndex) return;
           onHighlight?.(index);
@@ -442,6 +675,11 @@ export function SearchSuggestionsPanel({
         {numberHintBadge}
         <span className="flex min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
           <span className="block min-w-0 max-w-full flex-1 truncate">{item.label}</span>
+          {item.type === 'shortcut' && item.recentlyAdded && !isSelected ? (
+            <span className={`shrink-0 rounded-full border border-current/8 bg-current/[0.05] px-1.5 py-0.5 text-[10px] font-medium ${secondaryTextClass} opacity-80`}>
+              {t('search.recentlyAddedShortcutBadge', { defaultValue: '新添加' })}
+            </span>
+          ) : null}
           {detailLabel && !isSelected ? (
             <span className={`shrink-0 truncate ${secondaryTextClass}`}>{detailLabel}</span>
           ) : null}
@@ -485,12 +723,9 @@ export function SearchSuggestionsPanel({
                   }}
                 >
                   {(isActionSelected || isPendingConfirmation) ? (
-                    <span className="pointer-events-none absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-sm">
+                    <span className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-sm">
                       {actionLabel}
                     </span>
-                  ) : null}
-                  {isActionActive ? (
-                    <RiCheckboxCircleFill className="pointer-events-none absolute -right-0.5 -top-0.5 size-2.5 text-current" />
                   ) : null}
                   {renderSecondaryActionIcon(secondaryAction)}
                 </span>
@@ -504,6 +739,24 @@ export function SearchSuggestionsPanel({
             : null}
       </button>
     );
+  };
+  const renderVisualRow = (row: SuggestionVisualRow) => {
+    if (row.kind === 'header') {
+      return (
+        <div
+          key={row.key}
+          className="flex h-[16px] items-center gap-1.5 px-2"
+          aria-hidden="true"
+        >
+          <span className={`shrink-0 text-[11px] font-medium uppercase tracking-[0.05em] ${secondaryTextClass} opacity-55`}>
+            {row.label}
+          </span>
+          <div className={`h-px min-w-0 flex-1 bg-current/6 ${secondaryTextClass}`} />
+        </div>
+      );
+    }
+
+    return renderSuggestionRow(row);
   };
 
   return (
@@ -576,8 +829,14 @@ export function SearchSuggestionsPanel({
             onTouchMoveCapture={showScrollbar}
             scrollBarClassName={`transition-opacity duration-200 ${scrollbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
-            <div className="flex w-full flex-col gap-1 overflow-hidden pr-2" style={firefoxListStyle}>
-              {derivedSuggestionRows.map(renderSuggestionRow)}
+            <div
+              className="flex w-full flex-col overflow-visible pr-2"
+              style={{
+                ...firefoxListStyle,
+                rowGap: `${SUGGESTION_ROW_GAP_PX}px`,
+              }}
+            >
+              {visualRows.map(renderVisualRow)}
             </div>
           </ScrollArea>
         )}

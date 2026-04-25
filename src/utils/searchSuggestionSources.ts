@@ -9,6 +9,10 @@ import {
   type SuggestionUsageMap,
 } from '@/utils/suggestionPersonalization';
 import {
+  getRecentShortcutAdditionBoost,
+  type RecentShortcutAdditionsMap,
+} from '@/utils/recentShortcutAdditions';
+import {
   buildShortcutSearchMatchIndex,
   getShortcutSearchScoreFromMatchIndex,
   mergeShortcutSearchMatchIndexes,
@@ -29,6 +33,7 @@ export type IndexedShortcutSuggestion = {
   icon: string;
   order: number;
   usageKey: string;
+  recentAddedAt?: number;
   matchIndex: ShortcutSearchMatchIndex;
 };
 
@@ -43,6 +48,10 @@ export type SearchSuggestionSourceItems = {
   builtinSiteSuggestionItems: SearchSuggestionItem[];
   shortcutSuggestionItems: SearchSuggestionItem[];
 };
+
+const EMPTY_QUERY_SHORTCUT_LIMIT = 6;
+const QUERY_SHORTCUT_LIMIT = 10;
+const EMPTY_QUERY_LOCAL_HISTORY_LIMIT = 3;
 
 function insertRankedSuggestion(
   list: RankedSuggestion[],
@@ -65,6 +74,7 @@ function insertRankedSuggestion(
 
 export function buildShortcutSearchIndex(
   shortcuts: readonly Shortcut[],
+  recentShortcutAdditionsMap: RecentShortcutAdditionsMap = {},
 ): IndexedShortcutSuggestion[] {
   const dedupedByUrl = new Map<string, IndexedShortcutSuggestion>();
   let order = 0;
@@ -93,6 +103,7 @@ export function buildShortcutSearchIndex(
       icon: shortcut.icon || '',
       order,
       usageKey: buildShortcutUsageKey(url),
+      recentAddedAt: recentShortcutAdditionsMap[buildShortcutUsageKey(url)],
       matchIndex,
     });
     order += 1;
@@ -103,9 +114,10 @@ export function buildShortcutSearchIndex(
 
 export async function prepareShortcutSearchIndex(
   shortcuts: readonly Shortcut[],
+  recentShortcutAdditionsMap: RecentShortcutAdditionsMap = {},
 ): Promise<IndexedShortcutSuggestion[]> {
   await prepareShortcutSearchMatchIndexes(shortcuts);
-  return buildShortcutSearchIndex(shortcuts);
+  return buildShortcutSearchIndex(shortcuts, recentShortcutAdditionsMap);
 }
 
 export function buildShortcutSuggestionItems(args: {
@@ -115,7 +127,27 @@ export function buildShortcutSuggestionItems(args: {
 }): SearchSuggestionItem[] {
   const { searchValue, shortcutSearchIndex, suggestionUsageMap } = args;
   const normalizedQuery = normalizeSearchQuery(searchValue);
-  if (!normalizedQuery) return [];
+  if (!normalizedQuery) {
+    const topSuggestions: RankedSuggestion[] = [];
+    for (const shortcut of shortcutSearchIndex) {
+      const recentAdditionBoost = getRecentShortcutAdditionBoost(shortcut.recentAddedAt);
+      insertRankedSuggestion(topSuggestions, {
+        item: {
+          type: 'shortcut',
+          shortcutId: shortcut.id,
+          label: shortcut.label,
+          value: shortcut.url,
+          icon: shortcut.icon,
+          recentlyAdded: recentAdditionBoost > 0,
+        },
+        score: getSuggestionUsageBoost(suggestionUsageMap, shortcut.usageKey)
+          + recentAdditionBoost
+          + Math.max(0, 24 - shortcut.order),
+        order: shortcut.order,
+      }, EMPTY_QUERY_SHORTCUT_LIMIT);
+    }
+    return topSuggestions.map((entry) => entry.item);
+  }
 
   const topMatches: RankedSuggestion[] = [];
   for (const shortcut of shortcutSearchIndex) {
@@ -129,10 +161,11 @@ export function buildShortcutSuggestionItems(args: {
         label: shortcut.label,
         value: shortcut.url,
         icon: shortcut.icon,
+        recentlyAdded: false,
       },
       score: score * 100 + getSuggestionUsageBoost(suggestionUsageMap, shortcut.usageKey),
       order: shortcut.order,
-    }, 10);
+    }, QUERY_SHORTCUT_LIMIT);
   }
 
   return topMatches.map((entry) => entry.item);
@@ -166,8 +199,14 @@ export function buildBuiltinSiteSuggestionItems(args: {
 
 export function buildLocalHistorySuggestionItems(
   filteredHistoryItems: readonly SearchHistoryLikeEntry[],
+  searchValue = '',
 ): SearchSuggestionItem[] {
-  return filteredHistoryItems.map((historyItem) => ({
+  const normalizedQuery = normalizeSearchQuery(searchValue);
+  const sourceItems = normalizedQuery
+    ? filteredHistoryItems
+    : filteredHistoryItems.slice(0, EMPTY_QUERY_LOCAL_HISTORY_LIMIT);
+
+  return sourceItems.map((historyItem) => ({
     type: 'history',
     label: historyItem.query,
     value: historyItem.query,
@@ -192,7 +231,7 @@ export function buildSearchSuggestionSourceItems(args: {
   } = args;
 
   return {
-    localHistorySuggestionItems: buildLocalHistorySuggestionItems(filteredHistoryItems),
+    localHistorySuggestionItems: buildLocalHistorySuggestionItems(filteredHistoryItems, searchValue),
     builtinSiteSuggestionItems: buildBuiltinSiteSuggestionItems({
       searchValue,
       searchSiteShortcutEnabled,

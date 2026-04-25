@@ -1,4 +1,5 @@
 import type { SearchEngine } from '@/types';
+import { isUrl } from '@/utils';
 import { getCalculatorPreview, type CalculatorPreview } from '@/utils/calculator';
 import { type ParsedSearchCommand, parseSearchCommand } from '@/utils/searchCommands';
 import { normalizeSearchQuery, parseSearchEnginePrefix } from '@/utils/searchHelpers';
@@ -59,8 +60,13 @@ function resolveSearchSessionMode(commandId: ParsedSearchCommand['id']): SearchS
   return 'default';
 }
 
-export function shouldAutoOpenSearchSuggestions(session: Pick<SearchSessionModel, 'mode' | 'enginePrefix'>): boolean {
-  return !(session.mode === 'default' && session.enginePrefix.active);
+export function shouldAutoOpenSearchSuggestions(
+  session: Pick<SearchSessionModel, 'mode' | 'enginePrefix' | 'submission'>,
+): boolean {
+  if (session.mode !== 'default') return true;
+  if (session.enginePrefix.active) return false;
+  if (isUrl(session.submission.queryForSearch)) return false;
+  return true;
 }
 
 export function createSearchSessionModel(

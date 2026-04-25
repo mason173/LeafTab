@@ -59,4 +59,21 @@ describe('createSearchSessionModel', () => {
       defaultEngine: 'google',
     }))).toBe(false);
   });
+
+  it('suppresses auto-open suggestions for explicit url input', () => {
+    expect(shouldAutoOpenSearchSuggestions(createSearchSessionModel('https://openai.com', {
+      prefixEnabled: true,
+      defaultEngine: 'google',
+    }))).toBe(false);
+
+    expect(shouldAutoOpenSearchSuggestions(createSearchSessionModel('github.com/docs', {
+      prefixEnabled: true,
+      defaultEngine: 'google',
+    }))).toBe(false);
+
+    expect(shouldAutoOpenSearchSuggestions(createSearchSessionModel('openai api', {
+      prefixEnabled: true,
+      defaultEngine: 'google',
+    }))).toBe(true);
+  });
 });

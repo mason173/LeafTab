@@ -3,6 +3,7 @@ import type { SearchSuggestionItem } from '@/types';
 import type { WallpaperMode } from '@/wallpaper/types';
 import {
   buildSearchMatchCandidates,
+  compactSearchQuery,
   getSearchMatchPriorityFromCandidates,
   normalizeSearchQuery,
 } from '@/utils/searchHelpers';
@@ -200,9 +201,9 @@ function filterSlashCommandEntries(entries: SlashCommandEntry[], queryKey: strin
   if (!queryKey) return entries;
 
   return entries.filter((entry) => {
-    if (normalizeSearchQuery(entry.label).includes(queryKey)) return true;
-    if (entry.detail && normalizeSearchQuery(entry.detail).includes(queryKey)) return true;
-    return entry.keywords.some((keyword) => normalizeSearchQuery(keyword).includes(queryKey));
+    if (getEntryMatchPriority([entry.label], queryKey) > 0) return true;
+    if (entry.detail && getEntryMatchPriority([entry.detail], queryKey) > 0) return true;
+    return getEntryMatchPriority(entry.keywords, queryKey) > 0;
   });
 }
 
@@ -247,6 +248,9 @@ export function buildSlashCommandActions(args: {
     usageKey: null,
     secondaryActions: [],
     displayIcon: entry.icon,
+    sourceId: 'commands',
+    baseRank: index,
+    reasons: ['slash-command-panel'],
     item: {
       type: 'history',
       label: entry.label,
@@ -311,8 +315,14 @@ function scoreSettingsSearchEntry(entry: SettingsSearchEntry, queryKey: string) 
 
   const normalizedLabel = normalizeSearchQuery(entry.label);
   const normalizedDetail = normalizeSearchQuery(entry.detail ?? '');
+  const compactQueryKey = compactSearchQuery(queryKey);
+  const compactLabel = compactSearchQuery(entry.label);
+  const compactDetail = compactSearchQuery(entry.detail ?? '');
   const normalizedKeywords = entry.keywords
     .map((keyword) => normalizeSearchQuery(keyword))
+    .filter(Boolean);
+  const compactKeywords = entry.keywords
+    .map((keyword) => compactSearchQuery(keyword))
     .filter(Boolean);
   const labelPriority = getEntryMatchPriority([entry.label], queryKey);
   const detailPriority = entry.detail ? getEntryMatchPriority([entry.detail], queryKey) : 0;
@@ -325,6 +335,11 @@ function scoreSettingsSearchEntry(entry: SettingsSearchEntry, queryKey: string) 
   if (normalizedKeywords.some((keyword) => keyword.startsWith(queryKey))) score += 16;
   if (normalizedLabel.includes(queryKey)) score += 10;
   if (normalizedDetail && normalizedDetail.includes(queryKey)) score += 8;
+  if (compactQueryKey && compactLabel === compactQueryKey) score += 40;
+  if (compactQueryKey && compactKeywords.includes(compactQueryKey)) score += 36;
+  if (compactQueryKey && compactLabel.startsWith(compactQueryKey)) score += 14;
+  if (compactQueryKey && compactKeywords.some((keyword) => keyword.startsWith(compactQueryKey))) score += 12;
+  if (compactQueryKey && compactDetail && compactDetail.includes(compactQueryKey)) score += 6;
   score += Math.max(0, 6 - Math.abs(normalizedLabel.length - queryKey.length));
 
   return score;

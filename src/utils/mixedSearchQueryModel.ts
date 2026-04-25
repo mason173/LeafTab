@@ -1,4 +1,4 @@
-import { normalizeSearchQuery } from '@/utils/searchHelpers';
+import { compactSearchQuery, normalizeSearchQuery } from '@/utils/searchHelpers';
 import { parseSearchCommandById } from '@/utils/searchCommands';
 import type { SearchSuggestionDisplayMode } from '@/utils/searchSuggestionPolicy';
 import type { MixedSearchSourceId } from '@/utils/mixedSearchContracts';
@@ -16,7 +16,9 @@ export type MixedSearchQueryModel = {
   searchValue: string;
   activeSearchValue: string;
   normalizedQuery: string;
+  compactQuery: string;
   rankingQuery: string;
+  compactRankingQuery: string;
   displayMode: SearchSuggestionDisplayMode;
   isEmpty: boolean;
   intent: MixedSearchIntent;
@@ -94,7 +96,7 @@ function resolveMixedSearchIntent(
 function resolveSourcePlan(intent: MixedSearchIntent): MixedSearchSourceId[] {
   switch (intent) {
     case 'empty':
-      return ['tabs', 'local-history', 'bookmarks', 'browser-history', 'settings'];
+      return ['recently-closed', 'browser-history', 'shortcuts', 'local-history'];
     case 'scoped-tabs':
       return ['tabs'];
     case 'scoped-bookmarks':
@@ -130,14 +132,18 @@ export function createMixedSearchQueryModel(args: {
     return searchValue;
   })();
   const normalizedQuery = normalizeSearchQuery(activeSearchValue);
+  const compactQuery = compactSearchQuery(activeSearchValue);
   const rankingQuery = stripOfficialIntentKeywords(normalizedQuery) || normalizedQuery;
+  const compactRankingQuery = compactSearchQuery(rankingQuery);
   const intent = resolveMixedSearchIntent(displayMode, normalizedQuery);
 
   return {
     searchValue,
     activeSearchValue,
     normalizedQuery,
+    compactQuery,
     rankingQuery,
+    compactRankingQuery,
     displayMode,
     isEmpty: normalizedQuery.length === 0,
     intent,

@@ -161,4 +161,16 @@ describe('drawerShortcutFiltering', () => {
       searchDrawerShortcutEntries(buildDrawerShortcutEntries(shortcuts), '常用').map((entry) => entry.shortcut.id),
     ).toEqual(['folder-1']);
   });
+
+  it('tolerates whitespace differences when searching drawer shortcuts', async () => {
+    const shortcuts = [
+      createShortcut({ id: 'radius', title: '图标圆角', url: 'https://leaftab.app/icon-radius' }),
+    ];
+
+    await prepareShortcutSearchMatchIndexes(shortcuts);
+
+    expect(
+      searchDrawerShortcutEntries(buildDrawerShortcutEntries(shortcuts), '图标 圆角').map((entry) => entry.shortcut.id),
+    ).toEqual(['radius']);
+  });
 });

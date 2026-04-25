@@ -2,6 +2,150 @@ import { describe, expect, it } from 'vitest';
 import { buildSearchSuggestionActions } from '@/utils/searchSuggestionEngine';
 
 describe('searchSuggestionEngine', () => {
+  it('uses empty-query recommendation sources for the blank state', () => {
+    const actions = buildSearchSuggestionActions({
+      mode: 'default',
+      searchValue: '',
+      bookmarkSuggestionItems: [],
+      tabSuggestionItems: [],
+      commandSuggestionItems: [],
+      settingSuggestionItems: [],
+      localHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'github actions',
+          value: 'github actions',
+          timestamp: 1,
+          historySource: 'local',
+        },
+      ],
+      recentClosedSuggestionItems: [
+        {
+          type: 'history',
+          label: 'Closed GitHub Tab',
+          value: 'https://github.com/closed',
+          timestamp: 2,
+          historySource: 'session',
+          sessionId: 'session-1',
+        },
+      ],
+      remoteSuggestionItems: [],
+      browserHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'GitHub History',
+          value: 'https://github.com/history',
+          timestamp: 3,
+          historySource: 'browser',
+        },
+      ],
+      builtinSiteSuggestionItems: [],
+      shortcutSuggestionItems: [
+        {
+          type: 'shortcut',
+          label: 'GitHub Shortcut',
+          value: 'https://github.com',
+          icon: '',
+          shortcutId: 'shortcut-1',
+        },
+      ],
+    });
+
+    expect(actions.map((action) => action.sourceId)).toEqual([
+      'recently-closed',
+      'browser-history',
+      'shortcuts',
+      'local-history',
+    ]);
+  });
+
+  it('pulls a freshly added shortcut to the top of the blank state mix', () => {
+    const actions = buildSearchSuggestionActions({
+      mode: 'default',
+      searchValue: '',
+      bookmarkSuggestionItems: [],
+      tabSuggestionItems: [],
+      commandSuggestionItems: [],
+      settingSuggestionItems: [],
+      localHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'github actions',
+          value: 'github actions',
+          timestamp: 1,
+          historySource: 'local',
+        },
+      ],
+      recentClosedSuggestionItems: [
+        {
+          type: 'history',
+          label: 'Closed GitHub Tab',
+          value: 'https://github.com/closed',
+          timestamp: 2,
+          historySource: 'session',
+          sessionId: 'session-1',
+        },
+      ],
+      remoteSuggestionItems: [],
+      browserHistorySuggestionItems: [
+        {
+          type: 'history',
+          label: 'GitHub History',
+          value: 'https://github.com/history',
+          timestamp: 3,
+          historySource: 'browser',
+        },
+      ],
+      builtinSiteSuggestionItems: [],
+      shortcutSuggestionItems: [
+        {
+          type: 'shortcut',
+          label: 'GitHub Shortcut',
+          value: 'https://github.com',
+          icon: '',
+          shortcutId: 'shortcut-1',
+          recentlyAdded: true,
+        },
+      ],
+    });
+
+    expect(actions.map((action) => action.sourceId)).toEqual([
+      'shortcuts',
+      'recently-closed',
+      'browser-history',
+      'local-history',
+    ]);
+    expect(actions[0]?.item.label).toBe('GitHub Shortcut');
+  });
+
+  it('preserves mixed-search metadata on returned actions', () => {
+    const actions = buildSearchSuggestionActions({
+      mode: 'default',
+      searchValue: 'github',
+      bookmarkSuggestionItems: [
+        {
+          type: 'bookmark',
+          label: 'GitHub Repo',
+          value: 'https://github.com/example/repo',
+          icon: '',
+          bookmarkId: 'github-repo',
+        },
+      ],
+      tabSuggestionItems: [],
+      commandSuggestionItems: [],
+      settingSuggestionItems: [],
+      localHistorySuggestionItems: [],
+      remoteSuggestionItems: [],
+      browserHistorySuggestionItems: [],
+      builtinSiteSuggestionItems: [],
+      shortcutSuggestionItems: [],
+    });
+
+    expect(actions[0]?.sourceId).toBe('bookmarks');
+    expect(actions[0]?.baseRank).toBe(0);
+    expect(actions[0]?.reasons?.length).toBeGreaterThan(0);
+  });
+
   it('keeps remote suggestions behind concrete history targets for navigate queries', () => {
     const actions = buildSearchSuggestionActions({
       mode: 'default',
@@ -349,7 +493,7 @@ describe('searchSuggestionEngine', () => {
     expect(actions[0]?.displayIcon).toBe('theme-mode');
   });
 
-  it('shows empty-state tabs and recent bookmarks before lower-priority fallbacks', () => {
+  it('shows empty-state recommendations from the dedicated blank-state sources', () => {
     const actions = buildSearchSuggestionActions({
       mode: 'default',
       searchValue: '',
@@ -405,11 +549,8 @@ describe('searchSuggestionEngine', () => {
     });
 
     expect(actions.map((action) => action.item.label)).toEqual([
-      'Current Tab',
-      'recent query',
-      'Recent Bookmark',
       'Recent Page',
-      '主题模式',
+      'recent query',
     ]);
   });
 
@@ -469,5 +610,32 @@ describe('searchSuggestionEngine', () => {
     expect(actions.map((action) => action.item.label)).toEqual([
       'OpenAI Platform',
     ]);
+  });
+
+  it('matches compact labels even when the user types extra spaces', () => {
+    const actions = buildSearchSuggestionActions({
+      mode: 'default',
+      searchValue: '图标 圆角',
+      bookmarkSuggestionItems: [],
+      tabSuggestionItems: [],
+      commandSuggestionItems: [],
+      settingSuggestionItems: [
+        {
+          type: 'history',
+          label: '图标圆角',
+          value: '图标圆角',
+          timestamp: 1,
+          historySource: 'local',
+          searchActionKey: 'shortcut-icon-corner-radius-setting',
+        },
+      ],
+      localHistorySuggestionItems: [],
+      remoteSuggestionItems: [],
+      browserHistorySuggestionItems: [],
+      builtinSiteSuggestionItems: [],
+      shortcutSuggestionItems: [],
+    });
+
+    expect(actions.map((action) => action.item.label)).toContain('图标圆角');
   });
 });

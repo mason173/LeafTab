@@ -70,4 +70,82 @@ describe('searchSuggestionSources shortcut search', () => {
       }).map((item) => item.label),
     ).toEqual(['知乎']);
   });
+
+  it('returns frequent shortcuts for empty-query recommendations', async () => {
+    const shortcuts = [
+      createShortcut({
+        id: 'github',
+        title: 'GitHub',
+        url: 'https://github.com',
+      }),
+      createShortcut({
+        id: 'notion',
+        title: 'Notion',
+        url: 'https://notion.so',
+      }),
+      createShortcut({
+        id: 'figma',
+        title: 'Figma',
+        url: 'https://figma.com',
+      }),
+    ];
+    const shortcutSearchIndex = await prepareShortcutSearchIndex(shortcuts);
+
+    expect(
+      buildShortcutSuggestionItems({
+        searchValue: '',
+        shortcutSearchIndex,
+        suggestionUsageMap: {
+          'shortcut:notion.so': {
+            count: 12,
+            lastUsedAt: Date.now(),
+            hourCounts: Array.from({ length: 24 }, () => 0),
+          },
+          'shortcut:github.com': {
+            count: 4,
+            lastUsedAt: Date.now() - 1_000,
+            hourCounts: Array.from({ length: 24 }, () => 0),
+          },
+        },
+      }).map((item) => item.label),
+    ).toEqual(['Notion', 'GitHub', 'Figma']);
+  });
+
+  it('prioritizes freshly added shortcuts in empty-query recommendations', async () => {
+    const now = Date.now();
+    const shortcuts = [
+      createShortcut({
+        id: 'github',
+        title: 'GitHub',
+        url: 'https://github.com',
+      }),
+      createShortcut({
+        id: 'notion',
+        title: 'Notion',
+        url: 'https://notion.so',
+      }),
+      createShortcut({
+        id: 'figma',
+        title: 'Figma',
+        url: 'https://figma.com',
+      }),
+    ];
+    const shortcutSearchIndex = await prepareShortcutSearchIndex(shortcuts, {
+      'shortcut:github.com': now,
+    });
+
+    expect(
+      buildShortcutSuggestionItems({
+        searchValue: '',
+        shortcutSearchIndex,
+        suggestionUsageMap: {
+          'shortcut:notion.so': {
+            count: 12,
+            lastUsedAt: now,
+            hourCounts: Array.from({ length: 24 }, () => 0),
+          },
+        },
+      }).map((item) => item.label),
+    ).toEqual(['GitHub', 'Notion', 'Figma']);
+  });
 });

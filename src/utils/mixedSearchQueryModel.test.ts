@@ -11,8 +11,10 @@ describe('mixedSearchQueryModel', () => {
     expect(model.intent).toBe('empty');
     expect(model.primarySourceId).toBeNull();
     expect(model.rankingQuery).toBe('');
+    expect(model.compactQuery).toBe('');
+    expect(model.compactRankingQuery).toBe('');
     expect(model.wantsOfficialTarget).toBe(false);
-    expect(model.sourcePlan).toEqual(['tabs', 'local-history', 'bookmarks', 'browser-history', 'settings']);
+    expect(model.sourcePlan).toEqual(['recently-closed', 'browser-history', 'shortcuts', 'local-history']);
   });
 
   it('treats scoped tabs mode as primary tabs source', () => {
@@ -44,7 +46,9 @@ describe('mixedSearchQueryModel', () => {
 
     expect(model.intent).toBe('navigate');
     expect(model.normalizedQuery).toBe('github 官网'.toLowerCase());
+    expect(model.compactQuery).toBe('github官网');
     expect(model.rankingQuery).toBe('github');
+    expect(model.compactRankingQuery).toBe('github');
     expect(model.wantsOfficialTarget).toBe(true);
   });
 
@@ -75,5 +79,17 @@ describe('mixedSearchQueryModel', () => {
       'remote',
       'browser-history',
     ]);
+  });
+
+  it('keeps compact variants for whitespace-tolerant ranking', () => {
+    const model = createMixedSearchQueryModel({
+      searchValue: '图标   圆角',
+      displayMode: 'default',
+    });
+
+    expect(model.normalizedQuery).toBe('图标 圆角');
+    expect(model.compactQuery).toBe('图标圆角');
+    expect(model.rankingQuery).toBe('图标 圆角');
+    expect(model.compactRankingQuery).toBe('图标圆角');
   });
 });

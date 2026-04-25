@@ -11,6 +11,7 @@ import {
   removeShortcutCustomIcons,
 } from '@/utils/shortcutCustomIcons';
 import { collectShortcutIds, getShortcutChildren, isShortcutFolder, pruneEmptyShortcutFolders } from '@/utils/shortcutFolders';
+import { consumeRecentShortcutAddition } from '@/utils/recentShortcutAdditions';
 
 type TranslateFn = (key: string, options?: any) => string;
 
@@ -115,6 +116,7 @@ export function useShortcutActions({
     let url = shortcut.url.trim();
     if (/^javascript:/i.test(url)) return;
     if (!url.includes('://')) url = `https://${url}`;
+    consumeRecentShortcutAddition(url);
     reportDomain(url);
     if (openInNewTab) window.open(url, '_blank');
     else window.location.href = url;

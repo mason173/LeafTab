@@ -146,6 +146,7 @@ export type SearchSuggestionSourceStatus = {
   suggestionDisplayMode: ReturnType<typeof resolveSearchSuggestionDisplayMode>;
   bookmarkLoading: boolean;
   tabLoading: boolean;
+  recentClosedLoading: boolean;
   browserHistoryLoading: boolean;
   remoteSuggestionLoading: boolean;
 };
@@ -220,6 +221,11 @@ export function useSearchSuggestionSources({
     permissionWarmup,
     queryModel.mode,
   ]);
+  const shouldFetchRecentlyClosed = useMemo(() => (
+    isDocumentVisible
+    && suggestionDisplayMode === 'default'
+    && mixedSearchQueryModel.intent === 'empty'
+  ), [isDocumentVisible, mixedSearchQueryModel.intent, suggestionDisplayMode]);
 
   const {
     items: bookmarkSuggestionItems,
@@ -275,6 +281,8 @@ export function useSearchSuggestionSources({
 
   const [browserHistorySuggestionItems, setBrowserHistorySuggestionItems] = useState<SearchSuggestionItem[]>([]);
   const [browserHistoryLoading, setBrowserHistoryLoading] = useState(false);
+  const [recentClosedSuggestionItems, setRecentClosedSuggestionItems] = useState<SearchSuggestionItem[]>([]);
+  const [recentClosedLoading, setRecentClosedLoading] = useState(false);
   useEffect(() => {
     const historyApi = globalThis.chrome?.history;
     if (!historyApi?.onVisited || !historyApi.onVisitRemoved) return;
@@ -291,6 +299,69 @@ export function useSearchSuggestionSources({
       historyApi.onVisitRemoved.removeListener(invalidate);
     };
   }, []);
+
+  useEffect(() => {
+    const sessionsApi = globalThis.chrome?.sessions;
+    if (!sessionsApi?.onChanged) return;
+
+    const invalidate = () => {
+      setRecentClosedSuggestionItems([]);
+    };
+
+    sessionsApi.onChanged.addListener(invalidate);
+    return () => {
+      sessionsApi.onChanged.removeListener(invalidate);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shouldFetchRecentlyClosed) {
+      setRecentClosedSuggestionItems([]);
+      setRecentClosedLoading(false);
+      return;
+    }
+
+    const sessionsApi = globalThis.chrome?.sessions;
+    if (!sessionsApi?.getRecentlyClosed) {
+      setRecentClosedSuggestionItems([]);
+      setRecentClosedLoading(false);
+      return;
+    }
+
+    let canceled = false;
+    setRecentClosedLoading(true);
+    sessionsApi.getRecentlyClosed({ maxResults: 8 }, (sessions) => {
+      if (canceled) return;
+      if (globalThis.chrome?.runtime?.lastError) {
+        setRecentClosedSuggestionItems([]);
+        setRecentClosedLoading(false);
+        return;
+      }
+
+      const deduped = new Map<string, SearchSuggestionItem>();
+      (sessions || []).forEach((session) => {
+        const tab = session.tab;
+        const url = (tab?.url || '').trim();
+        const sessionId = tab?.sessionId;
+        if (!url || deduped.has(url) || !sessionId) return;
+        deduped.set(url, {
+          type: 'history',
+          label: (tab?.title || url).trim() || url,
+          value: url,
+          historySource: 'session',
+          sessionId,
+          timestamp: Number(session.lastModified ? session.lastModified * 1_000 : Date.now()),
+        });
+      });
+
+      setRecentClosedSuggestionItems(Array.from(deduped.values()).slice(0, 6));
+      setRecentClosedLoading(false);
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [shouldFetchRecentlyClosed, refreshVersion]);
 
   useEffect(() => {
     if (!shouldFetchBrowserHistory) {
@@ -361,12 +432,14 @@ export function useSearchSuggestionSources({
     suggestionDisplayMode,
     bookmarkSuggestionItems,
     tabSuggestionItems,
+    recentClosedSuggestionItems,
     browserHistorySuggestionItems,
     remoteSuggestionItems,
     sourceStatus: {
       suggestionDisplayMode,
       bookmarkLoading,
       tabLoading,
+      recentClosedLoading,
       browserHistoryLoading,
       remoteSuggestionLoading,
     },

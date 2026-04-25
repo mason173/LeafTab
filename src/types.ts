@@ -84,7 +84,8 @@ type SearchSuggestionBase = {
 export type HistorySearchSuggestionItem = SearchSuggestionBase & {
   type: 'history';
   timestamp: number;
-  historySource: 'local' | 'browser';
+  historySource: 'local' | 'browser' | 'session';
+  sessionId?: string;
   searchActionKey?: string;
   searchActionState?: string;
 };
@@ -93,6 +94,7 @@ export type ShortcutSearchSuggestionItem = SearchSuggestionBase & {
   type: 'shortcut';
   shortcutId?: string;
   icon: string;
+  recentlyAdded?: boolean;
 };
 
 export type BookmarkSearchSuggestionItem = SearchSuggestionBase & {

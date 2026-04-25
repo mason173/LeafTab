@@ -1,5 +1,6 @@
 import type { SearchSuggestionItem, RemoteSearchSuggestionProvider } from '@/types';
 import { isExtensionRuntime } from '@/platform/runtime';
+import { compactSearchQuery, normalizeSearchQuery } from '@/utils/searchHelpers';
 
 const REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE = 'LEAFTAB_REMOTE_SEARCH_SUGGESTIONS';
 const REMOTE_SEARCH_SUGGESTIONS_CACHE_TTL_MS = 5 * 60_000;
@@ -22,7 +23,7 @@ type RemoteSuggestionsCacheEntry = {
 const remoteSuggestionsCache = new Map<string, RemoteSuggestionsCacheEntry>();
 
 function normalizeRemoteSuggestionQuery(rawValue: string): string {
-  return String(rawValue || '').trim().toLowerCase();
+  return normalizeSearchQuery(String(rawValue || ''));
 }
 
 function buildRemoteSuggestionsCacheKey(
@@ -94,45 +95,72 @@ export async function getRemoteSearchSuggestionsFromExtension(args: {
   }
 
   const cacheKey = buildRemoteSuggestionsCacheKey(provider, normalizedQuery);
-  const cachedItems = getCachedRemoteSearchSuggestions(provider, normalizedQuery);
-  if (cachedItems) {
-    return cachedItems.slice(0, limit);
+  const compactQuery = compactSearchQuery(normalizedQuery);
+  const queryVariants = compactQuery && compactQuery !== normalizedQuery
+    ? [normalizedQuery, compactQuery]
+    : [normalizedQuery];
+
+  for (const queryVariant of queryVariants) {
+    const cachedItems = getCachedRemoteSearchSuggestions(provider, queryVariant);
+    if (cachedItems) {
+      if (queryVariant !== normalizedQuery) {
+        remoteSuggestionsCache.set(cacheKey, {
+          cachedAt: Date.now(),
+          items: cachedItems,
+        });
+      }
+      return cachedItems.slice(0, limit);
+    }
   }
 
-  const response = await new Promise<RemoteSuggestionsMessageResponse>((resolve) => {
-    try {
-      chrome.runtime.sendMessage({
-        type: REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE,
-        payload: {
-          provider,
-          query: normalizedQuery,
-          limit,
-        },
-      }, (messageResponse: RemoteSuggestionsMessageResponse | undefined) => {
-        if (chrome.runtime?.lastError) {
-          resolve({
-            success: false,
-            error: chrome.runtime.lastError.message,
-          });
-          return;
-        }
+  for (const queryVariant of queryVariants) {
+    const response = await new Promise<RemoteSuggestionsMessageResponse>((resolve) => {
+      try {
+        chrome.runtime.sendMessage({
+          type: REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE,
+          payload: {
+            provider,
+            query: queryVariant,
+            limit,
+          },
+        }, (messageResponse: RemoteSuggestionsMessageResponse | undefined) => {
+          if (chrome.runtime?.lastError) {
+            resolve({
+              success: false,
+              error: chrome.runtime.lastError.message,
+            });
+            return;
+          }
 
-        resolve(messageResponse || { success: false, error: 'empty_response' });
-      });
-    } catch (error) {
-      resolve({
-        success: false,
-        error: String(error instanceof Error ? error.message : error),
+          resolve(messageResponse || { success: false, error: 'empty_response' });
+        });
+      } catch (error) {
+        resolve({
+          success: false,
+          error: String(error instanceof Error ? error.message : error),
+        });
+      }
+    });
+
+    if (!response.success) continue;
+
+    const items = toRemoteSuggestionItems(provider, response.items).slice(0, limit);
+    if (items.length === 0) {
+      continue;
+    }
+
+    remoteSuggestionsCache.set(buildRemoteSuggestionsCacheKey(provider, queryVariant), {
+      cachedAt: Date.now(),
+      items,
+    });
+    if (queryVariant !== normalizedQuery) {
+      remoteSuggestionsCache.set(cacheKey, {
+        cachedAt: Date.now(),
+        items,
       });
     }
-  });
+    return items;
+  }
 
-  if (!response.success) return [];
-
-  const items = toRemoteSuggestionItems(provider, response.items).slice(0, limit);
-  remoteSuggestionsCache.set(cacheKey, {
-    cachedAt: Date.now(),
-    items,
-  });
-  return items;
+  return [];
 }

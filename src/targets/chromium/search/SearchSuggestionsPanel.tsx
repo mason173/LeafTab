@@ -78,6 +78,59 @@ function resolveSearchActionDisplayIcon(action: SearchAction, secondaryTextClass
   return <RiSettings4Fill className={`size-3.5 ${secondaryTextClass}`} />;
 }
 
+function resolveSearchActionPersonalizationTitle(
+  action: SearchAction,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  const reasons = action.reasons || [];
+  const labels: string[] = [];
+
+  if (reasons.includes('personalization:query-target-affinity')) {
+    labels.push(t('search.personalization.queryTargetAffinity', {
+      defaultValue: '你经常用这个关键词打开它',
+    }));
+  } else if (reasons.includes('personalization:target-affinity')) {
+    labels.push(t('search.personalization.targetAffinity', {
+      defaultValue: '你最近常打开这个结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:query-source-affinity')) {
+    labels.push(t('search.personalization.querySourceAffinity', {
+      defaultValue: '你常从这个来源选择结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:domain-source-affinity')) {
+    labels.push(t('search.personalization.domainSourceAffinity', {
+      defaultValue: '你常从同类站点里选结果',
+    }));
+  }
+
+  if (reasons.includes('personalization:action-affinity')) {
+    labels.push(t('search.personalization.actionAffinity', {
+      defaultValue: '你常对这类结果执行类似动作',
+    }));
+  }
+
+  if (reasons.includes('personalization:query-target-avoidance')) {
+    labels.push(t('search.personalization.queryTargetAvoidance', {
+      defaultValue: '这个关键词下你最近更少选择它',
+    }));
+  } else if (reasons.includes('personalization:target-avoidance')) {
+    labels.push(t('search.personalization.targetAvoidance', {
+      defaultValue: '你最近更少选择这个结果',
+    }));
+  }
+
+  return labels.length > 0
+    ? t('search.personalization.title', {
+        summary: labels.join(' · '),
+        defaultValue: `排序依据：${labels.join(' · ')}`,
+      })
+    : '';
+}
+
 function buildSuggestionRowViewModel(args: {
   action: SearchAction;
   index: number;
@@ -100,6 +153,9 @@ function buildSuggestionRowViewModel(args: {
   const remoteProviderLabel = item.type === 'remote'
     ? t('search.remoteSuggestionSource', { defaultValue: '搜索建议' })
     : '';
+  const recentClosedLabel = item.type === 'history' && item.historySource === 'session'
+    ? t('search.recentlyClosedSource', { defaultValue: '最近关闭' })
+    : '';
 
   return {
     action,
@@ -111,7 +167,7 @@ function buildSuggestionRowViewModel(args: {
     showShortcutDomain: !isCurrentTab && Boolean(shortcutDomain) && shortcutDomain !== item.label,
     secondaryLabel: isCurrentTab
       ? t('search.currentTabLabel', { defaultValue: '当前标签页' })
-      : remoteProviderLabel,
+      : recentClosedLabel || remoteProviderLabel,
     siteDirectDomain: item.type === 'history' ? (historySiteDirectDomainMap.get(item.value) || '') : '',
   };
 }
@@ -180,14 +236,20 @@ function resolveSuggestionGroupMeta(args: {
   }
 
   if (item.type === 'history') {
+    if (item.historySource === 'session') {
+      return {
+        key: 'recently-closed',
+        label: t('search.group.recentlyClosed', { defaultValue: '最近关闭' }),
+      };
+    }
     return item.historySource === 'local'
       ? {
           key: 'local-history',
-          label: t('search.group.searchHistory', { defaultValue: '搜索历史' }),
+          label: t('search.group.continueSearch', { defaultValue: '继续搜索' }),
         }
       : {
           key: 'browser-history',
-          label: t('search.group.history', { defaultValue: '历史记录' }),
+          label: t('search.group.recentVisits', { defaultValue: '最近访问' }),
         };
   }
 
@@ -229,7 +291,7 @@ export function SearchSuggestionsPanel({
     [i18n.language],
   );
   const hasLocalHistoryRows = useMemo(
-    () => items.some(({ item }) => item.type === 'history' && item.historySource !== 'browser'),
+    () => items.some(({ item }) => item.type === 'history' && item.historySource === 'local'),
     [items],
   );
   const historySiteDirectDomainMap = useMemo(() => {
@@ -345,7 +407,7 @@ export function SearchSuggestionsPanel({
   if (!lightweight && !isOpen) return null;
   if (lightweight && !shouldRenderPanel) return null;
 
-  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-hidden ${theme.dropdownRowClassName} ${index === selectedIndex ? theme.dropdownRowSelectedClassName : ''}`;
+  const rowClass = (index: number) => `w-full max-w-full min-w-0 text-left px-1 h-[32px] flex items-center text-[14px] rounded-[10px] transition-[background-color,color] overflow-visible ${theme.dropdownRowClassName} ${index === selectedIndex ? theme.dropdownRowSelectedClassName : ''}`;
   const secondaryTextClass = theme.dropdownSecondaryTextClassName;
   const lightweightPanelStyle = lightweight ? ({
     opacity: isOpen ? 1 : 0,
@@ -415,6 +477,7 @@ export function SearchSuggestionsPanel({
   }) => {
     const isSelected = index === selectedIndex;
     const customActionIcon = resolveSearchActionDisplayIcon(action, secondaryTextClass);
+    const personalizationTitle = resolveSearchActionPersonalizationTitle(action, t);
     const secondaryActions = action.secondaryActions;
     const showSecondaryActions = isSelected && secondaryActions.length > 0;
     const numberHintBadge = (
@@ -446,6 +509,7 @@ export function SearchSuggestionsPanel({
           type="button"
           data-selected={index === selectedIndex}
           className={rowClass(index)}
+          title={personalizationTitle || undefined}
           onMouseMove={() => {
             if (index === selectedIndex) return;
             onHighlight?.(index);
@@ -596,6 +660,7 @@ export function SearchSuggestionsPanel({
         type="button"
         data-selected={index === selectedIndex}
         className={rowClass(index)}
+        title={personalizationTitle || undefined}
         onMouseMove={() => {
           if (index === selectedIndex) return;
           onHighlight?.(index);
@@ -624,6 +689,11 @@ export function SearchSuggestionsPanel({
         {numberHintBadge}
         <span className="flex min-w-0 max-w-full flex-1 items-center gap-2 overflow-hidden">
           <span className="block min-w-0 max-w-full flex-1 truncate">{item.label}</span>
+          {item.type === 'shortcut' && item.recentlyAdded && !isSelected ? (
+            <span className={`shrink-0 rounded-full border border-current/8 bg-current/[0.05] px-1.5 py-0.5 text-[10px] font-medium ${secondaryTextClass} opacity-80`}>
+              {t('search.recentlyAddedShortcutBadge', { defaultValue: '新添加' })}
+            </span>
+          ) : null}
           {detailLabel && !isSelected ? (
             <span className={`shrink-0 truncate ${secondaryTextClass}`}>{detailLabel}</span>
           ) : null}
@@ -667,12 +737,9 @@ export function SearchSuggestionsPanel({
                   }}
                 >
                   {(isActionSelected || isPendingConfirmation) ? (
-                    <span className="pointer-events-none absolute -top-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-sm">
+                    <span className="pointer-events-none absolute left-1/2 top-[calc(100%+6px)] z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[10px] font-medium text-white shadow-sm">
                       {actionLabel}
                     </span>
-                  ) : null}
-                  {isActionActive ? (
-                    <RiCheckboxCircleFill className="pointer-events-none absolute -right-0.5 -top-0.5 size-2.5 text-current" />
                   ) : null}
                   {renderSecondaryActionIcon(secondaryAction)}
                 </span>
@@ -778,7 +845,7 @@ export function SearchSuggestionsPanel({
             scrollBarClassName={`transition-opacity duration-200 ${scrollbarVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           >
             <div
-              className="flex w-full flex-col overflow-hidden pr-2"
+              className="flex w-full flex-col overflow-visible pr-2"
               style={{
                 ...lightweightListStyle,
                 rowGap: `${SUGGESTION_ROW_GAP_PX}px`,

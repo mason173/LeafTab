@@ -27,6 +27,7 @@ export type SearchSuggestionsComputationInput = {
   tabSuggestionItems: SearchSuggestionItem[];
   commandSuggestionItems: SearchSuggestionItem[];
   settingSuggestionItems: SearchSuggestionItem[];
+  recentClosedSuggestionItems: SearchSuggestionItem[];
   browserHistorySuggestionItems: SearchSuggestionItem[];
   remoteSuggestionItems: SearchSuggestionItem[];
 };
@@ -45,6 +46,7 @@ export function computeSearchSuggestionActions(
     tabSuggestionItems,
     commandSuggestionItems,
     settingSuggestionItems,
+    recentClosedSuggestionItems,
     browserHistorySuggestionItems,
     remoteSuggestionItems,
   } = input;
@@ -68,6 +70,7 @@ export function computeSearchSuggestionActions(
     tabSuggestionItems,
     commandSuggestionItems,
     settingSuggestionItems,
+    recentClosedSuggestionItems,
     localHistorySuggestionItems,
     remoteSuggestionItems,
     browserHistorySuggestionItems,

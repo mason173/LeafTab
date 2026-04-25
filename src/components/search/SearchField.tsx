@@ -229,7 +229,7 @@ export function SearchField({
       onClick={() => {
         if (interactionDisabled) return;
         onFocusContainer();
-        if (value.length > 0) onOpenHistory();
+        onOpenHistory();
       }}
     >
       {showEngineSwitcher ? (

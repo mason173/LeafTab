@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSlashCommandActions,
   buildSettingsSearchEntries,
   buildSettingsSuggestionItems,
 } from '@/components/search/searchSlashCommands';
@@ -52,6 +53,15 @@ describe('buildSettingsSuggestionItems', () => {
     expect(items[0]?.label).toBe('图标圆角');
   });
 
+  it('tolerates whitespace differences for settings search queries', () => {
+    const items = buildSettingsSuggestionItems({
+      entries: buildEntries(),
+      queryKey: '图标 圆角',
+    });
+
+    expect(items[0]?.label).toBe('图标圆角');
+  });
+
   it('surfaces wallpaper mode sub-items for targeted wallpaper queries', () => {
     const entries = buildEntries();
 
@@ -77,5 +87,24 @@ describe('buildSettingsSuggestionItems', () => {
     expect(items.some((item) => item.label === 'LeafTab 设置')).toBe(true);
     expect(items.some((item) => item.label === '搜索设置')).toBe(true);
     expect(items.some((item) => item.label === '图标大小')).toBe(false);
+  });
+
+  it('preserves metadata for slash command panel actions', () => {
+    const actions = buildSlashCommandActions({
+      isOpen: true,
+      entries: [
+        {
+          id: 'theme-mode',
+          icon: 'theme-mode',
+          label: '主题模式',
+          keywords: ['theme', '主题'],
+        },
+      ],
+      queryKey: '主题',
+    });
+
+    expect(actions[0]?.sourceId).toBe('commands');
+    expect(actions[0]?.baseRank).toBe(0);
+    expect(actions[0]?.reasons).toContain('slash-command-panel');
   });
 });
