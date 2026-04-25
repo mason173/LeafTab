@@ -8,8 +8,11 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import {
   RiCheckFill,
   RiCheckboxBlankFill,
+  RiComputerFill,
   RiDownload2Fill,
   RiFlashlightFill,
+  RiMoonFill,
+  RiSunFill,
   RiUpload2Fill,
 } from "@/icons/ri-compat";
 import { useTheme } from "next-themes";
@@ -213,9 +216,15 @@ export default function SettingsModal({
       },
     ];
   }, [isDarkTheme, recommendedAccentPalette, t]);
+  const currentThemeValue = mounted ? (theme ?? 'system') : 'system';
   const renderDisplayModeIcon = (mode: DisplayMode, className: string) => {
     if (mode === 'fresh') return <RiFlashlightFill className={className} />;
     return <RiCheckboxBlankFill className={className} />;
+  };
+  const renderThemeModeIcon = (mode: 'system' | 'light' | 'dark', className: string) => {
+    if (mode === 'light') return <RiSunFill className={className} />;
+    if (mode === 'dark') return <RiMoonFill className={className} />;
+    return <RiComputerFill className={className} />;
   };
 
   const changeLanguage = (value: string) => {
@@ -414,7 +423,7 @@ export default function SettingsModal({
             </div>
             {/* Display Mode Selection */}
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {DISPLAY_MODE_OPTIONS.map((option) => (
                   <button
                     key={option.value}
@@ -428,27 +437,55 @@ export default function SettingsModal({
                     </div>
                   </button>
                 ))}
+                <div
+                  className="frosted-control-surface inline-flex h-11 items-center gap-1 rounded-full p-1"
+                  role="radiogroup"
+                  aria-label={t('settings.theme.label')}
+                >
+                  {([
+                    { value: 'system', label: t('settings.theme.system') },
+                    { value: 'light', label: t('settings.theme.light') },
+                    { value: 'dark', label: t('settings.theme.dark') },
+                  ] as const).map((option) => {
+                    const selected = currentThemeValue === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        aria-label={option.label}
+                        className={`flex h-full flex-1 items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-0 ${selected ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground/60 hover:bg-background/50 hover:text-foreground'}`}
+                        onClick={() => setTheme(option.value)}
+                      >
+                        {renderThemeModeIcon(option.value, "size-4.5")}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="flex flex-col gap-3">
-            <div className="flex w-full flex-wrap items-center justify-center gap-3 px-2">
-              {colorOptions.map((option) => (
-                <button
-                  key={option.name}
-                  onClick={() => handleColorChange(option.name)}
-                  className={`relative flex size-10 appearance-none items-center justify-center overflow-hidden rounded-full border-none outline-none ring-0 shadow-none transition-transform focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${accentColor === option.name ? 'scale-105 brightness-[1.02]' : 'hover:scale-[1.04]'}`}
-                  style={{ backgroundColor: option.value, border: 'none', boxShadow: 'none' }}
-                  aria-label={option.label}
-                >
-                  {accentColor === option.name ? (
-                    <RiCheckFill
-                      className="size-5 stroke-[3]"
-                      style={{ color: option.accentDetailColor }}
-                    />
-                  ) : null}
-                </button>
-              ))}
+            <div className="flex w-full items-center justify-center px-2">
+              <div className="grid w-full grid-cols-4 place-items-center gap-x-3 gap-y-3 sm:grid-cols-7">
+                {colorOptions.map((option) => (
+                  <button
+                    key={option.name}
+                    onClick={() => handleColorChange(option.name)}
+                    className={`relative flex size-10 appearance-none items-center justify-center overflow-hidden rounded-full border-none outline-none ring-0 shadow-none transition-transform focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${accentColor === option.name ? 'scale-105 brightness-[1.02]' : 'hover:scale-[1.04]'}`}
+                    style={{ backgroundColor: option.value, border: 'none', boxShadow: 'none' }}
+                    aria-label={option.label}
+                  >
+                    {accentColor === option.name ? (
+                      <RiCheckFill
+                        className="size-5 stroke-[3]"
+                        style={{ color: option.accentDetailColor }}
+                      />
+                    ) : null}
+                  </button>
+                ))}
               </div>
+            </div>
             </div>
             <Separator className="bg-border/60" />
             <div className="flex items-center justify-between space-x-2">
@@ -607,23 +644,6 @@ export default function SettingsModal({
               </Select>
             </div>
           ) : null}
-          <div className="flex items-center justify-between space-x-2">
-            <div className="flex flex-col space-y-1 items-start">
-              <span className="text-sm font-medium leading-none">{t('settings.theme.label')}</span>
-              <span className="font-normal text-xs text-muted-foreground">{t('settings.theme.description')}</span>
-            </div>
-            <Select value={mounted ? theme : "system"} onValueChange={setTheme}>
-              <SelectTrigger className="w-[126px] border-none text-foreground focus:ring-0 focus:ring-offset-0">
-                <SelectValue placeholder={t('settings.theme.selectPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
-                <SelectItem value="system" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.system')}</SelectItem>
-                <SelectItem value="light" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.light')}</SelectItem>
-                <SelectItem value="dark" className="focus:bg-accent focus:text-accent-foreground">{t('settings.theme.dark')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col space-y-1 items-start">
               <span className="text-sm font-medium leading-none">{t('settings.backup.label')}</span>

@@ -185,9 +185,9 @@ export default {
       displayMode: {
         title: "布局模式",
         description: "选择页面显示风格",
-        blank: "留白",
+        blank: "极简",
         blankDesc: "隐藏时间、壁纸与快捷方式",
-        rhythm: "节奏",
+        rhythm: "标准",
         rhythmDesc: "仅保留搜索与快捷方式"
       },
       shortcutsLayout: {

@@ -132,9 +132,9 @@ export default {
       displayMode: {
         title: "版面模式",
         description: "選擇頁面顯示風格",
-        blank: "留白",
+        blank: "極簡",
         blankDesc: "隱藏時間、桌布與捷徑",
-        rhythm: "節奏",
+        rhythm: "標準",
         rhythmDesc: "僅保留搜尋與捷徑"
       },
       shortcutsLayout: {
