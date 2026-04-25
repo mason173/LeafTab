@@ -8,6 +8,7 @@ import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { Shortcut } from '@/types';
 import {
+  LIMESTART_FRONT_CONTENT_REVEAL_TIMING,
   resolveInitialRevealStyle,
 } from '@/config/animationTokens';
 import { FakeBlurDrawerSurface } from './FakeBlurDrawerSurface';
@@ -147,6 +148,8 @@ export const HomeMainContent = memo(function HomeMainContent({
   const homeWallpaperBlockTranslateYPx = -HOME_WALLPAPER_BLOCK_LIFT_PX * drawer.drawerLayoutProgress;
   const drawerBackdropOpacityTransition = `${DRAWER_SURFACE_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const homeInitialRevealStyle = resolveInitialRevealStyle(initialRevealReady, {
+    offsetPx: 0,
+    timing: LIMESTART_FRONT_CONTENT_REVEAL_TIMING,
     disablePointerEventsUntilReady: true,
   });
   const immersiveTopContentStyle: CSSProperties = {

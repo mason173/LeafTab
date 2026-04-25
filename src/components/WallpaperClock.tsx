@@ -127,6 +127,7 @@ export const WallpaperClock = memo(function WallpaperClock({
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const resolvedReduceTopControlsEffects = reduceTopControlsEffects ?? reduceVisualEffects;
   const normalizedClockFontSize = (layout?.clockFontSize ?? 100) * resolvedTimeFontScale;
+  const topNavLayerHeight = 40;
 
   return (
     <div
@@ -181,7 +182,10 @@ export const WallpaperClock = memo(function WallpaperClock({
 
       <WallpaperMaskOverlay opacity={wallpaperMaskOpacity} />
 
-      <div className="absolute z-[14020] transform-gpu pointer-events-none" style={{ left: edgeInset, right: edgeInset, top: edgeInset, bottom: edgeInset }}>
+      <div
+        className="absolute z-[14020] overflow-visible transform-gpu pointer-events-auto"
+        style={{ left: edgeInset, right: edgeInset, top: edgeInset, height: topNavLayerHeight }}
+      >
         <TopNavBar 
           hideWeather
           settingsRevealOnHover

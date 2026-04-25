@@ -1,9 +1,9 @@
 import { memo, Suspense, useCallback, useEffect, useMemo } from 'react';
 import {
-  LazyHomeInteractiveSurface,
   LazyShortcutFolderCompactOverlay,
   LazyShortcutFolderNameDialog,
 } from '@/lazy/components';
+import { HomeInteractiveSurface, type HomeInteractiveSurfaceProps } from '@/components/home/HomeInteractiveSurface';
 import { ShortcutSelectionShell, type ShortcutSelectionShellProps } from '@/components/home/ShortcutSelectionShell';
 import {
   useShortcutDomainContext,
@@ -14,7 +14,6 @@ import {
 import { openCreateShortcutEditor } from '@/features/shortcuts/app/shortcutEditorState';
 import { useShortcutSelection } from '@/features/shortcuts/selection/ShortcutSelectionContext';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
-import type { HomeInteractiveSurfaceProps } from '@/components/home/HomeInteractiveSurface';
 import type { ShortcutFolderCompactOverlayProps } from '@/components/ShortcutFolderCompactOverlay';
 import type { Shortcut } from '@/types';
 import type {
@@ -77,15 +76,13 @@ const ShortcutExperienceSurface = memo(function ShortcutExperienceSurface({
   }
 
   return (
-    <Suspense fallback={<div className="w-full min-h-[60vh]" aria-hidden="true" />}>
-      <LazyHomeInteractiveSurface
-        {...homeInteractiveSurfaceBaseProps}
-        onDrawerFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
-        shortcutGridSelectionMode={selectionMode}
-        shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
-        onToggleShortcutSelection={onToggleShortcutSelection}
-      />
-    </Suspense>
+    <HomeInteractiveSurface
+      {...homeInteractiveSurfaceBaseProps}
+      onDrawerFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
+      shortcutGridSelectionMode={selectionMode}
+      shortcutGridSelectedShortcutIndexes={selectedShortcutIndexes}
+      onToggleShortcutSelection={onToggleShortcutSelection}
+    />
   );
 });
 

@@ -76,6 +76,17 @@ function TopNavIntroBubble({
   const arrowPositionClass = align === 'end'
     ? 'right-4'
     : 'left-4';
+  const handleAcknowledgePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    onAcknowledge();
+  };
+  const handleAcknowledgeClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Pointer interactions are handled on pointerdown to avoid occasional
+    // hit-testing drift; keep click only for keyboard/programmatic activation.
+    if (event.detail !== 0) return;
+    onAcknowledge();
+  };
 
   return (
     <FrostedSurface
@@ -89,19 +100,20 @@ function TopNavIntroBubble({
     >
       <div
         aria-hidden="true"
-        className={`absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-white/70 dark:bg-black/70 ${arrowPositionClass}`}
+        className={`pointer-events-none absolute -top-1.5 size-3 rotate-45 border-l border-t border-border bg-white/70 dark:bg-black/70 ${arrowPositionClass}`}
       />
-      <div className="space-y-2">
+      <div className="relative z-[1] space-y-2 pointer-events-auto">
         <div className="space-y-1">
           <p className="text-sm font-semibold leading-none">{title}</p>
           <p className="text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end pointer-events-auto">
           <Button
             type="button"
             size="sm"
             className="h-8 rounded-full"
-            onClick={onAcknowledge}
+            onPointerDown={handleAcknowledgePointerDown}
+            onClick={handleAcknowledgeClick}
           >
             {actionLabel}
           </Button>
@@ -208,7 +220,7 @@ export const TopNavBar = memo(function TopNavBar({
       )}
 
       {leftSlot ? (
-        <div className="absolute left-0 top-0">
+        <div className="absolute left-0 top-0 pointer-events-auto">
           <div className={`${fadeClass}`}>
             <div className={`transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${leftRevealClass}`}>
               {leftSlot}
@@ -226,7 +238,7 @@ export const TopNavBar = memo(function TopNavBar({
       ) : null}
 
       {syncButton || settingsNode ? (
-        <div className="absolute right-0 top-0">
+        <div className="absolute right-0 top-0 pointer-events-auto">
           <div
             className={`flex items-center gap-6 transition-opacity duration-300 ${firefox ? '' : 'transform-gpu'} ${revealClass}`}
           >

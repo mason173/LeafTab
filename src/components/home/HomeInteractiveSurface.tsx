@@ -12,7 +12,12 @@ import { WeatherLoopVideo } from '@/components/wallpaper/WeatherLoopVideo';
 import { WallpaperBackdropProvider } from '@/components/wallpaper/WallpaperBackdropContext';
 import { WallpaperMaskOverlay } from '@/components/wallpaper/WallpaperMaskOverlay';
 import { toast } from '@/components/ui/sonner';
-import { resolveInitialRevealStyle } from '@/config/animationTokens';
+import {
+  LIMESTART_ATMOSPHERE_OVERLAY_DELAY_MS,
+  LIMESTART_ATMOSPHERE_OVERLAY_DURATION_MS,
+  LIMESTART_FRONT_CONTENT_REVEAL_TIMING,
+  resolveInitialRevealStyle,
+} from '@/config/animationTokens';
 import { RenderProfileBoundary } from '@/dev/renderProfiler';
 import type { DisplayModeLayoutFlags } from '@/displayMode/config';
 import { useBlurredWallpaperAsset } from '@/hooks/useBlurredWallpaperAsset';
@@ -245,6 +250,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [requestDrawerExpand, setRequestDrawerExpand] = useState<(() => void) | null>(null);
   const [globalSearchActivationHandle, setGlobalSearchActivationHandle] = useState<SearchActivationHandle | null>(null);
+  const [wallpaperAtmosphereReady, setWallpaperAtmosphereReady] = useState(false);
 
   const handleSearchInteractionStateChange = useCallback((nextState: SearchInteractionState) => {
     setSearchInteractionState((prevState) => (
@@ -269,6 +275,21 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       window.clearTimeout(settleTimer);
     };
   }, [initialRevealReady, visualBootSettled]);
+
+  useEffect(() => {
+    if (!initialRevealReady || !showOverlayWallpaperLayer) {
+      setWallpaperAtmosphereReady(false);
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setWallpaperAtmosphereReady(true);
+    }, LIMESTART_ATMOSPHERE_OVERLAY_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [initialRevealReady, showOverlayWallpaperLayer]);
 
   useEffect(() => {
     const handleSwitchScenarioShortcut = (event: KeyboardEvent) => {
@@ -533,8 +554,16 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }, [floatingSearchHidden]);
 
   const fixedTopNavRevealStyle = useMemo(() => resolveInitialRevealStyle(initialRevealReady, {
+    offsetPx: 0,
+    timing: LIMESTART_FRONT_CONTENT_REVEAL_TIMING,
     disablePointerEventsUntilReady: true,
   }), [initialRevealReady]);
+  const wallpaperAtmosphereRevealStyle = useMemo<CSSProperties>(() => ({
+    opacity: wallpaperAtmosphereReady ? 1 : 0,
+    transition: `opacity ${LIMESTART_ATMOSPHERE_OVERLAY_DURATION_MS}ms linear`,
+    willChange: wallpaperAtmosphereReady ? undefined : 'opacity',
+    pointerEvents: 'none',
+  }), [wallpaperAtmosphereReady]);
   const normalizedBackdropLuminance = clamp01(blurredWallpaperAverageLuminance ?? 0.52);
 
   const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
@@ -617,6 +646,8 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 onError={onOverlayImageReady}
               />
             ) : null}
+          </div>
+          <div className="absolute inset-0" style={wallpaperAtmosphereRevealStyle}>
             <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
           </div>
           {blurredWallpaperReady && blurredWallpaperSrc ? (
@@ -659,6 +690,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     freshWeatherVideo,
     blurredWallpaperReady,
     blurredWallpaperSrc,
+    wallpaperAtmosphereRevealStyle,
     immersiveWallpaperLayerStyle,
     immersiveWallpaperBlurFallbackStyle,
     immersiveWallpaperBlurLayerStyle,
@@ -671,15 +703,19 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
   const fixedTopNavLayer = useMemo(() => {
     if (!(modeLayersVisible && modeFlags.showInlineTopNav)) return null;
+    const topNavLayerHeight = effectiveTopNavModeProps.introGuide ? 220 : 40;
 
     return (
       <div
-        className="fixed inset-6 z-[14020] pointer-events-none"
+        className="fixed left-6 right-6 top-6 z-[14020] overflow-visible pointer-events-auto"
         style={{
+          height: topNavLayerHeight,
           ...fixedTopNavRevealStyle,
         }}
       >
-        <TopNavBar {...effectiveTopNavModeProps} />
+        <div className="relative h-full overflow-visible">
+          <TopNavBar {...effectiveTopNavModeProps} />
+        </div>
       </div>
     );
   }, [

@@ -1461,14 +1461,6 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
-      if (permissionWarmup === 'history' || suggestionSourceStatus.browserHistoryLoading) {
-        return {
-          tone: 'loading' as const,
-          message: t('search.historyPreparing', {
-            defaultValue: '正在加载浏览器历史记录...',
-          }),
-        };
-      }
       if (searchPermissionsReady && !searchPermissions.history) {
         return {
           tone: 'info' as const,
@@ -1487,14 +1479,6 @@ export const SearchExperience = memo(function SearchExperience({
         tone: 'loading' as const,
         message: t('search.historyPermissionPending', {
           defaultValue: '正在等待历史记录权限确认...',
-        }),
-      };
-    }
-    if (permissionWarmup === 'history' || suggestionSourceStatus.browserHistoryLoading) {
-      return {
-        tone: 'loading' as const,
-        message: t('search.historyPreparing', {
-          defaultValue: '正在加载浏览器历史记录...',
         }),
       };
     }
@@ -1524,7 +1508,6 @@ export const SearchExperience = memo(function SearchExperience({
     visibleSearchActions.length,
     isSlashCommandPanelOpen,
     suggestionSourceStatus.bookmarkLoading,
-    suggestionSourceStatus.browserHistoryLoading,
     suggestionSourceStatus.tabLoading,
     t,
   ]);

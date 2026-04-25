@@ -1,6 +1,6 @@
 /// <reference types="chrome" />
 
-import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useCallback, useState, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'next-themes';
@@ -98,6 +98,13 @@ import { LeafTabSyncProvider } from '@/features/sync/app/LeafTabSyncContext';
 import { useLeafTabSyncRuntimeController } from '@/features/sync/app/useLeafTabSyncRuntimeController';
 import type { SearchExperienceProps, SlashCommandDialogTarget } from '@/components/search/SearchExperience';
 import { recordRecentShortcutAddition } from '@/utils/recentShortcutAdditions';
+import {
+  LIMESTART_GLOBAL_REVEAL_MASK_COLOR,
+  LIMESTART_GLOBAL_REVEAL_MASK_FADE_MS,
+  LIMESTART_GLOBAL_REVEAL_MASK_HOLD_MS,
+  LIMESTART_GLOBAL_REVEAL_UI_SCALE,
+  REVEAL_EASE_OUT_CUBIC,
+} from '@/config/animationTokens';
 
 type FolderOverlaySnapshotRect = {
   left: number;
@@ -107,6 +114,7 @@ type FolderOverlaySnapshotRect = {
 };
 
 const TOP_NAV_LAYOUT_INTRO_SEEN_KEY = 'leaftab_top_nav_layout_intro_seen_v1';
+const BOOT_SHIELD_HANDOFF_REMOVE_MS = 260;
 
 function copyFolderOverlaySnapshotRect(rect: DOMRect | FolderOverlaySnapshotRect | null | undefined) {
   if (!rect) return null;
@@ -328,9 +336,85 @@ export default function App() {
     clearTask: clearLongTaskIndicator,
   } = useLongTaskIndicator();
   const [isDynamicWallpaperIdleFrozen, setIsDynamicWallpaperIdleFrozen] = useState(false);
+  const [globalRevealMaskVisible, setGlobalRevealMaskVisible] = useState(true);
+  const [globalRevealMaskFading, setGlobalRevealMaskFading] = useState(false);
   const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
+
+  useLayoutEffect(() => {
+    if (typeof document === 'undefined') return;
+    const bootShield = document.getElementById('boot-shield');
+    if (!bootShield) return;
+
+    let handoffFrame = window.requestAnimationFrame(() => {
+      bootShield.style.opacity = '0';
+    });
+    const cleanupTimer = window.setTimeout(() => {
+      bootShield.remove();
+    }, BOOT_SHIELD_HANDOFF_REMOVE_MS);
+
+    return () => {
+      window.cancelAnimationFrame(handoffFrame);
+      window.clearTimeout(cleanupTimer);
+    };
+  }, []);
+  useEffect(() => {
+    if (!initialRevealReady) {
+      setGlobalRevealMaskVisible(true);
+      setGlobalRevealMaskFading(false);
+      return;
+    }
+
+    if (visualEffectsPolicy.disableInitialRevealMotion) {
+      setGlobalRevealMaskFading(true);
+      const cleanupTimer = window.setTimeout(() => {
+        setGlobalRevealMaskVisible(false);
+      }, 24);
+      return () => {
+        window.clearTimeout(cleanupTimer);
+      };
+    }
+
+    const fadeTimer = window.setTimeout(() => {
+      setGlobalRevealMaskFading(true);
+    }, LIMESTART_GLOBAL_REVEAL_MASK_HOLD_MS);
+    const cleanupTimer = window.setTimeout(() => {
+      setGlobalRevealMaskVisible(false);
+    }, LIMESTART_GLOBAL_REVEAL_MASK_HOLD_MS + LIMESTART_GLOBAL_REVEAL_MASK_FADE_MS);
+
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(cleanupTimer);
+    };
+  }, [initialRevealReady, visualEffectsPolicy.disableInitialRevealMotion]);
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
+  const globalRevealMaskStyle = useMemo<CSSProperties>(() => ({
+    opacity: globalRevealMaskFading ? 0 : 1,
+    backgroundColor: LIMESTART_GLOBAL_REVEAL_MASK_COLOR,
+    transition: visualEffectsPolicy.disableInitialRevealMotion
+      ? undefined
+      : `opacity ${LIMESTART_GLOBAL_REVEAL_MASK_FADE_MS}ms linear`,
+    willChange: globalRevealMaskFading ? undefined : 'opacity',
+  }), [globalRevealMaskFading, visualEffectsPolicy.disableInitialRevealMotion]);
+  const globalRevealUiStyle = useMemo<CSSProperties>(() => {
+    const revealScale = visualEffectsPolicy.disableInitialRevealMotion
+      ? 1
+      : (globalRevealMaskVisible && !globalRevealMaskFading ? LIMESTART_GLOBAL_REVEAL_UI_SCALE : 1);
+
+    return {
+      transform: `translate3d(0, 0, 0) scale3d(${revealScale}, ${revealScale}, 1)`,
+      transformOrigin: 'center center',
+      transition: visualEffectsPolicy.disableInitialRevealMotion
+        ? undefined
+        : `transform ${LIMESTART_GLOBAL_REVEAL_MASK_FADE_MS}ms ${REVEAL_EASE_OUT_CUBIC}`,
+      willChange: globalRevealMaskVisible ? 'transform' : undefined,
+      backfaceVisibility: 'hidden',
+    };
+  }, [
+    globalRevealMaskFading,
+    globalRevealMaskVisible,
+    visualEffectsPolicy.disableInitialRevealMotion,
+  ]);
 
   const runLongTask = useCallback(async (
     initial: {
@@ -1922,7 +2006,7 @@ export default function App() {
 
     const timer = window.setTimeout(() => {
       setTopNavIntroStep((currentStep) => currentStep ?? 'scenario');
-    }, 260);
+    }, 1800);
 
     return () => {
       window.clearTimeout(timer);
@@ -2555,8 +2639,12 @@ export default function App() {
         <div
           ref={pageFocusRef}
           tabIndex={-1}
-          className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative w-full min-h-screen flex flex-col items-center overflow-x-hidden overflow-y-auto pb-[24px] focus:outline-none`}
-          style={{ backgroundColor: initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)' }}
+          className={`${showOverlayWallpaperLayer ? 'bg-transparent' : 'bg-background'} relative flex h-screen w-full flex-col items-center overflow-hidden focus:outline-none`}
+          style={{
+            backgroundColor: showOverlayWallpaperLayer
+              ? 'var(--initial-reveal-surface)'
+              : (initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)'),
+          }}
         >
           <WallpaperBackdropProvider
             value={{
@@ -2567,110 +2655,125 @@ export default function App() {
               effectiveWallpaperMaskOpacity,
             }}
           >
-            <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
-            {shouldMountWallpaperSelector ? (
-              <Suspense fallback={null}>
-                <LazyWallpaperSelector
-                  {...wallpaperSelectorLayerProps}
-                  mode={effectiveWallpaperMode}
-                  hideWeather={firefox}
-                  open={wallpaperSettingsOpen}
-                  onOpenChange={setWallpaperSettingsOpen}
-                  onBackToSettings={handleBackToMainSettings}
-                  trigger={<span className="hidden" aria-hidden="true" />}
-                />
-              </Suspense>
-            ) : null}
+            <div
+              className="relative h-full w-full"
+              style={globalRevealUiStyle}
+            >
+              <ShortcutExperienceRoot {...shortcutExperienceRootProps} />
+              {shouldMountWallpaperSelector ? (
+                <Suspense fallback={null}>
+                  <LazyWallpaperSelector
+                    {...wallpaperSelectorLayerProps}
+                    mode={effectiveWallpaperMode}
+                    hideWeather={firefox}
+                    open={wallpaperSettingsOpen}
+                    onOpenChange={setWallpaperSettingsOpen}
+                    onBackToSettings={handleBackToMainSettings}
+                    trigger={<span className="hidden" aria-hidden="true" />}
+                  />
+                </Suspense>
+              ) : null}
 
-            <ConfirmDialog
-              open={confirmDisableWebdavSyncOpen}
-              onOpenChange={setConfirmDisableWebdavSyncOpen}
-              title={t('settings.backup.webdav.disableConfirmTitle')}
-              description={t('settings.backup.webdav.disableConfirmDesc')}
-              cancelText={t('common.cancel')}
-              confirmText={t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
-              onConfirm={() => {
-                setConfirmDisableWebdavSyncOpen(false);
-                setLeafTabSyncDialogOpen(false);
-                void syncActions.handleDisableWebdavSync();
-              }}
-              confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            />
+              <ConfirmDialog
+                open={confirmDisableWebdavSyncOpen}
+                onOpenChange={setConfirmDisableWebdavSyncOpen}
+                title={t('settings.backup.webdav.disableConfirmTitle')}
+                description={t('settings.backup.webdav.disableConfirmDesc')}
+                cancelText={t('common.cancel')}
+                confirmText={t('leaftabSyncDialog.disableSync', { defaultValue: '停用同步' })}
+                onConfirm={() => {
+                  setConfirmDisableWebdavSyncOpen(false);
+                  setLeafTabSyncDialogOpen(false);
+                  void syncActions.handleDisableWebdavSync();
+                }}
+                confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              />
 
-            <ConfirmDialog
-              open={confirmLogoutOpen}
-              onOpenChange={setConfirmLogoutOpen}
-              title={t('logoutConfirm.title')}
-              description={t('user.logoutOfflineWarning', {
-                defaultValue: t('logoutConfirm.description'),
-              })}
-              cancelText={t('logoutConfirm.cancel')}
-              confirmText={t('logoutConfirm.confirm')}
-              onConfirm={() => {
-                setConfirmLogoutOpen(false);
-                void handleLogoutWithOptions();
-              }}
-              confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            />
+              <ConfirmDialog
+                open={confirmLogoutOpen}
+                onOpenChange={setConfirmLogoutOpen}
+                title={t('logoutConfirm.title')}
+                description={t('user.logoutOfflineWarning', {
+                  defaultValue: t('logoutConfirm.description'),
+                })}
+                cancelText={t('logoutConfirm.cancel')}
+                confirmText={t('logoutConfirm.confirm')}
+                onConfirm={() => {
+                  setConfirmLogoutOpen(false);
+                  void handleLogoutWithOptions();
+                }}
+                confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              />
 
-            <ConfirmDialog
-              open={confirmLegacyCloudMigrationOpen}
-              onOpenChange={(open) => {
-                if (open) {
-                  setConfirmLegacyCloudMigrationOpen(true);
-                  return;
-                }
-                syncActions.resolveLegacyCloudMigrationPrompt(false);
-              }}
-              title={t('settings.backup.cloud.legacyMigrationTitle', { defaultValue: '检测到旧版云同步数据' })}
-              description={t('settings.backup.cloud.legacyMigrationDesc', {
-                defaultValue: '检测到这个账号里还有旧版未加密的快捷方式云数据。继续后需要先设置同步口令，LeafTab 才会把这批旧数据迁移到新版加密同步里；在你确认之前，旧数据不会被删除。',
-              })}
-              cancelText={t('common.cancel', { defaultValue: '取消' })}
-              confirmText={t('settings.backup.cloud.startMigration', { defaultValue: '继续迁移' })}
-              onConfirm={() => {
-                syncActions.resolveLegacyCloudMigrationPrompt(true);
-              }}
-            />
-            <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
-            <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
-            <FolderTransitionDocumentEffects controller={folderTransitionController} />
-            {shouldMountUpdateDialog ? (
-              <Suspense fallback={null}>
-                <LazyUpdateAvailableDialog
-                  open={updateDialogOpen}
-                  onOpenChange={setUpdateDialogOpen}
-                  latestVersion={latestVersion}
-                  releaseUrl={releaseUrl}
-                  notes={updateNotes}
-                  onLater={snoozeCurrentRelease}
-                />
-              </Suspense>
+              <ConfirmDialog
+                open={confirmLegacyCloudMigrationOpen}
+                onOpenChange={(open) => {
+                  if (open) {
+                    setConfirmLegacyCloudMigrationOpen(true);
+                    return;
+                  }
+                  syncActions.resolveLegacyCloudMigrationPrompt(false);
+                }}
+                title={t('settings.backup.cloud.legacyMigrationTitle', { defaultValue: '检测到旧版云同步数据' })}
+                description={t('settings.backup.cloud.legacyMigrationDesc', {
+                  defaultValue: '检测到这个账号里还有旧版未加密的快捷方式云数据。继续后需要先设置同步口令，LeafTab 才会把这批旧数据迁移到新版加密同步里；在你确认之前，旧数据不会被删除。',
+                })}
+                cancelText={t('common.cancel', { defaultValue: '取消' })}
+                confirmText={t('settings.backup.cloud.startMigration', { defaultValue: '继续迁移' })}
+                onConfirm={() => {
+                  syncActions.resolveLegacyCloudMigrationPrompt(true);
+                }}
+              />
+              <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
+              <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
+              <FolderTransitionDocumentEffects controller={folderTransitionController} />
+              {shouldMountUpdateDialog ? (
+                <Suspense fallback={null}>
+                  <LazyUpdateAvailableDialog
+                    open={updateDialogOpen}
+                    onOpenChange={setUpdateDialogOpen}
+                    latestVersion={latestVersion}
+                    releaseUrl={releaseUrl}
+                    notes={updateNotes}
+                    onLater={snoozeCurrentRelease}
+                  />
+                </Suspense>
+              ) : null}
+              <LongTaskIndicator task={longTaskIndicator} />
+              <Toaster offset={longTaskIndicator ? 96 : 16} />
+              {roleSelectorOpen ? (
+                <Suspense fallback={null}>
+                  <LazyRoleSelector
+                    open={roleSelectorOpen}
+                    wallpaperMode={effectiveWallpaperMode}
+                    bingWallpaper={bingWallpaper}
+                    customWallpaper={customWallpaper}
+                    weatherCode={weatherCode}
+                    colorWallpaperId={colorWallpaperId}
+                    onSelect={(id, layout) => {
+                      handleRoleSelect(id);
+                      if (layout) {
+                        setDisplayMode(layout);
+                      }
+                    }}
+                  />
+                </Suspense>
+              ) : null}
+              <PrivacyConsentModal
+                isOpen={showPrivacyModal}
+                onConsent={handlePrivacyConsent}
+              />
+            </div>
+            {globalRevealMaskVisible ? (
+              <div
+                aria-hidden="true"
+                className="fixed inset-0 pointer-events-none"
+                style={{
+                  ...globalRevealMaskStyle,
+                  zIndex: 2147483647,
+                }}
+              />
             ) : null}
-            <LongTaskIndicator task={longTaskIndicator} />
-            <Toaster offset={longTaskIndicator ? 96 : 16} />
-            {roleSelectorOpen ? (
-              <Suspense fallback={null}>
-                <LazyRoleSelector
-                  open={roleSelectorOpen}
-                  wallpaperMode={effectiveWallpaperMode}
-                  bingWallpaper={bingWallpaper}
-                  customWallpaper={customWallpaper}
-                  weatherCode={weatherCode}
-                  colorWallpaperId={colorWallpaperId}
-                  onSelect={(id, layout) => {
-                    handleRoleSelect(id);
-                    if (layout) {
-                      setDisplayMode(layout);
-                    }
-                  }}
-                />
-              </Suspense>
-            ) : null}
-            <PrivacyConsentModal
-              isOpen={showPrivacyModal}
-              onConsent={handlePrivacyConsent}
-            />
           </WallpaperBackdropProvider>
         </div>
       </LeafTabSyncProvider>

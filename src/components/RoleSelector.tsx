@@ -387,7 +387,7 @@ export function RoleSelector({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background text-foreground overflow-y-auto">
+    <div className="fixed inset-0 z-[200] overflow-y-auto bg-[rgba(18,22,30,0.82)] text-foreground supports-[backdrop-filter]:bg-[rgba(18,22,30,0.68)] supports-[backdrop-filter]:backdrop-blur-xl">
       <div className="min-h-screen w-full flex items-center justify-center px-6 py-10">
         <div className="w-full max-w-[800px]">
           <div className="overflow-hidden">

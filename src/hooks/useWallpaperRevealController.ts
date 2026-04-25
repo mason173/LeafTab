@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { WallpaperMode } from '@/wallpaper/types';
 import {
-  WALLPAPER_COLOR_REVEAL_DELAY_MS,
-  WALLPAPER_COLOR_REVEAL_DURATION_MS,
-  WALLPAPER_FADE_REVEAL_DURATION_MS,
-  WALLPAPER_INITIAL_REVEAL_OPACITY,
+  LIMESTART_WALLPAPER_OPACITY_DURATION_MS,
+  LIMESTART_WALLPAPER_REVEAL_DELAY_MS,
   WALLPAPER_INITIAL_SCALE,
-  WALLPAPER_SCALE_REVEAL_DURATION_MS,
 } from '@/config/animationTokens';
-import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 interface UseWallpaperRevealControllerOptions {
   wallpaperMode: WallpaperMode;
@@ -33,19 +29,15 @@ export function useWallpaperRevealController({
   hasWeatherVisual,
   disableRevealAnimation = false,
 }: UseWallpaperRevealControllerOptions): UseWallpaperRevealControllerResult {
-  const firefox = isFirefoxBuildTarget();
   const [wallpaperImageLoaded, setWallpaperImageLoaded] = useState(false);
-  const [wallpaperFadeRevealReady, setWallpaperFadeRevealReady] = useState(false);
-  const [wallpaperColorRevealReady, setWallpaperColorRevealReady] = useState(false);
+  const [wallpaperRevealReady, setWallpaperRevealReady] = useState(false);
   const [displayedOverlayWallpaperSrc, setDisplayedOverlayWallpaperSrc] = useState('');
   const [hasLoadedOverlayWallpaperOnce, setHasLoadedOverlayWallpaperOnce] = useState(false);
   const wallpaperBootRevealStartedRef = useRef(false);
-  const wallpaperFadeRafRef = useRef<number | null>(null);
-  const wallpaperColorTimerRef = useRef<number | null>(null);
+  const wallpaperRevealTimerRef = useRef<number | null>(null);
 
   useEffect(() => () => {
-    if (wallpaperFadeRafRef.current !== null) window.cancelAnimationFrame(wallpaperFadeRafRef.current);
-    if (wallpaperColorTimerRef.current !== null) window.clearTimeout(wallpaperColorTimerRef.current);
+    if (wallpaperRevealTimerRef.current !== null) window.clearTimeout(wallpaperRevealTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -82,8 +74,7 @@ export function useWallpaperRevealController({
 
   useEffect(() => {
     if (disableRevealAnimation) {
-      setWallpaperFadeRevealReady(true);
-      setWallpaperColorRevealReady(true);
+      setWallpaperRevealReady(true);
       return;
     }
     const hasOverlayWallpaperVisual = wallpaperMode === 'weather'
@@ -98,22 +89,15 @@ export function useWallpaperRevealController({
     if (wallpaperBootRevealStartedRef.current) return;
 
     wallpaperBootRevealStartedRef.current = true;
-    setWallpaperFadeRevealReady(false);
-    setWallpaperColorRevealReady(firefox);
+    setWallpaperRevealReady(false);
 
-    wallpaperFadeRafRef.current = window.requestAnimationFrame(() => {
-      setWallpaperFadeRevealReady(true);
-      wallpaperFadeRafRef.current = null;
-    });
-    if (firefox) return;
-    wallpaperColorTimerRef.current = window.setTimeout(() => {
-      setWallpaperColorRevealReady(true);
-      wallpaperColorTimerRef.current = null;
-    }, WALLPAPER_COLOR_REVEAL_DELAY_MS);
+    wallpaperRevealTimerRef.current = window.setTimeout(() => {
+      setWallpaperRevealReady(true);
+      wallpaperRevealTimerRef.current = null;
+    }, LIMESTART_WALLPAPER_REVEAL_DELAY_MS);
   }, [
     disableRevealAnimation,
     displayedOverlayWallpaperSrc,
-    firefox,
     hasWeatherVisual,
     overlayBackgroundImageSrc,
     showOverlayWallpaperLayer,
@@ -129,38 +113,26 @@ export function useWallpaperRevealController({
 
   const effectiveOverlayWallpaperSrc = displayedOverlayWallpaperSrc || overlayBackgroundImageSrc;
   const wallpaperAnimatedLayerStyle = useMemo<CSSProperties>(() => {
+    const wallpaperRevealOpacity = wallpaperRevealReady ? 1 : 0;
+
     if (disableRevealAnimation) {
       return {
         opacity: 1,
         filter: 'none',
-        transform: 'scale(1)',
+        transform: `scale(${WALLPAPER_INITIAL_SCALE})`,
         transformOrigin: 'center center',
         transition: 'none',
       };
     }
-    if (firefox) {
-      const wallpaperRevealOpacity = wallpaperFadeRevealReady ? 1 : WALLPAPER_INITIAL_REVEAL_OPACITY;
-      return {
-        opacity: wallpaperRevealOpacity,
-        filter: 'none',
-        transform: 'scale(1)',
-        transformOrigin: 'center center',
-        transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear`,
-      };
-    }
-    const wallpaperImageRevealOpacity = wallpaperFadeRevealReady ? 1 : WALLPAPER_INITIAL_REVEAL_OPACITY;
-    const wallpaperImageRevealFilter = wallpaperColorRevealReady
-      ? 'grayscale(0) saturate(1) brightness(1)'
-      : 'grayscale(1) saturate(0) brightness(1)';
-    const wallpaperImageRevealScale = wallpaperFadeRevealReady ? 1 : WALLPAPER_INITIAL_SCALE;
+
     return {
-      opacity: wallpaperImageRevealOpacity,
-      filter: wallpaperImageRevealFilter,
-      transform: `scale(${wallpaperImageRevealScale})`,
+      opacity: wallpaperRevealOpacity,
+      filter: 'none',
+      transform: `scale(${WALLPAPER_INITIAL_SCALE})`,
       transformOrigin: 'center center',
-      transition: `opacity ${WALLPAPER_FADE_REVEAL_DURATION_MS}ms linear, transform ${WALLPAPER_SCALE_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${WALLPAPER_COLOR_REVEAL_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1) ${WALLPAPER_COLOR_REVEAL_DELAY_MS}ms`,
+      transition: `opacity ${LIMESTART_WALLPAPER_OPACITY_DURATION_MS}ms linear`,
     };
-  }, [disableRevealAnimation, firefox, wallpaperColorRevealReady, wallpaperFadeRevealReady]);
+  }, [disableRevealAnimation, wallpaperRevealReady]);
 
   return {
     effectiveOverlayWallpaperSrc,

@@ -86,6 +86,7 @@ export function QuickAccessDrawer({
   const drawerLinkedTransition = `${DRAWER_LAYOUT_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const drawerBackgroundFadeTransition = `${DRAWER_SURFACE_LINKED_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   const initialRevealStyle = resolveInitialRevealStyle(initialRevealReady, {
+    offsetPx: 0,
     disablePointerEventsUntilReady: true,
   });
   const initialRevealOpacityTransition = resolveInitialRevealOpacityTransition();
