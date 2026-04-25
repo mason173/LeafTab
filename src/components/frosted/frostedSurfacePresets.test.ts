@@ -43,6 +43,7 @@ function FrostedMaterialDialogProbe() {
 
 describe('frostedSurfacePresets', () => {
   beforeEach(() => {
+    resetFrostedSurfaceMaterialTokenOverrides();
     localStorage.clear();
   });
 
@@ -74,13 +75,13 @@ describe('frostedSurfacePresets', () => {
     expect(searchResolved.material.darkSurfaceOverlayOpacity).toBe(0.58);
 
     const defaultMaterialTokens = getDefaultFrostedSurfaceMaterialTokens();
-    expect(defaultMaterialTokens.darkSurfaceOverlayOpacity).toBe(0.61);
+    expect(defaultMaterialTokens.darkSurfaceOverlayOpacity).toBe(0.74);
 
     const defaults = getDefaultFrostedSurfacePreset('dialog-panel');
     expect(defaults.material.sampleBlurPx).toBe(0);
     expect(defaults.material.sampleScale).toBe(1);
-    expect(defaults.material.lightSurfaceOverlayOpacity).toBe(0.83);
-    expect(defaults.material.darkSurfaceOverlayOpacity).toBe(0.61);
+    expect(defaults.material.lightSurfaceOverlayOpacity).toBe(0.9);
+    expect(defaults.material.darkSurfaceOverlayOpacity).toBe(0.74);
   });
 
   it('normalizes out-of-range overrides', () => {
@@ -137,8 +138,8 @@ describe('frostedSurfacePresets', () => {
   it('pushes live updates through useFrostedSurfacePreset without a reload', () => {
     render(createElement(FrostedPresetProbe));
 
-    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"lightSurfaceOverlayOpacity":0.83');
-    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"darkSurfaceOverlayOpacity":0.61');
+    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"lightSurfaceOverlayOpacity":0.9');
+    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"darkSurfaceOverlayOpacity":0.74');
     expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"borderVisible":false');
 
     act(() => {
@@ -155,8 +156,8 @@ describe('frostedSurfacePresets', () => {
       resetFrostedSurfaceMaterialTokenOverrides();
     });
 
-    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"lightSurfaceOverlayOpacity":0.83');
-    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"darkSurfaceOverlayOpacity":0.61');
+    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"lightSurfaceOverlayOpacity":0.9');
+    expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"darkSurfaceOverlayOpacity":0.74');
     expect(screen.getByTestId('dialog-panel-material')).toHaveTextContent('"borderVisible":false');
   });
 

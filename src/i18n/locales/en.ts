@@ -68,8 +68,8 @@ export default {
           },
           rotatingPlaceholder: {
             label: "Rotating Search Hints",
-            description: "Rotate the search box placeholder hints automatically",
-            tooltip: "When turned off, the search box keeps a single fixed hint instead of rotating through multiple tips."
+            description: "Rotate capability hints in the search box automatically\nEnabled by default; turn it off to keep a single static hint",
+            tooltip: "Shows a guided loop of search capabilities like tabs/bookmarks search, engine switching, settings jump-in, and quick result actions."
           },
           position: {
             label: "Search Bar Position",
@@ -760,11 +760,13 @@ export default {
     },
     search: {
       placeholder: "Type what you want to find",
-      placeholderDynamic: "Type what you want to find, or paste a web address",
-      placeholderHintTabSwitch: "Want a different search engine? Press Tab",
-      placeholderHintCalculator: "Type 12*8 to calculate",
-      placeholderHintSiteDirect: "Type github react to search GitHub",
-      placeholderHintPrefix: "Type !g AI to search with Google",
+      placeholderDynamic: "Search tabs, bookmarks, history, shortcuts, or open a pasted URL",
+      placeholderHintTabSwitch: "Press Tab or use !g / ！g to switch search engines",
+      placeholderHintCalculator: "Type 12*8 to calculate instantly",
+      placeholderHintSiteDirect: "Type github react or bilibili anime to search inside a site",
+      placeholderHintPrefix: "Type !g or ！g, then a space, to switch search engines temporarily",
+      placeholderHintSettings: "Search theme mode, icon size, or wallpaper mode to jump into settings",
+      placeholderHintActions: "Press → on a result to close tabs, copy links, or add shortcuts",
       enterKey: "Enter",
       actionOpen: "Open",
       actionClose: "Close",

@@ -4,9 +4,10 @@ import { TimeDisplayDialog } from '@/components/TimeDisplayDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
 import { useClock } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useResolvedTimeFontScale } from '@/hooks/useResolvedTimeFontScale';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WeatherCard } from '@/components/WeatherCard';
-import { getTimeFontScale, toCssFontFamily } from '@/utils/googleFonts';
+import { toCssFontFamily } from '@/utils/googleFonts';
 
 interface InlineTimeProps {
   is24Hour: boolean;
@@ -52,19 +53,23 @@ export const InlineTime = memo(function InlineTime({
   const { i18n } = useTranslation();
   const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language, showLunar);
   const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
+  const resolvedTimeFontScale = useResolvedTimeFontScale(timeFont);
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
   const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }),
+    () => new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }),
     [locale],
   );
   const weekday = weekdayFormatter.format(date);
   const dateString = dateFormatter.format(date);
-  const metaParts = [
-    showDate ? dateString : null,
-    showWeekday ? weekday : null,
-  ].filter(Boolean) as string[];
-  const normalizedClockFontSize = layout.clockFontSize * getTimeFontScale(timeFont);
+  const primaryMetaText = showDate && showWeekday
+    ? `${dateString}${weekday}`
+    : showDate
+      ? dateString
+      : showWeekday
+        ? weekday
+        : '';
+  const normalizedClockFontSize = layout.clockFontSize * resolvedTimeFontScale;
 
   return (
     <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
@@ -98,21 +103,25 @@ export const InlineTime = memo(function InlineTime({
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
-        <div className={`mt-2 flex max-w-full flex-col items-center gap-1.5 font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}>
+        <div className={`mt-2 flex max-w-full flex-col items-center font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}>
           <div
-            className="flex items-center gap-3"
+            className="inline-flex w-fit max-w-full self-center items-center justify-center gap-3 text-center"
             style={{ fontSize: layout.clockMetaFontSize }}
           >
-            {metaParts.length > 0 ? <span>{metaParts.join(' ')}</span> : null}
-            {showLunar && lunar ? <span>{lunar}</span> : null}
+            {primaryMetaText || (showLunar && lunar) ? (
+              <div className="inline-flex w-fit items-center gap-3 whitespace-nowrap">
+                {primaryMetaText ? <span>{primaryMetaText}</span> : null}
+                {showLunar && lunar ? <span>{lunar}</span> : null}
+              </div>
+            ) : null}
+            <WeatherCard
+              onWeatherUpdate={onWeatherUpdate}
+              variant={forceWhiteText ? 'inverted' : 'default'}
+              displayMode="inline"
+              className="w-fit max-w-full"
+              textClassName="text-inherit"
+            />
           </div>
-          <WeatherCard
-            onWeatherUpdate={onWeatherUpdate}
-            variant={forceWhiteText ? 'inverted' : 'default'}
-            displayMode="inline"
-            className="w-full px-4"
-            textClassName="text-sm sm:text-base"
-          />
         </div>
       </div>
     </div>

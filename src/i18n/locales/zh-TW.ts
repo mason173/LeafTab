@@ -63,8 +63,8 @@ export default {
           },
           rotatingPlaceholder: {
             label: "搜尋框提示輪播",
-            description: "讓搜尋框提示自動切換\n關閉後固定顯示預設提示",
-            tooltip: "關閉後，搜尋框只會固定顯示「想找什麼？直接輸入，網址也可以」這一條提示。"
+            description: "讓搜尋框裡的能力提示自動輪播\n預設開啟，關閉後固定顯示單條預設提示",
+            tooltip: "會輪播展示搜尋能力提示，例如搜尋分頁/書籤、切換搜尋引擎、直達設定與結果快捷操作。"
           },
           position: {
             label: "搜尋框位置",
@@ -495,11 +495,13 @@ export default {
     },
     search: {
       placeholder: "想找什麼？直接輸入就好",
-      placeholderDynamic: "想找什麼？直接輸入，網址也可以",
-      placeholderHintTabSwitch: "想換搜尋方式？按 Tab 試試",
-      placeholderHintCalculator: "輸入 12*8 這樣也能直接算",
-      placeholderHintSiteDirect: "輸入 bilibili 動畫，可直接搜 Bilibili",
-      placeholderHintPrefix: "想用 Google 搜？先輸入 !g，再空一格後輸入內容",
+      placeholderDynamic: "可搜分頁、書籤、歷史、捷徑，網址也能直接打開",
+      placeholderHintTabSwitch: "按 Tab 切換搜尋引擎，或輸入 !g / ！g 暫時切換",
+      placeholderHintCalculator: "輸入 12*8 這種算式，可直接計算",
+      placeholderHintSiteDirect: "輸入 github react、bilibili 動畫，可直接站內搜",
+      placeholderHintPrefix: "先輸入 !g 或 ！g，再空一格後輸入內容即可切換搜尋引擎",
+      placeholderHintSettings: "搜「主題模式」「圖示大小」「壁紙模式」可直達設定",
+      placeholderHintActions: "選中結果後按 →，可關閉分頁、複製連結、加入捷徑",
       enterKey: "Enter",
       actionOpen: "開啟",
       actionClose: "關閉",

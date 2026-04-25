@@ -1,6 +1,16 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { RiCheckFill, RiMapPin2Line } from "@/icons/ri-compat";
+import sunnyIcon from "@/assets/weather-icons/sunny.svg?raw";
+import partlyCloudyIcon from "@/assets/weather-icons/partly-cloudy.svg?raw";
+import overcastIcon from "@/assets/weather-icons/overcast.svg?raw";
+import foggyIcon from "@/assets/weather-icons/foggy.svg?raw";
+import lightRainIcon from "@/assets/weather-icons/light-rain.svg?raw";
+import heavyRainIcon from "@/assets/weather-icons/heavy-rain.svg?raw";
+import sleetIcon from "@/assets/weather-icons/sleet.svg?raw";
+import lightSnowIcon from "@/assets/weather-icons/light-snow.svg?raw";
+import heavySnowIcon from "@/assets/weather-icons/heavy-snow.svg?raw";
+import thunderstormIcon from "@/assets/weather-icons/thunderstorm.svg?raw";
+import { RiCheckFill } from "@/icons/ri-compat";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { cn } from "./ui/utils";
@@ -14,31 +24,120 @@ import {
 } from "@/hooks/useWeatherLocation";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 
-function WeatherCity({ city, variant }: { city: string; variant: "inverted" | "default" }) {
+type WeatherIconKey =
+  | "sunny"
+  | "partly-cloudy"
+  | "overcast"
+  | "foggy"
+  | "light-rain"
+  | "heavy-rain"
+  | "sleet"
+  | "light-snow"
+  | "heavy-snow"
+  | "thunderstorm";
+
+const WEATHER_ICON_MARKUP: Record<WeatherIconKey, string> = {
+  sunny: sunnyIcon,
+  "partly-cloudy": partlyCloudyIcon,
+  overcast: overcastIcon,
+  foggy: foggyIcon,
+  "light-rain": lightRainIcon,
+  "heavy-rain": heavyRainIcon,
+  sleet: sleetIcon,
+  "light-snow": lightSnowIcon,
+  "heavy-snow": heavySnowIcon,
+  thunderstorm: thunderstormIcon,
+};
+
+function resolveWeatherIconKey(weatherCode: number): WeatherIconKey {
+  if ([0, 1].includes(weatherCode)) return "sunny";
+  if (weatherCode === 2) return "partly-cloudy";
+  if (weatherCode === 3) return "overcast";
+  if ([45, 48].includes(weatherCode)) return "foggy";
+  if ([55, 65, 82].includes(weatherCode)) return "heavy-rain";
+  if ([56, 57, 66, 67].includes(weatherCode)) return "sleet";
+  if ([71, 85].includes(weatherCode)) return "light-snow";
+  if ([73, 75, 77, 86].includes(weatherCode)) return "heavy-snow";
+  if ([95, 96, 99].includes(weatherCode)) return "thunderstorm";
+  return "light-rain";
+}
+
+function normalizeWeatherSvgMarkup(markup: string) {
+  return markup
+    .replace(/fill="white"/gi, 'fill="currentColor"')
+    .replace(/stroke="white"/gi, 'stroke="currentColor"')
+    .replace(/fill:#fff\b/gi, 'fill:currentColor')
+    .replace(/fill:#ffffff\b/gi, 'fill:currentColor')
+    .replace(/stroke:#fff\b/gi, 'stroke:currentColor')
+    .replace(/stroke:#ffffff\b/gi, 'stroke:currentColor');
+}
+
+const NORMALIZED_WEATHER_ICON_MARKUP: Record<WeatherIconKey, string> = Object.fromEntries(
+  Object.entries(WEATHER_ICON_MARKUP).map(([key, markup]) => [key, normalizeWeatherSvgMarkup(markup)]),
+) as Record<WeatherIconKey, string>;
+
+function WeatherGlyph({
+  weatherCode,
+  className,
+}: {
+  weatherCode: number;
+  className?: string;
+}) {
+  const markup = NORMALIZED_WEATHER_ICON_MARKUP[resolveWeatherIconKey(weatherCode)];
+
   return (
-    <div
-      className={`${
-        variant === "inverted" ? "bg-white/10 text-white/90" : "bg-secondary text-foreground"
-      } content-stretch flex gap-[2px] items-center justify-center p-[6px] relative rounded-[999px] shrink-0`}
-    >
-      <RiMapPin2Line className="size-4 shrink-0" />
-      <p className="font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-[13px]">
-        {city}
-      </p>
-    </div>
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center leading-none align-middle [&>svg]:block [&>svg]:h-full [&>svg]:w-full [&>svg]:overflow-visible [&>svg]:origin-center [&>svg]:scale-[1.28]",
+        className,
+      )}
+      dangerouslySetInnerHTML={{ __html: markup }}
+    />
   );
 }
 
-function WeatherInfo({ weather, variant }: { weather: string; variant: "inverted" | "default" }) {
+function WeatherStatusInline({
+  weatherCode,
+  temperatureText,
+  className,
+}: {
+  weatherCode: number;
+  temperatureText: string;
+  className?: string;
+}) {
   return (
-    <div className="content-stretch flex items-center justify-center pr-[8px] relative shrink-0">
-      <p
-        className={`font-['PingFang_SC:Regular',sans-serif] leading-none not-italic relative shrink-0 text-[13px] ${
+    <span className={cn("inline-flex items-center gap-1.5 leading-none align-middle", className)}>
+      <WeatherGlyph weatherCode={weatherCode} className="size-[1em] self-center" />
+      <span className="inline-flex items-center shrink-0 leading-none">{temperatureText}</span>
+    </span>
+  );
+}
+
+function WeatherInfo({
+  weatherCode,
+  temperatureText,
+  variant,
+}: {
+  weatherCode: number;
+  temperatureText: string;
+  variant: "inverted" | "default";
+}) {
+  return (
+    <div className="content-stretch flex items-center justify-center gap-[6px] pr-[8px] relative shrink-0 leading-none">
+      <WeatherGlyph
+        weatherCode={weatherCode}
+        className={`size-4 self-center ${
+          variant === "inverted" ? "text-white/90" : "text-foreground"
+        }`}
+      />
+      <span
+        className={`font-['PingFang_SC:Regular',sans-serif] inline-flex items-center leading-none not-italic relative shrink-0 text-[13px] ${
           variant === "inverted" ? "text-white/90" : "text-foreground"
         }`}
       >
-        {weather}
-      </p>
+        {temperatureText}
+      </span>
     </div>
   );
 }
@@ -91,8 +190,12 @@ export function WeatherCard({
 
   const weatherText = t(`weather.codes.${weatherData.weatherCode}`, { defaultValue: t("weather.unknown") });
   const displayCity = weatherData.city?.trim() || t("weather.unknownLocation");
-  const displayWeather = `${weatherText} ${Math.round(weatherData.temperature)}°C`;
-  const displayLine = `${displayCity} ${displayWeather}`;
+  const temperatureText = `${Math.round(weatherData.temperature)}°C`;
+  const hasManualLocation = Boolean(manualCityName?.trim());
+  const locationPromptText = t("weather.setLocation", { defaultValue: "设置位置" });
+  const dialogTriggerLabel = hasManualLocation
+    ? `${weatherText} ${temperatureText}`
+    : locationPromptText;
 
   const onOpenDialog = useCallback(() => {
     setDialogOpen(true);
@@ -140,7 +243,7 @@ export function WeatherCard({
         className={cn(
           "appearance-none border-0 bg-transparent p-0 font-inherit outline-none",
           displayMode === "inline"
-            ? `max-w-full shrink-0 cursor-pointer transition-colors pointer-events-auto ${
+            ? `inline-flex w-fit max-w-full items-center justify-center cursor-pointer transition-colors pointer-events-auto ${
                 variant === "inverted"
                   ? "text-white/90 hover:text-white"
                   : "text-muted-foreground hover:text-foreground"
@@ -159,11 +262,18 @@ export function WeatherCard({
         data-name="Weather"
         onClick={onOpenDialog}
         title={t("weather.openLocationDialog", { defaultValue: "Click to open weather location settings" })}
-        aria-label={displayLine}
+        aria-label={hasManualLocation ? `${displayCity} ${weatherText} ${temperatureText}` : locationPromptText}
       >
         {displayMode === "inline" ? (
-          <span className={cn("block max-w-full truncate text-center leading-snug", textClassName)}>
-            {displayLine}
+          <span className={cn("inline-flex w-fit max-w-full items-center justify-center gap-2 leading-none text-center", textClassName)}>
+            {hasManualLocation ? (
+              <WeatherStatusInline
+                weatherCode={weatherData.weatherCode}
+                temperatureText={temperatureText}
+              />
+            ) : (
+              <span className="truncate">{locationPromptText}</span>
+            )}
           </span>
         ) : (
           <>
@@ -173,8 +283,23 @@ export function WeatherCard({
                 variant === "inverted" ? "border-white/10" : "border-border"
               }`}
             />
-            <WeatherCity city={displayCity} variant={variant} />
-            <WeatherInfo weather={displayWeather} variant={variant} />
+            <div className="content-stretch flex items-center justify-center px-[10px] py-[6px] relative shrink-0">
+              {hasManualLocation ? (
+                <WeatherInfo
+                  weatherCode={weatherData.weatherCode}
+                  temperatureText={temperatureText}
+                  variant={variant}
+                />
+              ) : (
+                <span
+                  className={`font-['PingFang_SC:Regular',sans-serif] inline-flex items-center leading-none not-italic relative shrink-0 text-[13px] ${
+                    variant === "inverted" ? "text-white/90" : "text-foreground"
+                  }`}
+                >
+                  {dialogTriggerLabel}
+                </span>
+              )}
+            </div>
           </>
         )}
         {isRefreshing && (
@@ -200,13 +325,6 @@ export function WeatherCard({
           </DialogHeader>
 
           <div className="space-y-3">
-            <div className="rounded-2xl border border-border bg-secondary/40 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="truncate text-sm font-medium text-foreground">{weatherData.city}</div>
-                <RiMapPin2Line className="size-4 shrink-0 text-muted-foreground" />
-              </div>
-            </div>
-
             <div className="space-y-2">
               <p className="text-sm font-medium text-foreground">
                 {t("weather.manualCityLabel", { defaultValue: "Manual city (highest priority)" })}

@@ -1,4 +1,5 @@
 'use client';
+import type { CSSProperties } from 'react';
 import { useEffect, useId } from 'react';
 import {
   MotionValue,
@@ -16,6 +17,11 @@ const TRANSITION = {
   mass: 0.3,
 };
 
+const DIGIT_SLOT_STYLE = {
+  width: 'var(--time-digit-width, 1ch)',
+  height: 'var(--time-digit-height, 1em)',
+} as CSSProperties;
+
 function Digit({ value, place }: { value: number; place: number }) {
   const valueRoundedToPlace = Math.floor(value / place) % 10;
   const initial = motionValue(valueRoundedToPlace);
@@ -26,8 +32,11 @@ function Digit({ value, place }: { value: number; place: number }) {
   }, [animatedValue, valueRoundedToPlace]);
 
   return (
-    <div className='relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums'>
-      <div className='invisible'>0</div>
+    <div
+      className='relative inline-block overflow-x-visible overflow-y-clip leading-none tabular-nums align-baseline'
+      style={DIGIT_SLOT_STYLE}
+    >
+      <div className='invisible flex h-full items-center justify-center leading-none'>8</div>
       {Array.from({ length: 10 }, (_, i) => (
         <Number key={i} mv={animatedValue} number={i} />
       ))}

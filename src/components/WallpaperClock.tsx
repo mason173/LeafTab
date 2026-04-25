@@ -7,6 +7,7 @@ import { TopNavBar } from './TopNavBar';
 import imgImage from "../assets/Default_wallpaper.webp";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useClock } from '@/hooks/useClock';
+import { useResolvedTimeFontScale } from '@/hooks/useResolvedTimeFontScale';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
 import { getColorWallpaperGradient } from './wallpaper/colorWallpapers';
@@ -15,7 +16,7 @@ import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpaper
 import type { WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
 import { WeatherCard } from './WeatherCard';
-import { getTimeFontScale, toCssFontFamily } from '@/utils/googleFonts';
+import { toCssFontFamily } from '@/utils/googleFonts';
 
 export interface WallpaperClockProps {
   is24Hour: boolean;
@@ -103,25 +104,29 @@ export const WallpaperClock = memo(function WallpaperClock({
   const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
   const { i18n } = useTranslation();
   const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language, showLunar);
+  const resolvedTimeFontScale = useResolvedTimeFontScale(timeFont);
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
   const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }),
+    () => new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }),
     [locale],
   );
   const weekday = weekdayFormatter.format(date);
   const dateString = dateFormatter.format(date);
-  const metaParts = [
-    showDate ? dateString : null,
-    showWeekday ? weekday : null,
-  ].filter(Boolean) as string[];
+  const primaryMetaText = showDate && showWeekday
+    ? `${dateString}${weekday}`
+    : showDate
+      ? dateString
+      : showWeekday
+        ? weekday
+        : '';
   const edgeInset = layout ? Math.max(16, Math.round((layout.wallpaperHeight / 220) * 24)) : 24;
 
   const weatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
   const resolvedReduceTopControlsEffects = reduceTopControlsEffects ?? reduceVisualEffects;
-  const normalizedClockFontSize = (layout?.clockFontSize ?? 100) * getTimeFontScale(timeFont);
+  const normalizedClockFontSize = (layout?.clockFontSize ?? 100) * resolvedTimeFontScale;
 
   return (
     <div
@@ -234,21 +239,25 @@ export const WallpaperClock = memo(function WallpaperClock({
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
-        <div className="mt-2 flex max-w-full flex-col items-center gap-1.5 font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]">
+        <div className="mt-2 flex max-w-full flex-col items-center font-['PingFang_SC',sans-serif] text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]">
           <div
-            className="flex items-center gap-3"
+            className="inline-flex w-fit max-w-full self-center items-center justify-center gap-3 text-center"
             style={{ fontSize: layout?.clockMetaFontSize ?? 16 }}
           >
-            {metaParts.length > 0 ? <span>{metaParts.join(' ')}</span> : null}
-            {showLunar && lunar ? <span>{lunar}</span> : null}
+            {primaryMetaText || (showLunar && lunar) ? (
+              <div className="inline-flex w-fit items-center gap-3 whitespace-nowrap">
+                {primaryMetaText ? <span>{primaryMetaText}</span> : null}
+                {showLunar && lunar ? <span>{lunar}</span> : null}
+              </div>
+            ) : null}
+            <WeatherCard
+              onWeatherUpdate={onWeatherUpdate}
+              variant="inverted"
+              displayMode="inline"
+              className="w-fit max-w-full"
+              textClassName="text-inherit"
+            />
           </div>
-          <WeatherCard
-            onWeatherUpdate={onWeatherUpdate}
-            variant="inverted"
-            displayMode="inline"
-            className="w-full px-4"
-            textClassName="text-sm sm:text-base"
-          />
         </div>
       </div>
 

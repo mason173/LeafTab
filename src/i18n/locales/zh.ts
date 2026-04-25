@@ -68,8 +68,8 @@ export default {
           },
           rotatingPlaceholder: {
             label: "搜索框提示轮播",
-            description: "让搜索框占位提示自动切换\n关闭后固定显示默认提示",
-            tooltip: "关闭后，搜索框里只固定显示“想找什么？直接输入，网址也可以”这一条提示。"
+            description: "让搜索框里的能力提示自动轮播\n默认开启，关闭后固定显示单条默认提示",
+            tooltip: "会轮播展示搜索能力提示，例如搜索标签页/书签、切换搜索引擎、直达设置和结果快捷操作。"
           },
           position: {
             label: "搜索框位置",
@@ -1037,11 +1037,13 @@ export default {
     },
     search: {
       placeholder: "想找什么？直接输入就行",
-      placeholderDynamic: "想找什么？直接输入，网址也可以",
-      placeholderHintTabSwitch: "想换搜索方式？按 Tab 试试",
-      placeholderHintCalculator: "输入 12*8 这样也能直接算",
-      placeholderHintSiteDirect: "输入 bilibili 动画，可直接搜 Bilibili",
-      placeholderHintPrefix: "想用 Google 搜？先输入 !g，再空一格后输入内容",
+      placeholderDynamic: "可搜标签页、书签、历史、快捷方式，网址也能直接打开",
+      placeholderHintTabSwitch: "按 Tab 切换搜索引擎，或输入 !g / ！g 临时切换",
+      placeholderHintCalculator: "输入 12*8 这种算式，可直接计算",
+      placeholderHintSiteDirect: "输入 github react、bilibili 动画，可直接站内搜",
+      placeholderHintPrefix: "先输入 !g 或 ！g，再空一格后输入内容即可切换搜索引擎",
+      placeholderHintSettings: "搜“主题模式”“图标大小”“壁纸模式”可直达设置",
+      placeholderHintActions: "选中结果后按 →，可关闭标签页、复制链接、添加快捷方式",
       enterKey: "回车",
       actionOpen: "打开",
       actionClose: "关闭",

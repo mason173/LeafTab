@@ -54,7 +54,7 @@ let cachedFrostedSurfaceOverrideSignature: string | null = null;
 
 const DEFAULT_FROSTED_SURFACE_MATERIAL_TOKENS: FrostedSurfaceMaterialTokens = {
   lightSurfaceOverlayOpacity: 0.9,
-  darkSurfaceOverlayOpacity: 0.61,
+  darkSurfaceOverlayOpacity: 0.74,
   borderVisible: false,
   sampleScale: 1,
   sampleOverscanPx: 100,

@@ -1345,18 +1345,31 @@ export const SearchExperience = memo(function SearchExperience({
   }, [closeHistoryPanel, exitActionMode, setSearchValue]);
 
   const rotatingPlaceholderItems = useMemo(() => {
-    const items: string[] = [t('search.placeholderDynamic')];
-    if (ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) {
-      items.push(t('search.placeholderHintTabSwitch'));
+    const items: string[] = [
+      t('search.placeholderDynamic', {
+        defaultValue: '可搜标签页、书签、历史、快捷方式，网址也能直接打开',
+      }),
+      t('search.placeholderHintSettings', {
+        defaultValue: '搜“主题模式”“图标大小”“壁纸模式”可直达设置',
+      }),
+      t('search.placeholderHintActions', {
+        defaultValue: '选中结果后按 →，可关闭标签页、复制链接、添加快捷方式',
+      }),
+    ];
+    if ((ENABLE_SEARCH_ENGINE_SWITCHER && tabSwitchSearchEngine) || searchPrefixEnabled) {
+      items.push(t('search.placeholderHintTabSwitch', {
+        defaultValue: '按 Tab 切换搜索引擎，或输入 !g / ！g 临时切换',
+      }));
     }
     if (searchCalculatorEnabled) {
-      items.push(t('search.placeholderHintCalculator'));
+      items.push(t('search.placeholderHintCalculator', {
+        defaultValue: '输入 12*8 这种算式，可直接计算',
+      }));
     }
     if (searchSiteDirectEnabled) {
-      items.push(t('search.placeholderHintSiteDirect'));
-    }
-    if (searchPrefixEnabled) {
-      items.push(t('search.placeholderHintPrefix'));
+      items.push(t('search.placeholderHintSiteDirect', {
+        defaultValue: '输入 github react、bilibili 动画，可直接站内搜',
+      }));
     }
     return items;
   }, [
