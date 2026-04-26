@@ -664,8 +664,8 @@ export default {
       wallpaper: {
         mode: "Wallpaper Mode",
         modeDesc: "Customize minimalist mode background",
-        dynamic: "Dynamic",
         bing: "Bing",
+        dynamic: "Dynamic Background",
         weather: "Weather",
         color: "Color",
         custom: "Custom",
@@ -676,6 +676,7 @@ export default {
         setAsWallpaper: "Set as Wallpaper",
         apply: "Set as Wallpaper",
         bingDesc: "Updates automatically every day from Bing.",
+        dynamicDesc: "Placeholder grid for future live background presets.",
         weatherDesc: "Dynamically changes based on local weather conditions.",
         customDesc: "Upload your own image to use as wallpaper.",
         customUploaded: "Your uploaded wallpaper.",

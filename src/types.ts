@@ -15,7 +15,7 @@ import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
 
 export type ShortcutVisualMode = CoreShortcutVisualMode;
 export type ShortcutIconAppearance = CoreShortcutIconAppearance;
-export type SyncableWallpaperMode = 'bing' | 'weather' | 'color' | null;
+export type SyncableWallpaperMode = 'bing' | 'dynamic' | 'weather' | 'color' | null;
 export type ShortcutKind = CoreShortcutKind;
 export type ShortcutFolderDisplayMode = CoreShortcutFolderDisplayMode;
 

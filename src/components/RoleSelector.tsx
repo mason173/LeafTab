@@ -39,6 +39,7 @@ interface RoleSelectorProps {
   customWallpaper: string | null;
   weatherCode: number;
   colorWallpaperId: string;
+  dynamicWallpaperSrc?: string;
 }
 
 const STEP_ORDER = ['appearance', 'role'] as const;
@@ -52,6 +53,7 @@ export function RoleSelector({
   customWallpaper,
   weatherCode,
   colorWallpaperId,
+  dynamicWallpaperSrc,
 }: RoleSelectorProps) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -168,6 +170,7 @@ export function RoleSelector({
       customWallpaper,
       weatherCode,
       colorWallpaperId,
+      dynamicWallpaperSrc,
     })
       .then((palette) => {
         if (canceled) return;
@@ -185,7 +188,7 @@ export function RoleSelector({
     return () => {
       canceled = true;
     };
-  }, [bingWallpaper, colorWallpaperId, customWallpaper, wallpaperMode, weatherCode]);
+  }, [bingWallpaper, colorWallpaperId, customWallpaper, dynamicWallpaperSrc, wallpaperMode, weatherCode]);
 
   useEffect(() => {
     if (!open) return;
@@ -215,7 +218,7 @@ export function RoleSelector({
   const currentStepIndex = visibleSteps.indexOf(step);
   const fallbackWallpaperImageSrc = wallpaperMode === 'custom'
     ? (customWallpaper || bingWallpaper || defaultWallpaperImage)
-    : wallpaperMode === 'bing'
+    : wallpaperMode === 'bing' || wallpaperMode === 'dynamic'
       ? (bingWallpaper || defaultWallpaperImage)
       : defaultWallpaperImage;
   const wallpaperFallbackGradient = wallpaperMode === 'color'

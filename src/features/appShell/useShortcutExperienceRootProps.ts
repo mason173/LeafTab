@@ -21,6 +21,9 @@ export type UseShortcutExperienceRootPropsParams = {
   wallpaperAnimatedLayerStyle: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['wallpaperAnimatedLayerStyle'];
   effectiveWallpaperMode: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['effectiveWallpaperMode'];
   freshWeatherVideo: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['freshWeatherVideo'];
+  dynamicWallpaperVideoSrc: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['dynamicWallpaperVideoSrc'];
+  dynamicWallpaperPosterSrc: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['dynamicWallpaperPosterSrc'];
+  dynamicWallpaperPlaybackRate: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['dynamicWallpaperPlaybackRate'];
   colorWallpaperGradient: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['colorWallpaperGradient'];
   effectiveOverlayWallpaperSrc: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['effectiveOverlayWallpaperSrc'];
   overlayBackgroundAlt: ShortcutExperienceRootProps['homeInteractiveSurfaceBaseProps']['overlayBackgroundAlt'];
@@ -82,6 +85,9 @@ export function useShortcutExperienceRootProps(
       wallpaperAnimatedLayerStyle: params.wallpaperAnimatedLayerStyle,
       effectiveWallpaperMode: params.effectiveWallpaperMode,
       freshWeatherVideo: params.freshWeatherVideo,
+      dynamicWallpaperVideoSrc: params.dynamicWallpaperVideoSrc,
+      dynamicWallpaperPosterSrc: params.dynamicWallpaperPosterSrc,
+      dynamicWallpaperPlaybackRate: params.dynamicWallpaperPlaybackRate,
       colorWallpaperGradient: params.colorWallpaperGradient,
       effectiveOverlayWallpaperSrc: params.effectiveOverlayWallpaperSrc,
       overlayBackgroundAlt: params.overlayBackgroundAlt,
@@ -117,6 +123,9 @@ export function useShortcutExperienceRootProps(
     params.effectiveOverlayWallpaperSrc,
     params.effectiveWallpaperMaskOpacity,
     params.effectiveWallpaperMode,
+    params.dynamicWallpaperPosterSrc,
+    params.dynamicWallpaperPlaybackRate,
+    params.dynamicWallpaperVideoSrc,
     params.folderNameDialogDescription,
     params.folderNameDialogInitialName,
     params.folderNameDialogOpen,

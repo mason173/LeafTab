@@ -112,16 +112,27 @@ export function FrostedBackdrop({
   const normalizedBackdropLuminance = clamp01(
     wallpaperBackdrop?.blurredWallpaperAverageLuminance ?? (isDarkTheme ? 0.42 : 0.68),
   );
+  const dynamicWallpaperOverlayDisabled = wallpaperBackdrop?.wallpaperMode === 'dynamic';
   const immersiveWallpaperMaskStyle = useMemo<CSSProperties | null>(() => {
-    if (!wallpaperBackdrop) return null;
+    if (!wallpaperBackdrop || dynamicWallpaperOverlayDisabled) return null;
     return {
       backgroundColor: `rgba(0, 0, 0, ${Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100})`,
     };
-  }, [wallpaperBackdrop]);
-  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
-    backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
-  }), [normalizedBackdropLuminance]);
+  }, [dynamicWallpaperOverlayDisabled, wallpaperBackdrop]);
+  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => {
+    if (dynamicWallpaperOverlayDisabled) {
+      return { backgroundColor: 'rgba(0,0,0,0)' };
+    }
+    return {
+      backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
+    };
+  }, [dynamicWallpaperOverlayDisabled, normalizedBackdropLuminance]);
   const immersiveBlurOverlayStyle = useMemo<CSSProperties>(() => {
+    if (dynamicWallpaperOverlayDisabled) {
+      return {
+        backgroundColor: 'rgba(0,0,0,0)',
+      };
+    }
     if (normalizedBackdropLuminance > 0.56) {
       const darkAlpha = 0.05 + ((normalizedBackdropLuminance - 0.56) / 0.44) * 0.11;
       return {
@@ -133,7 +144,7 @@ export function FrostedBackdrop({
     return {
       backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
     };
-  }, [normalizedBackdropLuminance]);
+  }, [dynamicWallpaperOverlayDisabled, normalizedBackdropLuminance]);
   const immersiveWhiteVeilStyle = useMemo<CSSProperties>(() => ({
     backgroundColor: `rgba(255,255,255,${(normalizedBackdropLuminance > 0.56 ? 0.12 : 0.07).toFixed(3)})`,
   }), [normalizedBackdropLuminance]);
@@ -191,7 +202,7 @@ export function FrostedBackdrop({
       : `rgba(255, 255, 255, ${normalizedLightModeOverlayOpacity})`,
     transition: `background-color ${modeOverlayTransitionMs}ms cubic-bezier(0.22, 1, 0.36, 1)`,
   };
-  const wallpaperMaskStyle: CSSProperties | null = !drawerToneActive && wallpaperBackdrop
+  const wallpaperMaskStyle: CSSProperties | null = !drawerToneActive && wallpaperBackdrop && !dynamicWallpaperOverlayDisabled
     ? {
         backgroundColor: `rgba(0, 0, 0, ${(Math.max(0, Math.min(100, wallpaperBackdrop.effectiveWallpaperMaskOpacity)) / 100) * clamp01(wallpaperMaskOpacityMultiplier)})`,
       }

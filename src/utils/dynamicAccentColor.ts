@@ -15,6 +15,7 @@ type DynamicAccentInput = {
   customWallpaper: string | null;
   weatherCode: number;
   colorWallpaperId?: string;
+  dynamicWallpaperSrc?: string;
 };
 
 type ResolveDynamicAccentOptions = {
@@ -136,6 +137,7 @@ const resolveWeatherAccent = (weatherCode: number) => {
 
 const resolveSourceImage = (input: DynamicAccentInput) => {
   if (input.wallpaperMode === 'custom') return input.customWallpaper || '';
+  if (input.wallpaperMode === 'dynamic') return input.dynamicWallpaperSrc || '';
   if (input.wallpaperMode === 'bing') return input.bingWallpaper || '';
   return '';
 };
@@ -150,6 +152,7 @@ const resolveColorAccent = (colorWallpaperId?: string) => {
 const FALLBACK_IMAGE_ACCENT = '#3b82f6';
 export const DEFAULT_WALLPAPER_ACCENT_PALETTE = ['#3b82f6', '#22c55e', '#f59e0b', '#7c3aed', '#ec4899', '#0ea5e9'];
 const REMOTE_URL_PATTERN = /^https?:\/\//i;
+const VIDEO_SOURCE_PATTERN = /\.(mp4|webm|mov|m4v)(?:[?#].*)?$/i;
 
 const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
   const reader = new FileReader();
@@ -189,6 +192,60 @@ const loadImage = (src: string, options?: { crossOrigin?: 'anonymous'; referrerP
       reject(new Error('image-load-failed'));
     };
     img.src = src;
+  });
+};
+
+const loadVideo = (src: string) => {
+  return new Promise<HTMLVideoElement>((resolve, reject) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('video-load-timeout'));
+    }, 12000);
+
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('seeked', handleSeeked);
+      video.removeEventListener('error', handleError);
+    };
+
+    const handleError = () => {
+      cleanup();
+      reject(new Error('video-load-failed'));
+    };
+
+    const handleSeeked = () => {
+      cleanup();
+      resolve(video);
+    };
+
+    const handleLoadedData = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      const targetTime = duration > 0.8 ? Math.min(duration * 0.28, 1.1) : 0;
+      if (targetTime <= 0.02) {
+        cleanup();
+        resolve(video);
+        return;
+      }
+
+      try {
+        video.currentTime = targetTime;
+      } catch {
+        cleanup();
+        resolve(video);
+      }
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('seeked', handleSeeked);
+    video.addEventListener('error', handleError);
+    video.src = src;
+    video.load();
   });
 };
 
@@ -404,6 +461,19 @@ const sampleAccentPaletteFromImage = (img: HTMLImageElement): string[] => {
   return sampleAccentPaletteFromImageData(imageData.data, sampleWidth, sampleHeight);
 };
 
+const sampleAccentPaletteFromVideo = (video: HTMLVideoElement): string[] => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('canvas-context-unavailable');
+  const sampleWidth = 64;
+  const sampleHeight = 64;
+  canvas.width = sampleWidth;
+  canvas.height = sampleHeight;
+  ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+  const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
+  return sampleAccentPaletteFromImageData(imageData.data, sampleWidth, sampleHeight);
+};
+
 const resolveImageAccentPalette = async (
   imageUrl: string,
   options?: ResolveDynamicAccentOptions,
@@ -451,6 +521,26 @@ const resolveImageAccentPalette = async (
   return DEFAULT_WALLPAPER_ACCENT_PALETTE;
 };
 
+const resolveVideoAccentPalette = async (
+  videoUrl: string,
+  options?: ResolveDynamicAccentOptions,
+): Promise<string[]> => {
+  if (!videoUrl) return DEFAULT_WALLPAPER_ACCENT_PALETTE;
+  if (!options?.forceImageResample && imageAccentPaletteCache.has(videoUrl)) {
+    return imageAccentPaletteCache.get(videoUrl)!;
+  }
+
+  try {
+    const video = await loadVideo(videoUrl);
+    const palette = sampleAccentPaletteFromVideo(video);
+    imageAccentPaletteCache.set(videoUrl, palette);
+    return palette;
+  } catch {
+    imageAccentPaletteCache.set(videoUrl, DEFAULT_WALLPAPER_ACCENT_PALETTE);
+    return DEFAULT_WALLPAPER_ACCENT_PALETTE;
+  }
+};
+
 export const resolveDynamicAccentColor = async (
   input: DynamicAccentInput,
   options?: ResolveDynamicAccentOptions,
@@ -474,6 +564,9 @@ export const resolveWallpaperAccentPalette = async (
     return buildRecommendedAccentPaletteFromHexes(matches);
   }
   const source = resolveSourceImage(input);
+  if (VIDEO_SOURCE_PATTERN.test(source)) {
+    return resolveVideoAccentPalette(source, options);
+  }
   return resolveImageAccentPalette(source, options);
 };
 

@@ -104,7 +104,7 @@ const readVisualEffectsLevel = (): VisualEffectsLevel => {
 };
 
 const normalizeWallpaperMode = (value: unknown): SyncableWallpaperMode => {
-  return value === 'bing' || value === 'weather' || value === 'color'
+  return value === 'bing' || value === 'dynamic' || value === 'weather' || value === 'color'
     ? value
     : null;
 };

@@ -51,6 +51,9 @@ export interface WallpaperClockProps {
   customWallpaperLoaded?: boolean;
   customWallpaper: string | null;
   colorWallpaperId: string;
+  dynamicWallpaperVideoSrc: string;
+  dynamicWallpaperPosterSrc: string;
+  dynamicWallpaperPlaybackRate: number;
   wallpaperMaskOpacity: number;
   pauseDynamicWallpaper?: boolean;
   reduceTopControlsEffects?: boolean;
@@ -93,6 +96,9 @@ export const WallpaperClock = memo(function WallpaperClock({
   customWallpaperLoaded = true,
   customWallpaper,
   colorWallpaperId,
+  dynamicWallpaperVideoSrc,
+  dynamicWallpaperPosterSrc,
+  dynamicWallpaperPlaybackRate,
   wallpaperMaskOpacity,
   pauseDynamicWallpaper = false,
   reduceTopControlsEffects,
@@ -155,6 +161,16 @@ export const WallpaperClock = memo(function WallpaperClock({
             ) : null
           ) : wallpaperMode === 'color' ? (
             <div className="absolute inset-0" style={{ backgroundImage: colorWallpaperGradient }} />
+          ) : wallpaperMode === 'dynamic' ? (
+            <WeatherLoopVideo
+              className="absolute inset-0 w-full h-full object-cover"
+              src={dynamicWallpaperVideoSrc}
+              posterSrc={dynamicWallpaperPosterSrc}
+              paused={pauseDynamicWallpaper}
+              playbackRate={dynamicWallpaperPlaybackRate}
+              smoothEndRamp={false}
+              seamlessLoopDurationSec={0.6}
+            />
           ) : wallpaperMode === 'bing' ? (
             (bingWallpaperUrl && bingWallpaperUrl !== imgImage) ? (
               <img

@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob, saveWallpaper } from '../db';
+import { getBingWallpaperBlob, getWallpaper, saveBingWallpaperBlob } from '../db';
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
+import {
+  DEFAULT_DYNAMIC_WALLPAPER_ID,
+  isDynamicWallpaperId,
+  type DynamicWallpaperId,
+} from '@/components/wallpaper/dynamicWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
-import defaultWallpaperImage from '../assets/Default_wallpaper.webp?url';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
@@ -12,6 +16,7 @@ const BING_REFRESH_RETRY_MS = 30 * 60 * 1000;
 const MANUAL_BING_REFRESH_COOLDOWN_MS = 15_000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 9000;
+const DYNAMIC_WALLPAPER_ID_KEY = 'dynamicWallpaperId';
 
 type BingCacheMeta = {
   slot: string;
@@ -240,18 +245,14 @@ export function useWallpaper() {
   const manualBingRefreshPromiseRef = useRef<Promise<void> | null>(null);
   const manualBingRefreshAtRef = useRef(0);
   const [isBingWallpaperRefreshing, setIsBingWallpaperRefreshing] = useState(false);
-  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => (
-    hasStoredWallpaperMode ? null : defaultWallpaperImage
-  ));
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
   const [customWallpaperLoaded, setCustomWallpaperLoaded] = useState(false);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') {
+    if (saved === 'bing' || saved === 'dynamic' || saved === 'weather' || saved === 'color' || saved === 'custom') {
       return firefox && saved === 'weather' ? 'bing' : saved;
     }
-    // Backward compatibility: old versions may persist "dynamic".
-    if (saved === 'dynamic') return 'bing';
-    return 'custom';
+    return 'dynamic';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -265,6 +266,10 @@ export function useWallpaper() {
     if (!saved) return DEFAULT_COLOR_WALLPAPER_ID;
     const exists = COLOR_WALLPAPER_PRESETS.some((preset) => preset.id === saved);
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
+  });
+  const [dynamicWallpaperId, setDynamicWallpaperId] = useState<DynamicWallpaperId>(() => {
+    const saved = localStorage.getItem(DYNAMIC_WALLPAPER_ID_KEY);
+    return isDynamicWallpaperId(saved) ? saved : DEFAULT_DYNAMIC_WALLPAPER_ID;
   });
   useEffect(() => {
     const persistedMode = firefox && wallpaperMode === 'weather' ? 'bing' : wallpaperMode;
@@ -288,6 +293,10 @@ export function useWallpaper() {
   }, [colorWallpaperId]);
 
   useEffect(() => {
+    localStorage.setItem(DYNAMIC_WALLPAPER_ID_KEY, dynamicWallpaperId);
+  }, [dynamicWallpaperId]);
+
+  useEffect(() => {
     let cancelled = false;
     getWallpaper()
       .then(async (wallpaper) => {
@@ -297,23 +306,12 @@ export function useWallpaper() {
           setCustomWallpaperLoaded(true);
           return;
         }
-        if (!hasStoredWallpaperMode) {
-          try {
-            await saveWallpaper(defaultWallpaperImage);
-          } catch {}
-          if (cancelled) return;
-          setCustomWallpaper(defaultWallpaperImage);
-        } else {
-          setCustomWallpaper(null);
-        }
+        setCustomWallpaper(null);
         setCustomWallpaperLoaded(true);
       })
       .catch(() => {
         if (cancelled) return;
-        if (!hasStoredWallpaperMode) {
-          void saveWallpaper(defaultWallpaperImage).catch(() => {});
-          setCustomWallpaper(defaultWallpaperImage);
-        }
+        setCustomWallpaper(null);
         setCustomWallpaperLoaded(true);
       });
     return () => {
@@ -557,5 +555,6 @@ export function useWallpaper() {
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
     darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled,
     colorWallpaperId, setColorWallpaperId,
+    dynamicWallpaperId, setDynamicWallpaperId,
   };
 }

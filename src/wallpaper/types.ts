@@ -1,1 +1,1 @@
-export type WallpaperMode = 'bing' | 'weather' | 'color' | 'custom';
+export type WallpaperMode = 'bing' | 'dynamic' | 'weather' | 'color' | 'custom';

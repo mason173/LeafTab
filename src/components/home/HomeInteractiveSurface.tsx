@@ -176,6 +176,9 @@ export type HomeInteractiveSurfaceProps = {
   wallpaperAnimatedLayerStyle: CSSProperties;
   effectiveWallpaperMode: WallpaperMode;
   freshWeatherVideo: string;
+  dynamicWallpaperVideoSrc: string;
+  dynamicWallpaperPosterSrc: string;
+  dynamicWallpaperPlaybackRate: number;
   colorWallpaperGradient: string;
   effectiveOverlayWallpaperSrc: string;
   overlayBackgroundAlt: string;
@@ -218,6 +221,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   wallpaperAnimatedLayerStyle,
   effectiveWallpaperMode,
   freshWeatherVideo,
+  dynamicWallpaperVideoSrc,
+  dynamicWallpaperPosterSrc,
+  dynamicWallpaperPlaybackRate,
   colorWallpaperGradient,
   effectiveOverlayWallpaperSrc,
   overlayBackgroundAlt,
@@ -361,6 +367,8 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     || Boolean(shortcutGridSelectionMode);
   const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
     ? freshWeatherVideo
+    : effectiveWallpaperMode === 'dynamic'
+      ? dynamicWallpaperVideoSrc
     : effectiveWallpaperMode === 'color'
       ? ''
       : effectiveOverlayWallpaperSrc;
@@ -566,6 +574,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     pointerEvents: 'none',
   }), [wallpaperAtmosphereReady]);
   const normalizedBackdropLuminance = clamp01(blurredWallpaperAverageLuminance ?? 0.52);
+  const dynamicWallpaperOverlayDisabled = effectiveWallpaperMode === 'dynamic';
 
   const immersiveBackdropLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
@@ -573,9 +582,14 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     pointerEvents: 'none',
   }), []);
 
-  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => ({
-    backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
-  }), [normalizedBackdropLuminance]);
+  const immersiveBackdropTintStyle = useMemo<CSSProperties>(() => {
+    if (dynamicWallpaperOverlayDisabled) {
+      return { backgroundColor: 'rgba(0,0,0,0)' };
+    }
+    return {
+      backgroundColor: `rgba(18,22,30,${(0.08 + (normalizedBackdropLuminance * 0.12)).toFixed(3)})`,
+    };
+  }, [dynamicWallpaperOverlayDisabled, normalizedBackdropLuminance]);
   const immersiveWallpaperBlurLayerStyle = useMemo<CSSProperties>(() => ({
     opacity: FOLDER_IMMERSIVE_PROGRESS_VAR,
     willChange: 'opacity',
@@ -590,13 +604,22 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     bottom: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
     left: `-${FOLDER_IMMERSIVE_BLUR_OVERSCAN_PX}px`,
     backgroundImage: effectiveWallpaperMode === 'color' ? colorWallpaperGradient : undefined,
-    backgroundColor: effectiveWallpaperMode === 'color' ? 'rgba(18,22,30,0.12)' : 'rgba(26,32,44,0.22)',
+    backgroundColor: dynamicWallpaperOverlayDisabled
+      ? 'rgba(0,0,0,0)'
+      : effectiveWallpaperMode === 'color'
+        ? 'rgba(18,22,30,0.12)'
+        : 'rgba(26,32,44,0.22)',
     backgroundPosition: 'center',
     backgroundSize: 'cover',
     transform: `translateZ(0) scale(${FOLDER_IMMERSIVE_BLUR_SCALE})`,
     transformOrigin: 'center center',
-  }), [colorWallpaperGradient, effectiveWallpaperMode]);
+  }), [colorWallpaperGradient, dynamicWallpaperOverlayDisabled, effectiveWallpaperMode]);
   const immersiveBlurOverlayStyle = useMemo<CSSProperties>(() => {
+    if (dynamicWallpaperOverlayDisabled) {
+      return {
+        backgroundColor: 'rgba(0,0,0,0)',
+      };
+    }
     if (normalizedBackdropLuminance > 0.56) {
       const darkAlpha = 0.05 + ((normalizedBackdropLuminance - 0.56) / 0.44) * 0.11;
       return {
@@ -608,7 +631,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     return {
       backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
     };
-  }, [normalizedBackdropLuminance]);
+  }, [dynamicWallpaperOverlayDisabled, normalizedBackdropLuminance]);
   const immersiveWhiteVeilStyle = useMemo<CSSProperties>(() => ({
     backgroundColor: `rgba(255,255,255,${(normalizedBackdropLuminance > 0.56 ? 0.12 : 0.07).toFixed(3)})`,
   }), [normalizedBackdropLuminance]);
@@ -639,6 +662,15 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           <div className="absolute inset-0" style={wallpaperAnimatedLayerStyle}>
             {effectiveWallpaperMode === 'weather' && freshWeatherVideo ? (
               <WeatherLoopVideo src={freshWeatherVideo} paused={shouldFreezeDynamicWallpaper} />
+            ) : effectiveWallpaperMode === 'dynamic' && dynamicWallpaperVideoSrc ? (
+              <WeatherLoopVideo
+                src={dynamicWallpaperVideoSrc}
+                posterSrc={dynamicWallpaperPosterSrc}
+                paused={shouldFreezeDynamicWallpaper}
+                playbackRate={dynamicWallpaperPlaybackRate}
+                smoothEndRamp={false}
+                seamlessLoopDurationSec={0.6}
+              />
             ) : effectiveWallpaperMode === 'color' ? (
               <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
             ) : effectiveOverlayWallpaperSrc ? (
@@ -697,6 +729,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     effectiveWallpaperMaskOpacity,
     effectiveWallpaperMode,
     freshWeatherVideo,
+    dynamicWallpaperVideoSrc,
+    dynamicWallpaperPosterSrc,
+    dynamicWallpaperPlaybackRate,
     blurredWallpaperReady,
     blurredWallpaperSrc,
     wallpaperAtmosphereRevealStyle,

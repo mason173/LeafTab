@@ -35,11 +35,7 @@ export function ColorWallpaperPanel({
                 <button
                   key={preset.id}
                   type="button"
-                  className={`relative no-pill-radius rounded-[20px] border transition-transform duration-200 ${
-                    selected
-                      ? "border-white ring-2 ring-white/90"
-                      : "border-white/40 hover:scale-[1.03]"
-                  }`}
+                  className="relative no-pill-radius rounded-[20px] border border-white/40 transition-transform duration-200 hover:scale-[1.03]"
                   style={{ backgroundImage: preset.gradient }}
                   onClick={() => {
                     onColorWallpaperIdChange(preset.id);

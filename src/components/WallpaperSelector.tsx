@@ -8,10 +8,12 @@ import type { BingWallpaperRefreshResult } from "@/hooks/useWallpaper";
 import type { WallpaperMode } from "@/wallpaper/types";
 import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
+import { DynamicWallpaperPanel } from "./wallpaper/panels/DynamicWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
+import type { DynamicWallpaperId } from "@/components/wallpaper/dynamicWallpapers";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
@@ -41,6 +43,8 @@ interface WallpaperSelectorProps {
   onCustomWallpaperChange: (url: string) => void;
   colorWallpaperId: string;
   onColorWallpaperIdChange: (id: string) => void;
+  dynamicWallpaperId: DynamicWallpaperId;
+  onDynamicWallpaperIdChange: (id: DynamicWallpaperId) => void;
   wallpaperMaskOpacity: number;
   effectiveWallpaperMaskOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
@@ -63,6 +67,8 @@ export default function WallpaperSelector({
   onCustomWallpaperChange,
   colorWallpaperId,
   onColorWallpaperIdChange,
+  dynamicWallpaperId,
+  onDynamicWallpaperIdChange,
   wallpaperMaskOpacity,
   effectiveWallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
@@ -135,13 +141,20 @@ export default function WallpaperSelector({
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col">
             <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
-              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-3" : "grid-cols-4"} rounded-[16px]`}>
+              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-4" : "grid-cols-5"} rounded-[16px]`}>
                 <TabsTrigger
                   value="bing"
                   className="rounded-xl truncate text-[13px]"
                   title={t("weather.wallpaper.bing")}
                 >
                   {t("weather.wallpaper.bing")}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="dynamic"
+                  className="rounded-xl truncate text-[13px]"
+                  title={t("weather.wallpaper.dynamic", { defaultValue: "动态背景" })}
+                >
+                  {t("weather.wallpaper.dynamic", { defaultValue: "动态背景" })}
                 </TabsTrigger>
                 {!hideWeather && (
                   <TabsTrigger
@@ -203,6 +216,13 @@ export default function WallpaperSelector({
                 isMaskSliderIsolation={isMaskSliderIsolation}
                 onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
                 onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
+              />
+
+              <DynamicWallpaperPanel
+                mode={mode}
+                dynamicWallpaperId={dynamicWallpaperId}
+                onDynamicWallpaperIdChange={onDynamicWallpaperIdChange}
+                onModeChange={onModeChange}
               />
 
               {!hideWeather && (

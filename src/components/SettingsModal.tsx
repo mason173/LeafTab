@@ -78,6 +78,7 @@ interface SettingsModalProps {
   onCustomWallpaperChange: (url: string) => void;
   weatherCode: number;
   colorWallpaperId: string;
+  dynamicWallpaperSrc?: string;
   onColorWallpaperIdChange: (id: string) => void;
   wallpaperMaskOpacity: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
@@ -129,6 +130,7 @@ export default function SettingsModal({
   onCustomWallpaperChange,
   weatherCode,
   colorWallpaperId,
+  dynamicWallpaperSrc,
   onColorWallpaperIdChange,
   wallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
@@ -272,6 +274,7 @@ export default function SettingsModal({
       customWallpaper,
       weatherCode,
       colorWallpaperId,
+      dynamicWallpaperSrc,
     })
       .then((palette) => {
         if (canceled) return;
@@ -288,7 +291,7 @@ export default function SettingsModal({
     return () => {
       canceled = true;
     };
-  }, [bingWallpaper, colorWallpaperId, customWallpaper, wallpaperMode, weatherCode]);
+  }, [bingWallpaper, colorWallpaperId, customWallpaper, dynamicWallpaperSrc, wallpaperMode, weatherCode]);
   useEffect(() => {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
