@@ -73,6 +73,21 @@ function sortChangelogItems(items: ChangelogItem[]) {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => sortChangelogItems([
   {
+    version: "2.0.1",
+    date: "2026-04-26",
+    notes: [
+      t("changelog.items.release201FolderAnimationFix", { defaultValue: "修复文件夹打开与关闭动画异常，过渡更顺滑稳定" }),
+      t("changelog.items.release201FolderDragOutPlacementFix", { defaultValue: "修复将快捷方式从文件夹拖出后偶发落位不正确的问题" }),
+      t("changelog.items.release201LargeFolderRefreshFix", { defaultValue: "修复新建大文件夹后界面未及时刷新的问题" }),
+      t("changelog.items.release201IconStylePolish", { defaultValue: "优化快捷方式图标样式，整体观感更统一" }),
+      t("changelog.items.release201UiBlurPolish", { defaultValue: "优化整体 UI 显示效果与全局模糊表现，界面层次更柔和" }),
+      t("changelog.items.release201TimeDateWeatherPolish", { defaultValue: "优化时间、日期与天气显示，并补充更直观的图标化表达" }),
+      t("changelog.items.release201BottomSearchEnhance", { defaultValue: "将搜索栏移动到底部，并增强搜索能力与交互体验" }),
+      t("changelog.items.release201RemovePanoramaMode", { defaultValue: "移除全景模式" }),
+      t("changelog.items.release201DynamicWallpapers", { defaultValue: "新增 6 款动态壁纸" }),
+    ],
+  },
+  {
     version: "1.4.8-alpha.3",
     date: "2026-04-19",
     channel: "preview",

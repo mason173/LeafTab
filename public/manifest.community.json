@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqjAoslU3RDPLkH+htp3PaoxQ9gIJaFTHp7ww9ALBpaiFk5vBXlbPMKOs1u1CCWi0t31aDWp59hd1yWYmnUgIJ2DDLkmRobM7I8jOXng8O9S1bLdjFK82lLTYVjHTaPWnWosw8ObtVJfCI1Q62S0p80DmHETLq1sn8/JrMxq8hJuaD1dxzV1sF+fZ1pZpzaNWMsXgxJXti8wg1dBFbGflCsMcOzhRw4fks97sSCbUbX+OaFmupMSLc+47ptYEdg8BgfGtlBnT1wJOA0jF4IgR7bzIG+VBgK4RvIVMjBVALpg+ZtLc3Kdn6gGpqkoDlF4pNU9PiHi4LToRLHOebNZW0QIDAQAB",
   "name": "__MSG_appTitle__",
-  "version": "2.0.0",
-  "version_name": "2.0.0",
+  "version": "2.0.1",
+  "version_name": "2.0.1",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "chrome_url_overrides": {
