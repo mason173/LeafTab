@@ -339,6 +339,14 @@ export default function App() {
   const [globalRevealMaskVisible, setGlobalRevealMaskVisible] = useState(true);
   const [globalRevealMaskFading, setGlobalRevealMaskFading] = useState(false);
   const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
+  const [manualHomeRevealReady, setManualHomeRevealReady] = useState(true);
+  const [manualHomeRevealNonce, setManualHomeRevealNonce] = useState(0);
+  const effectiveInitialRevealReady = initialRevealReady && manualHomeRevealReady;
+
+  const replayHomeEntryReveal = useCallback(() => {
+    setManualHomeRevealReady(false);
+    setManualHomeRevealNonce((current) => current + 1);
+  }, []);
 
   useLayoutEffect(() => {
     if (typeof document === 'undefined') return;
@@ -358,7 +366,7 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!initialRevealReady) {
+    if (!effectiveInitialRevealReady) {
       setGlobalRevealMaskVisible(true);
       setGlobalRevealMaskFading(false);
       return;
@@ -385,7 +393,27 @@ export default function App() {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(cleanupTimer);
     };
-  }, [initialRevealReady, visualEffectsPolicy.disableInitialRevealMotion]);
+  }, [effectiveInitialRevealReady, visualEffectsPolicy.disableInitialRevealMotion]);
+  useEffect(() => {
+    if (manualHomeRevealNonce === 0) return;
+    if (visualEffectsPolicy.disableInitialRevealMotion) {
+      setManualHomeRevealReady(true);
+      return;
+    }
+
+    let firstFrameId = 0;
+    let secondFrameId = 0;
+    firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        setManualHomeRevealReady(true);
+      });
+    });
+
+    return () => {
+      if (firstFrameId) window.cancelAnimationFrame(firstFrameId);
+      if (secondFrameId) window.cancelAnimationFrame(secondFrameId);
+    };
+  }, [manualHomeRevealNonce, visualEffectsPolicy.disableInitialRevealMotion]);
   const displayModeFlags = useMemo(() => getDisplayModeLayoutFlags(displayMode), [displayMode]);
   const responsiveLayout = useResponsiveLayout();
   const globalRevealMaskStyle = useMemo<CSSProperties>(() => ({
@@ -1996,7 +2024,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (roleSelectorOpen || !initialRevealReady) return;
+    if (roleSelectorOpen || !effectiveInitialRevealReady) return;
     if (displayMode !== 'fresh' && displayMode !== 'minimalist') return;
     if (topNavIntroStep !== null) return;
 
@@ -2011,7 +2039,7 @@ export default function App() {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [displayMode, initialRevealReady, roleSelectorOpen, topNavIntroStep]);
+  }, [displayMode, effectiveInitialRevealReady, roleSelectorOpen, topNavIntroStep]);
   const topNavModeProps = useMemo(() => ({
     fadeOnIdle: true,
     hideWeather: true,
@@ -2328,7 +2356,7 @@ export default function App() {
     onDissolveFolder: handleDissolveFolder,
     onSetFolderDisplayMode: handleSetFolderDisplayMode,
     homeInteractiveSurfaceVisible: !roleSelectorOpen,
-    initialRevealReady,
+    initialRevealReady: effectiveInitialRevealReady,
     modeLayersVisible,
     modeFlags: displayModeFlags,
     showOverlayWallpaperLayer,
@@ -2643,7 +2671,7 @@ export default function App() {
           style={{
             backgroundColor: showOverlayWallpaperLayer
               ? 'var(--initial-reveal-surface)'
-              : (initialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)'),
+              : (effectiveInitialRevealReady ? 'var(--background)' : 'var(--initial-reveal-surface)'),
           }}
         >
           <WallpaperBackdropProvider
@@ -2651,6 +2679,7 @@ export default function App() {
               wallpaperMode: effectiveWallpaperMode,
               colorWallpaperGradient,
               blurredWallpaperSrc,
+              fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : (freshWallpaperSrc || imgImage),
               blurredWallpaperAverageLuminance,
               effectiveWallpaperMaskOpacity,
             }}
@@ -2750,11 +2779,13 @@ export default function App() {
                     customWallpaper={customWallpaper}
                     weatherCode={weatherCode}
                     colorWallpaperId={colorWallpaperId}
-                    onSelect={(id, layout) => {
-                      handleRoleSelect(id);
+                    onSelect={async (id, layout) => {
+                      const applied = await handleRoleSelect(id);
+                      if (!applied) return;
                       if (layout) {
                         setDisplayMode(layout);
                       }
+                      replayHomeEntryReveal();
                     }}
                   />
                 </Suspense>

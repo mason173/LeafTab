@@ -7,7 +7,7 @@ export type OverlayAnimationRect = {
 
 export type FolderMotionPhase = 'opening' | 'closing';
 
-export const FOLDER_OPEN_DURATION_MS = 850;
+export const FOLDER_OPEN_DURATION_MS = 765;
 export const FOLDER_CLOSE_DURATION_MS = 550;
 export const FOLDER_OPEN_TOTAL_DURATION_MS = FOLDER_OPEN_DURATION_MS;
 export const FOLDER_LABEL_REVEAL_START_PROGRESS = 0.05;

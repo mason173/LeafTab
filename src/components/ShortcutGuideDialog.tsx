@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { BackToSettingsButton } from '@/components/BackToSettingsButton';
+import { IS_STORE_BUILD } from '@/config/distribution';
+import type { ShortcutGuideItemId } from '@/config/shortcutGuide';
 
 interface ShortcutGuideDialogProps {
   open: boolean;
@@ -28,6 +30,19 @@ function ShortcutKeyCaps({ combo }: { combo: readonly string[] }) {
 
 export function ShortcutGuideDialog({ open, onOpenChange, onBackToSettings }: ShortcutGuideDialogProps) {
   const { t } = useTranslation();
+  const resolveItemLabel = (itemId: ShortcutGuideItemId) => {
+    if (IS_STORE_BUILD && itemId === 'bookmarksMode') {
+      return t('settings.shortcutGuide.items.bookmarksModeStore', {
+        defaultValue: '进入书签搜索模式，直接搜索浏览器书签',
+      });
+    }
+    if (IS_STORE_BUILD && itemId === 'tabsMode') {
+      return t('settings.shortcutGuide.items.tabsModeStore', {
+        defaultValue: '进入标签页搜索模式，直接搜索已打开标签页',
+      });
+    }
+    return t(`settings.shortcutGuide.items.${itemId}`);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,7 +106,7 @@ export function ShortcutGuideDialog({ open, onOpenChange, onBackToSettings }: Sh
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm leading-6 text-foreground/85 break-words">
-                            {t(`settings.shortcutGuide.items.${item.id}`)}
+                            {resolveItemLabel(item.id)}
                           </td>
                         </tr>
                       ))}

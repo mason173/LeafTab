@@ -116,9 +116,11 @@ export function useRole(
           }, 50);
         })
         .catch(() => {});
+      return true;
     } catch (error) {
       console.error('Failed to load role profile:', error);
       toast.error(t('settings.importFailed'));
+      return false;
     }
   }, [API_URL, i18n.language, localDirtyRef, setScenarioModes, setScenarioShortcuts, setSelectedScenarioId, setUserRole, t, user]);
 

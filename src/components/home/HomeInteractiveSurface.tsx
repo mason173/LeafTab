@@ -51,6 +51,7 @@ const FLOATING_BOTTOM_SEARCH_ARROW_Z_INDEX = 15035;
 const FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX = 15025;
 const FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS = 300;
 const FLOATING_BOTTOM_SEARCH_HIDE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const FLOATING_BOTTOM_SEARCH_CROP_REVEAL_DURATION_MS = 1000;
 const FLOATING_BOTTOM_SEARCH_HEIGHT_PX = 44;
 const FLOATING_BOTTOM_SEARCH_HORIZONTAL_PADDING_PX = 16;
 
@@ -608,6 +609,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
     };
   }, [normalizedBackdropLuminance]);
+  const immersiveWhiteVeilStyle = useMemo<CSSProperties>(() => ({
+    backgroundColor: `rgba(255,255,255,${(normalizedBackdropLuminance > 0.56 ? 0.12 : 0.07).toFixed(3)})`,
+  }), [normalizedBackdropLuminance]);
 
   const immersiveWallpaperLayerStyle = useMemo<CSSProperties>(() => ({
     transform: `scale(${FOLDER_IMMERSIVE_SCALE_VAR})`,
@@ -674,6 +678,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 className="absolute inset-0"
                 style={immersiveBlurOverlayStyle}
               />
+              <div
+                aria-hidden="true"
+                className="absolute inset-0"
+                style={immersiveWhiteVeilStyle}
+              />
               <WallpaperMaskOverlay opacity={Math.min(100, effectiveWallpaperMaskOpacity + 8)} />
             </div>
           ) : effectiveWallpaperMode === 'color' || effectiveWallpaperMode === 'weather' ? (
@@ -694,6 +703,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     immersiveWallpaperLayerStyle,
     immersiveWallpaperBlurFallbackStyle,
     immersiveWallpaperBlurLayerStyle,
+    immersiveWhiteVeilStyle,
     onOverlayImageReady,
     overlayBackgroundAlt,
     shouldFreezeDynamicWallpaper,
@@ -756,13 +766,22 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           pointerEvents: 'none',
         }}
       >
-        <BottomCropFadeOverlay heightPx={cropHeightPx} />
+        <div
+          style={{
+            opacity: visualBootSettled ? 1 : 0,
+            transition: `opacity ${FLOATING_BOTTOM_SEARCH_CROP_REVEAL_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
+            willChange: visualBootSettled ? undefined : 'opacity',
+          }}
+        >
+          <BottomCropFadeOverlay heightPx={cropHeightPx} />
+        </div>
       </div>
     );
   }, [
     fixedTopNavRevealStyle,
     floatingSearchHiddenByDialog,
     showFloatingBottomSearch,
+    visualBootSettled,
   ]);
 
   const floatingBottomSearchLayer = useMemo(() => {
@@ -902,6 +921,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           wallpaperMode: effectiveWallpaperMode,
           colorWallpaperGradient,
           blurredWallpaperSrc,
+          fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : (effectiveOverlayWallpaperSrc || ''),
           blurredWallpaperAverageLuminance,
           effectiveWallpaperMaskOpacity,
         }}

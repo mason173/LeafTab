@@ -5,6 +5,7 @@ export type WallpaperBackdropSnapshot = {
   wallpaperMode: WallpaperMode;
   colorWallpaperGradient: string;
   blurredWallpaperSrc: string;
+  fallbackWallpaperSrc: string;
   blurredWallpaperAverageLuminance: number | null;
   effectiveWallpaperMaskOpacity: number;
 };

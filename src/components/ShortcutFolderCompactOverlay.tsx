@@ -1007,6 +1007,7 @@ export function ShortcutFolderCompactOverlay({
       ?? (sourceRect ? Math.min(sourceRect.width, sourceRect.height) * 0.28 : FOLDER_PANEL_RADIUS_PX),
   );
   const shellReady = Boolean(resolvedMetrics && sourceRect);
+  const allowAnimatedShortcutHitTargets = transitionPhase === 'opening-animate';
   const showAnimationLayer = Boolean(resolvedMetrics && sourceRect && (
     transitionPhase === 'opening-animate' || transitionPhase === 'closing-animate'
   ));
@@ -1092,7 +1093,7 @@ export function ShortcutFolderCompactOverlay({
       {showAnimationLayer && animatedPanelRect ? (
         <div className="pointer-events-none fixed inset-0">
           <div
-            className="absolute overflow-hidden"
+            className="pointer-events-none absolute overflow-hidden"
             style={{
               left: animatedPanelRect.left,
               top: animatedPanelRect.top,
@@ -1177,6 +1178,24 @@ export function ShortcutFolderCompactOverlay({
 
             return (
               <div key={child.id}>
+                {allowAnimatedShortcutHitTargets && opacity > 0.16 ? (
+                  <button
+                    type="button"
+                    aria-label={child.title || t('common.open', { defaultValue: '打开' })}
+                    className="pointer-events-auto fixed appearance-none rounded-none border-0 bg-transparent p-0"
+                    style={{
+                      left: animatedChildRect.left,
+                      top: animatedChildRect.top,
+                      width: animatedChildRect.width,
+                      height: animatedChildRect.height,
+                      zIndex: OVERLAY_Z_INDEX + 8,
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onShortcutOpen(child);
+                    }}
+                  />
+                ) : null}
                 <div
                   className="fixed pointer-events-none"
                   style={{

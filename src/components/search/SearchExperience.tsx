@@ -35,6 +35,7 @@ import {
   type SlashCommandActionId,
 } from '@/components/search/searchSlashCommands';
 import { toast } from '@/components/ui/sonner';
+import { IS_STORE_BUILD } from '@/config/distribution';
 import { ENABLE_SEARCH_ENGINE_SWITCHER } from '@/config/featureFlags';
 import { useCurrentBrowserTabId } from '@/hooks/useCurrentBrowserTabId';
 import { useRotatingText } from '@/hooks/useRotatingText';
@@ -1910,6 +1911,9 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
+      if (IS_STORE_BUILD && searchPermissionsReady && !searchPermissions.bookmarks) {
+        return undefined;
+      }
       if (searchPermissionsReady && !searchPermissions.bookmarks) {
         return {
           tone: 'info' as const,
@@ -1940,6 +1944,9 @@ export const SearchExperience = memo(function SearchExperience({
           }),
         };
       }
+      if (IS_STORE_BUILD && searchPermissionsReady && !searchPermissions.tabs) {
+        return undefined;
+      }
       if (searchPermissionsReady && !searchPermissions.tabs) {
         return {
           tone: 'info' as const,
@@ -1961,6 +1968,9 @@ export const SearchExperience = memo(function SearchExperience({
             defaultValue: '正在等待历史记录权限确认...',
           }),
         };
+      }
+      if (IS_STORE_BUILD && searchPermissionsReady && !searchPermissions.history) {
+        return undefined;
       }
       if (searchPermissionsReady && !searchPermissions.history) {
         return {
@@ -1984,7 +1994,8 @@ export const SearchExperience = memo(function SearchExperience({
       };
     }
     if (
-      searchPermissionsReady
+      !IS_STORE_BUILD
+      && searchPermissionsReady
       && !searchPermissions.history
       && searchSessionModel.mode === 'default'
       && visibleSearchActions.length === 0
@@ -1998,12 +2009,19 @@ export const SearchExperience = memo(function SearchExperience({
         onAction: () => runAfterSearchPermission('history', () => {}),
       };
     }
+    if (
+      searchPermissionsReady
+      && !searchPermissions.history
+      && searchSessionModel.mode === 'default'
+      && visibleSearchActions.length === 0
+    ) return undefined;
     return undefined;
   }, [
     activeAiProvider,
     activeSiteShortcut,
     isBangCommandPanelOpen,
     isAiMentionPanelOpen,
+    IS_STORE_BUILD,
     permissionRequestInFlight,
     permissionWarmup,
     runAfterSearchPermission,

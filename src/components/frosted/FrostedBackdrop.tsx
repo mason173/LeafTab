@@ -105,6 +105,7 @@ export function FrostedBackdrop({
   const isDarkTheme = resolvedTheme === 'dark';
   const hasViewportBackedSurface = Boolean(
     wallpaperBackdrop?.blurredWallpaperSrc
+    || wallpaperBackdrop?.fallbackWallpaperSrc
     || (wallpaperBackdrop?.wallpaperMode === 'color' && wallpaperBackdrop.colorWallpaperGradient),
   );
   const viewportRect = useLiveViewportRect(surfaceNode, hasViewportBackedSurface);
@@ -133,6 +134,9 @@ export function FrostedBackdrop({
       backgroundColor: `rgba(244,246,248,${lightAlpha.toFixed(3)})`,
     };
   }, [normalizedBackdropLuminance]);
+  const immersiveWhiteVeilStyle = useMemo<CSSProperties>(() => ({
+    backgroundColor: `rgba(255,255,255,${(normalizedBackdropLuminance > 0.56 ? 0.12 : 0.07).toFixed(3)})`,
+  }), [normalizedBackdropLuminance]);
 
   if (preset === 'immersive-drawer') {
     return (
@@ -173,6 +177,7 @@ export function FrostedBackdrop({
         {immersiveWallpaperMaskStyle ? <div className="absolute inset-0" style={immersiveWallpaperMaskStyle} /> : null}
         <div className="absolute inset-0" style={immersiveBlurOverlayStyle} />
         <div className="absolute inset-0" style={immersiveBackdropTintStyle} />
+        <div className="absolute inset-0" style={immersiveWhiteVeilStyle} />
       </div>
     );
   }
@@ -232,6 +237,14 @@ export function FrostedBackdrop({
             ...buildViewportSliceGradientStyle(viewportRect, imageOverscanPx, imageBlurPx),
             backgroundImage: wallpaperBackdrop.colorWallpaperGradient,
           }}
+        />
+      ) : wallpaperBackdrop?.fallbackWallpaperSrc && viewportRect ? (
+        <img
+          src={wallpaperBackdrop.fallbackWallpaperSrc}
+          alt=""
+          draggable={false}
+          className="select-none"
+          style={buildViewportSliceImageStyle(viewportRect, imageOverscanPx, imageScale, Math.max(imageBlurPx, 28))}
         />
       ) : (
         <div
