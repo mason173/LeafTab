@@ -77,7 +77,7 @@ export const InlineTime = memo(function InlineTime({
       <div className="relative z-10 pointer-events-none transform-gpu flex flex-col items-center justify-center py-6">
         <button
           type="button"
-          className={`${forceWhiteText ? 'text-white text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
+          className={`${forceWhiteText ? 'hero-tint-text hero-tint-text-hover text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
           style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
           onClick={() => setTimeDisplayDialogOpen(true)}
           aria-label={time}
@@ -103,7 +103,7 @@ export const InlineTime = memo(function InlineTime({
           onTimeAnimationModeChange={onTimeAnimationModeChange}
           onSelect={onTimeFontChange}
         />
-        <div className={`mt-2 flex max-w-full flex-col items-center font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'text-white' : 'text-muted-foreground'}`}>
+        <div className={`mt-2 flex max-w-full flex-col items-center font-['PingFang_SC',sans-serif] ${forceWhiteText ? 'hero-tint-text' : 'text-muted-foreground'}`}>
           <div
             className="inline-flex w-fit max-w-full self-center items-center justify-center gap-3 text-center"
             style={{ fontSize: layout.clockMetaFontSize }}

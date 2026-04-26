@@ -230,10 +230,10 @@ export const WallpaperClock = memo(function WallpaperClock({
         />
       </div>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10 pointer-events-none transform-gpu">
+      <div className="hero-tint-text absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none transform-gpu">
         <button
           type="button"
-          className="font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0"
+          className="hero-tint-text-hover cursor-pointer bg-transparent border-0 p-0 font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] transition-opacity hover:opacity-80 pointer-events-auto select-none"
           style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
           onClick={() => setTimeDisplayDialogOpen(true)}
           aria-label={time}

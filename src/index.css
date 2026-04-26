@@ -92,6 +92,18 @@
   .frosted-control-surface:hover {
     background-color: var(--frosted-ui-control-fill-hover);
   }
+
+  .hero-tint-text {
+    color: var(--hero-tint-foreground);
+  }
+
+  .hero-tint-text-strong {
+    color: var(--hero-tint-foreground-strong);
+  }
+
+  .hero-tint-text-hover:hover {
+    color: var(--hero-tint-foreground-strong);
+  }
 }
 
 @keyframes scroll-text {
@@ -242,6 +254,8 @@
   --frosted-ui-accent: var(--frosted-ui-control-fill-hover);
   --frosted-ui-foreground: rgba(0, 0, 0, 0.76);
   --frosted-ui-muted-foreground: rgba(0, 0, 0, 0.52);
+  --hero-tint-foreground: color-mix(in srgb, #ffffff 92%, rgb(var(--tint-rgb)) 8%);
+  --hero-tint-foreground-strong: color-mix(in srgb, #ffffff 88%, rgb(var(--tint-rgb)) 12%);
 }
 
 .dark {
@@ -291,6 +305,8 @@
   --frosted-ui-accent: var(--frosted-ui-control-fill-hover);
   --frosted-ui-foreground: rgba(255, 255, 255, 0.9);
   --frosted-ui-muted-foreground: rgba(255, 255, 255, 0.62);
+  --hero-tint-foreground: color-mix(in srgb, #ffffff 92%, rgb(var(--tint-rgb)) 8%);
+  --hero-tint-foreground-strong: color-mix(in srgb, #ffffff 88%, rgb(var(--tint-rgb)) 12%);
 }
 
 @theme inline {

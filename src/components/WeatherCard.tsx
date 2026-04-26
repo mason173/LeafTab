@@ -108,7 +108,7 @@ function WeatherStatusInline({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-1.5 leading-none align-middle", className)}>
-      <WeatherGlyph weatherCode={weatherCode} className="size-[1em] self-center" />
+      <WeatherGlyph weatherCode={weatherCode} className="size-[1.15em] self-center" />
       <span className="inline-flex items-center shrink-0 leading-none">{temperatureText}</span>
     </span>
   );
@@ -127,13 +127,13 @@ function WeatherInfo({
     <div className="content-stretch flex items-center justify-center gap-[6px] pr-[8px] relative shrink-0 leading-none">
       <WeatherGlyph
         weatherCode={weatherCode}
-        className={`size-4 self-center ${
-          variant === "inverted" ? "text-white/90" : "text-foreground"
+        className={`size-[18px] self-center ${
+          variant === "inverted" ? "hero-tint-text" : "text-foreground"
         }`}
       />
       <span
         className={`font-['PingFang_SC:Regular',sans-serif] inline-flex items-center leading-none not-italic relative shrink-0 text-[13px] ${
-          variant === "inverted" ? "text-white/90" : "text-foreground"
+          variant === "inverted" ? "hero-tint-text" : "text-foreground"
         }`}
       >
         {temperatureText}
@@ -245,7 +245,7 @@ export function WeatherCard({
           displayMode === "inline"
             ? `inline-flex w-fit max-w-full items-center justify-center cursor-pointer transition-colors pointer-events-auto ${
                 variant === "inverted"
-                  ? "text-white/90 hover:text-white"
+                  ? "hero-tint-text hero-tint-text-hover"
                   : "text-muted-foreground hover:text-foreground"
               }`
             : `content-stretch flex gap-[6px] items-center justify-center p-[3px] relative rounded-[999px] shrink-0 cursor-pointer transition-colors ${firefox ? "" : "transform-gpu backface-hidden"} ${
@@ -293,7 +293,7 @@ export function WeatherCard({
               ) : (
                 <span
                   className={`font-['PingFang_SC:Regular',sans-serif] inline-flex items-center leading-none not-italic relative shrink-0 text-[13px] ${
-                    variant === "inverted" ? "text-white/90" : "text-foreground"
+                    variant === "inverted" ? "hero-tint-text" : "text-foreground"
                   }`}
                 >
                   {dialogTriggerLabel}
