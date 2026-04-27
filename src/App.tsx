@@ -345,6 +345,8 @@ export default function App() {
   const effectiveInitialRevealReady = initialRevealReady && manualHomeRevealReady;
 
   const replayHomeEntryReveal = useCallback(() => {
+    setGlobalRevealMaskVisible(true);
+    setGlobalRevealMaskFading(false);
     setManualHomeRevealReady(false);
     setManualHomeRevealNonce((current) => current + 1);
   }, []);
@@ -1341,6 +1343,13 @@ export default function App() {
     : effectiveWallpaperMode === 'bing'
       ? bingWallpaper
       : (bingWallpaper || imgImage);
+  const fallbackWallpaperBackdropSrc = effectiveWallpaperMode === 'custom'
+    ? (customWallpaper || imgImage)
+    : effectiveWallpaperMode === 'dynamic'
+      ? dynamicWallpaperPosterSrc
+      : effectiveWallpaperMode === 'bing'
+        ? (bingWallpaper || imgImage)
+        : imgImage;
 
   useEffect(() => {
     document.documentElement.setAttribute('data-browser-target', firefox ? 'firefox' : 'chromium');
@@ -2710,7 +2719,7 @@ export default function App() {
               wallpaperMode: effectiveWallpaperMode,
               colorWallpaperGradient,
               blurredWallpaperSrc,
-              fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : (freshWallpaperSrc || imgImage),
+              fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : fallbackWallpaperBackdropSrc,
               blurredWallpaperAverageLuminance,
               effectiveWallpaperMaskOpacity,
             }}
@@ -2814,10 +2823,12 @@ export default function App() {
                     onSelect={async (id, layout) => {
                       const applied = await handleRoleSelect(id);
                       if (!applied) return;
-                      if (layout) {
-                        setDisplayMode(layout);
-                      }
-                      replayHomeEntryReveal();
+                      flushSync(() => {
+                        if (layout) {
+                          setDisplayMode(layout);
+                        }
+                        replayHomeEntryReveal();
+                      });
                     }}
                   />
                 </Suspense>

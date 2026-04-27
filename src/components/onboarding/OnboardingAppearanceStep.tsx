@@ -76,18 +76,21 @@ export function OnboardingAppearanceStep({
   ];
 
   return (
-    <div className="relative space-y-8 pb-18">
-      <div className="space-y-2 text-left">
-        <h1 className="text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
-          {t('onboarding.stepAppearanceTitle')}
+    <div className="mx-auto flex min-h-[clamp(520px,72vh,680px)] w-full max-w-[760px] flex-col items-center justify-center gap-8 py-8 text-center">
+      <div className="space-y-3">
+        <h1 className="text-4xl font-bold tracking-[-0.03em] sm:text-5xl md:whitespace-nowrap">
+          欢迎使用LeafTab 新标签页
         </h1>
-        <p className="max-w-[560px] text-base text-muted-foreground">
-          {t('onboarding.stepAppearanceDesc')}
+        <p className="mx-auto max-w-[560px] text-base text-muted-foreground sm:text-[17px]">
+          Minimal by Design. Powerful in Use.
+        </p>
+        <p className="mx-auto max-w-[560px] text-sm tracking-[0.18em] text-foreground/60 uppercase">
+          开源 • 端到端加密 • WebDAV 同步
         </p>
       </div>
 
-      <section className="space-y-3">
-        <div className="text-left text-sm font-medium text-foreground/78">
+      <section className="flex w-full max-w-[360px] flex-col items-center space-y-3">
+        <div className="text-center text-sm font-medium text-foreground/78">
           {t('settings.theme.label')}
         </div>
         <div
@@ -120,11 +123,11 @@ export function OnboardingAppearanceStep({
         </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="text-left text-sm font-medium text-foreground/78">
+      <section className="flex w-full flex-col items-center space-y-3">
+        <div className="text-center text-sm font-medium text-foreground/78">
           {t('settings.accentColor.label')}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           {accentOptions.map((option) => (
             <button
               key={option.name}
@@ -148,9 +151,9 @@ export function OnboardingAppearanceStep({
         </div>
       </section>
 
-      <div className="space-y-6">
-        <div className="max-w-[360px] space-y-2">
-          <div className="text-left text-sm font-medium text-foreground/78">
+      <div className="flex w-full flex-col items-center space-y-6">
+        <div className="w-full max-w-[360px] space-y-2">
+          <div className="text-center text-sm font-medium text-foreground/78">
             {t('settings.language.label')}
           </div>
           <Select value={currentLanguage} onValueChange={onLanguageChange}>
@@ -170,7 +173,7 @@ export function OnboardingAppearanceStep({
           </Select>
         </div>
 
-        <div className="flex items-center justify-start gap-2">
+        <div className="flex items-center justify-center gap-2">
           {stepDots.map((dot, index) => (
             <button
               key={dot.id}
@@ -185,7 +188,7 @@ export function OnboardingAppearanceStep({
           ))}
         </div>
 
-        <div className="absolute right-0 bottom-0 flex h-12 items-center justify-end">
+        <div className="flex h-12 items-center justify-center">
           <button
             type="button"
             className="inline-flex items-center gap-1.5 text-base font-medium text-foreground/70 transition-colors hover:text-foreground"

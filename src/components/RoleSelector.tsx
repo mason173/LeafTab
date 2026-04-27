@@ -216,11 +216,7 @@ export function RoleSelector({
 
   const normalizedLanguage = i18n.language === 'zh-CN' ? 'zh' : i18n.language;
   const currentStepIndex = visibleSteps.indexOf(step);
-  const fallbackWallpaperImageSrc = wallpaperMode === 'custom'
-    ? (customWallpaper || bingWallpaper || defaultWallpaperImage)
-    : wallpaperMode === 'bing' || wallpaperMode === 'dynamic'
-      ? (bingWallpaper || defaultWallpaperImage)
-      : defaultWallpaperImage;
+  const fallbackWallpaperImageSrc = wallpaperBackdrop?.fallbackWallpaperSrc || defaultWallpaperImage;
   const wallpaperFallbackGradient = wallpaperMode === 'color'
     ? getColorWallpaperGradient(colorWallpaperId)
     : '';
@@ -239,6 +235,9 @@ export function RoleSelector({
     active: currentStepIndex === index,
     onClick: () => goToStep(item),
   }));
+  const centeredStepShellClassName = step === 'appearance'
+    ? 'max-w-[860px]'
+    : 'max-w-[760px]';
 
   return (
     <div className="fixed inset-0 z-[200] overflow-hidden bg-black/0 text-foreground dark:bg-black/16">
@@ -274,46 +273,48 @@ export function RoleSelector({
         className="relative z-10 flex h-full w-full items-center justify-center overflow-hidden px-6 py-6"
         data-frosted-ui-scope
       >
-        {step === 'role' ? (
-          <div className="pointer-events-none absolute inset-0">
-            <div className="pointer-events-auto absolute top-6 left-6 sm:top-8 sm:left-8">
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/60 transition-colors hover:text-foreground focus:outline-none focus-visible:ring-0"
-                onClick={() => goToStep('appearance')}
-                aria-label={t('common.back', { defaultValue: 'Back' })}
-              >
-                <RiArrowLeftSLine className="size-5" />
-              </button>
-            </div>
-          </div>
-        ) : null}
+        <div className="h-full max-h-[calc(100vh-48px)] w-full overflow-hidden px-1 py-1 sm:px-2 sm:py-2 md:px-3 md:py-3">
+          <div className={`mx-auto flex min-h-full w-full flex-col justify-center overflow-y-auto overflow-x-hidden ${centeredStepShellClassName}`}>
+            {step === 'role' ? (
+              <div className="grid h-12 grid-cols-[40px_minmax(0,1fr)_40px] items-center px-6 sm:px-6 md:px-7">
+                <button
+                  type="button"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground/60 transition-colors hover:text-foreground focus:outline-none focus-visible:ring-0"
+                  onClick={() => goToStep('appearance')}
+                  aria-label={t('common.back', { defaultValue: 'Back' })}
+                >
+                  <RiArrowLeftSLine className="size-5" />
+                </button>
+                <div aria-hidden="true" />
+                <div aria-hidden="true" />
+              </div>
+            ) : null}
 
-        <div className="h-full max-h-[calc(100vh-48px)] w-full max-w-[880px] overflow-hidden px-1 py-1 sm:px-2 sm:py-2 md:px-3 md:py-3">
-          <div className="h-full overflow-y-auto overflow-x-hidden p-6 sm:p-6 md:p-7">
-            {step === 'appearance' ? (
-              <OnboardingAppearanceStep
-                currentTheme={selectedTheme}
-                currentAccentColor={accentColor}
-                currentLanguage={normalizedLanguage}
-                accentOptions={colorOptions}
-                languageOptions={LANGUAGES}
-                stepDots={appearanceStepDots}
-                onAccentColorChange={handleColorChange}
-                onLanguageChange={handleLanguageSelect}
-                onNext={() => goToStep('role')}
-                onThemeChange={handleThemeSelect}
-              />
-            ) : (
-              <OnboardingRoleStep
-                roleOptions={roleOptions}
-                selectedRole={selectedRole}
-                stepDots={appearanceStepDots}
-                onNext={completeOnboarding}
-                nextLabel={t('onboarding.enterHome')}
-                onRoleSelect={setSelectedRole}
-              />
-            )}
+            <div className={`flex-1 p-6 sm:p-6 md:p-7 ${step === 'role' ? 'pt-3' : ''}`}>
+              {step === 'appearance' ? (
+                <OnboardingAppearanceStep
+                  currentTheme={selectedTheme}
+                  currentAccentColor={accentColor}
+                  currentLanguage={normalizedLanguage}
+                  accentOptions={colorOptions}
+                  languageOptions={LANGUAGES}
+                  stepDots={appearanceStepDots}
+                  onAccentColorChange={handleColorChange}
+                  onLanguageChange={handleLanguageSelect}
+                  onNext={() => goToStep('role')}
+                  onThemeChange={handleThemeSelect}
+                />
+              ) : (
+                <OnboardingRoleStep
+                  roleOptions={roleOptions}
+                  selectedRole={selectedRole}
+                  stepDots={appearanceStepDots}
+                  onNext={completeOnboarding}
+                  nextLabel={t('onboarding.enterHome')}
+                  onRoleSelect={setSelectedRole}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -11,7 +11,7 @@ interface WeatherLoopVideoProps {
   seamlessLoopDurationSec?: number;
 }
 
-const DEFAULT_WRAPPER_CLASS = 'absolute w-full h-full';
+const DEFAULT_WRAPPER_CLASS = 'absolute inset-0 h-full w-full object-cover';
 const INNER_VIDEO_CLASS = 'absolute inset-0 h-full w-full object-cover';
 
 function playVideo(video: HTMLVideoElement | null) {

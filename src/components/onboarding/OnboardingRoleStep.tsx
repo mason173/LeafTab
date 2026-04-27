@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/components/ui/utils';
 import {
   RiArrowRightSLine,
-  RiCheckFill,
 } from '@/icons/ri-compat';
 
 type StepDot = {
@@ -38,17 +37,17 @@ export function OnboardingRoleStep({
   const { t } = useTranslation();
 
   return (
-    <div className="relative space-y-8 pb-18">
-      <div className="space-y-2 text-left">
+    <div className="mx-auto flex min-h-[clamp(450px,60vh,580px)] max-w-[660px] flex-col items-center justify-center gap-5 py-4 text-center">
+      <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
           {t('onboarding.stepRoleTitle')}
         </h1>
-        <p className="max-w-[560px] text-base text-muted-foreground">
+        <p className="mx-auto max-w-[560px] text-base text-muted-foreground">
           {t('onboarding.stepRoleDesc')}
         </p>
       </div>
 
-      <section className="grid grid-cols-1 gap-x-10 border-t border-border/65 md:grid-cols-2">
+      <section className="grid w-full max-w-[620px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {roleOptions.map((role) => {
           const isSelected = selectedRole === role.id;
           const RoleIcon = role.icon;
@@ -58,45 +57,40 @@ export function OnboardingRoleStep({
               key={role.id}
               type="button"
               onClick={() => onRoleSelect(role.id)}
-              className="group flex w-full items-center gap-3 border-b border-border/65 py-2.5 text-left transition-colors focus:outline-none focus-visible:ring-0"
+              className={cn(
+                'group relative flex aspect-[1/0.8] w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[20px] p-2.5 text-center transition-all duration-200 focus:outline-none focus-visible:ring-0',
+              )}
             >
-              <div className="flex size-8 shrink-0 items-center justify-center">
+              <div
+                className={cn(
+                  'flex size-10 shrink-0 items-center justify-center rounded-[14px] transition-all',
+                  isSelected
+                    ? 'bg-primary/12 text-primary'
+                    : 'bg-background/12 text-foreground/68 group-hover:text-foreground/82',
+                )}
+              >
                 <RoleIcon
                   className={cn(
                     'size-4.5',
-                    isSelected ? 'text-primary' : 'text-foreground/62',
                   )}
                 />
               </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  className={cn(
-                    'text-[14px] leading-5 font-medium tracking-[0] transition-colors',
-                    isSelected
-                      ? 'text-foreground'
-                      : 'text-foreground/72 group-hover:text-foreground',
-                  )}
-                >
-                  {role.title}
-                </div>
-              </div>
               <div
                 className={cn(
-                  'flex size-6 shrink-0 items-center justify-center rounded-full border transition-colors',
+                  'min-w-0 text-[12px] leading-4 font-medium tracking-[0] transition-colors',
                   isSelected
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border/80 bg-transparent text-transparent',
+                    ? 'text-primary'
+                    : 'text-foreground/78 group-hover:text-foreground',
                 )}
-                aria-hidden="true"
               >
-                <RiCheckFill className="size-2.5" />
+                {role.title}
               </div>
             </button>
           );
         })}
       </section>
 
-      <div className="flex items-center justify-start gap-2">
+      <div className="flex items-center justify-center gap-2">
         {stepDots.map((dot, index) => (
           <button
             key={dot.id}
@@ -111,7 +105,7 @@ export function OnboardingRoleStep({
         ))}
       </div>
 
-      <div className="absolute right-0 bottom-0 flex h-12 items-center justify-end">
+      <div className="flex h-12 items-center justify-center">
         <button
           type="button"
           className="inline-flex items-center gap-1.5 text-base font-medium text-foreground/70 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:text-foreground/28"

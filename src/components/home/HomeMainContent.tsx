@@ -55,6 +55,7 @@ export interface HomeMainContentProps {
   searchInteractionLocked: boolean;
   shortcutGridProps: HomeMainContentShortcutGridProps;
   drawerShortcutSearchProps: DrawerShortcutSearchPresentationProps;
+  onBottomSearchCropVisibilityChange?: (visible: boolean) => void;
   onFolderChildShortcutContextMenu?: (
     event: ReactMouseEvent<HTMLDivElement>,
     folderId: string,
@@ -113,6 +114,7 @@ export const HomeMainContent = memo(function HomeMainContent({
   searchInteractionLocked,
   shortcutGridProps,
   drawerShortcutSearchProps,
+  onBottomSearchCropVisibilityChange,
   onFolderChildShortcutContextMenu,
   onDrawerExpandedChange,
   onDrawerExpandActionChange,
@@ -305,6 +307,7 @@ export const HomeMainContent = memo(function HomeMainContent({
         drawerWheelAreaRef={drawer.drawerWheelAreaRef}
         drawerShortcutScrollRef={drawer.drawerShortcutScrollRef}
         drawerShortcutSearchProps={drawerShortcutSearchProps}
+        onBottomSearchCropVisibilityChange={onBottomSearchCropVisibilityChange}
         shortcutGridProps={{
           ...shortcutGridProps,
           onDragStart: handleShortcutGridDragStart,

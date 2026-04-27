@@ -256,6 +256,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const [visualBootSettled, setVisualBootSettled] = useState(initialRevealReady);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [requestDrawerExpand, setRequestDrawerExpand] = useState<(() => void) | null>(null);
+  const [bottomSearchCropVisible, setBottomSearchCropVisible] = useState(false);
   const [globalSearchActivationHandle, setGlobalSearchActivationHandle] = useState<SearchActivationHandle | null>(null);
   const [wallpaperAtmosphereReady, setWallpaperAtmosphereReady] = useState(false);
 
@@ -784,7 +785,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     && !searchInteractionState.historyOpen
     && !searchInteractionState.dropdownOpen;
   const floatingBottomSearchCropLayer = useMemo(() => {
-    if (!showFloatingBottomSearch) return null;
+    if (!showFloatingBottomSearch || !bottomSearchCropVisible) return null;
 
     const cropHeightPx = resolveBottomCropFadeHeight(FLOATING_BOTTOM_SEARCH_HEIGHT_PX);
 
@@ -814,6 +815,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     );
   }, [
     fixedTopNavRevealStyle,
+    bottomSearchCropVisible,
     floatingSearchHiddenByDialog,
     showFloatingBottomSearch,
     visualBootSettled,
@@ -948,6 +950,11 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     showBlankModeExpandArrow,
     t,
   ]);
+  const fallbackWallpaperBackdropSrc = effectiveWallpaperMode === 'dynamic'
+    ? dynamicWallpaperPosterSrc
+    : effectiveWallpaperMode === 'color'
+      ? ''
+      : (effectiveOverlayWallpaperSrc || '');
 
   return (
     <RenderProfileBoundary id="HomeInteractiveSurface">
@@ -956,7 +963,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           wallpaperMode: effectiveWallpaperMode,
           colorWallpaperGradient,
           blurredWallpaperSrc,
-          fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : (effectiveOverlayWallpaperSrc || ''),
+          fallbackWallpaperSrc: fallbackWallpaperBackdropSrc,
           blurredWallpaperAverageLuminance,
           effectiveWallpaperMaskOpacity,
         }}
@@ -980,6 +987,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             wallpaperClockProps={wallpaperClockProps}
             searchInteractionLocked={searchInteractionLocked}
             drawerShortcutSearchProps={drawerShortcutSearchProps}
+            onBottomSearchCropVisibilityChange={setBottomSearchCropVisible}
             onFolderChildShortcutContextMenu={onDrawerFolderChildShortcutContextMenu}
             onDrawerExpandedChange={setDrawerExpanded}
             onDrawerExpandActionChange={(action) => {

@@ -11,6 +11,7 @@ import {
 import {
   resolveFloatingSearchReservePx,
 } from '@/components/home/FloatingSearchDock';
+import { useDrawerShortcutFadeState } from '@/components/home/useDrawerShortcutFadeState';
 import {
   resolveInitialRevealOpacityTransition,
   resolveInitialRevealStyle,
@@ -51,6 +52,7 @@ export function QuickAccessDrawer({
   drawerShortcutScrollRef,
   shortcutGridProps: _shortcutGridProps,
   drawerShortcutSearchProps,
+  onBottomSearchCropVisibilityChange,
 }: QuickAccessDrawerProps) {
   const drawerExpandHint = drawerExpandHintVisible ? (
     <div
@@ -110,17 +112,33 @@ export function QuickAccessDrawer({
   const shortcutOverflowFadeHeightPx = resolveDrawerShortcutOverflowFadeHeight(searchHeight);
   const shortcutOverflowFadeInsetPx = resolveDrawerShortcutOverflowFadeInset(searchHeight);
   const floatingShortcutSearchReservePx = isDrawerExpanded ? resolveFloatingSearchReservePx(searchHeight) : 0;
-  const showShortcutOverflowFade = isDrawerExpanded && filteredShortcutGridProps.shortcuts.length > 0;
   const alphabetRailLayout = resolveDrawerAlphabetRailLayout({
     contentWidth,
     viewportWidth,
   });
   const showDockedAlphabetRail = showAlphabetRail && alphabetRailLayout.dockOutside;
   const shortcutScrollRightPaddingPx = 4;
+  const {
+    shortcutContentRef,
+    showShortcutOverflowFade,
+    showCollapsedSearchOverlapFade,
+  } = useDrawerShortcutFadeState({
+    isDrawerExpanded,
+    renderShortcuts,
+    shortcutsPaintVisible,
+    shortcutCount: filteredShortcutGridProps.shortcuts.length,
+    showShortcutSearchEmptyState,
+    searchHeight,
+    drawerShortcutScrollRef,
+  });
 
   const enableInteractiveTransitions = useCallback(() => {
     setInteractiveTransitionsEnabled(true);
   }, []);
+
+  useEffect(() => {
+    onBottomSearchCropVisibilityChange?.(showCollapsedSearchOverlapFade);
+  }, [onBottomSearchCropVisibilityChange, showCollapsedSearchOverlapFade]);
 
   useEffect(() => {
     if (!shortcutsVisibilityInitializedRef.current) {
@@ -217,6 +235,7 @@ export function QuickAccessDrawer({
           }}
         >
           <div
+            ref={shortcutContentRef}
             style={{
               transform: drawerBottomBounceOffsetPx > 0.01
                 ? `translate3d(0, ${(-drawerBottomBounceOffsetPx).toFixed(3)}px, 0)`

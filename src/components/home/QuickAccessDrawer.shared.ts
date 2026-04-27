@@ -47,6 +47,7 @@ export interface QuickAccessDrawerProps {
   drawerShortcutScrollRef: RefObject<HTMLDivElement | null>;
   shortcutGridProps: RootShortcutGridProps;
   drawerShortcutSearchProps: DrawerShortcutSearchPresentationProps;
+  onBottomSearchCropVisibilityChange?: (visible: boolean) => void;
   onFolderChildShortcutContextMenu?: (
     event: React.MouseEvent<HTMLDivElement>,
     folderId: string,
