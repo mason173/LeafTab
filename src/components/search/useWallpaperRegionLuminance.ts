@@ -3,6 +3,7 @@ import { useWallpaperBackdropSnapshot } from '@/components/wallpaper/WallpaperBa
 import { useLiveViewportRect } from '@/hooks/useLiveViewportRect';
 
 const REGION_SAMPLE_SIZE_PX = 24;
+const HEX_COLOR_PATTERN = /#[0-9a-fA-F]{6}/g;
 
 const imagePromiseCache = new Map<string, Promise<HTMLImageElement | null>>();
 
@@ -80,6 +81,9 @@ function loadImage(src: string) {
 
     const image = new Image();
     image.decoding = 'async';
+    if (/^https?:/i.test(src)) {
+      image.crossOrigin = 'anonymous';
+    }
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
     image.src = src;
@@ -89,10 +93,46 @@ function loadImage(src: string) {
   return promise;
 }
 
+function hexToRgb(hex: string) {
+  const normalized = hex.replace('#', '');
+  const parsed = Number.parseInt(normalized, 16);
+  return {
+    red: (parsed >> 16) & 255,
+    green: (parsed >> 8) & 255,
+    blue: parsed & 255,
+  };
+}
+
+function resolveGradientLuminanceStats(gradient: string): WallpaperRegionLuminance | null {
+  const gradientHexes = gradient.match(HEX_COLOR_PATTERN) || [];
+  if (gradientHexes.length === 0) return null;
+
+  const luminanceSamples = gradientHexes.map((hex) => {
+    const color = hexToRgb(hex);
+    return resolveRelativeLuminance(color.red, color.green, color.blue);
+  }).sort((left, right) => left - right);
+
+  const sampleCount = luminanceSamples.length;
+  const average = luminanceSamples.reduce((sum, value) => sum + value, 0) / sampleCount;
+  const p15 = luminanceSamples[Math.max(0, Math.round((sampleCount - 1) * 0.15))] ?? average;
+  const p85 = luminanceSamples[Math.min(sampleCount - 1, Math.round((sampleCount - 1) * 0.85))] ?? average;
+
+  return {
+    average: clamp01(average),
+    p15: clamp01(p15),
+    p85: clamp01(p85),
+  };
+}
+
 export function useWallpaperRegionLuminance(surfaceNode: HTMLElement | null, enabled = true) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
-  const viewportRect = useLiveViewportRect(surfaceNode, enabled && Boolean(wallpaperBackdrop?.blurredWallpaperSrc));
+  const viewportImageSrc = wallpaperBackdrop?.blurredWallpaperSrc || wallpaperBackdrop?.fallbackWallpaperSrc || '';
+  const viewportRect = useLiveViewportRect(surfaceNode, enabled && Boolean(viewportImageSrc));
   const [luminance, setLuminance] = useState<WallpaperRegionLuminance | null>(() => {
+    const gradientFallback = wallpaperBackdrop?.wallpaperMode === 'color'
+      ? resolveGradientLuminanceStats(wallpaperBackdrop.colorWallpaperGradient)
+      : null;
+    if (gradientFallback) return gradientFallback;
     const fallback = wallpaperBackdrop?.blurredWallpaperAverageLuminance;
     if (typeof fallback !== 'number' || !Number.isFinite(fallback)) return null;
     const safeFallback = clamp01(fallback);
@@ -113,15 +153,18 @@ export function useWallpaperRegionLuminance(surfaceNode: HTMLElement | null, ena
       };
     }
 
+    const gradientFallback = wallpaperBackdrop?.wallpaperMode === 'color'
+      ? resolveGradientLuminanceStats(wallpaperBackdrop.colorWallpaperGradient)
+      : null;
     const fallbackLuminance = wallpaperBackdrop?.blurredWallpaperAverageLuminance;
-    const fallbackStats = typeof fallbackLuminance === 'number' && Number.isFinite(fallbackLuminance)
+    const fallbackStats = gradientFallback ?? (typeof fallbackLuminance === 'number' && Number.isFinite(fallbackLuminance)
       ? {
           average: clamp01(fallbackLuminance),
           p15: clamp01(fallbackLuminance),
           p85: clamp01(fallbackLuminance),
         }
-      : null;
-    const imageSrc = wallpaperBackdrop?.blurredWallpaperSrc;
+      : null);
+    const imageSrc = wallpaperBackdrop?.blurredWallpaperSrc || wallpaperBackdrop?.fallbackWallpaperSrc;
 
     if (!imageSrc || !viewportRect || typeof document === 'undefined' || typeof window === 'undefined') {
       setLuminance(fallbackStats);
@@ -162,22 +205,26 @@ export function useWallpaperRegionLuminance(surfaceNode: HTMLElement | null, ena
         return;
       }
 
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = 'high';
-      context.drawImage(
-        image,
-        sourceX,
-        sourceY,
-        sourceWidth,
-        sourceHeight,
-        0,
-        0,
-        REGION_SAMPLE_SIZE_PX,
-        REGION_SAMPLE_SIZE_PX,
-      );
+      try {
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(
+          image,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          0,
+          0,
+          REGION_SAMPLE_SIZE_PX,
+          REGION_SAMPLE_SIZE_PX,
+        );
 
-      const sampledPixels = context.getImageData(0, 0, REGION_SAMPLE_SIZE_PX, REGION_SAMPLE_SIZE_PX).data;
-      setLuminance(resolveLuminanceStats(sampledPixels) ?? fallbackStats);
+        const sampledPixels = context.getImageData(0, 0, REGION_SAMPLE_SIZE_PX, REGION_SAMPLE_SIZE_PX).data;
+        setLuminance(resolveLuminanceStats(sampledPixels) ?? fallbackStats);
+      } catch {
+        setLuminance(fallbackStats);
+      }
     });
 
     return () => {
@@ -191,6 +238,9 @@ export function useWallpaperRegionLuminance(surfaceNode: HTMLElement | null, ena
     viewportRect?.height,
     wallpaperBackdrop?.blurredWallpaperAverageLuminance,
     wallpaperBackdrop?.blurredWallpaperSrc,
+    wallpaperBackdrop?.colorWallpaperGradient,
+    wallpaperBackdrop?.fallbackWallpaperSrc,
+    wallpaperBackdrop?.wallpaperMode,
   ]);
 
   return luminance;

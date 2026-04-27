@@ -51,25 +51,27 @@ function AlertDialogContent({
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        ref={handleSurfaceNodeRef}
-        data-slot="alert-dialog-content"
-        className={cn(
-          "fixed top-[50%] left-[50%] z-[18001] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-hidden border border-border bg-transparent shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200",
-          frostedAlertDialogPreset.shellClassName,
-          className,
-          "!bg-transparent !backdrop-blur-none",
-        )}
-        {...props}
-      >
-        <MaterialSurfaceFrame
-          surfaceNode={surfaceNode}
-          preset="dialog-panel"
-          radiusClassName={frostedAlertDialogPreset.radiusClassName}
+      <div className="fixed inset-0 z-[18001] flex items-center justify-center p-4 pointer-events-none sm:p-6">
+        <AlertDialogPrimitive.Content
+          ref={handleSurfaceNodeRef}
+          data-slot="alert-dialog-content"
+          className={cn(
+            "pointer-events-auto relative grid w-full min-w-0 max-w-[calc(100%-2rem)] gap-4 overflow-hidden rounded-[32px] border border-border p-6 bg-transparent shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:duration-200 data-[state=closed]:duration-200 sm:max-w-lg",
+            frostedAlertDialogPreset.shellClassName,
+            className,
+            "!bg-transparent !backdrop-blur-none",
+          )}
+          {...props}
         >
-          {children}
-        </MaterialSurfaceFrame>
-      </AlertDialogPrimitive.Content>
+          <MaterialSurfaceFrame
+            surfaceNode={surfaceNode}
+            preset="dialog-panel"
+            radiusClassName={frostedAlertDialogPreset.radiusClassName}
+          >
+            {children}
+          </MaterialSurfaceFrame>
+        </AlertDialogPrimitive.Content>
+      </div>
     </AlertDialogPortal>
   );
 }

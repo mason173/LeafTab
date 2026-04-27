@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FrostedSurface } from '@/components/frosted/FrostedSurface';
+import { useStableElementState } from '@/hooks/useStableElementState';
 import { RootShortcutGrid } from '@/features/shortcuts/components/RootShortcutGrid';
 import { DrawerShortcutAlphabetRail } from '@/components/home/DrawerShortcutAlphabetRail';
 import { resolveDrawerAlphabetRailLayout } from '@/components/home/drawerAlphabetRailLayout';
@@ -24,6 +25,7 @@ import {
   SHORTCUTS_FADE_DURATION_MS,
   type QuickAccessDrawerProps,
 } from '@/components/home/QuickAccessDrawer.shared';
+import { useDrawerAdaptiveShortcutForceWhiteText } from '@/components/home/useDrawerAdaptiveShortcutTitleTone';
 
 export function QuickAccessDrawer({
   initialRevealReady,
@@ -54,6 +56,9 @@ export function QuickAccessDrawer({
   drawerShortcutSearchProps,
   onBottomSearchCropVisibilityChange,
 }: QuickAccessDrawerProps) {
+  const [drawerWheelAreaNode, drawerWheelAreaNodeRef] = useStableElementState<HTMLDivElement>({
+    ref: drawerWheelAreaRef,
+  });
   const drawerExpandHint = drawerExpandHintVisible ? (
     <div
       className="pointer-events-none mt-3 flex items-center justify-center"
@@ -94,6 +99,12 @@ export function QuickAccessDrawer({
   const initialRevealOpacityTransition = resolveInitialRevealOpacityTransition();
   const normalizedOverlayOpacity = Math.max(0, Math.min(1, drawerOverlayOpacity));
   const shouldShowDrawerShortcuts = modeFlags.showShortcuts || (modeFlags.revealShortcutsOnDrawerExpand && isDrawerExpanded);
+  const resolvedDrawerShortcutForceWhiteText = useDrawerAdaptiveShortcutForceWhiteText({
+    surfaceNode: drawerWheelAreaNode,
+    enabled: shouldShowDrawerShortcuts,
+    overlayOpacity: normalizedOverlayOpacity,
+    fallbackForceWhiteText: drawerShortcutForceWhiteText,
+  });
   const [renderShortcuts, setRenderShortcuts] = useState(shouldShowDrawerShortcuts);
   const [shortcutsVisible, setShortcutsVisible] = useState(shouldShowDrawerShortcuts);
   const [interactiveTransitionsEnabled, setInteractiveTransitionsEnabled] = useState(false);
@@ -256,7 +267,7 @@ export function QuickAccessDrawer({
                 {...filteredShortcutGridProps}
                 folderPreviewTone={isDrawerExpanded ? 'drawer' : 'default'}
                 bottomInset={drawerShortcutBottomInset}
-                forceTextWhite={drawerShortcutForceWhiteText}
+                forceTextWhite={resolvedDrawerShortcutForceWhiteText}
                 monochromeTone={drawerShortcutMonochromeTone}
                 monochromeTileBackdropBlur={drawerShortcutMonochromeTileBackdropBlur}
                 onShortcutOpen={filteredShortcutGridProps.onShortcutOpen}
@@ -327,7 +338,7 @@ export function QuickAccessDrawer({
 
               {quickAccessOpen && (
                 <div
-                  ref={drawerWheelAreaRef}
+                  ref={drawerWheelAreaNodeRef}
                   className="flex min-h-0 flex-1 px-4"
                   style={{
                     paddingTop: `${drawerContentTopPaddingPx}px`,

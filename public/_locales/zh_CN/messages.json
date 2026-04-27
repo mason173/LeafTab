@@ -1,10 +1,10 @@
 {
   "appTitle": {
-    "message": "LeafTab 新标签页 - 开源加密与 WebDAV 同步【社区版】",
+    "message": "LeafTab 新标签页 - 开源加密与 WebDAV 同步",
     "description": "The title of the application"
   },
   "appDescription": {
-    "message": "开源新标签页，支持端到端加密备份、WebDAV 与云同步、快捷方式自定义，界面简洁专注。【社区版】",
+    "message": "开源新标签页，支持端到端加密备份、WebDAV 与云同步、快捷方式自定义，界面简洁专注。",
     "description": "The description of the application"
   }
 }

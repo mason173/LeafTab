@@ -4,10 +4,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   RiCheckboxCircleFill,
@@ -192,42 +192,46 @@ function RepairPopover({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50 dark:border-border/70 dark:bg-background dark:hover:bg-accent/50"
-          disabled={disabled}
-          aria-label={label}
-          title={label}
-        >
-          <RiToolsFill className="size-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[220px] rounded-[20px] p-2 !bg-popover !backdrop-blur-none">
-        <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-          {label}
-        </div>
-        <div className="mt-1 grid gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            className="justify-start rounded-[14px] px-3 text-sm"
-            onClick={() => handleSelect(onOverwriteLocal)}
-          >
-            {overwriteLocalLabel}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="justify-start rounded-[14px] px-3 text-sm"
-            onClick={() => handleSelect(onOverwriteRemote)}
-          >
-            {overwriteRemoteLabel}
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <>
+      <button
+        type="button"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-background text-foreground transition-colors hover:bg-accent/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-50 dark:border-border/70 dark:bg-background dark:hover:bg-accent/50"
+        onClick={() => setOpen(true)}
+        disabled={disabled}
+        aria-label={label}
+        title={label}
+      >
+        <RiToolsFill className="size-4" />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[360px] rounded-[28px] border-border bg-background text-foreground">
+          <DialogHeader className="pb-2">
+            <DialogTitle>{label}</DialogTitle>
+            <DialogDescription>
+              选择一种方式修复当前同步状态
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex w-full flex-col gap-2 sm:flex-col sm:justify-start">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full justify-center rounded-[16px]"
+              onClick={() => handleSelect(onOverwriteLocal)}
+            >
+              {overwriteLocalLabel}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full justify-center rounded-[16px]"
+              onClick={() => handleSelect(onOverwriteRemote)}
+            >
+              {overwriteRemoteLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

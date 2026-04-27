@@ -80,6 +80,37 @@ export function BottomCropFadeOverlay({
       setAccentColor(hex ? hexToRgb(hex) : null);
     };
 
+    const sampleAccentFromImage = (src: string): Promise<string | null> => new Promise((resolve) => {
+      const image = new Image();
+      image.decoding = 'async';
+      if (/^https?:/i.test(src)) {
+        image.crossOrigin = 'anonymous';
+      }
+      image.onload = () => {
+        try {
+          const sampleSize = 48;
+          const canvas = document.createElement('canvas');
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          if (!context) {
+            resolve(null);
+            return;
+          }
+
+          context.drawImage(image, 0, 0, sampleSize, sampleSize);
+          const imageData = context.getImageData(0, 0, sampleSize, sampleSize);
+          resolve(sampleAccentFromImageData(imageData.data, sampleSize, sampleSize) || null);
+        } catch {
+          resolve(null);
+        }
+      };
+      image.onerror = () => {
+        resolve(null);
+      };
+      image.src = src;
+    });
+
     if (wallpaperBackdrop?.wallpaperMode === 'color') {
       const gradientHexes = wallpaperBackdrop.colorWallpaperGradient.match(HEX_COLOR_PATTERN) || [];
       const palette = buildRecommendedAccentPaletteFromHexes(gradientHexes);
@@ -89,40 +120,30 @@ export function BottomCropFadeOverlay({
       };
     }
 
-    if (!wallpaperBackdrop?.blurredWallpaperSrc) {
+    const imageSampleSources = [
+      wallpaperBackdrop?.fallbackWallpaperSrc,
+      wallpaperBackdrop?.blurredWallpaperSrc,
+    ].filter((value, index, list): value is string => Boolean(value) && list.indexOf(value) === index);
+
+    if (imageSampleSources.length === 0) {
       setAccentFromHex(null);
       return () => {
         cancelled = true;
       };
     }
 
-    const image = new Image();
-    image.decoding = 'async';
-    image.onload = () => {
-      if (cancelled) return;
-      try {
-        const sampleSize = 48;
-        const canvas = document.createElement('canvas');
-        canvas.width = sampleSize;
-        canvas.height = sampleSize;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) {
-          setAccentFromHex(null);
+    void (async () => {
+      for (const src of imageSampleSources) {
+        const accentHex = await sampleAccentFromImage(src);
+        if (cancelled) return;
+        if (accentHex) {
+          setAccentFromHex(accentHex);
           return;
         }
-
-        context.drawImage(image, 0, 0, sampleSize, sampleSize);
-        const imageData = context.getImageData(0, 0, sampleSize, sampleSize);
-        const accentHex = sampleAccentFromImageData(imageData.data, sampleSize, sampleSize);
-        setAccentFromHex(accentHex || null);
-      } catch {
-        setAccentFromHex(null);
       }
-    };
-    image.onerror = () => {
+
       setAccentFromHex(null);
-    };
-    image.src = wallpaperBackdrop.blurredWallpaperSrc;
+    })();
 
     return () => {
       cancelled = true;
@@ -130,6 +151,7 @@ export function BottomCropFadeOverlay({
   }, [
     wallpaperBackdrop?.blurredWallpaperSrc,
     wallpaperBackdrop?.colorWallpaperGradient,
+    wallpaperBackdrop?.fallbackWallpaperSrc,
     wallpaperBackdrop?.wallpaperMode,
   ]);
 

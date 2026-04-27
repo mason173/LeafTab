@@ -48,7 +48,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 w-72 origin-(--radix-popover-content-transform-origin) outline-hidden",
+          "z-[18020] w-72 origin-(--radix-popover-content-transform-origin) outline-hidden",
           surfaceVariant === "frosted"
             ? cn(
                 "relative isolate overflow-hidden border border-border bg-transparent text-popover-foreground backdrop-blur-none",
