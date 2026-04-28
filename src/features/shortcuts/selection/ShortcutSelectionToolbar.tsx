@@ -1,7 +1,5 @@
-import { useMemo, type CSSProperties, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import { FrostedSurface } from '@/components/frosted/FrostedSurface';
-import { useDocumentElementById } from '@/components/frosted/useDocumentElementById';
-import { useLiveViewportRect } from '@/hooks/useLiveViewportRect';
 import {
   ShortcutSelectionCancelAction,
   ShortcutSelectionCreateFolderAction,
@@ -13,7 +11,6 @@ import {
 import type { ScenarioMode, Shortcut } from '@/types';
 
 type ShortcutSelectionToolbarProps = {
-  anchorId: string;
   t: (key: string, options?: Record<string, unknown>) => string;
   selectedShortcutCount: number;
   moveTargetScenarioModes: ScenarioMode[];
@@ -36,12 +33,7 @@ type ShortcutSelectionToolbarProps = {
   onClearShortcutMultiSelect: () => void;
 };
 
-const TOOLBAR_WIDTH_PX = 60;
-const TOOLBAR_OFFSET_PX = 14;
-const TOOLBAR_VIEWPORT_MARGIN_PX = 14;
-
 export function ShortcutSelectionToolbar({
-  anchorId,
   t,
   selectedShortcutCount,
   moveTargetScenarioModes,
@@ -63,55 +55,19 @@ export function ShortcutSelectionToolbar({
   onRequestBulkDeleteShortcuts,
   onClearShortcutMultiSelect,
 }: ShortcutSelectionToolbarProps) {
-  const anchorElement = useDocumentElementById(anchorId, true);
-  const anchorRect = useLiveViewportRect(anchorElement, Boolean(anchorElement));
-  const toolbarStyle = useMemo<CSSProperties>(() => {
-    if (typeof window === 'undefined') {
-      return {
-        right: `${TOOLBAR_VIEWPORT_MARGIN_PX}px`,
-        top: '50%',
-        transform: 'translate3d(0, -50%, 0)',
-      };
-    }
-
-    const fallbackRight = TOOLBAR_VIEWPORT_MARGIN_PX;
-
-    if (!anchorRect) {
-      return {
-        right: `${fallbackRight}px`,
-        top: '50%',
-        transform: 'translate3d(0, -50%, 0)',
-      };
-    }
-
-    const anchorRight = anchorRect.left + anchorRect.width;
-    const preferredRight = Math.max(
-      TOOLBAR_VIEWPORT_MARGIN_PX,
-      window.innerWidth - anchorRight + TOOLBAR_OFFSET_PX,
-    );
-    const maxRight = Math.max(
-      TOOLBAR_VIEWPORT_MARGIN_PX,
-      window.innerWidth - TOOLBAR_WIDTH_PX - TOOLBAR_VIEWPORT_MARGIN_PX,
-    );
-
-    return {
-      right: `${Math.min(maxRight, preferredRight)}px`,
-      top: '50%',
-      transform: 'translate3d(0, -50%, 0)',
-    };
-  }, [anchorRect]);
-
   return (
     <FrostedSurface
       preset="floating-toolbar"
-      radiusClassName="rounded-[28px]"
-      className="fixed z-[17025] rounded-[28px] shadow-[0_18px_44px_rgba(8,10,14,0.22)]"
-      contentClassName="flex flex-col items-center gap-2.5 px-2.5 py-3"
+      radiusClassName="rounded-full"
+      className="fixed left-1/2 z-[17025] max-w-[calc(100vw-12px)] -translate-x-1/2 rounded-full shadow-[0_18px_44px_rgba(8,10,14,0.22)]"
+      contentClassName="flex items-center justify-center px-2.5 py-2.5"
       dataTestId="shortcut-multi-select-toolbar"
-      style={toolbarStyle}
+      style={{
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
+      }}
     >
-      <div className="flex flex-col items-center gap-2.5">
-        <span className="min-w-[36px] text-center text-[12px] font-medium tracking-[0.01em] text-black/68 dark:text-white/84">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-2">
+        <span className="inline-flex h-10 min-w-[64px] items-center justify-center rounded-full bg-black/10 px-3 text-center text-[12px] font-medium tracking-[0.01em] text-black/68 dark:bg-white/10 dark:text-white/84">
           {`${selectedShortcutCount}项`}
         </span>
         <ShortcutSelectionScenarioMoveAction

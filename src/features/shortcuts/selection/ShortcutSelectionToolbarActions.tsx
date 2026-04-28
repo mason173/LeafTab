@@ -26,7 +26,7 @@ function SelectionToolbarPopover({
     <FrostedSurface
       preset="floating-toolbar"
       radiusClassName="rounded-[24px]"
-      className="pointer-events-auto absolute right-[calc(100%+12px)] top-1/2 z-[17040] w-[272px] -translate-y-1/2 rounded-[24px] shadow-[0_16px_38px_rgba(8,10,14,0.22)]"
+      className="pointer-events-auto absolute bottom-[calc(100%+12px)] left-1/2 z-[17040] w-[min(272px,calc(100vw-32px))] -translate-x-1/2 rounded-[24px] shadow-[0_16px_38px_rgba(8,10,14,0.22)]"
       contentClassName="flex max-h-[320px] flex-col gap-1 overflow-hidden px-2 py-2"
     >
       <div className="px-2 pb-1 pt-1 text-xs font-medium text-black/48 dark:text-white/58">
@@ -106,6 +106,7 @@ export function ShortcutSelectionScenarioMoveAction({
         testId="shortcut-multi-select-move"
         title={moveToScenarioLabel}
         ariaExpanded={multiSelectMoveOpen}
+        className="h-10 w-10"
         onClick={() => setMultiSelectMoveOpen((prev) => !prev)}
       >
         <RiDashboardFill className="size-3.5" />
@@ -174,6 +175,7 @@ export function ShortcutSelectionFolderMoveAction({
         title={moveToFolderLabel}
         ariaExpanded={multiSelectFolderOpen}
         disabled={selectedLinkCount <= 0 || selectedFolderCount > 0}
+        className="h-10 w-10"
         onClick={() => setMultiSelectFolderOpen((prev) => !prev)}
       >
         <RiFolderTransferLine className="size-3.5" />
@@ -226,6 +228,7 @@ export function ShortcutSelectionCreateFolderAction({
       testId="shortcut-multi-select-create-folder"
       title={t('context.createFolder', { defaultValue: '创建文件夹' })}
       disabled={selectedLinkCount < 2 || selectedFolderCount > 0}
+      className="h-10 w-10"
       onClick={onCreateFolder}
     >
       <RiAddLine className="size-3.5" />
@@ -254,7 +257,7 @@ export function ShortcutSelectionPinAction({
         defaultValue: isTop ? '置顶已选' : '置底已选',
       })}
       disabled={disabled}
-      className="h-9 w-9"
+      className="h-10 w-10"
       onClick={() => onPinSelectedShortcuts(position)}
     >
       {isTop ? <RiArrowUpLine className="size-3.5" /> : <RiArrowDownLine className="size-3.5" />}
@@ -278,7 +281,7 @@ export function ShortcutSelectionDeleteAction({
       testId="shortcut-multi-select-delete"
       title={t('context.deleteSelected', { defaultValue: '删除已选' })}
       disabled={selectedShortcutCount <= 0}
-      className="h-9 w-9"
+      className="h-10 w-10"
       onClick={onRequestBulkDeleteShortcuts}
     >
       <RiDeleteBinLine className="size-3.5" />
@@ -299,7 +302,7 @@ export function ShortcutSelectionCancelAction({
     <SelectionToolbarActionButton
       testId="shortcut-multi-select-cancel"
       title={t('context.cancelMultiSelect', { defaultValue: '退出多选' })}
-      className="h-9 w-9"
+      className="h-10 w-10"
       onClick={onClearShortcutMultiSelect}
     >
       <RiCloseLine className="size-3.5" />

@@ -34,6 +34,7 @@ import {
   queueCachedLocalStorageSetItem,
   readCachedLocalStorageItem,
 } from '@/utils/cachedLocalStorage';
+import { toNavigableUrl } from '@/utils/urlNavigation';
 
 const SEARCH_ENGINE_KEY = 'search_engine';
 const DEFAULT_SEARCH_ENGINE: SearchEngine = getDefaultSearchEngineForPlatform();
@@ -371,10 +372,8 @@ export function useSearch(
     }
 
     if (isUrl(queryForSearch)) {
-      let targetUrl = queryForSearch;
-      if (!/^https?:\/\//i.test(queryForSearch)) {
-        targetUrl = `https://${queryForSearch}`;
-      }
+      const targetUrl = toNavigableUrl(queryForSearch);
+      if (!targetUrl) return;
       window.open(targetUrl, openInNewTab ? '_blank' : '_self');
     } else {
       if (effectiveEngine === 'system' && typeof chrome !== 'undefined' && chrome.search?.query) {

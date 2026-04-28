@@ -5,6 +5,7 @@ import { defaultScenarioModes, makeScenarioId } from '@/scenario/scenario';
 import type { SelectedShortcutState } from '@/features/shortcuts/model/types';
 import { getShortcutUrlIdentity, hasShortcutUrlConflict } from '@/utils/shortcutIdentity';
 import { normalizeShortcutIconColor } from '@/utils/shortcutIconPreferences';
+import { toNavigableUrl } from '@/utils/urlNavigation';
 import {
   persistShortcutCustomIcon,
   removeShortcutCustomIcon,
@@ -115,7 +116,8 @@ export function useShortcutActions({
     if (isShortcutFolder(shortcut)) return;
     let url = shortcut.url.trim();
     if (/^javascript:/i.test(url)) return;
-    if (!url.includes('://')) url = `https://${url}`;
+    url = toNavigableUrl(url);
+    if (!url) return;
     consumeRecentShortcutAddition(url);
     reportDomain(url);
     if (openInNewTab) window.open(url, '_blank');

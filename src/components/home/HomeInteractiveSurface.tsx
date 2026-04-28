@@ -519,8 +519,12 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const dialogOverlayActive = useOpenDialogOverlayActivity();
   const folderImmersiveOpen = Boolean(shortcutGridOpenFolderPreviewId);
   const floatingSearchHiddenByDialog = dialogOverlayActive || wallpaperClockBaseProps.scenarioModeOpen;
+  const floatingSearchHiddenBySelectionMode = Boolean(shortcutGridSelectionMode);
   const floatingSearchHiddenByAlphabetIndex = drawerExpanded && drawerShortcutSearchController.activeIndexLetter !== null;
-  const floatingSearchHidden = floatingSearchHiddenByDialog || floatingSearchHiddenByAlphabetIndex || folderImmersiveOpen;
+  const floatingSearchHidden = floatingSearchHiddenByDialog
+    || floatingSearchHiddenBySelectionMode
+    || floatingSearchHiddenByAlphabetIndex
+    || folderImmersiveOpen;
   const activeFloatingSearchSnapshot = drawerExpanded
     ? drawerSearchSnapshot
     : globalSearchSnapshot;
@@ -797,7 +801,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           zIndex: FLOATING_BOTTOM_SEARCH_CROP_Z_INDEX,
           bottom: '0px',
           ...fixedTopNavRevealStyle,
-          opacity: floatingSearchHiddenByDialog ? 0 : 1,
+          opacity: floatingSearchHidden ? 0 : 1,
           transition: `opacity ${FLOATING_BOTTOM_SEARCH_HIDE_DURATION_MS}ms ${FLOATING_BOTTOM_SEARCH_HIDE_EASING}`,
           pointerEvents: 'none',
         }}
@@ -816,7 +820,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   }, [
     fixedTopNavRevealStyle,
     bottomSearchCropVisible,
-    floatingSearchHiddenByDialog,
+    floatingSearchHidden,
     showFloatingBottomSearch,
     visualBootSettled,
   ]);

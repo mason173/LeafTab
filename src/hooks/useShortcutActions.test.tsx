@@ -113,12 +113,15 @@ function renderActionsHarness() {
 }
 
 describe('useShortcutActions', () => {
+  const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
   beforeEach(() => {
     toastSuccessSpy.mockReset();
     toastErrorSpy.mockReset();
     persistShortcutCustomIconSpy.mockReset();
     removeShortcutCustomIconSpy.mockReset();
     removeShortcutCustomIconsSpy.mockReset();
+    windowOpenSpy.mockClear();
     localStorage.clear();
   });
 
@@ -228,5 +231,21 @@ describe('useShortcutActions', () => {
     });
 
     expect(result.current.scenarioShortcuts[defaultScenarioModes[0].id]).toEqual([]);
+  });
+
+  it('opens private network shortcuts over http when no scheme is provided', () => {
+    const { result, reportDomain } = renderActionsHarness();
+
+    act(() => {
+      result.current.actions.handleShortcutOpen({
+        id: 'router-1',
+        title: 'Router',
+        url: '192.168.1.1',
+        icon: '',
+      });
+    });
+
+    expect(windowOpenSpy).toHaveBeenCalledWith('http://192.168.1.1', '_blank');
+    expect(reportDomain).toHaveBeenCalledWith('http://192.168.1.1');
   });
 });

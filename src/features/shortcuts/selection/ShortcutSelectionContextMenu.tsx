@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import type { RefObject } from 'react';
 import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import {
@@ -66,7 +67,7 @@ export function ShortcutSelectionContextMenu({
     return null;
   }
 
-  return (
+  const menu = (
     <div ref={contextMenuRef} className="fixed z-[17020]" data-testid="shortcut-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
       <FrostedSurface
         preset="dropdown-panel"
@@ -126,4 +127,10 @@ export function ShortcutSelectionContextMenu({
       </FrostedSurface>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return menu;
+  }
+
+  return createPortal(menu, document.body);
 }
