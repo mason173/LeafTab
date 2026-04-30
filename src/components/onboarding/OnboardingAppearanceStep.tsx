@@ -76,15 +76,15 @@ export function OnboardingAppearanceStep({
   ];
 
   return (
-    <div className="mx-auto flex min-h-[clamp(520px,72vh,680px)] w-full max-w-[760px] flex-col items-center justify-center gap-8 py-8 text-center">
+    <div className="mx-auto flex min-h-0 w-full max-w-[760px] flex-col items-center justify-start gap-6 py-4 text-center sm:min-h-[clamp(520px,72vh,680px)] sm:justify-center sm:gap-8 sm:py-8">
       <div className="space-y-3">
-        <h1 className="text-4xl font-bold tracking-[-0.03em] sm:text-5xl md:whitespace-nowrap">
+        <h1 className="text-[24px] font-bold tracking-[-0.03em] md:whitespace-nowrap">
           欢迎使用LeafTab 新标签页
         </h1>
-        <p className="mx-auto max-w-[560px] text-base text-muted-foreground sm:text-[17px]">
+        <p className="mx-auto max-w-[560px] text-[12px] text-muted-foreground">
           Minimal by Design. Powerful in Use.
         </p>
-        <p className="mx-auto max-w-[560px] text-sm tracking-[0.18em] text-foreground/60 uppercase">
+        <p className="mx-auto max-w-[560px] text-[12px] tracking-[0.18em] text-foreground/60 uppercase">
           开源 • 端到端加密 • WebDAV 同步
         </p>
       </div>

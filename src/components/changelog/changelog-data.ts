@@ -73,6 +73,15 @@ function sortChangelogItems(items: ChangelogItem[]) {
 
 export const buildChangelogItems = (t: TFunction): ChangelogItem[] => sortChangelogItems([
   {
+    version: "2.0.2",
+    date: "2026-04-30",
+    notes: [
+      t("changelog.items.release202OnboardingSmallScreenFix", { defaultValue: "修复新手引导在小屏幕与低分辨率下内容被裁切的问题，避免“下一步”按钮超出可视区域" }),
+      t("changelog.items.release202OnboardingLayoutPolish", { defaultValue: "优化新手引导蒙层与步骤页布局，在不同窗口高度下展示更完整、更稳定" }),
+      t("changelog.items.release202OnboardingTypographyPolish", { defaultValue: "调整新手引导标题与副标题字号，整体信息层级更清晰" }),
+    ],
+  },
+  {
     version: "2.0.1",
     date: "2026-04-26",
     notes: [

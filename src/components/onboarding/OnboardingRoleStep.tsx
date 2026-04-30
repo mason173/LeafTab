@@ -37,12 +37,12 @@ export function OnboardingRoleStep({
   const { t } = useTranslation();
 
   return (
-    <div className="mx-auto flex min-h-[clamp(450px,60vh,580px)] max-w-[660px] flex-col items-center justify-center gap-5 py-4 text-center">
+    <div className="mx-auto flex min-h-0 max-w-[660px] flex-col items-center justify-start gap-4 py-2 text-center sm:min-h-[clamp(450px,60vh,580px)] sm:justify-center sm:gap-5 sm:py-4">
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-[-0.03em] sm:text-5xl">
+        <h1 className="text-[24px] font-bold tracking-[-0.03em]">
           {t('onboarding.stepRoleTitle')}
         </h1>
-        <p className="mx-auto max-w-[560px] text-base text-muted-foreground">
+        <p className="mx-auto max-w-[560px] text-[12px] text-muted-foreground">
           {t('onboarding.stepRoleDesc')}
         </p>
       </div>

@@ -240,7 +240,7 @@ export function RoleSelector({
     : 'max-w-[760px]';
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-hidden bg-black/0 text-foreground dark:bg-black/16">
+    <div className="fixed inset-0 z-[200] overflow-y-auto overscroll-contain bg-black/0 text-foreground dark:bg-black/16">
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {wallpaperBackdrop?.blurredWallpaperSrc ? (
           <img
@@ -270,11 +270,11 @@ export function RoleSelector({
       </div>
 
       <div
-        className="relative z-10 flex h-full w-full items-center justify-center overflow-hidden px-6 py-6"
+        className="relative z-10 flex min-h-[100dvh] w-full items-start justify-center px-4 py-4 sm:items-center sm:px-6 sm:py-6"
         data-frosted-ui-scope
       >
-        <div className="h-full max-h-[calc(100vh-48px)] w-full overflow-hidden px-1 py-1 sm:px-2 sm:py-2 md:px-3 md:py-3">
-          <div className={`mx-auto flex min-h-full w-full flex-col justify-center overflow-y-auto overflow-x-hidden ${centeredStepShellClassName}`}>
+        <div className="w-full px-1 py-1 sm:px-2 sm:py-2 md:px-3 md:py-3">
+          <div className={`mx-auto flex min-h-[calc(100dvh-2rem)] w-full flex-col justify-center overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom))] sm:min-h-[calc(100dvh-3rem)] ${centeredStepShellClassName}`}>
             {step === 'role' ? (
               <div className="grid h-12 grid-cols-[40px_minmax(0,1fr)_40px] items-center px-6 sm:px-6 md:px-7">
                 <button
@@ -290,7 +290,7 @@ export function RoleSelector({
               </div>
             ) : null}
 
-            <div className={`flex-1 p-6 sm:p-6 md:p-7 ${step === 'role' ? 'pt-3' : ''}`}>
+            <div className={`flex-1 p-4 sm:p-6 md:p-7 ${step === 'role' ? 'pt-3' : 'pt-5 sm:pt-6'}`}>
               {step === 'appearance' ? (
                 <OnboardingAppearanceStep
                   currentTheme={selectedTheme}
