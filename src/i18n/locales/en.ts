@@ -861,6 +861,7 @@ export default {
       edit: "Edit",
       copyLink: "Copy link",
       delete: "Delete",
+      deleteFolder: "Delete folder",
       addShortcut: "Add Shortcut",
       newShortcut: "New Shortcut",
       pinToTop: "Pin to top",
@@ -1013,6 +1014,8 @@ export default {
       cancel: "Cancel",
       title: "Delete Shortcut",
       description: "Are you sure you want to delete this shortcut?",
+      folderTitle: "Delete folder",
+      folderDescription: "Are you sure you want to delete this folder? Everything inside it will be deleted too.",
       bulkTitle: "Delete shortcuts",
       bulkDescription: "Are you sure you want to delete the selected {{count}} shortcuts?"
     },

@@ -231,6 +231,15 @@ export function ShortcutContextMenuContent({
             onCloseContextMenu();
           }}
         />
+        <ContextMenuItem
+          label={t('context.deleteFolder', { defaultValue: '删除文件夹' })}
+          testId="shortcut-context-delete-folder"
+          onSelect={() => {
+            onDeleteShortcut(contextMenu.shortcutIndex, contextMenu.shortcut);
+            onCloseContextMenu();
+          }}
+          variant="destructive"
+        />
       </>
     );
   }
@@ -334,23 +343,31 @@ export function FolderShortcutContextMenuContent({
   onDeleteFolderShortcut,
   onCloseContextMenu,
 }: FolderShortcutContextMenuContentProps) {
+  const isFolder = isShortcutFolder(contextMenu.shortcut);
+
   return (
     <>
+      {!isFolder ? (
+        <>
+          <ContextMenuItem
+            label={t('context.open')}
+            testId="folder-shortcut-context-open"
+            onSelect={() => {
+              onShortcutOpen(contextMenu.shortcut);
+              onCloseContextMenu();
+            }}
+          />
+          <ContextMenuItem
+            label={t('context.copyLink')}
+            testId="folder-shortcut-context-copy-link"
+            onSelect={() => onCopyShortcutLink(contextMenu.shortcut)}
+          />
+        </>
+      ) : null}
       <ContextMenuItem
-        label={t('context.open')}
-        testId="folder-shortcut-context-open"
-        onSelect={() => {
-          onShortcutOpen(contextMenu.shortcut);
-          onCloseContextMenu();
-        }}
-      />
-      <ContextMenuItem
-        label={t('context.copyLink')}
-        testId="folder-shortcut-context-copy-link"
-        onSelect={() => onCopyShortcutLink(contextMenu.shortcut)}
-      />
-      <ContextMenuItem
-        label={t('context.edit')}
+        label={isFolder
+          ? t('context.editFolder', { defaultValue: '重命名文件夹' })
+          : t('context.edit')}
         testId="folder-shortcut-context-edit"
         onSelect={() => {
           onEditFolderShortcut(contextMenu.folderId, contextMenu.shortcut);
@@ -358,8 +375,10 @@ export function FolderShortcutContextMenuContent({
         }}
       />
       <ContextMenuItem
-        label={t('context.delete')}
-        testId="folder-shortcut-context-delete"
+        label={isFolder
+          ? t('context.deleteFolder', { defaultValue: '删除文件夹' })
+          : t('context.delete')}
+        testId={isFolder ? 'folder-shortcut-context-delete-folder' : 'folder-shortcut-context-delete'}
         onSelect={() => {
           onDeleteFolderShortcut(contextMenu.folderId, contextMenu.shortcut);
           onCloseContextMenu();

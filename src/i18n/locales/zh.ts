@@ -1132,6 +1132,7 @@ export default {
       edit: "编辑",
       copyLink: "复制链接",
       delete: "删除",
+      deleteFolder: "删除文件夹",
       addShortcut: "添加快捷方式",
       newShortcut: "新建快捷方式",
       pinToTop: "置顶",
@@ -1288,7 +1289,9 @@ export default {
       confirm: "删除",
       cancel: "取消",
       title: "删除快捷方式",
-      description: "确定要删除这个快捷方式吗？"
+      description: "确定要删除这个快捷方式吗？",
+      folderTitle: "删除文件夹",
+      folderDescription: "确定要删除这个文件夹吗？文件夹里的所有内容也会一起删除。"
     },
     syncConflict: {
       title: "同步冲突",
