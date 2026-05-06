@@ -3,6 +3,7 @@ const DB_NAME = 'LeafTabDB';
 const STORE_NAME = 'wallpapers';
 const DB_VERSION = 1;
 const CUSTOM_WALLPAPER_KEY = 'customWallpaper';
+const CUSTOM_WALLPAPER_GALLERY_KEY = 'customWallpaperGallery';
 const BING_WALLPAPER_BLOB_KEY = 'bingWallpaperBlob';
 
 export const initDB = (): Promise<IDBDatabase> => {
@@ -54,6 +55,37 @@ export const deleteWallpaper = async (): Promise<void> => {
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();
+  });
+};
+
+export const saveWallpaperGallery = async (wallpapers: string[]): Promise<void> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(wallpapers, CUSTOM_WALLPAPER_GALLERY_KEY);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve();
+  });
+};
+
+export const getWallpaperGallery = async (): Promise<string[]> => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(CUSTOM_WALLPAPER_GALLERY_KEY);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const value = request.result;
+      if (!Array.isArray(value)) {
+        resolve([]);
+        return;
+      }
+      resolve(value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0));
+    };
   });
 };
 

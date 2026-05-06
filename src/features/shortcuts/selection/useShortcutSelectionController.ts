@@ -112,6 +112,7 @@ export function useShortcutSelectionController({
     const startIndex = shortcuts.length - sortedSelectedShortcutIndexes.length;
     return sortedSelectedShortcutIndexes.every((index, position) => index === startIndex + position);
   }, [shortcuts.length, sortedSelectedShortcutIndexes]);
+  const selectAllDisabled = shortcuts.length === 0 || selectedShortcutIndexesState.length === shortcuts.length;
 
   const clearShortcutMultiSelect = useCallback(() => {
     setShortcutMultiSelectMode(false);
@@ -138,6 +139,12 @@ export function useShortcutSelectionController({
       return [...prev, shortcutIndex];
     });
   }, []);
+
+  const selectAllShortcuts = useCallback(() => {
+    if (shortcuts.length === 0) return;
+    setSelectedShortcutIndexesState(shortcuts.map((_, index) => index));
+    setContextMenu(null);
+  }, [setContextMenu, shortcuts]);
 
   const requestBulkDeleteShortcuts = useCallback(() => {
     if (selectedShortcutCount <= 0) return;
@@ -252,6 +259,7 @@ export function useShortcutSelectionController({
     selectedFolderCount,
     pinTopDisabled,
     pinBottomDisabled,
+    selectAllDisabled,
     bulkShortcutDeleteOpen,
     setBulkShortcutDeleteOpen,
     multiSelectMoveOpen,
@@ -265,6 +273,7 @@ export function useShortcutSelectionController({
     clearShortcutMultiSelect,
     openShortcutMultiSelect,
     toggleShortcutMultiSelect,
+    selectAllShortcuts,
     requestBulkDeleteShortcuts,
     handleConfirmBulkDeleteShortcuts,
     handlePinSelectedShortcuts,

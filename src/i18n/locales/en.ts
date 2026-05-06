@@ -232,6 +232,19 @@ export default {
         importSuccess: "Data imported successfully",
         importError: "Failed to import data. Please check the file format.",
         exportSuccess: "Data exported successfully",
+        importSource: {
+          title: "Choose import source",
+          description: "Choose which backup source to import. LeafTab will detect the file format, and third-party backups only import shortcuts.",
+          chooseFile: "Choose file",
+          leaftabTitle: "Import from LeafTab",
+          infinityTitle: "Import from Infinity",
+          itabTitle: "Import from iTab",
+          wetabTitle: "Import from WeTab",
+          leaftabDesc: "Import a full backup exported by LeafTab.",
+          infinityDesc: "Import only shortcuts from an Infinity backup.",
+          itabDesc: "Import only shortcuts from an iTab export file.",
+          wetabDesc: "Import only shortcuts from a WeTab export file."
+        },
         importConfirmTitle: "Import and overwrite cloud?",
         importConfirmDesc: "The imported file will overwrite your cloud configuration. A cloud backup will be downloaded first.",
         importConfirmAction: "Import",
@@ -684,6 +697,15 @@ export default {
         maskOpacity: "Black Overlay",
         autoDimInDarkMode: "Auto-dim in Dark Mode",
         autoDimInDarkModeDesc: "When dark mode is on, increase wallpaper overlay automatically for readability.",
+        autoRotate: "Auto Rotate Wallpaper",
+        autoRotateDesc: "Rotate within the current wallpaper type only, based on system time.",
+        autoRotateUnavailableDesc: "This wallpaper type updates on its own and does not support rotation.",
+        rotation: {
+          off: "Do not rotate",
+          hourly: "Hourly",
+          sixHours: "Every 6 hours",
+          daily: "Daily"
+        },
         colorPresets: {
           "aurora-blush": "Aurora Blush",
           "mist-lilac": "Mist Lilac",
@@ -847,6 +869,7 @@ export default {
       select: "Select",
       unselect: "Unselect",
       selectedCount: "{{count}} selected",
+      selectAll: "Select all",
       deleteSelected: "Delete selected",
       moveToScenario: "Move to scenario",
       movedToScenarioToast: "Moved {{count}} item(s) to \"{{scenario}}\"",

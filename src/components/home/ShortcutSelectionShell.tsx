@@ -62,6 +62,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     selectedFolderCount,
     pinTopDisabled,
     pinBottomDisabled,
+    selectAllDisabled,
     bulkShortcutDeleteOpen,
     setBulkShortcutDeleteOpen,
     multiSelectMoveOpen,
@@ -75,6 +76,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
     clearShortcutMultiSelect,
     openShortcutMultiSelect,
     toggleShortcutMultiSelect,
+    selectAllShortcuts,
     requestBulkDeleteShortcuts,
     handleConfirmBulkDeleteShortcuts,
     handlePinSelectedShortcuts,
@@ -157,6 +159,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
           selectedFolderCount={selectedFolderCount}
           pinTopDisabled={pinTopDisabled}
           pinBottomDisabled={pinBottomDisabled}
+          selectAllDisabled={selectAllDisabled}
           multiSelectMoveOpen={multiSelectMoveOpen}
           setMultiSelectMoveOpen={setMultiSelectMoveOpen}
           multiSelectFolderOpen={multiSelectFolderOpen}
@@ -167,6 +170,7 @@ export const ShortcutSelectionShell = memo(function ShortcutSelectionShell({
           onHandleMoveSelectedShortcutsToFolder={handleMoveSelectedShortcutsToFolder}
           onHandleCreateFolder={handleCreateFolder}
           onHandlePinSelectedShortcuts={handlePinSelectedShortcuts}
+          onSelectAllShortcuts={selectAllShortcuts}
           onRequestBulkDeleteShortcuts={requestBulkDeleteShortcuts}
           onClearShortcutMultiSelect={clearShortcutMultiSelect}
         />

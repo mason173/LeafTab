@@ -13,6 +13,7 @@ import { ShortcutIconSettingsDialog } from './ShortcutIconSettingsDialog';
 import ShortcutModal from './ShortcutModal';
 import { SyncPreviewConfirmDialog } from './SyncPreviewConfirmDialog';
 import { BackupScopeDialog } from './BackupScopeDialog';
+import { ImportSourceDialog } from './ImportSourceDialog';
 import { WebdavConfigDialog } from './WebdavConfigDialog';
 import { CloudSyncConfigDialog } from './CloudSyncConfigDialog';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ type AboutLeafTabDialogProps = ComponentProps<typeof AboutLeafTabDialog>;
 type WebdavConfigDialogProps = ComponentProps<typeof WebdavConfigDialog>;
 type CloudSyncConfigDialogProps = ComponentProps<typeof CloudSyncConfigDialog>;
 type BackupScopeDialogProps = ComponentProps<typeof BackupScopeDialog>;
+type ImportSourceDialogProps = ComponentProps<typeof ImportSourceDialog>;
 
 type SyncChoice = 'cloud' | 'local' | 'merge' | null;
 
@@ -97,6 +99,7 @@ export interface AppDialogsProps {
   aboutModalProps: AboutLeafTabDialogProps;
   exportBackupDialogProps: BackupScopeDialogProps;
   importBackupDialogProps: BackupScopeDialogProps;
+  importSourceDialogProps: ImportSourceDialogProps;
   webdavConfigDialogProps: WebdavConfigDialogProps;
   cloudSyncConfigDialogProps: CloudSyncConfigDialogProps;
   confirmSyncDialog: ConfirmSyncDialogProps;
@@ -130,6 +133,7 @@ export function AppDialogs({
   aboutModalProps,
   exportBackupDialogProps,
   importBackupDialogProps,
+  importSourceDialogProps,
   webdavConfigDialogProps,
   cloudSyncConfigDialogProps,
   confirmSyncDialog,
@@ -149,6 +153,7 @@ export function AppDialogs({
   const shouldMountAboutModal = useKeepMountedAfterFirstOpen(aboutModalProps.open);
   const shouldMountExportBackupDialog = useKeepMountedAfterFirstOpen(exportBackupDialogProps.open);
   const shouldMountImportBackupDialog = useKeepMountedAfterFirstOpen(importBackupDialogProps.open);
+  const shouldMountImportSourceDialog = useKeepMountedAfterFirstOpen(importSourceDialogProps.open);
   const shouldMountWebdavConfigDialog = useKeepMountedAfterFirstOpen(webdavConfigDialogProps.open);
   const shouldMountCloudSyncConfigDialog = useKeepMountedAfterFirstOpen(cloudSyncConfigDialogProps.open);
   const shouldMountConfirmSyncDialog = useKeepMountedAfterFirstOpen(confirmSyncDialog.open);
@@ -174,6 +179,7 @@ export function AppDialogs({
       {shouldMountAboutModal ? <AboutLeafTabDialog {...aboutModalProps} /> : null}
       {shouldMountExportBackupDialog ? <BackupScopeDialog {...exportBackupDialogProps} /> : null}
       {shouldMountImportBackupDialog ? <BackupScopeDialog {...importBackupDialogProps} /> : null}
+      {shouldMountImportSourceDialog ? <ImportSourceDialog {...importSourceDialogProps} /> : null}
       {shouldMountWebdavConfigDialog ? <WebdavConfigDialog {...webdavConfigDialogProps} /> : null}
       {shouldMountCloudSyncConfigDialog ? <CloudSyncConfigDialog {...cloudSyncConfigDialogProps} /> : null}
 

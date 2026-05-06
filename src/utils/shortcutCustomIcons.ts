@@ -7,8 +7,8 @@ import {
 const SHORTCUT_CUSTOM_ICON_PREFIX = 'shortcut_custom_icon_v1:';
 const SHORTCUT_CUSTOM_ICON_INDEX_KEY = 'shortcut_custom_icon_v1:index';
 const MAX_CUSTOM_SHORTCUT_ICONS = 160;
-const MAX_CUSTOM_ICON_DATA_LENGTH = 220_000;
-const CUSTOM_ICON_SIZE = 64;
+const MAX_CUSTOM_ICON_DATA_LENGTH = 1_200_000;
+const CUSTOM_ICON_SIZE = 256;
 export const SHORTCUT_CUSTOM_ICON_CHANGED_EVENT = 'leaftab-shortcut-custom-icon-changed';
 
 type ShortcutCustomIconChangedDetail = {

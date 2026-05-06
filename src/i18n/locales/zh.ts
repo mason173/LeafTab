@@ -235,6 +235,19 @@ export default {
         importSuccess: "数据导入成功",
         importError: "数据导入失败，请检查文件格式",
         exportSuccess: "数据导出成功",
+        importSource: {
+          title: "选择导入来源",
+          description: "选择要导入的备份来源。LeafTab 会按来源识别文件格式，第三方备份只会导入快捷方式。",
+          chooseFile: "选择文件",
+          leaftabTitle: "从 LeafTab 导入",
+          infinityTitle: "从 Infinity 导入",
+          itabTitle: "从 iTab 导入",
+          wetabTitle: "从 WeTab 导入",
+          leaftabDesc: "导入 LeafTab 导出的完整备份文件。",
+          infinityDesc: "只导入 Infinity 备份里的快捷方式内容。",
+          itabDesc: "只导入 iTab 导出文件里的快捷方式内容。",
+          wetabDesc: "只导入 WeTab 导出文件里的快捷方式内容。"
+        },
         importConfirmTitle: "导入并覆盖云端？",
         importConfirmDesc: "导入后将以导入文件为准并覆盖云端配置。系统会先自动下载一份云端备份。",
         importConfirmAction: "确认导入",
@@ -676,6 +689,15 @@ export default {
         maskOpacity: "黑色遮罩",
         autoDimInDarkMode: "深色模式自动调暗壁纸",
         autoDimInDarkModeDesc: "深色模式下自动额外增加黑色遮罩，提升可读性。",
+        autoRotate: "自动更换壁纸",
+        autoRotateDesc: "只在当前壁纸类型内按系统时间轮换，不会切换到别的类型。",
+        autoRotateUnavailableDesc: "当前类型会自行更新，暂不支持自动轮换。",
+        rotation: {
+          off: "不更换",
+          hourly: "每小时",
+          sixHours: "每 6 小时",
+          daily: "每天"
+        },
         colorPresets: {
           "aurora-blush": "极光粉雾",
           "mist-lilac": "晨雾紫",
@@ -1118,6 +1140,7 @@ export default {
       select: "选择",
       unselect: "取消选择",
       selectedCount: "已选 {{count}} 项",
+      selectAll: "全选",
       deleteSelected: "删除已选",
       moveToScenario: "移动到情景模式",
       movedToScenarioToast: "已将 {{count}} 项移动到“{{scenario}}”",

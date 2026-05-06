@@ -29,6 +29,7 @@ type ShortcutIconSettingsDialogProps = AppDialogsProps['shortcutIconSettingsDial
 type AdminModalProps = AppDialogsProps['adminModalProps'];
 type AboutModalProps = AppDialogsProps['aboutModalProps'];
 type BackupDialogProps = AppDialogsProps['exportBackupDialogProps'];
+type ImportSourceDialogProps = AppDialogsProps['importSourceDialogProps'];
 type WebdavConfigDialogProps = AppDialogsProps['webdavConfigDialogProps'];
 type CloudSyncConfigDialogProps = AppDialogsProps['cloudSyncConfigDialogProps'];
 type ImportConfirmDialogProps = AppDialogsProps['importConfirmDialog'];
@@ -99,6 +100,8 @@ export type SettingsDialogsInput = {
 };
 
 export type UtilityDialogsInput = {
+  importSourceDialogOpen: boolean;
+  setImportSourceDialogOpen: (open: boolean) => void;
   searchSettingsOpen: SearchSettingsModalProps['isOpen'];
   setSearchSettingsOpen: SearchSettingsModalProps['onOpenChange'];
   onBackToSettings: SearchSettingsModalProps['onBackToSettings'];
@@ -294,7 +297,7 @@ export function useShortcutAppDialogsController({
     showTime: settingsDialogs.showTime,
     onShowTimeChange: settingsDialogs.onShowTimeChange,
     onExportData: syncActions.handleExportData,
-    onImportData: syncActions.handleImportData,
+    onOpenImportSourceDialog: () => utilityDialogs.setImportSourceDialogOpen(true),
     wallpaperMode: settingsDialogs.wallpaperMode,
     onWallpaperModeChange: settingsDialogs.onWallpaperModeChange,
     bingWallpaper: settingsDialogs.bingWallpaper,
@@ -409,6 +412,13 @@ export function useShortcutAppDialogsController({
     },
     onConfirm: syncActions.executeExportData,
   } satisfies BackupDialogProps;
+
+  const importSourceDialogProps = {
+    open: utilityDialogs.importSourceDialogOpen,
+    onOpenChange: utilityDialogs.setImportSourceDialogOpen,
+    onBackToSettings: utilityDialogs.onBackToSettings,
+    onImportData: syncActions.handleImportData,
+  } satisfies ImportSourceDialogProps;
 
   const importBackupDialogProps = {
     open: syncDialogState.importBackupDialogOpen,
@@ -545,6 +555,7 @@ export function useShortcutAppDialogsController({
       aboutModalProps,
       exportBackupDialogProps,
       importBackupDialogProps,
+      importSourceDialogProps,
       webdavConfigDialogProps,
       cloudSyncConfigDialogProps,
       confirmSyncDialog,

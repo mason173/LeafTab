@@ -6,6 +6,7 @@ import {
   ShortcutSelectionDeleteAction,
   ShortcutSelectionFolderMoveAction,
   ShortcutSelectionPinAction,
+  ShortcutSelectionSelectAllAction,
   ShortcutSelectionScenarioMoveAction,
 } from '@/features/shortcuts/selection/ShortcutSelectionToolbarActions';
 import type { ScenarioMode, Shortcut } from '@/types';
@@ -19,6 +20,7 @@ type ShortcutSelectionToolbarProps = {
   selectedFolderCount: number;
   pinTopDisabled: boolean;
   pinBottomDisabled: boolean;
+  selectAllDisabled: boolean;
   multiSelectMoveOpen: boolean;
   setMultiSelectMoveOpen: (value: boolean | ((prev: boolean) => boolean)) => void;
   multiSelectFolderOpen: boolean;
@@ -29,6 +31,7 @@ type ShortcutSelectionToolbarProps = {
   onHandleMoveSelectedShortcutsToFolder: (targetFolderId: string) => void;
   onHandleCreateFolder: () => void;
   onHandlePinSelectedShortcuts: (position: 'top' | 'bottom') => void;
+  onSelectAllShortcuts: () => void;
   onRequestBulkDeleteShortcuts: () => void;
   onClearShortcutMultiSelect: () => void;
 };
@@ -42,6 +45,7 @@ export function ShortcutSelectionToolbar({
   selectedFolderCount,
   pinTopDisabled,
   pinBottomDisabled,
+  selectAllDisabled,
   multiSelectMoveOpen,
   setMultiSelectMoveOpen,
   multiSelectFolderOpen,
@@ -52,6 +56,7 @@ export function ShortcutSelectionToolbar({
   onHandleMoveSelectedShortcutsToFolder,
   onHandleCreateFolder,
   onHandlePinSelectedShortcuts,
+  onSelectAllShortcuts,
   onRequestBulkDeleteShortcuts,
   onClearShortcutMultiSelect,
 }: ShortcutSelectionToolbarProps) {
@@ -106,6 +111,11 @@ export function ShortcutSelectionToolbar({
           position="bottom"
           disabled={pinBottomDisabled}
           onPinSelectedShortcuts={onHandlePinSelectedShortcuts}
+        />
+        <ShortcutSelectionSelectAllAction
+          t={t}
+          disabled={selectAllDisabled}
+          onSelectAllShortcuts={onSelectAllShortcuts}
         />
         <ShortcutSelectionDeleteAction
           t={t}

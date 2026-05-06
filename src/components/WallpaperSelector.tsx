@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/switch";
 import { RiImageFill } from "@/icons/ri-compat";
@@ -14,6 +15,7 @@ import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
 import type { DynamicWallpaperId } from "@/components/wallpaper/dynamicWallpapers";
+import type { RotatableWallpaperMode, WallpaperRotationInterval, WallpaperRotationSettings } from "@/wallpaper/rotation";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   function WallpaperDialogTrigger({ className = "", ...props }, ref) {
@@ -40,6 +42,8 @@ interface WallpaperSelectorProps {
   onRefreshBingWallpaper?: () => Promise<BingWallpaperRefreshResult> | BingWallpaperRefreshResult;
   weatherCode: number;
   customWallpaper: string | null;
+  customWallpaperGallery: string[];
+  onAppendCustomWallpapers: (wallpapers: string[]) => void | Promise<void>;
   onCustomWallpaperChange: (url: string) => void;
   colorWallpaperId: string;
   onColorWallpaperIdChange: (id: string) => void;
@@ -50,6 +54,8 @@ interface WallpaperSelectorProps {
   onWallpaperMaskOpacityChange: (value: number) => void;
   darkModeAutoDimWallpaperEnabled: boolean;
   onDarkModeAutoDimWallpaperEnabledChange: (enabled: boolean) => void;
+  wallpaperRotationSettings: WallpaperRotationSettings;
+  onWallpaperRotationIntervalChange: (mode: RotatableWallpaperMode, interval: WallpaperRotationInterval) => void;
   hideWeather?: boolean;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -64,6 +70,8 @@ export default function WallpaperSelector({
   isBingWallpaperRefreshing = false,
   onRefreshBingWallpaper,
   customWallpaper,
+  customWallpaperGallery,
+  onAppendCustomWallpapers,
   onCustomWallpaperChange,
   colorWallpaperId,
   onColorWallpaperIdChange,
@@ -74,6 +82,8 @@ export default function WallpaperSelector({
   onWallpaperMaskOpacityChange,
   darkModeAutoDimWallpaperEnabled,
   onDarkModeAutoDimWallpaperEnabledChange,
+  wallpaperRotationSettings,
+  onWallpaperRotationIntervalChange,
   hideWeather = false,
   trigger,
   open,
@@ -87,6 +97,10 @@ export default function WallpaperSelector({
   const isMaskSliderIsolation = isMaskSliderInteracting && (mode === "bing" || mode === "custom" || mode === "weather");
   const isolationFadeClass = "transition-opacity duration-220 ease-out";
   const previewWallpaperMaskOpacity = effectiveWallpaperMaskOpacity ?? wallpaperMaskOpacity;
+  const rotationSelectDisabled = activeTab === "bing" || activeTab === "weather";
+  const rotationSelectValue = activeTab === "dynamic" || activeTab === "color" || activeTab === "custom"
+    ? wallpaperRotationSettings[activeTab]
+    : "off";
 
   useEffect(() => {
     setActiveTab(mode);
@@ -201,6 +215,37 @@ export default function WallpaperSelector({
                   <SwitchThumb className="h-full aspect-square rounded-full" pressedAnimation={{ width: 22 }} />
                 </Switch>
               </div>
+              <div className="mt-2 flex items-center justify-between gap-3 px-1 py-1">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none">
+                    {t("weather.wallpaper.autoRotate", { defaultValue: "自动更换壁纸" })}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
+                    {rotationSelectDisabled
+                      ? t("weather.wallpaper.autoRotateUnavailableDesc", { defaultValue: "当前类型会自行更新，暂不支持自动轮换。" })
+                      : t("weather.wallpaper.autoRotateDesc", { defaultValue: "只在当前壁纸类型内按系统时间轮换，不会切换到别的类型。" })}
+                  </p>
+                </div>
+                <Select
+                  value={rotationSelectValue}
+                  onValueChange={(value) => {
+                    if (activeTab === "dynamic" || activeTab === "color" || activeTab === "custom") {
+                      onWallpaperRotationIntervalChange(activeTab, value as WallpaperRotationInterval);
+                    }
+                  }}
+                  disabled={rotationSelectDisabled}
+                >
+                  <SelectTrigger className="h-9 w-[132px] border-none text-foreground focus:ring-0 focus:ring-offset-0 disabled:opacity-45">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent portalled={false} className="bg-popover border-border text-popover-foreground">
+                    <SelectItem value="off">{t("weather.wallpaper.rotation.off", { defaultValue: "不更换" })}</SelectItem>
+                    <SelectItem value="hourly">{t("weather.wallpaper.rotation.hourly", { defaultValue: "每小时" })}</SelectItem>
+                    <SelectItem value="six-hours">{t("weather.wallpaper.rotation.sixHours", { defaultValue: "每 6 小时" })}</SelectItem>
+                    <SelectItem value="daily">{t("weather.wallpaper.rotation.daily", { defaultValue: "每天" })}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="px-6 pb-6">
@@ -249,9 +294,11 @@ export default function WallpaperSelector({
               <CustomWallpaperPanel
                 mode={mode}
                 customWallpaper={customWallpaper}
+                customWallpaperGallery={customWallpaperGallery}
                 wallpaperMaskOpacity={wallpaperMaskOpacity}
                 wallpaperMaskPreviewOpacity={previewWallpaperMaskOpacity}
                 onWallpaperMaskOpacityChange={onWallpaperMaskOpacityChange}
+                onAppendCustomWallpapers={onAppendCustomWallpapers}
                 onCustomWallpaperChange={onCustomWallpaperChange}
                 onModeChange={onModeChange}
                 isMaskSliderIsolation={isMaskSliderIsolation}

@@ -234,6 +234,7 @@ export default function App() {
   const [leafTabSyncDialogOpen, setLeafTabSyncDialogOpen] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [aboutModalOpen, setAboutModalOpen] = useState(false);
+  const [importSourceDialogOpen, setImportSourceDialogOpen] = useState(false);
   const [searchSettingsOpen, setSearchSettingsOpen] = useState(false);
   const [shortcutGuideOpen, setShortcutGuideOpen] = useState(false);
   const [shortcutIconSettingsOpen, setShortcutIconSettingsOpen] = useState(false);
@@ -1311,6 +1312,10 @@ export default function App() {
     refreshBingWallpaper,
     customWallpaperLoaded,
     customWallpaper, setCustomWallpaper,
+    customWallpaperGallery,
+    appendCustomWallpapers,
+    wallpaperRotationSettings,
+    setWallpaperRotationInterval,
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
     colorWallpaperId, setColorWallpaperId,
@@ -1453,6 +1458,7 @@ export default function App() {
       wallpaperMaskOpacity,
       darkModeAutoDimWallpaperEnabled,
       colorWallpaperId,
+      wallpaperRotationSettings,
     });
   }, [
     accentColorSetting,
@@ -1487,6 +1493,7 @@ export default function App() {
     visualEffectsLevel,
     wallpaperMaskOpacity,
     wallpaperMode,
+    wallpaperRotationSettings,
   ]);
 
   const stripWallpaperFromCloudSyncPreferences = useCallback((preferences: SyncablePreferences): SyncablePreferences => {
@@ -1496,6 +1503,11 @@ export default function App() {
       wallpaperMaskOpacity: 10,
       darkModeAutoDimWallpaperEnabled: true,
       colorWallpaperId: DEFAULT_COLOR_WALLPAPER_ID,
+      wallpaperRotationSettings: {
+        dynamic: 'off',
+        color: 'off',
+        custom: 'off',
+      },
     });
   }, []);
 
@@ -1512,6 +1524,7 @@ export default function App() {
           wallpaperMaskOpacity: localPreferences.wallpaperMaskOpacity,
           darkModeAutoDimWallpaperEnabled: localPreferences.darkModeAutoDimWallpaperEnabled,
           colorWallpaperId: localPreferences.colorWallpaperId,
+          wallpaperRotationSettings: localPreferences.wallpaperRotationSettings,
         }),
       },
     };
@@ -1562,6 +1575,9 @@ export default function App() {
     setWallpaperMaskOpacity(normalized.wallpaperMaskOpacity);
     setDarkModeAutoDimWallpaperEnabled(normalized.darkModeAutoDimWallpaperEnabled);
     setColorWallpaperId(normalized.colorWallpaperId);
+    setWallpaperRotationInterval('dynamic', normalized.wallpaperRotationSettings.dynamic);
+    setWallpaperRotationInterval('color', normalized.wallpaperRotationSettings.color);
+    setWallpaperRotationInterval('custom', normalized.wallpaperRotationSettings.custom);
     if (normalized.wallpaperMode) {
       setWallpaperMode(normalized.wallpaperMode);
     } else {
@@ -1609,6 +1625,7 @@ export default function App() {
     setTimeFont,
     setVisualEffectsLevel,
     setWallpaperMaskOpacity,
+    setWallpaperRotationInterval,
     setWallpaperMode,
     theme,
     wallpaperMode,
@@ -1818,6 +1835,7 @@ export default function App() {
   }, [setSettingsOpen]);
 
   const handleBackToMainSettings = useCallback(() => {
+    setImportSourceDialogOpen(false);
     setSearchSettingsOpen(false);
     setShortcutGuideOpen(false);
     setShortcutIconSettingsOpen(false);
@@ -1835,6 +1853,7 @@ export default function App() {
     setSettingsOpen(true);
   }, [
     setSettingsOpen,
+    setImportSourceDialogOpen,
     syncActions,
   ]);
 
@@ -2430,6 +2449,7 @@ export default function App() {
   const nonSyncExternalDialogActivity = (
     isAuthModalOpen
     || settingsOpen
+    || importSourceDialogOpen
     || searchSettingsOpen
     || shortcutGuideOpen
     || shortcutIconSettingsOpen
@@ -2508,6 +2528,7 @@ export default function App() {
     onPrivacyConsentChange: handlePrivacySwitchChange,
     onOpenAdminModal: handleOpenAdminModal,
     onOpenAboutModal: handleOpenAboutModal,
+    setImportSourceDialogOpen,
     setLeafTabSyncDialogOpen,
     setShortcutGuideOpen,
   }), [
@@ -2530,6 +2551,7 @@ export default function App() {
     requestLogoutConfirmation,
     setColorWallpaperId,
     setDisplayMode,
+    setImportSourceDialogOpen,
     setLeafTabSyncDialogOpen,
     setOpenInNewTab,
     setShortcutGuideOpen,
@@ -2558,6 +2580,8 @@ export default function App() {
     visualEffectsPolicy.disableSyncCardAccentAnimation,
   ]);
   const shortcutAppDialogsUtilityDialogs = useMemo(() => ({
+    importSourceDialogOpen,
+    setImportSourceDialogOpen,
     searchSettingsOpen,
     setSearchSettingsOpen,
     onBackToSettings: handleBackToMainSettings,
@@ -2608,6 +2632,7 @@ export default function App() {
     handleGridHitDebugEnabledChange,
     handleWeatherDebugApply,
     handleWeatherDebugEnabledChange,
+    importSourceDialogOpen,
     searchAnyKeyCaptureEnabled,
     searchBarPosition,
     searchCalculatorEnabled,
@@ -2618,6 +2643,7 @@ export default function App() {
     searchSiteShortcutEnabled,
     setAboutModalOpen,
     setAdminModalOpen,
+    setImportSourceDialogOpen,
     setCustomApiName,
     setCustomApiUrl,
     setSearchAnyKeyCaptureEnabled,
@@ -2734,6 +2760,10 @@ export default function App() {
                   <LazyWallpaperSelector
                     {...wallpaperSelectorLayerProps}
                     mode={effectiveWallpaperMode}
+                    customWallpaperGallery={customWallpaperGallery}
+                    onAppendCustomWallpapers={appendCustomWallpapers}
+                    wallpaperRotationSettings={wallpaperRotationSettings}
+                    onWallpaperRotationIntervalChange={setWallpaperRotationInterval}
                     hideWeather={firefox}
                     open={wallpaperSettingsOpen}
                     onOpenChange={setWallpaperSettingsOpen}

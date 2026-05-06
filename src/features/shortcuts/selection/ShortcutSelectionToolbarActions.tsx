@@ -3,6 +3,7 @@ import {
   RiAddLine,
   RiArrowDownLine,
   RiArrowUpLine,
+  RiCheckboxCircleFill,
   RiCloseLine,
   RiDashboardFill,
   RiDeleteBinLine,
@@ -285,6 +286,30 @@ export function ShortcutSelectionDeleteAction({
       onClick={onRequestBulkDeleteShortcuts}
     >
       <RiDeleteBinLine className="size-3.5" />
+    </SelectionToolbarActionButton>
+  );
+}
+
+type ShortcutSelectionSelectAllActionProps = {
+  t: SelectionToolbarTranslation;
+  disabled: boolean;
+  onSelectAllShortcuts: () => void;
+};
+
+export function ShortcutSelectionSelectAllAction({
+  t,
+  disabled,
+  onSelectAllShortcuts,
+}: ShortcutSelectionSelectAllActionProps) {
+  return (
+    <SelectionToolbarActionButton
+      testId="shortcut-multi-select-select-all"
+      title={t('context.selectAll', { defaultValue: '全选' })}
+      disabled={disabled}
+      className="h-10 w-10"
+      onClick={onSelectAllShortcuts}
+    >
+      <RiCheckboxCircleFill className="size-3.5" />
     </SelectionToolbarActionButton>
   );
 }

@@ -14,6 +14,10 @@ import { DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpape
 import { clampShortcutGridColumns } from '@/components/shortcuts/shortcutCardVariant';
 import { DEFAULT_ACCENT_COLOR } from '@/utils/accentColor';
 import {
+  DEFAULT_WALLPAPER_ROTATION_SETTINGS,
+  normalizeWallpaperRotationSettings,
+} from '@/wallpaper/rotation';
+import {
   clampShortcutIconCornerRadius,
   DEFAULT_SHORTCUT_ICON_APPEARANCE,
   DEFAULT_SHORTCUT_ICON_CORNER_RADIUS,
@@ -50,6 +54,7 @@ const WALLPAPER_MODE_KEY = 'wallpaperMode';
 const WALLPAPER_MASK_OPACITY_KEY = 'wallpaperMaskOpacity';
 const WALLPAPER_AUTO_DIM_KEY = 'darkModeAutoDimWallpaperEnabled';
 const COLOR_WALLPAPER_ID_KEY = 'colorWallpaperId';
+const WALLPAPER_ROTATION_SETTINGS_KEY = 'wallpaperRotationSettings';
 const MANUAL_LOCATION_KEY = 'weather_manual_location_v3';
 
 export const SYNCABLE_PREFERENCES_APPLIED_EVENT = 'leaftab-syncable-preferences-applied';
@@ -203,6 +208,7 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   wallpaperMaskOpacity: 10,
   darkModeAutoDimWallpaperEnabled: true,
   colorWallpaperId: DEFAULT_COLOR_WALLPAPER_ID,
+  wallpaperRotationSettings: DEFAULT_WALLPAPER_ROTATION_SETTINGS,
   weatherManualLocation: null,
 });
 
@@ -276,6 +282,7 @@ export const normalizeSyncablePreferences = (
     colorWallpaperId: typeof candidate.colorWallpaperId === 'string' && candidate.colorWallpaperId.trim()
       ? candidate.colorWallpaperId
       : defaults.colorWallpaperId,
+    wallpaperRotationSettings: normalizeWallpaperRotationSettings(candidate.wallpaperRotationSettings),
     weatherManualLocation: normalizeManualLocation(candidate.weatherManualLocation),
   };
 };
@@ -338,6 +345,15 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     wallpaperMaskOpacity: Number(localStorage.getItem(WALLPAPER_MASK_OPACITY_KEY) || '10'),
     darkModeAutoDimWallpaperEnabled: readStoredBoolean(WALLPAPER_AUTO_DIM_KEY, true),
     colorWallpaperId: localStorage.getItem(COLOR_WALLPAPER_ID_KEY) || DEFAULT_COLOR_WALLPAPER_ID,
+    wallpaperRotationSettings: normalizeWallpaperRotationSettings(
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem(WALLPAPER_ROTATION_SETTINGS_KEY) || 'null');
+        } catch {
+          return null;
+        }
+      })(),
+    ),
     weatherManualLocation: manualLocation,
   });
 };
@@ -395,6 +411,7 @@ export const writeSyncablePreferencesToStorage = (preferences: SyncablePreferenc
   localStorage.setItem(WALLPAPER_MASK_OPACITY_KEY, String(normalized.wallpaperMaskOpacity));
   localStorage.setItem(WALLPAPER_AUTO_DIM_KEY, String(normalized.darkModeAutoDimWallpaperEnabled));
   localStorage.setItem(COLOR_WALLPAPER_ID_KEY, normalized.colorWallpaperId);
+  localStorage.setItem(WALLPAPER_ROTATION_SETTINGS_KEY, JSON.stringify(normalized.wallpaperRotationSettings));
   if (normalized.weatherManualLocation) {
     localStorage.setItem(MANUAL_LOCATION_KEY, JSON.stringify({
       ...normalized.weatherManualLocation,

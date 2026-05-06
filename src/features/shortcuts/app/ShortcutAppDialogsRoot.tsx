@@ -59,6 +59,7 @@ export const ShortcutAppDialogsRoot = memo(function ShortcutAppDialogsRoot({
       || uiState.shortcutDeleteOpen
       || uiState.scenarioCreateOpen
       || uiState.scenarioEditOpen
+      || utilityDialogs.importSourceDialogOpen
       || syncDialogState.exportBackupDialogOpen
       || syncDialogState.importBackupDialogOpen
       || syncDialogState.importConfirmOpen,

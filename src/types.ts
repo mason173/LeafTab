@@ -12,6 +12,7 @@ import type { ShortcutCardVariant } from '@/components/shortcuts/shortcutCardVar
 import type { DisplayMode } from '@/displayMode/config';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import type { VisualEffectsLevel } from '@/hooks/useVisualEffectsPolicy';
+import type { WallpaperRotationSettings } from '@/wallpaper/rotation';
 
 export type ShortcutVisualMode = CoreShortcutVisualMode;
 export type ShortcutIconAppearance = CoreShortcutIconAppearance;
@@ -63,6 +64,7 @@ export interface SyncablePreferences {
   wallpaperMaskOpacity: number;
   darkModeAutoDimWallpaperEnabled: boolean;
   colorWallpaperId: string;
+  wallpaperRotationSettings: WallpaperRotationSettings;
   weatherManualLocation: WeatherManualLocation | null;
 }
 

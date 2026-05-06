@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   RiCheckFill,
   RiCheckboxBlankFill,
@@ -19,7 +19,6 @@ import { useTheme } from "next-themes";
 import type { AboutLeafTabModalTab } from "./AboutLeafTabDialog";
 import type { WebdavConfig } from "@/types/webdav";
 import { toast } from "./ui/sonner";
-import { parseLeafTabLocalBackupImport, type LeafTabLocalBackupImportData } from "@/sync/leaftab";
 /// <reference types="chrome" />
 import {
   Select,
@@ -70,7 +69,7 @@ interface SettingsModalProps {
   showTime: boolean;
   onShowTimeChange: (checked: boolean) => void;
   onExportData: () => void | Promise<void>;
-  onImportData: (data: LeafTabLocalBackupImportData) => void | Promise<void>;
+  onOpenImportSourceDialog: () => void;
   wallpaperMode: WallpaperMode;
   onWallpaperModeChange: (mode: WallpaperMode) => void;
   bingWallpaper: string;
@@ -122,7 +121,7 @@ export default function SettingsModal({
   showTime,
   onShowTimeChange,
   onExportData,
-  onImportData,
+  onOpenImportSourceDialog,
   wallpaperMode,
   onWallpaperModeChange,
   bingWallpaper,
@@ -174,7 +173,6 @@ export default function SettingsModal({
   const [mounted, setMounted] = useState(false);
   const [accentColor, setAccentColor] = useState<string>(DEFAULT_ACCENT_COLOR);
   const [recommendedAccentPalette, setRecommendedAccentPalette] = useState<string[]>(DEFAULT_WALLPAPER_ACCENT_PALETTE);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [appVersion, setAppVersion] = useState<string>('—');
   const adminModeTapCountRef = useRef(0);
   const adminModeTapTimerRef = useRef<number | null>(null);
@@ -318,44 +316,6 @@ export default function SettingsModal({
     window.dispatchEvent(new Event('leaftab-accent-color-changed'));
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      let payload: any = null;
-      try {
-        const content = e.target?.result as string;
-        const data = JSON.parse(content);
-        payload = parseLeafTabLocalBackupImport(data);
-        if (!payload) throw new Error('Invalid format');
-      } catch (err) {
-        console.error('Import failed:', err);
-        toast.error(t('settings.backup.importError'));
-        event.target.value = '';
-        return;
-      }
-
-      Promise.resolve(onImportData(payload))
-        .catch((err) => {
-          // apply/import flow already reports toast in upper layer.
-          console.error('Apply imported data failed:', err);
-        })
-        .finally(() => {
-          event.target.value = '';
-        });
-    };
-    reader.onerror = () => {
-      toast.error(t('settings.backup.importError'));
-      event.target.value = '';
-    };
-    reader.readAsText(file);
-  };
   const handleOpenShortcutIconSettings = () => {
     onOpenChange(false);
     onOpenShortcutIconSettings?.();
@@ -657,7 +617,10 @@ export default function SettingsModal({
                 variant="secondary" 
                 size="sm" 
                 className="flex-1 gap-2 rounded-xl"
-                onClick={handleImportClick}
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenImportSourceDialog();
+                }}
               >
                 <RiUpload2Fill className="size-4" />
                 {t('settings.backup.import')}
@@ -674,13 +637,6 @@ export default function SettingsModal({
                 <RiDownload2Fill className="size-4" />
                 {t('settings.backup.export')}
               </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept=".leaftab"
-                onChange={handleFileChange}
-              />
             </div>
           </div>
 
