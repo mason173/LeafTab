@@ -133,6 +133,7 @@ export type LeafTabSyncPackKind =
   | 'preferences'
   | 'scenarios'
   | 'shortcuts'
+  | 'custom-shortcut-icons'
   | 'shortcut-orders'
   | 'bookmark-folders'
   | 'bookmark-items'
@@ -168,6 +169,7 @@ export interface LeafTabSyncCommitFile {
   summary: {
     scenarios: number;
     shortcuts: number;
+    customShortcutIcons: number;
     bookmarkFolders: number;
     bookmarkItems: number;
     tombstones: number;
@@ -179,6 +181,7 @@ export interface LeafTabSyncSnapshot {
   preferences?: LeafTabSyncPreferencesState | null;
   scenarios: Record<string, LeafTabSyncScenarioEntity>;
   shortcuts: Record<string, LeafTabSyncShortcutEntity>;
+  customShortcutIcons: Record<string, string>;
   bookmarkFolders: Record<string, LeafTabSyncBookmarkFolderEntity>;
   bookmarkItems: Record<string, LeafTabSyncBookmarkItemEntity>;
   scenarioOrder: LeafTabSyncScenarioOrder;
@@ -280,6 +283,7 @@ export const createLeafTabSyncCommitFile = (params: {
     summary: {
       scenarios: Object.keys(params.snapshot.scenarios).length,
       shortcuts: Object.keys(params.snapshot.shortcuts).length,
+      customShortcutIcons: Object.keys(params.snapshot.customShortcutIcons || {}).length,
       bookmarkFolders: Object.keys(params.snapshot.bookmarkFolders).length,
       bookmarkItems: Object.keys(params.snapshot.bookmarkItems).length,
       tombstones: Object.keys(params.snapshot.tombstones).length,
@@ -312,6 +316,7 @@ export const normalizeLeafTabSyncSnapshot = (
       : null,
     scenarios,
     shortcuts: snapshot.shortcuts || {},
+    customShortcutIcons: snapshot.customShortcutIcons || {},
     bookmarkFolders: snapshot.bookmarkFolders || {},
     bookmarkItems: snapshot.bookmarkItems || {},
     scenarioOrder: snapshot.scenarioOrder || {

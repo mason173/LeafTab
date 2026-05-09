@@ -86,6 +86,7 @@ const createLegacyDriver = (
         scenarioModes: payload.scenarioModes,
         selectedScenarioId: payload.selectedScenarioId,
         scenarioShortcuts: payload.scenarioShortcuts,
+        customShortcutIcons: payload.customShortcutIcons,
       }));
     },
   };

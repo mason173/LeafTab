@@ -11,7 +11,6 @@ const VIEWPORT_RECT_BURST_FRAME_COUNT = 12;
 const VIEWPORT_RECT_ANIMATION_FRAME_COUNT = 20;
 const VIEWPORT_RECT_POINTER_DRAG_FRAME_COUNT = 2;
 const VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT = 8;
-const VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS = 240;
 
 type RectListener = (rect: ViewportRect | null) => void;
 type SubscriptionEntry = {
@@ -21,7 +20,6 @@ type SubscriptionEntry = {
 
 const viewportRectSubscriptions = new Map<HTMLElement, SubscriptionEntry>();
 let viewportRectRafId = 0;
-let viewportRectIntervalId = 0;
 let viewportRectBurstFramesRemaining = 0;
 let viewportRectResizeObserver: ResizeObserver | null = null;
 let viewportRectListenersAttached = false;
@@ -75,6 +73,7 @@ function flushViewportRectFrame() {
 
 function requestViewportRectSync(burstFrames = 0) {
   if (typeof window === 'undefined') return;
+  if (typeof document !== 'undefined' && document.hidden) return;
   viewportRectBurstFramesRemaining = Math.max(viewportRectBurstFramesRemaining, burstFrames);
   if (viewportRectRafId) return;
   viewportRectRafId = window.requestAnimationFrame(flushViewportRectFrame);
@@ -102,6 +101,19 @@ function handleViewportRectPointerRelease() {
   requestViewportRectSync(VIEWPORT_RECT_POINTER_SETTLE_FRAME_COUNT);
 }
 
+function handleViewportRectVisibilityChange() {
+  if (document.hidden) {
+    if (viewportRectRafId) {
+      window.cancelAnimationFrame(viewportRectRafId);
+      viewportRectRafId = 0;
+    }
+    viewportRectBurstFramesRemaining = 0;
+    return;
+  }
+
+  requestViewportRectSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
+}
+
 function attachViewportRectListeners() {
   if (viewportRectListenersAttached || typeof window === 'undefined') return;
 
@@ -116,15 +128,12 @@ function attachViewportRectListeners() {
   document.addEventListener('transitionend', handleViewportRectAnimatedChange, true);
   document.addEventListener('animationstart', handleViewportRectAnimatedChange, true);
   document.addEventListener('animationend', handleViewportRectAnimatedChange, true);
+  document.addEventListener('visibilitychange', handleViewportRectVisibilityChange);
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportRectViewportChange, { passive: true });
     window.visualViewport.addEventListener('scroll', handleViewportRectViewportChange, { passive: true });
   }
-
-  viewportRectIntervalId = window.setInterval(() => {
-    requestViewportRectSync();
-  }, VIEWPORT_RECT_SAFETY_SYNC_INTERVAL_MS);
 
   viewportRectResizeObserver = new ResizeObserver(() => {
     requestViewportRectSync(VIEWPORT_RECT_BURST_FRAME_COUNT);
@@ -144,10 +153,6 @@ function detachViewportRectListeners() {
     window.cancelAnimationFrame(viewportRectRafId);
     viewportRectRafId = 0;
   }
-  if (viewportRectIntervalId) {
-    window.clearInterval(viewportRectIntervalId);
-    viewportRectIntervalId = 0;
-  }
 
   viewportRectResizeObserver?.disconnect();
   viewportRectResizeObserver = null;
@@ -163,6 +168,7 @@ function detachViewportRectListeners() {
   document.removeEventListener('transitionend', handleViewportRectAnimatedChange, true);
   document.removeEventListener('animationstart', handleViewportRectAnimatedChange, true);
   document.removeEventListener('animationend', handleViewportRectAnimatedChange, true);
+  document.removeEventListener('visibilitychange', handleViewportRectVisibilityChange);
 
   if (window.visualViewport) {
     window.visualViewport.removeEventListener('resize', handleViewportRectViewportChange);

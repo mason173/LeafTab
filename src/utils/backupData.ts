@@ -7,6 +7,7 @@ export type WebdavPayload = {
   scenarioModes: Array<any>;
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
 };
 
 export type LeafTabBackupEnvelope = {
@@ -81,6 +82,15 @@ export const toScenarioShortcuts = (data: any): ScenarioShortcuts | null => {
 
 const readTrimmedString = (value: unknown) => {
   return typeof value === 'string' ? value.trim() : '';
+};
+
+const normalizeCustomShortcutIcons = (value: unknown): Record<string, string> => {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([shortcutId, dataUrl]) => [readTrimmedString(shortcutId), readTrimmedString(dataUrl)] as const)
+      .filter(([shortcutId, dataUrl]) => shortcutId && dataUrl.startsWith('data:image/') && dataUrl.length <= 1_200_000),
+  );
 };
 
 const isWebUrl = (value: string) => /^https?:\/\//i.test(value);
@@ -345,10 +355,12 @@ const normalizeToPayload = (raw: any): WebdavPayload | null => {
       : null;
   if (scenarioShortcutsSource) {
     const scenarioShortcuts = dedupeScenarioShortcutsMap(scenarioShortcutsSource);
+    const customShortcutIcons = normalizeCustomShortcutIcons((raw as any).customShortcutIcons);
     return {
       scenarioModes,
       selectedScenarioId: selectedScenarioId || (scenarioModes[0] as any)?.id || '',
       scenarioShortcuts,
+      customShortcutIcons,
     };
   }
   return null;
@@ -378,13 +390,14 @@ export const buildBackupDataV3 = (params: {
   scenarioModes: Array<any>;
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
 }) => {
-  const { scenarioModes, selectedScenarioId, scenarioShortcuts } = params;
+  const { scenarioModes, selectedScenarioId, scenarioShortcuts, customShortcutIcons } = params;
   return {
     type: 'leaftab_backup',
     version: 3,
     timestamp: new Date().toISOString(),
-    data: { scenarioModes, selectedScenarioId, scenarioShortcuts },
+    data: { scenarioModes, selectedScenarioId, scenarioShortcuts, customShortcutIcons: customShortcutIcons || {} },
   };
 };
 
@@ -392,8 +405,9 @@ export const buildBackupDataV4 = (params: {
   scenarioModes: Array<any>;
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
 }) => {
-  const { scenarioModes, selectedScenarioId, scenarioShortcuts } = params;
+  const { scenarioModes, selectedScenarioId, scenarioShortcuts, customShortcutIcons } = params;
   const timestamp = new Date().toISOString();
   const deviceId = getOrCreateDeviceId();
   const appVersion = getRuntimeAppVersion();
@@ -405,7 +419,7 @@ export const buildBackupDataV4 = (params: {
     version: 4,
     timestamp,
     meta,
-    data: { scenarioModes, selectedScenarioId, scenarioShortcuts },
+    data: { scenarioModes, selectedScenarioId, scenarioShortcuts, customShortcutIcons: customShortcutIcons || {} },
   } satisfies LeafTabBackupEnvelope;
 };
 
@@ -423,6 +437,10 @@ export const mergeWebdavPayload = (localPayload: WebdavPayload, remotePayload: W
   });
   const mergedModes = Array.from(modeMap.values());
   const mergedShortcuts: ScenarioShortcuts = {};
+  const mergedCustomShortcutIcons: Record<string, string> = {
+    ...(remotePayload.customShortcutIcons || {}),
+    ...(localPayload.customShortcutIcons || {}),
+  };
   const localShortcuts = localPayload.scenarioShortcuts || {};
   const remoteShortcuts = remotePayload.scenarioShortcuts || {};
   const modeIds = new Set<string>([
@@ -443,5 +461,6 @@ export const mergeWebdavPayload = (localPayload: WebdavPayload, remotePayload: W
     scenarioModes: mergedModes,
     selectedScenarioId: preferredId,
     scenarioShortcuts: mergedShortcuts,
+    customShortcutIcons: mergedCustomShortcutIcons,
   };
 };

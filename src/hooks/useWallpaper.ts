@@ -26,6 +26,7 @@ import {
   type WallpaperRotationInterval,
   type WallpaperRotationSettings,
 } from '@/wallpaper/rotation';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 
 const DEFAULT_WALLPAPER_MASK_OPACITY = 10;
 const BING_CACHE_META_KEY = 'bing_wallpaper_cache_meta_v1';
@@ -78,6 +79,10 @@ const readBingCacheMeta = (): BingCacheMeta | null => {
     return null;
   }
 };
+
+const isDocumentCurrentlyVisible = () => (
+  typeof document === 'undefined' || !document.hidden
+);
 
 const writeBingCacheMeta = (meta: BingCacheMeta) => {
   try {
@@ -276,6 +281,7 @@ const getRotatableWallpaperValues = (
 
 export function useWallpaper() {
   const firefox = isFirefoxBuildTarget();
+  const isDocumentVisible = useDocumentVisibility();
   const initialBingWallpaper = getInitialBingWallpaper();
   const [hasStoredWallpaperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('wallpaperMode');
@@ -468,6 +474,7 @@ export function useWallpaper() {
       clearRetryTimer();
       retryTimer = window.setTimeout(() => {
         if (cancelled) return;
+        if (!isDocumentCurrentlyVisible()) return;
         void refreshBingWallpaper(false);
       }, Math.max(5_000, delayMs));
     };
@@ -584,12 +591,16 @@ export function useWallpaper() {
         if (!cancelled) clearBingSourceIfMissing();
       }
 
+      if (!isDocumentCurrentlyVisible()) return;
+
       await refreshBingWallpaper(false);
 
       const delay = getNextBingRefreshDelay(new Date());
       onceTimer = window.setTimeout(() => {
+        if (!isDocumentCurrentlyVisible()) return;
         void refreshBingWallpaper(true);
         dailyTimer = window.setInterval(() => {
+          if (!isDocumentCurrentlyVisible()) return;
           void refreshBingWallpaper(true);
         }, ONE_DAY_MS);
       }, delay);
@@ -606,6 +617,7 @@ export function useWallpaper() {
   }, []);
 
   useEffect(() => {
+    if (!isDocumentVisible) return;
     if (wallpaperMode !== 'bing') return;
 
     const currentSlot = getCurrentBingSlot(new Date());
@@ -615,9 +627,10 @@ export function useWallpaper() {
     if (!missingCurrentSource && !staleSlot) return;
 
     void refreshBingWallpaperRef.current?.(staleSlot);
-  }, [bingWallpaper, wallpaperMode]);
+  }, [bingWallpaper, isDocumentVisible, wallpaperMode]);
 
   useEffect(() => {
+    if (!isDocumentVisible) return;
     if (wallpaperMode !== 'dynamic' && wallpaperMode !== 'color' && wallpaperMode !== 'custom') {
       return;
     }
@@ -681,6 +694,7 @@ export function useWallpaper() {
     customWallpaper,
     customWallpaperGallery,
     dynamicWallpaperId,
+    isDocumentVisible,
     wallpaperMode,
     wallpaperRotationOffsets,
     wallpaperRotationSettings,

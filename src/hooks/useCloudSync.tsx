@@ -11,9 +11,25 @@ import { clearLocalNeedsCloudReconcile, persistLocalProfileSnapshot, readLocalPr
 import { syncPayloadToCloudWithDeps } from './cloudSync/syncPayloadToCloud';
 import { fetchShortcutsWithDeps } from './cloudSync/fetchShortcuts';
 import { normalizeCloudShortcutsPayload as normalizeCloudShortcutsPayloadRaw } from '@/utils/shortcutsPayload';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
+import { applyShortcutCustomIcons, exportShortcutCustomIcons } from '@/utils/shortcutCustomIcons';
+import { collectShortcutIds } from '@/utils/shortcutFolders';
 
 const RATE_LIMIT_TOAST_COOLDOWN_MS = 30 * 1000;
 const CLOUD_CONFLICT_CACHE_KEY = 'leaftab_cloud_conflict_cache_v1';
+
+const collectScenarioShortcutIds = (scenarioShortcuts: ScenarioShortcuts) => (
+  Object.values(scenarioShortcuts || {}).flatMap((shortcuts) => (
+    Array.isArray(shortcuts) ? collectShortcutIds(shortcuts) : []
+  ))
+);
+
+const applyCloudPayloadCustomIcons = (payload: CloudShortcutsPayloadV3) => {
+  applyShortcutCustomIcons(payload.customShortcutIcons || {}, {
+    replace: true,
+    shortcutIds: collectScenarioShortcutIds(payload.scenarioShortcuts),
+  });
+};
 
 type PersistedCloudConflict = {
   localPayload: CloudShortcutsPayloadV3;
@@ -81,6 +97,7 @@ export function useCloudSync({
 }: UseCloudSyncParams) {
   const initialPersistedConflictRef = useRef<PersistedCloudConflict | null>(user ? readPersistedCloudConflict() : null);
   const { t } = useTranslation();
+  const isDocumentVisible = useDocumentVisibility();
   const {
     syncState,
     markSyncStart,
@@ -149,6 +166,7 @@ export function useCloudSync({
       scenarioModes: modes,
       selectedScenarioId: finalSelectedId,
       scenarioShortcuts: shortcutsValue,
+      customShortcutIcons: exportShortcutCustomIcons(collectScenarioShortcutIds(shortcutsValue)),
     };
   }, [scenarioModes, scenarioShortcuts, selectedScenarioId]);
 
@@ -161,6 +179,7 @@ export function useCloudSync({
       scenarioModes: normalizeScenarioModesList(normalized.scenarioModes),
       selectedScenarioId: normalized.selectedScenarioId,
       scenarioShortcuts: normalizeScenarioShortcuts(normalized.scenarioShortcuts),
+      customShortcutIcons: normalized.customShortcutIcons || {},
     } satisfies CloudShortcutsPayloadV3;
   }, [normalizeScenarioModesList, normalizeScenarioShortcuts, t]);
 
@@ -172,6 +191,7 @@ export function useCloudSync({
       scenarioModes: normalizeScenarioModesList(snapshot.scenarioModes),
       selectedScenarioId: snapshot.selectedScenarioId,
       scenarioShortcuts: normalizeScenarioShortcuts(snapshot.scenarioShortcuts),
+      customShortcutIcons: exportShortcutCustomIcons(collectScenarioShortcutIds(snapshot.scenarioShortcuts)),
     } satisfies CloudShortcutsPayloadV3;
   }, [normalizeScenarioModesList, normalizeScenarioShortcuts]);
 
@@ -397,6 +417,10 @@ export function useCloudSync({
       clearCloudNextSyncAt();
       return;
     }
+    if (!isDocumentVisible) {
+      clearCloudPullTimers();
+      return;
+    }
 
     let disposed = false;
     const scheduleNext = (targetMs: number) => {
@@ -449,7 +473,7 @@ export function useCloudSync({
       disposed = true;
       clearCloudPullTimers();
     };
-  }, [clearCloudNextSyncAt, cloudSyncConfigVersion, getNextScheduledCloudSyncAt, markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, setCloudNextSyncAt, t, user]);
+  }, [clearCloudNextSyncAt, cloudSyncConfigVersion, getNextScheduledCloudSyncAt, isDocumentVisible, markSyncConflict, markSyncError, markSyncStart, markSyncSuccess, setCloudNextSyncAt, t, user]);
 
   const triggerCloudSyncNow = useCallback(async () => {
     if (!runtimeEnabled) return false;
@@ -486,6 +510,7 @@ export function useCloudSync({
     setScenarioModes(pendingCloudPayload.scenarioModes);
     setSelectedScenarioId(pendingCloudPayload.selectedScenarioId);
     setScenarioShortcuts(pendingCloudPayload.scenarioShortcuts);
+    applyCloudPayloadCustomIcons(pendingCloudPayload);
     persistLocalProfileSnapshot(pendingCloudPayload);
     clearLocalNeedsCloudReconcile();
     localStorage.removeItem('leaf_tab_sync_pending');
@@ -511,6 +536,7 @@ export function useCloudSync({
     setScenarioModes(pendingLocalPayload.scenarioModes);
     setSelectedScenarioId(pendingLocalPayload.selectedScenarioId);
     setScenarioShortcuts(pendingLocalPayload.scenarioShortcuts);
+    applyCloudPayloadCustomIcons(pendingLocalPayload);
     persistLocalProfileSnapshot(pendingLocalPayload);
     clearLocalNeedsCloudReconcile();
     localStorage.setItem('leaf_tab_sync_pending', 'true');
@@ -542,6 +568,7 @@ export function useCloudSync({
     setScenarioModes(mergedPayload.scenarioModes);
     setSelectedScenarioId(mergedPayload.selectedScenarioId);
     setScenarioShortcuts(mergedPayload.scenarioShortcuts);
+    applyCloudPayloadCustomIcons(mergedPayload);
     persistLocalProfileSnapshot(mergedPayload);
     clearLocalNeedsCloudReconcile();
     localStorage.setItem('leaf_tab_sync_pending', 'true');
@@ -564,6 +591,7 @@ export function useCloudSync({
     setScenarioModes(payload.scenarioModes);
     setSelectedScenarioId(payload.selectedScenarioId);
     setScenarioShortcuts(payload.scenarioShortcuts);
+    applyCloudPayloadCustomIcons(payload);
     persistLocalProfileSnapshot(payload);
     clearLocalNeedsCloudReconcile();
     localStorage.setItem('leaf_tab_sync_pending', 'true');

@@ -70,6 +70,7 @@ export const createCloudSyncAdapter = ({
         scenarioModes: payload.scenarioModes,
         selectedScenarioId: payload.selectedScenarioId,
         scenarioShortcuts: payload.scenarioShortcuts,
+        customShortcutIcons: (payload as any).customShortcutIcons,
       });
       const expectedVersion = options?.expectedVersion;
       const headers: Record<string, string> = {

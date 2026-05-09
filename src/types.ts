@@ -148,6 +148,7 @@ export interface CloudShortcutsPayloadV3 {
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
   preferences?: SyncablePreferences;
 }
 

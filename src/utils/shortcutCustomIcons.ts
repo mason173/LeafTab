@@ -10,6 +10,7 @@ const MAX_CUSTOM_SHORTCUT_ICONS = 160;
 const MAX_CUSTOM_ICON_DATA_LENGTH = 1_200_000;
 const CUSTOM_ICON_SIZE = 256;
 export const SHORTCUT_CUSTOM_ICON_CHANGED_EVENT = 'leaftab-shortcut-custom-icon-changed';
+export type ShortcutCustomIconMap = Record<string, string>;
 
 type ShortcutCustomIconChangedDetail = {
   shortcutId: string;
@@ -45,17 +46,48 @@ function getCustomIconStorageKey(shortcutId: string) {
   return `${SHORTCUT_CUSTOM_ICON_PREFIX}${shortcutId}`;
 }
 
+export function isValidShortcutCustomIconDataUrl(dataUrl: unknown): dataUrl is string {
+  const normalizedDataUrl = typeof dataUrl === 'string' ? dataUrl.trim() : '';
+  return (
+    normalizedDataUrl.startsWith('data:image/')
+    && normalizedDataUrl.length <= MAX_CUSTOM_ICON_DATA_LENGTH
+  );
+}
+
+function normalizeShortcutId(shortcutId: unknown) {
+  return String(shortcutId || '').trim();
+}
+
+function normalizeShortcutCustomIconMap(
+  icons: unknown,
+  shortcutIds?: Iterable<string> | null,
+): ShortcutCustomIconMap {
+  const allowedIds = shortcutIds
+    ? new Set(Array.from(shortcutIds).map(normalizeShortcutId).filter(Boolean))
+    : null;
+  if (!icons || typeof icons !== 'object' || Array.isArray(icons)) return {};
+
+  const normalized: ShortcutCustomIconMap = {};
+  Object.entries(icons as Record<string, unknown>).forEach(([shortcutId, dataUrl]) => {
+    const normalizedId = normalizeShortcutId(shortcutId);
+    const normalizedDataUrl = typeof dataUrl === 'string' ? dataUrl.trim() : '';
+    if (!normalizedId || (allowedIds && !allowedIds.has(normalizedId))) return;
+    if (!isValidShortcutCustomIconDataUrl(normalizedDataUrl)) return;
+    normalized[normalizedId] = normalizedDataUrl;
+  });
+  return normalized;
+}
+
 export function readShortcutCustomIcon(shortcutId?: string | null) {
-  const normalizedId = String(shortcutId || '').trim();
+  const normalizedId = normalizeShortcutId(shortcutId);
   if (!normalizedId) return '';
   return readCachedLocalStorageItem(getCustomIconStorageKey(normalizedId)) || '';
 }
 
 export function persistShortcutCustomIcon(shortcutId: string, dataUrl: string) {
-  const normalizedId = String(shortcutId || '').trim();
+  const normalizedId = normalizeShortcutId(shortcutId);
   const normalizedDataUrl = String(dataUrl || '').trim();
-  if (!normalizedId || !normalizedDataUrl.startsWith('data:image/')) return;
-  if (normalizedDataUrl.length > MAX_CUSTOM_ICON_DATA_LENGTH) return;
+  if (!normalizedId || !isValidShortcutCustomIconDataUrl(normalizedDataUrl)) return;
 
   queueCachedLocalStorageSetItem(getCustomIconStorageKey(normalizedId), normalizedDataUrl);
   const nextIndex = readCustomIconIndex().filter((id) => id !== normalizedId);
@@ -73,7 +105,7 @@ export function persistShortcutCustomIcon(shortcutId: string, dataUrl: string) {
 }
 
 export function removeShortcutCustomIcon(shortcutId?: string | null) {
-  const normalizedId = String(shortcutId || '').trim();
+  const normalizedId = normalizeShortcutId(shortcutId);
   if (!normalizedId) return;
   queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(normalizedId));
   writeCustomIconIndex(readCustomIconIndex().filter((id) => id !== normalizedId));
@@ -83,7 +115,7 @@ export function removeShortcutCustomIcon(shortcutId?: string | null) {
 export function removeShortcutCustomIcons(shortcutIds: Iterable<string>) {
   const normalizedIds = new Set(
     Array.from(shortcutIds)
-      .map((shortcutId) => String(shortcutId || '').trim())
+      .map(normalizeShortcutId)
       .filter(Boolean),
   );
   if (normalizedIds.size === 0) return;
@@ -93,6 +125,76 @@ export function removeShortcutCustomIcons(shortcutIds: Iterable<string>) {
     dispatchShortcutCustomIconChanged({ shortcutId, action: 'remove' });
   });
   writeCustomIconIndex(readCustomIconIndex().filter((id) => !normalizedIds.has(id)));
+}
+
+export function exportShortcutCustomIcons(shortcutIds?: Iterable<string> | null): ShortcutCustomIconMap {
+  const allowedIds = shortcutIds
+    ? new Set(Array.from(shortcutIds).map(normalizeShortcutId).filter(Boolean))
+    : null;
+  const exported: ShortcutCustomIconMap = {};
+  readCustomIconIndex().forEach((shortcutId) => {
+    const normalizedId = normalizeShortcutId(shortcutId);
+    if (!normalizedId || (allowedIds && !allowedIds.has(normalizedId))) return;
+    const dataUrl = readShortcutCustomIcon(normalizedId);
+    if (isValidShortcutCustomIconDataUrl(dataUrl)) {
+      exported[normalizedId] = dataUrl;
+    }
+  });
+  return exported;
+}
+
+export function applyShortcutCustomIcons(
+  icons: ShortcutCustomIconMap | null | undefined,
+  options?: {
+    replace?: boolean;
+    shortcutIds?: Iterable<string> | null;
+  },
+) {
+  const normalizedIcons = normalizeShortcutCustomIconMap(icons || {}, options?.shortcutIds || null);
+  const scopeIds = options?.shortcutIds
+    ? new Set(Array.from(options.shortcutIds).map(normalizeShortcutId).filter(Boolean))
+    : null;
+  const existingIndex = readCustomIconIndex();
+  const nextIndex = existingIndex.filter((shortcutId) => {
+    const normalizedId = normalizeShortcutId(shortcutId);
+    if (!normalizedId) return false;
+    if (normalizedIcons[normalizedId]) return false;
+    return !(options?.replace && (!scopeIds || scopeIds.has(normalizedId)));
+  });
+  const removedIds: string[] = [];
+
+  if (options?.replace) {
+    existingIndex.forEach((shortcutId) => {
+      const normalizedId = normalizeShortcutId(shortcutId);
+      if (!normalizedId || normalizedIcons[normalizedId]) return;
+      if (scopeIds && !scopeIds.has(normalizedId)) return;
+      queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(normalizedId));
+      removedIds.push(normalizedId);
+    });
+  }
+
+  Object.entries(normalizedIcons)
+    .reverse()
+    .forEach(([shortcutId, dataUrl]) => {
+      queueCachedLocalStorageSetItem(getCustomIconStorageKey(shortcutId), dataUrl);
+      nextIndex.unshift(shortcutId);
+    });
+
+  while (nextIndex.length > MAX_CUSTOM_SHORTCUT_ICONS) {
+    const removedId = nextIndex.pop();
+    if (removedId) {
+      queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(removedId));
+      removedIds.push(removedId);
+    }
+  }
+
+  writeCustomIconIndex(Array.from(new Set(nextIndex)));
+  Object.keys(normalizedIcons).forEach((shortcutId) => {
+    dispatchShortcutCustomIconChanged({ shortcutId, action: 'set' });
+  });
+  removedIds.forEach((shortcutId) => {
+    dispatchShortcutCustomIconChanged({ shortcutId, action: 'remove' });
+  });
 }
 
 function loadImageFromDataUrl(dataUrl: string) {

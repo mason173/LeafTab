@@ -35,6 +35,18 @@ const readStringField = (candidate: Partial<Shortcut> & Record<string, unknown>,
   return '';
 };
 
+const normalizeCustomShortcutIcons = (value: unknown): Record<string, string> => {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([shortcutId, dataUrl]) => [
+        typeof shortcutId === 'string' ? shortcutId.trim() : '',
+        typeof dataUrl === 'string' ? dataUrl.trim() : '',
+      ] as const)
+      .filter(([shortcutId, dataUrl]) => shortcutId && dataUrl.startsWith('data:image/') && dataUrl.length <= 1_200_000),
+  );
+};
+
 const readShortcutChildren = (candidate: Partial<Shortcut> & Record<string, unknown>): unknown[] => {
   const childCollections = [candidate.children, candidate.shortcuts, candidate.items];
   for (const value of childCollections) {
@@ -163,6 +175,7 @@ type BuildCloudShortcutsPayloadArgs = {
   scenarioModes: ScenarioMode[];
   selectedScenarioId: string;
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
   nextScenarioModes?: ScenarioMode[];
   nextSelectedScenarioId?: string;
   nextScenarioShortcuts?: ScenarioShortcuts;
@@ -172,6 +185,7 @@ export const buildCloudShortcutsPayload = ({
   scenarioModes,
   selectedScenarioId,
   scenarioShortcuts,
+  customShortcutIcons,
   nextScenarioModes,
   nextSelectedScenarioId,
   nextScenarioShortcuts,
@@ -185,6 +199,7 @@ export const buildCloudShortcutsPayload = ({
     scenarioModes: modes,
     selectedScenarioId: finalSelectedId,
     scenarioShortcuts: shortcutsValue,
+    customShortcutIcons: customShortcutIcons || {},
   };
 };
 
@@ -207,5 +222,6 @@ export const normalizeCloudShortcutsPayload = (raw: unknown, unnamedLabel: strin
     scenarioModes: modes,
     selectedScenarioId: finalSelectedId,
     scenarioShortcuts: shortcutsValue,
+    customShortcutIcons: normalizeCustomShortcutIcons(candidate.customShortcutIcons),
   };
 };

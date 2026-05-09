@@ -7,6 +7,8 @@ import type { LeafTabBookmarkTreeDraft } from '@/sync/leaftab/bookmarks';
 import type { LeafTabBookmarkSyncScope } from '@/sync/leaftab/bookmarkScope';
 import { LEAFTAB_SYNC_SCHEMA_VERSION, type LeafTabSyncSnapshot } from '@/sync/leaftab/schema';
 import { clearLocalNeedsCloudReconcile, markLocalNeedsCloudReconcile, persistLocalProfileSnapshot } from '@/utils/localProfileStorage';
+import { applyShortcutCustomIcons, exportShortcutCustomIcons } from '@/utils/shortcutCustomIcons';
+import { collectShortcutIds } from '@/utils/shortcutFolders';
 import { normalizeSyncablePreferences } from '@/utils/syncablePreferences';
 import { flushQueuedLocalStorageWrites } from '@/utils/storageWriteQueue';
 
@@ -27,6 +29,7 @@ const createComparableSnapshotSignature = (snapshot: LeafTabSyncSnapshot | null 
     preferences: snapshot.preferences,
     scenarios: snapshot.scenarios,
     shortcuts: snapshot.shortcuts,
+    customShortcutIcons: snapshot.customShortcutIcons,
     bookmarkFolders: snapshot.bookmarkFolders,
     bookmarkItems: snapshot.bookmarkItems,
     scenarioOrder: snapshot.scenarioOrder,
@@ -36,11 +39,18 @@ const createComparableSnapshotSignature = (snapshot: LeafTabSyncSnapshot | null 
   };
 };
 
+const collectScenarioShortcutIds = (scenarioShortcuts: ScenarioShortcuts) => {
+  return Object.values(scenarioShortcuts || {}).flatMap((shortcuts) => (
+    Array.isArray(shortcuts) ? collectShortcutIds(shortcuts) : []
+  ));
+};
+
 export const createSnapshotBuildSignature = (params: {
   baselineSnapshot?: LeafTabSyncSnapshot | null;
   preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
   bookmarkTree: LeafTabBookmarkTreeDraft | null | undefined;
 }) => {
   return JSON.stringify({
@@ -48,6 +58,7 @@ export const createSnapshotBuildSignature = (params: {
     preferences: params.preferences,
     scenarioModes: params.scenarioModes,
     scenarioShortcuts: params.scenarioShortcuts,
+    customShortcutIcons: params.customShortcutIcons || {},
     bookmarks: {
       folders: params.bookmarkTree?.folders || [],
       items: params.bookmarkTree?.items || [],
@@ -65,6 +76,7 @@ export const createEmptyLeafTabSyncSnapshot = (deviceId: string): LeafTabSyncSna
   preferences: null,
   scenarios: {},
   shortcuts: {},
+  customShortcutIcons: {},
   bookmarkFolders: {},
   bookmarkItems: {},
   scenarioOrder: {
@@ -197,11 +209,13 @@ export function useLeafTabSnapshotBridge({
         ? options.preferencesTransform(basePreferences)
         : basePreferences,
     );
+    const customShortcutIcons = exportShortcutCustomIcons(collectScenarioShortcutIds(scenarioShortcuts));
     const signature = createSnapshotBuildSignature({
       baselineSnapshot,
       preferences,
       scenarioModes,
       scenarioShortcuts,
+      customShortcutIcons,
       bookmarkTree,
     });
     const cached = snapshotBuildCacheRef.current[baselineStorageKey];
@@ -223,6 +237,7 @@ export function useLeafTabSnapshotBridge({
       preferences,
       scenarioModes,
       scenarioShortcuts,
+      customShortcutIcons,
       bookmarkTree,
       deviceId: leafTabSyncDeviceId,
       generatedAt,
@@ -275,6 +290,7 @@ export function useLeafTabSnapshotBridge({
       selectedScenarioId,
       preferredSelectedScenarioId: options?.preferredSelectedScenarioId,
     });
+    const nextShortcutIds = collectScenarioShortcutIds(nextScenarioShortcuts);
 
     flushSync(() => {
       setScenarioModes(nextScenarioModes);
@@ -313,6 +329,12 @@ export function useLeafTabSnapshotBridge({
         throw new snapshotRuntime.LeafTabBookmarkPermissionDeniedError();
       }
     }
+
+    applyShortcutCustomIcons(projected.customShortcutIcons || {}, {
+      replace: true,
+      shortcutIds: nextShortcutIds,
+    });
+    flushQueuedLocalStorageWrites();
 
     await applyPreferencesSnapshot(nextPreferences);
 

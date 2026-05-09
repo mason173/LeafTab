@@ -27,6 +27,7 @@ const toLegacyPayload = (payload: CloudShortcutsPayloadV3 | null): WebdavPayload
     scenarioModes: payload.scenarioModes,
     selectedScenarioId: payload.selectedScenarioId,
     scenarioShortcuts: payload.scenarioShortcuts,
+    customShortcutIcons: payload.customShortcutIcons,
   };
 };
 
@@ -54,6 +55,7 @@ const createLegacyDriver = (
         scenarioModes: payload.scenarioModes as CloudShortcutsPayloadV3['scenarioModes'],
         selectedScenarioId: payload.selectedScenarioId,
         scenarioShortcuts: payload.scenarioShortcuts as CloudShortcutsPayloadV3['scenarioShortcuts'],
+        customShortcutIcons: payload.customShortcutIcons,
       };
       const response = await adapter.push(writePayload, {
         expectedVersion,
@@ -88,4 +90,3 @@ export class LeafTabLegacyCloudCompat extends LeafTabLegacySingleFileCompat {
     });
   }
 }
-

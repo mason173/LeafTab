@@ -143,6 +143,7 @@ export const filterLeafTabLocalBackupSnapshot = (
     preferences: snapshot.preferences,
     scenarios: scope.shortcuts ? snapshot.scenarios : {},
     shortcuts: scope.shortcuts ? snapshot.shortcuts : {},
+    customShortcutIcons: scope.shortcuts ? snapshot.customShortcutIcons || {} : {},
     bookmarkFolders: scope.bookmarks ? snapshot.bookmarkFolders : {},
     bookmarkItems: scope.bookmarks ? snapshot.bookmarkItems : {},
     scenarioOrder: scope.shortcuts
@@ -182,6 +183,9 @@ export const mergeLeafTabLocalBackupSnapshotWithBase = (params: {
     preferences: params.importedSnapshot.preferences || params.baseSnapshot.preferences,
     scenarios: scope.shortcuts ? params.importedSnapshot.scenarios : params.baseSnapshot.scenarios,
     shortcuts: scope.shortcuts ? params.importedSnapshot.shortcuts : params.baseSnapshot.shortcuts,
+    customShortcutIcons: scope.shortcuts
+      ? params.importedSnapshot.customShortcutIcons || {}
+      : params.baseSnapshot.customShortcutIcons || {},
     bookmarkFolders: scope.bookmarks ? params.importedSnapshot.bookmarkFolders : params.baseSnapshot.bookmarkFolders,
     bookmarkItems: scope.bookmarks ? params.importedSnapshot.bookmarkItems : params.baseSnapshot.bookmarkItems,
     scenarioOrder: scope.shortcuts ? params.importedSnapshot.scenarioOrder : params.baseSnapshot.scenarioOrder,

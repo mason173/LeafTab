@@ -97,6 +97,10 @@ const fingerprintLegacyPayload = (payload: WebdavPayload) => {
       Object.entries(payload.scenarioShortcuts || {})
         .sort(([left], [right]) => left.localeCompare(right)),
     ),
+    customShortcutIcons: Object.fromEntries(
+      Object.entries(payload.customShortcutIcons || {})
+        .sort(([left], [right]) => left.localeCompare(right)),
+    ),
   }));
 };
 
@@ -160,6 +164,7 @@ const projectSnapshotToLegacyPayload = (snapshot: LeafTabSyncSnapshot): WebdavPa
     scenarioModes,
     selectedScenarioId: scenarioModes[0]?.id || '',
     scenarioShortcuts: flattenScenarioShortcutsForLegacyMirror(projectedScenarioShortcuts),
+    customShortcutIcons: snapshot.customShortcutIcons || {},
   };
 };
 
@@ -181,6 +186,7 @@ const mergeLegacyPayloadIntoSnapshot = (params: {
     preferences: params.localSnapshot.preferences?.value || getDefaultSyncablePreferences(),
     scenarioModes: params.mergedPayload.scenarioModes as any,
     scenarioShortcuts: params.mergedPayload.scenarioShortcuts as any,
+    customShortcutIcons: params.mergedPayload.customShortcutIcons || {},
     deviceId: params.deviceId,
     generatedAt,
   });
@@ -190,6 +196,7 @@ const mergeLegacyPayloadIntoSnapshot = (params: {
     preferences: params.localSnapshot.preferences,
     scenarios: legacySubsetSnapshot.scenarios,
     shortcuts: legacySubsetSnapshot.shortcuts,
+    customShortcutIcons: legacySubsetSnapshot.customShortcutIcons || {},
     bookmarkFolders: params.localSnapshot.bookmarkFolders,
     bookmarkItems: params.localSnapshot.bookmarkItems,
     scenarioOrder: legacySubsetSnapshot.scenarioOrder,
@@ -208,6 +215,7 @@ const sameSnapshotContent = (left: LeafTabSyncSnapshot, right: LeafTabSyncSnapsh
     bookmarkItems: left.bookmarkItems,
     scenarioOrder: left.scenarioOrder,
     shortcutOrders: left.shortcutOrders,
+    customShortcutIcons: left.customShortcutIcons || {},
     bookmarkOrders: left.bookmarkOrders,
     tombstones: left.tombstones,
   }) === JSON.stringify({
@@ -218,6 +226,7 @@ const sameSnapshotContent = (left: LeafTabSyncSnapshot, right: LeafTabSyncSnapsh
     bookmarkItems: right.bookmarkItems,
     scenarioOrder: right.scenarioOrder,
     shortcutOrders: right.shortcutOrders,
+    customShortcutIcons: right.customShortcutIcons || {},
     bookmarkOrders: right.bookmarkOrders,
     tombstones: right.tombstones,
   });
@@ -271,6 +280,7 @@ export class LeafTabLegacySingleFileCompat {
       scenarioModes: projected.scenarioModes,
       selectedScenarioId,
       scenarioShortcuts: projected.scenarioShortcuts,
+      customShortcutIcons: projected.customShortcutIcons || {},
     } satisfies WebdavPayload;
   }
 

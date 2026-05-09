@@ -4,6 +4,8 @@ import { buildCloudShortcutsPayload, normalizeCloudShortcutsPayload } from '@/ut
 import type { WebdavPayload } from '@/utils/backupData';
 import type { UseLeafTabSyncEngineOptions } from '@/hooks/useLeafTabSyncEngine';
 import { flattenScenarioShortcutsForLegacyMirror } from '@/utils/legacyShortcutMirror';
+import { exportShortcutCustomIcons } from '@/utils/shortcutCustomIcons';
+import { collectShortcutIds } from '@/utils/shortcutFolders';
 
 const ENABLE_LEGACY_SYNC_MIGRATION = true;
 
@@ -24,10 +26,14 @@ const toLegacyPayload = (params: {
   scenarioShortcuts: ScenarioShortcuts;
 }): WebdavPayload => {
   const payload = buildCloudShortcutsPayload(params);
+  const shortcutIds = Object.values(payload.scenarioShortcuts || {}).flatMap((shortcuts) => (
+    Array.isArray(shortcuts) ? collectShortcutIds(shortcuts) : []
+  ));
   return {
     scenarioModes: payload.scenarioModes,
     selectedScenarioId: payload.selectedScenarioId,
     scenarioShortcuts: flattenScenarioShortcutsForLegacyMirror(payload.scenarioShortcuts),
+    customShortcutIcons: exportShortcutCustomIcons(shortcutIds),
   };
 };
 

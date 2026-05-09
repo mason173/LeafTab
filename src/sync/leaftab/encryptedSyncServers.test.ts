@@ -38,6 +38,7 @@ function createEmptySnapshot(deviceId: string): LeafTabSyncSnapshot {
     preferences: null,
     scenarios: {},
     shortcuts: {},
+    customShortcutIcons: {},
     bookmarkFolders: {},
     bookmarkItems: {},
     scenarioOrder: {

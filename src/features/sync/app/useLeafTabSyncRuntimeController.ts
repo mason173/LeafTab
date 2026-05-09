@@ -19,6 +19,7 @@ import { useLeafTabBackupActions } from '@/hooks/useLeafTabBackupActions';
 import { useSyncCenterActions } from '@/hooks/useSyncCenterActions';
 import { useLeafTabLegacyCompat } from '@/hooks/useLeafTabLegacyCompat';
 import { useLeafTabSnapshotBridge } from '@/hooks/useLeafTabSnapshotBridge';
+import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 import { isWebdavAuthError } from '@/utils/webdavError';
 import {
   CLOUD_SYNC_STORAGE_KEYS,
@@ -56,8 +57,8 @@ import type { ShortcutAppContextValue } from '@/features/shortcuts/app/ShortcutA
 
 const LEAFTAB_SYNC_DEFAULT_ROOT_PATH = 'leaftab/v1';
 const LEAFTAB_CLOUD_SYNC_BASELINE_PREFIX = 'leaftab_cloud_sync_v1_baseline';
-const CLOUD_AUTO_SYNC_BUSY_RETRY_DELAY_MS = 5 * 1000;
-const CLOUD_AUTO_SYNC_FAILURE_RETRY_DELAY_MS = 15 * 1000;
+const CLOUD_AUTO_SYNC_BUSY_RETRY_DELAY_MS = 30 * 1000;
+const CLOUD_AUTO_SYNC_FAILURE_RETRY_DELAY_MS = 60 * 1000;
 
 type WebdavLeafTabSyncOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
@@ -366,6 +367,7 @@ export function useLeafTabSyncRuntimeController({
   clearLongTaskIndicator,
   isDragging,
 }: UseLeafTabSyncRuntimeControllerParams) {
+  const isDocumentVisible = useDocumentVisibility();
   const [cloudSyncConfigVersion, setCloudSyncConfigVersion] = useState(0);
   const [syncEncryptionVersion, setSyncEncryptionVersion] = useState(0);
   const [leafTabSyncConfigVersion, setLeafTabSyncConfigVersion] = useState(0);
@@ -1796,7 +1798,7 @@ export function useLeafTabSyncRuntimeController({
   });
 
   useEffect(() => {
-    if (!user || !cloudSyncEnabled || !cloudLeafTabSyncHasConfig || !cloudSyncEncryptionReady) {
+    if (!user || !cloudSyncEnabled || !cloudLeafTabSyncHasConfig || !cloudSyncEncryptionReady || !isDocumentVisible) {
       setCloudNextSyncAt(null);
       return;
     }
@@ -1857,6 +1859,7 @@ export function useLeafTabSyncRuntimeController({
     cloudSyncEnabled,
     cloudSyncEncryptionReady,
     handleCloudLeafTabSync,
+    isDocumentVisible,
     setCloudNextSyncAt,
     t,
     user,

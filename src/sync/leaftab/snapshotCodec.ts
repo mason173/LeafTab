@@ -73,6 +73,7 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
   const bookmarkFolders: LeafTabSyncSnapshot['bookmarkFolders'] = {};
   const bookmarkItems: LeafTabSyncSnapshot['bookmarkItems'] = {};
   let preferences: LeafTabSyncSnapshot['preferences'] = null;
+  const customShortcutIcons: LeafTabSyncSnapshot['customShortcutIcons'] = {};
   const shortcutOrders: LeafTabSyncSnapshot['shortcutOrders'] = {};
   const bookmarkOrders: LeafTabSyncSnapshot['bookmarkOrders'] = {};
   const tombstones: LeafTabSyncSnapshot['tombstones'] = {};
@@ -126,6 +127,20 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
       return;
     }
 
+    if (packRef.kind === 'custom-shortcut-icons') {
+      Object.entries(isRecord(value.icons) ? value.icons : {}).forEach(([shortcutId, dataUrl]) => {
+        if (
+          typeof shortcutId === 'string'
+          && shortcutId.trim()
+          && typeof dataUrl === 'string'
+          && dataUrl.startsWith('data:image/')
+        ) {
+          customShortcutIcons[shortcutId.trim()] = dataUrl;
+        }
+      });
+      return;
+    }
+
     if (packRef.kind === 'bookmark-folders') {
       Object.values(isRecord(value.entities) ? value.entities : {}).forEach((entity) => {
         if (isLeafTabSyncBookmarkFolderEntity(entity)) {
@@ -172,6 +187,7 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
     preferences,
     scenarios,
     shortcuts,
+    customShortcutIcons,
     bookmarkFolders,
     bookmarkItems,
     scenarioOrder,

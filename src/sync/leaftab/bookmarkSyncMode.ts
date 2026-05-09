@@ -22,6 +22,7 @@ export const stripBookmarksFromLeafTabSyncSnapshot = (snapshot: LeafTabSyncSnaps
   if (!snapshot) return null;
   return {
     ...snapshot,
+    customShortcutIcons: snapshot.customShortcutIcons || {},
     bookmarkFolders: {},
     bookmarkItems: {},
     bookmarkOrders: createEmptyBookmarkOrders(snapshot),

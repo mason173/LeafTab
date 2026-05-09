@@ -71,6 +71,13 @@ interface LeafTabSyncShortcutOrderPackFile {
   orders: Record<string, LeafTabSyncShortcutOrder>;
 }
 
+interface LeafTabSyncCustomShortcutIconsPackFile {
+  version: typeof LEAFTAB_SYNC_SCHEMA_VERSION;
+  kind: 'custom-shortcut-icons';
+  generatedAt: string;
+  icons: Record<string, string>;
+}
+
 interface LeafTabSyncBookmarkOrderPackFile {
   version: typeof LEAFTAB_SYNC_SCHEMA_VERSION;
   kind: 'bookmark-orders';
@@ -205,6 +212,23 @@ const buildSnapshotPayloadMap = (
         createManifestPackRef('shortcuts', path, Object.keys(entities).length, shard),
       );
     });
+
+  const customShortcutIconsPath = getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath);
+  if (shouldIncludePath(includePaths, customShortcutIconsPath)) {
+    payloads[customShortcutIconsPath] = {
+      version: LEAFTAB_SYNC_SCHEMA_VERSION,
+      kind: 'custom-shortcut-icons',
+      generatedAt: snapshot.meta.generatedAt,
+      icons: sortRecord(snapshot.customShortcutIcons || {}),
+    } satisfies LeafTabSyncCustomShortcutIconsPackFile;
+  }
+  manifestPacks.push(
+    createManifestPackRef(
+      'custom-shortcut-icons',
+      customShortcutIconsPath,
+      Object.keys(snapshot.customShortcutIcons || {}).length,
+    ),
+  );
 
   const shortcutOrdersPath = getLeafTabSyncPackPath('shortcut-orders', null, rootPath);
   if (shouldIncludePath(includePaths, shortcutOrdersPath)) {
@@ -395,6 +419,10 @@ export const collectLeafTabSyncChangedPayloadPaths = (
 
   if (!sameContent(previousSnapshot.shortcutOrders, nextSnapshot.shortcutOrders)) {
     changedPaths.add(getLeafTabSyncPackPath('shortcut-orders', null, rootPath));
+  }
+
+  if (!sameContent(previousSnapshot.customShortcutIcons || {}, nextSnapshot.customShortcutIcons || {})) {
+    changedPaths.add(getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath));
   }
 
   collectChangedShardedPaths(

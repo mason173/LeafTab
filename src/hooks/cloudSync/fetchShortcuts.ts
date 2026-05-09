@@ -5,6 +5,8 @@ import { toast } from '@/components/ui/sonner';
 import { areSyncPayloadsEqual, toSyncPayloadJson } from '@/sync/core';
 import { createCloudSyncAdapter } from './cloudSyncAdapter';
 import { CLOUD_SYNC_STORAGE_KEYS, emitCloudSyncStatusChanged } from '@/utils/cloudSyncConfig';
+import { applyShortcutCustomIcons } from '@/utils/shortcutCustomIcons';
+import { collectShortcutIds } from '@/utils/shortcutFolders';
 
 const FIRST_LOGIN_LOCAL_FIRST_KEY = 'leaftab_force_local_sync_after_first_login_user';
 
@@ -46,6 +48,19 @@ type FetchDeps = {
   clearPendingConflict: () => void;
   refs: FetchRefs;
   setters: FetchSetters;
+};
+
+const collectScenarioShortcutIds = (scenarioShortcuts: ScenarioShortcuts) => (
+  Object.values(scenarioShortcuts || {}).flatMap((shortcuts) => (
+    Array.isArray(shortcuts) ? collectShortcutIds(shortcuts) : []
+  ))
+);
+
+const applyCloudPayloadCustomIcons = (payload: CloudShortcutsPayloadV3) => {
+  applyShortcutCustomIcons(payload.customShortcutIcons || {}, {
+    replace: true,
+    shortcutIds: collectScenarioShortcutIds(payload.scenarioShortcuts),
+  });
 };
 
 export const fetchShortcutsWithDeps = async ({
@@ -99,6 +114,7 @@ export const fetchShortcutsWithDeps = async ({
           setScenarioModes(payload.scenarioModes);
           setSelectedScenarioId(payload.selectedScenarioId);
           setScenarioShortcuts(payload.scenarioShortcuts);
+          applyCloudPayloadCustomIcons(payload);
           if (!shouldPromptOnThisLogin) {
             setCloudSyncInitialized(true);
           }
@@ -160,6 +176,7 @@ export const fetchShortcutsWithDeps = async ({
         setScenarioModes(localPayload.scenarioModes);
         setSelectedScenarioId(localPayload.selectedScenarioId);
         setScenarioShortcuts(localPayload.scenarioShortcuts);
+        applyCloudPayloadCustomIcons(localPayload);
         persistLocalProfileSnapshot(localPayload);
         clearLocalNeedsCloudReconcile();
         localStorage.setItem('leaf_tab_shortcuts_cache', localJson);
@@ -206,6 +223,7 @@ export const fetchShortcutsWithDeps = async ({
         setScenarioModes(localPayload.scenarioModes);
         setSelectedScenarioId(localPayload.selectedScenarioId);
         setScenarioShortcuts(localPayload.scenarioShortcuts);
+        applyCloudPayloadCustomIcons(localPayload);
         persistLocalProfileSnapshot(localPayload);
         clearLocalNeedsCloudReconcile();
         localStorage.setItem('leaf_tab_sync_pending', 'true');
@@ -220,6 +238,7 @@ export const fetchShortcutsWithDeps = async ({
         setScenarioShortcuts(localPayload.scenarioShortcuts);
         setScenarioModes(localPayload.scenarioModes);
         setSelectedScenarioId(localPayload.selectedScenarioId);
+        applyCloudPayloadCustomIcons(localPayload);
         setCloudSyncInitialized(true);
         clearLocalNeedsCloudReconcile();
         try { localStorage.setItem('local_shortcuts_updated_at', new Date().toISOString()); } catch {}
@@ -244,6 +263,7 @@ export const fetchShortcutsWithDeps = async ({
         setScenarioModes(cloudPayload.scenarioModes);
         setSelectedScenarioId(cloudPayload.selectedScenarioId);
         setScenarioShortcuts(cloudPayload.scenarioShortcuts);
+        applyCloudPayloadCustomIcons(cloudPayload);
         persistLocalProfileSnapshot(cloudPayload);
         clearLocalNeedsCloudReconcile();
         localStorage.setItem('leaf_tab_shortcuts_cache', cloudJson);
@@ -273,6 +293,7 @@ export const fetchShortcutsWithDeps = async ({
           setScenarioModes(payload.scenarioModes);
           setSelectedScenarioId(payload.selectedScenarioId);
           setScenarioShortcuts(payload.scenarioShortcuts);
+          applyCloudPayloadCustomIcons(payload);
           if (navigator.onLine) {
             if (!silent) notifyRateLimited();
           } else {

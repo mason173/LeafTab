@@ -119,10 +119,22 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
   }, [src, playbackRate]);
 
   useEffect(() => {
+    if (!shouldPause || !posterSrc) return;
+
+    [singleVideoRef.current, primaryVideoRef.current, secondaryVideoRef.current].forEach((video) => {
+      if (!video) return;
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    });
+  }, [posterSrc, shouldPause, src]);
+
+  useEffect(() => {
     if (seamlessLoopEnabled) return;
 
     const video = singleVideoRef.current;
     if (!video) return;
+    if (shouldPause) return;
 
     video.playbackRate = playbackRate;
     if (!smoothEndRamp) {
@@ -141,7 +153,7 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [playbackRate, seamlessLoopEnabled, smoothEndRamp, src]);
+  }, [playbackRate, seamlessLoopEnabled, shouldPause, smoothEndRamp, src]);
 
   useEffect(() => {
     if (seamlessLoopEnabled) return;
@@ -261,14 +273,27 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
     inactiveVideo.pause();
   }, [activeIndex, seamlessLoopEnabled, shouldPause, src]);
 
+  if (shouldPause && posterSrc) {
+    return (
+      <img
+        key={posterSrc}
+        src={posterSrc}
+        alt=""
+        aria-hidden="true"
+        className={resolvedClassName}
+        draggable={false}
+      />
+    );
+  }
+
   if (!seamlessLoopEnabled) {
     return (
       <video
         key={src}
         ref={singleVideoRef}
-        src={src}
+        src={shouldPause && posterSrc ? undefined : src}
         className={resolvedClassName}
-        autoPlay
+        autoPlay={!shouldPause}
         loop
         muted
         playsInline
@@ -296,9 +321,8 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
       ) : null}
       <video
         ref={primaryVideoRef}
-        src={src}
+        src={shouldPause && posterSrc ? undefined : src}
         className={INNER_VIDEO_CLASS}
-        autoPlay
         muted
         playsInline
         preload="auto"
@@ -309,12 +333,11 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
       />
       <video
         ref={secondaryVideoRef}
-        src={src}
+        src={shouldPause && posterSrc ? undefined : src}
         className={INNER_VIDEO_CLASS}
-        autoPlay
         muted
         playsInline
-        preload="auto"
+        preload="metadata"
         style={{
           opacity: secondaryOpacity,
           transition: `opacity ${transitionMs}ms linear`,

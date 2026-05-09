@@ -500,6 +500,7 @@ export const buildLeafTabSyncSnapshot = (params: {
   preferences: SyncablePreferences;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons?: Record<string, string>;
   bookmarkTree?: LeafTabBookmarkTreeDraft | null;
   deviceId: string;
   generatedAt?: string;
@@ -652,6 +653,9 @@ export const buildLeafTabSyncSnapshot = (params: {
     preferences,
     scenarios,
     shortcuts,
+    customShortcutIcons: Object.fromEntries(
+      Object.entries(params.customShortcutIcons || {}).filter(([shortcutId]) => Boolean(shortcuts[shortcutId])),
+    ),
     bookmarkFolders,
     bookmarkItems,
     scenarioOrder,
@@ -667,6 +671,7 @@ export const projectLeafTabSyncSnapshotToAppState = (
   preferences: SyncablePreferences | null;
   scenarioModes: ScenarioMode[];
   scenarioShortcuts: ScenarioShortcuts;
+  customShortcutIcons: Record<string, string>;
   bookmarkFolders: Record<string, LeafTabSyncBookmarkFolderEntity>;
   bookmarkItems: Record<string, LeafTabSyncBookmarkItemEntity>;
   bookmarkOrders: Record<string, LeafTabSyncBookmarkOrder>;
@@ -741,6 +746,9 @@ export const projectLeafTabSyncSnapshotToAppState = (
     preferences: snapshot.preferences ? normalizeSyncablePreferences(snapshot.preferences.value) : null,
     scenarioModes,
     scenarioShortcuts: normalizedScenarioShortcuts,
+    customShortcutIcons: Object.fromEntries(
+      Object.entries(snapshot.customShortcutIcons || {}).filter(([shortcutId]) => Boolean(snapshot.shortcuts[shortcutId])),
+    ),
     bookmarkFolders: snapshot.bookmarkFolders,
     bookmarkItems: snapshot.bookmarkItems,
     bookmarkOrders: snapshot.bookmarkOrders,

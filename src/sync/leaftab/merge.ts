@@ -155,6 +155,43 @@ const resolvePreferredPreferences = (
     : clonePreferencesState(remote);
 };
 
+const resolveMergedCustomShortcutIcons = (params: {
+  baseSnapshot: LeafTabSyncSnapshot;
+  localSnapshot: LeafTabSyncSnapshot;
+  remoteSnapshot: LeafTabSyncSnapshot;
+  validShortcutIds: Set<string>;
+}) => {
+  const nextIcons: Record<string, string> = {};
+  const iconIds = new Set([
+    ...Object.keys(params.baseSnapshot.customShortcutIcons || {}),
+    ...Object.keys(params.localSnapshot.customShortcutIcons || {}),
+    ...Object.keys(params.remoteSnapshot.customShortcutIcons || {}),
+  ]);
+
+  iconIds.forEach((shortcutId) => {
+    if (!params.validShortcutIds.has(shortcutId)) return;
+    const baseIcon = params.baseSnapshot.customShortcutIcons?.[shortcutId] || '';
+    const localIcon = params.localSnapshot.customShortcutIcons?.[shortcutId] || '';
+    const remoteIcon = params.remoteSnapshot.customShortcutIcons?.[shortcutId] || '';
+    const localChanged = localIcon !== baseIcon;
+    const remoteChanged = remoteIcon !== baseIcon;
+
+    const resolvedIcon = localChanged && remoteChanged && localIcon !== remoteIcon
+      ? localIcon || remoteIcon
+      : localChanged
+        ? localIcon
+        : remoteChanged
+          ? remoteIcon
+          : localIcon || remoteIcon;
+
+    if (resolvedIcon) {
+      nextIcons[shortcutId] = resolvedIcon;
+    }
+  });
+
+  return nextIcons;
+};
+
 const haveSamePreferenceValue = (left: unknown, right: unknown) => {
   return JSON.stringify(left) === JSON.stringify(right);
 };
@@ -754,6 +791,12 @@ export const mergeLeafTabSyncSnapshot = (
 
   const validScenarioIds = new Set(Object.keys(nextScenarios));
   const validShortcutIds = new Set(Object.keys(nextShortcuts));
+  const customShortcutIcons = resolveMergedCustomShortcutIcons({
+    baseSnapshot,
+    localSnapshot,
+    remoteSnapshot,
+    validShortcutIds,
+  });
   const validBookmarkFolderIds = new Set(Object.keys(nextBookmarkFolders));
   const validBookmarkItemIds = new Set(Object.keys(nextBookmarkItems));
   const validBookmarkEntityIds = new Set([
@@ -934,6 +977,7 @@ export const mergeLeafTabSyncSnapshot = (
       preferences: nextPreferences,
       scenarios: nextScenarios,
       shortcuts: nextShortcuts,
+      customShortcutIcons,
       bookmarkFolders: nextBookmarkFolders,
       bookmarkItems: nextBookmarkItems,
       scenarioOrder,
