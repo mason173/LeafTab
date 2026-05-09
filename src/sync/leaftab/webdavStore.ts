@@ -25,6 +25,7 @@ export interface LeafTabSyncWebdavStoreConfig {
   password?: string;
   rootPath?: string;
   requestPermission?: boolean;
+  requestTimeoutMs?: number;
 }
 
 type WebdavMethod = 'GET' | 'PUT' | 'DELETE' | 'MKCOL';
@@ -47,6 +48,20 @@ type LeafTabSyncRemoteCacheEntry = {
   snapshot: LeafTabSyncSnapshot;
   savedAt: string;
 };
+
+export class LeafTabSyncWebdavTimeoutError extends Error {
+  operation: string;
+  relativePath: string | null;
+  timeoutMs: number;
+
+  constructor(operation: string, relativePath: string | null, timeoutMs: number) {
+    super(`LeafTab sync WebDAV ${operation} timed out after ${timeoutMs}ms${relativePath ? ` @ ${relativePath}` : ''}`);
+    this.name = 'LeafTabSyncWebdavTimeoutError';
+    this.operation = operation;
+    this.relativePath = relativePath || null;
+    this.timeoutMs = timeoutMs;
+  }
+}
 
 export class LeafTabSyncWebdavError extends Error {
   status: number;
@@ -107,6 +122,7 @@ const parseJsonOrNull = <T>(text: string): T | null => {
 const REMOTE_CACHE_STORAGE_PREFIX = 'leaftab_sync_remote_state_v1:';
 const READ_BATCH_CONCURRENCY = 12;
 const WRITE_BATCH_CONCURRENCY = 8;
+const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
 
 const createRemoteCacheStorageKey = (url: string, rootPath: string) => {
   const suffix = `${normalizeBaseUrl(url)}|${normalizeRootPath(rootPath)}`
@@ -141,6 +157,7 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       password: config.password || '',
       rootPath: normalizeRootPath(config.rootPath),
       requestPermission: config.requestPermission !== false,
+      requestTimeoutMs: Math.max(1_000, Number(config.requestTimeoutMs) || DEFAULT_REQUEST_TIMEOUT_MS),
     };
     this.remoteCacheStorageKey = createRemoteCacheStorageKey(this.config.url, this.config.rootPath);
   }
@@ -211,6 +228,12 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
 
     try {
       const response = await new Promise<any>((resolve, reject) => {
+        let settled = false;
+        const timeoutId = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          reject(new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs));
+        }, this.config.requestTimeoutMs);
         runtime.sendMessage(
           {
             type: 'LEAFTAB_WEBDAV_PROXY',
@@ -222,6 +245,9 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
             },
           },
           (result: any) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
             const lastError = runtime.lastError;
             if (lastError) {
               reject(new Error(lastError.message || 'WebDAV proxy unavailable'));
@@ -261,17 +287,31 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     const proxied = await this.requestViaExtensionProxy(method, relativePath, headers, options?.body);
     if (proxied) return proxied;
 
-    const response = await fetch(joinUrl(this.config.url, relativePath), {
-      method,
-      headers,
-      body: options?.body,
-    });
-    const text = await response.text();
-    return {
-      status: response.status,
-      ok: response.ok,
-      text,
-    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, this.config.requestTimeoutMs);
+    try {
+      const response = await fetch(joinUrl(this.config.url, relativePath), {
+        method,
+        headers,
+        body: options?.body,
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      return {
+        status: response.status,
+        ok: response.ok,
+        text,
+      };
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') {
+        throw new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   private async ensureCollections(relativeFilePath: string) {

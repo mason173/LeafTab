@@ -5,6 +5,7 @@ const OPEN_AI_CHAT_MESSAGE_TYPE = 'LEAFTAB_OPEN_AI_CHAT';
 const REMOTE_SEARCH_SUGGESTIONS_PROVIDER_360 = '360';
 const REMOTE_SEARCH_SUGGESTIONS_TIMEOUT_MS = 1500;
 const OPEN_AI_CHAT_TIMEOUT_MS = 20000;
+const WEBDAV_PROXY_TIMEOUT_MS = 20000;
 
 const AI_PROVIDER_TARGETS = {
   chatgpt: 'https://chatgpt.com/',
@@ -939,11 +940,16 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   });
 
   (async () => {
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, WEBDAV_PROXY_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
         method,
         headers,
         body,
+        signal: abortController.signal,
       });
       const responseText = await response.text();
       sendResponse({
@@ -958,6 +964,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         success: false,
         error: String(error instanceof Error ? error.message : error),
       });
+    } finally {
+      clearTimeout(timeoutId);
     }
   })();
 

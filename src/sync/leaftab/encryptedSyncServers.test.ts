@@ -14,7 +14,7 @@ import {
   serializeLeafTabSyncKeyBytes,
 } from './encryption';
 import type { LeafTabSyncSnapshot } from './schema';
-import { LeafTabSyncWebdavLockError, LeafTabSyncWebdavStore } from './webdavStore';
+import { LeafTabSyncWebdavLockError, LeafTabSyncWebdavStore, LeafTabSyncWebdavTimeoutError } from './webdavStore';
 import {
   createLeafTabCloudEncryptionScopeKey,
   createLeafTabWebdavEncryptionScopeKey,
@@ -692,6 +692,38 @@ describe('encrypted sync remote integration', () => {
       LeafTabSyncWebdavLockError,
     );
     await primaryStore.releaseLock();
+  });
+
+  it('times out stalled WebDAV requests', async () => {
+    const server = await new Promise<import('node:http').Server>((resolve) => {
+      void import('node:http').then(({ createServer }) => {
+        const nextServer = createServer((_req, _res) => {});
+        nextServer.listen(0, '127.0.0.1', () => resolve(nextServer));
+      });
+    });
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        throw new Error('missing test server address');
+      }
+      const store = new LeafTabSyncWebdavStore({
+        url: `http://127.0.0.1:${address.port}`,
+        rootPath: 'leaftab/v1',
+        requestPermission: false,
+        requestTimeoutMs: 25,
+      });
+
+      await expect(store.readJsonFile('leaftab/v1/head.json')).rejects.toBeInstanceOf(
+        LeafTabSyncWebdavTimeoutError,
+      );
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
+    }
   });
 
   it('rejects a second active cloud lock from another device', async () => {

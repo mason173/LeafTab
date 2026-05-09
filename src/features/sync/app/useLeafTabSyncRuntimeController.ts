@@ -1398,45 +1398,20 @@ export function useLeafTabSyncRuntimeController({
         progress: 8,
       },
       async ({ update }) => {
-        let forceSyncFailed = false;
-
-        if (leafTabSyncHasConfig) {
-          update({
-            title: t('leaftabSyncRunner.webdav.disable.finalSyncTitle', { defaultValue: '正在同步最后的变更' }),
-            progress: 18,
-          });
-          try {
-            const result = await handleLeafTabSync({
-              silentSuccess: true,
-              progressDetail: t('leaftabSyncRunner.webdav.disable.detail', { defaultValue: '正在处理最后一次同步和关闭操作' }),
-              onProgress: (progress) => {
-                update({
-                  title: progress.message,
-                  progress: progress.progress,
-                });
-              },
-            });
-            if (!result) {
-              forceSyncFailed = true;
-            }
-          } catch {
-            forceSyncFailed = true;
-          }
-        }
-
         update({
           title: t('leaftabSyncRunner.webdav.disable.closingTitle', { defaultValue: '正在关闭同步' }),
-          progress: 92,
+          progress: 24,
         });
         if (webdavDeferredDangerousBookmarksScopeKeyRef.current === leafTabWebdavEncryptionScopeKey) {
           webdavDeferredDangerousBookmarksScopeKeyRef.current = null;
         }
         setWebdavSyncEnabledInStorage(false);
+        clearLeafTabSyncErrorState();
 
         if (options?.clearLocal === true) {
           update({
             title: t('leaftabSyncRunner.webdav.disable.clearingTitle', { defaultValue: '正在清理本地数据' }),
-            progress: 96,
+            progress: 72,
           });
           await resetLocalShortcutsByRole(localStorage.getItem('role'));
         }
@@ -1446,15 +1421,11 @@ export function useLeafTabSyncRuntimeController({
           progress: 100,
         });
 
-        if (forceSyncFailed) {
-          toast.error(t('settings.backup.webdav.disableFinalSyncFailed'));
-        }
         toast.success(t('settings.backup.webdav.syncDisabled'));
       },
     );
   }, [
-    handleLeafTabSync,
-    leafTabSyncHasConfig,
+    clearLeafTabSyncErrorState,
     resetLocalShortcutsByRole,
     runLongTask,
     setWebdavSyncEnabledInStorage,
