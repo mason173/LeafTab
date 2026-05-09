@@ -109,6 +109,7 @@ export function useLeafTabWebdavAutoSync({
   });
   const latestOnSyncRef = useRef(onSync);
   const latestTRef = useRef(t);
+  const runGenerationRef = useRef(0);
   const [configVersion, setConfigVersion] = useState(0);
 
   useEffect(() => {
@@ -167,10 +168,16 @@ export function useLeafTabWebdavAutoSync({
 
   useEffect(() => {
     let disposed = false;
+    const runGeneration = runGenerationRef.current + 1;
+    runGenerationRef.current = runGeneration;
+    const isCurrentRun = () => !disposed && runGenerationRef.current === runGeneration;
     const config = readWebdavConfigFromStorage();
     if (!config?.syncOptions?.syncBySchedule) {
+      runGenerationRef.current += 1;
       if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = null;
+      clearLeaseRenewTimer();
+      releaseAutoSyncLease(ownerIdRef.current);
       localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
       emitStatusChanged();
       return;
@@ -187,7 +194,7 @@ export function useLeafTabWebdavAutoSync({
     }
 
     const scheduleNext = (targetMs: number, options?: { publishStatus?: boolean }) => {
-      if (disposed) return;
+      if (!isCurrentRun()) return;
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
       }
@@ -198,11 +205,14 @@ export function useLeafTabWebdavAutoSync({
       }
       const delay = Math.min(nextMs - Date.now(), 2_147_483_647);
       timerRef.current = window.setTimeout(async () => {
-        if (disposed) return;
+        if (!isCurrentRun()) return;
         const latestConfig = readWebdavConfigFromStorage();
         if (!latestConfig?.syncOptions?.syncBySchedule) {
+          runGenerationRef.current += 1;
           if (timerRef.current) window.clearTimeout(timerRef.current);
           timerRef.current = null;
+          clearLeaseRenewTimer();
+          releaseAutoSyncLease(ownerIdRef.current);
           localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
           emitStatusChanged();
           return;
@@ -233,7 +243,7 @@ export function useLeafTabWebdavAutoSync({
         startLeaseRenewal();
         try {
           const ok = await latestOnSyncRef.current();
-          if (disposed) return;
+          if (!isCurrentRun() || !readWebdavConfigFromStorage()?.syncOptions?.syncBySchedule) return;
           if (ok) {
             failureCountRef.current = 0;
             if (readWebdavStorageStateFromStorage().autoSyncToastEnabled) {
@@ -248,7 +258,7 @@ export function useLeafTabWebdavAutoSync({
           releaseAutoSyncLease(ownerIdRef.current);
         }
 
-        if (disposed) return;
+        if (!isCurrentRun() || !readWebdavConfigFromStorage()?.syncOptions?.syncBySchedule) return;
         failureCountRef.current += 1;
         scheduleNext(retryAfterFailureAt);
       }, delay);
@@ -267,6 +277,9 @@ export function useLeafTabWebdavAutoSync({
 
     return () => {
       disposed = true;
+      if (runGenerationRef.current === runGeneration) {
+        runGenerationRef.current += 1;
+      }
       if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = null;
       clearLeaseRenewTimer();

@@ -404,8 +404,11 @@ export function useLeafTabSyncRuntimeController({
 
   const leafTabSyncDeviceId = useMemo(() => getOrCreateLeafTabSyncDeviceId(), []);
 
-  const emitWebdavSyncStatusChanged = useCallback(() => {
+  const emitWebdavConfigChanged = useCallback(() => {
     window.dispatchEvent(new Event('webdav-config-changed'));
+  }, []);
+
+  const emitWebdavSyncStatusChanged = useCallback(() => {
     window.dispatchEvent(new CustomEvent('webdav-sync-status-changed'));
   }, []);
 
@@ -483,13 +486,15 @@ export function useLeafTabSyncRuntimeController({
     if (!enabled) {
       localStorage.removeItem(WEBDAV_STORAGE_KEYS.nextSyncAt);
     }
+    emitWebdavConfigChanged();
     emitWebdavSyncStatusChanged();
-  }, [emitWebdavSyncStatusChanged]);
+  }, [emitWebdavConfigChanged, emitWebdavSyncStatusChanged]);
 
   const applyWebdavDangerousBookmarkChoice = useCallback(() => {
     applyWebdavDangerousBookmarkChoiceToStorage();
+    emitWebdavConfigChanged();
     emitWebdavSyncStatusChanged();
-  }, [emitWebdavSyncStatusChanged]);
+  }, [emitWebdavConfigChanged, emitWebdavSyncStatusChanged]);
 
   const leafTabSyncWebdavConfig = useMemo(() => {
     const config = readWebdavConfigFromStorage({ allowDisabled: true });
