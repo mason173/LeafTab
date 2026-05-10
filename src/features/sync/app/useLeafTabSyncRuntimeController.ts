@@ -738,10 +738,12 @@ export function useLeafTabSyncRuntimeController({
     return buildLeafTabSyncSnapshotFromCurrentState({
       baselineStorageKey: leafTabSyncBaselineStorageKey,
       includeBookmarks: webdavSyncBookmarksEnabled,
+      preferencesTransform: stripWallpaperFromCloudSyncPreferences,
     });
   }, [
     buildLeafTabSyncSnapshotFromCurrentState,
     leafTabSyncBaselineStorageKey,
+    stripWallpaperFromCloudSyncPreferences,
     webdavSyncBookmarksEnabled,
   ]);
 
@@ -749,10 +751,12 @@ export function useLeafTabSyncRuntimeController({
     return buildLeafTabSyncSnapshotFromCurrentState({
       baselineStorageKey: leafTabSyncBaselineStorageKey,
       includeBookmarks: false,
+      preferencesTransform: stripWallpaperFromCloudSyncPreferences,
     });
   }, [
     buildLeafTabSyncSnapshotFromCurrentState,
     leafTabSyncBaselineStorageKey,
+    stripWallpaperFromCloudSyncPreferences,
   ]);
 
   const buildCloudLeafTabSyncSnapshotWithoutBookmarks = useCallback(async () => {
@@ -797,23 +801,26 @@ export function useLeafTabSyncRuntimeController({
   ]);
 
   const applyWebdavLeafTabSyncSnapshot = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
+    const snapshotWithLocalWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
     if (webdavSyncBookmarksEnabled) {
-      await applyLeafTabSyncSnapshot(snapshot);
+      await applyLeafTabSyncSnapshot(snapshotWithLocalWallpaper);
       return;
     }
-    await applyLeafTabSyncSnapshot(snapshot, {
+    await applyLeafTabSyncSnapshot(snapshotWithLocalWallpaper, {
       skipBookmarkApply: true,
     });
   }, [
     applyLeafTabSyncSnapshot,
+    mergeCloudSyncSnapshotWithLocalWallpaper,
     webdavSyncBookmarksEnabled,
   ]);
 
   const applyWebdavLeafTabSyncSnapshotWithoutBookmarks = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
-    await applyLeafTabSyncSnapshot(snapshot, {
+    const snapshotWithLocalWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
+    await applyLeafTabSyncSnapshot(snapshotWithLocalWallpaper, {
       skipBookmarkApply: true,
     });
-  }, [applyLeafTabSyncSnapshot]);
+  }, [applyLeafTabSyncSnapshot, mergeCloudSyncSnapshotWithLocalWallpaper]);
 
   const applyCloudLeafTabSyncSnapshotWithoutBookmarks = useCallback(async (snapshot: LeafTabSyncSnapshot) => {
     const snapshotWithoutCloudWallpaper = mergeCloudSyncSnapshotWithLocalWallpaper(snapshot);
