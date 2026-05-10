@@ -86,15 +86,16 @@ describe('custom shortcut icon sync payloads', () => {
     localStorage.clear();
   });
 
-  it('exports and applies stored custom shortcut icons by shortcut id', () => {
+  it('temporarily disables stored custom shortcut icons for CPU mitigation', () => {
     applyShortcutCustomIcons({
       shortcut_a: ICON_A,
       shortcut_b: ICON_B,
     });
+    flushQueuedLocalStorageWrites();
 
-    expect(exportShortcutCustomIcons(['shortcut_a'])).toEqual({
-      shortcut_a: ICON_A,
-    });
+    expect(readShortcutCustomIcon('shortcut_a')).toBe('');
+    expect(readShortcutCustomIcon('shortcut_b')).toBe('');
+    expect(exportShortcutCustomIcons(['shortcut_a'])).toEqual({});
 
     applyShortcutCustomIcons({
       shortcut_a: ICON_B,
@@ -104,7 +105,7 @@ describe('custom shortcut icon sync payloads', () => {
     });
     flushQueuedLocalStorageWrites();
 
-    expect(readShortcutCustomIcon('shortcut_a')).toBe(ICON_B);
+    expect(readShortcutCustomIcon('shortcut_a')).toBe('');
     expect(readShortcutCustomIcon('shortcut_b')).toBe('');
   });
 
@@ -121,10 +122,8 @@ describe('custom shortcut icon sync payloads', () => {
     flushQueuedLocalStorageWrites();
 
     expect(readShortcutCustomIcon('shortcut_a')).toBe('');
-    expect(readShortcutCustomIcon('shortcut_b')).toBe(ICON_B);
-    expect(exportShortcutCustomIcons(['shortcut_a', 'shortcut_b'])).toEqual({
-      shortcut_b: ICON_B,
-    });
+    expect(readShortcutCustomIcon('shortcut_b')).toBe('');
+    expect(exportShortcutCustomIcons(['shortcut_a', 'shortcut_b'])).toEqual({});
   });
 
   it('serializes custom icons through engine packs and local backup bundles', () => {
