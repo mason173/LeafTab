@@ -108,6 +108,25 @@ describe('custom shortcut icon sync payloads', () => {
     expect(readShortcutCustomIcon('shortcut_b')).toBe('');
   });
 
+  it('ignores oversized custom icon payloads', () => {
+    const oversizedIcon = `data:image/png;base64,${'a'.repeat(230_000)}`;
+
+    applyShortcutCustomIcons({
+      shortcut_a: oversizedIcon,
+      shortcut_b: ICON_B,
+    }, {
+      replace: true,
+      shortcutIds: ['shortcut_a', 'shortcut_b'],
+    });
+    flushQueuedLocalStorageWrites();
+
+    expect(readShortcutCustomIcon('shortcut_a')).toBe('');
+    expect(readShortcutCustomIcon('shortcut_b')).toBe(ICON_B);
+    expect(exportShortcutCustomIcons(['shortcut_a', 'shortcut_b'])).toEqual({
+      shortcut_b: ICON_B,
+    });
+  });
+
   it('serializes custom icons through engine packs and local backup bundles', () => {
     const snapshot = createSnapshot();
     const serialized = createLeafTabSyncSerializedSnapshot(snapshot);
