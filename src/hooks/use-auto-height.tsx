@@ -16,6 +16,7 @@ export function useAutoHeight<T extends HTMLElement = HTMLDivElement>(
 ) {
   const ref = React.useRef<T | null>(null);
   const roRef = React.useRef<ResizeObserver | null>(null);
+  const rafRef = React.useRef<number | null>(null);
   const [height, setHeight] = React.useState(0);
 
   const measure = React.useCallback(() => {
@@ -74,7 +75,13 @@ export function useAutoHeight<T extends HTMLElement = HTMLDivElement>(
 
     const ro = new ResizeObserver(() => {
       const next = measure();
-      requestAnimationFrame(() => setHeight(next));
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        setHeight(next);
+      });
     });
 
     ro.observe(el);
@@ -85,6 +92,10 @@ export function useAutoHeight<T extends HTMLElement = HTMLDivElement>(
     roRef.current = ro;
 
     return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       ro.disconnect();
       roRef.current = null;
     };

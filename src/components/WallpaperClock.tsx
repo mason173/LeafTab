@@ -169,7 +169,6 @@ export const WallpaperClock = memo(function WallpaperClock({
               paused={pauseDynamicWallpaper}
               playbackRate={dynamicWallpaperPlaybackRate}
               smoothEndRamp={false}
-              seamlessLoopDurationSec={0.6}
             />
           ) : wallpaperMode === 'bing' ? (
             (bingWallpaperUrl && bingWallpaperUrl !== imgImage) ? (

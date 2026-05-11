@@ -14,6 +14,7 @@ import {
 import { collectLeafTabSyncChangedPayloadPaths, createLeafTabSyncSerializedSnapshot } from './fileMap';
 import { materializeLeafTabSyncSnapshotOffMainThread } from './syncMaterializeWorkerBridge';
 import { yieldToMainThread } from '@/utils/mainThreadScheduler';
+import { measureSyncDiagnostic, recordSyncDiagnosticEvent } from '@/utils/syncDiagnostics';
 import {
   readLeafTabSyncCacheEntry,
   removeLeafTabSyncCacheEntry,
@@ -302,39 +303,69 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     relativePath: string,
     options?: { headers?: Record<string, string>; body?: string; skipPermission?: boolean },
   ): Promise<WebdavRequestResult> {
-    if (!options?.skipPermission) {
-      await this.ensurePermission(relativePath);
-    }
-
-    const headers = this.getHeaders(options?.headers);
-    const proxied = await this.requestViaExtensionProxy(method, relativePath, headers, options?.body);
-    if (proxied) return proxied;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, this.config.requestTimeoutMs);
-    try {
-      const response = await fetch(joinUrl(this.config.url, relativePath), {
-        method,
-        headers,
-        body: options?.body,
-        signal: controller.signal,
-      });
-      const text = await response.text();
-      return {
-        status: response.status,
-        ok: response.ok,
-        text,
-      };
-    } catch (error) {
-      if ((error as Error)?.name === 'AbortError') {
-        throw new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs);
+    return measureSyncDiagnostic('webdav', 'request', {
+      method,
+      path: relativePath,
+      bodyBytes: typeof options?.body === 'string' ? options.body.length : 0,
+    }, async () => {
+      if (!options?.skipPermission) {
+        await this.ensurePermission(relativePath);
       }
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
-    }
+
+      const headers = this.getHeaders(options?.headers);
+      const proxied = await this.requestViaExtensionProxy(method, relativePath, headers, options?.body);
+      if (proxied) {
+        recordSyncDiagnosticEvent({
+          provider: 'webdav',
+          action: 'request.result',
+          detail: {
+            method,
+            path: relativePath,
+            via: 'extension-proxy',
+            status: proxied.status,
+            responseBytes: proxied.text.length,
+          },
+        });
+        return proxied;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, this.config.requestTimeoutMs);
+      try {
+        const response = await fetch(joinUrl(this.config.url, relativePath), {
+          method,
+          headers,
+          body: options?.body,
+          signal: controller.signal,
+        });
+        const text = await response.text();
+        recordSyncDiagnosticEvent({
+          provider: 'webdav',
+          action: 'request.result',
+          detail: {
+            method,
+            path: relativePath,
+            via: 'fetch',
+            status: response.status,
+            responseBytes: text.length,
+          },
+        });
+        return {
+          status: response.status,
+          ok: response.ok,
+          text,
+        };
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') {
+          throw new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs);
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    });
   }
 
   private async ensureCollections(relativeFilePath: string) {
@@ -416,7 +447,9 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
   }
 
   async readHead() {
-    return this.getJson<LeafTabSyncHeadFile>(getLeafTabSyncHeadPath(this.config.rootPath));
+    return measureSyncDiagnostic('webdav', 'readHead', undefined, () => (
+      this.getJson<LeafTabSyncHeadFile>(getLeafTabSyncHeadPath(this.config.rootPath))
+    ));
   }
 
   async readJsonFile<T>(relativePath: string): Promise<T | null> {
@@ -458,6 +491,7 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     commit: LeafTabSyncCommitFile | null;
     snapshot: LeafTabSyncSnapshot | null;
   }> {
+    return measureSyncDiagnostic('webdav', 'readState', undefined, async () => {
     const head = await this.readHead();
     if (!head?.commitId) {
       await this.clearRemoteCache();
@@ -514,9 +548,11 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       commit,
       snapshot,
     };
+    });
   }
 
   async writeState(params: LeafTabSyncWriteStateParams): Promise<LeafTabSyncWriteStateResult> {
+    return measureSyncDiagnostic('webdav', 'writeState', undefined, async () => {
     const commit = createLeafTabSyncCommitFile({
       deviceId: params.deviceId,
       createdAt: params.createdAt,
@@ -559,5 +595,6 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     });
 
     return { head, commit };
+    });
   }
 }

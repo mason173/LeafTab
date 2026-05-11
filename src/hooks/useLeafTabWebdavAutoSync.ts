@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/components/ui/sonner';
 import { getAlignedJitteredNextAt, resolveInitialAlignedJitteredTargetAt } from '@/sync/schedule';
+import { recordSyncDiagnosticEvent } from '@/utils/syncDiagnostics';
 import {
   readWebdavConfigFromStorage,
   readWebdavStorageStateFromStorage,
@@ -12,6 +13,7 @@ import {
 const AUTO_SYNC_BUSY_RETRY_DELAY_MS = 30 * 1000;
 const AUTO_SYNC_FAILURE_RETRY_BASE_DELAY_MS = 60 * 1000;
 const AUTO_SYNC_FAILURE_RETRY_MAX_DELAY_MS = 10 * 60 * 1000;
+const AUTO_SYNC_HIDDEN_RETRY_DELAY_MS = 5 * 60 * 1000;
 const AUTO_SYNC_LEASE_KEY = 'webdav_auto_sync_lease_v1';
 const AUTO_SYNC_LEASE_TTL_MS = 3 * 60 * 1000;
 const AUTO_SYNC_LEASE_RENEW_MS = 30 * 1000;
@@ -212,6 +214,14 @@ export function useLeafTabWebdavAutoSync({
   }, []);
 
   const handleAutoSyncTrigger = useCallback(async () => {
+    recordSyncDiagnosticEvent({
+      provider: 'webdav',
+      action: 'alarm.trigger',
+      detail: {
+        hidden: document.hidden,
+        online: navigator.onLine,
+      },
+    });
     const latestConfig = readWebdavConfigFromStorage();
     if (!latestConfig?.syncOptions?.syncBySchedule) {
       clearScheduledSync();
@@ -226,14 +236,41 @@ export function useLeafTabWebdavAutoSync({
     const now = Date.now();
     const retryAfterBusyAt = now + AUTO_SYNC_BUSY_RETRY_DELAY_MS;
     const retryAfterFailureAt = now + getFailureRetryDelay(failureCountRef.current + 1);
+    if (document.hidden) {
+      recordSyncDiagnosticEvent({
+        provider: 'webdav',
+        action: 'alarm.skipped',
+        detail: {
+          reason: 'document-hidden',
+        },
+      });
+      const nextMs = publishNextSync(now + AUTO_SYNC_HIDDEN_RETRY_DELAY_MS, { publishStatus: false });
+      return {
+        handled: false,
+        retryAfterMs: AUTO_SYNC_HIDDEN_RETRY_DELAY_MS,
+        nextSyncAt: new Date(nextMs).toISOString(),
+      };
+    }
+
     if (
       inFlightRef.current
       || latestFlags.syncing
       || latestFlags.conflictModalOpen
       || latestFlags.isDragging
-      || document.hidden
       || !navigator.onLine
     ) {
+      recordSyncDiagnosticEvent({
+        provider: 'webdav',
+        action: 'alarm.skipped',
+        detail: {
+          reason: 'busy-or-offline',
+          inFlight: inFlightRef.current,
+          syncing: latestFlags.syncing,
+          conflictModalOpen: latestFlags.conflictModalOpen,
+          isDragging: latestFlags.isDragging,
+          online: navigator.onLine,
+        },
+      });
       const nextMs = publishNextSync(retryAfterBusyAt, { publishStatus: false });
       return {
         handled: false,
@@ -243,6 +280,13 @@ export function useLeafTabWebdavAutoSync({
     }
 
     if (!tryAcquireAutoSyncLease(ownerIdRef.current, now)) {
+      recordSyncDiagnosticEvent({
+        provider: 'webdav',
+        action: 'alarm.skipped',
+        detail: {
+          reason: 'lease-held',
+        },
+      });
       const nextMs = publishNextSync(retryAfterBusyAt, { publishStatus: false });
       return {
         handled: false,

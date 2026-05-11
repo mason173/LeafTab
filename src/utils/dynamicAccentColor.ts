@@ -1,4 +1,5 @@
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
+import { resolveDynamicWallpaperAccentPaletteBySrc } from '@/components/wallpaper/dynamicWallpapers';
 import {
   ADAPTIVE_NEUTRAL_ACCENT,
   DEFAULT_ACCENT_COLOR,
@@ -555,6 +556,10 @@ export const resolveWallpaperAccentPalette = async (
   input: DynamicAccentInput,
   options?: ResolveDynamicAccentOptions,
 ) => {
+  if (input.wallpaperMode === 'dynamic') {
+    return resolveDynamicWallpaperAccentPaletteBySrc(input.dynamicWallpaperSrc)
+      || DEFAULT_WALLPAPER_ACCENT_PALETTE;
+  }
   if (input.wallpaperMode === 'weather') {
     return buildRecommendedAccentPaletteFromHexes([resolveWeatherAccent(input.weatherCode)]);
   }

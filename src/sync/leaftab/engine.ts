@@ -3,6 +3,7 @@ import { mergeLeafTabSyncSnapshot, type LeafTabSyncMergeResult } from './merge';
 import type { LeafTabSyncSnapshot } from './schema';
 import { formatLeafTabSyncSummaryText, summarizeLeafTabSyncMerge, type LeafTabSyncChangeSummary } from './summary';
 import type { LeafTabSyncRemoteStore } from './remoteStore';
+import { measureSyncDiagnostic, recordSyncDiagnosticEvent } from '@/utils/syncDiagnostics';
 
 export type LeafTabSyncInitialChoice = 'push-local' | 'pull-remote' | 'merge';
 export type LeafTabSyncRunMode = 'auto' | LeafTabSyncInitialChoice;
@@ -182,6 +183,9 @@ export class LeafTabSyncEngine {
   }
 
   async analyze(options?: LeafTabSyncEngineAnalyzeOptions): Promise<LeafTabSyncAnalysis> {
+    return measureSyncDiagnostic('sync', 'engine.analyze', {
+      shallow: options?.shallow === true,
+    }, async () => {
     reportProgress(options?.onProgress, {
       stage: 'reading-state',
       progress: 10,
@@ -189,7 +193,9 @@ export class LeafTabSyncEngine {
     });
     const [baseline, localSnapshot] = await Promise.all([
       this.config.baselineStore.load(),
-      this.config.buildLocalSnapshot(),
+      measureSyncDiagnostic('sync', 'buildLocalSnapshot.analyze', {
+        shallow: options?.shallow === true,
+      }, this.config.buildLocalSnapshot),
     ]);
 
     if (options?.shallow && this.config.remoteStore.readHead) {
@@ -237,12 +243,17 @@ export class LeafTabSyncEngine {
       message: '同步状态分析完成',
     });
     return result;
+    });
   }
 
   async sync(
     mode: LeafTabSyncRunMode = 'auto',
     runOptions?: LeafTabSyncEngineRunOptions,
   ): Promise<LeafTabSyncEngineResult> {
+    return measureSyncDiagnostic('sync', 'engine.sync', {
+      mode,
+      hasLocalSnapshotOverride: Boolean(runOptions?.localSnapshotOverride),
+    }, async () => {
     reportProgress(runOptions?.onProgress, {
       stage: 'reading-state',
       progress: 8,
@@ -277,9 +288,20 @@ export class LeafTabSyncEngine {
     const [localSnapshot, remoteState] = await Promise.all([
       runOptions?.localSnapshotOverride
         ? Promise.resolve(cloneSnapshot(runOptions.localSnapshotOverride))
-        : this.config.buildLocalSnapshot(),
+        : measureSyncDiagnostic('sync', 'buildLocalSnapshot.sync', {
+            mode,
+          }, this.config.buildLocalSnapshot),
       this.config.remoteStore.readState(),
     ]);
+    recordSyncDiagnosticEvent({
+      provider: 'sync',
+      action: 'engine.sync.remoteStateLoaded',
+      detail: {
+        mode,
+        hasRemoteHead: Boolean(remoteState.head?.commitId),
+        hasRemoteSnapshot: Boolean(remoteState.snapshot),
+      },
+    });
 
     const baseSnapshot =
       baselineSnapshot || this.config.createEmptySnapshot();
@@ -644,5 +666,6 @@ export class LeafTabSyncEngine {
       summary: finalSummary,
       summaryText: finalSummaryText,
     };
+    });
   }
 }

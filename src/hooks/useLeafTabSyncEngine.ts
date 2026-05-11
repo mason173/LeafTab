@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLeafTabSyncRuntime } from '@/lazy/sync';
 import { useSyncState } from '@/sync/useSyncState';
 import { getLeafTabSyncBaselineSnapshot } from '@/sync/leaftab/baseline';
-import type { CloudShortcutsPayloadV3 } from '@/types';
-import type { WebdavPayload } from '@/utils/backupData';
+import { recordSyncDiagnosticEvent } from '@/utils/syncDiagnostics';
 import {
   type LeafTabSyncAnalysis,
   type LeafTabSyncEngineAnalyzeOptions,
@@ -22,30 +21,12 @@ export interface LeafTabSyncEngineWebdavConfig {
   requestPermission?: boolean;
 }
 
-export type LeafTabSyncEngineLegacyCompatConfig =
-  | {
-      type: 'webdav';
-      filePath?: string | null;
-      bridgeEnabled?: boolean;
-      buildLegacyPayload?: () => WebdavPayload;
-    }
-  | {
-      type: 'cloud';
-      apiUrl: string;
-      token: string;
-      storageScopeKey?: string;
-      bridgeEnabled?: boolean;
-      buildLegacyPayload?: () => WebdavPayload;
-      normalizeCloudShortcutsPayload: (raw: unknown) => CloudShortcutsPayloadV3 | null;
-    };
-
 export interface UseLeafTabSyncEngineOptions {
   enabled?: boolean;
   suspended?: boolean;
   deviceId?: string;
   webdav: LeafTabSyncEngineWebdavConfig | null;
   remoteStore?: LeafTabSyncRemoteStore | null;
-  legacyCompat?: LeafTabSyncEngineLegacyCompatConfig | null;
   buildLocalSnapshot: () => Promise<LeafTabSyncSnapshot>;
   applyLocalSnapshot: (snapshot: LeafTabSyncSnapshot) => Promise<void>;
   createEmptySnapshot: () => LeafTabSyncSnapshot;
@@ -235,53 +216,6 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     runtime,
   ]);
 
-  const legacyCompat = useMemo(() => {
-    if (!runtime || !baselineStore || !remoteStore || !options.legacyCompat) return null;
-
-    if (options.legacyCompat.type === 'webdav') {
-      if (!webdavStore || !options.legacyCompat.filePath) return null;
-      return new runtime.LeafTabLegacyWebdavCompat({
-        deviceId,
-        storageScopeKey: `${options.webdav?.url || ''}|${options.webdav?.rootPath || ''}|${options.legacyCompat.filePath || ''}`,
-        rootPath: options.webdav?.rootPath,
-        legacyFilePath: options.legacyCompat.filePath,
-        bridgeEnabled: options.legacyCompat.bridgeEnabled !== false,
-        buildLegacyPayload: options.legacyCompat.buildLegacyPayload,
-        baselineStore,
-        remoteStore,
-        webdavStore,
-        buildLocalSnapshot: options.buildLocalSnapshot,
-        applyLocalSnapshot: options.applyLocalSnapshot,
-      });
-    }
-
-    return new runtime.LeafTabLegacyCloudCompat({
-      deviceId,
-      apiUrl: options.legacyCompat.apiUrl,
-      token: options.legacyCompat.token,
-      storageScopeKey: options.legacyCompat.storageScopeKey,
-      rootPath: options.webdav?.rootPath,
-      bridgeEnabled: options.legacyCompat.bridgeEnabled !== false,
-      buildLegacyPayload: options.legacyCompat.buildLegacyPayload,
-      baselineStore,
-      remoteStore,
-      buildLocalSnapshot: options.buildLocalSnapshot,
-      applyLocalSnapshot: options.applyLocalSnapshot,
-      normalizeCloudShortcutsPayload: options.legacyCompat.normalizeCloudShortcutsPayload,
-    });
-  }, [
-    baselineStore,
-    deviceId,
-    options.applyLocalSnapshot,
-    options.buildLocalSnapshot,
-    options.legacyCompat,
-    options.webdav?.rootPath,
-    options.webdav?.url,
-    remoteStore,
-    runtime,
-    webdavStore,
-  ]);
-
   const {
     syncState,
     markSyncConflict,
@@ -359,6 +293,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     progressOptions?: {
       onProgress?: (progress: LeafTabSyncEngineProgress) => void;
       allowDestructiveBookmarkChanges?: boolean;
+      skipPostSyncAnalysis?: boolean;
     },
   ) => {
     if (!enabled || !engine) {
@@ -394,56 +329,49 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
               setLastResult(result);
               markSyncSuccess();
               options.markLocalClean?.();
-              await refreshAnalysis({ shallow: true });
+              if (!progressOptions?.skipPostSyncAnalysis) {
+                await refreshAnalysis({ shallow: true });
+              }
               return result;
             }
           }
         }
 
-        let preparedLegacy = null;
-        if (legacyCompat && !legacyCompat.isCompleted()) {
-          const localSnapshot = await options.buildLocalSnapshot();
-          preparedLegacy = await legacyCompat.prepareLocalSnapshot(localSnapshot);
-        }
-
+        recordSyncDiagnosticEvent({
+          provider: 'sync',
+          action: 'runSync.engine.start',
+          detail: {
+            choice,
+            skipPostSyncAnalysis: progressOptions?.skipPostSyncAnalysis === true,
+          },
+        });
         const result = await engine.sync(
           choice,
-          preparedLegacy
-            ? {
-                localSnapshotOverride: preparedLegacy.snapshot,
-                onProgress: progressOptions?.onProgress,
-                allowDestructiveBookmarkChanges: progressOptions?.allowDestructiveBookmarkChanges,
-              }
-            : {
-                onProgress: progressOptions?.onProgress,
-                allowDestructiveBookmarkChanges: progressOptions?.allowDestructiveBookmarkChanges,
-              },
+          {
+            onProgress: progressOptions?.onProgress,
+            allowDestructiveBookmarkChanges: progressOptions?.allowDestructiveBookmarkChanges,
+          },
         );
 
-        if (
-          legacyCompat
-          && !legacyCompat.isCompleted()
-          && preparedLegacy?.importedLegacy
-          && (result.kind === 'noop' || result.kind === 'push')
-        ) {
-          await options.applyLocalSnapshot(result.snapshot);
-        }
-
-        if (legacyCompat && !legacyCompat.isCompleted() && result.kind !== 'conflict') {
-          await legacyCompat.writeLegacyMirrorFromSnapshot(result.snapshot, {
-            importedLegacyHash: preparedLegacy?.importedLegacy
-              ? preparedLegacy.legacyHash
-              : null,
-          });
-        }
         setLastResult(result);
+        recordSyncDiagnosticEvent({
+          provider: 'sync',
+          action: 'runSync.engine.result',
+          detail: {
+            choice,
+            kind: result.kind,
+            remoteCommitId: result.remoteCommitId,
+          },
+        });
         if (result.kind === 'conflict') {
           markSyncConflict();
         } else {
           markSyncSuccess();
           options.markLocalClean?.();
         }
-        await refreshAnalysis();
+        if (!progressOptions?.skipPostSyncAnalysis) {
+          await refreshAnalysis({ shallow: true });
+        }
         return result;
       } catch (error) {
         if (allowConflictRetry && isRetryableLeafTabSyncConflictError(error)) {
@@ -466,7 +394,6 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     baselineStore,
     enabled,
     engine,
-    legacyCompat,
     markSyncConflict,
     markSyncError,
     markSyncStart,

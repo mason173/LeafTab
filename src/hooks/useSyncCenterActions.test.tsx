@@ -31,7 +31,6 @@ function createHarness(overrides?: Partial<Parameters<typeof useSyncCenterAction
   const handleLeafTabSync = vi.fn().mockResolvedValue(true);
   const setCloudSyncBookmarksPermissionGranted = vi.fn();
   const ensureSyncEncryptionAccess = vi.fn().mockResolvedValue(true);
-  const ensureCloudLegacyMigrationReady = vi.fn().mockResolvedValue(true);
   const setIsAuthModalOpen = vi.fn();
   const setLeafTabSyncDialogOpen = vi.fn();
   const setCloudSyncConfigOpen = vi.fn();
@@ -52,7 +51,6 @@ function createHarness(overrides?: Partial<Parameters<typeof useSyncCenterAction
     cloudSyncEncryptedTransport: null,
     setCloudSyncBookmarksPermissionGranted,
     ensureSyncEncryptionAccess,
-    ensureCloudLegacyMigrationReady,
     handleCloudLeafTabSync,
     handleLeafTabSync,
     setIsAuthModalOpen,
@@ -70,7 +68,6 @@ function createHarness(overrides?: Partial<Parameters<typeof useSyncCenterAction
     handleLeafTabSync,
     setCloudSyncBookmarksPermissionGranted,
     ensureSyncEncryptionAccess,
-    ensureCloudLegacyMigrationReady,
     setIsAuthModalOpen,
     setLeafTabSyncDialogOpen,
     setCloudSyncConfigOpen,

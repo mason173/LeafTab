@@ -433,6 +433,11 @@ export function useCloudSync({
       const delay = Math.min(nextMs - Date.now(), 2_147_483_647);
       cloudPullDelayTimerRef.current = window.setTimeout(async () => {
         if (disposed) return;
+        if (document.hidden) {
+          clearCloudPullTimers();
+          clearCloudNextSyncAt();
+          return;
+        }
         const latestConfig = readCloudSyncConfigFromStorage();
         if (!latestConfig.enabled) {
           clearCloudPullTimers();

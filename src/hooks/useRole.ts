@@ -98,7 +98,7 @@ export function useRole(
           const animationEnd = Date.now() + duration;
           const interval = window.setInterval(() => {
             const timeLeft = animationEnd - Date.now();
-            if (timeLeft <= 0) {
+            if (timeLeft <= 0 || document.hidden) {
               window.clearInterval(interval);
               return;
             }

@@ -170,7 +170,7 @@ const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const LONG_TASK_INDICATOR_DELAY_MS = 180;
 const DARK_MODE_AUTO_DIM_OPACITY = 12;
 const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
-const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 4 * 60 * 1000;
+const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 60 * 1000;
 
 const clampMaskOpacity = (value: number): number => {
   if (!Number.isFinite(value)) return 10;
@@ -224,7 +224,6 @@ export default function App() {
   const [confirmDisableConsentOpen, setConfirmDisableConsentOpen] = useState(false);
   const [confirmDisableWebdavSyncOpen, setConfirmDisableWebdavSyncOpen] = useState(false);
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
-  const [confirmLegacyCloudMigrationOpen, setConfirmLegacyCloudMigrationOpen] = useState(false);
   const [cloudSyncConfigOpen, setCloudSyncConfigOpen] = useState(false);
   const [syncConfigBackTarget, setSyncConfigBackTarget] = useState<'settings' | 'sync-center'>('settings');
   const [webdavDialogOpen, setWebdavDialogOpen] = useState(false);
@@ -262,7 +261,6 @@ export default function App() {
     }
   });
   const [pendingShortcutShineId, setPendingShortcutShineId] = useState<string | null>(null);
-  const legacyCloudMigrationResolverRef = useRef<((value: boolean) => void) | null>(null);
   useEffect(() => {
     const syncAdminModeEnabled = () => {
       let enabled = false;
@@ -521,16 +519,23 @@ export default function App() {
       }, DYNAMIC_WALLPAPER_IDLE_FREEZE_MS);
     };
 
+    const freezeNow = () => {
+      clearIdleTimer();
+      setIsDynamicWallpaperIdleFrozen(true);
+    };
+
     const markActive = () => {
-      if (document.hidden) return;
+      if (document.hidden || !document.hasFocus()) {
+        freezeNow();
+        return;
+      }
       setIsDynamicWallpaperIdleFrozen(false);
       scheduleIdleFreeze();
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        clearIdleTimer();
-        setIsDynamicWallpaperIdleFrozen(true);
+        freezeNow();
         return;
       }
       markActive();
@@ -538,6 +543,9 @@ export default function App() {
 
     markActive();
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', freezeNow);
+    window.addEventListener('focus', markActive);
+    window.addEventListener('pagehide', freezeNow);
     window.addEventListener('pointerdown', markActive, { passive: true });
     window.addEventListener('wheel', markActive, { passive: true });
     window.addEventListener('touchstart', markActive, { passive: true });
@@ -546,6 +554,9 @@ export default function App() {
     return () => {
       clearIdleTimer();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', freezeNow);
+      window.removeEventListener('focus', markActive);
+      window.removeEventListener('pagehide', freezeNow);
       window.removeEventListener('pointerdown', markActive);
       window.removeEventListener('wheel', markActive);
       window.removeEventListener('touchstart', markActive);
@@ -1326,6 +1337,7 @@ export default function App() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
   const effectiveWallpaperMode = firefox && wallpaperMode === 'weather' ? 'bing' : wallpaperMode;
+  const videoWallpaperMode = effectiveWallpaperMode === 'weather' || effectiveWallpaperMode === 'dynamic';
   const dynamicWallpaperMaskDisabled = effectiveWallpaperMode === 'dynamic';
   const effectiveWallpaperMaskOpacity = useMemo(() => (
     dynamicWallpaperMaskDisabled
@@ -1648,8 +1660,6 @@ export default function App() {
     setPendingWebdavEnableScopeKey,
     pendingWebdavEnableScopeKey,
     setSyncConfigBackTarget,
-    setConfirmLegacyCloudMigrationOpen,
-    legacyCloudMigrationResolverRef,
     scenarioModes,
     selectedScenarioId,
     scenarioShortcuts,
@@ -1928,11 +1938,24 @@ export default function App() {
   const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
     ? freshWeatherVideo
     : effectiveWallpaperMode === 'dynamic'
-      ? dynamicWallpaperVideoSrc
+      ? dynamicWallpaperPosterSrc
     : effectiveWallpaperMode === 'color'
       ? ''
       : effectiveOverlayWallpaperSrc;
+  const needsRootWallpaperBackdropBlur = roleSelectorOpen
+    || isAuthModalOpen
+    || settingsOpen
+    || importSourceDialogOpen
+    || searchSettingsOpen
+    || shortcutGuideOpen
+    || shortcutIconSettingsOpen
+    || adminModalOpen
+    || aboutModalOpen
+    || webdavDialogOpen
+    || cloudSyncConfigOpen
+    || confirmDisableConsentOpen;
   const imageWallpaperBlurEnabled = showOverlayWallpaperLayer
+    && needsRootWallpaperBackdropBlur
     && effectiveWallpaperMode !== 'color'
     && Boolean(wallpaperBlurSourceUrl);
   const {
@@ -2096,9 +2119,9 @@ export default function App() {
     onSyncClick: () => setLeafTabSyncDialogOpen(true),
     syncStatus: syncState.topNavSyncStatus,
     onWeatherUpdate: setWeatherCode,
-    reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur,
-    leftSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur} />,
-    introGuide: topNavIntroStep
+    reduceVisualEffects: visualEffectsPolicy.disableBackdropBlur || videoWallpaperMode,
+    leftSlot: <ScenarioModeMenu {...scenarioMenuLayerProps} reduceVisualEffects={visualEffectsPolicy.disableBackdropBlur || videoWallpaperMode} />,
+    introGuide: topNavIntroStep && !videoWallpaperMode
       ? {
           step: topNavIntroStep,
           onAcknowledge: handleAdvanceTopNavIntro,
@@ -2111,6 +2134,7 @@ export default function App() {
     setWeatherCode,
     topNavIntroStep,
     syncState.topNavSyncStatus,
+    videoWallpaperMode,
     visualEffectsPolicy.disableBackdropBlur,
   ]);
   const wallpaperClockBaseProps = useMemo(() => ({
@@ -2152,7 +2176,7 @@ export default function App() {
     timeFont,
     onTimeFontChange: setTimeFont,
     layout: responsiveLayout,
-    reduceTopControlsEffects: visualEffectsPolicy.disableBackdropBlur,
+    reduceTopControlsEffects: visualEffectsPolicy.disableBackdropBlur || videoWallpaperMode,
   }), [
     bingWallpaper,
     colorWallpaperId,
@@ -2183,6 +2207,7 @@ export default function App() {
     timeAnimationMode,
     timeFont,
     syncState.topNavSyncStatus,
+    videoWallpaperMode,
     visualEffectsPolicy.disableBackdropBlur,
     effectiveWallpaperMaskOpacity,
     effectiveWallpaperMode,
@@ -2198,8 +2223,8 @@ export default function App() {
     searchAnyKeyCaptureEnabled,
     searchCalculatorEnabled,
     searchRotatingPlaceholderEnabled,
-    disablePlaceholderAnimation: visualEffectsLevel === 'low',
-    lightweightSearchUi: visualEffectsLevel === 'low',
+    disablePlaceholderAnimation: visualEffectsLevel === 'low' || videoWallpaperMode,
+    lightweightSearchUi: visualEffectsLevel === 'low' || videoWallpaperMode,
     searchHeight: responsiveLayout.searchHeight,
     searchInputFontSize: responsiveLayout.searchInputFontSize,
     searchHorizontalPadding: responsiveLayout.searchHorizontalPadding,
@@ -2281,6 +2306,7 @@ export default function App() {
     syncState.leafTabWebdavEnabled,
     tabSwitchSearchEngine,
     user,
+    videoWallpaperMode,
     visualEffectsLevel,
   ]);
   const shortcutEngineHostAdapter = useMemo(() => createLeaftabGridEngineHostAdapter({
@@ -2804,25 +2830,6 @@ export default function App() {
                 confirmButtonClassName="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
               />
 
-              <ConfirmDialog
-                open={confirmLegacyCloudMigrationOpen}
-                onOpenChange={(open) => {
-                  if (open) {
-                    setConfirmLegacyCloudMigrationOpen(true);
-                    return;
-                  }
-                  syncActions.resolveLegacyCloudMigrationPrompt(false);
-                }}
-                title={t('settings.backup.cloud.legacyMigrationTitle', { defaultValue: '检测到旧版云同步数据' })}
-                description={t('settings.backup.cloud.legacyMigrationDesc', {
-                  defaultValue: '检测到这个账号里还有旧版未加密的快捷方式云数据。继续后需要先设置同步口令，LeafTab 才会把这批旧数据迁移到新版加密同步里；在你确认之前，旧数据不会被删除。',
-                })}
-                cancelText={t('common.cancel', { defaultValue: '取消' })}
-                confirmText={t('settings.backup.cloud.startMigration', { defaultValue: '继续迁移' })}
-                onConfirm={() => {
-                  syncActions.resolveLegacyCloudMigrationPrompt(true);
-                }}
-              />
               <ShortcutAppDialogsRoot {...shortcutAppDialogsRootProps} />
               <ShortcutSyncDialogsRoot {...shortcutSyncDialogsRootProps} />
               <FolderTransitionDocumentEffects controller={folderTransitionController} />

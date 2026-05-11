@@ -4,6 +4,7 @@ import { TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { RiArrowLeftSLine, RiArrowRightSLine, RiCheckFill } from "@/icons/ri-compat";
 import { WEATHER_PREVIEW_VIDEOS } from "@/components/wallpaper/weatherWallpapers";
+import { WeatherLoopVideo } from "@/components/wallpaper/WeatherLoopVideo";
 import { WallpaperMaskOverlay } from "@/components/wallpaper/WallpaperMaskOverlay";
 import { WallpaperMaskOpacitySlider } from "@/components/wallpaper/WallpaperMaskOpacitySlider";
 import type { WallpaperMode } from "@/wallpaper/types";
@@ -57,13 +58,11 @@ export function WeatherWallpaperPanel({
     <TabsContent value="weather" disableAnimation className="mt-0 outline-none">
       <div className="flex flex-col gap-4">
         <div className={`relative aspect-video rounded-[24px] overflow-hidden border bg-transparent group ${isolateMaskSlider ? "border-transparent" : "border-border/50"}`}>
-          <video
+          <WeatherLoopVideo
             key={currentWeatherPreview.id}
             src={currentWeatherPreview.src}
             className={`h-full w-full object-cover object-center ${fadeClass} ${isolateMaskSlider ? "opacity-0" : "opacity-100"}`}
-            muted
-            autoPlay
-            playsInline
+            paused={isolateMaskSlider}
           />
           <WallpaperMaskOverlay
             opacity={previewOpacity}
