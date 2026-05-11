@@ -607,7 +607,6 @@ export default function App() {
     setScenarioModes,
     setSelectedScenarioId,
     setScenarioShortcuts,
-    isDragging,
     scenarioModeOpen,
     setContextMenu,
     setShortcutEditOpen,
@@ -1677,7 +1676,6 @@ export default function App() {
     updateLongTaskIndicator,
     finishLongTaskIndicator,
     clearLongTaskIndicator,
-    isDragging,
   });
   const syncState = syncController.state;
   const syncActions = syncController.actions;

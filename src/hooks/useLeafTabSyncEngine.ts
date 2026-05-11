@@ -459,6 +459,6 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     runSync,
     resetBaseline,
     clearSyncError,
-    hasConfig: Boolean(enabled && (options.remoteStore || options.webdav?.url)),
+    hasConfig: Boolean(options.remoteStore || options.webdav?.url),
   };
 }

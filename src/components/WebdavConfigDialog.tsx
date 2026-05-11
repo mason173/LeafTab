@@ -91,7 +91,7 @@ export function WebdavConfigDialog({
   const [webdavPassword, setWebdavPassword] = useState("");
   const [webdavFilePath, setWebdavFilePath] = useState("leaftab_sync.leaftab");
   const [syncBookmarksEnabled, setSyncBookmarksEnabled] = useState(false);
-  const [syncBySchedule, setSyncBySchedule] = useState(true);
+  const [syncBySchedule, setSyncBySchedule] = useState(false);
   const [autoSyncToastEnabled, setAutoSyncToastEnabled] = useState(true);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState(WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES);
   const [syncConflictPolicy, setSyncConflictPolicy] = useState<WebdavConflictPolicy>("merge");
@@ -131,7 +131,7 @@ export function WebdavConfigDialog({
     setWebdavUsername(defaults.username);
     setWebdavPassword(defaults.password);
     setWebdavFilePath(defaults.filePath);
-    setSyncBySchedule(defaults.syncBySchedule);
+    setSyncBySchedule(false);
     setAutoSyncToastEnabled(defaults.autoSyncToastEnabled);
     setSyncIntervalMinutes(normalizeSyncInterval(defaults.syncIntervalMinutes));
     setSyncConflictPolicy(defaults.syncConflictPolicy);
@@ -178,7 +178,7 @@ export function WebdavConfigDialog({
         filePath: defaults.filePath,
         syncEnabled: isWebdavSyncEnabledFromStorage(),
         syncBookmarksEnabled,
-        syncBySchedule,
+        syncBySchedule: false,
         autoSyncToastEnabled,
         syncIntervalMinutes,
         syncConflictPolicy,
@@ -217,7 +217,7 @@ export function WebdavConfigDialog({
         filePath: webdavFilePath,
         syncEnabled: enableAfterSave ? false : isWebdavSyncEnabledFromStorage(),
         syncBookmarksEnabled,
-        syncBySchedule,
+        syncBySchedule: false,
         autoSyncToastEnabled,
         syncIntervalMinutes,
         syncConflictPolicy,
@@ -411,9 +411,11 @@ export function WebdavConfigDialog({
         />
         <SyncToggleField
           label={t("settings.backup.webdav.syncByScheduleLabel")}
-          description={t("settings.backup.webdav.syncByScheduleDesc")}
-          checked={syncBySchedule}
-          onCheckedChange={setSyncBySchedule}
+          description={t("settings.backup.webdav.syncByScheduleDisabledDesc", {
+            defaultValue: "为排查 CPU 占用，定时自动同步暂时关闭；仍可在同步中心手动同步。",
+          })}
+          checked={false}
+          onCheckedChange={() => setSyncBySchedule(false)}
         />
         <SyncIntervalSliderField
           label={t("settings.backup.webdav.syncIntervalLabel")}
