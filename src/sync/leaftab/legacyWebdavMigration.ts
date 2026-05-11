@@ -98,6 +98,7 @@ export class LeafTabLegacyWebdavCompat extends LeafTabLegacySingleFileCompat {
       deviceId: options.deviceId,
       rootPath: options.rootPath,
       bridgeEnabled: options.bridgeEnabled,
+      completeAfterNewEngineState: true,
       buildLegacyPayload: options.buildLegacyPayload,
       baselineStore: options.baselineStore,
       remoteStore: options.remoteStore || options.webdavStore,

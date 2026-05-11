@@ -1,4 +1,5 @@
 import type { LeafTabSyncEncryptionMetadata } from '@/utils/leafTabSyncEncryption';
+import { normalizeLeafTabSyncCustomShortcutIcons } from './customShortcutIconPayload';
 import type {
   Shortcut,
   ShortcutFolderDisplayMode,
@@ -272,6 +273,10 @@ export const createLeafTabSyncCommitFile = (params: {
 }): LeafTabSyncCommitFile => {
   const createdAt = params.createdAt || new Date().toISOString();
   const id = createLeafTabSyncCommitId(params.deviceId, createdAt);
+  const customShortcutIcons = normalizeLeafTabSyncCustomShortcutIcons(
+    params.snapshot.customShortcutIcons || {},
+    Object.keys(params.snapshot.shortcuts || {}),
+  ).icons;
   return {
     id,
     version: LEAFTAB_SYNC_SCHEMA_VERSION,
@@ -283,7 +288,7 @@ export const createLeafTabSyncCommitFile = (params: {
     summary: {
       scenarios: Object.keys(params.snapshot.scenarios).length,
       shortcuts: Object.keys(params.snapshot.shortcuts).length,
-      customShortcutIcons: Object.keys(params.snapshot.customShortcutIcons || {}).length,
+      customShortcutIcons: Object.keys(customShortcutIcons).length,
       bookmarkFolders: Object.keys(params.snapshot.bookmarkFolders).length,
       bookmarkItems: Object.keys(params.snapshot.bookmarkItems).length,
       tombstones: Object.keys(params.snapshot.tombstones).length,

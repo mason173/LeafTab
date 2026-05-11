@@ -12,7 +12,7 @@ import {
   type LeafTabSyncSnapshot,
 } from './schema';
 import { collectLeafTabSyncChangedPayloadPaths, createLeafTabSyncSerializedSnapshot } from './fileMap';
-import { materializeLeafTabSyncSnapshotFromPayloadMap } from './snapshotCodec';
+import { materializeLeafTabSyncSnapshotOffMainThread } from './syncMaterializeWorkerBridge';
 import { yieldToMainThread } from '@/utils/mainThreadScheduler';
 import {
   readLeafTabSyncCacheEntry,
@@ -496,7 +496,7 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       [commit.manifestPath, manifest],
       ...packEntries.map(([packRef, value]) => [packRef.path, value]),
     ]);
-    const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, commit);
+    const snapshot = await materializeLeafTabSyncSnapshotOffMainThread(payloadMap, commit);
     if (!snapshot) {
       await this.clearRemoteCache();
       return { head, commit, snapshot: null };

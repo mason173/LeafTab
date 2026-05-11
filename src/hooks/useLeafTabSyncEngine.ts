@@ -401,7 +401,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
         }
 
         let preparedLegacy = null;
-        if (legacyCompat) {
+        if (legacyCompat && !legacyCompat.isCompleted()) {
           const localSnapshot = await options.buildLocalSnapshot();
           preparedLegacy = await legacyCompat.prepareLocalSnapshot(localSnapshot);
         }
@@ -422,13 +422,14 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
 
         if (
           legacyCompat
+          && !legacyCompat.isCompleted()
           && preparedLegacy?.importedLegacy
           && (result.kind === 'noop' || result.kind === 'push')
         ) {
           await options.applyLocalSnapshot(result.snapshot);
         }
 
-        if (legacyCompat && result.kind !== 'conflict') {
+        if (legacyCompat && !legacyCompat.isCompleted() && result.kind !== 'conflict') {
           await legacyCompat.writeLegacyMirrorFromSnapshot(result.snapshot, {
             importedLegacyHash: preparedLegacy?.importedLegacy
               ? preparedLegacy.legacyHash

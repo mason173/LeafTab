@@ -9,7 +9,7 @@ import {
 } from '@/utils/shortcutCustomIcons';
 import { flushQueuedLocalStorageWrites } from '@/utils/storageWriteQueue';
 import { createLeafTabLocalBackupBundle, parseLeafTabLocalBackupImport } from './localBackup';
-import { createLeafTabSyncSerializedSnapshot } from './fileMap';
+import { collectLeafTabSyncChangedPayloadPaths, createLeafTabSyncSerializedSnapshot } from './fileMap';
 import { materializeLeafTabSyncSnapshotFromPayloadMap } from './snapshotCodec';
 import type { LeafTabSyncSnapshot } from './schema';
 
@@ -148,6 +148,43 @@ describe('custom shortcut icon sync payloads', () => {
         shortcut_a: ICON_A,
       });
     }
+  });
+
+  it('filters oversized custom icons and compares custom icon changes by hash', () => {
+    const snapshot = createSnapshot();
+    const oversizedIcon = `data:image/png;base64,${'a'.repeat(230_000)}`;
+    snapshot.shortcuts.shortcut_b = {
+      ...snapshot.shortcuts.shortcut_a,
+      id: 'shortcut_b',
+      title: 'Large Icon',
+    };
+    snapshot.customShortcutIcons = {
+      shortcut_a: ICON_A,
+      shortcut_b: oversizedIcon,
+      missing_shortcut: ICON_B,
+    };
+
+    const serialized = createLeafTabSyncSerializedSnapshot(snapshot);
+    const iconPack = serialized.payloads['leaftab/v1/packs/custom-shortcut-icons.pack.json'] as {
+      icons?: Record<string, string>;
+      hashes?: Record<string, string>;
+      skipped?: { oversized?: number; orphaned?: number };
+    };
+
+    expect(iconPack.icons).toEqual({ shortcut_a: ICON_A });
+    expect(Object.keys(iconPack.hashes || {})).toEqual(['shortcut_a']);
+    expect(iconPack.skipped?.oversized).toBe(1);
+    expect(iconPack.skipped?.orphaned).toBe(1);
+
+    const nextSnapshot = {
+      ...snapshot,
+      customShortcutIcons: {
+        shortcut_a: ICON_A,
+        shortcut_b: oversizedIcon,
+      },
+    };
+    const changedPaths = collectLeafTabSyncChangedPayloadPaths(snapshot, nextSnapshot);
+    expect(Array.from(changedPaths || [])).not.toContain('leaftab/v1/packs/custom-shortcut-icons.pack.json');
   });
 
   it('keeps custom icons in legacy backup envelopes', () => {

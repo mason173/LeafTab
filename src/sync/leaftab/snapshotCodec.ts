@@ -17,6 +17,7 @@ import {
   LEAFTAB_SYNC_DEFAULT_ROOT,
   LEAFTAB_SYNC_SCHEMA_VERSION,
 } from './schema';
+import { isLeafTabSyncCustomIconDataUrl } from './customShortcutIconPayload';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -132,8 +133,7 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
         if (
           typeof shortcutId === 'string'
           && shortcutId.trim()
-          && typeof dataUrl === 'string'
-          && dataUrl.startsWith('data:image/')
+          && isLeafTabSyncCustomIconDataUrl(dataUrl)
         ) {
           customShortcutIcons[shortcutId.trim()] = dataUrl;
         }

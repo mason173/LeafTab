@@ -16,6 +16,7 @@ import {
 import {
   materializeLeafTabSyncSnapshotFromPayloadMap,
 } from './snapshotCodec';
+import { decryptAndMaterializeLeafTabSyncSnapshotOffMainThread } from './syncMaterializeWorkerBridge';
 import type {
   LeafTabSyncRemoteState,
   LeafTabSyncRemoteStore,
@@ -651,24 +652,25 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       };
     }
 
-    if (!state.metadata || state.commit.encryption?.mode !== 'encrypted-sharded-v1') {
+    const commit = state.commit;
+    if (!commit || !state.metadata || commit.encryption?.mode !== 'encrypted-sharded-v1') {
       return {
         head: state.head,
-        commit: state.commit,
+        commit,
         snapshot: null,
       };
     }
 
     const { keyBytes } = await this.resolveKeyBytes(state.metadata, 'unlock');
-    const encryptedFiles = await this.transport.readEncryptedFiles([state.commit.manifestPath]);
+    const encryptedFiles = await this.transport.readEncryptedFiles([commit.manifestPath]);
     const manifestEnvelope = normalizeEncryptedFileTransportState(
-      parseJsonText<unknown>(encryptedFiles[state.commit.manifestPath] || null),
+      parseJsonText<unknown>(encryptedFiles[commit.manifestPath] || null),
     );
     if (!manifestEnvelope) {
       await this.clearRemoteCache();
       return {
         head: state.head,
-        commit: state.commit,
+        commit,
         snapshot: null,
       };
     }
@@ -676,18 +678,28 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
     const manifest = await decryptLeafTabSyncPayload<LeafTabSyncManifestFile>(manifestEnvelope, keyBytes);
     const packPaths = manifest.packs.map((pack) => pack.path);
     const packBodies = await this.transport.readEncryptedFiles(packPaths);
-    const payloadMap: Record<string, unknown> = {
-      [state.commit.manifestPath]: manifest,
-    };
+    const snapshot = await decryptAndMaterializeLeafTabSyncSnapshotOffMainThread(
+      {
+        [commit.manifestPath]: encryptedFiles[commit.manifestPath] || null,
+        ...packBodies,
+      },
+      commit,
+      keyBytes,
+      async () => {
+        const payloadMap: Record<string, unknown> = {
+          [commit.manifestPath]: manifest,
+        };
 
-    await runInBatches(packPaths, FILE_READ_BATCH_SIZE, async (path) => {
-      const envelope = normalizeEncryptedFileTransportState(parseJsonText<unknown>(packBodies[path] || null));
-      if (!envelope) return null;
-      payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
-      return null;
-    });
+        await runInBatches(packPaths, FILE_READ_BATCH_SIZE, async (path) => {
+          const envelope = normalizeEncryptedFileTransportState(parseJsonText<unknown>(packBodies[path] || null));
+          if (!envelope) return null;
+          payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
+          return null;
+        });
 
-    const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, state.commit);
+        return materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, commit);
+      },
+    );
     if (!snapshot) {
       await this.clearRemoteCache();
       return {

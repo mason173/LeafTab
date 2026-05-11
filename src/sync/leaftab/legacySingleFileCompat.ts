@@ -25,6 +25,7 @@ export interface LeafTabLegacySingleFileCompatOptions {
   deviceId: string;
   rootPath?: string;
   bridgeEnabled?: boolean;
+  completeAfterNewEngineState?: boolean;
   buildLegacyPayload?: () => WebdavPayload;
   baselineStore: LeafTabSyncBaselineStore;
   remoteStore: LeafTabSyncRemoteStore;
@@ -51,6 +52,7 @@ export interface LeafTabLegacySingleFilePreparedSnapshotResult {
 type LeafTabLegacySingleFileBridgeState = {
   lastImportedHash: string | null;
   lastMirroredHash: string | null;
+  completed?: boolean;
   updatedAt: string;
 };
 
@@ -268,6 +270,19 @@ export class LeafTabLegacySingleFileCompat {
     } catch {}
   }
 
+  private markBridgeCompleted(state?: Partial<LeafTabLegacySingleFileBridgeState>) {
+    this.writeBridgeState({
+      lastImportedHash: state?.lastImportedHash ?? this.readBridgeState()?.lastImportedHash ?? null,
+      lastMirroredHash: state?.lastMirroredHash ?? this.readBridgeState()?.lastMirroredHash ?? null,
+      completed: true,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  isCompleted() {
+    return this.readBridgeState()?.completed === true;
+  }
+
   private buildLegacyPayloadFromSnapshot(snapshot: LeafTabSyncSnapshot) {
     const projected = projectSnapshotToLegacyPayload(snapshot);
     const current = this.options.buildLegacyPayload?.();
@@ -287,6 +302,19 @@ export class LeafTabLegacySingleFileCompat {
   async prepareLocalSnapshot(
     localSnapshotInput?: LeafTabSyncSnapshot,
   ): Promise<LeafTabLegacySingleFilePreparedSnapshotResult> {
+    if (this.isCompleted()) {
+      const localSnapshot = localSnapshotInput
+        ? JSON.parse(JSON.stringify(localSnapshotInput)) as LeafTabSyncSnapshot
+        : await this.options.buildLocalSnapshot();
+      return {
+        migrated: false,
+        importedLegacy: false,
+        legacyPayloadFound: false,
+        snapshot: localSnapshot,
+        legacyHash: null,
+      };
+    }
+
     const localSnapshot = localSnapshotInput
       ? JSON.parse(JSON.stringify(localSnapshotInput)) as LeafTabSyncSnapshot
       : await this.options.buildLocalSnapshot();
@@ -298,6 +326,12 @@ export class LeafTabLegacySingleFileCompat {
     ]);
 
     if (!legacyPayload) {
+      if (
+        this.options.completeAfterNewEngineState
+        && (baseline?.snapshot || baseline?.commitId || remoteState.head?.commitId || remoteState.snapshot)
+      ) {
+        this.markBridgeCompleted();
+      }
       return {
         migrated: false,
         importedLegacy: false,
@@ -316,6 +350,11 @@ export class LeafTabLegacySingleFileCompat {
     // payload as a downstream mirror only. Re-importing stale legacy ordering
     // can overwrite newer local layout changes before the mirror is refreshed.
     if (hasNewEngineState) {
+      if (this.options.completeAfterNewEngineState) {
+        this.markBridgeCompleted({
+          lastMirroredHash: legacyHash,
+        });
+      }
       return {
         migrated: false,
         importedLegacy: false,
@@ -407,9 +446,14 @@ export class LeafTabLegacySingleFileCompat {
     snapshot: LeafTabSyncSnapshot,
     mirrorOptions?: LeafTabLegacyMirrorOptions,
   ) {
+    if (this.isCompleted()) {
+      return;
+    }
+
     const nextBridgeState: LeafTabLegacySingleFileBridgeState = {
       lastImportedHash: mirrorOptions?.importedLegacyHash ?? this.readBridgeState()?.lastImportedHash ?? null,
       lastMirroredHash: this.readBridgeState()?.lastMirroredHash ?? null,
+      completed: false,
       updatedAt: new Date().toISOString(),
     };
 
@@ -417,6 +461,13 @@ export class LeafTabLegacySingleFileCompat {
       const legacyPayload = this.buildLegacyPayloadFromSnapshot(snapshot);
       await this.options.legacyDriver.writeLegacyPayload(legacyPayload);
       nextBridgeState.lastMirroredHash = fingerprintLegacyPayload(legacyPayload);
+    }
+
+    if (
+      this.options.completeAfterNewEngineState
+      && (mirrorOptions?.importedLegacyHash || nextBridgeState.lastMirroredHash)
+    ) {
+      nextBridgeState.completed = true;
     }
 
     this.writeBridgeState(nextBridgeState);
