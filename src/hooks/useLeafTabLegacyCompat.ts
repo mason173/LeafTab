@@ -7,7 +7,7 @@ import { flattenScenarioShortcutsForLegacyMirror } from '@/utils/legacyShortcutM
 import { exportShortcutCustomIcons } from '@/utils/shortcutCustomIcons';
 import { collectShortcutIds } from '@/utils/shortcutFolders';
 
-const ENABLE_LEGACY_SYNC_MIGRATION = true;
+const ENABLE_LEGACY_SYNC_MIGRATION = false;
 
 type UseLeafTabLegacyCompatOptions = {
   apiUrl: string;

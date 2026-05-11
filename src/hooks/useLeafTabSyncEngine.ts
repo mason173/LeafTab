@@ -284,13 +284,9 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     markSyncSuccess,
   } = useSyncState();
 
-  const [analysis, setAnalysis] = useState<LeafTabSyncAnalysis | null>(() => (
-    enabled ? readCachedLeafTabSyncAnalysisPayload(analysisStorageKey)?.analysis || null : null
-  ));
+  const [analysis, setAnalysis] = useState<LeafTabSyncAnalysis | null>(null);
   const [lastResult, setLastResult] = useState<LeafTabSyncEngineResult | null>(null);
-  const [isReady, setIsReady] = useState(() => (
-    !needsRuntime || Boolean(readCachedLeafTabSyncAnalysisPayload(analysisStorageKey))
-  ));
+  const [isReady, setIsReady] = useState(() => !needsRuntime);
   const syncInFlightRef = useRef<Promise<LeafTabSyncEngineResult | null> | null>(null);
   const analysisInFlightRef = useRef<Promise<LeafTabSyncAnalysis | null> | null>(null);
   const analysisStaleRef = useRef(true);
@@ -472,10 +468,8 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
       setIsReady(true);
       return;
     }
-    const cachedPayload = readCachedLeafTabSyncAnalysisPayload(analysisStorageKey);
-    setAnalysis(cachedPayload?.analysis || null);
-    setIsReady(Boolean(cachedPayload));
-  }, [analysisStorageKey, enabled, engine, runtime]);
+    setIsReady(true);
+  }, [enabled, engine, runtime]);
 
   useEffect(() => {
     if (!enabled || !engine) return;

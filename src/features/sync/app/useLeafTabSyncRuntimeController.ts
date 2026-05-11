@@ -2,10 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import { toast } from '@/components/ui/sonner';
 import i18n from '@/i18n';
 import { useLeafTabSyncRuntime } from '@/lazy/sync';
-import {
-  LEAFTAB_SYNC_ANALYSIS_CACHE_MAX_AGE_MS,
-  useLeafTabSyncEngine,
-} from '@/hooks/useLeafTabSyncEngine';
+import { useLeafTabSyncEngine } from '@/hooks/useLeafTabSyncEngine';
 import { useLeafTabWebdavAutoSync } from '@/hooks/useLeafTabWebdavAutoSync';
 import {
   useLeafTabSyncRunner,
@@ -526,10 +523,11 @@ export function useLeafTabSyncRuntimeController({
     user ? (localStorage.getItem('token') || '') : ''
   ), [user]);
 
-  const syncRuntime = useLeafTabSyncRuntime(Boolean(leafTabSyncWebdavConfig?.url || (user && cloudSyncToken)));
+  const webdavSyncRuntimeNeeded = Boolean(leafTabSyncWebdavConfig?.url && leafTabSyncDialogOpen);
+  const syncRuntime = useLeafTabSyncRuntime(Boolean(webdavSyncRuntimeNeeded || (user && cloudSyncToken)));
 
   const leafTabWebdavBaseStore = useMemo(() => {
-    if (!syncRuntime || !leafTabSyncWebdavConfig?.url) return null;
+    if (!webdavSyncRuntimeNeeded || !syncRuntime || !leafTabSyncWebdavConfig?.url) return null;
     return new syncRuntime.LeafTabSyncWebdavStore({
       url: leafTabSyncWebdavConfig.url,
       username: leafTabSyncWebdavConfig.username,
@@ -543,6 +541,7 @@ export function useLeafTabSyncRuntimeController({
     leafTabSyncWebdavConfig?.url,
     leafTabSyncWebdavConfig?.username,
     syncRuntime,
+    webdavSyncRuntimeNeeded,
   ]);
 
   const leafTabWebdavEncryptedTransport = useMemo(() => {
@@ -1492,17 +1491,7 @@ export function useLeafTabSyncRuntimeController({
 
   const handleLeafTabSyncDialogOpenChange = useCallback((open: boolean) => {
     setLeafTabSyncDialogOpen(open);
-    if (!open) return;
-
-    void refreshLeafTabSyncAnalysis({
-      force: false,
-      maxAgeMs: LEAFTAB_SYNC_ANALYSIS_CACHE_MAX_AGE_MS,
-    });
-    void refreshCloudLeafTabSyncAnalysis({
-      force: false,
-      maxAgeMs: LEAFTAB_SYNC_ANALYSIS_CACHE_MAX_AGE_MS,
-    });
-  }, [refreshCloudLeafTabSyncAnalysis, refreshLeafTabSyncAnalysis, setLeafTabSyncDialogOpen]);
+  }, [setLeafTabSyncDialogOpen]);
 
   useEffect(() => {
     const bookmarksApi = globalThis.chrome?.bookmarks;
@@ -1517,24 +1506,6 @@ export function useLeafTabSyncRuntimeController({
       if (!leafTabSyncDialogOpen) {
         return;
       }
-
-      if (refreshTimer) {
-        window.clearTimeout(refreshTimer);
-      }
-
-      refreshTimer = window.setTimeout(() => {
-        refreshTimer = null;
-        void refreshLeafTabSyncAnalysis({
-          force: false,
-          maxAgeMs: 0,
-        });
-        if (cloudSyncBookmarksEnabled) {
-          void refreshCloudLeafTabSyncAnalysis({
-            force: false,
-            maxAgeMs: 0,
-          });
-        }
-      }, 120);
     };
 
     bookmarksApi.onCreated?.addListener?.(handleBookmarksChanged);
@@ -1556,12 +1527,9 @@ export function useLeafTabSyncRuntimeController({
       bookmarksApi.onImportEnded?.removeListener?.(handleBookmarksChanged);
     };
   }, [
-    cloudSyncBookmarksEnabled,
     invalidateCloudLeafTabSyncAnalysis,
     invalidateLeafTabSyncAnalysis,
     leafTabSyncDialogOpen,
-    refreshCloudLeafTabSyncAnalysis,
-    refreshLeafTabSyncAnalysis,
   ]);
 
   const resolveLegacyCloudMigrationPrompt = useCallback((confirmed: boolean) => {
