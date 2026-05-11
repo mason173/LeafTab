@@ -82,6 +82,18 @@ type ProviderModel = {
   statusIcon: ComponentType<{ className?: string }>;
   statusSpin?: boolean;
   scopeLabel: string;
+  remoteStatusLabel?: string;
+};
+
+const hasLoadedRemoteSummary = (analysis: LeafTabSyncAnalysis | null) => {
+  return analysis?.remoteSummaryStatus !== 'head-only';
+};
+
+const formatRemoteSummaryMetric = (
+  analysis: LeafTabSyncAnalysis | null,
+  value: number | undefined,
+) => {
+  return hasLoadedRemoteSummary(analysis) ? String(value ?? 0) : '-';
 };
 
 const toneClasses: Record<StatusTone, string> = {
@@ -312,6 +324,12 @@ function ProviderCard({
             label={t('leaftabSyncDialog.details.scope', { defaultValue: '同步范围' })}
             value={model.scopeLabel}
           />
+          {model.remoteStatusLabel ? (
+            <DetailRow
+              label={t('leaftabSyncDialog.details.remoteStatus', { defaultValue: '远端状态' })}
+              value={model.remoteStatusLabel}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -385,6 +403,7 @@ export function LeafTabSyncDialog({
     const syncing = cloudSyncState.status === 'syncing';
     const error = cloudSyncState.status === 'error';
     const enabled = cloudSignedIn && cloudEnabled;
+    const cloudRemoteSummaryLoaded = hasLoadedRemoteSummary(cloudAnalysis);
 
     return {
       icon: RiCloudFill,
@@ -400,9 +419,9 @@ export function LeafTabSyncDialog({
       localBookmarkCount: cloudSyncBookmarksEnabled
         ? String(cloudAnalysis?.localSummary.bookmarkItems ?? 0)
         : '-',
-      remoteShortcutCount: String(cloudAnalysis?.remoteSummary.shortcuts ?? 0),
+      remoteShortcutCount: formatRemoteSummaryMetric(cloudAnalysis, cloudAnalysis?.remoteSummary.shortcuts),
       remoteBookmarkCount: cloudSyncBookmarksEnabled
-        ? String(cloudAnalysis?.remoteSummary.bookmarkItems ?? 0)
+        ? formatRemoteSummaryMetric(cloudAnalysis, cloudAnalysis?.remoteSummary.bookmarkItems)
         : '-',
       lastSyncLabel: cloudSignedIn
         ? (cloudLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
@@ -434,6 +453,9 @@ export function LeafTabSyncDialog({
         : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
             defaultValue: '仅快捷方式和设置',
           }),
+      remoteStatusLabel: cloudRemoteSummaryLoaded
+        ? undefined
+        : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' }),
     };
   }, [
     cloudAnalysis,
@@ -451,6 +473,7 @@ export function LeafTabSyncDialog({
   const webdavModel = useMemo<ProviderModel>(() => {
     const syncing = syncState.status === 'syncing';
     const error = syncState.status === 'error';
+    const webdavRemoteSummaryLoaded = hasLoadedRemoteSummary(webdavAnalysis);
 
     return {
       icon: RiHardDrive3Fill,
@@ -466,9 +489,9 @@ export function LeafTabSyncDialog({
       localBookmarkCount: webdavSyncBookmarksEnabled
         ? String(webdavAnalysis?.localSummary.bookmarkItems ?? 0)
         : '-',
-      remoteShortcutCount: String(webdavAnalysis?.remoteSummary.shortcuts ?? 0),
+      remoteShortcutCount: formatRemoteSummaryMetric(webdavAnalysis, webdavAnalysis?.remoteSummary.shortcuts),
       remoteBookmarkCount: webdavSyncBookmarksEnabled
-        ? String(webdavAnalysis?.remoteSummary.bookmarkItems ?? 0)
+        ? formatRemoteSummaryMetric(webdavAnalysis, webdavAnalysis?.remoteSummary.bookmarkItems)
         : '-',
       lastSyncLabel: webdavConfigured
         ? (webdavLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
@@ -500,6 +523,9 @@ export function LeafTabSyncDialog({
         : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
             defaultValue: '仅快捷方式和设置',
           }),
+      remoteStatusLabel: webdavRemoteSummaryLoaded
+        ? undefined
+        : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' }),
     };
   }, [
     resolvedBookmarkScope,

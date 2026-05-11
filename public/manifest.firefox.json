@@ -6,7 +6,9 @@
   },
   "permissions": [
     "activeTab",
-    "identity"
+    "alarms",
+    "identity",
+    "storage"
   ],
   "browser_specific_settings": {
     "gecko": {

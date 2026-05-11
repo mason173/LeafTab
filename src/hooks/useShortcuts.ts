@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import defaultProfile from '../assets/profiles/default-profile.json';
 import { useShortcutStore } from '@/features/shortcuts/model/useShortcutStore';
@@ -7,6 +7,29 @@ import { useShortcutUiState } from '@/features/shortcuts/model/useShortcutUiStat
 import { useShortcutDomainReporting } from './useShortcutDomainReporting';
 import { useShortcutActions } from './useShortcutActions';
 import { normalizeScenarioModesList as normalizeScenarioModesListRaw, normalizeScenarioShortcuts as normalizeScenarioShortcutsRaw } from '@/utils/shortcutsPayload';
+
+const LOCAL_DIRTY_SINCE_LAST_SYNC_KEY = 'leaftab_local_dirty_since_last_sync_v1';
+
+const readLocalDirtySinceLastSync = () => {
+  try {
+    const value = localStorage.getItem(LOCAL_DIRTY_SINCE_LAST_SYNC_KEY);
+    if (value === 'clean') return false;
+    if (value === 'dirty' || value === 'true') return true;
+    return true;
+  } catch {
+    return true;
+  }
+};
+
+const writeLocalDirtySinceLastSync = (dirty: boolean) => {
+  try {
+    if (dirty) {
+      localStorage.setItem(LOCAL_DIRTY_SINCE_LAST_SYNC_KEY, 'dirty');
+    } else {
+      localStorage.setItem(LOCAL_DIRTY_SINCE_LAST_SYNC_KEY, 'clean');
+    }
+  } catch {}
+};
 
 export function useShortcuts(
   user: string | null,
@@ -27,7 +50,17 @@ export function useShortcuts(
     return normalizeScenarioShortcutsRaw(raw);
   }, []);
 
-  const localDirtyRef = useRef(false);
+  const localDirtyValueRef = useRef(readLocalDirtySinceLastSync());
+  const localDirtyRef = useMemo(() => ({
+    get current() {
+      return localDirtyValueRef.current || readLocalDirtySinceLastSync();
+    },
+    set current(value: boolean) {
+      const dirty = Boolean(value);
+      localDirtyValueRef.current = dirty;
+      writeLocalDirtySinceLastSync(dirty);
+    },
+  }) as MutableRefObject<boolean>, []);
   const [isDragging, setIsDragging] = useState(false);
   const userRef = useRef(user);
 

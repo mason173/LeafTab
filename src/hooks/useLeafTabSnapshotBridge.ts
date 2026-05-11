@@ -19,6 +19,18 @@ type SnapshotBuildCacheEntry = {
   snapshot: LeafTabSyncSnapshot;
 };
 
+type BuildSnapshotFromCurrentStateOptions = {
+  requestBookmarkPermission?: boolean;
+  baselineStorageKey?: string;
+  includeBookmarks?: boolean;
+  preferencesTransform?: (preferences: SyncablePreferences) => SyncablePreferences;
+};
+
+type ApplySnapshotToLocalStateOptions = {
+  preferredSelectedScenarioId?: string | null;
+  skipBookmarkApply?: boolean;
+};
+
 const cloneLeafTabSyncSnapshot = (snapshot: LeafTabSyncSnapshot): LeafTabSyncSnapshot => {
   return JSON.parse(JSON.stringify(snapshot)) as LeafTabSyncSnapshot;
 };
@@ -184,12 +196,7 @@ export function useLeafTabSnapshotBridge({
 }: UseLeafTabSnapshotBridgeOptions) {
   const snapshotBuildCacheRef = useRef<Record<string, SnapshotBuildCacheEntry>>({});
 
-  const buildSnapshotFromCurrentState = useCallback(async (options?: {
-    requestBookmarkPermission?: boolean;
-    baselineStorageKey?: string;
-    includeBookmarks?: boolean;
-    preferencesTransform?: (preferences: SyncablePreferences) => SyncablePreferences;
-  }) => {
+  const buildSnapshotFromCurrentState = useCallback(async (options?: BuildSnapshotFromCurrentStateOptions) => {
     const snapshotRuntime = await importLeafTabSyncSnapshotRuntime();
     flushQueuedLocalStorageWrites();
     const baselineStorageKey = options?.baselineStorageKey || leafTabSyncBaselineStorageKey;
@@ -272,10 +279,7 @@ export function useLeafTabSnapshotBridge({
 
   const applySnapshotToLocalState = useCallback(async (
     snapshot: LeafTabSyncSnapshot,
-    options?: {
-      preferredSelectedScenarioId?: string | null;
-      skipBookmarkApply?: boolean;
-    },
+    options?: ApplySnapshotToLocalStateOptions,
   ) => {
     const snapshotRuntime = await importLeafTabSyncSnapshotRuntime();
     const projected = snapshotRuntime.projectLeafTabSyncSnapshotToAppState(snapshot);
@@ -369,10 +373,7 @@ export function useLeafTabSnapshotBridge({
 
   const applySnapshot = useCallback(async (
     snapshot: LeafTabSyncSnapshot,
-    options?: {
-      preferredSelectedScenarioId?: string | null;
-      skipBookmarkApply?: boolean;
-    },
+    options?: ApplySnapshotToLocalStateOptions,
   ) => {
     await applySnapshotToLocalState(snapshot, options);
   }, [applySnapshotToLocalState]);

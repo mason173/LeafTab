@@ -21,6 +21,8 @@
     "bookmarks",
     "history",
     "scripting",
+    "alarms",
+    "storage",
     "tabs",
     "identity"
   ],

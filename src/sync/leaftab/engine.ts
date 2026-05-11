@@ -19,6 +19,7 @@ export interface LeafTabSyncAnalysis {
   hasBaseline: boolean;
   localSummary: LeafTabSyncDataSummary;
   remoteSummary: LeafTabSyncDataSummary;
+  remoteSummaryStatus?: 'loaded' | 'cached' | 'head-only';
   requiresInitialChoice: boolean;
   suggestedInitialChoice: LeafTabSyncInitialChoice | null;
   remoteCommitId: string | null;
@@ -54,6 +55,7 @@ export interface LeafTabSyncEngineConfig {
   buildLocalSnapshot: () => Promise<LeafTabSyncSnapshot>;
   applyLocalSnapshot: (snapshot: LeafTabSyncSnapshot) => Promise<void>;
   createEmptySnapshot: () => LeafTabSyncSnapshot;
+  isLocalDirty?: () => boolean;
   rootPath?: string;
 }
 
@@ -65,6 +67,7 @@ export interface LeafTabSyncEngineRunOptions {
 
 export interface LeafTabSyncEngineAnalyzeOptions {
   onProgress?: (progress: LeafTabSyncEngineProgress) => void;
+  shallow?: boolean;
 }
 
 const summarizeSnapshot = (snapshot: LeafTabSyncSnapshot | null): LeafTabSyncDataSummary => {
@@ -184,11 +187,37 @@ export class LeafTabSyncEngine {
       progress: 10,
       message: '正在读取本地与云端状态',
     });
-    const [baseline, localSnapshot, remoteState] = await Promise.all([
+    const [baseline, localSnapshot] = await Promise.all([
       this.config.baselineStore.load(),
       this.config.buildLocalSnapshot(),
-      this.config.remoteStore.readState(),
     ]);
+
+    if (options?.shallow && this.config.remoteStore.readHead) {
+      const remoteHead = await this.config.remoteStore.readHead();
+      const baselineSnapshot = getLeafTabSyncBaselineSnapshot(baseline);
+      const canUseBaselineRemote = Boolean(
+        remoteHead?.commitId
+        && baseline?.commitId
+        && remoteHead.commitId === baseline.commitId
+        && baselineSnapshot,
+      );
+      reportProgress(options?.onProgress, {
+        stage: 'completed',
+        progress: 100,
+        message: '同步状态分析完成',
+      });
+      return {
+        hasBaseline: Boolean(baseline?.snapshot || baseline?.commitId),
+        localSummary: summarizeSnapshot(localSnapshot),
+        remoteSummary: summarizeSnapshot(canUseBaselineRemote ? baselineSnapshot : null),
+        remoteSummaryStatus: canUseBaselineRemote ? 'cached' : 'head-only',
+        requiresInitialChoice: false,
+        suggestedInitialChoice: null,
+        remoteCommitId: remoteHead?.commitId || null,
+      };
+    }
+
+    const remoteState = await this.config.remoteStore.readState();
 
     const remoteSnapshot = remoteState.snapshot;
     const hasBaseline = Boolean(baseline?.snapshot || baseline?.commitId);
@@ -197,6 +226,7 @@ export class LeafTabSyncEngine {
       hasBaseline,
       localSummary: summarizeSnapshot(localSnapshot),
       remoteSummary: summarizeSnapshot(remoteSnapshot),
+      remoteSummaryStatus: 'loaded' as const,
       requiresInitialChoice: false,
       suggestedInitialChoice: null,
       remoteCommitId: remoteState.commit?.id || null,
@@ -218,8 +248,33 @@ export class LeafTabSyncEngine {
       progress: 8,
       message: '正在读取本地与云端数据',
     });
-    const [baseline, localSnapshot, remoteState] = await Promise.all([
-      this.config.baselineStore.load(),
+    const baseline = await this.config.baselineStore.load();
+    const baselineSnapshot = getLeafTabSyncBaselineSnapshot(baseline);
+    if (
+      mode === 'auto'
+      && !runOptions?.localSnapshotOverride
+      && this.config.remoteStore.readHead
+      && baseline?.commitId
+      && baselineSnapshot
+      && this.config.isLocalDirty?.() === false
+    ) {
+      const remoteHead = await this.config.remoteStore.readHead();
+      if (remoteHead?.commitId === baseline.commitId) {
+        reportProgress(runOptions?.onProgress, {
+          stage: 'completed',
+          progress: 100,
+          message: '本地与远端均无新增变更',
+        });
+        return {
+          kind: 'noop',
+          remoteCommitId: baseline.commitId,
+          snapshot: baselineSnapshot,
+          summaryText: '本地与远端均无新增变更',
+        };
+      }
+    }
+
+    const [localSnapshot, remoteState] = await Promise.all([
       runOptions?.localSnapshotOverride
         ? Promise.resolve(cloneSnapshot(runOptions.localSnapshotOverride))
         : this.config.buildLocalSnapshot(),
@@ -227,7 +282,7 @@ export class LeafTabSyncEngine {
     ]);
 
     const baseSnapshot =
-      getLeafTabSyncBaselineSnapshot(baseline) || this.config.createEmptySnapshot();
+      baselineSnapshot || this.config.createEmptySnapshot();
     const remoteSnapshot = remoteState.snapshot || this.config.createEmptySnapshot();
     const hasBaseline = Boolean(baseline?.snapshot || baseline?.commitId);
     const localMatchesBaseline = sameSnapshotContent(localSnapshot, baseSnapshot);

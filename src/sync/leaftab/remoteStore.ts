@@ -22,7 +22,7 @@ export interface LeafTabSyncWriteStateResult {
 export interface LeafTabSyncRemoteStore {
   acquireLock(deviceId: string, ttlMs?: number): Promise<unknown>;
   releaseLock(): Promise<void>;
+  readHead?(): Promise<LeafTabSyncHeadFile | null>;
   readState(): Promise<LeafTabSyncRemoteState>;
   writeState(params: LeafTabSyncWriteStateParams): Promise<LeafTabSyncWriteStateResult>;
 }
-

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLeafTabSyncRuntime } from '@/lazy/sync';
 import { useSyncState } from '@/sync/useSyncState';
+import { getLeafTabSyncBaselineSnapshot } from '@/sync/leaftab/baseline';
 import type { CloudShortcutsPayloadV3 } from '@/types';
 import type { WebdavPayload } from '@/utils/backupData';
 import {
@@ -40,6 +41,7 @@ export type LeafTabSyncEngineLegacyCompatConfig =
 
 export interface UseLeafTabSyncEngineOptions {
   enabled?: boolean;
+  suspended?: boolean;
   deviceId?: string;
   webdav: LeafTabSyncEngineWebdavConfig | null;
   remoteStore?: LeafTabSyncRemoteStore | null;
@@ -47,6 +49,8 @@ export interface UseLeafTabSyncEngineOptions {
   buildLocalSnapshot: () => Promise<LeafTabSyncSnapshot>;
   applyLocalSnapshot: (snapshot: LeafTabSyncSnapshot) => Promise<void>;
   createEmptySnapshot: () => LeafTabSyncSnapshot;
+  isLocalDirty?: () => boolean;
+  markLocalClean?: () => void;
   baselineStorageKey?: string;
 }
 
@@ -162,7 +166,8 @@ const isRetryableLeafTabSyncConflictError = (error: unknown) => {
 
 export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   const enabled = options.enabled !== false;
-  const needsRuntime = enabled && Boolean(options.remoteStore || options.webdav?.url);
+  const suspended = options.suspended === true;
+  const needsRuntime = enabled && !suspended && Boolean(options.remoteStore || options.webdav?.url);
   const runtime = useLeafTabSyncRuntime(needsRuntime);
   const deviceId = useMemo(
     () => options.deviceId || getOrCreateLeafTabSyncDeviceId(),
@@ -215,6 +220,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
       buildLocalSnapshot: options.buildLocalSnapshot,
       applyLocalSnapshot: options.applyLocalSnapshot,
       createEmptySnapshot: options.createEmptySnapshot,
+      isLocalDirty: options.isLocalDirty,
       rootPath: options.webdav?.rootPath,
     });
   }, [
@@ -223,6 +229,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     options.applyLocalSnapshot,
     options.buildLocalSnapshot,
     options.createEmptySnapshot,
+    options.isLocalDirty,
     remoteStore,
     options.webdav?.rootPath,
     runtime,
@@ -285,11 +292,11 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   } = useSyncState();
 
   const [analysis, setAnalysis] = useState<LeafTabSyncAnalysis | null>(() => (
-    enabled ? readCachedLeafTabSyncAnalysisPayload(analysisStorageKey)?.analysis || null : null
+    enabled && !suspended ? readCachedLeafTabSyncAnalysisPayload(analysisStorageKey)?.analysis || null : null
   ));
   const [lastResult, setLastResult] = useState<LeafTabSyncEngineResult | null>(null);
   const [isReady, setIsReady] = useState(() => (
-    !needsRuntime || Boolean(readCachedLeafTabSyncAnalysisPayload(analysisStorageKey))
+    !needsRuntime || suspended || Boolean(readCachedLeafTabSyncAnalysisPayload(analysisStorageKey))
   ));
   const syncInFlightRef = useRef<Promise<LeafTabSyncEngineResult | null> | null>(null);
   const analysisInFlightRef = useRef<Promise<LeafTabSyncAnalysis | null> | null>(null);
@@ -301,9 +308,9 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
       maxAgeMs?: number;
     },
   ) => {
-    if (!enabled || !engine) {
+    if (!enabled || suspended || !engine) {
       setAnalysis(null);
-      setIsReady(!enabled);
+      setIsReady(!enabled || suspended);
       return null;
     }
 
@@ -345,7 +352,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
 
     analysisInFlightRef.current = analysisPromise;
     return analysisPromise;
-  }, [analysisStorageKey, enabled, engine, runtime]);
+  }, [analysisStorageKey, enabled, engine, runtime, suspended]);
 
   const runSync = useCallback(async (
     choice: LeafTabSyncInitialChoice | 'auto' = 'auto',
@@ -367,6 +374,32 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     ): Promise<LeafTabSyncEngineResult | null> => {
       markSyncStart();
       try {
+        if (
+          choice === 'auto'
+          && options.isLocalDirty?.() === false
+          && baselineStore
+          && remoteStore?.readHead
+        ) {
+          const baseline = await baselineStore.load();
+          const baselineSnapshot = getLeafTabSyncBaselineSnapshot(baseline);
+          if (baseline?.commitId && baselineSnapshot) {
+            const remoteHead = await remoteStore.readHead();
+            if (remoteHead?.commitId === baseline.commitId) {
+              const result = {
+                kind: 'noop',
+                remoteCommitId: baseline.commitId,
+                snapshot: baselineSnapshot,
+                summaryText: '本地与远端均无新增变更',
+              } satisfies LeafTabSyncEngineResult;
+              setLastResult(result);
+              markSyncSuccess();
+              options.markLocalClean?.();
+              await refreshAnalysis({ shallow: true });
+              return result;
+            }
+          }
+        }
+
         let preparedLegacy = null;
         if (legacyCompat) {
           const localSnapshot = await options.buildLocalSnapshot();
@@ -407,6 +440,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
           markSyncConflict();
         } else {
           markSyncSuccess();
+          options.markLocalClean?.();
         }
         await refreshAnalysis();
         return result;
@@ -428,6 +462,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     syncInFlightRef.current = syncPromise;
     return syncPromise;
   }, [
+    baselineStore,
     enabled,
     engine,
     legacyCompat,
@@ -437,7 +472,10 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     markSyncSuccess,
     options.applyLocalSnapshot,
     options.buildLocalSnapshot,
+    options.isLocalDirty,
+    options.markLocalClean,
     refreshAnalysis,
+    remoteStore,
     syncInFlightRef,
   ]);
 
@@ -458,7 +496,7 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
   }, [markSyncIdle]);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || suspended) {
       setAnalysis(null);
       setIsReady(true);
       return;
@@ -475,12 +513,12 @@ export function useLeafTabSyncEngine(options: UseLeafTabSyncEngineOptions) {
     const cachedPayload = readCachedLeafTabSyncAnalysisPayload(analysisStorageKey);
     setAnalysis(cachedPayload?.analysis || null);
     setIsReady(Boolean(cachedPayload));
-  }, [analysisStorageKey, enabled, engine, runtime]);
+  }, [analysisStorageKey, enabled, engine, runtime, suspended]);
 
   useEffect(() => {
-    if (!enabled || !engine) return;
+    if (!enabled || suspended || !engine) return;
     analysisStaleRef.current = true;
-  }, [enabled, engine, options.buildLocalSnapshot, remoteStore]);
+  }, [enabled, engine, options.buildLocalSnapshot, remoteStore, suspended]);
 
   return {
     deviceId,
