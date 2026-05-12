@@ -169,7 +169,7 @@ const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const LONG_TASK_INDICATOR_DELAY_MS = 180;
 const DARK_MODE_AUTO_DIM_OPACITY = 12;
 const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
-const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 60 * 1000;
+const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 18 * 1000;
 
 const clampMaskOpacity = (value: number): number => {
   if (!Number.isFinite(value)) return 10;

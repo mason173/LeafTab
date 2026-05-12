@@ -674,7 +674,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 paused={shouldFreezeDynamicWallpaper}
                 playbackRate={dynamicWallpaperPlaybackRate}
                 smoothEndRamp={false}
-                seamlessLoopDurationSec={0.6}
               />
             ) : effectiveWallpaperMode === 'color' ? (
               <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
