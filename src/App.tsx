@@ -16,7 +16,6 @@ import { useResponsiveLayout } from './hooks/useResponsiveLayout';
 import { useLongTaskIndicator } from './hooks/useLongTaskIndicator';
 import { useInitialReveal } from './hooks/useInitialReveal';
 import { useNewtabBootstrapFocus } from './hooks/useNewtabBootstrapFocus';
-import { useBlurredWallpaperAsset } from './hooks/useBlurredWallpaperAsset';
 import { useWallpaperRevealController } from './hooks/useWallpaperRevealController';
 import { useVisualEffectsPolicy } from './hooks/useVisualEffectsPolicy';
 
@@ -697,10 +696,6 @@ export default function App() {
     }
     return folderOverlayWarmupPromiseRef.current;
   }, []);
-
-  useEffect(() => {
-    void ensureFolderOverlayReady();
-  }, [ensureFolderOverlayReady]);
 
   useEffect(() => {
     if (editingFolderId && !editingFolderShortcut) {
@@ -1933,36 +1928,6 @@ export default function App() {
     handleOverlayImageReady();
     setWallpaperImageReadyTick((prev) => prev + 1);
   }, [handleOverlayImageReady]);
-  const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
-    ? freshWeatherVideo
-    : effectiveWallpaperMode === 'dynamic'
-      ? dynamicWallpaperPosterSrc
-    : effectiveWallpaperMode === 'color'
-      ? ''
-      : effectiveOverlayWallpaperSrc;
-  const needsRootWallpaperBackdropBlur = roleSelectorOpen
-    || isAuthModalOpen
-    || settingsOpen
-    || importSourceDialogOpen
-    || searchSettingsOpen
-    || shortcutGuideOpen
-    || shortcutIconSettingsOpen
-    || adminModalOpen
-    || aboutModalOpen
-    || webdavDialogOpen
-    || cloudSyncConfigOpen
-    || confirmDisableConsentOpen;
-  const imageWallpaperBlurEnabled = showOverlayWallpaperLayer
-    && needsRootWallpaperBackdropBlur
-    && effectiveWallpaperMode !== 'color'
-    && Boolean(wallpaperBlurSourceUrl);
-  const {
-    blurredWallpaperSrc,
-    blurredWallpaperAverageLuminance,
-  } = useBlurredWallpaperAsset({
-    sourceUrl: wallpaperBlurSourceUrl,
-    enabled: imageWallpaperBlurEnabled,
-  });
   const handleOpenSettings = useCallback(() => {
     setSettingsOpen(true);
   }, [setSettingsOpen]);
@@ -2768,9 +2733,9 @@ export default function App() {
             value={{
               wallpaperMode: effectiveWallpaperMode,
               colorWallpaperGradient,
-              blurredWallpaperSrc,
+              blurredWallpaperSrc: '',
               fallbackWallpaperSrc: effectiveWallpaperMode === 'color' ? '' : fallbackWallpaperBackdropSrc,
-              blurredWallpaperAverageLuminance,
+              blurredWallpaperAverageLuminance: null,
               effectiveWallpaperMaskOpacity,
             }}
           >

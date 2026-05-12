@@ -1,5 +1,4 @@
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-import { resolveDynamicWallpaperAccentPaletteBySrc } from '@/components/wallpaper/dynamicWallpapers';
 import {
   ADAPTIVE_NEUTRAL_ACCENT,
   DEFAULT_ACCENT_COLOR,
@@ -28,6 +27,14 @@ type ResolveAccentColorOptions = ResolveDynamicAccentOptions & {
 };
 
 const imageAccentPaletteCache = new Map<string, string[]>();
+
+const releaseVideoElement = (video: HTMLVideoElement) => {
+  try {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  } catch {}
+};
 
 type WeatherTheme = 'sunny' | 'cloudy' | 'foggy' | 'rainy' | 'snowy' | 'thunderstorm';
 
@@ -533,9 +540,13 @@ const resolveVideoAccentPalette = async (
 
   try {
     const video = await loadVideo(videoUrl);
-    const palette = sampleAccentPaletteFromVideo(video);
-    imageAccentPaletteCache.set(videoUrl, palette);
-    return palette;
+    try {
+      const palette = sampleAccentPaletteFromVideo(video);
+      imageAccentPaletteCache.set(videoUrl, palette);
+      return palette;
+    } finally {
+      releaseVideoElement(video);
+    }
   } catch {
     imageAccentPaletteCache.set(videoUrl, DEFAULT_WALLPAPER_ACCENT_PALETTE);
     return DEFAULT_WALLPAPER_ACCENT_PALETTE;
@@ -556,10 +567,6 @@ export const resolveWallpaperAccentPalette = async (
   input: DynamicAccentInput,
   options?: ResolveDynamicAccentOptions,
 ) => {
-  if (input.wallpaperMode === 'dynamic') {
-    return resolveDynamicWallpaperAccentPaletteBySrc(input.dynamicWallpaperSrc)
-      || DEFAULT_WALLPAPER_ACCENT_PALETTE;
-  }
   if (input.wallpaperMode === 'weather') {
     return buildRecommendedAccentPaletteFromHexes([resolveWeatherAccent(input.weatherCode)]);
   }

@@ -357,20 +357,15 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
 
   const searchPerformanceModeActive = searchInteractionState.historyOpen
     || searchInteractionState.typingBurst;
-  const folderImmersiveOpen = Boolean(shortcutGridOpenFolderPreviewId);
   const effectiveTopTimeAnimationEnabled = baseTimeAnimationEnabled
     && visualBootSettled
     && !searchPerformanceModeActive;
   const shouldFreezeDynamicWallpaper = freezeDynamicWallpaperBase
     || !visualBootSettled
     || searchPerformanceModeActive;
-  const shouldUseStaticHeroDynamicWallpaper = showOverlayWallpaperLayer
-    && effectiveWallpaperMode === 'dynamic'
-    && Boolean(dynamicWallpaperPosterSrc);
   const searchInteractionLocked = searchInteractionState.historyOpen
     || searchInteractionState.dropdownOpen
     || Boolean(shortcutGridSelectionMode);
-  const videoWallpaperMode = effectiveWallpaperMode === 'weather' || effectiveWallpaperMode === 'dynamic';
   const wallpaperBlurSourceUrl = effectiveWallpaperMode === 'weather'
     ? freshWeatherVideo
     : effectiveWallpaperMode === 'dynamic'
@@ -379,8 +374,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
       ? ''
       : effectiveOverlayWallpaperSrc;
   const imageWallpaperBlurEnabled = showOverlayWallpaperLayer
-    && folderImmersiveOpen
-    && !videoWallpaperMode
     && effectiveWallpaperMode !== 'color'
     && Boolean(wallpaperBlurSourceUrl);
   const {
@@ -396,19 +389,13 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     () => ({
       ...wallpaperClockBaseProps,
       timeAnimationEnabled: effectiveTopTimeAnimationEnabled,
-      pauseDynamicWallpaper: shouldFreezeDynamicWallpaper || shouldUseStaticHeroDynamicWallpaper,
+      pauseDynamicWallpaper: shouldFreezeDynamicWallpaper,
       showScenarioMode: drawerExpanded ? false : wallpaperClockBaseProps.showScenarioMode,
       scenarioModeOpen: drawerExpanded ? false : wallpaperClockBaseProps.scenarioModeOpen,
       onSettingsClick: drawerExpanded ? undefined : wallpaperClockBaseProps.onSettingsClick,
       onSyncClick: drawerExpanded ? undefined : wallpaperClockBaseProps.onSyncClick,
     }),
-    [
-      drawerExpanded,
-      effectiveTopTimeAnimationEnabled,
-      shouldFreezeDynamicWallpaper,
-      shouldUseStaticHeroDynamicWallpaper,
-      wallpaperClockBaseProps,
-    ],
+    [drawerExpanded, effectiveTopTimeAnimationEnabled, shouldFreezeDynamicWallpaper, wallpaperClockBaseProps],
   );
 
   const effectiveTopNavModeProps = useMemo(
@@ -530,6 +517,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
   const globalSearchSnapshot = useTrackedInputSnapshot(searchInputRef);
   const drawerSearchSnapshot = useTrackedInputSnapshot(drawerShortcutSearchController.inputRef);
   const dialogOverlayActive = useOpenDialogOverlayActivity();
+  const folderImmersiveOpen = Boolean(shortcutGridOpenFolderPreviewId);
   const floatingSearchHiddenByDialog = dialogOverlayActive || wallpaperClockBaseProps.scenarioModeOpen;
   const floatingSearchHiddenBySelectionMode = Boolean(shortcutGridSelectionMode);
   const floatingSearchHiddenByAlphabetIndex = drawerExpanded && drawerShortcutSearchController.activeIndexLetter !== null;
@@ -686,6 +674,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
                 paused={shouldFreezeDynamicWallpaper}
                 playbackRate={dynamicWallpaperPlaybackRate}
                 smoothEndRamp={false}
+                seamlessLoopDurationSec={0.6}
               />
             ) : effectiveWallpaperMode === 'color' ? (
               <div className="absolute w-full h-full" style={{ backgroundImage: colorWallpaperGradient }} />
@@ -702,7 +691,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
           <div className="absolute inset-0" style={wallpaperAtmosphereRevealStyle}>
             <WallpaperMaskOverlay opacity={effectiveWallpaperMaskOpacity} />
           </div>
-          {!videoWallpaperMode && blurredWallpaperReady && blurredWallpaperSrc ? (
+          {blurredWallpaperReady && blurredWallpaperSrc ? (
             <div className="absolute inset-0" style={immersiveWallpaperBlurLayerStyle}>
               <img
                 src={blurredWallpaperSrc}
@@ -748,7 +737,6 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
     dynamicWallpaperVideoSrc,
     dynamicWallpaperPosterSrc,
     dynamicWallpaperPlaybackRate,
-    videoWallpaperMode,
     blurredWallpaperReady,
     blurredWallpaperSrc,
     wallpaperAtmosphereRevealStyle,
@@ -951,7 +939,7 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
             onClick={() => requestDrawerExpand?.()}
             disabled={!requestDrawerExpand}
           >
-            <RiArrowUpSLine className="size-7 motion-safe:animate-[leaftab-drawer-hint-float_2.8s_ease-in-out_infinite]" />
+            <RiArrowUpSLine className="size-7 transition-transform duration-200 hover:-translate-y-0.5" />
           </button>
         </div>
       </div>
@@ -978,9 +966,9 @@ export const HomeInteractiveSurface = memo(function HomeInteractiveSurface({
         value={{
           wallpaperMode: effectiveWallpaperMode,
           colorWallpaperGradient,
-          blurredWallpaperSrc: videoWallpaperMode ? '' : blurredWallpaperSrc,
-          fallbackWallpaperSrc: videoWallpaperMode ? '' : fallbackWallpaperBackdropSrc,
-          blurredWallpaperAverageLuminance: videoWallpaperMode ? null : blurredWallpaperAverageLuminance,
+          blurredWallpaperSrc,
+          fallbackWallpaperSrc: fallbackWallpaperBackdropSrc,
+          blurredWallpaperAverageLuminance,
           effectiveWallpaperMaskOpacity,
         }}
       >

@@ -1,11 +1,14 @@
-import React, { memo, useLayoutEffect, useRef, useState } from 'react';
+import React, { lazy, memo, Suspense, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiCloudFill, RiErrorWarningFill, RiRefreshFill, RiSettings4Fill } from '@/icons/ri-compat';
-import { WeatherCard } from '@/components/WeatherCard';
 import { Button } from '@/components/ui/button';
 import { FrostedSurface } from '@/components/frosted/FrostedSurface';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import { useTranslation } from 'react-i18next';
+
+const LazyWeatherCard = lazy(() => import('@/components/WeatherCard').then((module) => ({
+  default: module.WeatherCard,
+})));
 
 function ActionButton({
   onClick,
@@ -213,14 +216,15 @@ export const TopNavBar = memo(function TopNavBar({
   const scenarioIntroAnchorRef = useRef<HTMLDivElement | null>(null);
   const syncIntroAnchorRef = useRef<HTMLDivElement | null>(null);
   const settingsIntroAnchorRef = useRef<HTMLDivElement | null>(null);
-  const weatherContent = (
-    <WeatherCard
-      onWeatherUpdate={onWeatherUpdate}
-      variant={variant}
-      disableBackdropBlur={reduceVisualEffects}
-    />
+  const weatherNode = hideWeather ? null : (
+    <Suspense fallback={null}>
+      <LazyWeatherCard
+        onWeatherUpdate={onWeatherUpdate}
+        variant={variant}
+        disableBackdropBlur={reduceVisualEffects}
+      />
+    </Suspense>
   );
-  const weatherNode = weatherContent;
   const syncIcon = syncStatus === 'syncing'
     ? <RiRefreshFill className="size-4.5 animate-spin" />
     : syncStatus === 'conflict' || syncStatus === 'error'
