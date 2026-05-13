@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { lazy, memo, Suspense, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeDisplayDialog } from './TimeDisplayDialog';
 import ScenarioModeMenu from './ScenarioModeMenu';
@@ -6,7 +6,7 @@ import { ScenarioMode } from "@/scenario/scenario";
 import { TopNavBar } from './TopNavBar';
 import imgImage from "../assets/Default_wallpaper.webp";
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useClock } from '@/hooks/useClock';
+import { useClockDate, useClockTime } from '@/hooks/useClock';
 import { useResolvedTimeFontScale } from '@/hooks/useResolvedTimeFontScale';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
 import { WallpaperMaskOverlay } from './wallpaper/WallpaperMaskOverlay';
@@ -15,8 +15,11 @@ import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-t
 import { weatherVideoMap, sunnyWeatherVideo } from './wallpaper/weatherWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
 import { WeatherLoopVideo } from './wallpaper/WeatherLoopVideo';
-import { WeatherCard } from './WeatherCard';
 import { toCssFontFamily } from '@/utils/googleFonts';
+
+const LazyWeatherCard = lazy(() => import('./WeatherCard').then((module) => ({
+  default: module.WeatherCard,
+})));
 
 export interface WallpaperClockProps {
   is24Hour: boolean;
@@ -63,6 +66,38 @@ export interface WallpaperClockProps {
   layout?: ResponsiveLayout;
 }
 
+type ClockTimeButtonProps = {
+  is24Hour: boolean;
+  showSeconds: boolean;
+  timeAnimationEnabled: boolean;
+  timeFont: string;
+  fontSize: number;
+  onClick: (time: string) => void;
+};
+
+const ClockTimeButton = memo(function ClockTimeButton({
+  is24Hour,
+  showSeconds,
+  timeAnimationEnabled,
+  timeFont,
+  fontSize,
+  onClick,
+}: ClockTimeButtonProps) {
+  const time = useClockTime(is24Hour, showSeconds);
+
+  return (
+    <button
+      type="button"
+      className="hero-tint-text-hover cursor-pointer bg-transparent border-0 p-0 font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] transition-opacity hover:opacity-80 pointer-events-auto select-none"
+      style={{ fontFamily: toCssFontFamily(timeFont), fontSize }}
+      onClick={() => onClick(time)}
+      aria-label={time}
+    >
+      {!timeAnimationEnabled ? time : <SlidingClockTime time={time} />}
+    </button>
+  );
+});
+
 export const WallpaperClock = memo(function WallpaperClock({ 
   is24Hour,
   onIs24HourChange,
@@ -106,10 +141,11 @@ export const WallpaperClock = memo(function WallpaperClock({
   timeFont,
   onTimeFontChange,
   layout,
-}: WallpaperClockProps) {
-  const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
-  const { i18n } = useTranslation();
-  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language, showLunar);
+	}: WallpaperClockProps) {
+		const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
+	  const [timeDisplayPreviewTime, setTimeDisplayPreviewTime] = useState(() => '');
+	  const { i18n } = useTranslation();
+	  const { date, lunar } = useClockDate(i18n.language, showLunar);
   const resolvedTimeFontScale = useResolvedTimeFontScale(timeFont);
 
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
@@ -230,20 +266,22 @@ export const WallpaperClock = memo(function WallpaperClock({
       </div>
 
       <div className="hero-tint-text absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none transform-gpu">
-        <button
-          type="button"
-          className="hero-tint-text-hover cursor-pointer bg-transparent border-0 p-0 font-thin leading-none tracking-tight text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)] transition-opacity hover:opacity-80 pointer-events-auto select-none"
-          style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
-          onClick={() => setTimeDisplayDialogOpen(true)}
-          aria-label={time}
-        >
-          {!timeAnimationEnabled ? time : <SlidingClockTime time={time} />}
-        </button>
-        <TimeDisplayDialog
+	        <ClockTimeButton
+	          is24Hour={is24Hour}
+	          showSeconds={showSeconds}
+	          timeAnimationEnabled={timeAnimationEnabled}
+	          timeFont={timeFont}
+	          fontSize={normalizedClockFontSize}
+	          onClick={(time) => {
+	            setTimeDisplayPreviewTime(time);
+	            setTimeDisplayDialogOpen(true);
+	          }}
+	        />
+	        <TimeDisplayDialog
           open={timeDisplayDialogOpen}
           onOpenChange={setTimeDisplayDialogOpen}
           currentFont={timeFont}
-          previewTime={time}
+	          previewTime={timeDisplayPreviewTime}
           is24Hour={is24Hour}
           onIs24HourChange={onIs24HourChange}
           showDate={showDate}
@@ -269,13 +307,15 @@ export const WallpaperClock = memo(function WallpaperClock({
                 {showLunar && lunar ? <span>{lunar}</span> : null}
               </div>
             ) : null}
-            <WeatherCard
-              onWeatherUpdate={onWeatherUpdate}
-              variant="inverted"
-              displayMode="inline"
-              className="w-fit max-w-full"
-              textClassName="text-inherit"
-            />
+            <Suspense fallback={null}>
+              <LazyWeatherCard
+                onWeatherUpdate={onWeatherUpdate}
+                variant="inverted"
+                displayMode="inline"
+                className="w-fit max-w-full"
+                textClassName="text-inherit"
+              />
+            </Suspense>
           </div>
         </div>
       </div>

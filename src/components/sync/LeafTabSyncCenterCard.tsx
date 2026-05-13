@@ -44,7 +44,6 @@ export function LeafTabSyncCenterCard({
   const status = formatStatus(syncState, t);
   const StatusIcon = status.icon;
   const isSyncing = syncState.status === 'syncing';
-  const remoteSummaryKnown = analysis?.remoteSummaryStatus !== 'head-only';
   const stateTitle = !ready
     ? t('leaftabSyncCenter.state.analyzing', { defaultValue: '正在分析同步状态...' })
     : isSyncing
@@ -107,17 +106,15 @@ export function LeafTabSyncCenterCard({
         <div className="rounded-[22px] border border-border/60 bg-background/75 p-4">
           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t('sync.cloud')}</div>
           <div className="mt-2 text-2xl font-semibold text-foreground">
-            {remoteSummaryKnown ? (analysis?.remoteSummary.shortcuts ?? 0) : '-'}
+            {analysis?.remoteSummary.shortcuts ?? 0}
           </div>
           <div className="mt-1 text-sm text-muted-foreground">
-            {remoteSummaryKnown
-              ? t('leaftabSyncCenter.summary', {
-                  defaultValue: '{{shortcuts}} 个快捷方式，{{scenarios}} 个场景，{{bookmarks}} 个书签',
-                  shortcuts: analysis?.remoteSummary.shortcuts ?? 0,
-                  scenarios: analysis?.remoteSummary.scenarios ?? 0,
-                  bookmarks: analysis?.remoteSummary.bookmarkItems ?? 0,
-                })
-              : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' })}
+            {t('leaftabSyncCenter.summary', {
+              defaultValue: '{{shortcuts}} 个快捷方式，{{scenarios}} 个场景，{{bookmarks}} 个书签',
+              shortcuts: analysis?.remoteSummary.shortcuts ?? 0,
+              scenarios: analysis?.remoteSummary.scenarios ?? 0,
+              bookmarks: analysis?.remoteSummary.bookmarkItems ?? 0,
+            })}
           </div>
         </div>
 

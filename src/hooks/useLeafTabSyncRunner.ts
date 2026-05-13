@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { LeafTabSyncEngineProgress, LeafTabSyncInitialChoice } from '@/sync/leaftab';
-import { measureSyncDiagnostic } from '@/utils/syncDiagnostics';
 
 export type LeafTabSyncRunnerOptionsBase = {
   mode?: LeafTabSyncInitialChoice | 'auto';
   silentSuccess?: boolean;
-  skipPostSuccessAnalysis?: boolean;
   requestBookmarkPermission?: boolean;
   allowDestructiveBookmarkChanges?: boolean;
   showProgressIndicator?: boolean;
@@ -39,7 +37,6 @@ type ExecuteLeafTabSyncRunParams<TResult, TOptions extends LeafTabSyncRunnerOpti
     progressOptions?: {
       onProgress?: (progress: LeafTabSyncEngineProgress) => void;
       allowDestructiveBookmarkChanges?: boolean;
-      skipPostSyncAnalysis?: boolean;
     },
   ) => Promise<TResult | null>;
   refreshAnalysis?: () => Promise<unknown>;
@@ -104,17 +101,16 @@ export async function executeLeafTabSyncRun<TResult, TOptions extends LeafTabSyn
       await params.requestBookmarkPermission();
     }
 
-    const result = await measureSyncDiagnostic('sync', 'runner.runSync', {
-      providerLabel: params.providerLabel,
-      mode: options.mode || 'auto',
-      silentSuccess: options.silentSuccess === true,
-      skipPostSuccessAnalysis: options.skipPostSuccessAnalysis === true,
-    }, () => params.runSync(options.mode || 'auto', {
+    const result = await params.runSync(options.mode || 'auto', {
       onProgress: updateSyncIndicator,
       allowDestructiveBookmarkChanges: options.allowDestructiveBookmarkChanges,
-      skipPostSyncAnalysis: options.skipPostSuccessAnalysis,
-    }));
-    if (!result) return null;
+    });
+    if (!result) {
+      if (shouldManageProgressIndicator && progressTaskId) {
+        params.longTask.clear(progressTaskId);
+      }
+      return null;
+    }
 
     const successText = params.getSuccessText(result);
     await params.onSuccess?.(result, context);
@@ -127,9 +123,7 @@ export async function executeLeafTabSyncRun<TResult, TOptions extends LeafTabSyn
     if (!options.silentSuccess) {
       params.notifySuccess(successText || params.getInitialProgressCopy().title);
     }
-    if (!options.skipPostSuccessAnalysis) {
-      await params.refreshAnalysis?.();
-    }
+    await params.refreshAnalysis?.();
     return result;
   } catch (error) {
     if (options.allowEncryptionPrompt !== false && !options._retriedAfterUnlock && params.resolveSyncEncryptionError) {

@@ -287,16 +287,18 @@ export const WeatherLoopVideo = memo(function WeatherLoopVideo({
   }
 
   if (!seamlessLoopEnabled) {
+    const activeSrc = shouldPause && posterSrc ? undefined : src;
     return (
       <video
-        key={src}
+        key={activeSrc || posterSrc || src}
         ref={singleVideoRef}
-        src={shouldPause && posterSrc ? undefined : src}
+        src={activeSrc}
         className={resolvedClassName}
         autoPlay={!shouldPause}
         loop
         muted
         playsInline
+        preload="none"
       />
     );
   }

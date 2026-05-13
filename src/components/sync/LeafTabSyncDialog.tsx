@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,6 @@ import {
   RiHardDrive3Fill,
   RiLoginBoxFill,
   RiRefreshFill,
-  RiFileCopyLine,
   RiSettings4Fill,
   RiToolsFill,
 } from '@/icons/ri-compat';
@@ -26,13 +24,6 @@ import type { LeafTabSyncAnalysis } from '@/sync/leaftab';
 import type { SyncState } from '@/sync/stateMachine';
 import { cn } from '@/components/ui/utils';
 import { SyncEncryptionStatusCard } from './SyncEncryptionStatusCard';
-import {
-  clearSyncDiagnosticsEvents,
-  isSyncDiagnosticsEnabled,
-  readSyncDiagnosticsEvents,
-  setSyncDiagnosticsEnabled,
-  type SyncDiagnosticsEvent,
-} from '@/utils/syncDiagnostics';
 
 export interface LeafTabSyncDialogProps {
   open: boolean;
@@ -91,18 +82,6 @@ type ProviderModel = {
   statusIcon: ComponentType<{ className?: string }>;
   statusSpin?: boolean;
   scopeLabel: string;
-  remoteStatusLabel?: string;
-};
-
-const hasLoadedRemoteSummary = (analysis: LeafTabSyncAnalysis | null) => {
-  return analysis?.remoteSummaryStatus !== 'head-only';
-};
-
-const formatRemoteSummaryMetric = (
-  analysis: LeafTabSyncAnalysis | null,
-  value: number | undefined,
-) => {
-  return hasLoadedRemoteSummary(analysis) ? String(value ?? 0) : '-';
 };
 
 const toneClasses: Record<StatusTone, string> = {
@@ -333,12 +312,6 @@ function ProviderCard({
             label={t('leaftabSyncDialog.details.scope', { defaultValue: '同步范围' })}
             value={model.scopeLabel}
           />
-          {model.remoteStatusLabel ? (
-            <DetailRow
-              label={t('leaftabSyncDialog.details.remoteStatus', { defaultValue: '远端状态' })}
-              value={model.remoteStatusLabel}
-            />
-          ) : null}
         </div>
       </div>
 
@@ -350,12 +323,6 @@ function ProviderCard({
     </section>
   );
 }
-
-const formatDiagnosticEvent = (event: SyncDiagnosticsEvent) => {
-  const detail = event.detail ? ` ${JSON.stringify(event.detail)}` : '';
-  const duration = typeof event.durationMs === 'number' ? ` ${event.durationMs}ms` : '';
-  return `${event.at} [${event.provider}] ${event.action}${duration}${detail}`;
-};
 
 export function LeafTabSyncDialog({
   open,
@@ -402,8 +369,6 @@ export function LeafTabSyncDialog({
   const resolvedBookmarkScope = bookmarkScopeLabel || t('leaftabSyncDialog.scopeDefault', { defaultValue: '书签' });
 
   const [activeTab, setActiveTab] = useState<ProviderTab>('cloud');
-  const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(() => isSyncDiagnosticsEnabled());
-  const [diagnosticEvents, setDiagnosticEvents] = useState<SyncDiagnosticsEvent[]>(() => readSyncDiagnosticsEvents());
 
   useEffect(() => {
     if (!open) return;
@@ -416,46 +381,10 @@ export function LeafTabSyncDialog({
     }
   }, [cloudSignedIn, open, webdavConfigured, webdavEnabled]);
 
-  useEffect(() => {
-    if (!open) return;
-    const refresh = () => {
-      setDiagnosticsEnabled(isSyncDiagnosticsEnabled());
-      setDiagnosticEvents(readSyncDiagnosticsEvents());
-    };
-    refresh();
-    window.addEventListener('leaftab-sync-diagnostics-changed', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('leaftab-sync-diagnostics-changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, [open]);
-
-  const recentDiagnosticEvents = useMemo(() => diagnosticEvents.slice(-12).reverse(), [diagnosticEvents]);
-  const diagnosticText = useMemo(() => (
-    diagnosticEvents.map(formatDiagnosticEvent).join('\n')
-  ), [diagnosticEvents]);
-
-  const handleDiagnosticsToggle = (enabled: boolean) => {
-    setSyncDiagnosticsEnabled(enabled);
-    setDiagnosticsEnabled(enabled);
-    setDiagnosticEvents(readSyncDiagnosticsEvents());
-  };
-
-  const handleCopyDiagnostics = () => {
-    void navigator.clipboard?.writeText(diagnosticText || 'No sync diagnostics events');
-  };
-
-  const handleClearDiagnostics = () => {
-    clearSyncDiagnosticsEvents();
-    setDiagnosticEvents([]);
-  };
-
   const cloudModel = useMemo<ProviderModel>(() => {
     const syncing = cloudSyncState.status === 'syncing';
     const error = cloudSyncState.status === 'error';
     const enabled = cloudSignedIn && cloudEnabled;
-    const cloudRemoteSummaryLoaded = hasLoadedRemoteSummary(cloudAnalysis);
 
     return {
       icon: RiCloudFill,
@@ -471,9 +400,9 @@ export function LeafTabSyncDialog({
       localBookmarkCount: cloudSyncBookmarksEnabled
         ? String(cloudAnalysis?.localSummary.bookmarkItems ?? 0)
         : '-',
-      remoteShortcutCount: formatRemoteSummaryMetric(cloudAnalysis, cloudAnalysis?.remoteSummary.shortcuts),
+      remoteShortcutCount: String(cloudAnalysis?.remoteSummary.shortcuts ?? 0),
       remoteBookmarkCount: cloudSyncBookmarksEnabled
-        ? formatRemoteSummaryMetric(cloudAnalysis, cloudAnalysis?.remoteSummary.bookmarkItems)
+        ? String(cloudAnalysis?.remoteSummary.bookmarkItems ?? 0)
         : '-',
       lastSyncLabel: cloudSignedIn
         ? (cloudLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
@@ -505,9 +434,6 @@ export function LeafTabSyncDialog({
         : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
             defaultValue: '仅快捷方式和设置',
           }),
-      remoteStatusLabel: cloudRemoteSummaryLoaded
-        ? undefined
-        : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' }),
     };
   }, [
     cloudAnalysis,
@@ -525,7 +451,6 @@ export function LeafTabSyncDialog({
   const webdavModel = useMemo<ProviderModel>(() => {
     const syncing = syncState.status === 'syncing';
     const error = syncState.status === 'error';
-    const webdavRemoteSummaryLoaded = hasLoadedRemoteSummary(webdavAnalysis);
 
     return {
       icon: RiHardDrive3Fill,
@@ -541,9 +466,9 @@ export function LeafTabSyncDialog({
       localBookmarkCount: webdavSyncBookmarksEnabled
         ? String(webdavAnalysis?.localSummary.bookmarkItems ?? 0)
         : '-',
-      remoteShortcutCount: formatRemoteSummaryMetric(webdavAnalysis, webdavAnalysis?.remoteSummary.shortcuts),
+      remoteShortcutCount: String(webdavAnalysis?.remoteSummary.shortcuts ?? 0),
       remoteBookmarkCount: webdavSyncBookmarksEnabled
-        ? formatRemoteSummaryMetric(webdavAnalysis, webdavAnalysis?.remoteSummary.bookmarkItems)
+        ? String(webdavAnalysis?.remoteSummary.bookmarkItems ?? 0)
         : '-',
       lastSyncLabel: webdavConfigured
         ? (webdavLastSyncLabel || t('leaftabSyncDialog.lastSyncEmpty', { defaultValue: '暂无记录' }))
@@ -575,9 +500,6 @@ export function LeafTabSyncDialog({
         : t('leaftabSyncDialog.cloud.scopeShortcutsOnly', {
             defaultValue: '仅快捷方式和设置',
           }),
-      remoteStatusLabel: webdavRemoteSummaryLoaded
-        ? undefined
-        : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' }),
     };
   }, [
     resolvedBookmarkScope,
@@ -757,61 +679,6 @@ export function LeafTabSyncDialog({
           {cloudBookmarksBanner}
 
           <ProviderCard model={activeModel} securityCard={securityCard} actionArea={actionArea} />
-
-          <section className="rounded-[18px] border border-border/70 bg-secondary/25 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-foreground">
-                  {t('leaftabSyncDiagnostics.title', { defaultValue: '同步诊断' })}
-                </div>
-                <div className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                  {diagnosticsEnabled
-                    ? t('leaftabSyncDiagnostics.enabledDesc', { defaultValue: '正在记录同步触发、WebDAV 请求和耗时' })
-                    : t('leaftabSyncDiagnostics.disabledDesc', { defaultValue: '开启后可定位 WebDAV CPU 飙升来源' })}
-                </div>
-              </div>
-              <Switch
-                checked={diagnosticsEnabled}
-                onCheckedChange={handleDiagnosticsToggle}
-                aria-label={t('leaftabSyncDiagnostics.toggle', { defaultValue: '开启同步诊断' })}
-              />
-            </div>
-
-            {diagnosticsEnabled || recentDiagnosticEvents.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="h-8 rounded-[12px]"
-                    onClick={handleCopyDiagnostics}
-                  >
-                    <RiFileCopyLine className="size-3.5" />
-                    {t('leaftabSyncDiagnostics.copy', { defaultValue: '复制日志' })}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-[12px]"
-                    onClick={handleClearDiagnostics}
-                  >
-                    {t('leaftabSyncDiagnostics.clear', { defaultValue: '清空' })}
-                  </Button>
-                </div>
-                <div className="max-h-32 overflow-auto rounded-[12px] border border-border/60 bg-background/70 px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground">
-                  {recentDiagnosticEvents.length > 0
-                    ? recentDiagnosticEvents.map((event) => (
-                        <div key={event.id} className="whitespace-pre-wrap break-all">
-                          {formatDiagnosticEvent(event)}
-                        </div>
-                      ))
-                    : t('leaftabSyncDiagnostics.empty', { defaultValue: '暂无诊断日志，开启后执行一次同步即可看到记录。' })}
-                </div>
-              </div>
-            ) : null}
-          </section>
         </div>
       </DialogContent>
     </Dialog>

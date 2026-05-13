@@ -7,9 +7,8 @@ import {
 const SHORTCUT_CUSTOM_ICON_PREFIX = 'shortcut_custom_icon_v1:';
 const SHORTCUT_CUSTOM_ICON_INDEX_KEY = 'shortcut_custom_icon_v1:index';
 const MAX_CUSTOM_SHORTCUT_ICONS = 160;
-const MAX_CUSTOM_ICON_DATA_LENGTH = 220_000;
-const CUSTOM_ICON_SIZE = 64;
-const CUSTOM_ICON_CPU_MITIGATION_KEY = 'shortcut_custom_icon_cpu_mitigation_v1';
+const MAX_CUSTOM_ICON_DATA_LENGTH = 1_200_000;
+const CUSTOM_ICON_SIZE = 256;
 export const SHORTCUT_CUSTOM_ICON_CHANGED_EVENT = 'leaftab-shortcut-custom-icon-changed';
 export type ShortcutCustomIconMap = Record<string, string>;
 
@@ -47,23 +46,6 @@ function getCustomIconStorageKey(shortcutId: string) {
   return `${SHORTCUT_CUSTOM_ICON_PREFIX}${shortcutId}`;
 }
 
-function shouldDisableCustomIconsForCpuMitigation() {
-  return true;
-}
-
-function disableStoredCustomIconsForCpuMitigation() {
-  try {
-    if (localStorage.getItem(CUSTOM_ICON_CPU_MITIGATION_KEY) === 'applied') return;
-    const ids = readCustomIconIndex();
-    ids.forEach((shortcutId) => {
-      queueCachedLocalStorageRemoveItem(getCustomIconStorageKey(shortcutId));
-      dispatchShortcutCustomIconChanged({ shortcutId, action: 'remove' });
-    });
-    writeCustomIconIndex([]);
-    localStorage.setItem(CUSTOM_ICON_CPU_MITIGATION_KEY, 'applied');
-  } catch {}
-}
-
 export function isValidShortcutCustomIconDataUrl(dataUrl: unknown): dataUrl is string {
   const normalizedDataUrl = typeof dataUrl === 'string' ? dataUrl.trim() : '';
   return (
@@ -99,19 +81,10 @@ function normalizeShortcutCustomIconMap(
 export function readShortcutCustomIcon(shortcutId?: string | null) {
   const normalizedId = normalizeShortcutId(shortcutId);
   if (!normalizedId) return '';
-  if (shouldDisableCustomIconsForCpuMitigation()) {
-    disableStoredCustomIconsForCpuMitigation();
-    return '';
-  }
-  const dataUrl = readCachedLocalStorageItem(getCustomIconStorageKey(normalizedId)) || '';
-  return isValidShortcutCustomIconDataUrl(dataUrl) ? dataUrl : '';
+  return readCachedLocalStorageItem(getCustomIconStorageKey(normalizedId)) || '';
 }
 
 export function persistShortcutCustomIcon(shortcutId: string, dataUrl: string) {
-  if (shouldDisableCustomIconsForCpuMitigation()) {
-    disableStoredCustomIconsForCpuMitigation();
-    return;
-  }
   const normalizedId = normalizeShortcutId(shortcutId);
   const normalizedDataUrl = String(dataUrl || '').trim();
   if (!normalizedId || !isValidShortcutCustomIconDataUrl(normalizedDataUrl)) return;
@@ -155,10 +128,6 @@ export function removeShortcutCustomIcons(shortcutIds: Iterable<string>) {
 }
 
 export function exportShortcutCustomIcons(shortcutIds?: Iterable<string> | null): ShortcutCustomIconMap {
-  if (shouldDisableCustomIconsForCpuMitigation()) {
-    disableStoredCustomIconsForCpuMitigation();
-    return {};
-  }
   const allowedIds = shortcutIds
     ? new Set(Array.from(shortcutIds).map(normalizeShortcutId).filter(Boolean))
     : null;
@@ -181,10 +150,6 @@ export function applyShortcutCustomIcons(
     shortcutIds?: Iterable<string> | null;
   },
 ) {
-  if (shouldDisableCustomIconsForCpuMitigation()) {
-    disableStoredCustomIconsForCpuMitigation();
-    return;
-  }
   const normalizedIcons = normalizeShortcutCustomIconMap(icons || {}, options?.shortcutIds || null);
   const scopeIds = options?.shortcutIds
     ? new Set(Array.from(options.shortcutIds).map(normalizeShortcutId).filter(Boolean))

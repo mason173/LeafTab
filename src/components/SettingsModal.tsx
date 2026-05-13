@@ -622,7 +622,7 @@ export default function SettingsModal({
                   onOpenImportSourceDialog();
                 }}
               >
-                <RiUpload2Fill className="size-4" />
+                <RiDownload2Fill className="size-4" />
                 {t('settings.backup.import')}
               </Button>
               <Button 
@@ -634,7 +634,7 @@ export default function SettingsModal({
                   void onExportData();
                 }}
               >
-                <RiDownload2Fill className="size-4" />
+                <RiUpload2Fill className="size-4" />
                 {t('settings.backup.export')}
               </Button>
             </div>

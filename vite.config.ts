@@ -74,7 +74,9 @@ function resolveManualChunk(id: string): string | undefined {
 
   if (
     pkg === 'framer-motion' ||
-    pkg === 'motion'
+    pkg === 'motion' ||
+    pkg === 'motion-dom' ||
+    pkg === 'motion-utils'
   ) {
     return 'vendor-motion';
   }
@@ -97,6 +99,7 @@ function resolveManualChunk(id: string): string | undefined {
 
   if (
     pkg.startsWith('@radix-ui/') ||
+    pkg.startsWith('@floating-ui/') ||
     pkg === 'cmdk' ||
     pkg === 'vaul' ||
     pkg === 'react-resizable-panels' ||
@@ -141,6 +144,10 @@ function resolveManualChunk(id: string): string | undefined {
 
   if (pkg === '@remixicon/react' || pkg === 'lucide-react') {
     return 'vendor-icons';
+  }
+
+  if (pkg === 'canvas-confetti') {
+    return 'vendor-confetti';
   }
 
   return 'vendor-misc';

@@ -170,7 +170,7 @@ export function BackupScopeDialog({
             onClick={() => void handleConfirm()}
             disabled={!canConfirm || submitting}
           >
-            {isExport ? <RiDownload2Fill className="size-4" /> : <RiUpload2Fill className="size-4" />}
+            {isExport ? <RiUpload2Fill className="size-4" /> : <RiDownload2Fill className="size-4" />}
             {isExport
               ? t('settings.backup.export', { defaultValue: '导出' })
               : t('settings.backup.import', { defaultValue: '导入' })}

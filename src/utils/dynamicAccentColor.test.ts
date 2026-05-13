@@ -7,13 +7,8 @@ import {
   resolveAccentDetailColor,
 } from '@/utils/accentColor';
 import {
-  DYNAMIC_WALLPAPER_OPTIONS,
-  resolveDynamicWallpaperAccentPaletteBySrc,
-} from '@/components/wallpaper/dynamicWallpapers';
-import {
   buildRecommendedAccentPaletteFromHexes,
   resolveAccentColorSelection,
-  resolveWallpaperAccentPalette,
 } from '@/utils/dynamicAccentColor';
 
 describe('dynamic accent palette', () => {
@@ -74,20 +69,6 @@ describe('dynamic accent palette', () => {
 
     expect(light).toBe('#3f3f46');
     expect(dark).toBe('#ffffff');
-  });
-
-  it('uses precomputed palettes for built-in dynamic wallpapers', async () => {
-    const dynamicWallpaper = DYNAMIC_WALLPAPER_OPTIONS[0];
-    const palette = await resolveWallpaperAccentPalette({
-      wallpaperMode: 'dynamic',
-      bingWallpaper: '',
-      customWallpaper: null,
-      weatherCode: 0,
-      dynamicWallpaperSrc: dynamicWallpaper.src,
-    });
-
-    expect(palette).toEqual(resolveDynamicWallpaperAccentPaletteBySrc(dynamicWallpaper.src));
-    expect(palette).toHaveLength(6);
   });
 
   it('picks a same-family detail color with visible contrast for swatch chrome', () => {

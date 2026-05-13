@@ -66,7 +66,6 @@ export function LeafTabFirstSyncDialog({
 }: LeafTabFirstSyncDialogProps) {
   const { t } = useTranslation();
   const suggested = analysis?.suggestedInitialChoice || null;
-  const remoteSummaryLoaded = analysis?.remoteSummaryStatus !== 'head-only';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,17 +104,15 @@ export function LeafTabFirstSyncDialog({
           <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
             <div className="text-sm font-medium text-foreground">{t('sync.cloud')}</div>
             <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {remoteSummaryLoaded ? (analysis?.remoteSummary.shortcuts ?? 0) : '-'}
+              {analysis?.remoteSummary.shortcuts ?? 0}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {remoteSummaryLoaded
-                ? t('leaftabSyncCenter.summary', {
-                    defaultValue: '{{shortcuts}} 个快捷方式，{{scenarios}} 个场景，{{bookmarks}} 个书签',
-                    shortcuts: analysis?.remoteSummary.shortcuts ?? 0,
-                    scenarios: analysis?.remoteSummary.scenarios ?? 0,
-                    bookmarks: analysis?.remoteSummary.bookmarkItems ?? 0,
-                  })
-                : t('leaftabSyncCenter.remoteHeadOnly', { defaultValue: '已轻量探测远端版本，未读取完整内容' })}
+              {t('leaftabSyncCenter.summary', {
+                defaultValue: '{{shortcuts}} 个快捷方式，{{scenarios}} 个场景，{{bookmarks}} 个书签',
+                shortcuts: analysis?.remoteSummary.shortcuts ?? 0,
+                scenarios: analysis?.remoteSummary.scenarios ?? 0,
+                bookmarks: analysis?.remoteSummary.bookmarkItems ?? 0,
+              })}
             </div>
           </div>
         </div>

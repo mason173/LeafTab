@@ -16,7 +16,6 @@ import {
 import {
   materializeLeafTabSyncSnapshotFromPayloadMap,
 } from './snapshotCodec';
-import { decryptAndMaterializeLeafTabSyncSnapshotOffMainThread } from './syncMaterializeWorkerBridge';
 import type {
   LeafTabSyncRemoteState,
   LeafTabSyncRemoteStore,
@@ -25,12 +24,6 @@ import type {
 } from './remoteStore';
 import { LeafTabSyncCloudRemoteStoreError } from './cloudRemoteStore';
 import { LeafTabSyncWebdavStore } from './webdavStore';
-import { yieldToMainThread } from '@/utils/mainThreadScheduler';
-import {
-  readLeafTabSyncCacheEntry,
-  removeLeafTabSyncCacheEntry,
-  writeLeafTabSyncCacheEntry,
-} from './asyncStorage';
 import {
   readLeafTabSyncEncryptionConfig,
   type LeafTabSyncEncryptionMetadata,
@@ -38,8 +31,8 @@ import {
 
 const ENCRYPTION_VERIFIER_LABEL = 'LeafTab Sync E2EE Verifier v1';
 const ENCRYPTED_REMOTE_CACHE_PREFIX = 'leaftab_sync_encrypted_remote_cache_v2:';
-const FILE_READ_BATCH_SIZE = 4;
-const FILE_WRITE_BATCH_SIZE = 3;
+const FILE_READ_BATCH_SIZE = 12;
+const FILE_WRITE_BATCH_SIZE = 8;
 
 export interface LeafTabSyncEncryptedSummary {
   scenarios: number;
@@ -72,7 +65,6 @@ export interface LeafTabSyncEncryptedTransportWriteParams {
 export interface LeafTabSyncEncryptedRemoteTransport {
   acquireLock(deviceId: string, ttlMs?: number): Promise<unknown>;
   releaseLock(): Promise<void>;
-  readHead?(): Promise<LeafTabSyncHeadFile | null>;
   readEncryptionState(): Promise<LeafTabSyncEncryptionState>;
   readEncryptedFiles(paths: string[]): Promise<Record<string, string | null>>;
   writeEncryptedFiles(params: LeafTabSyncEncryptedTransportWriteParams): Promise<LeafTabSyncWriteStateResult>;
@@ -205,9 +197,6 @@ const runInBatches = async <T, R>(
   for (let index = 0; index < items.length; index += batchSize) {
     const batch = items.slice(index, index + batchSize);
     results.push(...(await Promise.all(batch.map((item) => task(item)))));
-    if (index + batchSize < items.length) {
-      await yieldToMainThread();
-    }
   }
   return results;
 };
@@ -442,12 +431,8 @@ export class LeafTabSyncWebdavEncryptedTransport implements LeafTabSyncEncrypted
     await this.webdavStore.releaseLock();
   }
 
-  async readHead() {
-    return this.webdavStore.readJsonFile<LeafTabSyncHeadFile>(getLeafTabSyncHeadPath(this.rootPath));
-  }
-
   async readEncryptionState(): Promise<LeafTabSyncEncryptionState> {
-    const head = await this.readHead();
+    const head = await this.webdavStore.readJsonFile<LeafTabSyncHeadFile>(getLeafTabSyncHeadPath(this.rootPath));
     if (!head?.commitId) {
       return {
         head: null,
@@ -532,16 +517,10 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
     await this.transport.releaseLock();
   }
 
-  private async readRemoteCache(commitId: string) {
+  private readRemoteCache(commitId: string) {
     const inMemory = LeafTabSyncEncryptedRemoteStore.memoryRemoteCache.get(this.cacheStorageKey);
     if (inMemory?.commitId === commitId) {
       return inMemory;
-    }
-
-    const cached = await readLeafTabSyncCacheEntry<EncryptedRemoteCacheEntry>(this.cacheStorageKey);
-    if (cached?.commitId === commitId && cached.snapshot && cached.commit && cached.head) {
-      LeafTabSyncEncryptedRemoteStore.memoryRemoteCache.set(this.cacheStorageKey, cached);
-      return cached;
     }
 
     try {
@@ -552,36 +531,24 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
         return null;
       }
       LeafTabSyncEncryptedRemoteStore.memoryRemoteCache.set(this.cacheStorageKey, parsed);
-      void writeLeafTabSyncCacheEntry(this.cacheStorageKey, parsed);
       return parsed;
     } catch {
       return null;
     }
   }
 
-  private async writeRemoteCache(entry: EncryptedRemoteCacheEntry) {
+  private writeRemoteCache(entry: EncryptedRemoteCacheEntry) {
     LeafTabSyncEncryptedRemoteStore.memoryRemoteCache.set(this.cacheStorageKey, entry);
-    if (await writeLeafTabSyncCacheEntry(this.cacheStorageKey, entry)) {
-      try {
-        globalThis.localStorage?.removeItem(this.cacheStorageKey);
-      } catch {}
-      return;
-    }
     try {
       globalThis.localStorage?.setItem(this.cacheStorageKey, JSON.stringify(entry));
     } catch {}
   }
 
-  private async clearRemoteCache() {
+  private clearRemoteCache() {
     LeafTabSyncEncryptedRemoteStore.memoryRemoteCache.delete(this.cacheStorageKey);
-    await removeLeafTabSyncCacheEntry(this.cacheStorageKey);
     try {
       globalThis.localStorage?.removeItem(this.cacheStorageKey);
     } catch {}
-  }
-
-  async readHead() {
-    return this.transport.readHead?.() || null;
   }
 
   private async resolveKeyBytes(metadata: LeafTabSyncEncryptionMetadata | null, mode: 'setup' | 'unlock') {
@@ -612,30 +579,9 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
   }
 
   async readState(): Promise<LeafTabSyncRemoteState> {
-    if (this.transport.readHead) {
-      const head = await this.transport.readHead();
-      if (!head?.commitId) {
-        await this.clearRemoteCache();
-        return {
-          head,
-          commit: null,
-          snapshot: null,
-        };
-      }
-
-      const cached = await this.readRemoteCache(head.commitId);
-      if (cached) {
-        return {
-          head,
-          commit: cached.commit,
-          snapshot: cached.snapshot,
-        };
-      }
-    }
-
     const state = await this.transport.readEncryptionState();
     if (!state.head?.commitId || !state.commit) {
-      await this.clearRemoteCache();
+      this.clearRemoteCache();
       return {
         head: state.head,
         commit: state.commit,
@@ -643,7 +589,7 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       };
     }
 
-    const cached = await this.readRemoteCache(state.head.commitId);
+    const cached = this.readRemoteCache(state.head.commitId);
     if (cached) {
       return {
         head: cached.head,
@@ -652,56 +598,7 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       };
     }
 
-    const commit = state.commit;
-    if (!commit || !state.metadata || commit.encryption?.mode !== 'encrypted-sharded-v1') {
-      return {
-        head: state.head,
-        commit,
-        snapshot: null,
-      };
-    }
-
-    const { keyBytes } = await this.resolveKeyBytes(state.metadata, 'unlock');
-    const encryptedFiles = await this.transport.readEncryptedFiles([commit.manifestPath]);
-    const manifestEnvelope = normalizeEncryptedFileTransportState(
-      parseJsonText<unknown>(encryptedFiles[commit.manifestPath] || null),
-    );
-    if (!manifestEnvelope) {
-      await this.clearRemoteCache();
-      return {
-        head: state.head,
-        commit,
-        snapshot: null,
-      };
-    }
-
-    const manifest = await decryptLeafTabSyncPayload<LeafTabSyncManifestFile>(manifestEnvelope, keyBytes);
-    const packPaths = manifest.packs.map((pack) => pack.path);
-    const packBodies = await this.transport.readEncryptedFiles(packPaths);
-    const snapshot = await decryptAndMaterializeLeafTabSyncSnapshotOffMainThread(
-      {
-        [commit.manifestPath]: encryptedFiles[commit.manifestPath] || null,
-        ...packBodies,
-      },
-      commit,
-      keyBytes,
-      async () => {
-        const payloadMap: Record<string, unknown> = {
-          [commit.manifestPath]: manifest,
-        };
-
-        await runInBatches(packPaths, FILE_READ_BATCH_SIZE, async (path) => {
-          const envelope = normalizeEncryptedFileTransportState(parseJsonText<unknown>(packBodies[path] || null));
-          if (!envelope) return null;
-          payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
-          return null;
-        });
-
-        return materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, commit);
-      },
-    );
-    if (!snapshot) {
-      await this.clearRemoteCache();
+    if (!state.metadata || state.commit.encryption?.mode !== 'encrypted-sharded-v1') {
       return {
         head: state.head,
         commit: state.commit,
@@ -709,7 +606,44 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       };
     }
 
-    await this.writeRemoteCache({
+    const { keyBytes } = await this.resolveKeyBytes(state.metadata, 'unlock');
+    const encryptedFiles = await this.transport.readEncryptedFiles([state.commit.manifestPath]);
+    const manifestEnvelope = normalizeEncryptedFileTransportState(
+      parseJsonText<unknown>(encryptedFiles[state.commit.manifestPath] || null),
+    );
+    if (!manifestEnvelope) {
+      this.clearRemoteCache();
+      return {
+        head: state.head,
+        commit: state.commit,
+        snapshot: null,
+      };
+    }
+
+    const manifest = await decryptLeafTabSyncPayload<LeafTabSyncManifestFile>(manifestEnvelope, keyBytes);
+    const packPaths = manifest.packs.map((pack) => pack.path);
+    const packBodies = await this.transport.readEncryptedFiles(packPaths);
+    const payloadMap: Record<string, unknown> = {
+      [state.commit.manifestPath]: manifest,
+    };
+
+    await Promise.all(packPaths.map(async (path) => {
+      const envelope = normalizeEncryptedFileTransportState(parseJsonText<unknown>(packBodies[path] || null));
+      if (!envelope) return;
+      payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
+    }));
+
+    const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, state.commit);
+    if (!snapshot) {
+      this.clearRemoteCache();
+      return {
+        head: state.head,
+        commit: state.commit,
+        snapshot: null,
+      };
+    }
+
+    this.writeRemoteCache({
       commitId: state.head.commitId,
       head: state.head,
       commit: state.commit,
@@ -751,13 +685,11 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       includePaths: changedPaths,
     });
 
-    const encryptedEntries = await runInBatches(
-      Object.entries(serialized.payloads),
-      FILE_WRITE_BATCH_SIZE,
-      async ([path, payload]) => {
+    const encryptedEntries = await Promise.all(
+      Object.entries(serialized.payloads).map(async ([path, payload]) => {
         const envelope = await encryptLeafTabSyncPayload(payload, keyBytes);
         return [path, serializeJsonStable(envelope)] as const;
-      },
+      }),
     );
 
     const result = await this.transport.writeEncryptedFiles({
@@ -766,7 +698,7 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       files: Object.fromEntries(encryptedEntries),
     });
 
-    await this.writeRemoteCache({
+    this.writeRemoteCache({
       commitId: result.head.commitId,
       head: result.head,
       commit: result.commit,

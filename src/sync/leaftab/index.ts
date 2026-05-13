@@ -12,4 +12,7 @@ export * from './webdavStore';
 export * from './cloudRemoteStore';
 export * from './encryption';
 export * from './engine';
+export * from './legacySingleFileCompat';
+export * from './legacyWebdavMigration';
+export * from './legacyCloudMigration';
 export * from './localBackup';

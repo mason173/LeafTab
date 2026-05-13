@@ -190,6 +190,31 @@ const getNormalizedShortcutChildren = (shortcut: Shortcut): Shortcut[] | undefin
   return children.length > 0 ? children : [];
 };
 
+const collectShortcutTreeIds = (shortcuts: readonly Shortcut[]) => {
+  const ids = new Set<string>();
+  const visit = (items: readonly Shortcut[]) => {
+    items.forEach((shortcut) => {
+      if (isNonEmptyString(shortcut.id)) {
+        ids.add(shortcut.id.trim());
+      }
+      if (isShortcutFolder(shortcut)) {
+        visit(getShortcutChildren(shortcut));
+      }
+    });
+  };
+  visit(shortcuts);
+  return ids;
+};
+
+const collectScenarioShortcutTreeIds = (scenarioShortcuts: ScenarioShortcuts) => {
+  const ids = new Set<string>();
+  Object.values(scenarioShortcuts || {}).forEach((shortcuts) => {
+    if (!Array.isArray(shortcuts)) return;
+    collectShortcutTreeIds(shortcuts).forEach((id) => ids.add(id));
+  });
+  return ids;
+};
+
 const isSameBookmarkFolderValue = (
   folder: ResolvedBookmarkFolderEntry,
   entity: LeafTabSyncBookmarkFolderEntity | undefined,
@@ -539,6 +564,7 @@ export const buildLeafTabSyncSnapshot = (params: {
     params.bookmarkTree,
   );
   const tombstones = { ...(params.state?.tombstones || {}) };
+  const customShortcutIconScopeIds = collectScenarioShortcutTreeIds(params.scenarioShortcuts);
 
   params.scenarioModes.forEach((mode) => {
     const metadata = getEntityMetadata(mode.id, params.deviceId, generatedAt, params.state);
@@ -654,7 +680,7 @@ export const buildLeafTabSyncSnapshot = (params: {
     scenarios,
     shortcuts,
     customShortcutIcons: Object.fromEntries(
-      Object.entries(params.customShortcutIcons || {}).filter(([shortcutId]) => Boolean(shortcuts[shortcutId])),
+      Object.entries(params.customShortcutIcons || {}).filter(([shortcutId]) => customShortcutIconScopeIds.has(shortcutId)),
     ),
     bookmarkFolders,
     bookmarkItems,
@@ -741,13 +767,14 @@ export const projectLeafTabSyncSnapshotToAppState = (
     scenarioShortcuts[scenario.id] = orderedShortcutList.concat(unorderedShortcutList);
   });
   const normalizedScenarioShortcuts = normalizeScenarioShortcuts(scenarioShortcuts);
+  const customShortcutIconScopeIds = collectScenarioShortcutTreeIds(normalizedScenarioShortcuts);
 
   return {
     preferences: snapshot.preferences ? normalizeSyncablePreferences(snapshot.preferences.value) : null,
     scenarioModes,
     scenarioShortcuts: normalizedScenarioShortcuts,
     customShortcutIcons: Object.fromEntries(
-      Object.entries(snapshot.customShortcutIcons || {}).filter(([shortcutId]) => Boolean(snapshot.shortcuts[shortcutId])),
+      Object.entries(snapshot.customShortcutIcons || {}).filter(([shortcutId]) => customShortcutIconScopeIds.has(shortcutId)),
     ),
     bookmarkFolders: snapshot.bookmarkFolders,
     bookmarkItems: snapshot.bookmarkItems,

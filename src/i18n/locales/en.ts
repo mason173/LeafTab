@@ -128,6 +128,7 @@ export default {
       timeAnimation: {
         label: "Animation",
         description: "Rolling time transition",
+        performanceHint: "Animated time digits add continuous rendering work. Keep this off on low-performance devices.",
         followSystemBadge: "Follow system",
         followSystemAction: "Follow system again",
         followSystemEnabled: "Following system: currently on",

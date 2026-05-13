@@ -1,58 +1,25 @@
 import { useMemo, type ReactNode } from 'react';
 import { getStrictContext } from '@/lib/get-strict-context';
-import type { LeafTabSyncRuntimeController } from '@/features/sync/app/useLeafTabSyncRuntimeController';
+import type {
+  LeafTabSyncActions,
+  LeafTabSyncConfigState,
+  LeafTabSyncDialogState,
+  LeafTabSyncFacade,
+  LeafTabSyncMeta,
+  LeafTabSyncStatusState,
+} from '@/features/sync/app/LeafTabSyncContracts';
 
-export type LeafTabSyncStatusState = Pick<
-  LeafTabSyncRuntimeController['state'],
-  | 'leafTabSyncState'
-  | 'cloudLeafTabSyncState'
-  | 'topNavSyncStatus'
->;
-
-export type LeafTabSyncDialogState = Pick<
-  LeafTabSyncRuntimeController['state'],
-  | 'syncEncryptionDialogState'
-  | 'syncEncryptionDialogBusy'
-  | 'importConfirmOpen'
-  | 'importPendingPayload'
-  | 'importConfirmBusy'
-  | 'exportBackupDialogOpen'
-  | 'importBackupDialogOpen'
-  | 'importBackupScopePayload'
-  | 'dangerousSyncDialogState'
-  | 'dangerousSyncDialogBusyAction'
->;
-
-export type LeafTabSyncConfigState = Pick<
-  LeafTabSyncRuntimeController['state'],
-  | 'leafTabSyncAnalysis'
-  | 'leafTabSyncHasConfig'
-  | 'leafTabSyncReady'
-  | 'leafTabSyncLastResult'
-  | 'cloudLeafTabSyncAnalysis'
-  | 'cloudLeafTabSyncHasConfig'
-  | 'cloudLeafTabSyncLastResult'
-  | 'leafTabSyncWebdavConfig'
-  | 'leafTabWebdavEncryptionReady'
-  | 'webdavSyncBookmarksEnabled'
-  | 'cloudSyncBookmarksEnabled'
-  | 'cloudSyncEncryptionReady'
-  | 'leafTabWebdavConfigured'
-  | 'leafTabWebdavEnabled'
-  | 'leafTabWebdavProfileLabel'
-  | 'leafTabWebdavLastSyncLabel'
-  | 'leafTabWebdavNextSyncLabel'
-  | 'cloudSyncEnabled'
-  | 'cloudLastSyncLabel'
-  | 'cloudNextSyncLabel'
-  | 'leafTabBookmarkSyncScopeLabel'
->;
-
-export type LeafTabSyncActions = LeafTabSyncRuntimeController['actions'];
-export type LeafTabSyncMeta = LeafTabSyncRuntimeController['meta'];
+export type {
+  LeafTabSyncActions,
+  LeafTabSyncConfigState,
+  LeafTabSyncDialogState,
+  LeafTabSyncFacade,
+  LeafTabSyncMeta,
+  LeafTabSyncStatusState,
+} from '@/features/sync/app/LeafTabSyncContracts';
 
 const [LeafTabSyncControllerProvider, useLeafTabSyncContext] =
-  getStrictContext<LeafTabSyncRuntimeController>('LeafTabSyncProvider');
+  getStrictContext<LeafTabSyncFacade>('LeafTabSyncProvider');
 const [LeafTabSyncStatusProvider, useLeafTabSyncStatusContext] =
   getStrictContext<LeafTabSyncStatusState>('LeafTabSyncStatusProvider');
 const [LeafTabSyncDialogProvider, useLeafTabSyncDialogContext] =
@@ -77,7 +44,7 @@ export function LeafTabSyncProvider({
   value,
   children,
 }: {
-  value: LeafTabSyncRuntimeController;
+  value: LeafTabSyncFacade;
   children: ReactNode;
 }) {
   const status = useMemo<LeafTabSyncStatusState>(() => ({

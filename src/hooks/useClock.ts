@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDocumentVisibility } from '@/hooks/useDocumentVisibility';
 import { scheduleAfterInteractivePaint } from '@/utils/mainThreadScheduler';
 
@@ -20,7 +20,7 @@ function loadLunarModule(): Promise<LunarModule> {
   return lunarModulePromise;
 }
 
-function formatTimeValue(now: Date, is24Hour: boolean, showSeconds: boolean): string {
+export function formatClockTimeValue(now: Date, is24Hour: boolean, showSeconds: boolean): string {
   let hours = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, '0');
   const seconds = now.getSeconds().toString().padStart(2, '0');
@@ -63,7 +63,7 @@ function formatLunarValue(lunarLib: LunarModule, now: Date, language: string): s
 export function useClock(is24Hour: boolean, showSeconds: boolean, language: string, showLunar = true) {
   const initialNow = new Date();
   const isDocumentVisible = useDocumentVisibility();
-  const [time, setTime] = useState(() => formatTimeValue(initialNow, is24Hour, showSeconds));
+  const [time, setTime] = useState(() => formatClockTimeValue(initialNow, is24Hour, showSeconds));
   const [date, setDate] = useState(initialNow);
   const [lunar, setLunar] = useState('');
   const lunarModuleRef = useRef<LunarModule | null>(null);
@@ -73,7 +73,7 @@ export function useClock(is24Hour: boolean, showSeconds: boolean, language: stri
     let timer: number | null = null;
 
     const updateTime = () => {
-      setTime(formatTimeValue(new Date(), is24Hour, showSeconds));
+      setTime(formatClockTimeValue(new Date(), is24Hour, showSeconds));
     };
 
     updateTime();
@@ -188,4 +188,140 @@ export function useClock(is24Hour: boolean, showSeconds: boolean, language: stri
   }, [isDocumentVisible, language, showLunar]);
 
   return { time, date, lunar };
+}
+
+export function useClockTime(is24Hour: boolean, showSeconds: boolean) {
+  const isDocumentVisible = useDocumentVisibility();
+  const [time, setTime] = useState(() => formatClockTimeValue(new Date(), is24Hour, showSeconds));
+
+  const updateTime = useCallback(() => {
+    setTime(formatClockTimeValue(new Date(), is24Hour, showSeconds));
+  }, [is24Hour, showSeconds]);
+
+  useEffect(() => {
+    let timer: number | null = null;
+
+    updateTime();
+
+    if (!isDocumentVisible) {
+      return;
+    }
+
+    const scheduleNextTick = () => {
+      const stepMs = showSeconds ? 1000 : 60_000;
+      const now = Date.now();
+      const delay = stepMs - (now % stepMs) + 8;
+      timer = window.setTimeout(() => {
+        updateTime();
+        scheduleNextTick();
+      }, Math.max(16, delay));
+    };
+
+    scheduleNextTick();
+
+    return () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [isDocumentVisible, showSeconds, updateTime]);
+
+  return time;
+}
+
+export function useClockDate(language: string, showLunar = true) {
+  const initialNow = new Date();
+  const isDocumentVisible = useDocumentVisibility();
+  const [date, setDate] = useState(initialNow);
+  const [lunar, setLunar] = useState('');
+  const lunarModuleRef = useRef<LunarModule | null>(null);
+  const calendarDayKeyRef = useRef('');
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | null = null;
+    let cancelDeferredLunarLoad: (() => void) | null = null;
+    const needsLunar = showLunar && shouldRenderLunar(language);
+
+    const updateCalendar = (force = false) => {
+      const now = new Date();
+      const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+      const dayChanged = dayKey !== calendarDayKeyRef.current;
+
+      if (dayChanged || force) {
+        calendarDayKeyRef.current = dayKey;
+        setDate(now);
+      }
+
+      if (!needsLunar) {
+        setLunar('');
+        return;
+      }
+
+      const applyLunar = (module: LunarModule) => {
+        if (!cancelled) {
+          setLunar(formatLunarValue(module, now, language));
+        }
+      };
+
+      if (lunarModuleRef.current) {
+        if (dayChanged || force) {
+          applyLunar(lunarModuleRef.current);
+        }
+        return;
+      }
+
+      setLunar('');
+    };
+
+    updateCalendar(true);
+
+    if (needsLunar && !lunarModuleRef.current && isDocumentVisible) {
+      cancelDeferredLunarLoad = scheduleAfterInteractivePaint(() => {
+        void loadLunarModule()
+          .then((module) => {
+            if (cancelled) return;
+            lunarModuleRef.current = module;
+            updateCalendar(true);
+          })
+          .catch(() => {
+            if (!cancelled) setLunar('');
+          });
+      }, {
+        delayMs: 120,
+        idleTimeoutMs: 320,
+      });
+    }
+
+    if (!isDocumentVisible) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const scheduleNextCalendarTick = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setHours(24, 0, 0, 32);
+      const delay = nextMidnight.getTime() - now.getTime();
+      timer = window.setTimeout(() => {
+        updateCalendar(true);
+        scheduleNextCalendarTick();
+      }, Math.max(1000, delay));
+    };
+
+    scheduleNextCalendarTick();
+
+    return () => {
+      cancelled = true;
+      if (cancelDeferredLunarLoad) {
+        cancelDeferredLunarLoad();
+      }
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [isDocumentVisible, language, showLunar]);
+
+  return { date, lunar };
 }

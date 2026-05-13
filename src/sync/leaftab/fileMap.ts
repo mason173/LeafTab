@@ -30,10 +30,6 @@ import {
   LEAFTAB_SYNC_SHORTCUT_PACK_SHARDS,
   LEAFTAB_SYNC_TOMBSTONE_PACK_SHARDS,
 } from './schema';
-import {
-  fingerprintLeafTabSyncCustomShortcutIcons,
-  normalizeLeafTabSyncCustomShortcutIcons,
-} from './customShortcutIconPayload';
 
 export type LeafTabSyncFileMap = Record<string, string>;
 
@@ -80,12 +76,6 @@ interface LeafTabSyncCustomShortcutIconsPackFile {
   kind: 'custom-shortcut-icons';
   generatedAt: string;
   icons: Record<string, string>;
-  hashes?: Record<string, string>;
-  skipped?: {
-    invalid: number;
-    oversized: number;
-    orphaned: number;
-  };
 }
 
 interface LeafTabSyncBookmarkOrderPackFile {
@@ -223,26 +213,20 @@ const buildSnapshotPayloadMap = (
       );
     });
 
-  const customShortcutIconPayload = normalizeLeafTabSyncCustomShortcutIcons(
-    snapshot.customShortcutIcons || {},
-    Object.keys(snapshot.shortcuts || {}),
-  );
   const customShortcutIconsPath = getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath);
   if (shouldIncludePath(includePaths, customShortcutIconsPath)) {
     payloads[customShortcutIconsPath] = {
       version: LEAFTAB_SYNC_SCHEMA_VERSION,
       kind: 'custom-shortcut-icons',
       generatedAt: snapshot.meta.generatedAt,
-      icons: sortRecord(customShortcutIconPayload.icons),
-      hashes: sortRecord(customShortcutIconPayload.hashes),
-      skipped: customShortcutIconPayload.skipped,
+      icons: sortRecord(snapshot.customShortcutIcons || {}),
     } satisfies LeafTabSyncCustomShortcutIconsPackFile;
   }
   manifestPacks.push(
     createManifestPackRef(
       'custom-shortcut-icons',
       customShortcutIconsPath,
-      Object.keys(customShortcutIconPayload.icons).length,
+      Object.keys(snapshot.customShortcutIcons || {}).length,
     ),
   );
 
@@ -437,15 +421,7 @@ export const collectLeafTabSyncChangedPayloadPaths = (
     changedPaths.add(getLeafTabSyncPackPath('shortcut-orders', null, rootPath));
   }
 
-  const previousCustomIconFingerprint = fingerprintLeafTabSyncCustomShortcutIcons(
-    previousSnapshot.customShortcutIcons || {},
-    Object.keys(previousSnapshot.shortcuts || {}),
-  );
-  const nextCustomIconFingerprint = fingerprintLeafTabSyncCustomShortcutIcons(
-    nextSnapshot.customShortcutIcons || {},
-    Object.keys(nextSnapshot.shortcuts || {}),
-  );
-  if (previousCustomIconFingerprint !== nextCustomIconFingerprint) {
+  if (!sameContent(previousSnapshot.customShortcutIcons || {}, nextSnapshot.customShortcutIcons || {})) {
     changedPaths.add(getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath));
   }
 

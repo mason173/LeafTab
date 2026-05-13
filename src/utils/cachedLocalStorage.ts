@@ -51,3 +51,9 @@ export function queueCachedLocalStorageRemoveItem(key: string) {
   rememberCachedValue(key, null);
   queueLocalStorageRemoveItem(key);
 }
+
+export function resetCachedLocalStorageForTests() {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.MODE !== 'test') return;
+  cachedValues.clear();
+  hydratedKeys.clear();
+}

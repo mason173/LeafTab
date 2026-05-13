@@ -55,12 +55,35 @@ const readPackageVersion = async () => {
   return typeof pkg?.version === 'string' ? pkg.version : undefined;
 };
 
+const readExistingLibrary = async () => {
+  try {
+    return JSON.parse(await readFile(OUTPUT_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+
+const sameIconContent = (a, b) => {
+  return Boolean(
+    a
+      && b
+      && a.mode === b.mode
+      && a.shapePath === b.shapePath
+      && a.defaultColor === b.defaultColor
+      && a.sha256 === b.sha256
+  );
+};
+
 const buildLibrary = async () => {
   const shapeFiles = await listSvgFiles(SHAPES_DIR);
   if (!shapeFiles.length) {
     throw new Error(`[icons] no SVG files found in ${path.relative(ROOT, SHAPES_DIR)}`);
   }
 
+  const existingLibrary = await readExistingLibrary();
+  const existingIcons = existingLibrary?.icons && typeof existingLibrary.icons === 'object'
+    ? existingLibrary.icons
+    : {};
   const icons = {};
   for (const fileName of shapeFiles) {
     const parsed = parseIconFileName(fileName);
@@ -75,22 +98,37 @@ const buildLibrary = async () => {
 
     const filePath = path.join(SHAPES_DIR, fileName);
     const fileStat = await stat(filePath);
-    icons[domain] = {
+    const nextIcon = {
       mode: 'shape-color',
       shapePath: `shapes/${fileName}`,
       defaultColor,
       sha256: await sha256Hex(filePath),
-      updatedAt: fileStat.mtime.toISOString(),
+    };
+    icons[domain] = {
+      ...nextIcon,
+      updatedAt: sameIconContent(existingIcons[domain], nextIcon)
+        ? existingIcons[domain].updatedAt
+        : fileStat.mtime.toISOString(),
     };
   }
 
+  const iconsChanged = JSON.stringify(existingIcons) !== JSON.stringify(icons);
   const library = {
     version: await readPackageVersion(),
-    generatedAt: new Date().toISOString(),
+    generatedAt: iconsChanged
+      ? new Date().toISOString()
+      : (typeof existingLibrary?.generatedAt === 'string' ? existingLibrary.generatedAt : new Date().toISOString()),
     icons,
   };
+  const content = `${JSON.stringify(library, null, 2)}\n`;
+  const existingContent = await readFile(OUTPUT_FILE, 'utf8').catch(() => null);
 
-  await writeFile(OUTPUT_FILE, `${JSON.stringify(library, null, 2)}\n`, 'utf8');
+  if (existingContent === content) {
+    console.log(`[icons] icon library unchanged (${shapeFiles.length} icons)`);
+    return;
+  }
+
+  await writeFile(OUTPUT_FILE, content, 'utf8');
   console.log(`[icons] wrote public/leaftab-icons/icon-library.json with ${shapeFiles.length} icons`);
 };
 

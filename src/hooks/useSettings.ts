@@ -99,7 +99,7 @@ function readTimeAnimationMode(): TimeAnimationMode {
     }
   }
 
-  return 'on';
+  return 'off';
 }
 
 function readSearchBarPosition(): SearchBarPosition {
@@ -175,7 +175,7 @@ export function useSettings() {
   const [timeFont, setTimeFont] = useState(() => normalizeTimeFont(localStorage.getItem('time_font')));
   const [showSeconds, setShowSeconds] = useState(() => {
     const storedShowSeconds = localStorage.getItem('showSeconds');
-    if (storedShowSeconds === null) return true;
+    if (storedShowSeconds === null) return false;
     try {
       return JSON.parse(storedShowSeconds) === true;
     } catch {

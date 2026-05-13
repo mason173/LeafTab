@@ -22,6 +22,7 @@ export const WEBDAV_DEFAULT_FILE_PATH = "leaftab_sync.leaftab";
 export const WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES = 10;
 export const WEBDAV_DEFAULT_CONFLICT_POLICY: WebdavConflictPolicy = "merge";
 export const WEBDAV_DEFAULT_SYNC_BOOKMARKS_ENABLED = false;
+export const WEBDAV_DEFAULT_SYNC_BY_SCHEDULE = false;
 
 const parseConflictPolicy = (raw: string): WebdavConflictPolicy => {
   if (raw === "prefer_remote" || raw === "prefer_local" || raw === "merge") return raw;
@@ -61,7 +62,10 @@ export const readWebdavStorageStateFromStorage = (defaultProfileName = ""): Webd
     localStorage.getItem(WEBDAV_STORAGE_KEYS.syncBookmarksEnabled)
     ?? String(WEBDAV_DEFAULT_SYNC_BOOKMARKS_ENABLED)
   ) === "true";
-  const syncBySchedule = (localStorage.getItem(WEBDAV_STORAGE_KEYS.syncBySchedule) ?? "true") === "true";
+  const syncBySchedule = (
+    localStorage.getItem(WEBDAV_STORAGE_KEYS.syncBySchedule)
+    ?? String(WEBDAV_DEFAULT_SYNC_BY_SCHEDULE)
+  ) === "true";
   const autoSyncToastEnabled = (localStorage.getItem(WEBDAV_STORAGE_KEYS.autoSyncToastEnabled) ?? "true") === "true";
   const syncIntervalRaw = Number(localStorage.getItem(WEBDAV_STORAGE_KEYS.syncIntervalMinutes) || String(WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES));
   const syncIntervalMinutes = Number.isFinite(syncIntervalRaw) ? syncIntervalRaw : WEBDAV_DEFAULT_SYNC_INTERVAL_MINUTES;

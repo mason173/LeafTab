@@ -1,18 +1,10 @@
 const WEBDAV_PROXY_MESSAGE_TYPE = 'LEAFTAB_WEBDAV_PROXY';
-const WEBDAV_AUTO_SYNC_CONFIG_MESSAGE_TYPE = 'LEAFTAB_WEBDAV_AUTO_SYNC_CONFIG';
-const WEBDAV_AUTO_SYNC_TRIGGER_MESSAGE_TYPE = 'LEAFTAB_WEBDAV_AUTO_SYNC_TRIGGER';
-const WEBDAV_AUTO_SYNC_ALARM_NAME = 'leaftab-webdav-auto-sync';
-const WEBDAV_AUTO_SYNC_STATE_STORAGE_KEY = 'leaftab_webdav_auto_sync_alarm_state_v1';
 const DEDUPE_NEW_TAB_MESSAGE_TYPE = 'LEAFTAB_DEDUPE_NEW_TAB';
 const REMOTE_SEARCH_SUGGESTIONS_MESSAGE_TYPE = 'LEAFTAB_REMOTE_SEARCH_SUGGESTIONS';
 const OPEN_AI_CHAT_MESSAGE_TYPE = 'LEAFTAB_OPEN_AI_CHAT';
 const REMOTE_SEARCH_SUGGESTIONS_PROVIDER_360 = '360';
 const REMOTE_SEARCH_SUGGESTIONS_TIMEOUT_MS = 1500;
 const OPEN_AI_CHAT_TIMEOUT_MS = 20000;
-const WEBDAV_PROXY_TIMEOUT_MS = 20000;
-const WEBDAV_AUTO_SYNC_TRIGGER_TIMEOUT_MS = 15000;
-const WEBDAV_AUTO_SYNC_BUSY_RETRY_MS = 30 * 1000;
-const WEBDAV_AUTO_SYNC_NO_PAGE_RETRY_MS = 5 * 60 * 1000;
 
 const AI_PROVIDER_TARGETS = {
   chatgpt: 'https://chatgpt.com/',
@@ -35,204 +27,6 @@ function isFiniteNumber(value) {
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
-  });
-}
-
-function getStorageLocal() {
-  return chrome.storage && chrome.storage.local ? chrome.storage.local : null;
-}
-
-function storageGet(key) {
-  return new Promise((resolve) => {
-    const storage = getStorageLocal();
-    if (!storage || typeof storage.get !== 'function') {
-      resolve({});
-      return;
-    }
-    storage.get(key, (result) => {
-      if (chrome.runtime.lastError) {
-        resolve({});
-        return;
-      }
-      resolve(result || {});
-    });
-  });
-}
-
-function storageSet(items) {
-  return new Promise((resolve) => {
-    const storage = getStorageLocal();
-    if (!storage || typeof storage.set !== 'function') {
-      resolve();
-      return;
-    }
-    storage.set(items, () => {
-      resolve();
-    });
-  });
-}
-
-function storageRemove(key) {
-  return new Promise((resolve) => {
-    const storage = getStorageLocal();
-    if (!storage || typeof storage.remove !== 'function') {
-      resolve();
-      return;
-    }
-    storage.remove(key, () => {
-      resolve();
-    });
-  });
-}
-
-function alarmsCreate(name, info) {
-  return new Promise((resolve) => {
-    if (!chrome.alarms || typeof chrome.alarms.create !== 'function') {
-      resolve();
-      return;
-    }
-    chrome.alarms.create(name, info);
-    resolve();
-  });
-}
-
-function alarmsClear(name) {
-  return new Promise((resolve) => {
-    if (!chrome.alarms || typeof chrome.alarms.clear !== 'function') {
-      resolve(false);
-      return;
-    }
-    chrome.alarms.clear(name, (wasCleared) => {
-      resolve(Boolean(wasCleared));
-    });
-  });
-}
-
-function normalizeWebdavAutoSyncState(payload) {
-  const enabled = payload && payload.enabled === true;
-  const nextSyncAt = typeof payload?.nextSyncAt === 'string' ? payload.nextSyncAt : null;
-  const nextMs = nextSyncAt ? new Date(nextSyncAt).getTime() : Number.NaN;
-  const intervalMinutes = Number(payload?.intervalMinutes);
-  return {
-    enabled,
-    nextSyncAt: Number.isFinite(nextMs) ? new Date(nextMs).toISOString() : null,
-    intervalMinutes: Number.isFinite(intervalMinutes) ? Math.max(1, Math.round(intervalMinutes)) : null,
-    savedAt: new Date().toISOString(),
-  };
-}
-
-async function readWebdavAutoSyncState() {
-  const result = await storageGet(WEBDAV_AUTO_SYNC_STATE_STORAGE_KEY);
-  return normalizeWebdavAutoSyncState(result[WEBDAV_AUTO_SYNC_STATE_STORAGE_KEY] || {});
-}
-
-async function clearWebdavAutoSyncAlarmState() {
-  await alarmsClear(WEBDAV_AUTO_SYNC_ALARM_NAME);
-  await storageRemove(WEBDAV_AUTO_SYNC_STATE_STORAGE_KEY);
-}
-
-async function scheduleWebdavAutoSyncAlarm(state) {
-  const normalized = normalizeWebdavAutoSyncState(state);
-  if (!normalized.enabled || !normalized.nextSyncAt) {
-    await clearWebdavAutoSyncAlarmState();
-    return normalized;
-  }
-
-  const nextMs = Math.max(Date.now() + 200, new Date(normalized.nextSyncAt).getTime());
-  const scheduledState = {
-    ...normalized,
-    nextSyncAt: new Date(nextMs).toISOString(),
-  };
-  await storageSet({
-    [WEBDAV_AUTO_SYNC_STATE_STORAGE_KEY]: scheduledState,
-  });
-  await alarmsCreate(WEBDAV_AUTO_SYNC_ALARM_NAME, { when: nextMs });
-  return scheduledState;
-}
-
-async function hasLeafTabPageOpen() {
-  try {
-    const leafTabPrefixes = getLeafTabPagePrefixes();
-    if (leafTabPrefixes.length === 0) return true;
-    const tabs = await queryTabs({});
-    return tabs.some((tab) => isLeafTabPageUrl(tab?.url, leafTabPrefixes));
-  } catch {
-    return true;
-  }
-}
-
-function sendWebdavAutoSyncTriggerToPages() {
-  return new Promise((resolve) => {
-    if (!chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
-      resolve(null);
-      return;
-    }
-
-    let settled = false;
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      resolve(null);
-    }, WEBDAV_AUTO_SYNC_TRIGGER_TIMEOUT_MS);
-
-    chrome.runtime.sendMessage({
-      type: WEBDAV_AUTO_SYNC_TRIGGER_MESSAGE_TYPE,
-      payload: {
-        firedAt: new Date().toISOString(),
-      },
-    }, (response) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      if (chrome.runtime.lastError) {
-        resolve(null);
-        return;
-      }
-      resolve(response || null);
-    });
-  });
-}
-
-async function handleWebdavAutoSyncAlarm() {
-  const state = await readWebdavAutoSyncState();
-  if (!state.enabled) {
-    await clearWebdavAutoSyncAlarmState();
-    return;
-  }
-
-  const hasPage = await hasLeafTabPageOpen();
-  if (!hasPage) {
-    await scheduleWebdavAutoSyncAlarm({
-      ...state,
-      nextSyncAt: new Date(Date.now() + WEBDAV_AUTO_SYNC_NO_PAGE_RETRY_MS).toISOString(),
-    });
-    return;
-  }
-
-  const response = await sendWebdavAutoSyncTriggerToPages();
-  if (response?.enabled === false) {
-    await clearWebdavAutoSyncAlarmState();
-    return;
-  }
-
-  if (typeof response?.nextSyncAt === 'string') {
-    await scheduleWebdavAutoSyncAlarm({
-      ...state,
-      enabled: true,
-      nextSyncAt: response.nextSyncAt,
-    });
-    return;
-  }
-
-  const retryAfterMs = Number(response?.retryAfterMs);
-  await scheduleWebdavAutoSyncAlarm({
-    ...state,
-    enabled: true,
-    nextSyncAt: new Date(Date.now() + (
-      Number.isFinite(retryAfterMs) && retryAfterMs > 0
-        ? retryAfterMs
-        : WEBDAV_AUTO_SYNC_BUSY_RETRY_MS
-    )).toISOString(),
   });
 }
 
@@ -986,26 +780,6 @@ function isLeafTabPageUrl(url, prefixes) {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message) return;
 
-  if (message.type === WEBDAV_AUTO_SYNC_CONFIG_MESSAGE_TYPE) {
-    const payload = message.payload || {};
-    (async () => {
-      try {
-        const state = await scheduleWebdavAutoSyncAlarm(payload);
-        sendResponse({
-          success: true,
-          state,
-        });
-      } catch (error) {
-        console.error('[LeafTab][WebDAV auto sync alarm]', error);
-        sendResponse({
-          success: false,
-          error: String(error instanceof Error ? error.message : error),
-        });
-      }
-    })();
-    return true;
-  }
-
   if (message.type === OPEN_AI_CHAT_MESSAGE_TYPE) {
     const payload = message.payload || {};
     const providerId = String(payload.providerId || '');
@@ -1165,16 +939,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   });
 
   (async () => {
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => {
-      abortController.abort();
-    }, WEBDAV_PROXY_TIMEOUT_MS);
     try {
       const response = await fetch(url, {
         method,
         headers,
         body,
-        signal: abortController.signal,
       });
       const responseText = await response.text();
       sendResponse({
@@ -1189,39 +958,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         success: false,
         error: String(error instanceof Error ? error.message : error),
       });
-    } finally {
-      clearTimeout(timeoutId);
     }
   })();
 
   return true;
 });
-
-if (chrome.alarms?.onAlarm?.addListener) {
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm?.name !== WEBDAV_AUTO_SYNC_ALARM_NAME) return;
-    void handleWebdavAutoSyncAlarm().catch((error) => {
-      console.error('[LeafTab][WebDAV auto sync alarm]', error);
-    });
-  });
-}
-
-if (chrome.runtime?.onStartup?.addListener) {
-  chrome.runtime.onStartup.addListener(() => {
-    void readWebdavAutoSyncState()
-      .then((state) => scheduleWebdavAutoSyncAlarm(state))
-      .catch((error) => {
-        console.error('[LeafTab][WebDAV auto sync startup]', error);
-      });
-  });
-}
-
-if (chrome.runtime?.onInstalled?.addListener) {
-  chrome.runtime.onInstalled.addListener(() => {
-    void readWebdavAutoSyncState()
-      .then((state) => scheduleWebdavAutoSyncAlarm(state))
-      .catch((error) => {
-        console.error('[LeafTab][WebDAV auto sync installed]', error);
-      });
-  });
-}

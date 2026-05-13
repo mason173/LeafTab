@@ -12,14 +12,7 @@ import {
   type LeafTabSyncSnapshot,
 } from './schema';
 import { collectLeafTabSyncChangedPayloadPaths, createLeafTabSyncSerializedSnapshot } from './fileMap';
-import { materializeLeafTabSyncSnapshotOffMainThread } from './syncMaterializeWorkerBridge';
-import { yieldToMainThread } from '@/utils/mainThreadScheduler';
-import { measureSyncDiagnostic, recordSyncDiagnosticEvent } from '@/utils/syncDiagnostics';
-import {
-  readLeafTabSyncCacheEntry,
-  removeLeafTabSyncCacheEntry,
-  writeLeafTabSyncCacheEntry,
-} from './asyncStorage';
+import { materializeLeafTabSyncSnapshotFromPayloadMap } from './snapshotCodec';
 import type {
   LeafTabSyncRemoteStore,
   LeafTabSyncWriteStateParams,
@@ -32,7 +25,6 @@ export interface LeafTabSyncWebdavStoreConfig {
   password?: string;
   rootPath?: string;
   requestPermission?: boolean;
-  requestTimeoutMs?: number;
 }
 
 type WebdavMethod = 'GET' | 'PUT' | 'DELETE' | 'MKCOL';
@@ -55,20 +47,6 @@ type LeafTabSyncRemoteCacheEntry = {
   snapshot: LeafTabSyncSnapshot;
   savedAt: string;
 };
-
-export class LeafTabSyncWebdavTimeoutError extends Error {
-  operation: string;
-  relativePath: string | null;
-  timeoutMs: number;
-
-  constructor(operation: string, relativePath: string | null, timeoutMs: number) {
-    super(`LeafTab sync WebDAV ${operation} timed out after ${timeoutMs}ms${relativePath ? ` @ ${relativePath}` : ''}`);
-    this.name = 'LeafTabSyncWebdavTimeoutError';
-    this.operation = operation;
-    this.relativePath = relativePath || null;
-    this.timeoutMs = timeoutMs;
-  }
-}
 
 export class LeafTabSyncWebdavError extends Error {
   status: number;
@@ -127,9 +105,8 @@ const parseJsonOrNull = <T>(text: string): T | null => {
 };
 
 const REMOTE_CACHE_STORAGE_PREFIX = 'leaftab_sync_remote_state_v1:';
-const READ_BATCH_CONCURRENCY = 4;
-const WRITE_BATCH_CONCURRENCY = 3;
-const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
+const READ_BATCH_CONCURRENCY = 12;
+const WRITE_BATCH_CONCURRENCY = 8;
 
 const createRemoteCacheStorageKey = (url: string, rootPath: string) => {
   const suffix = `${normalizeBaseUrl(url)}|${normalizeRootPath(rootPath)}`
@@ -146,9 +123,6 @@ const runInBatches = async <T, R>(
   for (let index = 0; index < items.length; index += batchSize) {
     const batch = items.slice(index, index + batchSize);
     results.push(...(await Promise.all(batch.map((item) => task(item)))));
-    if (index + batchSize < items.length) {
-      await yieldToMainThread();
-    }
   }
   return results;
 };
@@ -167,21 +141,14 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       password: config.password || '',
       rootPath: normalizeRootPath(config.rootPath),
       requestPermission: config.requestPermission !== false,
-      requestTimeoutMs: Math.max(1_000, Number(config.requestTimeoutMs) || DEFAULT_REQUEST_TIMEOUT_MS),
     };
     this.remoteCacheStorageKey = createRemoteCacheStorageKey(this.config.url, this.config.rootPath);
   }
 
-  private async readRemoteCache(commitId: string) {
+  private readRemoteCache(commitId: string) {
     const inMemory = LeafTabSyncWebdavStore.memoryRemoteCache.get(this.remoteCacheStorageKey);
     if (inMemory?.commitId === commitId) {
       return inMemory;
-    }
-
-    const cached = await readLeafTabSyncCacheEntry<LeafTabSyncRemoteCacheEntry>(this.remoteCacheStorageKey);
-    if (cached?.commitId === commitId && cached.snapshot && cached.commit) {
-      LeafTabSyncWebdavStore.memoryRemoteCache.set(this.remoteCacheStorageKey, cached);
-      return cached;
     }
 
     try {
@@ -192,29 +159,21 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
         return null;
       }
       LeafTabSyncWebdavStore.memoryRemoteCache.set(this.remoteCacheStorageKey, parsed);
-      void writeLeafTabSyncCacheEntry(this.remoteCacheStorageKey, parsed);
       return parsed;
     } catch {
       return null;
     }
   }
 
-  private async writeRemoteCache(entry: LeafTabSyncRemoteCacheEntry) {
+  private writeRemoteCache(entry: LeafTabSyncRemoteCacheEntry) {
     LeafTabSyncWebdavStore.memoryRemoteCache.set(this.remoteCacheStorageKey, entry);
-    if (await writeLeafTabSyncCacheEntry(this.remoteCacheStorageKey, entry)) {
-      try {
-        globalThis.localStorage?.removeItem(this.remoteCacheStorageKey);
-      } catch {}
-      return;
-    }
     try {
       globalThis.localStorage?.setItem(this.remoteCacheStorageKey, JSON.stringify(entry));
     } catch {}
   }
 
-  private async clearRemoteCache() {
+  private clearRemoteCache() {
     LeafTabSyncWebdavStore.memoryRemoteCache.delete(this.remoteCacheStorageKey);
-    await removeLeafTabSyncCacheEntry(this.remoteCacheStorageKey);
     try {
       globalThis.localStorage?.removeItem(this.remoteCacheStorageKey);
     } catch {}
@@ -252,12 +211,6 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
 
     try {
       const response = await new Promise<any>((resolve, reject) => {
-        let settled = false;
-        const timeoutId = setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          reject(new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs));
-        }, this.config.requestTimeoutMs);
         runtime.sendMessage(
           {
             type: 'LEAFTAB_WEBDAV_PROXY',
@@ -269,9 +222,6 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
             },
           },
           (result: any) => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timeoutId);
             const lastError = runtime.lastError;
             if (lastError) {
               reject(new Error(lastError.message || 'WebDAV proxy unavailable'));
@@ -303,69 +253,25 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     relativePath: string,
     options?: { headers?: Record<string, string>; body?: string; skipPermission?: boolean },
   ): Promise<WebdavRequestResult> {
-    return measureSyncDiagnostic('webdav', 'request', {
+    if (!options?.skipPermission) {
+      await this.ensurePermission(relativePath);
+    }
+
+    const headers = this.getHeaders(options?.headers);
+    const proxied = await this.requestViaExtensionProxy(method, relativePath, headers, options?.body);
+    if (proxied) return proxied;
+
+    const response = await fetch(joinUrl(this.config.url, relativePath), {
       method,
-      path: relativePath,
-      bodyBytes: typeof options?.body === 'string' ? options.body.length : 0,
-    }, async () => {
-      if (!options?.skipPermission) {
-        await this.ensurePermission(relativePath);
-      }
-
-      const headers = this.getHeaders(options?.headers);
-      const proxied = await this.requestViaExtensionProxy(method, relativePath, headers, options?.body);
-      if (proxied) {
-        recordSyncDiagnosticEvent({
-          provider: 'webdav',
-          action: 'request.result',
-          detail: {
-            method,
-            path: relativePath,
-            via: 'extension-proxy',
-            status: proxied.status,
-            responseBytes: proxied.text.length,
-          },
-        });
-        return proxied;
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, this.config.requestTimeoutMs);
-      try {
-        const response = await fetch(joinUrl(this.config.url, relativePath), {
-          method,
-          headers,
-          body: options?.body,
-          signal: controller.signal,
-        });
-        const text = await response.text();
-        recordSyncDiagnosticEvent({
-          provider: 'webdav',
-          action: 'request.result',
-          detail: {
-            method,
-            path: relativePath,
-            via: 'fetch',
-            status: response.status,
-            responseBytes: text.length,
-          },
-        });
-        return {
-          status: response.status,
-          ok: response.ok,
-          text,
-        };
-      } catch (error) {
-        if ((error as Error)?.name === 'AbortError') {
-          throw new LeafTabSyncWebdavTimeoutError(method, relativePath, this.config.requestTimeoutMs);
-        }
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      headers,
+      body: options?.body,
     });
+    const text = await response.text();
+    return {
+      status: response.status,
+      ok: response.ok,
+      text,
+    };
   }
 
   private async ensureCollections(relativeFilePath: string) {
@@ -446,12 +352,6 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     await this.deletePath(getLeafTabSyncLockPath(this.config.rootPath));
   }
 
-  async readHead() {
-    return measureSyncDiagnostic('webdav', 'readHead', undefined, () => (
-      this.getJson<LeafTabSyncHeadFile>(getLeafTabSyncHeadPath(this.config.rootPath))
-    ));
-  }
-
   async readJsonFile<T>(relativePath: string): Promise<T | null> {
     const normalizedPath = (relativePath || '').trim().replace(/^\/+/, '');
     if (!normalizedPath) return null;
@@ -491,14 +391,15 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     commit: LeafTabSyncCommitFile | null;
     snapshot: LeafTabSyncSnapshot | null;
   }> {
-    return measureSyncDiagnostic('webdav', 'readState', undefined, async () => {
-    const head = await this.readHead();
+    const head = await this.getJson<LeafTabSyncHeadFile>(
+      getLeafTabSyncHeadPath(this.config.rootPath),
+    );
     if (!head?.commitId) {
-      await this.clearRemoteCache();
+      this.clearRemoteCache();
       return { head: null, commit: null, snapshot: null };
     }
 
-    const cached = await this.readRemoteCache(head.commitId);
+    const cached = this.readRemoteCache(head.commitId);
     if (cached) {
       return {
         head,
@@ -511,13 +412,13 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       getLeafTabSyncCommitPath(head.commitId, this.config.rootPath),
     );
     if (!commit) {
-      await this.clearRemoteCache();
+      this.clearRemoteCache();
       return { head, commit: null, snapshot: null };
     }
 
     const manifest = await this.getJson<LeafTabSyncManifestFile>(commit.manifestPath);
     if (!manifest?.packs?.length) {
-      await this.clearRemoteCache();
+      this.clearRemoteCache();
       return { head, commit, snapshot: null };
     }
 
@@ -530,13 +431,13 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       [commit.manifestPath, manifest],
       ...packEntries.map(([packRef, value]) => [packRef.path, value]),
     ]);
-    const snapshot = await materializeLeafTabSyncSnapshotOffMainThread(payloadMap, commit);
+    const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, commit);
     if (!snapshot) {
-      await this.clearRemoteCache();
+      this.clearRemoteCache();
       return { head, commit, snapshot: null };
     }
 
-    await this.writeRemoteCache({
+    this.writeRemoteCache({
       commitId: commit.id,
       commit,
       snapshot,
@@ -548,11 +449,9 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       commit,
       snapshot,
     };
-    });
   }
 
   async writeState(params: LeafTabSyncWriteStateParams): Promise<LeafTabSyncWriteStateResult> {
-    return measureSyncDiagnostic('webdav', 'writeState', undefined, async () => {
     const commit = createLeafTabSyncCommitFile({
       deviceId: params.deviceId,
       createdAt: params.createdAt,
@@ -587,7 +486,7 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     const head = serialized.head;
     await this.putJson(getLeafTabSyncHeadPath(this.config.rootPath), head);
 
-    await this.writeRemoteCache({
+    this.writeRemoteCache({
       commitId: commit.id,
       commit,
       snapshot: params.snapshot,
@@ -595,6 +494,5 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
     });
 
     return { head, commit };
-    });
   }
 }

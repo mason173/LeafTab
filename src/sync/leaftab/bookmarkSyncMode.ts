@@ -65,10 +65,6 @@ export class LeafTabSyncBookmarksDisabledRemoteStore implements LeafTabSyncRemot
     await this.remoteStore.releaseLock();
   }
 
-  async readHead() {
-    return this.remoteStore.readHead?.() || null;
-  }
-
   async readState(): Promise<LeafTabSyncRemoteState> {
     const state = await this.remoteStore.readState();
     this.latestFullRemoteSnapshot = state.snapshot || null;

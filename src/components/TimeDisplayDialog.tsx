@@ -4,6 +4,7 @@ import { Switch, SwitchThumb } from "@/components/animate-ui/primitives/radix/sw
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/components/ui/sonner";
 import { googleFonts, getTimeFontScale, loadGoogleFont, toCssFontFamily } from "@/utils/googleFonts";
 import { prepareTimeFont } from "@/utils/timeFontMetrics";
 import type { TimeAnimationMode } from "@/hooks/useSettings";
@@ -71,6 +72,11 @@ export function TimeDisplayDialog({
   const handleTimeAnimationModeCheckedChange = (checked: boolean) => {
     if (typeof onTimeAnimationModeChange === 'function') {
       onTimeAnimationModeChange(checked ? 'on' : 'off');
+    }
+    if (checked && !animationSettingEnabled) {
+      toast.info(t("settings.timeAnimation.performanceHint", {
+        defaultValue: "时间数字动画会增加持续渲染开销，低性能设备建议关闭。",
+      }));
     }
   };
   const invokeCheckedChange = (handler: unknown, checked: boolean) => {

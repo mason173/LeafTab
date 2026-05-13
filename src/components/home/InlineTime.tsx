@@ -1,13 +1,16 @@
-import { memo, useMemo, useState } from 'react';
+import { lazy, memo, Suspense, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeDisplayDialog } from '@/components/TimeDisplayDialog';
 import { SlidingClockTime } from '@/components/motion-primitives/sliding-clock-time';
-import { useClock } from '@/hooks/useClock';
+import { useClockDate, useClockTime } from '@/hooks/useClock';
 import type { ResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useResolvedTimeFontScale } from '@/hooks/useResolvedTimeFontScale';
 import type { TimeAnimationMode } from '@/hooks/useSettings';
-import { WeatherCard } from '@/components/WeatherCard';
 import { toCssFontFamily } from '@/utils/googleFonts';
+
+const LazyWeatherCard = lazy(() => import('@/components/WeatherCard').then((module) => ({
+  default: module.WeatherCard,
+})));
 
 interface InlineTimeProps {
   is24Hour: boolean;
@@ -30,6 +33,40 @@ interface InlineTimeProps {
   layout: ResponsiveLayout;
 }
 
+type InlineTimeButtonProps = {
+  is24Hour: boolean;
+  showSeconds: boolean;
+  timeAnimationEnabled: boolean;
+  timeFont: string;
+  fontSize: number;
+  forceWhiteText: boolean;
+  onClick: (time: string) => void;
+};
+
+const InlineTimeButton = memo(function InlineTimeButton({
+  is24Hour,
+  showSeconds,
+  timeAnimationEnabled,
+  timeFont,
+  fontSize,
+  forceWhiteText,
+  onClick,
+}: InlineTimeButtonProps) {
+  const time = useClockTime(is24Hour, showSeconds);
+
+  return (
+    <button
+      type="button"
+      className={`${forceWhiteText ? 'hero-tint-text hero-tint-text-hover text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
+      style={{ fontFamily: toCssFontFamily(timeFont), fontSize }}
+      onClick={() => onClick(time)}
+      aria-label={time}
+    >
+      {!timeAnimationEnabled ? time : <SlidingClockTime time={time} />}
+    </button>
+  );
+});
+
 export const InlineTime = memo(function InlineTime({
   is24Hour,
   onIs24HourChange,
@@ -49,10 +86,11 @@ export const InlineTime = memo(function InlineTime({
   onTimeFontChange,
   forceWhiteText,
   layout,
-}: InlineTimeProps) {
-  const { i18n } = useTranslation();
-  const { time, date, lunar } = useClock(is24Hour, showSeconds, i18n.language, showLunar);
-  const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
+	}: InlineTimeProps) {
+	  const { i18n } = useTranslation();
+	  const { date, lunar } = useClockDate(i18n.language, showLunar);
+	  const [timeDisplayDialogOpen, setTimeDisplayDialogOpen] = useState(false);
+	  const [timeDisplayPreviewTime, setTimeDisplayPreviewTime] = useState(() => '');
   const resolvedTimeFontScale = useResolvedTimeFontScale(timeFont);
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
   const weekdayFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { weekday: 'long' }), [locale]);
@@ -75,20 +113,23 @@ export const InlineTime = memo(function InlineTime({
     <div className="relative w-full rounded-[28px] overflow-hidden group select-none">
       <div className="absolute inset-0 pointer-events-none opacity-0" />
       <div className="relative z-10 pointer-events-none transform-gpu flex flex-col items-center justify-center py-6">
-        <button
-          type="button"
-          className={`${forceWhiteText ? 'hero-tint-text hero-tint-text-hover text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]' : 'text-muted-foreground dark:text-foreground dark:text-shadow-[0_0_16.4px_rgba(0,0,0,0.24)]'} font-thin leading-none tracking-tight cursor-pointer hover:opacity-80 transition-opacity pointer-events-auto select-none bg-transparent p-0 border-0`}
-          style={{ fontFamily: toCssFontFamily(timeFont), fontSize: normalizedClockFontSize }}
-          onClick={() => setTimeDisplayDialogOpen(true)}
-          aria-label={time}
-        >
-          {!timeAnimationEnabled ? time : <SlidingClockTime time={time} />}
-        </button>
+	        <InlineTimeButton
+	          is24Hour={is24Hour}
+	          showSeconds={showSeconds}
+	          timeAnimationEnabled={timeAnimationEnabled}
+	          timeFont={timeFont}
+	          fontSize={normalizedClockFontSize}
+	          forceWhiteText={forceWhiteText}
+	          onClick={(time) => {
+	            setTimeDisplayPreviewTime(time);
+	            setTimeDisplayDialogOpen(true);
+	          }}
+	        />
         <TimeDisplayDialog
           open={timeDisplayDialogOpen}
           onOpenChange={setTimeDisplayDialogOpen}
           currentFont={timeFont}
-          previewTime={time}
+	          previewTime={timeDisplayPreviewTime}
           is24Hour={is24Hour}
           onIs24HourChange={onIs24HourChange}
           showDate={showDate}
@@ -114,13 +155,15 @@ export const InlineTime = memo(function InlineTime({
                 {showLunar && lunar ? <span>{lunar}</span> : null}
               </div>
             ) : null}
-            <WeatherCard
-              onWeatherUpdate={onWeatherUpdate}
-              variant={forceWhiteText ? 'inverted' : 'default'}
-              displayMode="inline"
-              className="w-fit max-w-full"
-              textClassName="text-inherit"
-            />
+            <Suspense fallback={null}>
+              <LazyWeatherCard
+                onWeatherUpdate={onWeatherUpdate}
+                variant={forceWhiteText ? 'inverted' : 'default'}
+                displayMode="inline"
+                className="w-fit max-w-full"
+                textClassName="text-inherit"
+              />
+            </Suspense>
           </div>
         </div>
       </div>

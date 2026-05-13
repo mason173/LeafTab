@@ -1,10 +1,5 @@
 import { normalizeLeafTabSyncSnapshot, type LeafTabSyncBaseline, type LeafTabSyncSnapshot } from './schema';
 import { createLeafTabSyncBaselineFromSnapshot, type LeafTabSyncFileMap } from './fileMap';
-import {
-  readLeafTabSyncCacheEntry,
-  removeLeafTabSyncCacheEntry,
-  writeLeafTabSyncCacheEntry,
-} from './asyncStorage';
 
 export interface LeafTabSyncBaselineStore {
   load(): Promise<LeafTabSyncBaseline | null>;
@@ -30,51 +25,33 @@ export class LeafTabSyncMemoryBaselineStore implements LeafTabSyncBaselineStore 
 
 export class LeafTabSyncLocalStorageBaselineStore implements LeafTabSyncBaselineStore {
   private readonly key: string;
-  private readonly storage: Storage | null;
-  private readonly preferIndexedDb: boolean;
+  private readonly storage: Storage;
 
   constructor(key = 'leaftab_sync_v1_baseline', storage?: Storage) {
     this.key = key;
-    const resolvedStorage = storage || globalThis.localStorage || null;
-    if (!resolvedStorage && !globalThis.indexedDB) {
+    const resolvedStorage = storage || globalThis.localStorage;
+    if (!resolvedStorage) {
       throw new Error('localStorage is not available for LeafTab sync baseline storage');
     }
     this.storage = resolvedStorage;
-    this.preferIndexedDb = !storage;
   }
 
   async load() {
-    if (this.preferIndexedDb) {
-      const cached = await readLeafTabSyncCacheEntry<LeafTabSyncBaseline>(this.key);
-      if (cached) return cached;
-    }
-
-    const raw = this.storage?.getItem(this.key);
+    const raw = this.storage.getItem(this.key);
     if (!raw) return null;
     try {
-      const parsed = JSON.parse(raw) as LeafTabSyncBaseline;
-      if (this.preferIndexedDb) {
-        void writeLeafTabSyncCacheEntry(this.key, parsed);
-      }
-      return parsed;
+      return JSON.parse(raw) as LeafTabSyncBaseline;
     } catch {
       return null;
     }
   }
 
   async save(baseline: LeafTabSyncBaseline) {
-    if (this.preferIndexedDb && await writeLeafTabSyncCacheEntry(this.key, baseline)) {
-      this.storage?.removeItem(this.key);
-      return;
-    }
-    this.storage?.setItem(this.key, JSON.stringify(baseline));
+    this.storage.setItem(this.key, JSON.stringify(baseline));
   }
 
   async clear() {
-    if (this.preferIndexedDb) {
-      await removeLeafTabSyncCacheEntry(this.key);
-    }
-    this.storage?.removeItem(this.key);
+    this.storage.removeItem(this.key);
   }
 }
 

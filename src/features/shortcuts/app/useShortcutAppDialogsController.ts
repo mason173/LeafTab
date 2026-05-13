@@ -12,6 +12,7 @@ import {
   useLeafTabSyncConfigContext,
   useLeafTabSyncDialogContext,
   useLeafTabSyncMetaContext,
+  useLeafTabSyncStatusContext,
 } from '@/features/sync/app/LeafTabSyncContext';
 import { getDefaultLocalBackupExportScope } from '@/utils/localBackupScopePolicy';
 import { createLeafTabWebdavEncryptionScopeKey } from '@/utils/leafTabSyncEncryption';
@@ -190,6 +191,7 @@ export function useShortcutAppDialogsController({
   const syncConfigState = useLeafTabSyncConfigContext();
   const syncDialogState = useLeafTabSyncDialogContext();
   const syncMeta = useLeafTabSyncMetaContext();
+  const syncStatusState = useLeafTabSyncStatusContext();
   const scenarioEditMode = domainState.scenarioModes.find(
     (mode) => mode.id === uiState.currentEditScenarioId,
   ) ?? null;
@@ -469,7 +471,13 @@ export function useShortcutAppDialogsController({
       syncProviderDialogs.setPendingWebdavEnableScopeKey(nextScopeKey || null);
     },
     onSaveSuccess: async () => {
-      return;
+      if (!syncConfigState.leafTabWebdavEnabled) {
+        return;
+      }
+      if (syncStatusState.leafTabSyncState.status === 'syncing') {
+        return;
+      }
+      await syncActions.handleLeafTabAutoSync();
     },
     onDisableSync: async () => {
       syncProviderDialogs.setConfirmDisableWebdavSyncOpen(true);

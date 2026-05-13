@@ -128,6 +128,7 @@ export default {
       timeAnimation: {
         label: "动画效果",
         description: "时间切换滚动动画",
+        performanceHint: "时间数字动画会增加持续渲染开销，低性能设备建议关闭。",
         followSystemBadge: "跟随系统",
         followSystemAction: "恢复跟随系统",
         followSystemEnabled: "当前跟随系统：已开启",

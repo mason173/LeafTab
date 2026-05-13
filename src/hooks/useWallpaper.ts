@@ -17,8 +17,6 @@ import {
 import type { WallpaperMode } from '@/wallpaper/types';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
-  DEFAULT_WALLPAPER_ROTATION_OFFSETS,
-  DEFAULT_WALLPAPER_ROTATION_SETTINGS,
   getWallpaperRotationNextDelay,
   getWallpaperRotationSlot,
   normalizeWallpaperRotationIndex,
@@ -40,7 +38,6 @@ const REQUEST_TIMEOUT_MS = 9000;
 const DYNAMIC_WALLPAPER_ID_KEY = 'dynamicWallpaperId';
 const WALLPAPER_ROTATION_SETTINGS_KEY = 'wallpaperRotationSettings';
 const WALLPAPER_ROTATION_OFFSETS_KEY = 'wallpaperRotationOffsets';
-const WALLPAPER_ROTATION_CPU_MITIGATION_KEY = 'wallpaperRotationCpuMitigationV1';
 
 type BingCacheMeta = {
   slot: string;
@@ -282,19 +279,9 @@ const getRotatableWallpaperValues = (
   return customWallpaperGallery;
 };
 
-const disableStoredWallpaperRotationForCpuMitigation = () => {
-  try {
-    if (localStorage.getItem(WALLPAPER_ROTATION_CPU_MITIGATION_KEY) === 'applied') return;
-    localStorage.setItem(WALLPAPER_ROTATION_SETTINGS_KEY, JSON.stringify(DEFAULT_WALLPAPER_ROTATION_SETTINGS));
-    localStorage.setItem(WALLPAPER_ROTATION_OFFSETS_KEY, JSON.stringify(DEFAULT_WALLPAPER_ROTATION_OFFSETS));
-    localStorage.setItem(WALLPAPER_ROTATION_CPU_MITIGATION_KEY, 'applied');
-  } catch {}
-};
-
 export function useWallpaper() {
   const firefox = isFirefoxBuildTarget();
   const isDocumentVisible = useDocumentVisibility();
-  disableStoredWallpaperRotationForCpuMitigation();
   const initialBingWallpaper = getInitialBingWallpaper();
   const [hasStoredWallpaperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('wallpaperMode');

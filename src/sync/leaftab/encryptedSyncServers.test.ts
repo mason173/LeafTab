@@ -12,10 +12,9 @@ import {
   LeafTabSyncEncryptedRemoteStore,
   LeafTabSyncWebdavEncryptedTransport,
   serializeLeafTabSyncKeyBytes,
-  type LeafTabSyncEncryptedRemoteTransport,
 } from './encryption';
 import type { LeafTabSyncSnapshot } from './schema';
-import { LeafTabSyncWebdavLockError, LeafTabSyncWebdavStore, LeafTabSyncWebdavTimeoutError } from './webdavStore';
+import { LeafTabSyncWebdavLockError, LeafTabSyncWebdavStore } from './webdavStore';
 import {
   createLeafTabCloudEncryptionScopeKey,
   createLeafTabWebdavEncryptionScopeKey,
@@ -340,94 +339,6 @@ describe('encrypted sync remote integration', () => {
     expect(pullEngine.appliedSnapshots).toHaveLength(1);
     expect(pullEngine.snapshotRef.current.shortcuts).toEqual(localSnapshot.shortcuts);
     expect(pullEngine.snapshotRef.current.bookmarkItems).toEqual(localSnapshot.bookmarkItems);
-  });
-
-  it('skips encrypted manifest and pack reads when the remote head commit is cached', async () => {
-    const scopeKey = createLeafTabWebdavEncryptionScopeKey('https://dav.example.test', 'leaftab/v1');
-    await seedEncryption(scopeKey);
-
-    let head: any = null;
-    let commit: any = null;
-    const files: Record<string, string> = {};
-    const calls = {
-      readHead: 0,
-      readEncryptionState: 0,
-      readEncryptedFiles: 0,
-    };
-    const transport = {
-      acquireLock: async () => null,
-      releaseLock: async () => {},
-      readHead: async () => {
-        calls.readHead += 1;
-        return head;
-      },
-      readEncryptionState: async () => {
-        calls.readEncryptionState += 1;
-        return {
-          head,
-          commit,
-          metadata: commit?.encryption?.metadata || null,
-          mode: commit?.encryption?.mode === 'encrypted-sharded-v1' ? 'encrypted-sharded' : 'empty',
-        };
-      },
-      readEncryptedFiles: async (paths: string[]) => {
-        calls.readEncryptedFiles += 1;
-        return Object.fromEntries(paths.map((path) => [path, files[path] || null]));
-      },
-      writeEncryptedFiles: async (params) => {
-        head = params.head;
-        commit = params.commit;
-        Object.assign(files, params.files);
-        return {
-          head: params.head,
-          commit: params.commit,
-        };
-      },
-    } satisfies LeafTabSyncEncryptedRemoteTransport;
-
-    const remoteStore = new LeafTabSyncEncryptedRemoteStore({
-      transport,
-      scopeKey,
-      scopeLabel: 'WebDAV',
-      rootPath: 'leaftab/v1',
-    });
-    const snapshot = createSnapshot({
-      deviceId: 'device-a',
-      shortcutTitles: ['Docs', 'Mail'],
-      bookmarkCount: 5,
-    });
-
-    await remoteStore.writeState({
-      snapshot,
-      previousSnapshot: null,
-      deviceId: 'device-a',
-      parentCommitId: null,
-    });
-    (LeafTabSyncEncryptedRemoteStore as any).memoryRemoteCache?.clear?.();
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index);
-      if (key?.startsWith('leaftab_sync_encrypted_remote_cache_v2:')) {
-        localStorage.removeItem(key);
-      }
-    }
-
-    calls.readHead = 0;
-    calls.readEncryptionState = 0;
-    calls.readEncryptedFiles = 0;
-    const firstRead = await remoteStore.readState();
-    expect(firstRead.snapshot?.shortcuts).toEqual(snapshot.shortcuts);
-    expect(calls.readHead).toBe(1);
-    expect(calls.readEncryptionState).toBe(1);
-    expect(calls.readEncryptedFiles).toBeGreaterThan(0);
-
-    calls.readHead = 0;
-    calls.readEncryptionState = 0;
-    calls.readEncryptedFiles = 0;
-    const cachedRead = await remoteStore.readState();
-    expect(cachedRead.snapshot?.shortcuts).toEqual(snapshot.shortcuts);
-    expect(calls.readHead).toBe(1);
-    expect(calls.readEncryptionState).toBe(0);
-    expect(calls.readEncryptedFiles).toBe(0);
   });
 
   it('blocks destructive cloud bookmark pushes and preserves remote data', async () => {
@@ -781,38 +692,6 @@ describe('encrypted sync remote integration', () => {
       LeafTabSyncWebdavLockError,
     );
     await primaryStore.releaseLock();
-  });
-
-  it('times out stalled WebDAV requests', async () => {
-    const server = await new Promise<import('node:http').Server>((resolve) => {
-      void import('node:http').then(({ createServer }) => {
-        const nextServer = createServer((_req, _res) => {});
-        nextServer.listen(0, '127.0.0.1', () => resolve(nextServer));
-      });
-    });
-    try {
-      const address = server.address();
-      if (!address || typeof address === 'string') {
-        throw new Error('missing test server address');
-      }
-      const store = new LeafTabSyncWebdavStore({
-        url: `http://127.0.0.1:${address.port}`,
-        rootPath: 'leaftab/v1',
-        requestPermission: false,
-        requestTimeoutMs: 25,
-      });
-
-      await expect(store.readJsonFile('leaftab/v1/head.json')).rejects.toBeInstanceOf(
-        LeafTabSyncWebdavTimeoutError,
-      );
-    } finally {
-      await new Promise<void>((resolve, reject) => {
-        server.close((error) => {
-          if (error) reject(error);
-          else resolve();
-        });
-      });
-    }
   });
 
   it('rejects a second active cloud lock from another device', async () => {

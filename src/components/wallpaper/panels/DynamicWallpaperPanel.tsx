@@ -42,13 +42,17 @@ export function DynamicWallpaperPanel({
                     }}
                     title={option.name}
                   >
-                    <img
-                      src={option.posterSrc}
-                      alt=""
-                      aria-hidden="true"
+                    <video
+                      src={option.src}
                       className="absolute inset-0 h-full w-full object-cover"
-                      draggable={false}
-                    />
+                      autoPlay
+                      loop
+                    muted
+                    playsInline
+                    onLoadedData={(event) => {
+                      event.currentTarget.playbackRate = option.playbackRate ?? 0.7;
+                    }}
+                  />
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_40%,rgba(0,0,0,0.16)_100%)]" />
                     {selected ? (
                       <div className="absolute right-2 top-2 z-10 rounded-[8px] bg-black/38 px-1.5 py-1 text-white backdrop-blur-sm">

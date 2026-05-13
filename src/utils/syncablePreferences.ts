@@ -99,7 +99,7 @@ const readTimeAnimationMode = (): TimeAnimationMode => {
     }
   }
 
-  return 'on';
+  return 'off';
 };
 
 const readVisualEffectsLevel = (): VisualEffectsLevel => {
@@ -189,9 +189,9 @@ export const getDefaultSyncablePreferences = (): SyncablePreferences => ({
   showDate: true,
   showWeekday: true,
   showLunar: true,
-  timeAnimationMode: 'on',
+  timeAnimationMode: 'off',
   timeFont: 'Pacifico',
-  showSeconds: true,
+  showSeconds: false,
   visualEffectsLevel: 'high',
   showTime: true,
   shortcutCardVariant: DEFAULT_SHORTCUT_CARD_VARIANT,
@@ -328,7 +328,7 @@ export const readSyncablePreferencesFromStorage = (): SyncablePreferences => {
     showLunar: readStoredBoolean(SHOW_LUNAR_KEY, true),
     timeAnimationMode: readTimeAnimationMode(),
     timeFont: localStorage.getItem('time_font') || 'Pacifico',
-    showSeconds: storedShowSeconds === null ? true : readStoredBoolean('showSeconds', true),
+    showSeconds: storedShowSeconds === null ? false : readStoredBoolean('showSeconds', false),
     visualEffectsLevel: readVisualEffectsLevel(),
     showTime: storedShowTime === null ? true : readStoredBoolean('showTime', true),
     shortcutCardVariant: parseShortcutCardVariant(localStorage.getItem('shortcutCardVariant')),
