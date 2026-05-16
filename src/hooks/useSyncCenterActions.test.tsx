@@ -121,6 +121,18 @@ describe('useSyncCenterActions', () => {
     }));
   });
 
+  it('enables future bookmark sync after successful cloud repair', async () => {
+    ensureExtensionPermissionSpy.mockResolvedValue(true);
+    const onCloudBookmarkRepairSuccess = vi.fn();
+    const { result } = createHarness({ onCloudBookmarkRepairSuccess });
+
+    await act(async () => {
+      await result.current.handleCloudRepairFromCenter('pull-remote');
+    });
+
+    expect(onCloudBookmarkRepairSuccess).toHaveBeenCalledTimes(1);
+  });
+
   it('forces bookmark sync during cloud repair even when bookmark sync is not configured', async () => {
     ensureExtensionPermissionSpy.mockResolvedValue(true);
     const {
@@ -223,6 +235,18 @@ describe('useSyncCenterActions', () => {
       forceBookmarksForThisRun: true,
       requestBookmarkPermission: false,
     }));
+  });
+
+  it('enables future bookmark sync after successful WebDAV repair', async () => {
+    ensureExtensionPermissionSpy.mockResolvedValue(true);
+    const onWebdavBookmarkRepairSuccess = vi.fn();
+    const { result } = createHarness({ onWebdavBookmarkRepairSuccess });
+
+    await act(async () => {
+      await result.current.handleWebdavRepairFromCenter('pull-remote');
+    });
+
+    expect(onWebdavBookmarkRepairSuccess).toHaveBeenCalledTimes(1);
   });
 
   it('requests bookmark permission for cloud sync when bookmarks are configured but not currently enabled', async () => {

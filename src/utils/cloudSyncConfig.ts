@@ -54,6 +54,15 @@ export const applyCloudDangerousBookmarkChoiceToStorage = () => {
   });
 };
 
+export const enableCloudBookmarkSyncInStorage = () => {
+  const current = readCloudSyncConfigFromStorage();
+  writeCloudSyncConfigToStorage({
+    ...current,
+    enabled: true,
+    syncBookmarksEnabled: true,
+  });
+};
+
 export const emitCloudSyncConfigChanged = () => {
   window.dispatchEvent(new Event('cloud-sync-config-changed'));
 };

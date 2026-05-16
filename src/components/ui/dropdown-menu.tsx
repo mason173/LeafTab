@@ -60,7 +60,7 @@ const DropdownMenuContent = React.forwardRef<
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto text-popover-foreground",
+          "z-[18020] max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto text-popover-foreground",
           surfaceVariant === "frosted"
             ? cn(
                 "relative isolate overflow-hidden border border-border bg-transparent backdrop-blur-none",
@@ -272,7 +272,7 @@ function DropdownMenuSubContent({
       ref={handleSurfaceNodeRef}
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "relative isolate z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden border border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
+        "relative isolate z-[18020] min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden border border-border bg-transparent text-popover-foreground shadow-lg backdrop-blur-none",
         frostedDropdownPreset.shellClassName,
         className,
         "!bg-transparent !backdrop-blur-none",

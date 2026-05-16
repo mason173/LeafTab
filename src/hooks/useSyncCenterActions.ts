@@ -80,6 +80,8 @@ type UseSyncCenterActionsOptions = {
   runLongTask: LongTaskRunner;
   setCloudNextSyncAt: (nextMs: number | null) => void;
   openLeafTabSyncConfig: () => void;
+  onCloudBookmarkRepairSuccess?: () => void;
+  onWebdavBookmarkRepairSuccess?: () => void;
 };
 
 export function useSyncCenterActions({
@@ -105,6 +107,8 @@ export function useSyncCenterActions({
   runLongTask,
   setCloudNextSyncAt,
   openLeafTabSyncConfig,
+  onCloudBookmarkRepairSuccess,
+  onWebdavBookmarkRepairSuccess,
 }: UseSyncCenterActionsOptions) {
   const cloudSyncNowInFlightRef = useRef(false);
   const webdavSyncNowInFlightRef = useRef(false);
@@ -164,6 +168,7 @@ export function useSyncCenterActions({
         },
       });
       if (result) {
+        onWebdavBookmarkRepairSuccess?.();
         toast.success(mode === 'pull-remote'
           ? t('leaftabSyncActions.webdav.repair.pullSuccess', { defaultValue: '已用 WebDAV 数据覆盖本地' })
           : t('leaftabSyncActions.webdav.repair.pushSuccess', { defaultValue: '已用本地数据覆盖 WebDAV' }));
@@ -178,6 +183,7 @@ export function useSyncCenterActions({
     handleLeafTabSync,
     leafTabWebdavConfigured,
     openLeafTabSyncConfig,
+    onWebdavBookmarkRepairSuccess,
     runLongTask,
     setLeafTabSyncDialogOpen,
     webdavSyncBookmarksEnabled,
@@ -366,6 +372,7 @@ export function useSyncCenterActions({
         },
       });
       if (result) {
+        onCloudBookmarkRepairSuccess?.();
         toast.success(mode === 'pull-remote'
           ? t('leaftabSyncActions.cloud.repair.pullSuccess', { defaultValue: '已用云端数据覆盖本地' })
           : t('leaftabSyncActions.cloud.repair.pushSuccess', { defaultValue: '已用本地数据覆盖云端' }));
@@ -378,6 +385,7 @@ export function useSyncCenterActions({
     handleCloudLeafTabSync,
     ensureCloudLegacyMigrationReady,
     handleRequestCloudLogin,
+    onCloudBookmarkRepairSuccess,
     runLongTask,
     setCloudSyncBookmarksPermissionGranted,
     setLeafTabSyncDialogOpen,

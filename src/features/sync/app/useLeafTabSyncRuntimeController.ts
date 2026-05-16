@@ -18,11 +18,13 @@ import { isWebdavAuthError } from '@/utils/webdavError';
 import {
   CLOUD_SYNC_STORAGE_KEYS,
   applyCloudDangerousBookmarkChoiceToStorage,
+  enableCloudBookmarkSyncInStorage,
   emitCloudSyncStatusChanged,
   readCloudSyncConfigFromStorage,
 } from '@/utils/cloudSyncConfig';
 import {
   applyWebdavDangerousBookmarkChoiceToStorage,
+  enableWebdavBookmarkSyncInStorage,
   hasWebdavUrlConfiguredFromStorage,
   isWebdavSyncEnabledFromStorage,
   readWebdavConfigFromStorage,
@@ -444,6 +446,12 @@ export function useLeafTabSyncRuntimeController({
     emitCloudSyncStatusChanged();
   }, []);
 
+  const enableCloudBookmarkSync = useCallback(() => {
+    enableCloudBookmarkSyncInStorage();
+    window.dispatchEvent(new Event('cloud-sync-config-changed'));
+    emitCloudSyncStatusChanged();
+  }, []);
+
   const setCloudNextSyncAt = useCallback((nextMs: number | null) => {
     if (nextMs && Number.isFinite(nextMs)) {
       localStorage.setItem(CLOUD_SYNC_STORAGE_KEYS.nextSyncAt, new Date(nextMs).toISOString());
@@ -483,6 +491,11 @@ export function useLeafTabSyncRuntimeController({
 
   const applyWebdavDangerousBookmarkChoice = useCallback(() => {
     applyWebdavDangerousBookmarkChoiceToStorage();
+    emitWebdavSyncStatusChanged();
+  }, [emitWebdavSyncStatusChanged]);
+
+  const enableWebdavBookmarkSync = useCallback(() => {
+    enableWebdavBookmarkSyncInStorage();
     emitWebdavSyncStatusChanged();
   }, [emitWebdavSyncStatusChanged]);
 
@@ -1727,6 +1740,8 @@ export function useLeafTabSyncRuntimeController({
     runLongTask,
     setCloudNextSyncAt,
     openLeafTabSyncConfig,
+    onCloudBookmarkRepairSuccess: enableCloudBookmarkSync,
+    onWebdavBookmarkRepairSuccess: enableWebdavBookmarkSync,
   });
 
   const handleOpenCloudSyncConfigFromSyncCenter = useCallback(() => {

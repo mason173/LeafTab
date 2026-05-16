@@ -110,6 +110,15 @@ export const applyWebdavDangerousBookmarkChoiceToStorage = (defaultProfileName =
   }, defaultProfileName);
 };
 
+export const enableWebdavBookmarkSyncInStorage = (defaultProfileName = "") => {
+  const current = readWebdavStorageStateFromStorage(defaultProfileName);
+  writeWebdavStorageStateToStorage({
+    ...current,
+    syncEnabled: true,
+    syncBookmarksEnabled: true,
+  }, defaultProfileName);
+};
+
 export const readWebdavConfigFromStorage = (options?: { allowDisabled?: boolean }): WebdavConfig | null => {
   const state = readWebdavStorageStateFromStorage();
   const enabled = state.syncEnabled;
