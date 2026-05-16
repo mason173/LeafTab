@@ -6,6 +6,8 @@ const APP_URL = process.env.PLAYWRIGHT_APP_URL
 const CLOUD_ENCRYPTION_LABEL = 'LeafTab Sync E2EE Verifier v1';
 const CLOUD_ENCRYPTION_PREFIX = 'leaftab_sync_e2ee_v1:';
 const DEFAULT_USERNAME = 'test-user';
+const DEFAULT_WEBDAV_URL = 'http://127.0.0.1:4173/__mock_webdav__';
+const DEFAULT_WEBDAV_ROOT_PATH = 'leaftab/v1';
 
 function createShortcut(id, title) {
   return {
@@ -34,8 +36,28 @@ function encodeBase64(value) {
   return Buffer.from(value).toString('base64');
 }
 
+function normalizeEncryptionScopeSegment(value) {
+  return (value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9:_|.-]+/g, '_')
+    .slice(0, 240);
+}
+
 async function createCloudEncryptionRecord(username = DEFAULT_USERNAME, passphrase = 'test-passphrase') {
   const scopeKey = `cloud:${username}`;
+  return createEncryptionRecord(scopeKey, passphrase);
+}
+
+async function createWebdavEncryptionRecord(
+  webdavUrl = DEFAULT_WEBDAV_URL,
+  rootPath = DEFAULT_WEBDAV_ROOT_PATH,
+  passphrase = 'test-passphrase',
+) {
+  const scopeKey = `webdav:${webdavUrl.replace(/\/+$/, '')}|${rootPath.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+  return createEncryptionRecord(scopeKey, passphrase);
+}
+
+async function createEncryptionRecord(scopeKey, passphrase = 'test-passphrase') {
   const salt = Uint8Array.from(Array.from({ length: 16 }, (_value, index) => index + 1));
   const encoder = new TextEncoder();
   const baseKey = await webcrypto.subtle.importKey(
@@ -64,7 +86,7 @@ async function createCloudEncryptionRecord(username = DEFAULT_USERNAME, passphra
   );
   const now = new Date().toISOString();
   return {
-    storageKey: `${CLOUD_ENCRYPTION_PREFIX}${scopeKey}`,
+    storageKey: `${CLOUD_ENCRYPTION_PREFIX}${normalizeEncryptionScopeSegment(scopeKey)}`,
     config: {
       version: 1,
       scopeKey,
@@ -103,6 +125,7 @@ async function createMockDevice(browser, options) {
     };
     const permissionState = {
       extensionPermissions: new Set(seed.permissionsGranted ? ['bookmarks'] : []),
+      originPermissions: new Set(seed.originPermissionsGranted ? [`${new URL(seed.webdavUrl).origin}/*`] : []),
     };
 
     const createEventApi = (eventName) => ({
@@ -191,6 +214,7 @@ async function createMockDevice(browser, options) {
       getManifest() {
         return {
           optional_permissions: ['bookmarks'],
+          optional_host_permissions: ['<all_urls>'],
         };
       },
       getURL(input = '') {
@@ -200,12 +224,16 @@ async function createMockDevice(browser, options) {
 
     const permissionsApi = {
       contains(query, callback) {
-        const granted = !(query?.permissions || []).some((permission) => !permissionState.extensionPermissions.has(permission));
+        const granted = !(query?.permissions || []).some((permission) => !permissionState.extensionPermissions.has(permission))
+          && !(query?.origins || []).some((origin) => !permissionState.originPermissions.has(origin));
         queueMicrotask(() => callback(granted));
       },
       request(query, callback) {
         (query?.permissions || []).forEach((permission) => {
           permissionState.extensionPermissions.add(permission);
+        });
+        (query?.origins || []).forEach((origin) => {
+          permissionState.originPermissions.add(origin);
         });
         queueMicrotask(() => callback(true));
       },
@@ -298,12 +326,16 @@ async function createMockDevice(browser, options) {
     window.localStorage.setItem('displayMode', 'fresh');
     window.localStorage.setItem('privacy_consent', 'true');
     window.localStorage.setItem('leaftab_top_nav_layout_intro_seen_v1', 'true');
-    window.localStorage.setItem('token', 'test-token');
-    window.localStorage.setItem('username', seed.username);
-    window.localStorage.setItem('cloud_sync_enabled', 'true');
-    window.localStorage.setItem('cloud_sync_bookmarks_enabled', 'true');
-    window.localStorage.setItem('webdav_sync_enabled', 'false');
-    window.localStorage.setItem('webdav_sync_bookmarks_enabled', 'false');
+    window.localStorage.setItem('token', seed.syncProvider === 'webdav' ? '' : 'test-token');
+    window.localStorage.setItem('username', seed.syncProvider === 'webdav' ? '' : seed.username);
+    window.localStorage.setItem('cloud_sync_enabled', seed.syncProvider === 'webdav' ? 'false' : 'true');
+    window.localStorage.setItem('cloud_sync_bookmarks_enabled', seed.syncProvider === 'webdav' ? 'false' : 'true');
+    window.localStorage.setItem('webdav_sync_enabled', seed.syncProvider === 'webdav' ? 'true' : 'false');
+    window.localStorage.setItem('webdav_sync_bookmarks_enabled', seed.syncProvider === 'webdav' ? 'true' : 'false');
+    window.localStorage.setItem('webdav_url', seed.webdavUrl);
+    window.localStorage.setItem('webdav_username', 'mason');
+    window.localStorage.setItem('webdav_password', 'secret');
+    window.localStorage.setItem('webdav_file_path', seed.webdavFilePath);
     window.localStorage.setItem('leaf_tab_local_profile_v1', JSON.stringify(seed.seedSnapshot));
     window.localStorage.setItem('scenario_modes_v1', JSON.stringify(seed.seedSnapshot.scenarioModes));
     window.localStorage.setItem('scenario_selected_v1', seed.seedSnapshot.selectedScenarioId);
@@ -315,9 +347,13 @@ async function createMockDevice(browser, options) {
   }, {
     bookmarkCount: options.bookmarkCount ?? 0,
     permissionsGranted: options.permissionsGranted !== false,
+    originPermissionsGranted: options.originPermissionsGranted !== false,
     encryptionRecord: options.encryptionRecord,
     seedSnapshot: options.seedSnapshot ?? createSeedSnapshot(),
+    syncProvider: options.syncProvider ?? 'cloud',
     username: options.username ?? DEFAULT_USERNAME,
+    webdavFilePath: options.webdavFilePath ?? 'leaftab_sync.leaftab',
+    webdavUrl: options.webdavUrl ?? DEFAULT_WEBDAV_URL,
   });
   const page = await context.newPage();
   return { context, page };
@@ -325,8 +361,69 @@ async function createMockDevice(browser, options) {
 
 async function openSyncCenter(page) {
   await page.goto(APP_URL, { waitUntil: 'load' });
-  await page.getByTestId('top-nav-sync-button').click({ force: true });
+  const syncButton = page.getByTestId('top-nav-sync-button');
+  await syncButton.hover();
+  await syncButton.click();
   await expect(page.getByRole('heading', { name: '同步中心' })).toBeVisible();
+}
+
+async function reopenSyncCenter(page) {
+  const syncButton = page.getByTestId('top-nav-sync-button');
+  await syncButton.hover();
+  await syncButton.click();
+  await expect(page.getByRole('heading', { name: '同步中心' })).toBeVisible();
+}
+
+async function seedCloudBookmarks(browser, request, encryptionRecord, bookmarkCount) {
+  const sourceDevice = await createMockDevice(browser, {
+    bookmarkCount,
+    encryptionRecord,
+  });
+
+  try {
+    await openSyncCenter(sourceDevice.page);
+    await expect.poll(
+      async () => sourceDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+    ).toBe(bookmarkCount);
+
+    await sourceDevice.page.getByRole('button', { name: '修复同步' }).click();
+    await sourceDevice.page.getByRole('button', { name: '本地覆盖云端' }).click();
+
+    await expect.poll(async () => {
+      const response = await request.get('/__mock/admin/state');
+      const state = await response.json();
+      return state.cloud.commit?.id || null;
+    }).not.toBeNull();
+  } finally {
+    await sourceDevice.context.close();
+  }
+}
+
+async function seedWebdavBookmarks(browser, request, encryptionRecord, bookmarkCount) {
+  const sourceDevice = await createMockDevice(browser, {
+    bookmarkCount,
+    encryptionRecord,
+    syncProvider: 'webdav',
+  });
+
+  try {
+    await openSyncCenter(sourceDevice.page);
+    await sourceDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+    await expect.poll(
+      async () => sourceDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+    ).toBe(bookmarkCount);
+
+    await sourceDevice.page.getByRole('button', { name: '修复同步' }).click();
+    await sourceDevice.page.getByRole('button', { name: '本地覆盖 WebDAV' }).click();
+
+    await expect.poll(async () => {
+      const response = await request.get('/__mock/admin/state');
+      const state = await response.json();
+      return state.webdav.entries['leaftab/v1/head.json']?.body || null;
+    }).not.toBeNull();
+  } finally {
+    await sourceDevice.context.close();
+  }
 }
 
 test.describe('sync center smoke', () => {
@@ -414,33 +511,11 @@ test.describe('sync center smoke', () => {
     ))).toBe('true');
   });
 
-  test('restores cloud bookmarks after local deletion and does not reopen the dangerous dialog', async ({ browser, request }) => {
+  test('keeps cloud bookmarks after local deletion without reopening sync settings', async ({ browser, request }) => {
     test.setTimeout(120000);
 
     const encryptionRecord = await createCloudEncryptionRecord();
-
-    const sourceDevice = await createMockDevice(browser, {
-      bookmarkCount: 378,
-      encryptionRecord,
-    });
-
-    try {
-      await openSyncCenter(sourceDevice.page);
-      await expect.poll(
-        async () => sourceDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
-      ).toBe(378);
-
-      await sourceDevice.page.getByRole('button', { name: '修复同步' }).click();
-      await sourceDevice.page.getByRole('button', { name: '本地覆盖云端' }).click();
-
-      await expect.poll(async () => {
-        const response = await request.get('/__mock/admin/state');
-        const state = await response.json();
-        return state.cloud.commit?.id || null;
-      }).not.toBeNull();
-    } finally {
-      await sourceDevice.context.close();
-    }
+    await seedCloudBookmarks(browser, request, encryptionRecord, 378);
 
     const targetDevice = await createMockDevice(browser, {
       bookmarkCount: 0,
@@ -466,19 +541,243 @@ test.describe('sync center smoke', () => {
         async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
       ).toBe(0);
 
-      await syncNowButton.click();
+      await reopenSyncCenter(targetDevice.page);
+      const syncNowButtonAfterLocalDeletion = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+
+      await syncNowButtonAfterLocalDeletion.click();
       await expect(targetDevice.page.getByText('已拦截危险同步')).toBeVisible();
 
-      await targetDevice.page.getByRole('button', { name: '高级设置' }).click();
-      await targetDevice.page.getByText('保留云端书签（本地将被替换）').click();
+      await targetDevice.page.getByRole('button', { name: '保留云端书签（本地将被替换）' }).click();
+      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toHaveCount(0);
+      await expect(targetDevice.page.getByText('云同步设置')).toHaveCount(0);
 
       await expect.poll(
         async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
         { timeout: 30000 },
       ).toBe(378);
 
-      await targetDevice.page.getByTestId('top-nav-sync-button').click({ force: true });
-      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toBeVisible();
+      await reopenSyncCenter(targetDevice.page);
+
+      const syncNowButtonAfterRepair = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await expect(syncNowButtonAfterRepair).toBeEnabled();
+      await syncNowButtonAfterRepair.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toHaveCount(0);
+    } finally {
+      await targetDevice.context.close();
+    }
+  });
+
+  test('pulls cloud bookmarks from repair even when cloud bookmark sync preference is off', async ({ browser, request }) => {
+    test.setTimeout(120000);
+
+    const encryptionRecord = await createCloudEncryptionRecord();
+    await seedCloudBookmarks(browser, request, encryptionRecord, 378);
+
+    const targetDevice = await createMockDevice(browser, {
+      bookmarkCount: 0,
+      encryptionRecord,
+    });
+
+    try {
+      await targetDevice.page.addInitScript(() => {
+        window.localStorage.setItem('cloud_sync_bookmarks_enabled', 'false');
+      });
+      await openSyncCenter(targetDevice.page);
+      await targetDevice.page.evaluate(() => {
+        window.localStorage.setItem('cloud_sync_bookmarks_enabled', 'false');
+      });
+
+      await targetDevice.page.getByRole('button', { name: '修复同步' }).click();
+      await targetDevice.page.getByRole('button', { name: '云端覆盖本地' }).click();
+
+      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toHaveCount(0);
+      await expect(targetDevice.page.getByText('云同步设置')).toHaveCount(0);
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(378);
+    } finally {
+      await targetDevice.context.close();
+    }
+  });
+
+  test('keeps local bookmark deletion after dangerous sync confirmation without reopening sync settings', async ({ browser, request }) => {
+    test.setTimeout(120000);
+
+    const encryptionRecord = await createCloudEncryptionRecord();
+    await seedCloudBookmarks(browser, request, encryptionRecord, 378);
+
+    const targetDevice = await createMockDevice(browser, {
+      bookmarkCount: 0,
+      encryptionRecord,
+    });
+
+    try {
+      await openSyncCenter(targetDevice.page);
+
+      const syncNowButton = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await syncNowButton.click();
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(378);
+
+      const remoteCommitBeforeLocalDeletion = await (await request.get('/__mock/admin/state')).json()
+        .then((state) => state.cloud.commit?.id || null);
+
+      await targetDevice.page.evaluate(() => {
+        window.__mockBookmarks.reset(0);
+      });
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+      ).toBe(0);
+
+      await reopenSyncCenter(targetDevice.page);
+      const syncNowButtonAfterLocalDeletion = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await syncNowButtonAfterLocalDeletion.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toBeVisible();
+
+      await targetDevice.page.getByRole('button', { name: '保留本地书签（云端将被替换）' }).click();
+      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toHaveCount(0);
+      await expect(targetDevice.page.getByText('云同步设置')).toHaveCount(0);
+
+      await expect.poll(async () => {
+        const response = await request.get('/__mock/admin/state');
+        const state = await response.json();
+        return state.cloud.commit?.id || null;
+      }, { timeout: 30000 }).not.toBe(remoteCommitBeforeLocalDeletion);
+
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(0);
+
+      await reopenSyncCenter(targetDevice.page);
+
+      const syncNowButtonAfterRepair = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await expect(syncNowButtonAfterRepair).toBeEnabled();
+      await syncNowButtonAfterRepair.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toHaveCount(0);
+    } finally {
+      await targetDevice.context.close();
+    }
+  });
+
+  test('keeps WebDAV bookmarks after local deletion without reopening sync settings', async ({ browser, request }) => {
+    test.setTimeout(120000);
+
+    const encryptionRecord = await createWebdavEncryptionRecord();
+    await seedWebdavBookmarks(browser, request, encryptionRecord, 378);
+
+    const targetDevice = await createMockDevice(browser, {
+      bookmarkCount: 0,
+      encryptionRecord,
+      syncProvider: 'webdav',
+    });
+
+    try {
+      await openSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+
+      const syncNowButton = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await syncNowButton.click();
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(378);
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toHaveCount(0);
+
+      await targetDevice.page.evaluate(() => {
+        window.__mockBookmarks.reset(0);
+      });
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+      ).toBe(0);
+
+      await reopenSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+      const syncNowButtonAfterLocalDeletion = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+
+      await syncNowButtonAfterLocalDeletion.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toBeVisible();
+
+      await targetDevice.page.getByRole('button', { name: '保留WebDAV书签（本地将被替换）' }).click();
+      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toHaveCount(0);
+      await expect(targetDevice.page.getByText('WebDAV 同步')).toHaveCount(0);
+
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(378);
+
+      await reopenSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+
+      const syncNowButtonAfterRepair = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await expect(syncNowButtonAfterRepair).toBeEnabled();
+      await syncNowButtonAfterRepair.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toHaveCount(0);
+    } finally {
+      await targetDevice.context.close();
+    }
+  });
+
+  test('keeps local bookmark deletion in WebDAV after dangerous sync confirmation without reopening sync settings', async ({ browser, request }) => {
+    test.setTimeout(120000);
+
+    const encryptionRecord = await createWebdavEncryptionRecord();
+    await seedWebdavBookmarks(browser, request, encryptionRecord, 378);
+
+    const targetDevice = await createMockDevice(browser, {
+      bookmarkCount: 0,
+      encryptionRecord,
+      syncProvider: 'webdav',
+    });
+
+    try {
+      await openSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+
+      const syncNowButton = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await syncNowButton.click();
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(378);
+
+      const headBeforeLocalDeletion = await (await request.get('/__mock/admin/state')).json()
+        .then((state) => state.webdav.entries['leaftab/v1/head.json']?.body || null);
+
+      await targetDevice.page.evaluate(() => {
+        window.__mockBookmarks.reset(0);
+      });
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+      ).toBe(0);
+
+      await reopenSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
+      const syncNowButtonAfterLocalDeletion = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
+      await syncNowButtonAfterLocalDeletion.click();
+      await expect(targetDevice.page.getByText('已拦截危险同步')).toBeVisible();
+
+      await targetDevice.page.getByRole('button', { name: '保留本地书签（WebDAV将被替换）' }).click();
+      await expect(targetDevice.page.getByRole('heading', { name: '同步中心' })).toHaveCount(0);
+      await expect(targetDevice.page.getByText('WebDAV 同步')).toHaveCount(0);
+
+      await expect.poll(async () => {
+        const response = await request.get('/__mock/admin/state');
+        const state = await response.json();
+        return state.webdav.entries['leaftab/v1/head.json']?.body || null;
+      }, { timeout: 30000 }).not.toBe(headBeforeLocalDeletion);
+
+      await expect.poll(
+        async () => targetDevice.page.evaluate(() => window.__mockBookmarks.countSyncItems()),
+        { timeout: 30000 },
+      ).toBe(0);
+
+      await reopenSyncCenter(targetDevice.page);
+      await targetDevice.page.getByRole('tab', { name: 'WebDAV 同步' }).click();
 
       const syncNowButtonAfterRepair = targetDevice.page.getByRole('button', { name: '立即同步' }).first();
       await expect(syncNowButtonAfterRepair).toBeEnabled();

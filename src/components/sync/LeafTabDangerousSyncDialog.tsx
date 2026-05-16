@@ -8,13 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { RiArrowDownLine, RiErrorWarningFill } from '@/icons/ri-compat';
+import { RiErrorWarningFill } from '@/icons/ri-compat';
 
 type DangerousSyncDialogAction = 'continue-without-bookmarks' | 'use-remote' | 'use-local' | null;
 
@@ -112,28 +106,6 @@ export function LeafTabDangerousSyncDialog({
         </div>
 
         <div className="space-y-3">
-          <div className="flex justify-center">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {t('leaftabDangerousSync.advancedActions', { defaultValue: '高级设置' })}
-                  <RiArrowDownLine className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" sideOffset={6} className="w-[280px]">
-                <DropdownMenuItem onSelect={onUseRemote} disabled={busy} className="whitespace-normal leading-5">
-                  {remoteActionLabel}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onUseLocal} disabled={busy} className="whitespace-normal leading-5">
-                  {localActionLabel}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={onContinueWithoutBookmarks}
@@ -149,6 +121,24 @@ export function LeafTabDangerousSyncDialog({
               className="w-full justify-center"
             >
               {deferLabel}
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Button
+              variant="outline"
+              onClick={onUseRemote}
+              disabled={busy}
+              className="h-auto min-h-10 w-full whitespace-normal px-3 py-2 text-left leading-5"
+            >
+              {remoteActionLabel}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onUseLocal}
+              disabled={busy}
+              className="h-auto min-h-10 w-full whitespace-normal px-3 py-2 text-left leading-5"
+            >
+              {localActionLabel}
             </Button>
           </div>
           <div className="text-xs text-muted-foreground">

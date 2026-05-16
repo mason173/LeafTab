@@ -31,6 +31,7 @@ export type LeafTabDangerousSyncDialogState = {
 export type LeafTabSyncWebdavActionOptions = LeafTabSyncRunnerOptionsBase & {
   enableAfterSuccess?: boolean;
   skipBookmarksForThisRun?: boolean;
+  forceBookmarksForThisRun?: boolean;
   allowConfigPrompt?: boolean;
   allowDangerousSyncPrompt?: boolean;
 };

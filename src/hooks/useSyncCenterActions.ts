@@ -44,6 +44,7 @@ type WebdavSyncActionOptions = {
   silentSuccess?: boolean;
   requestBookmarkPermission?: boolean;
   allowDestructiveBookmarkChanges?: boolean;
+  forceBookmarksForThisRun?: boolean;
   allowConfigPrompt?: boolean;
   allowDangerousSyncPrompt?: boolean;
   allowEncryptionPrompt?: boolean;
@@ -56,6 +57,7 @@ type UseSyncCenterActionsOptions = {
   user: string | null;
   t: (key: string, options?: any) => string;
   leafTabSyncHasConfig: boolean;
+  leafTabWebdavConfigured: boolean;
   cloudSyncing: boolean;
   webdavSyncing: boolean;
   webdavSyncBookmarksEnabled: boolean;
@@ -84,6 +86,7 @@ export function useSyncCenterActions({
   user,
   t,
   leafTabSyncHasConfig,
+  leafTabWebdavConfigured,
   cloudSyncing,
   webdavSyncing,
   webdavSyncBookmarksEnabled,
@@ -125,20 +128,18 @@ export function useSyncCenterActions({
   const handleWebdavRepairFromCenter = useCallback(async (
     mode: LeafTabSyncInitialChoice,
   ) => {
-    if (!leafTabSyncHasConfig) {
+    setLeafTabSyncDialogOpen(false);
+    if (!leafTabWebdavConfigured) {
       openLeafTabSyncConfig();
       return false;
     }
-    if (webdavSyncBookmarksEnabled) {
-      const permissionGranted = await ensureExtensionPermission('bookmarks', {
-        requestIfNeeded: true,
-      }).catch(() => false);
-      if (!permissionGranted) {
-        toast.error(t('leaftabSyncActions.bookmarksPermissionRequired', { defaultValue: '未授予书签权限，无法执行修复同步' }));
-        return false;
-      }
+    const permissionGranted = await ensureExtensionPermission('bookmarks', {
+      requestIfNeeded: true,
+    }).catch(() => false);
+    if (!permissionGranted) {
+      toast.error(t('leaftabSyncActions.bookmarksPermissionRequired', { defaultValue: '未授予书签权限，无法执行修复同步' }));
+      return false;
     }
-    setLeafTabSyncDialogOpen(false);
     return runLongTask({
       title: mode === 'pull-remote'
         ? t('leaftabSyncActions.webdav.repair.pullTitle', { defaultValue: '正在用 WebDAV 覆盖本地' })
@@ -149,6 +150,9 @@ export function useSyncCenterActions({
       const result = await handleLeafTabSync({
         mode,
         allowDestructiveBookmarkChanges: true,
+        allowConfigPrompt: false,
+        allowDangerousSyncPrompt: false,
+        forceBookmarksForThisRun: true,
         requestBookmarkPermission: false,
         silentSuccess: true,
         progressTaskId: null,
@@ -172,7 +176,7 @@ export function useSyncCenterActions({
     });
   }, [
     handleLeafTabSync,
-    leafTabSyncHasConfig,
+    leafTabWebdavConfigured,
     openLeafTabSyncConfig,
     runLongTask,
     setLeafTabSyncDialogOpen,
@@ -321,6 +325,7 @@ export function useSyncCenterActions({
   const handleCloudRepairFromCenter = useCallback(async (
     mode: LeafTabSyncInitialChoice,
   ) => {
+    setLeafTabSyncDialogOpen(false);
     if (!user) {
       handleRequestCloudLogin();
       return false;
@@ -328,18 +333,14 @@ export function useSyncCenterActions({
     if (!(await ensureCloudLegacyMigrationReady())) {
       return false;
     }
-    let bookmarkPermissionGranted = false;
-    if (cloudSyncBookmarksConfigured) {
-      bookmarkPermissionGranted = await ensureExtensionPermission('bookmarks', {
-        requestIfNeeded: true,
-      }).catch(() => false);
-      setCloudSyncBookmarksPermissionGranted(Boolean(bookmarkPermissionGranted));
-      if (!bookmarkPermissionGranted) {
-        toast.error(t('leaftabSyncActions.bookmarksPermissionRequired', { defaultValue: '未授予书签权限，无法执行修复同步' }));
-        return false;
-      }
+    const bookmarkPermissionGranted = await ensureExtensionPermission('bookmarks', {
+      requestIfNeeded: true,
+    }).catch(() => false);
+    setCloudSyncBookmarksPermissionGranted(Boolean(bookmarkPermissionGranted));
+    if (!bookmarkPermissionGranted) {
+      toast.error(t('leaftabSyncActions.bookmarksPermissionRequired', { defaultValue: '未授予书签权限，无法执行修复同步' }));
+      return false;
     }
-    setLeafTabSyncDialogOpen(false);
     return runLongTask({
       title: mode === 'pull-remote'
         ? t('leaftabSyncActions.cloud.repair.pullTitle', { defaultValue: '正在用云端覆盖本地' })
@@ -352,7 +353,7 @@ export function useSyncCenterActions({
         allowWhenDisabled: true,
         allowDestructiveBookmarkChanges: true,
         requestBookmarkPermission: false,
-        forceBookmarksForThisRun: cloudSyncBookmarksConfigured && bookmarkPermissionGranted,
+        forceBookmarksForThisRun: bookmarkPermissionGranted,
         retryAfterConflictRefresh: true,
         retryAfterForceUnlock: true,
         silentSuccess: true,
