@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_appTitle__",
   "version": "2.0.6",
-  "version_name": "2.0.6-alpha.1",
+  "version_name": "2.0.6-alpha.2",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "chrome_url_overrides": {
