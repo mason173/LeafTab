@@ -146,7 +146,7 @@ describe('searchSuggestionEngine', () => {
     expect(actions[0]?.reasons?.length).toBeGreaterThan(0);
   });
 
-  it('keeps remote suggestions behind concrete history targets for navigate queries', () => {
+  it('prioritizes remote suggestions before local targets for navigate queries', () => {
     const actions = buildSearchSuggestionActions({
       mode: 'default',
       searchValue: 'open',
@@ -199,11 +199,11 @@ describe('searchSuggestionEngine', () => {
     });
 
     expect(actions.map((action) => action.item.label)).toEqual([
+      'openai官网',
       'OpenAI',
       'Open Source China',
       'openai',
       'OpenAI Platform',
-      'openai官网',
     ]);
   });
 
@@ -249,7 +249,7 @@ describe('searchSuggestionEngine', () => {
     ]);
   });
 
-  it('mixes tabs and bookmarks into default navigate results before fallback sources', () => {
+  it('keeps tabs and bookmarks behind remote suggestions in default navigate results', () => {
     const actions = buildSearchSuggestionActions({
       mode: 'default',
       searchValue: 'github',
@@ -310,12 +310,12 @@ describe('searchSuggestionEngine', () => {
     });
 
     expect(actions.map((action) => action.item.label)).toEqual([
-      'GitHub Pull Requests',
+      'github官网',
       'GitHub',
+      'GitHub Pull Requests',
       'GitHub Repo',
       'github search',
       'GitHub Issues',
-      'github官网',
     ]);
   });
 
@@ -387,17 +387,17 @@ describe('searchSuggestionEngine', () => {
     });
 
     expect(actions.map((action) => action.item.label)).toEqual([
+      'react server components 教程',
       'react server components tutorial react blog',
       'react server components tutorial react docs',
       'react server components tutorial docs',
       'react server components tutorial bookmark',
       'react server components tutorial',
       'react server components tutorial article',
-      'react server components 教程',
     ]);
   });
 
-  it('prioritizes official-looking targets ahead of remote suggestions for official intent queries', () => {
+  it('prioritizes remote suggestions even for official intent queries', () => {
     const actions = buildSearchSuggestionActions({
       mode: 'default',
       searchValue: 'github 官网',
@@ -442,9 +442,9 @@ describe('searchSuggestionEngine', () => {
     });
 
     expect(actions.map((action) => action.item.label)).toEqual([
+      'github官网',
       'GitHub',
       'GitHub Docs',
-      'github官网',
     ]);
   });
 

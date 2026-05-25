@@ -632,6 +632,7 @@ describe('encrypted sync remote integration', () => {
       shortcutTitles: ['Inbox', 'Calendar'],
       bookmarkCount: 6,
     });
+    localSnapshot.customShortcutIcons['shortcut-1'] = 'data:image/png;base64,encrypted-webdav-icon';
     const pushEngine = createEngine({
       deviceId: 'device-a',
       remoteStore,
@@ -643,6 +644,12 @@ describe('encrypted sync remote integration', () => {
 
     const webdavStateAfterPush = service.getState().webdav.entries;
     expect(webdavStateAfterPush['leaftab/v1/head.json']).toBeTruthy();
+    expect(
+      Object.keys(webdavStateAfterPush).some((path) => path.startsWith('leaftab/v1/assets/shortcut-icons/')),
+    ).toBe(true);
+    expect(
+      Object.values(webdavStateAfterPush).some((body) => String(body).includes('encrypted-webdav-icon')),
+    ).toBe(false);
 
     const pullEngine = createEngine({
       deviceId: 'device-b',
@@ -667,6 +674,7 @@ describe('encrypted sync remote integration', () => {
     const pullResult = await pullEngine.engine.sync('pull-remote');
     expect(pullResult.kind).toBe('pull');
     expect(pullEngine.snapshotRef.current.shortcuts).toEqual(localSnapshot.shortcuts);
+    expect(pullEngine.snapshotRef.current.customShortcutIcons).toEqual(localSnapshot.customShortcutIcons);
     expect(pullEngine.snapshotRef.current.bookmarkItems).toEqual(localSnapshot.bookmarkItems);
   });
 

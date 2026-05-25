@@ -11,7 +11,10 @@ import {
   type LeafTabSyncHeadFile,
   type LeafTabSyncSnapshot,
 } from './schema';
-import { collectLeafTabSyncChangedPayloadPaths, createLeafTabSyncSerializedSnapshot } from './fileMap';
+import {
+  collectLeafTabSyncChangedPayloadPaths,
+  createLeafTabSyncSerializedSnapshot,
+} from './fileMap';
 import { materializeLeafTabSyncSnapshotFromPayloadMap } from './snapshotCodec';
 import type {
   LeafTabSyncRemoteStore,
@@ -102,6 +105,10 @@ const parseJsonOrNull = <T>(text: string): T | null => {
   } catch {
     return null;
   }
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 };
 
 const REMOTE_CACHE_STORAGE_PREFIX = 'leaftab_sync_remote_state_v1:';
@@ -431,6 +438,24 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
       [commit.manifestPath, manifest],
       ...packEntries.map(([packRef, value]) => [packRef.path, value]),
     ]);
+    const customIconAssetPaths = packEntries.flatMap(([, value]) => {
+      if (!isRecord(value) || value.kind !== 'custom-shortcut-icons' || !isRecord(value.assets)) {
+        return [] as string[];
+      }
+      return Object.values(value.assets)
+        .map((asset) => (isRecord(asset) && typeof asset.path === 'string' ? asset.path : ''))
+        .filter(Boolean);
+    });
+    const assetEntries = await runInBatches(
+      Array.from(new Set(customIconAssetPaths)),
+      READ_BATCH_CONCURRENCY,
+      async (path) => [path, await this.getText(path)] as const,
+    );
+    assetEntries.forEach(([path, body]) => {
+      if (body) {
+        payloadMap[path] = body;
+      }
+    });
     const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, commit);
     if (!snapshot) {
       this.clearRemoteCache();
@@ -476,6 +501,13 @@ export class LeafTabSyncWebdavStore implements LeafTabSyncRemoteStore {
 
     const writes = Object.entries(serialized.payloads)
       .map(([path, payload]) => ({ path, payload }));
+
+    const assetWrites = Object.entries(serialized.assetFiles);
+
+    await runInBatches(assetWrites, WRITE_BATCH_CONCURRENCY, async ([path, body]) => {
+      await this.putText(path, body, 'text/plain;charset=utf-8');
+      return null;
+    });
 
     await runInBatches(writes, WRITE_BATCH_CONCURRENCY, async ({ path, payload }) => {
       await this.putJson(path, payload);

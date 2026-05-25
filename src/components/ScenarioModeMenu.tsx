@@ -92,7 +92,7 @@ function ScenarioModeMenu({
           <div className="px-[10px] pt-[8px] pb-[6px]">
             <p className="text-[12px] text-muted-foreground leading-none">{t('scenario.title')}</p>
           </div>
-          <ScrollArea className="max-h-[260px]">
+          <ScrollArea className="h-[min(260px,calc(100vh-220px))] min-h-0 pr-1">
             <div className="flex flex-col gap-[4px] px-[4px]">
               {scenarioModes.map((mode) => {
                 const Icon = getScenarioIconByKey(mode.icon);

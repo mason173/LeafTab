@@ -150,7 +150,10 @@ describe('custom shortcut icon sync payloads', () => {
     const snapshot = createSnapshot();
     const serialized = createLeafTabSyncSerializedSnapshot(snapshot);
     const rematerialized = materializeLeafTabSyncSnapshotFromPayloadMap(
-      serialized.payloads,
+      {
+        ...serialized.payloads,
+        ...serialized.assetFiles,
+      },
       serialized.commit,
     );
 
@@ -158,6 +161,12 @@ describe('custom shortcut icon sync payloads', () => {
       shortcut_a: ICON_A,
     });
     expect(Object.keys(serialized.payloads)).toContain('leaftab/v1/packs/custom-shortcut-icons.pack.json');
+
+    const customIconPack = serialized.payloads['leaftab/v1/packs/custom-shortcut-icons.pack.json'] as any;
+    expect(customIconPack.icons).toEqual({});
+    expect(customIconPack.assets.shortcut_a.path).toMatch(/^leaftab\/v1\/assets\/shortcut-icons\/v1_/);
+    expect(Object.values(serialized.assetFiles)).toContain(ICON_A);
+    expect(JSON.stringify(customIconPack)).not.toContain(ICON_A);
 
     const bundle = createLeafTabLocalBackupBundle({ snapshot });
     const imported = parseLeafTabLocalBackupImport(bundle);
@@ -168,6 +177,31 @@ describe('custom shortcut icon sync payloads', () => {
         shortcut_a: ICON_A,
       });
     }
+  });
+
+  it('keeps reading legacy custom icon packs that store data URLs inline', () => {
+    const snapshot = createSnapshot();
+    const serialized = createLeafTabSyncSerializedSnapshot(snapshot);
+    const customIconPackPath = 'leaftab/v1/packs/custom-shortcut-icons.pack.json';
+    const legacyPayloads = {
+      ...serialized.payloads,
+      [customIconPackPath]: {
+        version: 2,
+        kind: 'custom-shortcut-icons',
+        generatedAt: snapshot.meta.generatedAt,
+        icons: {
+          shortcut_a: ICON_A,
+        },
+      },
+    };
+    const rematerialized = materializeLeafTabSyncSnapshotFromPayloadMap(
+      legacyPayloads,
+      serialized.commit,
+    );
+
+    expect(rematerialized?.customShortcutIcons).toEqual({
+      shortcut_a: ICON_A,
+    });
   });
 
   it('keeps custom icons in legacy backup envelopes', () => {

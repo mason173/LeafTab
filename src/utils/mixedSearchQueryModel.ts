@@ -106,10 +106,10 @@ function resolveSourcePlan(intent: MixedSearchIntent): MixedSearchSourceId[] {
     case 'command':
       return ['commands', 'settings', 'shortcuts', 'tabs', 'bookmarks'];
     case 'navigate':
-      return ['tabs', 'shortcuts', 'bookmarks', 'builtin-sites', 'local-history', 'remote', 'browser-history'];
+      return ['remote', 'shortcuts', 'builtin-sites', 'tabs', 'bookmarks', 'local-history', 'browser-history'];
     case 'search':
     default:
-      return ['shortcuts', 'builtin-sites', 'tabs', 'bookmarks', 'settings', 'local-history', 'remote', 'browser-history'];
+      return ['remote', 'shortcuts', 'builtin-sites', 'settings', 'tabs', 'bookmarks', 'local-history', 'browser-history'];
   }
 }
 

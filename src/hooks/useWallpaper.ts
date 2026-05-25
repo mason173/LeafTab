@@ -38,6 +38,9 @@ const REQUEST_TIMEOUT_MS = 9000;
 const DYNAMIC_WALLPAPER_ID_KEY = 'dynamicWallpaperId';
 const WALLPAPER_ROTATION_SETTINGS_KEY = 'wallpaperRotationSettings';
 const WALLPAPER_ROTATION_OFFSETS_KEY = 'wallpaperRotationOffsets';
+const CUSTOM_WALLPAPER_BOOT_CACHE_KEY = 'customWallpaperBootCache';
+const CUSTOM_WALLPAPER_BOOT_CACHE_MAX_LENGTH = 1_200_000;
+const CUSTOM_WALLPAPER_ROTATION_BOOT_DELAY_MS = 2500;
 
 type BingCacheMeta = {
   slot: string;
@@ -266,6 +269,28 @@ const getInitialBingWallpaper = (): string => {
   return (meta?.sourceUrl || '').trim();
 };
 
+const readCustomWallpaperBootCache = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const value = localStorage.getItem(CUSTOM_WALLPAPER_BOOT_CACHE_KEY);
+    return value && value.trim() ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCustomWallpaperBootCache = (wallpaper: string | null) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const value = wallpaper && wallpaper.trim() ? wallpaper : '';
+    if (!value || value.length > CUSTOM_WALLPAPER_BOOT_CACHE_MAX_LENGTH) {
+      localStorage.removeItem(CUSTOM_WALLPAPER_BOOT_CACHE_KEY);
+      return;
+    }
+    localStorage.setItem(CUSTOM_WALLPAPER_BOOT_CACHE_KEY, value);
+  } catch {}
+};
+
 const getRotatableWallpaperValues = (
   mode: RotatableWallpaperMode,
   customWallpaperGallery: string[],
@@ -283,6 +308,7 @@ export function useWallpaper() {
   const firefox = isFirefoxBuildTarget();
   const isDocumentVisible = useDocumentVisibility();
   const initialBingWallpaper = getInitialBingWallpaper();
+  const initialCustomWallpaper = readCustomWallpaperBootCache();
   const [hasStoredWallpaperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('wallpaperMode');
     return saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom' || saved === 'dynamic';
@@ -294,9 +320,12 @@ export function useWallpaper() {
   const manualBingRefreshPromiseRef = useRef<Promise<void> | null>(null);
   const manualBingRefreshAtRef = useRef(0);
   const [isBingWallpaperRefreshing, setIsBingWallpaperRefreshing] = useState(false);
-  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
-  const [customWallpaperGallery, setCustomWallpaperGallery] = useState<string[]>([]);
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(() => initialCustomWallpaper);
+  const [customWallpaperGallery, setCustomWallpaperGallery] = useState<string[]>(() => (
+    initialCustomWallpaper ? [initialCustomWallpaper] : []
+  ));
   const [customWallpaperLoaded, setCustomWallpaperLoaded] = useState(false);
+  const [customWallpaperRotationBootReady, setCustomWallpaperRotationBootReady] = useState(false);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
     if (saved === 'bing' || saved === 'dynamic' || saved === 'weather' || saved === 'color' || saved === 'custom') {
@@ -405,11 +434,22 @@ export function useWallpaper() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getWallpaper(), getWallpaperGallery()])
-      .then(async ([wallpaper, gallery]) => {
+    getWallpaper()
+      .then(async (wallpaper) => {
+        if (cancelled) return;
+        if (wallpaper) {
+          setCustomWallpaper(wallpaper);
+          setCustomWallpaperGallery((prev) => (
+            prev.includes(wallpaper) ? prev : [wallpaper, ...prev]
+          ));
+          writeCustomWallpaperBootCache(wallpaper);
+          setCustomWallpaperLoaded(true);
+        }
+
+        const gallery = await getWallpaperGallery();
         if (cancelled) return;
         const normalizedGallery = Array.isArray(gallery) ? gallery.filter((item) => item.trim().length > 0) : [];
-        const effectiveWallpaper = wallpaper || normalizedGallery[0] || null;
+        const effectiveWallpaper = wallpaper || normalizedGallery[0] || initialCustomWallpaper || null;
         const effectiveGallery = effectiveWallpaper
           ? normalizedGallery.includes(effectiveWallpaper)
             ? normalizedGallery
@@ -417,18 +457,29 @@ export function useWallpaper() {
           : normalizedGallery;
         setCustomWallpaper(effectiveWallpaper);
         setCustomWallpaperGallery(effectiveGallery);
+        writeCustomWallpaperBootCache(effectiveWallpaper);
         setCustomWallpaperLoaded(true);
       })
       .catch(() => {
         if (cancelled) return;
-        setCustomWallpaper(null);
-        setCustomWallpaperGallery([]);
+        if (!initialCustomWallpaper) {
+          setCustomWallpaper(null);
+          setCustomWallpaperGallery([]);
+        }
         setCustomWallpaperLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [hasStoredWallpaperMode]);
+
+  useEffect(() => {
+    if (!customWallpaperLoaded) return;
+    const timer = window.setTimeout(() => {
+      setCustomWallpaperRotationBootReady(true);
+    }, CUSTOM_WALLPAPER_ROTATION_BOOT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [customWallpaperLoaded]);
 
   useEffect(() => {
     let cancelled = false;
@@ -636,6 +687,7 @@ export function useWallpaper() {
     }
 
     const activeMode = wallpaperMode;
+    if (activeMode === 'custom' && !customWallpaperRotationBootReady) return;
     const interval = wallpaperRotationSettings[activeMode];
     if (interval === 'off') return;
 
@@ -668,6 +720,7 @@ export function useWallpaper() {
 
       if (customWallpaper !== targetValue) {
         setCustomWallpaper(targetValue);
+        writeCustomWallpaperBootCache(targetValue);
         void saveWallpaper(targetValue);
       }
     };
@@ -693,6 +746,7 @@ export function useWallpaper() {
     colorWallpaperId,
     customWallpaper,
     customWallpaperGallery,
+    customWallpaperRotationBootReady,
     dynamicWallpaperId,
     isDocumentVisible,
     wallpaperMode,
@@ -735,10 +789,12 @@ export function useWallpaper() {
   const setSelectedCustomWallpaper = async (wallpaper: string | null) => {
     if (!wallpaper) {
       setCustomWallpaper(null);
+      writeCustomWallpaperBootCache(null);
       return;
     }
     const targetIndex = Math.max(0, customWallpaperGallery.indexOf(wallpaper));
     setCustomWallpaper(wallpaper);
+    writeCustomWallpaperBootCache(wallpaper);
     setCustomWallpaperGallery((prev) => {
       if (prev.includes(wallpaper)) {
         return prev;
@@ -759,6 +815,7 @@ export function useWallpaper() {
     const nextCurrent = normalized[0] || nextGallery[0] || null;
     setCustomWallpaperGallery(nextGallery);
     setCustomWallpaper(nextCurrent);
+    writeCustomWallpaperBootCache(nextCurrent);
     if (nextCurrent) {
       syncRotationOffsetForMode('custom', nextGallery.indexOf(nextCurrent), nextGallery.length);
     }

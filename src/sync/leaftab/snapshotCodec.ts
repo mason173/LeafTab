@@ -138,6 +138,14 @@ export const materializeLeafTabSyncSnapshotFromPayloadMap = (
           customShortcutIcons[shortcutId.trim()] = dataUrl;
         }
       });
+      Object.entries(isRecord(value.assets) ? value.assets : {}).forEach(([shortcutId, asset]) => {
+        if (!shortcutId.trim() || !isRecord(asset)) return;
+        const assetPath = typeof asset.path === 'string' ? asset.path : '';
+        const dataUrl = payloadMap[assetPath];
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+          customShortcutIcons[shortcutId.trim()] = dataUrl;
+        }
+      });
       return;
     }
 

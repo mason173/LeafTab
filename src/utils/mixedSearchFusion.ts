@@ -73,22 +73,22 @@ function getSourceIntentWeight(sourceId: MixedSearchSourceId, queryModel: MixedS
 
   if (intent === 'navigate') {
     switch (sourceId) {
+      case 'remote':
+        return 430;
       case 'tabs':
-        return 420;
+        return 160;
       case 'recently-closed':
         return 340;
       case 'shortcuts':
         return 390;
       case 'bookmarks':
-        return 360;
+        return 150;
       case 'builtin-sites':
         return 320;
       case 'local-history':
-        return 170;
+        return 80;
       case 'browser-history':
-        return 130;
-      case 'remote':
-        return 25;
+        return 70;
       case 'settings':
         return 50;
       case 'commands':
@@ -131,22 +131,22 @@ function getSourceIntentWeight(sourceId: MixedSearchSourceId, queryModel: MixedS
   }
 
   switch (sourceId) {
+    case 'remote':
+      return 420;
     case 'shortcuts':
       return 320;
     case 'builtin-sites':
       return 300;
     case 'tabs':
-      return 280;
+      return 120;
     case 'bookmarks':
-      return 260;
+      return 110;
     case 'settings':
       return 220;
     case 'local-history':
-      return 170;
+      return 70;
     case 'browser-history':
-      return 110;
-    case 'remote':
-      return 20;
+      return 60;
     case 'commands':
       return 60;
     default:
@@ -229,12 +229,8 @@ function scoreSuggestionItem(
     }
   }
 
-  if (queryModel.intent === 'navigate' && sourceId === 'remote') {
-    score -= 100;
-  }
-
   if (item.type === 'remote') {
-    score -= 16;
+    score += queryModel.intent === 'navigate' || queryModel.intent === 'search' ? 36 : -16;
   }
 
   if (item.type === 'history' && item.historySource === 'local' && queryModel.intent === 'navigate') {
@@ -415,20 +411,18 @@ function resolveFusionPhases(
       ];
     case 'navigate':
       return [
-        { sources: ['tabs', 'shortcuts', 'bookmarks'], rounds: 1 },
-        { sources: ['builtin-sites'], rounds: 1 },
-        { sources: ['tabs', 'shortcuts', 'bookmarks', 'builtin-sites'], rounds: 'all' },
-        { sources: ['local-history', 'browser-history'], rounds: 'all' },
-        { sources: ['remote'], rounds: 'all' },
+        { sources: ['remote'], rounds: 3 },
+        { sources: ['shortcuts', 'builtin-sites'], rounds: 1 },
+        { sources: ['remote', 'shortcuts', 'builtin-sites'], rounds: 'all' },
+        { sources: ['tabs', 'bookmarks', 'local-history', 'browser-history'], rounds: 'all' },
       ];
     case 'search':
     default:
       return [
-        { sources: ['shortcuts', 'builtin-sites'], rounds: 1 },
-        { sources: ['tabs', 'bookmarks', 'settings'], rounds: 1 },
-        { sources: ['shortcuts', 'builtin-sites', 'tabs', 'bookmarks', 'settings'], rounds: 'all' },
-        { sources: ['local-history', 'browser-history'], rounds: 'all' },
-        { sources: ['remote'], rounds: 'all' },
+        { sources: ['remote'], rounds: 5 },
+        { sources: ['shortcuts', 'builtin-sites', 'settings'], rounds: 1 },
+        { sources: ['remote', 'shortcuts', 'builtin-sites', 'settings'], rounds: 'all' },
+        { sources: ['tabs', 'bookmarks', 'local-history', 'browser-history'], rounds: 'all' },
       ];
   }
 }

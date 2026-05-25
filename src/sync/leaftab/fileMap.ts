@@ -76,6 +76,7 @@ interface LeafTabSyncCustomShortcutIconsPackFile {
   kind: 'custom-shortcut-icons';
   generatedAt: string;
   icons: Record<string, string>;
+  assets: Record<string, LeafTabSyncCustomShortcutIconAssetRef>;
 }
 
 interface LeafTabSyncBookmarkOrderPackFile {
@@ -91,6 +92,15 @@ const normalizeRoot = (rootPath = LEAFTAB_SYNC_DEFAULT_ROOT) => {
 
 const stableStringify = (value: unknown) => JSON.stringify(value, null, 2);
 const sameContent = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+
+export interface LeafTabSyncCustomShortcutIconAssetRef {
+  version: 1;
+  path: string;
+  mime: string;
+  encoding: 'data-url';
+  size: number;
+  hash: string;
+}
 
 const createEmptyCommit = (
   snapshot: LeafTabSyncSnapshot,
@@ -112,6 +122,15 @@ const hashStringToShard = (value: string, shardCount: number) => {
     hash = Math.imul(hash, 16777619);
   }
   return ((hash >>> 0) % shardCount).toString(16).padStart(2, '0');
+};
+
+const hashStringStable = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).padStart(7, '0');
 };
 
 const sortRecord = <T>(value: Record<string, T>) => {
@@ -156,6 +175,43 @@ const createManifestPackRef = (
 
 const shouldIncludePath = (includePaths: Set<string> | null | undefined, path: string) => {
   return !includePaths || includePaths.has(path);
+};
+
+const getDataUrlMime = (dataUrl: string) => {
+  const match = /^data:([^;,]+)[;,]/i.exec(dataUrl);
+  return match?.[1]?.toLowerCase() || 'image/*';
+};
+
+export const getLeafTabSyncCustomShortcutIconAssetPath = (
+  assetHash: string,
+  rootPath = LEAFTAB_SYNC_DEFAULT_ROOT,
+) => `${normalizeRoot(rootPath)}/assets/shortcut-icons/${assetHash}.txt`;
+
+export const buildLeafTabSyncCustomShortcutIconAssets = (
+  customShortcutIcons: Record<string, string> | null | undefined,
+  rootPath = LEAFTAB_SYNC_DEFAULT_ROOT,
+) => {
+  const assets: Record<string, LeafTabSyncCustomShortcutIconAssetRef> = {};
+  const files: LeafTabSyncFileMap = {};
+
+  Object.entries(customShortcutIcons || {})
+    .filter(([, dataUrl]) => typeof dataUrl === 'string' && dataUrl.startsWith('data:image/'))
+    .sort(([left], [right]) => left.localeCompare(right))
+    .forEach(([shortcutId, dataUrl]) => {
+      const hash = `v1_${hashStringStable(dataUrl)}_${dataUrl.length.toString(36)}`;
+      const path = getLeafTabSyncCustomShortcutIconAssetPath(hash, rootPath);
+      assets[shortcutId] = {
+        version: 1,
+        path,
+        mime: getDataUrlMime(dataUrl),
+        encoding: 'data-url',
+        size: dataUrl.length,
+        hash,
+      };
+      files[path] = dataUrl;
+    });
+
+  return { assets, files };
 };
 
 const buildSnapshotPayloadMap = (
@@ -214,12 +270,17 @@ const buildSnapshotPayloadMap = (
     });
 
   const customShortcutIconsPath = getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath);
+  const customShortcutIconAssets = buildLeafTabSyncCustomShortcutIconAssets(
+    snapshot.customShortcutIcons || {},
+    rootPath,
+  );
   if (shouldIncludePath(includePaths, customShortcutIconsPath)) {
     payloads[customShortcutIconsPath] = {
       version: LEAFTAB_SYNC_SCHEMA_VERSION,
       kind: 'custom-shortcut-icons',
       generatedAt: snapshot.meta.generatedAt,
-      icons: sortRecord(snapshot.customShortcutIcons || {}),
+      icons: {},
+      assets: sortRecord(customShortcutIconAssets.assets),
     } satisfies LeafTabSyncCustomShortcutIconsPackFile;
   }
   manifestPacks.push(
@@ -421,7 +482,10 @@ export const collectLeafTabSyncChangedPayloadPaths = (
     changedPaths.add(getLeafTabSyncPackPath('shortcut-orders', null, rootPath));
   }
 
-  if (!sameContent(previousSnapshot.customShortcutIcons || {}, nextSnapshot.customShortcutIcons || {})) {
+  if (
+    Object.keys(nextSnapshot.customShortcutIcons || {}).length > 0
+    || !sameContent(previousSnapshot.customShortcutIcons || {}, nextSnapshot.customShortcutIcons || {})
+  ) {
     changedPaths.add(getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath));
   }
 
@@ -477,9 +541,17 @@ export const createLeafTabSyncSerializedSnapshot = (
   const head = options?.head || createLeafTabSyncHeadFile(commit.id, commit.createdAt);
   const includePaths = options?.includePaths ? new Set(options.includePaths) : null;
   const payloads = buildSnapshotPayloadMap(snapshot, rootPath, commit, includePaths);
+  const assetFiles = shouldIncludePath(
+    includePaths,
+    getLeafTabSyncPackPath('custom-shortcut-icons', null, rootPath),
+  )
+    ? buildLeafTabSyncCustomShortcutIconAssets(snapshot.customShortcutIcons || {}, rootPath).files
+    : {};
   const files: LeafTabSyncFileMap = Object.fromEntries(
     Object.entries(payloads).map(([path, payload]) => [path, stableStringify(payload)]),
   );
+
+  Object.assign(files, assetFiles);
 
   files[getLeafTabSyncCommitPath(commit.id, rootPath)] = stableStringify(commit);
   files[getLeafTabSyncHeadPath(rootPath)] = stableStringify(head);
@@ -488,6 +560,7 @@ export const createLeafTabSyncSerializedSnapshot = (
     commit,
     head,
     payloads,
+    assetFiles,
     files,
   };
 };

@@ -134,6 +134,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 };
 
+const collectCustomShortcutIconAssetPathsFromPayloadMap = (payloadMap: Record<string, unknown>) => {
+  const paths = new Set<string>();
+  Object.values(payloadMap).forEach((value) => {
+    if (!isRecord(value) || value.kind !== 'custom-shortcut-icons' || !isRecord(value.assets)) {
+      return;
+    }
+    Object.values(value.assets).forEach((asset) => {
+      if (isRecord(asset) && typeof asset.path === 'string' && asset.path.trim()) {
+        paths.add(asset.path.trim());
+      }
+    });
+  });
+  return Array.from(paths);
+};
+
 const isEncryptedFileEnvelope = (value: unknown): value is LeafTabSyncEncryptedFileEnvelope => {
   return (
     isRecord(value)
@@ -633,6 +648,14 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
       payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
     }));
 
+    const assetPaths = collectCustomShortcutIconAssetPathsFromPayloadMap(payloadMap);
+    const assetBodies = await this.transport.readEncryptedFiles(assetPaths);
+    await Promise.all(assetPaths.map(async (path) => {
+      const envelope = normalizeEncryptedFileTransportState(parseJsonText<unknown>(assetBodies[path] || null));
+      if (!envelope) return;
+      payloadMap[path] = await decryptLeafTabSyncPayload<unknown>(envelope, keyBytes);
+    }));
+
     const snapshot = materializeLeafTabSyncSnapshotFromPayloadMap(payloadMap, state.commit);
     if (!snapshot) {
       this.clearRemoteCache();
@@ -686,7 +709,10 @@ export class LeafTabSyncEncryptedRemoteStore implements LeafTabSyncRemoteStore {
     });
 
     const encryptedEntries = await Promise.all(
-      Object.entries(serialized.payloads).map(async ([path, payload]) => {
+      [
+        ...Object.entries(serialized.payloads),
+        ...Object.entries(serialized.assetFiles),
+      ].map(async ([path, payload]) => {
         const envelope = await encryptLeafTabSyncPayload(payload, keyBytes);
         return [path, serializeJsonStable(envelope)] as const;
       }),
