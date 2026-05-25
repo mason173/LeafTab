@@ -17,6 +17,7 @@ import {
   createLeafTabSyncBuildState,
   projectLeafTabSyncSnapshotToAppState,
 } from './snapshot';
+import { mergeLeafTabSyncSnapshot } from './merge';
 import { materializeLeafTabSyncSnapshotFromPayloadMap } from './snapshotCodec';
 import type { LeafTabSyncSnapshot } from './schema';
 
@@ -269,6 +270,69 @@ describe('custom shortcut icon sync payloads', () => {
       child_a: ICON_A,
     });
     expect(projectLeafTabSyncSnapshotToAppState(snapshot).customShortcutIcons).toEqual({
+      child_a: ICON_A,
+    });
+  });
+
+  it('keeps folder child custom icons during snapshot merges', () => {
+    const now = '2026-05-09T00:00:00.000Z';
+    const baseSnapshot = createSnapshot();
+    baseSnapshot.shortcuts = {};
+    baseSnapshot.shortcutOrders = {};
+    baseSnapshot.customShortcutIcons = {};
+
+    const remoteSnapshot = createSnapshot();
+    remoteSnapshot.shortcuts = {
+      folder_a: {
+        id: 'folder_a',
+        type: 'shortcut',
+        scenarioId: 'default',
+        title: 'Folder',
+        url: '',
+        icon: '',
+        description: '',
+        kind: 'folder',
+        children: [{
+          id: 'child_a',
+          title: 'Child',
+          url: 'https://child.example',
+          icon: '',
+          kind: 'link',
+        }],
+        createdAt: now,
+        updatedAt: now,
+        updatedBy: 'device-b',
+        revision: 1,
+      },
+    };
+    remoteSnapshot.shortcutOrders = {
+      default: {
+        type: 'shortcut-order',
+        scenarioId: 'default',
+        ids: ['folder_a'],
+        updatedAt: now,
+        updatedBy: 'device-b',
+        revision: 1,
+      },
+    };
+    remoteSnapshot.customShortcutIcons = {
+      child_a: ICON_A,
+    };
+
+    const merged = mergeLeafTabSyncSnapshot(
+      baseSnapshot,
+      baseSnapshot,
+      remoteSnapshot,
+      {
+        deviceId: 'device-a',
+        generatedAt: now,
+      },
+    );
+
+    expect(merged.snapshot.customShortcutIcons).toEqual({
+      child_a: ICON_A,
+    });
+    expect(projectLeafTabSyncSnapshotToAppState(merged.snapshot).customShortcutIcons).toEqual({
       child_a: ICON_A,
     });
   });

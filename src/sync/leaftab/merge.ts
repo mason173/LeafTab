@@ -192,6 +192,33 @@ const resolveMergedCustomShortcutIcons = (params: {
   return nextIcons;
 };
 
+const collectShortcutTreeIdsFromEntities = (
+  shortcuts: Record<string, LeafTabSyncShortcutEntity>,
+) => {
+  const ids = new Set<string>();
+
+  const visitChildren = (children: LeafTabSyncShortcutEntity['children']) => {
+    (children || []).forEach((child) => {
+      if (typeof child.id === 'string' && child.id.trim()) {
+        ids.add(child.id.trim());
+      }
+      visitChildren(child.children);
+    });
+  };
+
+  Object.entries(shortcuts || {}).forEach(([shortcutId, shortcut]) => {
+    if (shortcutId.trim()) {
+      ids.add(shortcutId.trim());
+    }
+    if (typeof shortcut.id === 'string' && shortcut.id.trim()) {
+      ids.add(shortcut.id.trim());
+    }
+    visitChildren(shortcut.children);
+  });
+
+  return ids;
+};
+
 const haveSamePreferenceValue = (left: unknown, right: unknown) => {
   return JSON.stringify(left) === JSON.stringify(right);
 };
@@ -791,11 +818,12 @@ export const mergeLeafTabSyncSnapshot = (
 
   const validScenarioIds = new Set(Object.keys(nextScenarios));
   const validShortcutIds = new Set(Object.keys(nextShortcuts));
+  const validShortcutIconIds = collectShortcutTreeIdsFromEntities(nextShortcuts);
   const customShortcutIcons = resolveMergedCustomShortcutIcons({
     baseSnapshot,
     localSnapshot,
     remoteSnapshot,
-    validShortcutIds,
+    validShortcutIds: validShortcutIconIds,
   });
   const validBookmarkFolderIds = new Set(Object.keys(nextBookmarkFolders));
   const validBookmarkItemIds = new Set(Object.keys(nextBookmarkItems));
