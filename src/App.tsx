@@ -35,7 +35,6 @@ import { DEFAULT_SHORTCUT_CARD_VARIANT, clampShortcutGridColumns } from '@/compo
 import { scaleShortcutIconSize } from '@/utils/shortcutIconSettings';
 import { getDisplayModeLayoutFlags } from '@/displayMode/config';
 import { DEFAULT_COLOR_WALLPAPER_ID, getColorWallpaperGradient } from '@/components/wallpaper/colorWallpapers';
-import { resolveDynamicWallpaperById } from '@/components/wallpaper/dynamicWallpapers';
 import type { AboutLeafTabModalTab } from '@/components/AboutLeafTabDialog';
 import { weatherVideoMap, sunnyWeatherVideo } from '@/components/wallpaper/weatherWallpapers';
 import type { ShortcutFolderOpeningSourceSnapshot } from '@/components/folderTransition/useFolderTransitionController';
@@ -169,8 +168,6 @@ const LOGOUT_PRE_SYNC_MAX_WAIT_MS = 2200;
 const LONG_TASK_INDICATOR_DELAY_MS = 180;
 const DARK_MODE_AUTO_DIM_OPACITY = 12;
 const DARK_MODE_AUTO_DIM_OPACITY_CAP = 85;
-const DYNAMIC_WALLPAPER_IDLE_FREEZE_MS = 18 * 1000;
-const DYNAMIC_WALLPAPER_HIGH_LOAD_IDLE_FREEZE_MS = 4 * 1000;
 
 const clampMaskOpacity = (value: number): number => {
   if (!Number.isFinite(value)) return 10;
@@ -330,9 +327,6 @@ export default function App() {
     : timeAnimationMode === 'off'
       ? false
       : !visualEffectsPolicy.disableSecondTickMotion;
-  const dynamicWallpaperIdleFreezeMs = showSeconds && effectiveTimeAnimationEnabled
-    ? DYNAMIC_WALLPAPER_HIGH_LOAD_IDLE_FREEZE_MS
-    : DYNAMIC_WALLPAPER_IDLE_FREEZE_MS;
   const {
     task: longTaskIndicator,
     startTask: startLongTaskIndicator,
@@ -340,7 +334,6 @@ export default function App() {
     finishTask: finishLongTaskIndicator,
     clearTask: clearLongTaskIndicator,
   } = useLongTaskIndicator();
-  const [isDynamicWallpaperIdleFrozen, setIsDynamicWallpaperIdleFrozen] = useState(false);
   const [globalRevealMaskVisible, setGlobalRevealMaskVisible] = useState(true);
   const [globalRevealMaskFading, setGlobalRevealMaskFading] = useState(false);
   const initialRevealReady = useInitialReveal(visualEffectsPolicy.disableInitialRevealMotion);
@@ -506,68 +499,6 @@ export default function App() {
     startLongTaskIndicator,
     updateLongTaskIndicator,
   ]);
-
-  useEffect(() => {
-    let idleTimer: number | null = null;
-
-    const clearIdleTimer = () => {
-      if (idleTimer !== null) {
-        window.clearTimeout(idleTimer);
-        idleTimer = null;
-      }
-    };
-
-    const scheduleIdleFreeze = () => {
-      clearIdleTimer();
-      idleTimer = window.setTimeout(() => {
-        setIsDynamicWallpaperIdleFrozen(true);
-      }, dynamicWallpaperIdleFreezeMs);
-    };
-
-    const freezeNow = () => {
-      clearIdleTimer();
-      setIsDynamicWallpaperIdleFrozen(true);
-    };
-
-    const markActive = () => {
-      if (document.hidden || !document.hasFocus()) {
-        freezeNow();
-        return;
-      }
-      setIsDynamicWallpaperIdleFrozen(false);
-      scheduleIdleFreeze();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        freezeNow();
-        return;
-      }
-      markActive();
-    };
-
-    markActive();
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', freezeNow);
-    window.addEventListener('focus', markActive);
-    window.addEventListener('pagehide', freezeNow);
-    window.addEventListener('pointerdown', markActive, { passive: true });
-    window.addEventListener('wheel', markActive, { passive: true });
-    window.addEventListener('touchstart', markActive, { passive: true });
-    window.addEventListener('keydown', markActive, true);
-
-    return () => {
-      clearIdleTimer();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', freezeNow);
-      window.removeEventListener('focus', markActive);
-      window.removeEventListener('pagehide', freezeNow);
-      window.removeEventListener('pointerdown', markActive);
-      window.removeEventListener('wheel', markActive);
-      window.removeEventListener('touchstart', markActive);
-      window.removeEventListener('keydown', markActive, true);
-    };
-  }, [dynamicWallpaperIdleFreezeMs]);
 
   const defaultApiBase = useMemo(() => getApiBase(), []);
 
@@ -1331,30 +1262,21 @@ export default function App() {
     wallpaperMode, setWallpaperMode,
     weatherCode, setWeatherCode,
     colorWallpaperId, setColorWallpaperId,
-    dynamicWallpaperId, setDynamicWallpaperId,
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
     darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled,
   } = useWallpaper();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
   const effectiveWallpaperMode = firefox && wallpaperMode === 'weather' ? 'bing' : wallpaperMode;
-  const dynamicWallpaperMaskDisabled = effectiveWallpaperMode === 'dynamic';
   const effectiveWallpaperMaskOpacity = useMemo(() => (
-    dynamicWallpaperMaskDisabled
-      ? 0
-      :
     resolveWallpaperMaskOpacityWithDarkModeAutoDim({
       userOpacity: wallpaperMaskOpacity,
       isDarkTheme,
       autoDimEnabled: darkModeAutoDimWallpaperEnabled,
     })
-  ), [darkModeAutoDimWallpaperEnabled, dynamicWallpaperMaskDisabled, isDarkTheme, wallpaperMaskOpacity]);
+  ), [darkModeAutoDimWallpaperEnabled, isDarkTheme, wallpaperMaskOpacity]);
   const freshWeatherVideo = weatherVideoMap[weatherCode] || sunnyWeatherVideo;
   const colorWallpaperGradient = getColorWallpaperGradient(colorWallpaperId);
-  const selectedDynamicWallpaper = resolveDynamicWallpaperById(dynamicWallpaperId);
-  const dynamicWallpaperVideoSrc = selectedDynamicWallpaper.src;
-  const dynamicWallpaperPosterSrc = selectedDynamicWallpaper.posterSrc;
-  const dynamicWallpaperPlaybackRate = selectedDynamicWallpaper.playbackRate ?? 0.7;
   const freshWallpaperSrc = effectiveWallpaperMode === 'custom'
     ? (customWallpaper || '')
     : effectiveWallpaperMode === 'bing'
@@ -1362,9 +1284,7 @@ export default function App() {
       : (bingWallpaper || imgImage);
   const fallbackWallpaperBackdropSrc = effectiveWallpaperMode === 'custom'
     ? (customWallpaper || imgImage)
-    : effectiveWallpaperMode === 'dynamic'
-      ? dynamicWallpaperPosterSrc
-      : effectiveWallpaperMode === 'bing'
+    : effectiveWallpaperMode === 'bing'
         ? (bingWallpaper || imgImage)
         : imgImage;
 
@@ -1398,7 +1318,6 @@ export default function App() {
       customWallpaper,
       weatherCode,
       colorWallpaperId,
-      dynamicWallpaperSrc: dynamicWallpaperVideoSrc,
     }, {
       // Re-sample once the rendered wallpaper image finishes loading to avoid
       // caching a fallback color from an early decode/load race.
@@ -1425,7 +1344,6 @@ export default function App() {
     customWallpaper,
     weatherCode,
     colorWallpaperId,
-    dynamicWallpaperVideoSrc,
     wallpaperImageReadyTick,
   ]);
 
@@ -1587,7 +1505,6 @@ export default function App() {
     setWallpaperMaskOpacity(normalized.wallpaperMaskOpacity);
     setDarkModeAutoDimWallpaperEnabled(normalized.darkModeAutoDimWallpaperEnabled);
     setColorWallpaperId(normalized.colorWallpaperId);
-    setWallpaperRotationInterval('dynamic', normalized.wallpaperRotationSettings.dynamic);
     setWallpaperRotationInterval('color', normalized.wallpaperRotationSettings.color);
     setWallpaperRotationInterval('custom', normalized.wallpaperRotationSettings.custom);
     if (normalized.wallpaperMode) {
@@ -1910,15 +1827,13 @@ export default function App() {
   const modeLayersVisible = !roleSelectorOpen;
   const showOverlayWallpaperLayer = modeLayersVisible && displayModeFlags.showOverlayBackground;
   const overlayBackgroundImageSrc = displayMode === 'fresh'
-    ? (effectiveWallpaperMode === 'dynamic' ? dynamicWallpaperVideoSrc : freshWallpaperSrc)
+    ? freshWallpaperSrc
     : effectiveWallpaperMode === 'custom'
       ? (customWallpaper || '')
       : effectiveWallpaperMode === 'bing'
         ? bingWallpaper
-        : effectiveWallpaperMode === 'dynamic'
-          ? dynamicWallpaperVideoSrc
         : (bingWallpaper || imgImage);
-  const usesImageWallpaperLayer = effectiveWallpaperMode !== 'weather' && effectiveWallpaperMode !== 'dynamic' && effectiveWallpaperMode !== 'color';
+  const usesImageWallpaperLayer = effectiveWallpaperMode !== 'weather' && effectiveWallpaperMode !== 'color';
   const overlayBackgroundAlt = displayMode === 'fresh' ? 'Rhythm Wallpaper' : 'Background';
   const {
     effectiveOverlayWallpaperSrc,
@@ -1929,8 +1844,7 @@ export default function App() {
     overlayBackgroundImageSrc,
     usesImageWallpaperLayer,
     showOverlayWallpaperLayer,
-    hasWeatherVisual: (effectiveWallpaperMode === 'weather' && Boolean(freshWeatherVideo))
-      || (effectiveWallpaperMode === 'dynamic' && Boolean(dynamicWallpaperVideoSrc)),
+    hasWeatherVisual: effectiveWallpaperMode === 'weather' && Boolean(freshWeatherVideo),
     disableRevealAnimation: visualEffectsPolicy.disableWallpaperRevealMotion,
   });
   const handleOverlayWallpaperReadyForRevealAndAccent = useCallback(() => {
@@ -2021,8 +1935,6 @@ export default function App() {
     onCustomWallpaperChange: setCustomWallpaper,
     colorWallpaperId,
     onColorWallpaperIdChange: setColorWallpaperId,
-    dynamicWallpaperId,
-    onDynamicWallpaperIdChange: setDynamicWallpaperId,
     wallpaperMaskOpacity,
     effectiveWallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
@@ -2034,12 +1946,10 @@ export default function App() {
     colorWallpaperId,
     customWallpaper,
     darkModeAutoDimWallpaperEnabled,
-    dynamicWallpaperId,
     effectiveWallpaperMaskOpacity,
     refreshBingWallpaper,
     setDarkModeAutoDimWallpaperEnabled,
     setColorWallpaperId,
-    setDynamicWallpaperId,
     setCustomWallpaper,
     setWallpaperMaskOpacity,
     setWallpaperMode,
@@ -2140,9 +2050,6 @@ export default function App() {
     customWallpaperLoaded,
     customWallpaper,
     colorWallpaperId,
-    dynamicWallpaperVideoSrc,
-    dynamicWallpaperPosterSrc,
-    dynamicWallpaperPlaybackRate,
     wallpaperMaskOpacity: effectiveWallpaperMaskOpacity,
     timeFont,
     onTimeFontChange: setTimeFont,
@@ -2153,9 +2060,6 @@ export default function App() {
     colorWallpaperId,
     customWallpaperLoaded,
     customWallpaper,
-    dynamicWallpaperPosterSrc,
-    dynamicWallpaperPlaybackRate,
-    dynamicWallpaperVideoSrc,
     handleDeleteScenarioMode,
     handleOpenEditScenarioMode,
     handleOpenSettings,
@@ -2413,9 +2317,6 @@ export default function App() {
     wallpaperAnimatedLayerStyle,
     effectiveWallpaperMode,
     freshWeatherVideo,
-    dynamicWallpaperVideoSrc,
-    dynamicWallpaperPosterSrc,
-    dynamicWallpaperPlaybackRate,
     colorWallpaperGradient,
     effectiveOverlayWallpaperSrc,
     overlayBackgroundAlt,
@@ -2430,7 +2331,7 @@ export default function App() {
     wallpaperClockBaseProps,
     searchExperienceBaseProps,
     baseTimeAnimationEnabled: effectiveTimeAnimationEnabled,
-    freezeDynamicWallpaperBase: visualEffectsPolicy.freezeDynamicWallpaper || isDynamicWallpaperIdleFrozen,
+    freezeDynamicWallpaperBase: visualEffectsPolicy.freezeDynamicWallpaper,
     folderTransitionController,
     compactFolderOverlayBaseProps: compactFolderOverlayProps,
     folderNameDialogOpen,
@@ -2514,7 +2415,6 @@ export default function App() {
     onCustomWallpaperChange: setCustomWallpaper,
     weatherCode,
     colorWallpaperId,
-    dynamicWallpaperSrc: dynamicWallpaperVideoSrc,
     onColorWallpaperIdChange: setColorWallpaperId,
     wallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: setWallpaperMaskOpacity,
@@ -2844,7 +2744,6 @@ export default function App() {
                     customWallpaper={customWallpaper}
                     weatherCode={weatherCode}
                     colorWallpaperId={colorWallpaperId}
-                    dynamicWallpaperSrc={dynamicWallpaperVideoSrc}
                     onSelect={async (id, layout) => {
                       const applied = await handleRoleSelect(id);
                       if (!applied) return;

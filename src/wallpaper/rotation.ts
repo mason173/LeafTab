@@ -1,4 +1,4 @@
-export type RotatableWallpaperMode = "dynamic" | "color" | "custom";
+export type RotatableWallpaperMode = "color" | "custom";
 
 export type WallpaperRotationInterval = "off" | "hourly" | "six-hours" | "daily";
 
@@ -6,16 +6,14 @@ export type WallpaperRotationSettings = Record<RotatableWallpaperMode, Wallpaper
 
 export type WallpaperRotationOffsets = Record<RotatableWallpaperMode, number>;
 
-export const ROTATABLE_WALLPAPER_MODES: RotatableWallpaperMode[] = ["dynamic", "color", "custom"];
+export const ROTATABLE_WALLPAPER_MODES: RotatableWallpaperMode[] = ["color", "custom"];
 
 export const DEFAULT_WALLPAPER_ROTATION_SETTINGS: WallpaperRotationSettings = {
-  dynamic: "off",
   color: "off",
   custom: "off",
 };
 
 export const DEFAULT_WALLPAPER_ROTATION_OFFSETS: WallpaperRotationOffsets = {
-  dynamic: 0,
   color: 0,
   custom: 0,
 };
@@ -27,7 +25,7 @@ const WALLPAPER_ROTATION_INTERVAL_MS: Record<Exclude<WallpaperRotationInterval, 
 };
 
 export const isRotatableWallpaperMode = (value: string): value is RotatableWallpaperMode =>
-  value === "dynamic" || value === "color" || value === "custom";
+  value === "color" || value === "custom";
 
 export const isWallpaperRotationInterval = (value: unknown): value is WallpaperRotationInterval =>
   value === "off" || value === "hourly" || value === "six-hours" || value === "daily";
@@ -39,7 +37,6 @@ export const normalizeWallpaperRotationSettings = (value: unknown): WallpaperRot
 
   const candidate = value as Partial<Record<RotatableWallpaperMode, unknown>>;
   return {
-    dynamic: isWallpaperRotationInterval(candidate.dynamic) ? candidate.dynamic : DEFAULT_WALLPAPER_ROTATION_SETTINGS.dynamic,
     color: isWallpaperRotationInterval(candidate.color) ? candidate.color : DEFAULT_WALLPAPER_ROTATION_SETTINGS.color,
     custom: isWallpaperRotationInterval(candidate.custom) ? candidate.custom : DEFAULT_WALLPAPER_ROTATION_SETTINGS.custom,
   };
@@ -54,7 +51,6 @@ export const normalizeWallpaperRotationOffsets = (value: unknown): WallpaperRota
   const normalizeValue = (offset: unknown) => (Number.isFinite(Number(offset)) ? Number(offset) : 0);
 
   return {
-    dynamic: normalizeValue(candidate.dynamic),
     color: normalizeValue(candidate.color),
     custom: normalizeValue(candidate.custom),
   };

@@ -9,12 +9,10 @@ import type { BingWallpaperRefreshResult } from "@/hooks/useWallpaper";
 import type { WallpaperMode } from "@/wallpaper/types";
 import { BackToSettingsButton } from "@/components/BackToSettingsButton";
 import { BingWallpaperPanel } from "./wallpaper/panels/BingWallpaperPanel";
-import { DynamicWallpaperPanel } from "./wallpaper/panels/DynamicWallpaperPanel";
 import { WeatherWallpaperPanel } from "./wallpaper/panels/WeatherWallpaperPanel";
 import { ColorWallpaperPanel } from "./wallpaper/panels/ColorWallpaperPanel";
 import { CustomWallpaperPanel } from "./wallpaper/panels/CustomWallpaperPanel";
 import { isFirefoxBuildTarget } from "@/platform/browserTarget";
-import type { DynamicWallpaperId } from "@/components/wallpaper/dynamicWallpapers";
 import type { RotatableWallpaperMode, WallpaperRotationInterval, WallpaperRotationSettings } from "@/wallpaper/rotation";
 
 const WallpaperDialogTrigger = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -47,8 +45,6 @@ interface WallpaperSelectorProps {
   onCustomWallpaperChange: (url: string) => void;
   colorWallpaperId: string;
   onColorWallpaperIdChange: (id: string) => void;
-  dynamicWallpaperId: DynamicWallpaperId;
-  onDynamicWallpaperIdChange: (id: DynamicWallpaperId) => void;
   wallpaperMaskOpacity: number;
   effectiveWallpaperMaskOpacity?: number;
   onWallpaperMaskOpacityChange: (value: number) => void;
@@ -75,8 +71,6 @@ export default function WallpaperSelector({
   onCustomWallpaperChange,
   colorWallpaperId,
   onColorWallpaperIdChange,
-  dynamicWallpaperId,
-  onDynamicWallpaperIdChange,
   wallpaperMaskOpacity,
   effectiveWallpaperMaskOpacity,
   onWallpaperMaskOpacityChange,
@@ -98,7 +92,7 @@ export default function WallpaperSelector({
   const isolationFadeClass = "transition-opacity duration-220 ease-out";
   const previewWallpaperMaskOpacity = effectiveWallpaperMaskOpacity ?? wallpaperMaskOpacity;
   const rotationSelectDisabled = activeTab === "bing" || activeTab === "weather";
-  const rotationSelectValue = activeTab === "dynamic" || activeTab === "color" || activeTab === "custom"
+  const rotationSelectValue = activeTab === "color" || activeTab === "custom"
     ? wallpaperRotationSettings[activeTab]
     : "off";
 
@@ -155,20 +149,13 @@ export default function WallpaperSelector({
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col">
             <div className={`px-6 pb-4 ${isolationFadeClass} ${isMaskSliderIsolation ? "opacity-0 pointer-events-none select-none" : ""}`}>
-              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-4" : "grid-cols-5"} rounded-[16px]`}>
+              <TabsList className={`grid w-full ${hideWeather ? "grid-cols-3" : "grid-cols-4"} rounded-[16px]`}>
                 <TabsTrigger
                   value="bing"
                   className="rounded-xl truncate text-[13px]"
                   title={t("weather.wallpaper.bing")}
                 >
                   {t("weather.wallpaper.bing")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="dynamic"
-                  className="rounded-xl truncate text-[13px]"
-                  title={t("weather.wallpaper.dynamic", { defaultValue: "动态背景" })}
-                >
-                  {t("weather.wallpaper.dynamic", { defaultValue: "动态背景" })}
                 </TabsTrigger>
                 {!hideWeather && (
                   <TabsTrigger
@@ -229,7 +216,7 @@ export default function WallpaperSelector({
                 <Select
                   value={rotationSelectValue}
                   onValueChange={(value) => {
-                    if (activeTab === "dynamic" || activeTab === "color" || activeTab === "custom") {
+                    if (activeTab === "color" || activeTab === "custom") {
                       onWallpaperRotationIntervalChange(activeTab, value as WallpaperRotationInterval);
                     }
                   }}
@@ -261,13 +248,6 @@ export default function WallpaperSelector({
                 isMaskSliderIsolation={isMaskSliderIsolation}
                 onMaskSliderInteractionStart={() => setIsMaskSliderInteracting(true)}
                 onMaskSliderInteractionEnd={() => setIsMaskSliderInteracting(false)}
-              />
-
-              <DynamicWallpaperPanel
-                mode={mode}
-                dynamicWallpaperId={dynamicWallpaperId}
-                onDynamicWallpaperIdChange={onDynamicWallpaperIdChange}
-                onModeChange={onModeChange}
               />
 
               {!hideWeather && (

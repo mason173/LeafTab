@@ -15,7 +15,6 @@ type DynamicAccentInput = {
   customWallpaper: string | null;
   weatherCode: number;
   colorWallpaperId?: string;
-  dynamicWallpaperSrc?: string;
 };
 
 type ResolveDynamicAccentOptions = {
@@ -145,7 +144,6 @@ const resolveWeatherAccent = (weatherCode: number) => {
 
 const resolveSourceImage = (input: DynamicAccentInput) => {
   if (input.wallpaperMode === 'custom') return input.customWallpaper || '';
-  if (input.wallpaperMode === 'dynamic') return input.dynamicWallpaperSrc || '';
   if (input.wallpaperMode === 'bing') return input.bingWallpaper || '';
   return '';
 };

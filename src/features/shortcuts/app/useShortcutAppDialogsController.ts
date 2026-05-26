@@ -86,7 +86,6 @@ export type SettingsDialogsInput = {
   onCustomWallpaperChange: SettingsModalProps['onCustomWallpaperChange'];
   weatherCode: SettingsModalProps['weatherCode'];
   colorWallpaperId: SettingsModalProps['colorWallpaperId'];
-  dynamicWallpaperSrc: SettingsModalProps['dynamicWallpaperSrc'];
   onColorWallpaperIdChange: SettingsModalProps['onColorWallpaperIdChange'];
   wallpaperMaskOpacity: SettingsModalProps['wallpaperMaskOpacity'];
   onWallpaperMaskOpacityChange: SettingsModalProps['onWallpaperMaskOpacityChange'];
@@ -305,7 +304,6 @@ export function useShortcutAppDialogsController({
     onCustomWallpaperChange: settingsDialogs.onCustomWallpaperChange,
     weatherCode: settingsDialogs.weatherCode,
     colorWallpaperId: settingsDialogs.colorWallpaperId,
-    dynamicWallpaperSrc: settingsDialogs.dynamicWallpaperSrc,
     onColorWallpaperIdChange: settingsDialogs.onColorWallpaperIdChange,
     wallpaperMaskOpacity: settingsDialogs.wallpaperMaskOpacity,
     onWallpaperMaskOpacityChange: settingsDialogs.onWallpaperMaskOpacityChange,

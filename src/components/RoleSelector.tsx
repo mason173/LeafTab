@@ -39,7 +39,6 @@ interface RoleSelectorProps {
   customWallpaper: string | null;
   weatherCode: number;
   colorWallpaperId: string;
-  dynamicWallpaperSrc?: string;
 }
 
 const STEP_ORDER = ['appearance', 'role'] as const;
@@ -53,7 +52,6 @@ export function RoleSelector({
   customWallpaper,
   weatherCode,
   colorWallpaperId,
-  dynamicWallpaperSrc,
 }: RoleSelectorProps) {
   const wallpaperBackdrop = useWallpaperBackdropSnapshot();
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -170,7 +168,6 @@ export function RoleSelector({
       customWallpaper,
       weatherCode,
       colorWallpaperId,
-      dynamicWallpaperSrc,
     })
       .then((palette) => {
         if (canceled) return;
@@ -188,7 +185,7 @@ export function RoleSelector({
     return () => {
       canceled = true;
     };
-  }, [bingWallpaper, colorWallpaperId, customWallpaper, dynamicWallpaperSrc, wallpaperMode, weatherCode]);
+  }, [bingWallpaper, colorWallpaperId, customWallpaper, wallpaperMode, weatherCode]);
 
   useEffect(() => {
     if (!open) return;

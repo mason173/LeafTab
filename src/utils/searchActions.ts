@@ -83,7 +83,7 @@ export type SearchSecondaryAction =
   | {
       id: 'set-wallpaper-mode';
       kind: 'set-wallpaper-mode';
-      targetMode: 'bing' | 'dynamic' | 'weather' | 'color' | 'custom';
+      targetMode: 'bing' | 'weather' | 'color' | 'custom';
       active: boolean;
     }
   | {

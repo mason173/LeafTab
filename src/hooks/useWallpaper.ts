@@ -8,12 +8,6 @@ import {
   saveWallpaperGallery,
 } from '../db';
 import { COLOR_WALLPAPER_PRESETS, DEFAULT_COLOR_WALLPAPER_ID } from '@/components/wallpaper/colorWallpapers';
-import {
-  DEFAULT_DYNAMIC_WALLPAPER_ID,
-  DYNAMIC_WALLPAPER_OPTIONS,
-  isDynamicWallpaperId,
-  type DynamicWallpaperId,
-} from '@/components/wallpaper/dynamicWallpapers';
 import type { WallpaperMode } from '@/wallpaper/types';
 import { isFirefoxBuildTarget } from '@/platform/browserTarget';
 import {
@@ -35,7 +29,6 @@ const BING_REFRESH_RETRY_MS = 30 * 60 * 1000;
 const MANUAL_BING_REFRESH_COOLDOWN_MS = 15_000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 9000;
-const DYNAMIC_WALLPAPER_ID_KEY = 'dynamicWallpaperId';
 const WALLPAPER_ROTATION_SETTINGS_KEY = 'wallpaperRotationSettings';
 const WALLPAPER_ROTATION_OFFSETS_KEY = 'wallpaperRotationOffsets';
 const CUSTOM_WALLPAPER_BOOT_CACHE_KEY = 'customWallpaperBootCache';
@@ -295,9 +288,6 @@ const getRotatableWallpaperValues = (
   mode: RotatableWallpaperMode,
   customWallpaperGallery: string[],
 ): string[] => {
-  if (mode === 'dynamic') {
-    return DYNAMIC_WALLPAPER_OPTIONS.map((option) => option.id);
-  }
   if (mode === 'color') {
     return COLOR_WALLPAPER_PRESETS.map((preset) => preset.id);
   }
@@ -311,7 +301,7 @@ export function useWallpaper() {
   const initialCustomWallpaper = readCustomWallpaperBootCache();
   const [hasStoredWallpaperMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    return saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom' || saved === 'dynamic';
+    return saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom';
   });
   const [bingWallpaper, setBingWallpaper] = useState<string>(() => initialBingWallpaper);
   const hasBingWallpaperRef = useRef(Boolean(initialBingWallpaper));
@@ -328,10 +318,10 @@ export function useWallpaper() {
   const [customWallpaperRotationBootReady, setCustomWallpaperRotationBootReady] = useState(false);
   const [wallpaperMode, setWallpaperMode] = useState<WallpaperMode>(() => {
     const saved = localStorage.getItem('wallpaperMode');
-    if (saved === 'bing' || saved === 'dynamic' || saved === 'weather' || saved === 'color' || saved === 'custom') {
+    if (saved === 'bing' || saved === 'weather' || saved === 'color' || saved === 'custom') {
       return firefox && saved === 'weather' ? 'bing' : saved;
     }
-    return 'dynamic';
+    return 'bing';
   });
   const [weatherCode, setWeatherCode] = useState<number>(2);
   const [wallpaperMaskOpacity, setWallpaperMaskOpacity] = useState<number>(() =>
@@ -345,10 +335,6 @@ export function useWallpaper() {
     if (!saved) return DEFAULT_COLOR_WALLPAPER_ID;
     const exists = COLOR_WALLPAPER_PRESETS.some((preset) => preset.id === saved);
     return exists ? saved : DEFAULT_COLOR_WALLPAPER_ID;
-  });
-  const [dynamicWallpaperId, setDynamicWallpaperId] = useState<DynamicWallpaperId>(() => {
-    const saved = localStorage.getItem(DYNAMIC_WALLPAPER_ID_KEY);
-    return isDynamicWallpaperId(saved) ? saved : DEFAULT_DYNAMIC_WALLPAPER_ID;
   });
   const [wallpaperRotationSettings, setWallpaperRotationSettings] = useState<WallpaperRotationSettings>(() =>
     normalizeWallpaperRotationSettings(readStoredJson(WALLPAPER_ROTATION_SETTINGS_KEY)),
@@ -391,9 +377,7 @@ export function useWallpaper() {
     const optionValues = getRotatableWallpaperValues(mode, customWallpaperGallery);
     if (optionValues.length === 0) return;
 
-    const currentValue = mode === 'dynamic'
-      ? dynamicWallpaperId
-      : mode === 'color'
+    const currentValue = mode === 'color'
         ? colorWallpaperId
         : customWallpaper;
     const currentIndex = Math.max(0, optionValues.indexOf(currentValue || optionValues[0]));
@@ -419,10 +403,6 @@ export function useWallpaper() {
   useEffect(() => {
     localStorage.setItem('colorWallpaperId', colorWallpaperId);
   }, [colorWallpaperId]);
-
-  useEffect(() => {
-    localStorage.setItem(DYNAMIC_WALLPAPER_ID_KEY, dynamicWallpaperId);
-  }, [dynamicWallpaperId]);
 
   useEffect(() => {
     localStorage.setItem(WALLPAPER_ROTATION_SETTINGS_KEY, JSON.stringify(wallpaperRotationSettings));
@@ -682,7 +662,7 @@ export function useWallpaper() {
 
   useEffect(() => {
     if (!isDocumentVisible) return;
-    if (wallpaperMode !== 'dynamic' && wallpaperMode !== 'color' && wallpaperMode !== 'custom') {
+    if (wallpaperMode !== 'color' && wallpaperMode !== 'custom') {
       return;
     }
 
@@ -703,13 +683,6 @@ export function useWallpaper() {
       const targetIndex = normalizeWallpaperRotationIndex(slot + wallpaperRotationOffsets[activeMode], optionValues.length);
       const targetValue = optionValues[targetIndex];
       if (!targetValue) return;
-
-      if (activeMode === 'dynamic') {
-        if (dynamicWallpaperId !== targetValue && isDynamicWallpaperId(targetValue)) {
-          setDynamicWallpaperId(targetValue);
-        }
-        return;
-      }
 
       if (activeMode === 'color') {
         if (colorWallpaperId !== targetValue) {
@@ -747,7 +720,6 @@ export function useWallpaper() {
     customWallpaper,
     customWallpaperGallery,
     customWallpaperRotationBootReady,
-    dynamicWallpaperId,
     isDocumentVisible,
     wallpaperMode,
     wallpaperRotationOffsets,
@@ -834,15 +806,6 @@ export function useWallpaper() {
     }
   };
 
-  const setSelectedDynamicWallpaperId = (id: DynamicWallpaperId) => {
-    setDynamicWallpaperId(id);
-    const optionValues = getRotatableWallpaperValues('dynamic', customWallpaperGallery);
-    const targetIndex = optionValues.indexOf(id);
-    if (targetIndex >= 0) {
-      syncRotationOffsetForMode('dynamic', targetIndex, optionValues.length);
-    }
-  };
-
   return {
     bingWallpaper, setBingWallpaper,
     isBingWallpaperRefreshing,
@@ -859,6 +822,5 @@ export function useWallpaper() {
     wallpaperMaskOpacity, setWallpaperMaskOpacity,
     darkModeAutoDimWallpaperEnabled, setDarkModeAutoDimWallpaperEnabled,
     colorWallpaperId, setColorWallpaperId: setSelectedColorWallpaperId,
-    dynamicWallpaperId, setDynamicWallpaperId: setSelectedDynamicWallpaperId,
   };
 }

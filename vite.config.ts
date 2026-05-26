@@ -44,19 +44,6 @@ function resolveManualChunk(id: string): string | undefined {
     return 'vendor-visual-utils';
   }
 
-  if (
-    normalizedId.includes('/src/components/react-bits/prism.tsx') ||
-    normalizedId.includes('/src/components/react-bits/silk.tsx') ||
-    normalizedId.includes('/src/components/react-bits/light-rays.tsx') ||
-    normalizedId.includes('/src/components/react-bits/beams.tsx') ||
-    normalizedId.includes('/src/components/react-bits/galaxy.tsx') ||
-    normalizedId.includes('/src/components/react-bits/iridescence.tsx') ||
-    normalizedId.includes('/src/components/wallpaper/dynamicWallpapers.tsx') ||
-    normalizedId.includes('/src/components/wallpaper/dynamicWallpaperSceneImpl.tsx')
-  ) {
-    return 'vendor-visuals';
-  }
-
   const pkg = getPackageName(normalizedId);
   if (!pkg) return undefined;
 
