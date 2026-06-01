@@ -75,13 +75,16 @@ function ContextMenuSubmenuItem({
         <RiArrowRightSLine className="size-4" />
       </button>
       {open ? (
-        <FrostedSurface
-          preset="dropdown-panel"
-          className="absolute left-[calc(100%+10px)] top-[-8px] z-[17030] w-[220px] rounded-[18px] border border-border shadow-lg"
-          contentClassName="p-[6px]"
-        >
-          {children}
-        </FrostedSurface>
+        <>
+          <div className="absolute left-full top-[-8px] h-[calc(100%+16px)] w-[10px]" aria-hidden="true" />
+          <FrostedSurface
+            preset="dropdown-panel"
+            className="absolute left-[calc(100%+10px)] top-[-8px] z-[17030] w-[220px] rounded-[18px] border border-border shadow-lg"
+            contentClassName="p-[6px]"
+          >
+            {children}
+          </FrostedSurface>
+        </>
       ) : null}
     </div>
   );
